@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
+import { PhotoUpload } from '@/components/PhotoUpload';
 
 const CreateTask: React.FC = () => {
   const [task, setTask] = useState<Partial<Task>>({
@@ -400,6 +401,13 @@ const CreateTask: React.FC = () => {
             />
           </CardContent>
         </Card>
+
+        {/* Upload de Fotos */}
+        <PhotoUpload
+          photos={task.photos || []}
+          onPhotosChange={(photos) => setTask(prev => ({ ...prev, photos }))}
+          maxPhotos={10}
+        />
 
         {/* Botões de Ação */}
         <div className="flex gap-4 mt-6">

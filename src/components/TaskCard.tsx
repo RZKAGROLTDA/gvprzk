@@ -18,6 +18,7 @@ import {
 import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PhotoGallery } from '@/components/PhotoGallery';
 
 interface TaskCardProps {
   task: Task;
@@ -136,15 +137,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
           </div>
         )}
 
+        {/* Fotos */}
+        {task.photos && task.photos.length > 0 && (
+          <PhotoGallery photos={task.photos} maxDisplay={3} />
+        )}
+
         {/* Informações Extras */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
-            {task.photos && task.photos.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Camera className="h-3 w-3" />
-                <span>{task.photos.length}</span>
-              </div>
-            )}
             {task.documents && task.documents.length > 0 && (
               <div className="flex items-center gap-1">
                 <FileText className="h-3 w-3" />
