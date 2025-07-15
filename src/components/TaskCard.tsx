@@ -19,6 +19,7 @@ import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PhotoGallery } from '@/components/PhotoGallery';
+import { TaskLocationInfo } from '@/components/TaskLocationInfo';
 
 interface TaskCardProps {
   task: Task;
@@ -135,6 +136,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
               {task.observations}
             </p>
           </div>
+        )}
+
+        {/* Check-in de Localização */}
+        {task.checkInLocation && (
+          <TaskLocationInfo checkInLocation={task.checkInLocation} compact />
         )}
 
         {/* Fotos */}

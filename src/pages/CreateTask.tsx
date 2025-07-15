@@ -26,6 +26,7 @@ import {
 import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
+import { CheckInLocation } from '@/components/CheckInLocation';
 
 const CreateTask: React.FC = () => {
   const [task, setTask] = useState<Partial<Task>>({
@@ -87,6 +88,10 @@ const CreateTask: React.FC = () => {
 
   const removeReminder = (id: string) => {
     setReminders(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleCheckIn = (location: { lat: number; lng: number; timestamp: Date }) => {
+    setTask(prev => ({ ...prev, checkInLocation: location }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -407,6 +412,12 @@ const CreateTask: React.FC = () => {
           photos={task.photos || []}
           onPhotosChange={(photos) => setTask(prev => ({ ...prev, photos }))}
           maxPhotos={10}
+        />
+
+        {/* Check-in de Localização */}
+        <CheckInLocation
+          checkInLocation={task.checkInLocation}
+          onCheckIn={handleCheckIn}
         />
 
         {/* Botões de Ação */}
