@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,7 @@ import { PhotoUpload } from '@/components/PhotoUpload';
 import { CheckInLocation } from '@/components/CheckInLocation';
 
 const CreateTask: React.FC = () => {
+  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>('field-visit');
   const [task, setTask] = useState<Partial<Task>>({
     name: '',
     responsible: '',
@@ -53,7 +54,7 @@ const CreateTask: React.FC = () => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [newReminder, setNewReminder] = useState({ title: '', description: '', date: new Date(), time: '09:00' });
 
-  const productTypes: ProductType[] = [
+  const fieldVisitProducts: ProductType[] = [
     { id: '1', name: 'Pneus', category: 'tires', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
     { id: '2', name: 'Lubrificantes', category: 'lubricants', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
     { id: '3', name: 'Óleos', category: 'oils', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
@@ -65,7 +66,35 @@ const CreateTask: React.FC = () => {
     { id: '9', name: 'disco', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] }
   ];
 
-  const [checklist, setChecklist] = useState<ProductType[]>(productTypes);
+  const workshopChecklistItems: ProductType[] = [
+    { id: '1', name: 'Verificação de Óleo do Motor', category: 'oils', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '2', name: 'Inspeção de Freios', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '3', name: 'Verificação de Pneus', category: 'tires', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '4', name: 'Teste de Bateria', category: 'batteries', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '5', name: 'Verificação de Luzes', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '6', name: 'Inspeção de Suspensão', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '7', name: 'Verificação de Líquidos', category: 'oils', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '8', name: 'Diagnóstico Eletrônico', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [] },
+    { id: '9', name: 'Limpeza Geral', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [] }
+  ];
+
+  const getProductsForCategory = () => {
+    switch (taskCategory) {
+      case 'field-visit':
+        return fieldVisitProducts;
+      case 'workshop-checklist':
+        return workshopChecklistItems;
+      default:
+        return [];
+    }
+  };
+
+  const [checklist, setChecklist] = useState<ProductType[]>(getProductsForCategory());
+
+  // Atualiza o checklist quando o tipo de tarefa muda
+  useEffect(() => {
+    setChecklist(getProductsForCategory());
+  }, [taskCategory]);
 
   const handleChecklistChange = (id: string, checked: boolean) => {
     setChecklist(prev => 
@@ -128,10 +157,35 @@ const CreateTask: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Nova Tarefa</h1>
-        <p className="text-muted-foreground">Criar uma nova tarefa de visita</p>
+        <p className="text-muted-foreground">Criar uma nova tarefa</p>
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* Seleção do Tipo de Tarefa */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5" />
+              Tipo de Tarefa
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="taskCategory">Selecione o tipo de tarefa</Label>
+              <Select value={taskCategory} onValueChange={(value) => setTaskCategory(value as typeof taskCategory)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha o tipo de tarefa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="field-visit">Visita a Campo</SelectItem>
+                  <SelectItem value="call">Ligação</SelectItem>
+                  <SelectItem value="workshop-checklist">Checklist Oficina</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Informações Básicas */}
           <Card>
@@ -176,15 +230,28 @@ const CreateTask: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="property">Propriedade</Label>
-                <Input
-                  id="property"
-                  value={task.property}
-                  onChange={(e) => setTask(prev => ({ ...prev, property: e.target.value }))}
-                  placeholder="Propriedade da visita"
-                />
-              </div>
+              {taskCategory === 'field-visit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="property">Propriedade</Label>
+                  <Input
+                    id="property"
+                    value={task.property}
+                    onChange={(e) => setTask(prev => ({ ...prev, property: e.target.value }))}
+                    placeholder="Propriedade da visita"
+                  />
+                </div>
+              )}
+
+              {taskCategory === 'call' && (
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Telefone do cliente"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="filial">Filial</Label>
@@ -269,110 +336,172 @@ const CreateTask: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {taskCategory === 'field-visit' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="initialKm">KM Inicial</Label>
+                    <Input
+                      id="initialKm"
+                      type="number"
+                      value={task.initialKm}
+                      onChange={(e) => setTask(prev => ({ ...prev, initialKm: parseInt(e.target.value) || 0 }))}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="finalKm">KM Final</Label>
+                    <Input
+                      id="finalKm"
+                      type="number"
+                      value={task.finalKm}
+                      onChange={(e) => setTask(prev => ({ ...prev, finalKm: parseInt(e.target.value) || 0 }))}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {taskCategory === 'call' && (
                 <div className="space-y-2">
-                  <Label htmlFor="initialKm">KM Inicial</Label>
+                  <Label htmlFor="callDuration">Duração da Ligação (min)</Label>
                   <Input
-                    id="initialKm"
+                    id="callDuration"
                     type="number"
-                    value={task.initialKm}
-                    onChange={(e) => setTask(prev => ({ ...prev, initialKm: parseInt(e.target.value) || 0 }))}
-                    placeholder="0"
+                    placeholder="Tempo em minutos"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="finalKm">KM Final</Label>
-                  <Input
-                    id="finalKm"
-                    type="number"
-                    value={task.finalKm}
-                    onChange={(e) => setTask(prev => ({ ...prev, finalKm: parseInt(e.target.value) || 0 }))}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Checklist de Produtos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Produtos para Ofertar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {checklist.map((item) => (
-                  <Card key={item.id} className="border border-border/50">
-                    <CardContent className="p-4">
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={item.id}
-                            checked={item.selected}
-                            onCheckedChange={(checked) => handleChecklistChange(item.id, checked as boolean)}
-                          />
-                          <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            {item.name}
-                          </Label>
-                        </div>
-                        
-                        {item.selected && (
-                          <div className="ml-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor={`qty-${item.id}`}>QTD</Label>
-                                <Input
-                                  id={`qty-${item.id}`}
-                                  type="number"
-                                  value={item.quantity || 0}
-                                  onChange={(e) => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                                  placeholder="0"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor={`price-${item.id}`}>Valor</Label>
-                                <Input
-                                  id={`price-${item.id}`}
-                                  type="number"
-                                  step="0.01"
-                                  value={item.price || 0}
-                                  onChange={(e) => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)}
-                                  placeholder="0,00"
-                                />
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <Label htmlFor={`obs-${item.id}`}>Observações</Label>
-                              <Textarea
-                                id={`obs-${item.id}`}
-                                value={item.observations || ''}
-                                onChange={(e) => handleProductChange(item.id, 'observations', e.target.value)}
-                                placeholder="Observações sobre este produto..."
-                                className="min-h-[80px]"
-                              />
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <Label>Fotos do Produto</Label>
-                              <PhotoUpload
-                                photos={item.photos || []}
-                                onPhotosChange={(photos) => handleProductPhotoChange(item.id, photos)}
-                                maxPhotos={5}
-                              />
-                            </div>
+          {/* Produtos / Checklist */}
+          {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  {taskCategory === 'field-visit' ? 'Produtos para Ofertar' : 'Checklist da Oficina'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {checklist.map((item) => (
+                    <Card key={item.id} className="border border-border/50">
+                      <CardContent className="p-4">
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={item.id}
+                              checked={item.selected}
+                              onCheckedChange={(checked) => handleChecklistChange(item.id, checked as boolean)}
+                            />
+                            <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {item.name}
+                            </Label>
                           </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                          
+                          {item.selected && (
+                            <div className="ml-6 space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`qty-${item.id}`}>QTD</Label>
+                                  <Input
+                                    id={`qty-${item.id}`}
+                                    type="number"
+                                    value={item.quantity || 0}
+                                    onChange={(e) => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor={`price-${item.id}`}>Valor</Label>
+                                  <Input
+                                    id={`price-${item.id}`}
+                                    type="number"
+                                    step="0.01"
+                                    value={item.price || 0}
+                                    onChange={(e) => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)}
+                                    placeholder="0,00"
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor={`obs-${item.id}`}>Observações</Label>
+                                <Textarea
+                                  id={`obs-${item.id}`}
+                                  value={item.observations || ''}
+                                  onChange={(e) => handleProductChange(item.id, 'observations', e.target.value)}
+                                  placeholder="Observações sobre este produto..."
+                                  className="min-h-[80px]"
+                                />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label>Fotos do Produto</Label>
+                                <PhotoUpload
+                                  photos={item.photos || []}
+                                  onPhotosChange={(photos) => handleProductPhotoChange(item.id, photos)}
+                                  maxPhotos={5}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Campos específicos para Ligação */}
+          {taskCategory === 'call' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Detalhes da Ligação
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="callResult">Resultado da Ligação</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Como foi a ligação?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="successful">Bem-sucedida</SelectItem>
+                      <SelectItem value="no-answer">Não atendeu</SelectItem>
+                      <SelectItem value="busy">Ocupado</SelectItem>
+                      <SelectItem value="rescheduled">Reagendada</SelectItem>
+                      <SelectItem value="not-interested">Não interessado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="callPurpose">Motivo da Ligação</Label>
+                  <Textarea
+                    id="callPurpose"
+                    placeholder="Qual foi o motivo da ligação..."
+                    className="min-h-[80px]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nextActions">Próximas Ações</Label>
+                  <Textarea
+                    id="nextActions"
+                    placeholder="O que deve ser feito em seguida..."
+                    className="min-h-[80px]"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Lembretes */}
           <Card>
@@ -491,18 +620,22 @@ const CreateTask: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Upload de Fotos */}
-        <PhotoUpload
-          photos={task.photos || []}
-          onPhotosChange={(photos) => setTask(prev => ({ ...prev, photos }))}
-          maxPhotos={10}
-        />
+        {/* Upload de Fotos - apenas para visita a campo e checklist oficina */}
+        {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && (
+          <PhotoUpload
+            photos={task.photos || []}
+            onPhotosChange={(photos) => setTask(prev => ({ ...prev, photos }))}
+            maxPhotos={10}
+          />
+        )}
 
-        {/* Check-in de Localização */}
-        <CheckInLocation
-          checkInLocation={task.checkInLocation}
-          onCheckIn={handleCheckIn}
-        />
+        {/* Check-in de Localização - apenas para visita a campo */}
+        {taskCategory === 'field-visit' && (
+          <CheckInLocation
+            checkInLocation={task.checkInLocation}
+            onCheckIn={handleCheckIn}
+          />
+        )}
 
         {/* Botões de Ação */}
         <div className="flex gap-4 mt-6">
