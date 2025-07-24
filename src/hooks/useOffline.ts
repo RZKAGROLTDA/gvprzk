@@ -104,26 +104,39 @@ export const useOffline = () => {
 
   // Salvar tarefa offline
   const saveTaskOffline = (task: any) => {
+    console.log('saveTaskOffline chamado com:', task);
     const data = loadOfflineData();
+    console.log('Dados offline atuais:', data);
     
     // Adicionar à lista local
-    data.tasks.push({
+    const newTask = {
       ...task,
       id: task.id || Date.now().toString(),
       offline: true,
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    };
+    
+    data.tasks.push(newTask);
+    console.log('Nova tarefa adicionada:', newTask);
+    console.log('Total de tarefas após adicionar:', data.tasks.length);
 
+    // Salvar primeiro, depois adicionar à fila
+    saveOfflineData(data);
+    
     // Adicionar à fila de sincronização
     addToSyncQueue(task);
     
-    saveOfflineData(data);
+    toast({
+      title: "✅ Tarefa Salva",
+      description: `Tarefa salva ${isOnline ? 'online' : 'offline'}!`,
+    });
   };
 
   // Obter tarefas offline
   const getOfflineTasks = () => {
     const data = loadOfflineData();
+    console.log('getOfflineTasks retornando:', data.tasks.length, 'tarefas');
     return data.tasks;
   };
 
