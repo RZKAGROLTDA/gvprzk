@@ -12,6 +12,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { Task, TaskStats } from '@/types/task';
+import { TaskManager } from '@/components/TaskManager';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 const Dashboard: React.FC = () => {
   const stats: TaskStats = {
@@ -106,6 +108,9 @@ const Dashboard: React.FC = () => {
           Nova Tarefa
         </Button>
       </div>
+
+      {/* Status Offline */}
+      <OfflineIndicator />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -204,6 +209,9 @@ const Dashboard: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Gerenciador de Tarefas Offline */}
+      <TaskManager />
     </div>
   );
 };

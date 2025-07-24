@@ -27,11 +27,15 @@ import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { CheckInLocation } from '@/components/CheckInLocation';
+import { useOffline } from '@/hooks/useOffline';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { toast } from '@/components/ui/use-toast';
 
 const CreateTask: React.FC = () => {
   const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>('field-visit');
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isOnline, saveTaskOffline, addToSyncQueue } = useOffline();
   const [task, setTask] = useState<Partial<Task>>({
     name: '',
     responsible: '',
@@ -214,18 +218,81 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     };
 
     try {
-      // Implementar lógica de salvamento
-      console.log('Task created:', taskData);
-      
-      // Enviar para WhatsApp se webhook configurado
-      if (whatsappWebhook) {
-        await sendToWhatsApp(taskData);
+      // Gerar ID único para a tarefa
+      const taskId = Date.now().toString();
+      const finalTaskData = {
+        ...taskData,
+        id: taskId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: 'pending',
+        createdBy: taskData.responsible || 'Usuário',
+      };
+
+      if (isOnline) {
+        // Modo online - salvar diretamente no servidor
+        console.log('Salvando online:', finalTaskData);
+        // Aqui você implementaria a chamada à API
+        
+        // Enviar para WhatsApp se webhook configurado
+        if (whatsappWebhook) {
+          await sendToWhatsApp(finalTaskData);
+        }
+      } else {
+        // Modo offline - salvar localmente
+        console.log('Salvando offline:', finalTaskData);
+        saveTaskOffline(finalTaskData);
+        
+        // Adicionar WhatsApp à fila de sincronização se configurado
+        if (whatsappWebhook) {
+          addToSyncQueue({
+            type: 'whatsapp',
+            webhook: whatsappWebhook,
+            taskData: finalTaskData
+          });
+        }
       }
 
-      // Aqui você pode adicionar lógica para salvar no banco de dados
+      // Resetar formulário após sucesso
+      setTask({
+        name: '',
+        responsible: '',
+        client: '',
+        property: '',
+        filial: '',
+        taskType: 'prospection',
+        startDate: new Date(),
+        endDate: new Date(),
+        startTime: '',
+        endTime: '',
+        observations: '',
+        priority: 'medium',
+        photos: [],
+        documents: [],
+        initialKm: 0,
+        finalKm: 0,
+        isProspect: false,
+        prospectNotes: '',
+        prospectItems: [],
+        salesValue: 0,
+        salesConfirmed: false
+      });
+      setChecklist([]);
+      setReminders([]);
+      setWhatsappWebhook('');
+
+      toast({
+        title: "✅ Tarefa Criada",
+        description: isOnline ? "Tarefa salva com sucesso" : "Tarefa salva offline - será sincronizada quando conectar",
+      });
       
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar a tarefa",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -237,6 +304,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         <h1 className="text-3xl font-bold">Nova Tarefa</h1>
         <p className="text-muted-foreground">Criar uma nova tarefa</p>
       </div>
+
+      {/* Indicador de Status Offline */}
+      <OfflineIndicator />
 
       <form onSubmit={handleSubmit}>
         {/* Seleção do Tipo de Tarefa */}
