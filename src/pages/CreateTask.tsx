@@ -30,6 +30,8 @@ import { CheckInLocation } from '@/components/CheckInLocation';
 
 const CreateTask: React.FC = () => {
   const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>('field-visit');
+  const [whatsappWebhook, setWhatsappWebhook] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [task, setTask] = useState<Partial<Task>>({
     name: '',
     responsible: '',
@@ -169,14 +171,64 @@ const CreateTask: React.FC = () => {
     setTask(prev => ({ ...prev, checkInLocation: location }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const sendToWhatsApp = async (taskData: any) => {
+    if (!whatsappWebhook) return;
+
+    try {
+      const message = `🚀 *Nova Tarefa Criada*
+
+📋 *Nome:* ${taskData.name}
+👤 *Responsável:* ${taskData.responsible}
+🏢 *Cliente:* ${taskData.client}
+📅 *Data:* ${taskData.startDate ? format(taskData.startDate, "PPP", { locale: ptBR }) : 'Não definida'}
+⏰ *Horário:* ${taskData.startTime} - ${taskData.endTime}
+🎯 *Prioridade:* ${taskData.priority}
+
+${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}`;
+
+      await fetch(whatsappWebhook, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        mode: "no-cors",
+        body: JSON.stringify({
+          message: message,
+          timestamp: new Date().toISOString(),
+          taskData: taskData
+        }),
+      });
+    } catch (error) {
+      console.error("Erro ao enviar para WhatsApp:", error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Implementar lógica de salvamento
-    console.log('Task created:', {
+    setIsSubmitting(true);
+
+    const taskData = {
       ...task,
       checklist: checklist.filter(item => item.selected),
       reminders
-    });
+    };
+
+    try {
+      // Implementar lógica de salvamento
+      console.log('Task created:', taskData);
+      
+      // Enviar para WhatsApp se webhook configurado
+      if (whatsappWebhook) {
+        await sendToWhatsApp(taskData);
+      }
+
+      // Aqui você pode adicionar lógica para salvar no banco de dados
+      
+    } catch (error) {
+      console.error('Erro ao criar tarefa:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -784,7 +836,29 @@ const CreateTask: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Upload de Fotos - apenas para visita a campo e checklist oficina */}
+        {/* Integração WhatsApp */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Integração WhatsApp (Opcional)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="whatsappWebhook">Webhook URL do Zapier para WhatsApp</Label>
+              <Input
+                id="whatsappWebhook"
+                value={whatsappWebhook}
+                onChange={(e) => setWhatsappWebhook(e.target.value)}
+                placeholder="Cole aqui a URL do webhook do Zapier"
+              />
+              <p className="text-sm text-muted-foreground">
+                Configure um Zap no Zapier que conecte webhook → WhatsApp para receber notificações automáticas
+              </p>
+            </div>
+          </CardContent>
+        </Card>
         {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && (
           <PhotoUpload
             photos={task.photos || []}
@@ -801,16 +875,15 @@ const CreateTask: React.FC = () => {
           />
         )}
 
-        {/* Botões de Ação */}
-        <div className="flex gap-4 mt-6">
-          <Button type="submit" className="flex-1" variant="gradient">
-            <CheckSquare className="h-4 w-4 mr-2" />
-            Criar Tarefa
-          </Button>
-          <Button type="button" variant="outline" className="flex-1">
-            Cancelar
-          </Button>
-        </div>
+         <div className="flex gap-4 mt-6">
+           <Button type="submit" className="flex-1" variant="gradient" disabled={isSubmitting}>
+             <CheckSquare className="h-4 w-4 mr-2" />
+             {isSubmitting ? 'Criando...' : 'Criar Tarefa'}
+           </Button>
+           <Button type="button" variant="outline" className="flex-1">
+             Cancelar
+           </Button>
+         </div>
       </form>
     </div>
   );
