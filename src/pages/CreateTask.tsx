@@ -90,6 +90,7 @@ const CreateTask: React.FC = () => {
   };
 
   const [checklist, setChecklist] = useState<ProductType[]>(getProductsForCategory());
+  const [callProducts, setCallProducts] = useState<ProductType[]>(fieldVisitProducts);
 
   // Atualiza o checklist quando o tipo de tarefa muda
   useEffect(() => {
@@ -114,6 +115,31 @@ const CreateTask: React.FC = () => {
 
   const handleProductPhotoChange = (productId: string, photos: string[]) => {
     setChecklist(prev => 
+      prev.map(item => 
+        item.id === productId ? { ...item, photos } : item
+      )
+    );
+  };
+
+  // Funções para gerenciar produtos da ligação
+  const handleCallProductChange = (id: string, checked: boolean) => {
+    setCallProducts(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, selected: checked } : item
+      )
+    );
+  };
+
+  const handleCallProductUpdate = (id: string, field: keyof ProductType, value: any) => {
+    setCallProducts(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const handleCallProductPhotoChange = (productId: string, photos: string[]) => {
+    setCallProducts(prev => 
       prev.map(item => 
         item.id === productId ? { ...item, photos } : item
       )
@@ -458,49 +484,266 @@ const CreateTask: React.FC = () => {
 
           {/* Campos específicos para Ligação */}
           {taskCategory === 'call' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Detalhes da Ligação
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="callResult">Resultado da Ligação</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Como foi a ligação?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="successful">Bem-sucedida</SelectItem>
-                      <SelectItem value="no-answer">Não atendeu</SelectItem>
-                      <SelectItem value="busy">Ocupado</SelectItem>
-                      <SelectItem value="rescheduled">Reagendada</SelectItem>
-                      <SelectItem value="not-interested">Não interessado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+            <>
+              {/* Ofertas de Produtos */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Produtos para Ofertar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {callProducts.map((item) => (
+                      <Card key={item.id} className="border border-border/50">
+                        <CardContent className="p-4">
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`call-${item.id}`}
+                                checked={item.selected}
+                                onCheckedChange={(checked) => handleCallProductChange(item.id, checked as boolean)}
+                              />
+                              <Label htmlFor={`call-${item.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                {item.name}
+                              </Label>
+                            </div>
+                            
+                            {item.selected && (
+                              <div className="ml-6 space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`call-qty-${item.id}`}>QTD</Label>
+                                    <Input
+                                      id={`call-qty-${item.id}`}
+                                      type="number"
+                                      value={item.quantity || 0}
+                                      onChange={(e) => handleCallProductUpdate(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`call-price-${item.id}`}>Valor</Label>
+                                    <Input
+                                      id={`call-price-${item.id}`}
+                                      type="number"
+                                      step="0.01"
+                                      value={item.price || 0}
+                                      onChange={(e) => handleCallProductUpdate(item.id, 'price', parseFloat(e.target.value) || 0)}
+                                      placeholder="0,00"
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <Label htmlFor={`call-obs-${item.id}`}>Observações</Label>
+                                  <Textarea
+                                    id={`call-obs-${item.id}`}
+                                    value={item.observations || ''}
+                                    onChange={(e) => handleCallProductUpdate(item.id, 'observations', e.target.value)}
+                                    placeholder="Observações sobre este produto..."
+                                    className="min-h-[80px]"
+                                  />
+                                </div>
+                                
+                                <div className="space-y-2">
+                                  <Label>Fotos do Produto</Label>
+                                  <PhotoUpload
+                                    photos={item.photos || []}
+                                    onPhotosChange={(photos) => handleCallProductPhotoChange(item.id, photos)}
+                                    maxPhotos={5}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-                <div className="space-y-2">
-                  <Label htmlFor="callPurpose">Motivo da Ligação</Label>
-                  <Textarea
-                    id="callPurpose"
-                    placeholder="Qual foi o motivo da ligação..."
-                    className="min-h-[80px]"
-                  />
-                </div>
+              {/* Perguntas da Ligação */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Perguntas da Ligação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="customerName">Nome do Cliente:</Label>
+                    <Input
+                      id="customerName"
+                      placeholder="Nome completo do cliente"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="nextActions">Próximas Ações</Label>
-                  <Textarea
-                    id="nextActions"
-                    placeholder="O que deve ser feito em seguida..."
-                    className="min-h-[80px]"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="propertyArea">Total de área da propriedade na região:</Label>
+                    <Input
+                      id="propertyArea"
+                      placeholder="Área em hectares"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="johnDeereEquipment">Total de Equipamentos John Deere na região:</Label>
+                    <Input
+                      id="johnDeereEquipment"
+                      type="number"
+                      placeholder="Quantidade de equipamentos"
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Está precisando de Lubrificantes:</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="lubricants-yes" />
+                          <Label htmlFor="lubricants-yes">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="lubricants-no" />
+                          <Label htmlFor="lubricants-no">NÃO</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Está precisando de Pneus:</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="tires-yes" />
+                          <Label htmlFor="tires-yes">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="tires-no" />
+                          <Label htmlFor="tires-no">NÃO</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Está precisando de Filtros:</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="filters-yes" />
+                          <Label htmlFor="filters-yes">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="filters-no" />
+                          <Label htmlFor="filters-no">NÃO</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Está precisando de Baterias:</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="batteries-yes" />
+                          <Label htmlFor="batteries-yes">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="batteries-no" />
+                          <Label htmlFor="batteries-no">NÃO</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Está precisando de Peças:</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="parts-yes" />
+                          <Label htmlFor="parts-yes">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="parts-no" />
+                          <Label htmlFor="parts-no">NÃO</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Está precisando de Silo Bolsa:</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="silobag-yes" />
+                          <Label htmlFor="silobag-yes">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="silobag-no" />
+                          <Label htmlFor="silobag-no">NÃO</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Está precisando de Disco:</Label>
+                      <div className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="disk-yes" />
+                          <Label htmlFor="disk-yes">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox id="disk-no" />
+                          <Label htmlFor="disk-no">NÃO</Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceImprovement">O que podemos fazer para melhorar o atendimento de peças junto a Fazenda do senhor?</Label>
+                    <Textarea
+                      id="serviceImprovement"
+                      placeholder="Sugestões para melhorar o atendimento..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactName">Nome:</Label>
+                      <Input
+                        id="contactName"
+                        placeholder="Nome do contato"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="farmRole">Função na Fazenda:</Label>
+                      <Input
+                        id="farmRole"
+                        placeholder="Função/cargo"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="consultant">Consultor:</Label>
+                      <Input
+                        id="consultant"
+                        placeholder="Nome do consultor"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="partsManager">Gestor de Peças:</Label>
+                      <Input
+                        id="partsManager"
+                        placeholder="Nome do gestor de peças"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {/* Lembretes */}
