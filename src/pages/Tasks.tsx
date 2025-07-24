@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,92 +19,30 @@ import {
 import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useOffline } from '@/hooks/useOffline';
+import { useNavigate } from 'react-router-dom';
 
 const Tasks: React.FC = () => {
+  const { getOfflineTasks } = useOffline();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  const tasks: Task[] = [
-    {
-      id: '1',
-      name: 'Visita Cliente ABC Transportes',
-      responsible: 'João Silva',
-      client: 'ABC Transportes',
-      property: 'Matriz São Paulo',
-      taskType: 'prospection',
-      checklist: [],
-      startDate: new Date('2024-01-15'),
-      endDate: new Date('2024-01-15'),
-      startTime: '09:00',
-      endTime: '11:00',
-      observations: 'Primeira visita ao cliente, foco em pneus e lubrificantes',
-      priority: 'high',
-      reminders: [],
-      photos: [],
-      documents: [],
-      initialKm: 12450,
-      finalKm: 12520,
-      status: 'completed',
-      createdBy: 'Gestor',
-      createdAt: new Date('2024-01-10'),
-      updatedAt: new Date('2024-01-15'),
-      isProspect: true,
-      prospectNotes: 'Cliente demonstrou interesse em pneus para frota',
-      salesValue: 25000,
-      salesConfirmed: true
-    },
-    {
-      id: '2',
-      name: 'Visita Cliente XYZ Logística',
-      responsible: 'Maria Santos',
-      client: 'XYZ Logística',
-      property: 'Filial Campinas',
-      taskType: 'prospection',
-      checklist: [],
-      startDate: new Date('2024-01-16'),
-      endDate: new Date('2024-01-16'),
-      startTime: '14:00',
-      endTime: '16:00',
-      observations: 'Apresentação de produtos de bateria',
-      priority: 'medium',
-      reminders: [],
-      photos: [],
-      documents: [],
-      initialKm: 8900,
-      finalKm: 8980,
-      status: 'in_progress',
-      createdBy: 'Gestor',
-      createdAt: new Date('2024-01-12'),
-      updatedAt: new Date('2024-01-16'),
-      isProspect: false
-    },
-    {
-      id: '3',
-      name: 'Visita Cliente 123 Transportes',
-      responsible: 'Pedro Oliveira',
-      client: '123 Transportes',
-      property: 'Sede Principal',
-      taskType: 'prospection',
-      checklist: [],
-      startDate: new Date('2024-01-17'),
-      endDate: new Date('2024-01-17'),
-      startTime: '08:00',
-      endTime: '10:00',
-      observations: 'Reunião com gerente de frota',
-      priority: 'low',
-      reminders: [],
-      photos: [],
-      documents: [],
-      initialKm: 0,
-      finalKm: 0,
-      status: 'pending',
-      createdBy: 'Gestor',
-      createdAt: new Date('2024-01-13'),
-      updatedAt: new Date('2024-01-13'),
-      isProspect: false
-    }
-  ];
+  // Carregar tarefas quando componente montar
+  useEffect(() => {
+    const loadTasks = () => {
+      const allTasks = getOfflineTasks();
+      setTasks(allTasks);
+    };
+    
+    loadTasks();
+    
+    // Recarregar a cada 3 segundos para sincronizar
+    const interval = setInterval(loadTasks, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -161,7 +99,7 @@ const Tasks: React.FC = () => {
           <h1 className="text-3xl font-bold">Tarefas</h1>
           <p className="text-muted-foreground">Gerenciar tarefas de visitas</p>
         </div>
-        <Button variant="gradient" className="gap-2">
+        <Button variant="gradient" className="gap-2" onClick={() => navigate('/create-task')}>
           <Plus className="h-4 w-4" />
           Nova Tarefa
         </Button>
@@ -225,97 +163,111 @@ const Tasks: React.FC = () => {
 
       {/* Tasks List */}
       <div className="space-y-4">
-        {filteredTasks.map((task) => (
-          <Card key={task.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                      <CheckSquare className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{task.name}</h3>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4" />
-                          {task.responsible}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {task.client} - {task.property}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {format(task.startDate, "PPP", { locale: ptBR })}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {task.startTime} - {task.endTime}
+        {filteredTasks.length === 0 && tasks.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <CheckSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa criada ainda</h3>
+              <p className="text-muted-foreground mb-4">
+                Crie sua primeira tarefa para começar!
+              </p>
+              <Button variant="gradient" className="gap-2" onClick={() => navigate('/create-task')}>
+                <Plus className="h-4 w-4" />
+                Criar Primeira Tarefa
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filteredTasks.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa encontrada</h3>
+              <p className="text-muted-foreground">
+                Tente ajustar os filtros ou criar uma nova tarefa
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredTasks.map((task) => (
+            <Card key={task.id} className="hover:shadow-lg transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <CheckSquare className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">{task.name}</h3>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            {task.responsible}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            {task.client} - {task.property}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {format(task.startDate, "PPP", { locale: ptBR })}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {task.startTime} - {task.endTime}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {task.observations && (
-                    <p className="text-sm text-muted-foreground pl-13">
-                      {task.observations}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-2 pl-13">
-                    <Badge variant={getPriorityColor(task.priority)}>
-                      {getPriorityLabel(task.priority)}
-                    </Badge>
-                    <Badge variant={getStatusColor(task.status)}>
-                      {getStatusLabel(task.status)}
-                    </Badge>
-                    {task.isProspect && (
-                      <Badge variant="default">
-                        Prospect
-                      </Badge>
-                    )}
-                    {task.salesConfirmed && (
-                      <Badge variant="success">
-                        Venda Confirmada
-                      </Badge>
-                    )}
-                  </div>
-
-                  {task.salesValue && (
-                    <div className="pl-13">
-                      <p className="text-sm font-medium text-success">
-                        Valor da Venda: R$ {task.salesValue.toLocaleString('pt-BR')}
+                    {task.observations && (
+                      <p className="text-sm text-muted-foreground pl-13">
+                        {task.observations}
                       </p>
+                    )}
+
+                    <div className="flex items-center gap-2 pl-13">
+                      <Badge variant={getPriorityColor(task.priority)}>
+                        {getPriorityLabel(task.priority)}
+                      </Badge>
+                      <Badge variant={getStatusColor(task.status)}>
+                        {getStatusLabel(task.status)}
+                      </Badge>
+                      {task.isProspect && (
+                        <Badge variant="default">
+                          Prospect
+                        </Badge>
+                      )}
+                      {task.salesConfirmed && (
+                        <Badge variant="success">
+                          Venda Confirmada
+                        </Badge>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                    {task.salesValue && task.salesValue > 0 && (
+                      <div className="pl-13">
+                        <p className="text-sm font-medium text-success">
+                          Valor da Venda: R$ {task.salesValue.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
-
-      {filteredTasks.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <CheckSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa encontrada</h3>
-            <p className="text-muted-foreground">
-              Tente ajustar os filtros ou criar uma nova tarefa
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
