@@ -54,9 +54,15 @@ const CreateTask: React.FC = () => {
   const [newReminder, setNewReminder] = useState({ title: '', description: '', date: new Date(), time: '09:00' });
 
   const productTypes: ProductType[] = [
-    { id: '1', name: 'Silo Bolsa', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
-    { id: '2', name: 'Cool Gard', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
-    { id: '3', name: 'disco', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] }
+    { id: '1', name: 'Pneus', category: 'tires', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '2', name: 'Lubrificantes', category: 'lubricants', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '3', name: 'Óleos', category: 'oils', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '4', name: 'Graxas', category: 'greases', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '5', name: 'Baterias', category: 'batteries', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '6', name: 'Outros', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '7', name: 'Silo Bolsa', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '8', name: 'Cool Gard', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '9', name: 'disco', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] }
   ];
 
   const [checklist, setChecklist] = useState<ProductType[]>(productTypes);
