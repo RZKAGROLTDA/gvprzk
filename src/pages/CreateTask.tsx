@@ -233,6 +233,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         // Modo online - salvar diretamente no servidor
         console.log('Salvando online:', finalTaskData);
         // Aqui você implementaria a chamada à API
+        saveTaskOffline(finalTaskData); // Salvar também localmente
         
         // Enviar para WhatsApp se webhook configurado
         if (whatsappWebhook) {
