@@ -35,7 +35,7 @@ const CreateTask: React.FC = () => {
   const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>('field-visit');
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { isOnline, saveTaskOffline, addToSyncQueue } = useOffline();
+  const { isOnline, saveTaskOffline, addToSyncQueue, clearOfflineData } = useOffline();
   const [task, setTask] = useState<Partial<Task>>({
     name: '',
     responsible: '',
@@ -952,6 +952,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
            </Button>
            <Button type="button" variant="outline" className="flex-1">
              Cancelar
+           </Button>
+         </div>
+         
+         <div className="mt-4">
+           <Button 
+             type="button" 
+             variant="destructive" 
+             onClick={() => {
+               if (confirm('Tem certeza que deseja zerar todos os dados salvos?')) {
+                 clearOfflineData();
+               }
+             }}
+             className="w-full"
+           >
+             <X className="h-4 w-4 mr-2" />
+             Zerar Todos os Dados
            </Button>
          </div>
       </form>
