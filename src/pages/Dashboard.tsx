@@ -9,7 +9,10 @@ import {
   Users, 
   Eye,
   MapPin,
-  Calendar
+  Calendar,
+  Target,
+  DollarSign,
+  TrendingDown
 } from 'lucide-react';
 import { Task, TaskStats } from '@/types/task';
 import { TaskManager } from '@/components/TaskManager';
@@ -84,7 +87,7 @@ const Dashboard: React.FC = () => {
       <OfflineIndicator />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Visitas</CardTitle>
@@ -92,7 +95,7 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalVisits}</div>
-            <p className="text-xs text-muted-foreground">Este mês</p>
+            <p className="text-xs text-muted-foreground">Tarefas criadas</p>
           </CardContent>
         </Card>
 
@@ -111,28 +114,41 @@ const Dashboard: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Prospects</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Prospecção</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.prospects}</div>
             <p className="text-xs text-muted-foreground">
-              {allTasks.length > 0 ? `${stats.conversionRate.toFixed(1)}% de conversão` : 'Aguardando dados'}
+              {allTasks.length > 0 ? `${((stats.prospects / allTasks.length) * 100).toFixed(1)}% dos clientes` : 'Prospects identificados'}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vendas Geradas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Vendas</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               R$ {stats.salesValue.toLocaleString('pt-BR')}
             </div>
             <p className="text-xs text-muted-foreground">
-              {allTasks.length > 0 ? 'Baseado nas tarefas criadas' : 'Aguardando dados'}
+              {allTasks.length > 0 ? 'Valor total gerado' : 'Aguardando dados'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.conversionRate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">
+              {allTasks.length > 0 ? 'Prospects → Vendas' : 'Aguardando conversões'}
             </p>
           </CardContent>
         </Card>
