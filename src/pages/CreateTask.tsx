@@ -34,6 +34,7 @@ const CreateTask: React.FC = () => {
     responsible: '',
     client: '',
     property: '',
+    filial: '',
     taskType: 'prospection',
     priority: 'medium',
     observations: '',
@@ -53,12 +54,9 @@ const CreateTask: React.FC = () => {
   const [newReminder, setNewReminder] = useState({ title: '', description: '', date: new Date(), time: '09:00' });
 
   const productTypes: ProductType[] = [
-    { id: '1', name: 'Pneus', category: 'tires', selected: false },
-    { id: '2', name: 'Lubrificantes', category: 'lubricants', selected: false },
-    { id: '3', name: 'Óleos', category: 'oils', selected: false },
-    { id: '4', name: 'Graxas', category: 'greases', selected: false },
-    { id: '5', name: 'Baterias', category: 'batteries', selected: false },
-    { id: '6', name: 'Outros', category: 'other', selected: false }
+    { id: '1', name: 'Silo Bolsa', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '2', name: 'Cool Gard', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] },
+    { id: '3', name: 'disco', category: 'other', selected: false, quantity: 0, price: 0, observations: '', photos: [] }
   ];
 
   const [checklist, setChecklist] = useState<ProductType[]>(productTypes);
@@ -67,6 +65,22 @@ const CreateTask: React.FC = () => {
     setChecklist(prev => 
       prev.map(item => 
         item.id === id ? { ...item, selected: checked } : item
+      )
+    );
+  };
+
+  const handleProductChange = (id: string, field: keyof ProductType, value: any) => {
+    setChecklist(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const handleProductPhotoChange = (productId: string, photos: string[]) => {
+    setChecklist(prev => 
+      prev.map(item => 
+        item.id === productId ? { ...item, photos } : item
       )
     );
   };
@@ -162,7 +176,17 @@ const CreateTask: React.FC = () => {
                   id="property"
                   value={task.property}
                   onChange={(e) => setTask(prev => ({ ...prev, property: e.target.value }))}
-                  placeholder="Propriedade/Filial da visita"
+                  placeholder="Propriedade da visita"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="filial">Filial</Label>
+                <Input
+                  id="filial"
+                  value={task.filial}
+                  onChange={(e) => setTask(prev => ({ ...prev, filial: e.target.value }))}
+                  placeholder="Filial"
                 />
               </div>
 
@@ -273,18 +297,72 @@ const CreateTask: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-6">
                 {checklist.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={item.id}
-                      checked={item.selected}
-                      onCheckedChange={(checked) => handleChecklistChange(item.id, checked as boolean)}
-                    />
-                    <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      {item.name}
-                    </Label>
-                  </div>
+                  <Card key={item.id} className="border border-border/50">
+                    <CardContent className="p-4">
+                      <div className="space-y-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={item.id}
+                            checked={item.selected}
+                            onCheckedChange={(checked) => handleChecklistChange(item.id, checked as boolean)}
+                          />
+                          <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            {item.name}
+                          </Label>
+                        </div>
+                        
+                        {item.selected && (
+                          <div className="ml-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor={`qty-${item.id}`}>QTD</Label>
+                                <Input
+                                  id={`qty-${item.id}`}
+                                  type="number"
+                                  value={item.quantity || 0}
+                                  onChange={(e) => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor={`price-${item.id}`}>Valor</Label>
+                                <Input
+                                  id={`price-${item.id}`}
+                                  type="number"
+                                  step="0.01"
+                                  value={item.price || 0}
+                                  onChange={(e) => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)}
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor={`obs-${item.id}`}>Observações</Label>
+                              <Textarea
+                                id={`obs-${item.id}`}
+                                value={item.observations || ''}
+                                onChange={(e) => handleProductChange(item.id, 'observations', e.target.value)}
+                                placeholder="Observações sobre este produto..."
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <Label>Fotos do Produto</Label>
+                              <PhotoUpload
+                                photos={item.photos || []}
+                                onPhotosChange={(photos) => handleProductPhotoChange(item.id, photos)}
+                                maxPhotos={5}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </CardContent>

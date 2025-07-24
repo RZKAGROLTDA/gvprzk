@@ -4,6 +4,7 @@ export interface Task {
   responsible: string;
   client: string;
   property: string;
+  filial?: string;
   taskType: 'prospection';
   checklist: ProductType[];
   startDate: Date;
@@ -38,6 +39,10 @@ export interface ProductType {
   name: string;
   category: 'tires' | 'lubricants' | 'oils' | 'greases' | 'batteries' | 'other';
   selected: boolean;
+  quantity?: number;
+  price?: number;
+  observations?: string;
+  photos?: string[];
 }
 
 export interface Reminder {
