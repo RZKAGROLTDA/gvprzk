@@ -21,66 +21,16 @@ const Reports: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState('all');
 
   const stats: TaskStats = {
-    totalVisits: 45,
-    completedVisits: 32,
-    prospects: 12,
-    salesValue: 85000,
-    conversionRate: 26.7
+    totalVisits: 0,
+    completedVisits: 0,
+    prospects: 0,
+    salesValue: 0,
+    conversionRate: 0
   };
 
-  const detailedStats = [
-    {
-      period: 'Janeiro 2024',
-      totalVisits: 45,
-      completedVisits: 32,
-      prospects: 12,
-      salesValue: 85000,
-      conversionRate: 26.7
-    },
-    {
-      period: 'Dezembro 2023',
-      totalVisits: 38,
-      completedVisits: 28,
-      prospects: 8,
-      salesValue: 62000,
-      conversionRate: 21.1
-    },
-    {
-      period: 'Novembro 2023',
-      totalVisits: 42,
-      completedVisits: 35,
-      prospects: 15,
-      salesValue: 95000,
-      conversionRate: 35.7
-    }
-  ];
+  const detailedStats: any[] = [];
 
-  const userStats = [
-    {
-      name: 'João Silva',
-      role: 'RAC',
-      visits: 18,
-      prospects: 6,
-      sales: 35000,
-      conversionRate: 33.3
-    },
-    {
-      name: 'Maria Santos',
-      role: 'Consultora',
-      visits: 14,
-      prospects: 4,
-      sales: 28000,
-      conversionRate: 28.6
-    },
-    {
-      name: 'Pedro Oliveira',
-      role: 'RAC',
-      visits: 13,
-      prospects: 2,
-      sales: 22000,
-      conversionRate: 15.4
-    }
-  ];
+  const userStats: any[] = [];
 
   const exportReport = () => {
     // Implementar exportação para PDF/Excel
@@ -160,8 +110,7 @@ const Reports: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalVisits}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-success" />
-              <span>+18% vs mês anterior</span>
+              <span>Aguardando dados</span>
             </div>
           </CardContent>
         </Card>
@@ -174,7 +123,7 @@ const Reports: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.completedVisits}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{((stats.completedVisits / stats.totalVisits) * 100).toFixed(1)}% do total</span>
+              <span>{stats.totalVisits > 0 ? ((stats.completedVisits / stats.totalVisits) * 100).toFixed(1) : 0}% do total</span>
             </div>
           </CardContent>
         </Card>
@@ -202,8 +151,7 @@ const Reports: React.FC = () => {
               R$ {stats.salesValue.toLocaleString('pt-BR')}
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-success" />
-              <span>+37% vs mês anterior</span>
+              <span>Aguardando dados</span>
             </div>
           </CardContent>
         </Card>
@@ -219,37 +167,45 @@ const Reports: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {detailedStats.map((stat, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <BarChart3 className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{stat.period}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {stat.completedVisits} de {stat.totalVisits} visitas concluídas
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right space-y-1">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <div className="text-sm font-medium">{stat.prospects}</div>
-                      <div className="text-xs text-muted-foreground">Prospects</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium">R$ {stat.salesValue.toLocaleString('pt-BR')}</div>
-                      <div className="text-xs text-muted-foreground">Vendas</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium">{stat.conversionRate}%</div>
-                      <div className="text-xs text-muted-foreground">Conversão</div>
-                    </div>
-                  </div>
-                </div>
+            {detailedStats.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum histórico disponível</p>
+                <p className="text-sm">Os dados aparecerão conforme as tarefas forem criadas</p>
               </div>
-            ))}
+            ) : (
+              detailedStats.map((stat, index) => (
+                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                      <BarChart3 className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{stat.period}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {stat.completedVisits} de {stat.totalVisits} visitas concluídas
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <div className="flex items-center gap-4">
+                      <div className="text-center">
+                        <div className="text-sm font-medium">{stat.prospects}</div>
+                        <div className="text-xs text-muted-foreground">Prospects</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium">R$ {stat.salesValue.toLocaleString('pt-BR')}</div>
+                        <div className="text-xs text-muted-foreground">Vendas</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium">{stat.conversionRate}%</div>
+                        <div className="text-xs text-muted-foreground">Conversão</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -264,40 +220,48 @@ const Reports: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {userStats.map((user, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-accent" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{user.name}</h3>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{user.role}</Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {user.visits} visitas realizadas
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right space-y-1">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center">
-                      <div className="text-sm font-medium">{user.prospects}</div>
-                      <div className="text-xs text-muted-foreground">Prospects</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium">R$ {user.sales.toLocaleString('pt-BR')}</div>
-                      <div className="text-xs text-muted-foreground">Vendas</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-sm font-medium">{user.conversionRate}%</div>
-                      <div className="text-xs text-muted-foreground">Conversão</div>
-                    </div>
-                  </div>
-                </div>
+            {userStats.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum colaborador com dados ainda</p>
+                <p className="text-sm">Os dados aparecerão conforme as tarefas forem realizadas</p>
               </div>
-            ))}
+            ) : (
+              userStats.map((user, index) => (
+                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
+                      <Users className="h-6 w-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{user.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{user.role}</Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {user.visits} visitas realizadas
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <div className="flex items-center gap-4">
+                      <div className="text-center">
+                        <div className="text-sm font-medium">{user.prospects}</div>
+                        <div className="text-xs text-muted-foreground">Prospects</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium">R$ {user.sales.toLocaleString('pt-BR')}</div>
+                        <div className="text-xs text-muted-foreground">Vendas</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium">{user.conversionRate}%</div>
+                        <div className="text-xs text-muted-foreground">Conversão</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
