@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,17 +14,39 @@ import {
 import { Task, TaskStats } from '@/types/task';
 import { TaskManager } from '@/components/TaskManager';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { useOffline } from '@/hooks/useOffline';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
+  const { getOfflineTasks } = useOffline();
+  const navigate = useNavigate();
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
+
+  // Carregar tarefas quando componente montar
+  useEffect(() => {
+    const loadTasks = () => {
+      const tasks = getOfflineTasks();
+      setAllTasks(tasks);
+    };
+    
+    loadTasks();
+    
+    // Recarregar a cada 5 segundos para sincronizar
+    const interval = setInterval(loadTasks, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calcular estatísticas baseadas nas tarefas reais
   const stats: TaskStats = {
-    totalVisits: 0,
-    completedVisits: 0,
-    prospects: 0,
-    salesValue: 0,
-    conversionRate: 0
+    totalVisits: allTasks.length,
+    completedVisits: allTasks.filter(task => task.status === 'completed').length,
+    prospects: allTasks.filter(task => task.isProspect).length,
+    salesValue: allTasks.reduce((sum, task) => sum + (task.salesValue || 0), 0),
+    conversionRate: allTasks.length > 0 ? (allTasks.filter(task => task.salesConfirmed).length / allTasks.length) * 100 : 0
   };
 
-  const recentTasks: Task[] = [];
+  // Mostrar as 3 tarefas mais recentes
+  const recentTasks = allTasks.slice(0, 3);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -52,7 +74,7 @@ const Dashboard: React.FC = () => {
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">Visão geral das visitas e tarefas</p>
         </div>
-        <Button variant="gradient" className="gap-2">
+        <Button variant="gradient" className="gap-2" onClick={() => navigate('/create-task')}>
           <CheckSquare className="h-4 w-4" />
           Nova Tarefa
         </Button>
@@ -95,7 +117,7 @@ const Dashboard: React.FC = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.prospects}</div>
             <p className="text-xs text-muted-foreground">
-              {stats.conversionRate}% de conversão
+              {allTasks.length > 0 ? `${stats.conversionRate.toFixed(1)}% de conversão` : 'Aguardando dados'}
             </p>
           </CardContent>
         </Card>
@@ -110,7 +132,7 @@ const Dashboard: React.FC = () => {
               R$ {stats.salesValue.toLocaleString('pt-BR')}
             </div>
             <p className="text-xs text-muted-foreground">
-              Aguardando dados
+              {allTasks.length > 0 ? 'Baseado nas tarefas criadas' : 'Aguardando dados'}
             </p>
           </CardContent>
         </Card>

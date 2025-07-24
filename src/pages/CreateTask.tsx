@@ -283,7 +283,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
       toast({
         title: "✅ Tarefa Criada",
-        description: isOnline ? "Tarefa salva com sucesso" : "Tarefa salva offline - será sincronizada quando conectar",
+        description: isOnline ? "Tarefa salva com sucesso no servidor!" : "Tarefa salva offline - será sincronizada quando conectar!",
       });
       
     } catch (error) {

@@ -23,8 +23,16 @@ export const TaskManager: React.FC = () => {
 
   useEffect(() => {
     // Carregar tarefas offline
-    const offlineTasks = getOfflineTasks();
-    setTasks(offlineTasks);
+    const loadTasks = () => {
+      const offlineTasks = getOfflineTasks();
+      setTasks(offlineTasks);
+    };
+    
+    loadTasks();
+    
+    // Atualizar a cada 3 segundos para capturar novas tarefas
+    const interval = setInterval(loadTasks, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
