@@ -14,10 +14,10 @@ import {
   DollarSign,
   TrendingDown
 } from 'lucide-react';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { Task, TaskStats } from '@/types/task';
 import { TaskManager } from '@/components/TaskManager';
 import { TaskDetailsModal } from '@/components/TaskDetailsModal';
-import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
 import { useNavigate } from 'react-router-dom';
@@ -87,6 +87,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Indicador de Status Offline */}
+      <OfflineIndicator />
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -98,9 +101,6 @@ const Dashboard: React.FC = () => {
           Nova Tarefa
         </Button>
       </div>
-
-      {/* Status Offline */}
-      <OfflineIndicator />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">

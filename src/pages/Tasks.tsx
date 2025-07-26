@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Task } from '@/types/task';
 import { TaskDetailsModal } from '@/components/TaskDetailsModal';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOffline } from '@/hooks/useOffline';
@@ -109,6 +110,9 @@ const Tasks: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Indicador de Status Offline */}
+      <OfflineIndicator />
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
