@@ -17,6 +17,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Task } from '@/types/task';
+import { TaskDetailsModal } from '@/components/TaskDetailsModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOffline } from '@/hooks/useOffline';
@@ -31,6 +32,8 @@ const Tasks: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Carregar tarefas quando componente montar
   useEffect(() => {
@@ -69,6 +72,11 @@ const Tasks: React.FC = () => {
       case 'low': return 'success';
       default: return 'secondary';
     }
+  };
+
+  const handleViewTask = (task: Task) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -263,7 +271,11 @@ const Tasks: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleViewTask(task)}
+                    >
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="sm">
@@ -276,6 +288,13 @@ const Tasks: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Modal de Detalhes da Tarefa */}
+      <TaskDetailsModal 
+        task={selectedTask}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+      />
     </div>
   );
 };
