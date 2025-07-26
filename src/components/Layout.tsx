@@ -10,8 +10,10 @@ import {
   Car, 
   User,
   Bell,
-  Settings
+  Settings,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,8 +21,13 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
   
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    await signOut();
+  };
   
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -55,8 +62,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                   <User className="h-4 w-4 text-primary-foreground" />
                 </div>
-                <span className="text-sm font-medium">Usuário</span>
+                <span className="text-sm font-medium">{user?.email || 'Usuário'}</span>
               </div>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleLogout}
+                title="Sair"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
