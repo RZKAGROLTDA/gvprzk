@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { CheckInLocation } from '@/components/CheckInLocation';
 import { useOffline } from '@/hooks/useOffline';
+import { useTasks } from '@/hooks/useTasks';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 
@@ -36,6 +37,7 @@ const CreateTask: React.FC = () => {
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOnline, saveTaskOffline, addToSyncQueue } = useOffline();
+  const { createTask } = useTasks();
   const [task, setTask] = useState<Partial<Task>>({
     name: '',
     responsible: '',
@@ -225,14 +227,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         id: taskId,
         createdAt: new Date(),
         updatedAt: new Date(),
-        status: 'pending',
+        status: 'pending' as const,
         createdBy: taskData.responsible || 'Usuário',
       };
 
       if (isOnline) {
-        // Modo online - salvar diretamente no servidor
+        // Modo online - salvar no Supabase
         console.log('Salvando online:', finalTaskData);
-        // Aqui você implementaria a chamada à API
+        const savedTask = await createTask(finalTaskData);
+        
+        if (!savedTask) {
+          throw new Error('Falha ao salvar no banco de dados');
+        }
         
         // Enviar para WhatsApp se webhook configurado
         if (whatsappWebhook) {

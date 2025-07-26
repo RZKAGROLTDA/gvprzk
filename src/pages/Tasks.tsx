@@ -20,10 +20,12 @@ import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOffline } from '@/hooks/useOffline';
+import { useTasks } from '@/hooks/useTasks';
 import { useNavigate } from 'react-router-dom';
 
 const Tasks: React.FC = () => {
   const { getOfflineTasks } = useOffline();
+  const { tasks: onlineTasks } = useTasks();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -33,16 +35,22 @@ const Tasks: React.FC = () => {
   // Carregar tarefas quando componente montar
   useEffect(() => {
     const loadTasks = () => {
-      const allTasks = getOfflineTasks();
-      setTasks(allTasks);
+      // Priorizar tarefas online do Supabase
+      if (onlineTasks.length > 0) {
+        setTasks(onlineTasks);
+      } else {
+        // Fallback para tarefas offline
+        const offlineTasks = getOfflineTasks();
+        setTasks(offlineTasks);
+      }
     };
     
     loadTasks();
     
-    // Recarregar a cada 3 segundos para sincronizar
+    // Recarregar quando onlineTasks mudarem
     const interval = setInterval(loadTasks, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [onlineTasks]);
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

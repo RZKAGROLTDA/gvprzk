@@ -18,26 +18,34 @@ import { Task, TaskStats } from '@/types/task';
 import { TaskManager } from '@/components/TaskManager';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useOffline } from '@/hooks/useOffline';
+import { useTasks } from '@/hooks/useTasks';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const { getOfflineTasks } = useOffline();
+  const { tasks: onlineTasks } = useTasks();
   const navigate = useNavigate();
   const [allTasks, setAllTasks] = useState<Task[]>([]);
 
   // Carregar tarefas quando componente montar
   useEffect(() => {
     const loadTasks = () => {
-      const tasks = getOfflineTasks();
-      setAllTasks(tasks);
+      // Priorizar tarefas online do Supabase
+      if (onlineTasks.length > 0) {
+        setAllTasks(onlineTasks);
+      } else {
+        // Fallback para tarefas offline
+        const offlineTasks = getOfflineTasks();
+        setAllTasks(offlineTasks);
+      }
     };
     
     loadTasks();
     
-    // Recarregar a cada 5 segundos para sincronizar
+    // Recarregar quando onlineTasks mudarem
     const interval = setInterval(loadTasks, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [onlineTasks]);
 
   // Calcular estatísticas baseadas nas tarefas reais
   const stats: TaskStats = {
