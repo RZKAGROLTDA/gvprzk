@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Task, TaskStats } from '@/types/task';
 import { TaskManager } from '@/components/TaskManager';
+import { TaskDetailsModal } from '@/components/TaskDetailsModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
@@ -26,6 +27,8 @@ const Dashboard: React.FC = () => {
   const { tasks: onlineTasks } = useTasks();
   const navigate = useNavigate();
   const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Carregar tarefas quando componente montar
   useEffect(() => {
@@ -66,6 +69,11 @@ const Dashboard: React.FC = () => {
       case 'low': return 'success';
       default: return 'secondary';
     }
+  };
+
+  const handleViewTask = (task: Task) => {
+    setSelectedTask(task);
+    setIsModalOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -202,9 +210,13 @@ const Dashboard: React.FC = () => {
                     <Badge variant={getStatusColor(task.status)}>
                       {task.status}
                     </Badge>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                     <Button 
+                       variant="ghost" 
+                       size="sm"
+                       onClick={() => handleViewTask(task)}
+                     >
+                       <Eye className="h-4 w-4" />
+                     </Button>
                   </div>
                 </div>
               ))
@@ -215,6 +227,13 @@ const Dashboard: React.FC = () => {
 
       {/* Gerenciador de Tarefas Offline */}
       <TaskManager />
+
+      {/* Modal de Detalhes da Tarefa */}
+      <TaskDetailsModal 
+        task={selectedTask}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+      />
     </div>
   );
 };
