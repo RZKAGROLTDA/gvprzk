@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      filiais: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string
@@ -69,6 +90,7 @@ export type Database = {
           avatar: string | null
           created_at: string
           email: string
+          filial_id: string | null
           id: string
           name: string
           role: string
@@ -79,6 +101,7 @@ export type Database = {
           avatar?: string | null
           created_at?: string
           email: string
+          filial_id?: string | null
           id?: string
           name: string
           role: string
@@ -89,13 +112,22 @@ export type Database = {
           avatar?: string | null
           created_at?: string
           email?: string
+          filial_id?: string | null
           id?: string
           name?: string
           role?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reminders: {
         Row: {
@@ -233,7 +265,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_filial_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
