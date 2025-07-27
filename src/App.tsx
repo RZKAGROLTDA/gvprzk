@@ -12,6 +12,8 @@ import Dashboard from "./pages/Dashboard";
 import CreateTask from "./pages/CreateTask";
 import Tasks from "./pages/Tasks";
 import Reports from "./pages/Reports";
+import { Users } from "./pages/Users";
+import { Filiais } from "./pages/Filiais";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +43,8 @@ const AppContent: React.FC = () => {
         <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
         <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
         <Route path="/reports" element={<Layout><Reports /></Layout>} />
+        <Route path="/users" element={<Layout><Users /></Layout>} />
+        <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

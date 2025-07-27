@@ -1,0 +1,52 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+
+interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  filial_id: string | null;
+}
+
+export const useProfile = () => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    } else {
+      setProfile(null);
+      setLoading(false);
+    }
+  }, [user]);
+
+  const loadProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isAdmin = profile?.role === 'manager';
+
+  return {
+    profile,
+    loading,
+    isAdmin,
+    loadProfile
+  };
+};
