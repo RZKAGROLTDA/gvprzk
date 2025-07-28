@@ -222,15 +222,6 @@ const CreateTask: React.FC = () => {
     price: 0,
     observations: '',
     photos: []
-  }, {
-    id: '10',
-    name: 'Disco',
-    category: 'other',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
   }];
   const getProductsForCategory = () => {
     switch (taskCategory) {
