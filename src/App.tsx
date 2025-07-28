@@ -14,6 +14,7 @@ import Tasks from "./pages/Tasks";
 import Reports from "./pages/Reports";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
+import { Home } from "./pages/Home";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,7 +40,8 @@ const AppContent: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout><Dashboard /></Layout>} />
+        <Route path="/" element={<Layout><Home /></Layout>} />
+        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
         <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
         <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
         <Route path="/reports" element={<Layout><Reports /></Layout>} />
