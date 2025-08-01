@@ -91,9 +91,10 @@ export const Users: React.FC = () => {
 
   const updateUserFilial = async (userId: string, filialId: string) => {
     try {
+      const filialToUpdate = filialId === 'none' ? null : filialId;
       const { error } = await supabase
         .from('profiles')
-        .update({ filial_id: filialId })
+        .update({ filial_id: filialToUpdate })
         .eq('id', userId);
 
       if (error) throw error;
@@ -205,14 +206,14 @@ export const Users: React.FC = () => {
                       </Select>
 
                       <Select
-                        value={profile.filial_id || ""}
+                        value={profile.filial_id || "none"}
                         onValueChange={(value) => updateUserFilial(profile.id, value)}
                       >
                         <SelectTrigger className="w-40">
                           <SelectValue placeholder="Selecionar filial" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Sem filial</SelectItem>
+                          <SelectItem value="none">Sem filial</SelectItem>
                           {filiais.map((filial) => (
                             <SelectItem key={filial.id} value={filial.id}>
                               {filial.nome}
