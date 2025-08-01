@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,26 @@ import { useTasks } from '@/hooks/useTasks';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 const CreateTask: React.FC = () => {
-  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>('field-visit');
+  const [searchParams] = useSearchParams();
+  const urlTaskType = searchParams.get('type');
+  
+  // Mapear tipos da URL para tipos internos
+  const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' => {
+    switch (urlType) {
+      case 'farm_visit':
+        return 'field-visit';
+      case 'client_call':
+        return 'call';
+      case 'workshop_checklist':
+        return 'workshop-checklist';
+      default:
+        return 'field-visit';
+    }
+  };
+
+  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(
+    getTaskCategoryFromUrl(urlTaskType)
+  );
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
@@ -439,30 +459,32 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       <OfflineIndicator />
 
       <form onSubmit={handleSubmit}>
-        {/* Seleção do Tipo de Tarefa */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckSquare className="h-5 w-5" />
-              Tipo de Tarefa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="taskCategory">Selecione o tipo de tarefa</Label>
-              <Select value={taskCategory} onValueChange={value => setTaskCategory(value as typeof taskCategory)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Escolha o tipo de tarefa" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="field-visit">Visita a Campo</SelectItem>
-                  <SelectItem value="call">Ligação</SelectItem>
-                  <SelectItem value="workshop-checklist">Checklist Oficina</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Seleção do Tipo de Tarefa - Apenas mostra se não veio da URL */}
+        {!urlTaskType && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5" />
+                Tipo de Tarefa
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="taskCategory">Selecione o tipo de tarefa</Label>
+                <Select value={taskCategory} onValueChange={value => setTaskCategory(value as typeof taskCategory)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha o tipo de tarefa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="field-visit">Visita a Campo</SelectItem>
+                    <SelectItem value="call">Ligação</SelectItem>
+                    <SelectItem value="workshop-checklist">Checklist Oficina</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Informações Básicas */}
