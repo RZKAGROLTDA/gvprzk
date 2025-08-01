@@ -59,7 +59,14 @@ export const Home: React.FC = () => {
                   <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-4 sm:mb-6">
                     {item.description}
                   </p>
-                  <Button className="w-full group-hover:bg-primary/90 transition-colors" size="lg">
+                  <Button 
+                    className="w-full group-hover:bg-primary/90 transition-colors" 
+                    size="lg"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      item.onClick();
+                    }}
+                  >
                     Iniciar
                   </Button>
                 </CardContent>
