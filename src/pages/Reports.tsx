@@ -297,7 +297,7 @@ const Reports: React.FC = () => {
                         <div className="text-xs text-muted-foreground">Ligações</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-orange-600">{filial.prospects}</div>
+                        <div className="text-lg font-bold text-green-600">{filial.prospects}</div>
                         <div className="text-xs text-muted-foreground">Oportunidades</div>
                       </div>
                       <div className="text-center">
