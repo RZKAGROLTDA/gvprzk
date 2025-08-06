@@ -36,6 +36,7 @@ const Reports: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedUser, setSelectedUser] = useState('all');
   const [filialStats, setFilialStats] = useState<FilialStats[]>([]);
+  const [collaborators, setCollaborators] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const stats: TaskStats = {
@@ -48,6 +49,20 @@ const Reports: React.FC = () => {
 
   const detailedStats: any[] = [];
   const userStats: any[] = [];
+
+  const loadCollaborators = async () => {
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, name, role')
+        .order('name');
+
+      if (error) throw error;
+      setCollaborators(profiles || []);
+    } catch (error) {
+      console.error('Erro ao carregar colaboradores:', error);
+    }
+  };
 
   const loadFilialStats = async () => {
     if (!user) return;
@@ -119,6 +134,7 @@ const Reports: React.FC = () => {
   useEffect(() => {
     if (user) {
       loadFilialStats();
+      loadCollaborators();
     }
   }, [user, selectedPeriod]);
 
@@ -174,9 +190,11 @@ const Reports: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Colaboradores</SelectItem>
-                  <SelectItem value="joao">João Silva</SelectItem>
-                  <SelectItem value="maria">Maria Santos</SelectItem>
-                  <SelectItem value="pedro">Pedro Oliveira</SelectItem>
+                  {collaborators.map((collaborator) => (
+                    <SelectItem key={collaborator.id} value={collaborator.id}>
+                      {collaborator.name} - {collaborator.role}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
