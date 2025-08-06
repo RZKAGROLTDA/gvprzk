@@ -286,71 +286,35 @@ Equipe de Gestão`);
                     </p>
                   </div>
 
-                  <div className="space-y-4">
-                    {!inviteLink ? (
-                      <Button 
-                        onClick={generateInviteLink}
-                        disabled={inviteLoading}
-                        className="w-full h-12"
-                        variant="outline"
-                      >
-                        {inviteLoading ? (
-                          <div className="flex items-center gap-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                            Gerando link...
-                          </div>
-                        ) : (
-                          <>
-                            <LinkIcon className="h-4 w-4 mr-2" />
-                            Gerar Link de Convite
-                          </>
-                        )}
-                      </Button>
+                <div className="space-y-4">
+                  <Button 
+                    onClick={() => {
+                      const baseUrl = window.location.origin;
+                      const signupLink = `${baseUrl}/profile-setup`;
+                      navigator.clipboard.writeText(signupLink);
+                      setCopied(true);
+                      toast({
+                        title: "Link copiado!",
+                        description: "Link de cadastro copiado para a área de transferência",
+                      });
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="w-full h-12"
+                    variant="outline"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Link Copiado!
+                      </>
                     ) : (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20">
-                          <Label className="text-sm font-medium text-muted-foreground block mb-2">
-                            Link gerado:
-                          </Label>
-                          <p className="text-sm font-mono break-all bg-background p-2 rounded border">
-                            {inviteLink}
-                          </p>
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          onClick={copyToClipboard}
-                          className="w-full"
-                        >
-                          {copied ? (
-                            <>
-                              <Check className="h-4 w-4 mr-2" />
-                              Copiado!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copiar Link
-                            </>
-                          )}
-                        </Button>
-
-                        <Button 
-                          variant="ghost" 
-                          onClick={() => {
-                            setInviteLink('');
-                            setCopied(false);
-                          }}
-                          className="w-full"
-                        >
-                          Gerar Novo Convite
-                        </Button>
-                      </div>
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copiar Link de Cadastro
+                      </>
                     )}
+                  </Button>
 
-                    <div className="text-xs text-muted-foreground text-center">
-                      * O link de convite será válido por 7 dias
-                    </div>
                   </div>
                 </div>
               </>
