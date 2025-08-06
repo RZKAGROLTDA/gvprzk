@@ -40,54 +40,58 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Handle public routes first, before any auth checks
+  const currentPath = window.location.pathname;
+  
+  if (currentPath === '/register') {
+    return <UserRegistration />;
+  }
+  
+  if (currentPath === '/registration-success') {
+    return <RegistrationSuccess />;
+  }
+  
+  if (currentPath === '/invite') {
+    return <InviteAccept />;
+  }
+
+  // Now handle authenticated routes
+  if (!user) {
+    return <LoginForm />;
+  }
+
+  if (!profile || !profile.name || !profile.role) {
+    return <ProfileSetup />;
+  }
+
+  if (profile.approval_status === 'pending') {
+    return <RegistrationSuccess />;
+  }
+
+  if (profile.approval_status === 'rejected') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
+          <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes - accessible without authentication */}
-        <Route path="/register" element={<UserRegistration />} />
-        <Route path="/registration-success" element={<RegistrationSuccess />} />
-        <Route path="/invite" element={<InviteAccept />} />
-        
-        {/* Authenticated routes */}
-        <Route path="/*" element={
-          !user ? (
-            <Routes>
-              <Route path="*" element={<LoginForm />} />
-            </Routes>
-          ) : !profile || !profile.name || !profile.role ? (
-            <Routes>
-              <Route path="*" element={<ProfileSetup />} />
-            </Routes>
-          ) : profile.approval_status === 'pending' ? (
-            <Routes>
-              <Route path="*" element={<RegistrationSuccess />} />
-            </Routes>
-          ) : profile.approval_status === 'rejected' ? (
-            <Routes>
-              <Route path="*" element={
-                <div className="min-h-screen flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
-                    <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
-                  </div>
-                </div>
-              } />
-            </Routes>
-          ) : (
-            <Routes>
-              <Route path="/" element={<Layout><Home /></Layout>} />
-              <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-              <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
-              <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
-              <Route path="/management" element={<Layout><Management /></Layout>} />
-              <Route path="/reports" element={<Layout><Reports /></Layout>} />
-              <Route path="/users" element={<Layout><Users /></Layout>} />
-              <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
-              <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          )
-        } />
+        <Route path="/" element={<Layout><Home /></Layout>} />
+        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+        <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
+        <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
+        <Route path="/management" element={<Layout><Management /></Layout>} />
+        <Route path="/reports" element={<Layout><Reports /></Layout>} />
+        <Route path="/users" element={<Layout><Users /></Layout>} />
+        <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
+        <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
