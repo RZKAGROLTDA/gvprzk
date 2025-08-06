@@ -63,7 +63,7 @@ const ProfileSetup: React.FC = () => {
           name: formData.name,
           email: formData.email,
           role: formData.role,
-          filial_id: formData.filial_id || null
+          filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
         });
 
       if (error) throw error;
@@ -155,7 +155,7 @@ const ProfileSetup: React.FC = () => {
                   <SelectValue placeholder="Selecione sua filial" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma filial específica</SelectItem>
+                  <SelectItem value="none">Nenhuma filial específica</SelectItem>
                   {filiais.map(filial => (
                     <SelectItem key={filial.id} value={filial.id}>
                       <div className="flex items-center gap-2">
