@@ -140,11 +140,11 @@ const ProfileSetup: React.FC = () => {
                   <SelectValue placeholder="Selecione seu cargo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="consultant">Consultor</SelectItem>
                   <SelectItem value="manager">Gerente</SelectItem>
-                  <SelectItem value="coordinator">Coordenador</SelectItem>
-                  <SelectItem value="analyst">Analista</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
+                  <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                   <SelectItem value="rac">RAC</SelectItem>
+                  <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
                 </SelectContent>
               </Select>
             </div>
