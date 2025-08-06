@@ -42,9 +42,9 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   console.log('DEBUG: User:', user?.id);
   console.log('DEBUG: Profile:', profile);
   
-  // If user exists but no profile or incomplete profile, show profile setup
-  if (!profile || !profile.name || !profile.role) {
-    console.log('DEBUG: Redirecionando para ProfileSetup - perfil incompleto');
+  // If user exists but no profile found, show profile setup
+  if (!profile) {
+    console.log('DEBUG: Redirecionando para ProfileSetup - perfil não encontrado');
     return <ProfileSetup />;
   }
 
@@ -94,7 +94,8 @@ const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
-  if (loading || profileLoading) {
+  // Wait for both auth and profile to finish loading
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
