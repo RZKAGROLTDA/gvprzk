@@ -30,8 +30,9 @@ const Tasks: React.FC = () => {
   const { tasks: onlineTasks } = useTasks();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [vendorFilter, setVendorFilter] = useState('all');
+  const [taskTypeFilter, setTaskTypeFilter] = useState('all');
+  const [filialFilter, setFilialFilter] = useState('all');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,10 +61,11 @@ const Tasks: React.FC = () => {
     const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.responsible.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+    const matchesVendor = vendorFilter === 'all' || task.responsible === vendorFilter;
+    const matchesTaskType = taskTypeFilter === 'all' || task.taskType === taskTypeFilter;
+    const matchesFilial = filialFilter === 'all' || task.filial === filialFilter;
     
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesVendor && matchesTaskType && matchesFilial;
   });
 
   const getPriorityColor = (priority: string) => {
@@ -145,35 +147,47 @@ const Tasks: React.FC = () => {
               />
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={vendorFilter} onValueChange={setVendorFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Nome do Vendedor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="pending">Pendente</SelectItem>
-                <SelectItem value="in_progress">Em Andamento</SelectItem>
-                <SelectItem value="completed">Concluída</SelectItem>
-                <SelectItem value="closed">Fechada</SelectItem>
+                <SelectItem value="all">Todos os Vendedores</SelectItem>
+                {Array.from(new Set(tasks.map(task => task.responsible))).map(vendor => (
+                  <SelectItem key={vendor} value={vendor}>{vendor}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <Select value={taskTypeFilter} onValueChange={setTaskTypeFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Prioridade" />
+                <SelectValue placeholder="Tipo de Tarefa" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Prioridades</SelectItem>
-                <SelectItem value="high">Alta</SelectItem>
-                <SelectItem value="medium">Média</SelectItem>
-                <SelectItem value="low">Baixa</SelectItem>
+                <SelectItem value="all">Todos os Tipos</SelectItem>
+                <SelectItem value="prospection">Visitas</SelectItem>
+                <SelectItem value="checklist">Checklist</SelectItem>
+                <SelectItem value="ligacao">Ligações</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filialFilter} onValueChange={setFilialFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filial" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Filiais</SelectItem>
+                {Array.from(new Set(tasks.map(task => task.filial).filter(Boolean))).map(filial => (
+                  <SelectItem key={filial} value={filial!}>{filial}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
             <Button variant="outline" onClick={() => {
               setSearchTerm('');
-              setStatusFilter('all');
-              setPriorityFilter('all');
+              setVendorFilter('all');
+              setTaskTypeFilter('all');
+              setFilialFilter('all');
             }}>
               Limpar Filtros
             </Button>
