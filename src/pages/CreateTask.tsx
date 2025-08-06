@@ -21,9 +21,12 @@ import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
+import { useProfile } from '@/hooks/useProfile';
+
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
   const urlTaskType = searchParams.get('type');
+  const { profile } = useProfile();
   
   // Mapear tipos da URL para tipos internos
   const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' => {
@@ -72,6 +75,18 @@ const CreateTask: React.FC = () => {
     photos: [],
     documents: []
   });
+
+  // Definir responsável e filial automaticamente quando o perfil carregar
+  useEffect(() => {
+    if (profile) {
+      setTask(prev => ({
+        ...prev,
+        responsible: profile.name,
+        filial: profile.filial_id || ''
+      }));
+    }
+  }, [profile]);
+
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -410,10 +425,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       // Resetar formulário após sucesso
       setTask({
         name: '',
-        responsible: '',
+        responsible: profile?.name || '',
         client: '',
         property: '',
-        filial: '',
+        filial: profile?.filial_id || '',
         taskType: 'prospection',
         startDate: new Date(),
         endDate: new Date(),
@@ -506,19 +521,13 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-2">
                 <Label htmlFor="responsible">Responsável</Label>
-                <Select onValueChange={value => setTask(prev => ({
-                ...prev,
-                responsible: value
-              }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o responsável" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="joao">João Silva (RAC)</SelectItem>
-                    <SelectItem value="maria">Maria Santos (Consultora)</SelectItem>
-                    <SelectItem value="pedro">Pedro Oliveira (RAC)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input 
+                  id="responsible" 
+                  value={task.responsible} 
+                  readOnly 
+                  className="bg-gray-50"
+                  placeholder="Carregando usuário..." 
+                />
               </div>
 
               <div className="space-y-2">
@@ -544,10 +553,13 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-2">
                 <Label htmlFor="filial">Filial</Label>
-                <Input id="filial" value={task.filial} onChange={e => setTask(prev => ({
-                ...prev,
-                filial: e.target.value
-              }))} placeholder="Filial" />
+                <Input 
+                  id="filial" 
+                  value={task.filial} 
+                  readOnly 
+                  className="bg-gray-50"
+                  placeholder="Filial do usuário" 
+                />
               </div>
 
               <div className="space-y-2">
