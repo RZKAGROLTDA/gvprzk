@@ -90,7 +90,7 @@ const AppContent: React.FC = () => {
         <Route path="/reports" element={<Layout><Reports /></Layout>} />
         <Route path="/users" element={<Layout><Users /></Layout>} />
         <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
-        <Route path="/profile-setup" element={<NotFound />} />
+        <Route path="/profile-setup" element={<ProfileSetup />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
