@@ -43,41 +43,51 @@ const AppContent: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes - MUST be first */}
+        {/* Public routes - accessible without authentication */}
         <Route path="/register" element={<UserRegistration />} />
         <Route path="/registration-success" element={<RegistrationSuccess />} />
         <Route path="/invite" element={<InviteAccept />} />
         
-        {/* Protected routes */}
-        {!user ? (
-          <Route path="*" element={<LoginForm />} />
-        ) : !profile || !profile.name || !profile.role ? (
-          <Route path="*" element={<ProfileSetup />} />
-        ) : profile.approval_status === 'pending' ? (
-          <Route path="*" element={<RegistrationSuccess />} />
-        ) : profile.approval_status === 'rejected' ? (
-          <Route path="*" element={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center p-8">
-                <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
-                <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
-              </div>
-            </div>
-          } />
-        ) : (
-          <>
-            <Route path="/" element={<Layout><Home /></Layout>} />
-            <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-            <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
-            <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
-            <Route path="/management" element={<Layout><Management /></Layout>} />
-            <Route path="/reports" element={<Layout><Reports /></Layout>} />
-            <Route path="/users" element={<Layout><Users /></Layout>} />
-            <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
-            <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
-            <Route path="*" element={<NotFound />} />
-          </>
-        )}
+        {/* Authenticated routes */}
+        <Route path="/*" element={
+          !user ? (
+            <Routes>
+              <Route path="*" element={<LoginForm />} />
+            </Routes>
+          ) : !profile || !profile.name || !profile.role ? (
+            <Routes>
+              <Route path="*" element={<ProfileSetup />} />
+            </Routes>
+          ) : profile.approval_status === 'pending' ? (
+            <Routes>
+              <Route path="*" element={<RegistrationSuccess />} />
+            </Routes>
+          ) : profile.approval_status === 'rejected' ? (
+            <Routes>
+              <Route path="*" element={
+                <div className="min-h-screen flex items-center justify-center">
+                  <div className="text-center p-8">
+                    <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
+                    <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
+                  </div>
+                </div>
+              } />
+            </Routes>
+          ) : (
+            <Routes>
+              <Route path="/" element={<Layout><Home /></Layout>} />
+              <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+              <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
+              <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
+              <Route path="/management" element={<Layout><Management /></Layout>} />
+              <Route path="/reports" element={<Layout><Reports /></Layout>} />
+              <Route path="/users" element={<Layout><Users /></Layout>} />
+              <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
+              <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          )
+        } />
       </Routes>
     </BrowserRouter>
   );
