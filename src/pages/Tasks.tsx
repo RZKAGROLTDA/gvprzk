@@ -24,6 +24,7 @@ import { ptBR } from 'date-fns/locale';
 import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Tasks: React.FC = () => {
   const { getOfflineTasks } = useOffline();
@@ -36,6 +37,26 @@ const Tasks: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [vendors, setVendors] = useState<{id: string, name: string}[]>([]);
+
+  // Carregar vendedores registrados
+  useEffect(() => {
+    const loadVendors = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .order('name');
+        
+        if (error) throw error;
+        setVendors(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar vendedores:', error);
+      }
+    };
+    
+    loadVendors();
+  }, []);
 
   // Carregar tarefas quando componente montar
   useEffect(() => {
@@ -153,8 +174,8 @@ const Tasks: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Vendedores</SelectItem>
-                {Array.from(new Set(tasks.map(task => task.responsible).filter(vendor => vendor && vendor.trim() !== ''))).map(vendor => (
-                  <SelectItem key={vendor} value={vendor}>{vendor}</SelectItem>
+                {vendors.map(vendor => (
+                  <SelectItem key={vendor.id} value={vendor.name}>{vendor.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
