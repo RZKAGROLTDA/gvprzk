@@ -25,6 +25,56 @@ import { useProfile } from "@/hooks/useProfile";
 
 const queryClient = new QueryClient();
 
+interface ProtectedRoutesProps {
+  user: any;
+  profile: any;
+}
+
+const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
+  // If not authenticated, show login form
+  if (!user) {
+    return <LoginForm />;
+  }
+
+  // If user exists but no profile or incomplete profile, show profile setup
+  if (!profile || !profile.name || !profile.role) {
+    return <ProfileSetup />;
+  }
+
+  // If profile is pending approval, show registration success page
+  if (profile.approval_status === 'pending') {
+    return <RegistrationSuccess />;
+  }
+
+  // If profile is rejected, show rejection message
+  if (profile.approval_status === 'rejected') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
+          <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If everything is approved, show main app routes
+  return (
+    <Routes>
+      <Route path="/" element={<Layout><Home /></Layout>} />
+      <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+      <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
+      <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
+      <Route path="/management" element={<Layout><Management /></Layout>} />
+      <Route path="/reports" element={<Layout><Reports /></Layout>} />
+      <Route path="/users" element={<Layout><Users /></Layout>} />
+      <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
+      <Route path="/profile-setup" element={<ProfileSetup />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
@@ -40,58 +90,16 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Handle public routes first, before any auth checks
-  const currentPath = window.location.pathname;
-  
-  if (currentPath === '/register') {
-    return <UserRegistration />;
-  }
-  
-  if (currentPath === '/registration-success') {
-    return <RegistrationSuccess />;
-  }
-  
-  if (currentPath === '/invite') {
-    return <InviteAccept />;
-  }
-
-  // Now handle authenticated routes
-  if (!user) {
-    return <LoginForm />;
-  }
-
-  if (!profile || !profile.name || !profile.role) {
-    return <ProfileSetup />;
-  }
-
-  if (profile.approval_status === 'pending') {
-    return <RegistrationSuccess />;
-  }
-
-  if (profile.approval_status === 'rejected') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-8">
-          <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
-          <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout><Home /></Layout>} />
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-        <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
-        <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
-        <Route path="/management" element={<Layout><Management /></Layout>} />
-        <Route path="/reports" element={<Layout><Reports /></Layout>} />
-        <Route path="/users" element={<Layout><Users /></Layout>} />
-        <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
-        <Route path="/profile-setup" element={<ProfileSetup />} />
-        <Route path="*" element={<NotFound />} />
+        {/* Public routes - accessible without authentication */}
+        <Route path="/register" element={<UserRegistration />} />
+        <Route path="/registration-success" element={<RegistrationSuccess />} />
+        <Route path="/invite" element={<InviteAccept />} />
+        
+        {/* Protected routes */}
+        <Route path="/*" element={<ProtectedRoutes user={user} profile={profile} />} />
       </Routes>
     </BrowserRouter>
   );
