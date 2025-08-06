@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Phone, Wrench, Building } from 'lucide-react';
-
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const menuItems = [{
@@ -28,7 +27,6 @@ export const Home: React.FC = () => {
     color: 'from-purple-500 to-violet-600',
     onClick: () => navigate('/create-task?type=client_call')
   }];
-
   return <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-3 sm:p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
@@ -59,14 +57,10 @@ export const Home: React.FC = () => {
                   <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-4 sm:mb-6">
                     {item.description}
                   </p>
-                  <Button 
-                    className="w-full group-hover:bg-primary/90 transition-colors" 
-                    size="lg"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      item.onClick();
-                    }}
-                  >
+                  <Button className="w-full group-hover:bg-primary/90 transition-colors" size="lg" onClick={e => {
+                e.stopPropagation();
+                item.onClick();
+              }}>
                     Iniciar
                   </Button>
                 </CardContent>
@@ -75,29 +69,7 @@ export const Home: React.FC = () => {
         </div>
 
         {/* Acesso Rápido */}
-        <div className="bg-card/50 backdrop-blur-sm border rounded-2xl p-4 sm:p-8">
-          <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-center">
-            Acesso Rápido
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <Button variant="outline" className="h-auto p-3 sm:p-4 flex-col gap-1 sm:gap-2" onClick={() => navigate('/dashboard')}>
-              <Building className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-xs sm:text-sm">Dashboard</span>
-            </Button>
-            <Button variant="outline" className="h-auto p-3 sm:p-4 flex-col gap-1 sm:gap-2" onClick={() => navigate('/tasks')}>
-              <MapPin className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-xs sm:text-sm">Tarefas</span>
-            </Button>
-            <Button variant="outline" className="h-auto p-3 sm:p-4 flex-col gap-1 sm:gap-2" onClick={() => navigate('/reports')}>
-              <Wrench className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-xs sm:text-sm">Relatórios</span>
-            </Button>
-            <Button variant="outline" className="h-auto p-3 sm:p-4 flex-col gap-1 sm:gap-2" onClick={() => navigate('/filiais')}>
-              <Phone className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-xs sm:text-sm">Filiais</span>
-            </Button>
-          </div>
-        </div>
+        
       </div>
     </div>;
 };
