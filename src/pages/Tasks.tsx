@@ -30,7 +30,6 @@ const Tasks: React.FC = () => {
   const { getOfflineTasks } = useOffline();
   const { tasks: onlineTasks } = useTasks();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
   const [vendorFilter, setVendorFilter] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [filialFilter, setFilialFilter] = useState('all');
@@ -38,24 +37,35 @@ const Tasks: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [vendors, setVendors] = useState<{id: string, name: string}[]>([]);
+  const [filiais, setFiliais] = useState<{id: string, nome: string}[]>([]);
 
-  // Carregar vendedores registrados
+  // Carregar vendedores e filiais registrados
   useEffect(() => {
-    const loadVendors = async () => {
+    const loadData = async () => {
       try {
-        const { data, error } = await supabase
+        // Carregar vendedores
+        const { data: vendorsData, error: vendorsError } = await supabase
           .from('profiles')
           .select('id, name')
           .order('name');
         
-        if (error) throw error;
-        setVendors(data || []);
+        if (vendorsError) throw vendorsError;
+        setVendors(vendorsData || []);
+
+        // Carregar filiais
+        const { data: filiaisData, error: filiaisError } = await supabase
+          .from('filiais')
+          .select('id, nome')
+          .order('nome');
+        
+        if (filiaisError) throw filiaisError;
+        setFiliais(filiaisData || []);
       } catch (error) {
-        console.error('Erro ao carregar vendedores:', error);
+        console.error('Erro ao carregar dados:', error);
       }
     };
     
-    loadVendors();
+    loadData();
   }, []);
 
   // Carregar tarefas quando componente montar
@@ -79,14 +89,11 @@ const Tasks: React.FC = () => {
   }, [onlineTasks]);
 
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.responsible.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesVendor = vendorFilter === 'all' || task.responsible === vendorFilter;
     const matchesTaskType = taskTypeFilter === 'all' || task.taskType === taskTypeFilter;
     const matchesFilial = filialFilter === 'all' || task.filial === filialFilter;
     
-    return matchesSearch && matchesVendor && matchesTaskType && matchesFilial;
+    return matchesVendor && matchesTaskType && matchesFilial;
   });
 
   const getPriorityColor = (priority: string) => {
@@ -157,16 +164,7 @@ const Tasks: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar tarefas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             <Select value={vendorFilter} onValueChange={setVendorFilter}>
               <SelectTrigger>
@@ -198,8 +196,8 @@ const Tasks: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Filiais</SelectItem>
-                {Array.from(new Set(tasks.map(task => task.filial).filter(filial => filial && filial.trim() !== ''))).map(filial => (
-                  <SelectItem key={filial} value={filial!}>{filial}</SelectItem>
+                {filiais.map(filial => (
+                  <SelectItem key={filial.id} value={filial.nome}>{filial.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -207,7 +205,6 @@ const Tasks: React.FC = () => {
           
           <div className="mt-4">
             <Button variant="outline" onClick={() => {
-              setSearchTerm('');
               setVendorFilter('all');
               setTaskTypeFilter('all');
               setFilialFilter('all');
