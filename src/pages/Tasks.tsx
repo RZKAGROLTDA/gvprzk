@@ -153,7 +153,7 @@ const Tasks: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Vendedores</SelectItem>
-                {Array.from(new Set(tasks.map(task => task.responsible))).map(vendor => (
+                {Array.from(new Set(tasks.map(task => task.responsible).filter(vendor => vendor && vendor.trim() !== ''))).map(vendor => (
                   <SelectItem key={vendor} value={vendor}>{vendor}</SelectItem>
                 ))}
               </SelectContent>
@@ -177,7 +177,7 @@ const Tasks: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Filiais</SelectItem>
-                {Array.from(new Set(tasks.map(task => task.filial).filter(Boolean))).map(filial => (
+                {Array.from(new Set(tasks.map(task => task.filial).filter(filial => filial && filial.trim() !== ''))).map(filial => (
                   <SelectItem key={filial} value={filial!}>{filial}</SelectItem>
                 ))}
               </SelectContent>
