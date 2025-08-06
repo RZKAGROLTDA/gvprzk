@@ -186,21 +186,92 @@ export const Users: React.FC = () => {
     );
   }
 
+  const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
+  const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
+  const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
+
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-2 mb-6">
         <UsersIcon className="h-6 w-6" />
         <h1 className="text-2xl font-bold">Gerenciar Usuários</h1>
       </div>
 
+      {/* Novos Usuários - Pendentes de Aprovação */}
+      {pendingUsers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-600">
+              <UsersIcon className="h-5 w-5" />
+              Novos Usuários Aguardando Aprovação
+              <Badge variant="secondary" className="ml-2">{pendingUsers.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              Revise as informações dos novos cadastros antes de aprovar o acesso ao sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {pendingUsers.map((profile) => (
+                <div key={profile.id} className="border rounded-lg p-4 bg-orange-50 dark:bg-orange-950/20">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <h3 className="font-semibold text-lg">{profile.name}</h3>
+                      <p className="text-muted-foreground">{profile.email}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-sm font-medium">Cargo solicitado:</span>
+                        <Badge variant={getRoleBadgeVariant(profile.role)} className="ml-2">
+                          {getRoleLabel(profile.role)}
+                        </Badge>
+                      </div>
+                      {profile.filial_nome && (
+                        <div>
+                          <span className="text-sm font-medium">Filial:</span>
+                          <div className="flex items-center gap-1 ml-2 inline-flex">
+                            <Building className="h-4 w-4" />
+                            {profile.filial_nome}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateUserApproval(profile.id, 'rejected')}
+                      className="text-red-600 hover:text-red-700 hover:border-red-300"
+                    >
+                      Rejeitar Cadastro
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => updateUserApproval(profile.id, 'approved')}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Aprovar Cadastro
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Usuários Aprovados */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Controle de Permissões e Filiais
+            Usuários Aprovados
+            <Badge variant="secondary" className="ml-2">{approvedUsers.length}</Badge>
           </CardTitle>
           <CardDescription>
-            Gerencie as permissões e filiais dos usuários do sistema
+            Gerencie as permissões e filiais dos usuários ativos do sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -209,22 +280,16 @@ export const Users: React.FC = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Permissão</TableHead>
                 <TableHead>Filial</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {profiles.map((profile) => (
+              {approvedUsers.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.name}</TableCell>
                   <TableCell>{profile.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={getApprovalBadgeVariant(profile.approval_status) as any}>
-                      {getApprovalLabel(profile.approval_status)}
-                    </Badge>
-                  </TableCell>
                   <TableCell>
                     <Badge variant={getRoleBadgeVariant(profile.role)}>
                       {getRoleLabel(profile.role)}
@@ -242,63 +307,38 @@ export const Users: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      {profile.approval_status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateUserApproval(profile.id, 'approved')}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            Aprovar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateUserApproval(profile.id, 'rejected')}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            Rejeitar
-                          </Button>
-                        </>
-                      )}
-                      
-                      {profile.approval_status === 'approved' && (
-                        <>
-                          <Select
-                            value={profile.role}
-                            onValueChange={(value) => updateUserRole(profile.id, value)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="manager">Admin</SelectItem>
-                              <SelectItem value="supervisor">Supervisor</SelectItem>
-                              <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
-                              <SelectItem value="rac">RAC</SelectItem>
-                              <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      <Select
+                        value={profile.role}
+                        onValueChange={(value) => updateUserRole(profile.id, value)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manager">Admin</SelectItem>
+                          <SelectItem value="supervisor">Supervisor</SelectItem>
+                          <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
+                          <SelectItem value="rac">RAC</SelectItem>
+                          <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
+                        </SelectContent>
+                      </Select>
 
-                          <Select
-                            value={profile.filial_id || "none"}
-                            onValueChange={(value) => updateUserFilial(profile.id, value)}
-                          >
-                            <SelectTrigger className="w-40">
-                              <SelectValue placeholder="Selecionar filial" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Sem filial</SelectItem>
-                              {filiais.map((filial) => (
-                                <SelectItem key={filial.id} value={filial.id}>
-                                  {filial.nome}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
+                      <Select
+                        value={profile.filial_id || "none"}
+                        onValueChange={(value) => updateUserFilial(profile.id, value)}
+                      >
+                        <SelectTrigger className="w-40">
+                          <SelectValue placeholder="Selecionar filial" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem filial</SelectItem>
+                          {filiais.map((filial) => (
+                            <SelectItem key={filial.id} value={filial.id}>
+                              {filial.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -307,6 +347,68 @@ export const Users: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Usuários Rejeitados */}
+      {rejectedUsers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <UsersIcon className="h-5 w-5" />
+              Usuários Rejeitados
+              <Badge variant="destructive" className="ml-2">{rejectedUsers.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              Usuários que tiveram seus cadastros rejeitados
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Cargo Solicitado</TableHead>
+                  <TableHead>Filial</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rejectedUsers.map((profile) => (
+                  <TableRow key={profile.id}>
+                    <TableCell className="font-medium">{profile.name}</TableCell>
+                    <TableCell>{profile.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={getRoleBadgeVariant(profile.role)}>
+                        {getRoleLabel(profile.role)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {profile.filial_nome ? (
+                        <div className="flex items-center gap-1">
+                          <Building className="h-4 w-4" />
+                          {profile.filial_nome}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Sem filial</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => updateUserApproval(profile.id, 'approved')}
+                        className="text-green-600 hover:text-green-700"
+                      >
+                        Reaprovar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
