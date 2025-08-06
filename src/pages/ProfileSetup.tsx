@@ -102,15 +102,6 @@ const ProfileSetup: React.FC = () => {
   };
 
   const generateInviteLink = async () => {
-    if (!inviteEmail) {
-      toast({
-        title: "Erro",
-        description: "Por favor, digite um email válido",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setInviteLoading(true);
     try {
       const { data: tokenData, error: tokenError } = await supabase
@@ -123,7 +114,7 @@ const ProfileSetup: React.FC = () => {
       const { error: inviteError } = await supabase
         .from('user_invitations')
         .insert({
-          email: inviteEmail,
+          email: 'convite@sistema.com', // Email genérico para convites
           token,
           created_by: user?.id
         });
@@ -131,7 +122,7 @@ const ProfileSetup: React.FC = () => {
       if (inviteError) throw inviteError;
 
       const baseUrl = window.location.origin;
-      const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(inviteEmail)}`;
+      const link = `${baseUrl}/invite?token=${token}`;
       setInviteLink(link);
 
       toast({
@@ -296,24 +287,10 @@ Equipe de Gestão`);
                   </div>
 
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="inviteEmail" className="text-sm font-semibold">
-                        Email do novo usuário
-                      </Label>
-                      <Input
-                        id="inviteEmail"
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="Digite o email do novo usuário"
-                        className="h-12 border-2 focus:border-primary transition-colors"
-                      />
-                    </div>
-
                     {!inviteLink ? (
                       <Button 
                         onClick={generateInviteLink}
-                        disabled={inviteLoading || !inviteEmail}
+                        disabled={inviteLoading}
                         className="w-full h-12"
                         variant="outline"
                       >
@@ -340,40 +317,28 @@ Equipe de Gestão`);
                           </p>
                         </div>
 
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={copyToClipboard}
-                            className="flex-1"
-                          >
-                            {copied ? (
-                              <>
-                                <Check className="h-4 w-4 mr-2" />
-                                Copiado!
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Copiar Link
-                              </>
-                            )}
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            onClick={sendByEmail}
-                            className="flex-1"
-                          >
-                            <Mail className="h-4 w-4 mr-2" />
-                            Enviar Email
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={copyToClipboard}
+                          className="w-full"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Copiado!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copiar Link
+                            </>
+                          )}
+                        </Button>
 
                         <Button 
                           variant="ghost" 
                           onClick={() => {
                             setInviteLink('');
-                            setInviteEmail('');
                             setCopied(false);
                           }}
                           className="w-full"
