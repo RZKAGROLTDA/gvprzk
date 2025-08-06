@@ -22,6 +22,7 @@ import RegistrationSuccess from "./pages/RegistrationSuccess";
 import SecureRegistration from "./pages/SecureRegistration";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -129,6 +130,7 @@ const AppContent: React.FC = () => {
         <Route path="/cadastro" element={<SecureRegistration />} />
         <Route path="/registration-success" element={<RegistrationSuccess />} />
         <Route path="/invite" element={<InviteAccept />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         {/* Protected routes */}
         <Route path="/*" element={<ProtectedRoutes user={user} profile={profile} />} />
