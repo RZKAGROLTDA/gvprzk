@@ -19,9 +19,11 @@ import { Home } from "./pages/Home";
 import InviteAccept from "./pages/InviteAccept";
 import UserRegistration from "./pages/UserRegistration";
 import RegistrationSuccess from "./pages/RegistrationSuccess";
+import SecureRegistration from "./pages/SecureRegistration";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
 
 const queryClient = new QueryClient();
 
@@ -41,13 +43,15 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
     return <ProfileSetup />;
   }
 
-  // If profile is pending approval, show registration success page
+  // If profile is pending approval, force logout and show registration success page
   if (profile.approval_status === 'pending') {
+    supabase.auth.signOut();
     return <RegistrationSuccess />;
   }
 
-  // If profile is rejected, show rejection message
+  // If profile is rejected, force logout and show rejection message
   if (profile.approval_status === 'rejected') {
+    supabase.auth.signOut();
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center p-8">
@@ -56,6 +60,12 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
         </div>
       </div>
     );
+  }
+
+  // Only allow access if approval_status is 'approved'
+  if (profile.approval_status !== 'approved') {
+    supabase.auth.signOut();
+    return <RegistrationSuccess />;
   }
 
   // If everything is approved, show main app routes
@@ -95,6 +105,7 @@ const AppContent: React.FC = () => {
       <Routes>
         {/* Public routes - accessible without authentication */}
         <Route path="/register" element={<UserRegistration />} />
+        <Route path="/cadastro" element={<SecureRegistration />} />
         <Route path="/registration-success" element={<RegistrationSuccess />} />
         <Route path="/invite" element={<InviteAccept />} />
         
