@@ -37,6 +37,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/tasks', icon: CheckSquare, label: 'Tarefas' },
     { path: '/create-task', icon: Plus, label: 'Nova Tarefa' },
+    { path: '/management', icon: Settings, label: 'Dados Gerenciais' },
     { path: '/reports', icon: BarChart3, label: 'Relatórios' },
   ];
 
