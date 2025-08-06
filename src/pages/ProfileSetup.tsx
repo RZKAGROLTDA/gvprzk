@@ -144,6 +144,7 @@ const ProfileSetup: React.FC = () => {
                   <SelectItem value="manager">Gerente</SelectItem>
                   <SelectItem value="coordinator">Coordenador</SelectItem>
                   <SelectItem value="analyst">Analista</SelectItem>
+                  <SelectItem value="rac">RAC</SelectItem>
                 </SelectContent>
               </Select>
             </div>
