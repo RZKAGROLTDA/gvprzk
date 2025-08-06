@@ -43,10 +43,10 @@ const AppContent: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes */}
-        <Route path="/invite" element={<InviteAccept />} />
+        {/* Public routes - MUST be first */}
         <Route path="/register" element={<UserRegistration />} />
         <Route path="/registration-success" element={<RegistrationSuccess />} />
+        <Route path="/invite" element={<InviteAccept />} />
         
         {/* Protected routes */}
         {!user ? (
