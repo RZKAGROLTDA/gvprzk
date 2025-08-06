@@ -71,6 +71,8 @@ const ProfileSetup: React.FC = () => {
           email: formData.email,
           role: formData.role,
           filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) throw error;
