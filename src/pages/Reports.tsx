@@ -27,6 +27,7 @@ interface FilialStats {
   checklist: number;
   ligacoes: number;
   prospects: number;
+  prospectsValue: number;
   salesValue: number;
   conversionRate: number;
 }
@@ -97,6 +98,7 @@ const Reports: React.FC = () => {
             checklist: 0,
             ligacoes: 0,
             prospects: 0,
+            prospectsValue: 0,
             salesValue: 0,
             conversionRate: 0
           };
@@ -107,6 +109,8 @@ const Reports: React.FC = () => {
         const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
         const totalTasks = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
+        const prospectsValue = tasks?.filter(task => task.is_prospect === true)
+          .reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const salesValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const conversionRate = totalTasks > 0 ? (prospects / totalTasks) * 100 : 0;
 
@@ -117,6 +121,7 @@ const Reports: React.FC = () => {
           checklist,
           ligacoes,
           prospects,
+          prospectsValue: Number(prospectsValue),
           salesValue: Number(salesValue),
           conversionRate: Math.round(conversionRate * 10) / 10
         };
@@ -268,7 +273,7 @@ const Reports: React.FC = () => {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.prospects, 0)}</div>
+            <div className="text-2xl font-bold">R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Todas as filiais</span>
             </div>
@@ -340,10 +345,12 @@ const Reports: React.FC = () => {
                         <div className="text-lg font-bold text-purple-600">{filial.ligacoes}</div>
                         <div className="text-xs text-muted-foreground">Ligações</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">{filial.prospects}</div>
-                        <div className="text-xs text-muted-foreground">Oportunidades</div>
-                      </div>
+                       <div className="text-center">
+                         <div className="text-lg font-bold text-green-600">
+                           R$ {filial.prospectsValue.toLocaleString('pt-BR')}
+                         </div>
+                         <div className="text-xs text-muted-foreground">Oportunidades</div>
+                       </div>
                       <div className="text-center">
                         <div className="text-lg font-bold text-green-600">
                           R$ {filial.salesValue.toLocaleString('pt-BR')}
