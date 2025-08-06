@@ -27,11 +27,15 @@ export const useProfile = () => {
 
   const loadProfile = async () => {
     try {
+      console.log('DEBUG: Carregando perfil para user:', user?.id);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user?.id)
         .single();
+
+      console.log('DEBUG: Dados do perfil:', data);
+      console.log('DEBUG: Erro:', error);
 
       if (error) throw error;
       setProfile(data);

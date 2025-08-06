@@ -38,8 +38,13 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
     return <LoginForm />;
   }
 
+  // Debug logging
+  console.log('DEBUG: User:', user?.id);
+  console.log('DEBUG: Profile:', profile);
+  
   // If user exists but no profile or incomplete profile, show profile setup
   if (!profile || !profile.name || !profile.role) {
+    console.log('DEBUG: Redirecionando para ProfileSetup - perfil incompleto');
     return <ProfileSetup />;
   }
 
