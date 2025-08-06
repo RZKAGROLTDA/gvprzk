@@ -57,6 +57,7 @@ const AppContent: React.FC = () => {
         <Route path="/reports" element={<Layout><Reports /></Layout>} />
         <Route path="/users" element={<Layout><Users /></Layout>} />
         <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
+        <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

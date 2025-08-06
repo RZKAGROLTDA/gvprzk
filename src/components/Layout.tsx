@@ -102,6 +102,13 @@ export const Layout: React.FC<LayoutProps> = ({
                 {isAdmin && <>
                     <div className="border-t pt-2 mt-2">
                       <p className="text-xs font-semibold text-muted-foreground px-3 py-2">ADMINIScTRAÇÃO</p>
+                      <Link 
+                        to="/profile-setup" 
+                        className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <User className="h-4 w-4" />
+                        <span>Criar Novo Usuário</span>
+                      </Link>
                     </div>
                     {adminItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
                         <item.icon className="h-4 w-4" />
