@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 export const LoginForm: React.FC = () => {
@@ -65,6 +66,38 @@ export const LoginForm: React.FC = () => {
     setLoading(false);
   };
 
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      toast({
+        title: "Email necessário",
+        description: "Digite seu email para recuperar a senha",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para recuperar a senha",
+      });
+    }
+
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
@@ -106,6 +139,17 @@ export const LoginForm: React.FC = () => {
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Entrar
                 </Button>
+                
+                <div className="text-center mt-4">
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:underline"
+                    onClick={handleForgotPassword}
+                    disabled={loading}
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
               </form>
             </TabsContent>
             
