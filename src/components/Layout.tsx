@@ -2,52 +2,58 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { 
-  LayoutDashboard, 
-  Plus, 
-  CheckSquare, 
-  BarChart3, 
-  Car, 
-  User,
-  Bell,
-  Settings,
-  LogOut,
-  Users,
-  Building
-} from 'lucide-react';
+import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Bell, Settings, LogOut, Users, Building } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-
 interface LayoutProps {
   children: React.ReactNode;
 }
-
-export const Layout: React.FC<LayoutProps> = ({ children }) => {
+export const Layout: React.FC<LayoutProps> = ({
+  children
+}) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
-  const { isAdmin } = useProfile();
-  
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    isAdmin
+  } = useProfile();
   const isActive = (path: string) => location.pathname === path;
-
   const handleLogout = async () => {
     await signOut();
   };
-  
-  const navItems = [
-    { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/tasks', icon: CheckSquare, label: 'Tarefas' },
-    { path: '/create-task', icon: Plus, label: 'Nova Tarefa' },
-    { path: '/management', icon: Settings, label: 'Dados Gerenciais' },
-    { path: '/reports', icon: BarChart3, label: 'Relatórios' },
-  ];
-
-  const adminItems = [
-    { path: '/users', icon: Users, label: 'Usuários' },
-    { path: '/filiais', icon: Building, label: 'Filiais' },
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
+  const navItems = [{
+    path: '/',
+    icon: LayoutDashboard,
+    label: 'Dashboard'
+  }, {
+    path: '/tasks',
+    icon: CheckSquare,
+    label: 'Tarefas'
+  }, {
+    path: '/create-task',
+    icon: Plus,
+    label: 'Nova Tarefa'
+  }, {
+    path: '/management',
+    icon: Settings,
+    label: 'Dados Gerenciais'
+  }, {
+    path: '/reports',
+    icon: BarChart3,
+    label: 'Relatórios'
+  }];
+  const adminItems = [{
+    path: '/users',
+    icon: Users,
+    label: 'Usuários'
+  }, {
+    path: '/filiais',
+    icon: Building,
+    label: 'Filiais'
+  }];
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b shadow-sm">
         <div className="container mx-auto px-4 py-3">
@@ -74,12 +80,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
                 <span className="text-sm font-medium">{user?.email || 'Usuário'}</span>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={handleLogout}
-                title="Sair"
-              >
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>
@@ -93,44 +94,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <aside className="w-64 space-y-2">
             <Card className="p-4">
               <nav className="space-y-1">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                      isActive(item.path)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
+                {navItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
-                  </Link>
-                ))}
+                  </Link>)}
                 
-                {isAdmin && (
-                  <>
+                {isAdmin && <>
                     <div className="border-t pt-2 mt-2">
-                      <p className="text-xs font-semibold text-muted-foreground px-3 py-2">
-                        ADMINISTRAÇÃO
-                      </p>
+                      <p className="text-xs font-semibold text-muted-foreground px-3 py-2">ADMINIScTRAÇÃO</p>
                     </div>
-                    {adminItems.map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                          isActive(item.path)
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                        }`}
-                      >
+                    {adminItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.label}</span>
-                      </Link>
-                    ))}
-                  </>
-                )}
+                      </Link>)}
+                  </>}
               </nav>
             </Card>
           </aside>
@@ -143,6 +120,5 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </main>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
