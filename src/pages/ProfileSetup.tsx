@@ -224,8 +224,7 @@ Equipe de Gestão`);
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="Digite seu email"
                   required
-                  disabled
-                  className="h-12 border-2 bg-muted/50"
+                  className="h-12 border-2 focus:border-primary transition-colors"
                 />
               </div>
 
@@ -270,7 +269,7 @@ Equipe de Gestão`);
                   type="submit" 
                   className="w-full h-12 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]" 
                   variant="gradient"
-                  disabled={loading || !formData.name || !formData.role}
+                  disabled={loading || !formData.name || !formData.email || !formData.role}
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">
