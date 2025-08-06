@@ -23,8 +23,9 @@ import { useAuth } from '@/hooks/useAuth';
 interface FilialStats {
   id: string;
   nome: string;
-  totalVisits: number;
-  completedVisits: number;
+  visitas: number;
+  checklist: number;
+  ligacoes: number;
   prospects: number;
   salesValue: number;
   conversionRate: number;
@@ -77,25 +78,29 @@ const Reports: React.FC = () => {
           return {
             id: filial.id,
             nome: filial.nome,
-            totalVisits: 0,
-            completedVisits: 0,
+            visitas: 0,
+            checklist: 0,
+            ligacoes: 0,
             prospects: 0,
             salesValue: 0,
             conversionRate: 0
           };
         }
 
-        const totalVisits = tasks?.length || 0;
-        const completedVisits = tasks?.filter(task => task.status === 'completed').length || 0;
+        const visitas = tasks?.filter(task => task.task_type === 'prospection').length || 0;
+        const checklist = tasks?.filter(task => task.task_type === 'checklist').length || 0;
+        const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
+        const totalTasks = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
         const salesValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-        const conversionRate = totalVisits > 0 ? (prospects / totalVisits) * 100 : 0;
+        const conversionRate = totalTasks > 0 ? (prospects / totalTasks) * 100 : 0;
 
         return {
           id: filial.id,
           nome: filial.nome,
-          totalVisits,
-          completedVisits,
+          visitas,
+          checklist,
+          ligacoes,
           prospects,
           salesValue: Number(salesValue),
           conversionRate: Math.round(conversionRate * 10) / 10
@@ -189,11 +194,11 @@ const Reports: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Visitas</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Tarefas</CardTitle>
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.totalVisits, 0)}</div>
+            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Todas as filiais</span>
             </div>
@@ -202,11 +207,11 @@ const Reports: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Visitas Concluídas</CardTitle>
+            <CardTitle className="text-sm font-medium">Visitas</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.completedVisits, 0)}</div>
+            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.visitas, 0)}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Todas as filiais</span>
             </div>
@@ -273,18 +278,26 @@ const Reports: React.FC = () => {
                     <div>
                       <h3 className="font-semibold">{filial.nome}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {filial.completedVisits} de {filial.totalVisits} visitas concluídas
+                        {filial.visitas + filial.checklist + filial.ligacoes} tarefas realizadas
                       </p>
                     </div>
                   </div>
                   <div className="text-right space-y-1">
                     <div className="flex items-center gap-6">
                       <div className="text-center">
-                        <div className="text-lg font-bold">{filial.totalVisits}</div>
+                        <div className="text-lg font-bold">{filial.visitas}</div>
                         <div className="text-xs text-muted-foreground">Visitas</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-blue-600">{filial.prospects}</div>
+                        <div className="text-lg font-bold text-blue-600">{filial.checklist}</div>
+                        <div className="text-xs text-muted-foreground">Checklist</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-600">{filial.ligacoes}</div>
+                        <div className="text-xs text-muted-foreground">Ligações</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-orange-600">{filial.prospects}</div>
                         <div className="text-xs text-muted-foreground">Oportunidades</div>
                       </div>
                       <div className="text-center">
@@ -292,10 +305,6 @@ const Reports: React.FC = () => {
                           R$ {filial.salesValue.toLocaleString('pt-BR')}
                         </div>
                         <div className="text-xs text-muted-foreground">Vendas</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-orange-600">{filial.conversionRate}%</div>
-                        <div className="text-xs text-muted-foreground">Conversão</div>
                       </div>
                     </div>
                   </div>
