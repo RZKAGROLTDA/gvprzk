@@ -101,7 +101,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 
                 {isAdmin && <>
                     <div className="border-t pt-2 mt-2">
-                      <p className="text-xs font-semibold text-muted-foreground px-3 py-2">ADMINIScTRAÇÃO</p>
+                      <p className="text-xs font-semibold text-muted-foreground px-3 py-2">ADMINISTRAÇÃO</p>
                       <Link 
                         to="/profile-setup" 
                         className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
