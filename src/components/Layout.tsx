@@ -107,7 +107,7 @@ export const Layout: React.FC<LayoutProps> = ({
                         className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       >
                         <User className="h-4 w-4" />
-                        <span>Criar Novo Usuário</span>
+                        <span>Novo Usuário</span>
                       </Link>
                     </div>
                     {adminItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
