@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,13 +13,29 @@ import {
   Calendar,
   DollarSign,
   Target,
-  Activity
+  Activity,
+  Building2
 } from 'lucide-react';
 import { TaskStats } from '@/types/task';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+
+interface FilialStats {
+  id: string;
+  nome: string;
+  totalVisits: number;
+  completedVisits: number;
+  prospects: number;
+  salesValue: number;
+  conversionRate: number;
+}
 
 const Reports: React.FC = () => {
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedUser, setSelectedUser] = useState('all');
+  const [filialStats, setFilialStats] = useState<FilialStats[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const stats: TaskStats = {
     totalVisits: 0,
@@ -29,8 +46,76 @@ const Reports: React.FC = () => {
   };
 
   const detailedStats: any[] = [];
-
   const userStats: any[] = [];
+
+  const loadFilialStats = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Buscar todas as filiais
+      const { data: filiais, error: filiaisError } = await supabase
+        .from('filiais')
+        .select('*')
+        .order('nome');
+
+      if (filiaisError) throw filiaisError;
+
+      // Buscar estatísticas por filial
+      const filialStatsPromises = filiais?.map(async (filial) => {
+        // Buscar tarefas da filial
+        const { data: tasks, error: tasksError } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            profiles!tasks_created_by_fkey(filial_id)
+          `)
+          .eq('profiles.filial_id', filial.id);
+
+        if (tasksError) {
+          console.error('Erro ao buscar tarefas:', tasksError);
+          return {
+            id: filial.id,
+            nome: filial.nome,
+            totalVisits: 0,
+            completedVisits: 0,
+            prospects: 0,
+            salesValue: 0,
+            conversionRate: 0
+          };
+        }
+
+        const totalVisits = tasks?.length || 0;
+        const completedVisits = tasks?.filter(task => task.status === 'completed').length || 0;
+        const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
+        const salesValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+        const conversionRate = totalVisits > 0 ? (prospects / totalVisits) * 100 : 0;
+
+        return {
+          id: filial.id,
+          nome: filial.nome,
+          totalVisits,
+          completedVisits,
+          prospects,
+          salesValue: Number(salesValue),
+          conversionRate: Math.round(conversionRate * 10) / 10
+        };
+      }) || [];
+
+      const results = await Promise.all(filialStatsPromises);
+      setFilialStats(results);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas por filial:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      loadFilialStats();
+    }
+  }, [user, selectedPeriod]);
 
   const exportReport = () => {
     // Implementar exportação para PDF/Excel
@@ -92,7 +177,7 @@ const Reports: React.FC = () => {
             </div>
 
             <div className="flex items-end">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full" onClick={loadFilialStats}>
                 Aplicar Filtros
               </Button>
             </div>
@@ -108,9 +193,9 @@ const Reports: React.FC = () => {
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalVisits}</div>
+            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.totalVisits, 0)}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Aguardando dados</span>
+              <span>Todas as filiais</span>
             </div>
           </CardContent>
         </Card>
@@ -121,84 +206,95 @@ const Reports: React.FC = () => {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.completedVisits}</div>
+            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.completedVisits, 0)}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{stats.totalVisits > 0 ? ((stats.completedVisits / stats.totalVisits) * 100).toFixed(1) : 0}% do total</span>
+              <span>Todas as filiais</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Prospects Gerados</CardTitle>
+            <CardTitle className="text-sm font-medium">Oportunidades Geradas</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.prospects}</div>
+            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.prospects, 0)}</div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{stats.conversionRate}% de conversão</span>
+              <span>Todas as filiais</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vendas Geradas</CardTitle>
+            <CardTitle className="text-sm font-medium">Vendas Concluídas</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R$ {stats.salesValue.toLocaleString('pt-BR')}
+              R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Aguardando dados</span>
+              <span>Todas as filiais</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Histórico Mensal */}
+      {/* Dados por Filial */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Histórico Mensal
+            <Building2 className="h-5 w-5" />
+            Dados por Filial
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {detailedStats.length === 0 ? (
+            {loading ? (
               <div className="text-center py-8 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum histórico disponível</p>
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50 animate-spin" />
+                <p>Carregando dados das filiais...</p>
+              </div>
+            ) : filialStats.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma filial com dados disponíveis</p>
                 <p className="text-sm">Os dados aparecerão conforme as tarefas forem criadas</p>
               </div>
             ) : (
-              detailedStats.map((stat, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+              filialStats.map((filial) => (
+                <div key={filial.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <BarChart3 className="h-6 w-6 text-primary" />
+                      <Building2 className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">{stat.period}</h3>
+                      <h3 className="font-semibold">{filial.nome}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {stat.completedVisits} de {stat.totalVisits} visitas concluídas
+                        {filial.completedVisits} de {filial.totalVisits} visitas concluídas
                       </p>
                     </div>
                   </div>
                   <div className="text-right space-y-1">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-6">
                       <div className="text-center">
-                        <div className="text-sm font-medium">{stat.prospects}</div>
-                        <div className="text-xs text-muted-foreground">Prospects</div>
+                        <div className="text-lg font-bold">{filial.totalVisits}</div>
+                        <div className="text-xs text-muted-foreground">Visitas</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-sm font-medium">R$ {stat.salesValue.toLocaleString('pt-BR')}</div>
+                        <div className="text-lg font-bold text-blue-600">{filial.prospects}</div>
+                        <div className="text-xs text-muted-foreground">Oportunidades</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-600">
+                          R$ {filial.salesValue.toLocaleString('pt-BR')}
+                        </div>
                         <div className="text-xs text-muted-foreground">Vendas</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-sm font-medium">{stat.conversionRate}%</div>
+                        <div className="text-lg font-bold text-orange-600">{filial.conversionRate}%</div>
                         <div className="text-xs text-muted-foreground">Conversão</div>
                       </div>
                     </div>
