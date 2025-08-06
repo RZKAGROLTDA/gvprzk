@@ -22,12 +22,13 @@ import { useTasks } from '@/hooks/useTasks';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 import { useProfile } from '@/hooks/useProfile';
-
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
   const urlTaskType = searchParams.get('type');
-  const { profile } = useProfile();
-  
+  const {
+    profile
+  } = useProfile();
+
   // Mapear tipos da URL para tipos internos
   const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' => {
     switch (urlType) {
@@ -41,10 +42,7 @@ const CreateTask: React.FC = () => {
         return 'field-visit';
     }
   };
-
-  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(
-    getTaskCategoryFromUrl(urlTaskType)
-  );
+  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(getTaskCategoryFromUrl(urlTaskType));
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
@@ -86,7 +84,6 @@ const CreateTask: React.FC = () => {
       }));
     }
   }, [profile]);
-
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -475,8 +472,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
       <form onSubmit={handleSubmit}>
         {/* Seleção do Tipo de Tarefa - Apenas mostra se não veio da URL */}
-        {!urlTaskType && (
-          <Card className="mb-6">
+        {!urlTaskType && <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckSquare className="h-5 w-5" />
@@ -498,8 +494,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </Select>
               </div>
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Informações Básicas */}
@@ -511,23 +506,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome da Tarefa</Label>
-                <Input id="name" value={task.name} onChange={e => setTask(prev => ({
-                ...prev,
-                name: e.target.value
-              }))} placeholder="Digite o nome da tarefa" />
-              </div>
+              
 
               <div className="space-y-2">
                 <Label htmlFor="responsible">Responsável</Label>
-                <Input 
-                  id="responsible" 
-                  value={task.responsible} 
-                  readOnly 
-                  className="bg-gray-50"
-                  placeholder="Carregando usuário..." 
-                />
+                <Input id="responsible" value={task.responsible} readOnly className="bg-gray-50" placeholder="Carregando usuário..." />
               </div>
 
               <div className="space-y-2">
@@ -553,13 +536,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-2">
                 <Label htmlFor="filial">Filial</Label>
-                <Input 
-                  id="filial" 
-                  value={task.filial} 
-                  readOnly 
-                  className="bg-gray-50"
-                  placeholder="Filial do usuário" 
-                />
+                <Input id="filial" value={task.filial} readOnly className="bg-gray-50" placeholder="Filial do usuário" />
               </div>
 
               <div className="space-y-2">
