@@ -54,7 +54,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <div className="flex items-center space-x-2">
                 <Car className="h-8 w-8 text-primary" />
                 <h1 className="text-2xl font-bold text-foreground">
-                  Gestão de Visitas
+                  Checklist Vendas
                 </h1>
               </div>
             </div>
