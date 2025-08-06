@@ -28,7 +28,7 @@ const ProfileSetup: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    email: user?.email || '',
+    email: '',
     role: '',
     filial_id: ''
   });
