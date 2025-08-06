@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { UserPlus, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { AuthLayout } from '@/components/AuthLayout';
 
 const InviteAccept: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -84,14 +85,8 @@ const InviteAccept: React.FC = () => {
       const baseUrl = window.location.origin;
       const redirectUrl = `${baseUrl}/profile-setup?token=${token}`;
       
-      // For now, redirect to the sign up page with instructions
-      navigate('/auth/signup', { 
-        state: { 
-          email, 
-          token,
-          redirectUrl 
-        } 
-      });
+      // Redirect to registration with invite token and email
+      navigate(`/register?token=${token}&email=${encodeURIComponent(email)}`);
       
     } catch (error) {
       console.error('Erro ao processar convite:', error);
@@ -105,58 +100,63 @@ const InviteAccept: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-              <p className="text-muted-foreground">Validando convite...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <AuthLayout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="flex items-center justify-center py-16">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                <p className="text-muted-foreground">Validando convite...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AuthLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 bg-destructive/10 rounded-full w-fit">
-              <XCircle className="h-8 w-8 text-destructive" />
-            </div>
-            <CardTitle className="text-2xl">Convite Inválido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-            <Button 
-              onClick={() => navigate('/')} 
-              className="w-full mt-4"
-              variant="outline"
-            >
-              Voltar ao Início
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <AuthLayout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 p-3 bg-destructive/10 rounded-full w-fit">
+                <XCircle className="h-8 w-8 text-destructive" />
+              </div>
+              <CardTitle className="text-2xl">Convite Inválido</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+              <Button 
+                onClick={() => navigate('/')} 
+                className="w-full mt-4"
+                variant="outline"
+              >
+                Voltar ao Início
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
-      <Card className="w-full max-w-md shadow-2xl border-0 bg-card/95 backdrop-blur-sm">
-        <CardHeader className="text-center pb-8">
-          <div className="mx-auto mb-4 p-4 bg-gradient-to-br from-success to-success/80 rounded-full w-fit shadow-lg">
-            <UserPlus className="h-8 w-8 text-success-foreground" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Convite Aceito!</CardTitle>
-          <p className="text-muted-foreground">
-            Você foi convidado para acessar o Sistema de Gestão de Visitas
-          </p>
-        </CardHeader>
+    <AuthLayout>
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-4">
+        <Card className="w-full max-w-md shadow-2xl border-0 bg-card/95 backdrop-blur-sm">
+          <CardHeader className="text-center pb-8">
+            <div className="mx-auto mb-4 p-4 bg-gradient-to-br from-success to-success/80 rounded-full w-fit shadow-lg">
+              <UserPlus className="h-8 w-8 text-success-foreground" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Convite Aceito!</CardTitle>
+            <p className="text-muted-foreground">
+              Você foi convidado para acessar o Checklist Vendas
+            </p>
+          </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">Email:</p>
@@ -185,6 +185,7 @@ const InviteAccept: React.FC = () => {
         </CardContent>
       </Card>
     </div>
+    </AuthLayout>
   );
 };
 

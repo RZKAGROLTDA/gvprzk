@@ -8,7 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Building2, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AuthLayout } from '@/components/AuthLayout';
 
 interface Filial {
   id: string;
@@ -18,7 +19,9 @@ interface Filial {
 const UserRegistration: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [filiais, setFiliais] = useState<Filial[]>([]);
@@ -52,8 +55,17 @@ const UserRegistration: React.FC = () => {
       }
     };
 
+    // Check if coming from invite link
+    const token = searchParams.get('token');
+    const email = searchParams.get('email');
+    
+    if (token && email) {
+      setInviteToken(token);
+      setFormData(prev => ({ ...prev, email }));
+    }
+
     loadFiliais();
-  }, []);
+  }, [searchParams]);
 
   const validatePassword = (password: string) => {
     const validation = {
@@ -124,6 +136,17 @@ const UserRegistration: React.FC = () => {
 
         if (profileError) throw profileError;
 
+        // If this was from an invite, mark it as used
+        if (inviteToken) {
+          await supabase
+            .from('user_invitations')
+            .update({ 
+              status: 'used',
+              used_at: new Date().toISOString()
+            })
+            .eq('token', inviteToken);
+        }
+
         toast({
           title: "Cadastro realizado com sucesso!",
           description: "Seu cadastro foi enviado para aprovação. Você receberá um email quando for aprovado.",
@@ -155,18 +178,24 @@ const UserRegistration: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/10 p-4">
-      <div className="w-full max-w-lg">
-        <Card className="shadow-2xl border-0 bg-card/95 backdrop-blur-sm">
-          <CardHeader className="text-center pb-6">
-            <div className="mx-auto mb-4 p-4 bg-gradient-to-br from-primary to-primary/80 rounded-full w-fit shadow-lg">
-              <User className="h-8 w-8 text-primary-foreground" />
-            </div>
-            <CardTitle className="text-2xl font-bold">Criar Nova Conta</CardTitle>
-            <p className="text-muted-foreground">
-              Preencha seus dados para solicitar acesso ao sistema
-            </p>
-          </CardHeader>
+    <AuthLayout>
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)] p-4">
+        <div className="w-full max-w-lg">
+          <Card className="shadow-2xl border-0 bg-card/95 backdrop-blur-sm">
+            <CardHeader className="text-center pb-6">
+              <div className="mx-auto mb-4 p-4 bg-gradient-to-br from-primary to-primary/80 rounded-full w-fit shadow-lg">
+                <User className="h-8 w-8 text-primary-foreground" />
+              </div>
+              <CardTitle className="text-2xl font-bold">
+                {inviteToken ? 'Complete seu Cadastro' : 'Criar Nova Conta'}
+              </CardTitle>
+              <p className="text-muted-foreground">
+                {inviteToken 
+                  ? 'Você foi convidado! Complete seus dados para acessar o sistema' 
+                  : 'Preencha seus dados para solicitar acesso ao sistema'
+                }
+              </p>
+            </CardHeader>
           <CardContent className="px-6 pb-8">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -191,6 +220,7 @@ const UserRegistration: React.FC = () => {
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="Digite seu email"
                   required
+                  disabled={!!inviteToken}
                   className="h-11"
                 />
               </div>
@@ -311,6 +341,7 @@ const UserRegistration: React.FC = () => {
         </Card>
       </div>
     </div>
+    </AuthLayout>
   );
 };
 
