@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Building2 } from 'lucide-react';
+import { useProfile } from '@/hooks/useProfile';
+import { User, Building2, Copy, Check, Mail, Link as LinkIcon } from 'lucide-react';
 
 interface Filial {
   id: string;
@@ -16,9 +18,14 @@ interface Filial {
 
 const ProfileSetup: React.FC = () => {
   const { user } = useAuth();
+  const { isAdmin } = useProfile();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
   const [filiais, setFiliais] = useState<Filial[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: user?.email || '',
@@ -92,6 +99,90 @@ const ProfileSetup: React.FC = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const generateInviteLink = async () => {
+    if (!inviteEmail) {
+      toast({
+        title: "Erro",
+        description: "Por favor, digite um email válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const { data: tokenData, error: tokenError } = await supabase
+        .rpc('generate_invitation_token');
+
+      if (tokenError) throw tokenError;
+
+      const token = tokenData;
+
+      const { error: inviteError } = await supabase
+        .from('user_invitations')
+        .insert({
+          email: inviteEmail,
+          token,
+          created_by: user?.id
+        });
+
+      if (inviteError) throw inviteError;
+
+      const baseUrl = window.location.origin;
+      const link = `${baseUrl}/invite?token=${token}&email=${encodeURIComponent(inviteEmail)}`;
+      setInviteLink(link);
+
+      toast({
+        title: "Sucesso!",
+        description: "Link de convite gerado com sucesso",
+      });
+    } catch (error) {
+      console.error('Erro ao gerar convite:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar link de convite. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      toast({
+        title: "Copiado!",
+        description: "Link copiado para a área de transferência",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível copiar o link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendByEmail = () => {
+    const subject = encodeURIComponent('Convite para acessar o Sistema de Gestão de Visitas');
+    const body = encodeURIComponent(`Olá!
+
+Você foi convidado(a) para acessar o Sistema de Gestão de Visitas.
+
+Clique no link abaixo para criar sua conta:
+${inviteLink}
+
+Este link é válido por 7 dias.
+
+Atenciosamente,
+Equipe de Gestão`);
+    
+    window.open(`mailto:${inviteEmail}?subject=${subject}&body=${body}`);
   };
 
   return (
@@ -192,6 +283,114 @@ const ProfileSetup: React.FC = () => {
                 </Button>
               </div>
             </form>
+
+            {/* Seção para Administradores gerarem links de convite */}
+            {isAdmin && (
+              <>
+                <Separator className="my-8" />
+                <div className="space-y-6">
+                  <div className="text-center">
+                    <h3 className="text-xl font-semibold mb-2">Convidar Novo Usuário</h3>
+                    <p className="text-muted-foreground">
+                      Gere um link de convite para que novos usuários possam se cadastrar
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="inviteEmail" className="text-sm font-semibold">
+                        Email do novo usuário
+                      </Label>
+                      <Input
+                        id="inviteEmail"
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="Digite o email do novo usuário"
+                        className="h-12 border-2 focus:border-primary transition-colors"
+                      />
+                    </div>
+
+                    {!inviteLink ? (
+                      <Button 
+                        onClick={generateInviteLink}
+                        disabled={inviteLoading || !inviteEmail}
+                        className="w-full h-12"
+                        variant="outline"
+                      >
+                        {inviteLoading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                            Gerando link...
+                          </div>
+                        ) : (
+                          <>
+                            <LinkIcon className="h-4 w-4 mr-2" />
+                            Gerar Link de Convite
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/20">
+                          <Label className="text-sm font-medium text-muted-foreground block mb-2">
+                            Link gerado:
+                          </Label>
+                          <p className="text-sm font-mono break-all bg-background p-2 rounded border">
+                            {inviteLink}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={copyToClipboard}
+                            className="flex-1"
+                          >
+                            {copied ? (
+                              <>
+                                <Check className="h-4 w-4 mr-2" />
+                                Copiado!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copiar Link
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            onClick={sendByEmail}
+                            className="flex-1"
+                          >
+                            <Mail className="h-4 w-4 mr-2" />
+                            Enviar Email
+                          </Button>
+                        </div>
+
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => {
+                            setInviteLink('');
+                            setInviteEmail('');
+                            setCopied(false);
+                          }}
+                          className="w-full"
+                        >
+                          Gerar Novo Convite
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-muted-foreground text-center">
+                      * O link de convite será válido por 7 dias
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -2,10 +2,9 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Bell, Settings, LogOut, Users, Building, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Bell, Settings, LogOut, Users, Building } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
-import { InviteUserModal } from '@/components/InviteUserModal';
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -103,12 +102,6 @@ export const Layout: React.FC<LayoutProps> = ({
                 {isAdmin && <>
                     <div className="border-t pt-2 mt-2">
                       <p className="text-xs font-semibold text-muted-foreground px-3 py-2">ADMINISTRAÇÃO</p>
-                      <InviteUserModal>
-                        <button className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground w-full text-left">
-                          <UserPlus className="h-4 w-4" />
-                          <span>Convidar Usuário</span>
-                        </button>
-                      </InviteUserModal>
                       <Link 
                         to="/profile-setup" 
                         className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
