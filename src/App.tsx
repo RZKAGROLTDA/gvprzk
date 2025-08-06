@@ -17,6 +17,8 @@ import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
 import { Home } from "./pages/Home";
 import InviteAccept from "./pages/InviteAccept";
+import UserRegistration from "./pages/UserRegistration";
+import RegistrationSuccess from "./pages/RegistrationSuccess";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import { useProfile } from "@/hooks/useProfile";
@@ -43,12 +45,25 @@ const AppContent: React.FC = () => {
       <Routes>
         {/* Public routes */}
         <Route path="/invite" element={<InviteAccept />} />
+        <Route path="/register" element={<UserRegistration />} />
+        <Route path="/registration-success" element={<RegistrationSuccess />} />
         
         {/* Protected routes */}
         {!user ? (
           <Route path="*" element={<LoginForm />} />
         ) : !profile || !profile.name || !profile.role ? (
           <Route path="*" element={<ProfileSetup />} />
+        ) : profile.approval_status === 'pending' ? (
+          <Route path="*" element={<RegistrationSuccess />} />
+        ) : profile.approval_status === 'rejected' ? (
+          <Route path="*" element={
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center p-8">
+                <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
+                <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
+              </div>
+            </div>
+          } />
         ) : (
           <>
             <Route path="/" element={<Layout><Home /></Layout>} />

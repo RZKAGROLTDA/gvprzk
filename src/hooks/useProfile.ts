@@ -8,6 +8,7 @@ interface Profile {
   email: string;
   role: string;
   filial_id: string | null;
+  approval_status: 'pending' | 'approved' | 'rejected';
 }
 
 export const useProfile = () => {

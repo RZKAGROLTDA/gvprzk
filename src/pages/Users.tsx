@@ -16,6 +16,7 @@ interface Profile {
   role: string;
   filial_id: string | null;
   filial_nome?: string;
+  approval_status: 'pending' | 'approved' | 'rejected';
 }
 
 interface Filial {
@@ -44,6 +45,7 @@ export const Users: React.FC = () => {
           email,
           role,
           filial_id,
+          approval_status,
           filiais:filial_id (
             nome
           )
@@ -107,6 +109,23 @@ export const Users: React.FC = () => {
     }
   };
 
+  const updateUserApproval = async (userId: string, status: 'approved' | 'rejected') => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ approval_status: status })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast.success(`Usuário ${status === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso`);
+      loadData();
+    } catch (error) {
+      console.error('Erro ao atualizar aprovação:', error);
+      toast.error('Erro ao atualizar aprovação');
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'manager':
@@ -130,6 +149,32 @@ export const Users: React.FC = () => {
         return 'Consultor';
       default:
         return role;
+    }
+  };
+
+  const getApprovalBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return 'success';
+      case 'pending':
+        return 'secondary';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getApprovalLabel = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return 'Aprovado';
+      case 'pending':
+        return 'Pendente';
+      case 'rejected':
+        return 'Rejeitado';
+      default:
+        return status;
     }
   };
 
@@ -164,6 +209,7 @@ export const Users: React.FC = () => {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Permissão</TableHead>
                 <TableHead>Filial</TableHead>
                 <TableHead>Ações</TableHead>
@@ -174,6 +220,11 @@ export const Users: React.FC = () => {
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.name}</TableCell>
                   <TableCell>{profile.email}</TableCell>
+                  <TableCell>
+                    <Badge variant={getApprovalBadgeVariant(profile.approval_status) as any}>
+                      {getApprovalLabel(profile.approval_status)}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getRoleBadgeVariant(profile.role)}>
                       {getRoleLabel(profile.role)}
@@ -191,36 +242,63 @@ export const Users: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Select
-                        value={profile.role}
-                        onValueChange={(value) => updateUserRole(profile.id, value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manager">Admin</SelectItem>
-                          <SelectItem value="rac">RAC</SelectItem>
-                          <SelectItem value="consultant">Consultor</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {profile.approval_status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateUserApproval(profile.id, 'approved')}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateUserApproval(profile.id, 'rejected')}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Rejeitar
+                          </Button>
+                        </>
+                      )}
+                      
+                      {profile.approval_status === 'approved' && (
+                        <>
+                          <Select
+                            value={profile.role}
+                            onValueChange={(value) => updateUserRole(profile.id, value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="manager">Admin</SelectItem>
+                              <SelectItem value="supervisor">Supervisor</SelectItem>
+                              <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
+                              <SelectItem value="rac">RAC</SelectItem>
+                              <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
+                            </SelectContent>
+                          </Select>
 
-                      <Select
-                        value={profile.filial_id || "none"}
-                        onValueChange={(value) => updateUserFilial(profile.id, value)}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue placeholder="Selecionar filial" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sem filial</SelectItem>
-                          {filiais.map((filial) => (
-                            <SelectItem key={filial.id} value={filial.id}>
-                              {filial.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          <Select
+                            value={profile.filial_id || "none"}
+                            onValueChange={(value) => updateUserFilial(profile.id, value)}
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue placeholder="Selecionar filial" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem filial</SelectItem>
+                              {filiais.map((filial) => (
+                                <SelectItem key={filial.id} value={filial.id}>
+                                  {filial.nome}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

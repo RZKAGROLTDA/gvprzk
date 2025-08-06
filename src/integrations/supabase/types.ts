@@ -87,34 +87,40 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approval_status: string
           avatar: string | null
           created_at: string
           email: string
           filial_id: string | null
           id: string
           name: string
+          registration_date: string | null
           role: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          approval_status?: string
           avatar?: string | null
           created_at?: string
           email: string
           filial_id?: string | null
           id?: string
           name: string
+          registration_date?: string | null
           role: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          approval_status?: string
           avatar?: string | null
           created_at?: string
           email?: string
           filial_id?: string | null
           id?: string
           name?: string
+          registration_date?: string | null
           role?: string
           updated_at?: string
           user_id?: string

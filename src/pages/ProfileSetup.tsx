@@ -290,7 +290,7 @@ Equipe de Gestão`);
                   <Button 
                     onClick={() => {
                       const baseUrl = window.location.origin;
-                      const signupLink = `${baseUrl}/profile-setup`;
+                      const signupLink = `${baseUrl}/register`;
                       navigator.clipboard.writeText(signupLink);
                       setCopied(true);
                       toast({
