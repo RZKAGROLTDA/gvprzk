@@ -16,14 +16,17 @@ import Management from "./pages/Management";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
 import { Home } from "./pages/Home";
+import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
+import { useProfile } from "@/hooks/useProfile";
 
 const queryClient = new QueryClient();
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -36,6 +39,11 @@ const AppContent: React.FC = () => {
 
   if (!user) {
     return <LoginForm />;
+  }
+
+  // Check if user needs to complete profile setup
+  if (!profile || !profile.name || !profile.role) {
+    return <ProfileSetup />;
   }
 
   return (
