@@ -182,7 +182,9 @@ const Tasks: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-
+          </div>
+          
+          <div className="mt-4">
             <Button variant="outline" onClick={() => {
               setSearchTerm('');
               setVendorFilter('all');
