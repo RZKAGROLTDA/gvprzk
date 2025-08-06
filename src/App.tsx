@@ -16,6 +16,7 @@ import Management from "./pages/Management";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
 import { Home } from "./pages/Home";
+import InviteAccept from "./pages/InviteAccept";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import { useProfile } from "@/hooks/useProfile";
@@ -37,29 +38,31 @@ const AppContent: React.FC = () => {
     );
   }
 
-  if (!user) {
-    return <LoginForm />;
-  }
-
-  // Check if user needs to complete profile setup
-  if (!profile || !profile.name || !profile.role) {
-    return <ProfileSetup />;
-  }
-
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Layout><Home /></Layout>} />
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-        <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
-        <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
-        <Route path="/management" element={<Layout><Management /></Layout>} />
-        <Route path="/reports" element={<Layout><Reports /></Layout>} />
-        <Route path="/users" element={<Layout><Users /></Layout>} />
-        <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
-        <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-        <Route path="*" element={<NotFound />} />
+        {/* Public routes */}
+        <Route path="/invite" element={<InviteAccept />} />
+        
+        {/* Protected routes */}
+        {!user ? (
+          <Route path="*" element={<LoginForm />} />
+        ) : !profile || !profile.name || !profile.role ? (
+          <Route path="*" element={<ProfileSetup />} />
+        ) : (
+          <>
+            <Route path="/" element={<Layout><Home /></Layout>} />
+            <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+            <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
+            <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
+            <Route path="/management" element={<Layout><Management /></Layout>} />
+            <Route path="/reports" element={<Layout><Reports /></Layout>} />
+            <Route path="/users" element={<Layout><Users /></Layout>} />
+            <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
+            <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
+            <Route path="*" element={<NotFound />} />
+          </>
+        )}
       </Routes>
     </BrowserRouter>
   );
