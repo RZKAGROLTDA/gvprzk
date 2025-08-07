@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const urlTaskType = searchParams.get('type');
   const {
     profile
@@ -508,6 +509,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         title: "✅ Tarefa Criada",
         description: isOnline ? "Tarefa salva com sucesso no servidor!" : "Tarefa salva offline - será sincronizada quando conectar!"
       });
+      
+      // Redirecionar para a página de tarefas
+      navigate('/tasks');
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
       toast({
