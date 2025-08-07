@@ -53,13 +53,27 @@ const CreateTask: React.FC = () => {
   const {
     createTask
   } = useTasks();
+  // Mapear taskCategory para taskType
+  const getTaskTypeFromCategory = (category: 'field-visit' | 'call' | 'workshop-checklist'): 'prospection' | 'ligacao' | 'checklist' => {
+    switch (category) {
+      case 'field-visit':
+        return 'prospection';
+      case 'call':
+        return 'ligacao';
+      case 'workshop-checklist':
+        return 'checklist';
+      default:
+        return 'prospection';
+    }
+  };
+
   const [task, setTask] = useState<Partial<Task>>({
     name: '',
     responsible: '',
     client: '',
     property: '',
     filial: '',
-    taskType: 'prospection',
+    taskType: getTaskTypeFromCategory(getTaskCategoryFromUrl(urlTaskType)),
     priority: 'medium',
     observations: '',
     startDate: new Date(),
@@ -273,9 +287,13 @@ const CreateTask: React.FC = () => {
   const [checklist, setChecklist] = useState<ProductType[]>(getProductsForCategory());
   const [callProducts, setCallProducts] = useState<ProductType[]>(fieldVisitProducts);
 
-  // Atualiza o checklist quando o tipo de tarefa muda
+  // Atualiza o checklist e taskType quando o tipo de tarefa muda
   useEffect(() => {
     setChecklist(getProductsForCategory());
+    setTask(prev => ({
+      ...prev,
+      taskType: getTaskTypeFromCategory(taskCategory)
+    }));
   }, [taskCategory]);
   const handleChecklistChange = (id: string, checked: boolean) => {
     setChecklist(prev => prev.map(item => item.id === id ? {
@@ -402,7 +420,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     setIsSubmitting(true);
     const taskData = {
       ...task,
-      checklist: checklist.filter(item => item.selected),
+      taskType: getTaskTypeFromCategory(taskCategory), // Garantir que taskType está correto
+      checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
       reminders,
       equipmentList
     };
@@ -451,7 +470,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         client: '',
         property: '',
         filial: profile?.filial_id || '',
-        taskType: 'prospection',
+        taskType: getTaskTypeFromCategory(taskCategory),
         startDate: new Date(),
         endDate: new Date(),
         startTime: '',

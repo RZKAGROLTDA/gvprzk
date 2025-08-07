@@ -5,7 +5,7 @@ export interface Task {
   client: string;
   property: string;
   filial?: string;
-  taskType: 'prospection';
+  taskType: 'prospection' | 'ligacao' | 'checklist';
   checklist: ProductType[];
   startDate: Date;
   endDate: Date;
