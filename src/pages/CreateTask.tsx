@@ -615,7 +615,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cpf">CPF</Label>
+                <Label htmlFor="cpf">CPF *</Label>
                 <Input 
                   id="cpf" 
                   value={task.cpf || ''} 
@@ -625,6 +625,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   }))} 
                   placeholder="000.000.000-00" 
                   maxLength={14}
+                  required
                 />
               </div>
 
