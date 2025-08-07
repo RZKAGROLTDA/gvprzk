@@ -358,16 +358,46 @@ const CreateTask: React.FC = () => {
     }));
   }, [taskCategory]);
   const handleChecklistChange = (id: string, checked: boolean) => {
-    setChecklist(prev => prev.map(item => item.id === id ? {
-      ...item,
-      selected: checked
-    } : item));
+    setChecklist(prev => {
+      const updated = prev.map(item => item.id === id ? {
+        ...item,
+        selected: checked
+      } : item);
+      
+      // Calcular valor total automaticamente quando há mudanças na seleção
+      const totalValue = updated.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
+      
+      // Atualizar o valor de venda da tarefa
+      setTask(prev => ({
+        ...prev,
+        salesValue: totalValue
+      }));
+      
+      return updated;
+    });
   };
   const handleProductChange = (id: string, field: keyof ProductType, value: any) => {
-    setChecklist(prev => prev.map(item => item.id === id ? {
-      ...item,
-      [field]: value
-    } : item));
+    setChecklist(prev => {
+      const updated = prev.map(item => item.id === id ? {
+        ...item,
+        [field]: value
+      } : item);
+      
+      // Calcular valor total automaticamente quando há mudanças nos valores
+      const totalValue = updated.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
+      
+      // Atualizar o valor de venda da tarefa
+      setTask(prev => ({
+        ...prev,
+        salesValue: totalValue
+      }));
+      
+      return updated;
+    });
   };
   const handleProductPhotoChange = (productId: string, photos: string[]) => {
     setChecklist(prev => prev.map(item => item.id === productId ? {
