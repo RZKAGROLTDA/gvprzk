@@ -162,14 +162,14 @@ const Reports: React.FC = () => {
       loadFilialStats();
       loadCollaborators();
       
-      // Configurar atualização automática a cada 30 segundos
+      // Configurar atualização automática a cada 10 segundos para sincronização em tempo real
       const interval = setInterval(() => {
         loadFilialStats();
-      }, 30000);
+      }, 10000);
       
       return () => clearInterval(interval);
     }
-  }, [user, selectedPeriod]);
+  }, [user, selectedPeriod, selectedUser]);
 
   const exportReport = () => {
     // Implementar exportação para PDF/Excel
