@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X, Download } from 'lucide-react';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
@@ -21,6 +21,7 @@ import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
+import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -971,14 +972,27 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         {/* Check-in de Localização - apenas para visita a campo */}
         {taskCategory === 'field-visit' && <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />}
 
-         <div className="flex gap-4 mt-6">
-           <Button type="submit" className="flex-1" variant="gradient" disabled={isSubmitting}>
-             <CheckSquare className="h-4 w-4 mr-2" />
-             {isSubmitting ? 'Criando...' : 'Criar Tarefa'}
-           </Button>
-           <Button type="button" variant="outline" className="flex-1">
-             Cancelar
-           </Button>
+         <div className="flex flex-col gap-4 mt-6">
+           <div className="flex gap-4">
+             <Button type="submit" className="flex-1" variant="gradient" disabled={isSubmitting}>
+               <CheckSquare className="h-4 w-4 mr-2" />
+               {isSubmitting ? 'Criando...' : 'Criar Tarefa'}
+             </Button>
+             <Button type="button" variant="outline" className="flex-1">
+               Cancelar
+             </Button>
+           </div>
+           
+           {/* Botões de Exportar Relatório */}
+           <div className="border-t pt-4">
+             <div className="flex items-center justify-between mb-4">
+               <div>
+                 <h3 className="text-lg font-semibold">Relatórios de Visitas</h3>
+                 <p className="text-sm text-muted-foreground">Exporte todas as informações das visitas realizadas</p>
+               </div>
+             </div>
+             <ReportExporter variant="outline" className="w-auto" />
+           </div>
          </div>
       </form>
     </div>;
