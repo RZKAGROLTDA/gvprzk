@@ -664,13 +664,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Hectares da Propriedade */}
-                <div className="space-y-2">
-                  <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                  <Input id="propertyHectares" type="number" value={task.propertyHectares || ''} onChange={e => setTask(prev => ({
-                ...prev,
-                propertyHectares: parseInt(e.target.value) || undefined
-              }))} placeholder="Digite os hectares da propriedade" />
-                </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="propertyHectares">Hectares da Propriedade *</Label>
+                   <Input 
+                     id="propertyHectares" 
+                     type="number" 
+                     value={task.propertyHectares || ''} 
+                     onChange={e => setTask(prev => ({
+                       ...prev,
+                       propertyHectares: parseInt(e.target.value) || undefined
+                     }))} 
+                     placeholder="Digite os hectares da propriedade" 
+                     required
+                   />
+                 </div>
 
                 {/* Lista de Equipamentos */}
                 <div className="space-y-4">
