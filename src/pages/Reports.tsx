@@ -41,12 +41,22 @@ const Reports: React.FC = () => {
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Calcular estatísticas agregadas dos dados das filiais
+  const totalTasks = filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0);
+  const totalVisitas = filialStats.reduce((sum, f) => sum + f.visitas, 0);
+  const totalChecklist = filialStats.reduce((sum, f) => sum + f.checklist, 0);
+  const totalLigacoes = filialStats.reduce((sum, f) => sum + f.ligacoes, 0);
+  const totalProspects = filialStats.reduce((sum, f) => sum + f.prospects, 0);
+  const totalProspectsValue = filialStats.reduce((sum, f) => sum + f.prospectsValue, 0);
+  const totalSalesValue = filialStats.reduce((sum, f) => sum + f.salesValue, 0);
+  const overallConversionRate = totalTasks > 0 ? (totalProspects / totalTasks) * 100 : 0;
+
   const stats: TaskStats = {
-    totalVisits: 0,
-    completedVisits: 0,
-    prospects: 0,
-    salesValue: 0,
-    conversionRate: 0
+    totalVisits: totalVisitas,
+    completedVisits: totalVisitas, // Assumindo que visitas registradas são completadas
+    prospects: totalProspects,
+    salesValue: totalSalesValue,
+    conversionRate: overallConversionRate
   };
 
   const detailedStats: any[] = [];
