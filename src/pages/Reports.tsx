@@ -363,21 +363,21 @@ const Reports: React.FC = () => {
                         <div className="text-xs text-muted-foreground">Visitas</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-blue-600">{filial.checklist}</div>
+                        <div className="text-lg font-bold">{filial.checklist}</div>
                         <div className="text-xs text-muted-foreground">Checklist</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-purple-600">{filial.ligacoes}</div>
+                        <div className="text-lg font-bold">{filial.ligacoes}</div>
                         <div className="text-xs text-muted-foreground">Ligações</div>
                       </div>
                        <div className="text-center">
-                         <div className="text-lg font-bold text-green-600">
+                         <div className="text-lg font-bold">
                            R$ {filial.prospectsValue.toLocaleString('pt-BR')}
                          </div>
                          <div className="text-xs text-muted-foreground">Oportunidades</div>
                        </div>
                       <div className="text-center">
-                        <div className="text-lg font-bold text-green-600">
+                        <div className="text-lg font-bold">
                           R$ {filial.salesValue.toLocaleString('pt-BR')}
                         </div>
                         <div className="text-xs text-muted-foreground">Vendas</div>
