@@ -1001,8 +1001,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                               <Input 
                                 type="number" 
                                 placeholder="Digite a quantidade"
-                                value={callQuestions.lubricants.quantity}
+                                value={callQuestions.lubricants.quantity || ''}
                                 onChange={(e) => updateCallQuestion('lubricants', 'quantity', parseInt(e.target.value) || 0)}
+                                min="0"
+                                step="1"
                               />
                             </div>
                             <div className="space-y-2">
