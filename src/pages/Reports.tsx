@@ -66,10 +66,10 @@ const Reports: React.FC = () => {
     }
   };
 
-  const loadFilialStats = async () => {
+  const loadFilialStats = async (silent = false) => {
     if (!user) return;
     
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       // Buscar todas as filiais
       const { data: filiais, error: filiaisError } = await supabase
@@ -162,9 +162,9 @@ const Reports: React.FC = () => {
       loadFilialStats();
       loadCollaborators();
       
-      // Configurar atualização automática a cada 10 segundos para sincronização em tempo real
+      // Configurar atualização automática silenciosa a cada 10 segundos
       const interval = setInterval(() => {
-        loadFilialStats();
+        loadFilialStats(true); // true = silent update
       }, 10000);
       
       return () => clearInterval(interval);
@@ -233,7 +233,7 @@ const Reports: React.FC = () => {
             </div>
 
             <div className="flex items-end gap-2">
-              <Button variant="outline" className="flex-1" onClick={loadFilialStats}>
+              <Button variant="outline" className="flex-1" onClick={() => loadFilialStats(false)}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Atualizando...' : 'Atualizar Dados'}
               </Button>
