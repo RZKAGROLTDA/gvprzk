@@ -65,7 +65,7 @@ const Reports: React.FC = () => {
   };
 
   const detailedStats: any[] = [];
-  const userStats: any[] = [];
+  const [userStats, setUserStats] = useState<any[]>([]);
 
   const loadCollaborators = async () => {
     try {
@@ -172,14 +172,83 @@ const Reports: React.FC = () => {
     }
   };
 
+  const loadUserStats = async () => {
+    if (!user) return;
+    
+    try {
+      // Buscar perfis de consultores
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, name, role')
+        .eq('role', 'consultant')
+        .order('name');
+
+      if (profilesError) throw profilesError;
+
+      // Buscar estatísticas por usuário
+      const userStatsPromises = profiles?.map(async (profile) => {
+        let query = supabase
+          .from('tasks')
+          .select('*')
+          .eq('created_by', profile.user_id);
+
+        // Aplicar filtros de data se definidos
+        if (dateFrom) {
+          query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
+        }
+        if (dateTo) {
+          query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
+        }
+
+        const { data: tasks, error: tasksError } = await query;
+
+        if (tasksError) {
+          console.error('Erro ao buscar tarefas do usuário:', tasksError);
+          return {
+            name: profile.name,
+            role: profile.role,
+            visits: 0,
+            prospects: 0,
+            sales: 0,
+            conversionRate: 0
+          };
+        }
+
+        const visits = tasks?.length || 0;
+        const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
+        const sales = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+        const conversionRate = visits > 0 ? (prospects / visits) * 100 : 0;
+
+        return {
+          name: profile.name,
+          role: profile.role,
+          visits,
+          prospects,
+          sales: Number(sales),
+          conversionRate: Math.round(conversionRate * 10) / 10
+        };
+      }) || [];
+
+      const results = await Promise.all(userStatsPromises);
+      
+      // Ordenar por valor de vendas (maior para menor)
+      const sortedResults = results.sort((a, b) => b.sales - a.sales);
+      setUserStats(sortedResults);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas dos usuários:', error);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       loadFilialStats();
       loadCollaborators();
+      loadUserStats();
       
       // Configurar atualização automática silenciosa a cada 5 segundos
       const interval = setInterval(() => {
         loadFilialStats(true); // true = silent update
+        loadUserStats();
       }, 5000);
       
       return () => clearInterval(interval);
