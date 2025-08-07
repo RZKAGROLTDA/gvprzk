@@ -85,7 +85,11 @@ const CreateTask: React.FC = () => {
     }
   }, [profile]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [equipmentList, setEquipmentList] = useState<{id: string, familyProduct: string, quantity: number}[]>([]);
+  const [equipmentList, setEquipmentList] = useState<{
+    id: string;
+    familyProduct: string;
+    quantity: number;
+  }[]>([]);
   const [newReminder, setNewReminder] = useState({
     title: '',
     description: '',
@@ -343,15 +347,12 @@ const CreateTask: React.FC = () => {
     };
     setEquipmentList(prev => [...prev, newEquipment]);
   };
-
   const updateEquipment = (id: string, field: 'familyProduct' | 'quantity', value: string | number) => {
-    setEquipmentList(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, [field]: value } : item
-      )
-    );
+    setEquipmentList(prev => prev.map(item => item.id === id ? {
+      ...item,
+      [field]: value
+    } : item));
   };
-
   const removeEquipment = (id: string) => {
     setEquipmentList(prev => prev.filter(item => item.id !== id));
   };
@@ -583,8 +584,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           </Card>
 
           {/* Informações de Equipamentos - apenas para visita a campo */}
-          {taskCategory === 'field-visit' && (
-            <Card>
+          {taskCategory === 'field-visit' && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="h-5 w-5" />
@@ -595,56 +595,34 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 {/* Hectares da Propriedade */}
                 <div className="space-y-2">
                   <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                  <Input 
-                    id="propertyHectares" 
-                    type="number" 
-                    step="0.1"
-                    value={task.propertyHectares || 0}
-                    onChange={e => setTask(prev => ({
-                      ...prev,
-                      propertyHectares: parseFloat(e.target.value) || 0
-                    }))} 
-                    placeholder="0.0" 
-                  />
+                  <Input id="propertyHectares" type="number" step="0.1" value={task.propertyHectares || 0} onChange={e => setTask(prev => ({
+                ...prev,
+                propertyHectares: parseFloat(e.target.value) || 0
+              }))} placeholder="0.0" />
                 </div>
 
                 {/* Lista de Equipamentos */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Equipamentos do Cliente</Label>
-                    <Button 
-                      type="button" 
-                      onClick={addEquipment}
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
+                    <Button type="button" onClick={addEquipment} variant="outline" size="sm" className="flex items-center gap-2">
                       <Plus className="h-4 w-4" />
                       Adicionar Equipamento
                     </Button>
                   </div>
 
-                  {equipmentList.length === 0 && (
-                    <div className="text-center text-muted-foreground py-8 border-2 border-dashed border-border rounded-lg">
+                  {equipmentList.length === 0 && <div className="text-center text-muted-foreground py-8 border-2 border-dashed border-border rounded-lg">
                       <Building className="h-8 w-8 mx-auto mb-2" />
                       <p>Nenhum equipamento adicionado</p>
                       <p className="text-sm">Clique em "Adicionar Equipamento" para começar</p>
-                    </div>
-                  )}
+                    </div>}
 
-                  {equipmentList.map((equipment, index) => (
-                    <Card key={equipment.id} className="border border-border/50">
+                  {equipmentList.map((equipment, index) => <Card key={equipment.id} className="border border-border/50">
                       <CardContent className="p-4">
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium">Equipamento {index + 1}</h4>
-                            <Button
-                              type="button"
-                              onClick={() => removeEquipment(equipment.id)}
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                            >
+                            <Button type="button" onClick={() => removeEquipment(equipment.id)} variant="outline" size="sm" className="h-8 w-8 p-0">
                               <X className="h-4 w-4" />
                             </Button>
                           </div>
@@ -652,10 +630,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label>Família do Produto</Label>
-                              <Select 
-                                value={equipment.familyProduct} 
-                                onValueChange={value => updateEquipment(equipment.id, 'familyProduct', value)}
-                              >
+                              <Select value={equipment.familyProduct} onValueChange={value => updateEquipment(equipment.id, 'familyProduct', value)}>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Selecione a família" />
                                 </SelectTrigger>
@@ -674,93 +649,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                             
                             <div className="space-y-2">
                               <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                value={equipment.quantity}
-                                onChange={e => updateEquipment(equipment.id, 'quantity', parseInt(e.target.value) || 1)}
-                                placeholder="1" 
-                                min="1"
-                              />
+                              <Input type="number" value={equipment.quantity} onChange={e => updateEquipment(equipment.id, 'quantity', parseInt(e.target.value) || 1)} placeholder="1" min="1" />
                             </div>
                           </div>
                         </div>
                       </CardContent>
-                    </Card>
-                  ))}
+                    </Card>)}
                 </div>
               </CardContent>
-            </Card>
-          )}
+            </Card>}
 
            {/* Data e Hora */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
-                Data e Horário
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Data da Visita</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !task.startDate && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {task.startDate ? format(task.startDate, "PPP", {
-                      locale: ptBR
-                    }) : <span>Selecione a data</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar mode="single" selected={task.startDate} onSelect={date => setTask(prev => ({
-                    ...prev,
-                    startDate: date
-                  }))} initialFocus className="pointer-events-auto" />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startTime">Hora Início</Label>
-                  <Input id="startTime" type="time" value={task.startTime} onChange={e => setTask(prev => ({
-                  ...prev,
-                  startTime: e.target.value
-                }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endTime">Hora Fim</Label>
-                  <Input id="endTime" type="time" value={task.endTime} onChange={e => setTask(prev => ({
-                  ...prev,
-                  endTime: e.target.value
-                }))} />
-                </div>
-              </div>
-
-              {taskCategory === 'field-visit' && <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="initialKm">KM Inicial</Label>
-                    <Input id="initialKm" type="number" value={task.initialKm} onChange={e => setTask(prev => ({
-                  ...prev,
-                  initialKm: parseInt(e.target.value) || 0
-                }))} placeholder="0" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="finalKm">KM Final</Label>
-                    <Input id="finalKm" type="number" value={task.finalKm} onChange={e => setTask(prev => ({
-                  ...prev,
-                  finalKm: parseInt(e.target.value) || 0
-                }))} placeholder="0" />
-                  </div>
-                </div>}
-
-              {taskCategory === 'call' && <div className="space-y-2">
-                  <Label htmlFor="callDuration">Duração da Ligação (min)</Label>
-                  <Input id="callDuration" type="number" placeholder="Tempo em minutos" />
-                </div>}
-            </CardContent>
-          </Card>
+          
 
           {/* Produtos / Checklist */}
           {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <Card>
