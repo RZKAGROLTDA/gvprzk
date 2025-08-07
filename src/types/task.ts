@@ -35,6 +35,7 @@ export interface Task {
   familyProduct?: string;
   equipmentQuantity?: number;
   propertyHectares?: number;
+  equipmentList?: {id: string, familyProduct: string, quantity: number}[];
 }
 
 export interface ProductType {
