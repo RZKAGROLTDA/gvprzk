@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useOffline } from '@/hooks/useOffline';
-import { Wifi, WifiOff, RefreshCw, Database, Clock, Trash2 } from 'lucide-react';
+import { useProfile } from '@/hooks/useProfile';
+import { Wifi, WifiOff, RefreshCw, Database, Clock, Trash2, User, Building } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -17,6 +18,8 @@ export const OfflineIndicator: React.FC = () => {
     clearOfflineData,
     loadOfflineData 
   } = useOffline();
+  
+  const { profile } = useProfile();
 
   const offlineData = loadOfflineData();
 
@@ -38,6 +41,21 @@ export const OfflineIndicator: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Informações do Usuário */}
+        <div className="bg-secondary/20 rounded-lg p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Usuário:</span>
+            <span className="text-sm">{profile?.name || 'Carregando...'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Building className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Filial:</span>
+            <span className="text-sm">{profile?.filial_id || 'Carregando...'}</span>
+          </div>
+        </div>
+
+        <Separator />
         {/* Status de Sincronização */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
