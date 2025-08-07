@@ -148,13 +148,28 @@ const CreateTask: React.FC = () => {
 
   // Função para atualizar perguntas da ligação
   const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'value', value: boolean | number) => {
-    setCallQuestions(prev => ({
-      ...prev,
-      [product]: {
-        ...prev[product],
-        [field]: value
-      }
-    }));
+    setCallQuestions(prev => {
+      const updated = {
+        ...prev,
+        [product]: {
+          ...prev[product],
+          [field]: value
+        }
+      };
+      
+      // Calcular valor total automaticamente quando há mudanças nos valores
+      const totalValue = Object.values(updated).reduce((sum, item) => {
+        return sum + (item.needsProduct ? item.value : 0);
+      }, 0);
+      
+      // Atualizar o valor de venda da tarefa
+      setTask(prev => ({
+        ...prev,
+        salesValue: totalValue
+      }));
+      
+      return updated;
+    });
   };
 
   const fieldVisitProducts: ProductType[] = [{
