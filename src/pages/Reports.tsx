@@ -79,7 +79,8 @@ const Reports: React.FC = () => {
   const loadFilialStats = async (silent = false) => {
     if (!user) return;
     
-    if (!silent) setLoading(true);
+    // Apenas mostrar loading na primeira carga
+    if (!silent && filialStats.length === 0) setLoading(true);
     try {
       // Buscar todas as filiais
       const { data: filiais, error: filiaisError } = await supabase
