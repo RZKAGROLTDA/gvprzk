@@ -888,10 +888,60 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           
         </div>
 
-        {/* Observações */}
+        {/* Observações e Valores */}
         <Card className="mt-6">
-          
-          
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Observações e Informações Financeiras
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="observations">Observações</Label>
+              <Textarea 
+                id="observations" 
+                value={task.observations} 
+                onChange={e => setTask(prev => ({
+                  ...prev,
+                  observations: e.target.value
+                }))} 
+                placeholder="Observações sobre a tarefa..." 
+                className="min-h-[80px]" 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="salesValue">Valor de Venda/Oportunidade (R$)</Label>
+                <Input 
+                  id="salesValue" 
+                  type="number" 
+                  step="0.01"
+                  value={task.salesValue || 0} 
+                  onChange={e => setTask(prev => ({
+                    ...prev,
+                    salesValue: parseFloat(e.target.value) || 0
+                  }))} 
+                  placeholder="0.00" 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="isProspect" 
+                    checked={task.isProspect || false}
+                    onCheckedChange={(checked) => setTask(prev => ({
+                      ...prev,
+                      isProspect: checked as boolean
+                    }))}
+                  />
+                  <Label htmlFor="isProspect">Marcar como Prospect</Label>
+                </div>
+              </div>
+            </div>
+          </CardContent>
         </Card>
 
         {/* Integração WhatsApp */}
