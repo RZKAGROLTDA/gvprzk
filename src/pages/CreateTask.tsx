@@ -595,10 +595,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 {/* Hectares da Propriedade */}
                 <div className="space-y-2">
                   <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                  <Input id="propertyHectares" type="number" value={task.propertyHectares || 0} onChange={e => setTask(prev => ({
+                  <Input id="propertyHectares" type="number" value={task.propertyHectares || ''} onChange={e => setTask(prev => ({
                 ...prev,
-                propertyHectares: parseInt(e.target.value) || 0
-              }))} placeholder="0" />
+                propertyHectares: parseInt(e.target.value) || undefined
+              }))} placeholder="Digite os hectares da propriedade" />
                 </div>
 
                 {/* Lista de Equipamentos */}
