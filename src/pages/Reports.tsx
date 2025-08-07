@@ -253,51 +253,73 @@ const Reports: React.FC = () => {
       </Card>
 
       {/* Resumo Geral */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Resumo Geral</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-4">
             <div className="space-y-1">
-              <div className="text-2xl font-bold">
+              <p className="text-xs font-medium text-muted-foreground">Total de Tarefas</p>
+              <p className="text-xl font-bold tracking-tight">
                 {filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}
-              </div>
-              <div className="text-xs text-muted-foreground">Total de Tarefas</div>
+              </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-4">
             <div className="space-y-1">
-              <div className="text-2xl font-bold text-blue-600">
+              <p className="text-xs font-medium text-muted-foreground">Visitas</p>
+              <p className="text-xl font-bold tracking-tight text-blue-600">
                 {filialStats.reduce((sum, f) => sum + f.visitas, 0)}
-              </div>
-              <div className="text-xs text-muted-foreground">Visitas</div>
+              </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-4">
             <div className="space-y-1">
-              <div className="text-2xl font-bold text-purple-600">
+              <p className="text-xs font-medium text-muted-foreground">Checklist</p>
+              <p className="text-xl font-bold tracking-tight text-purple-600">
                 {filialStats.reduce((sum, f) => sum + f.checklist, 0)}
-              </div>
-              <div className="text-xs text-muted-foreground">Checklist</div>
+              </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-4">
             <div className="space-y-1">
-              <div className="text-2xl font-bold text-orange-600">
+              <p className="text-xs font-medium text-muted-foreground">Ligações</p>
+              <p className="text-xl font-bold tracking-tight text-orange-600">
                 {filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
-              </div>
-              <div className="text-xs text-muted-foreground">Ligações</div>
+              </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-4">
             <div className="space-y-1">
-              <div className="text-xl font-bold text-green-600">
+              <p className="text-xs font-medium text-muted-foreground">Oportunidades</p>
+              <p className="text-lg font-bold tracking-tight text-green-600">
                 R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}
-              </div>
-              <div className="text-xs text-muted-foreground">Oportunidades</div>
+              </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-4">
             <div className="space-y-1">
-              <div className="text-xl font-bold text-emerald-600">
+              <p className="text-xs font-medium text-muted-foreground">Vendas</p>
+              <p className="text-lg font-bold tracking-tight text-emerald-600">
                 R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
-              </div>
-              <div className="text-xs text-muted-foreground">Vendas</div>
+              </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Dados por Filial */}
       <Card>
