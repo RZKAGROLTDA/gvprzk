@@ -671,7 +671,21 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                 <div className="space-y-2">
                                   <Label htmlFor={`price-${item.id}`}>Valor</Label>
                                   <div className="relative">
-                                    <Input id={`price-${item.id}`} type="number" step="0.01" value={item.price || ''} onChange={e => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)} placeholder="" className="pl-8" />
+                                    <Input 
+                                      id={`price-${item.id}`} 
+                                      type="text" 
+                                      value={item.price ? new Intl.NumberFormat('pt-BR', { 
+                                        minimumFractionDigits: 2, 
+                                        maximumFractionDigits: 2 
+                                      }).format(item.price) : ''} 
+                                      onChange={e => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        const numericValue = parseFloat(value) / 100;
+                                        handleProductChange(item.id, 'price', isNaN(numericValue) ? 0 : numericValue);
+                                      }} 
+                                      placeholder="0,00" 
+                                      className="pl-8" 
+                                    />
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                                   </div>
                                 </div>
