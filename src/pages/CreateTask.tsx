@@ -534,7 +534,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               
 
               <div className="space-y-2">
-                <Label htmlFor="responsible">Responsável</Label>
+                <Label htmlFor="responsible">Contato</Label>
                 <Input id="responsible" value={task.responsible} readOnly className="bg-gray-50" placeholder="Carregando usuário..." />
               </div>
 
