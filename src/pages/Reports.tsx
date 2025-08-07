@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,8 @@ import {
   Target,
   Activity,
   Building2,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { TaskStats } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
@@ -249,6 +249,12 @@ const Reports: React.FC = () => {
     }
   };
 
+  const clearFilters = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setSelectedUser('all');
+  };
+
   useEffect(() => {
     if (user) {
       loadFilialStats();
@@ -392,7 +398,11 @@ const Reports: React.FC = () => {
             <div className="flex items-end gap-2">
               <Button variant="outline" className="flex-1" onClick={() => loadFilialStats(false)}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Atualizando...' : 'Atualizar Dados'}
+                {loading ? 'Atualizando...' : 'Atualizar'}
+              </Button>
+              <Button variant="outline" onClick={clearFilters} className="gap-2">
+                <X className="h-4 w-4" />
+                Limpar Filtros
               </Button>
             </div>
           </div>
