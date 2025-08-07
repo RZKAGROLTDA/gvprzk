@@ -114,19 +114,11 @@ const CreateTask: React.FC = () => {
     }
   }, [profile]);
   
-  // Inicializar com todos os equipamentos já adicionados
+  // Inicializar com apenas um equipamento já adicionado
   const initializeEquipmentList = () => {
-    const defaultEquipments = [
-      { id: '1', familyProduct: 'TRATOR', quantity: 1 },
-      { id: '2', familyProduct: 'PLATAFORMA', quantity: 1 },
-      { id: '3', familyProduct: 'COLHEITADEIRA', quantity: 1 },
-      { id: '4', familyProduct: 'PLANTADEIRA', quantity: 1 },
-      { id: '5', familyProduct: 'PULVERIZADOR', quantity: 1 },
-      { id: '6', familyProduct: 'COLHEDORA', quantity: 1 },
-      { id: '7', familyProduct: 'FORRAGEIRA', quantity: 1 },
-      { id: '8', familyProduct: 'OUTROS', quantity: 1 }
+    return [
+      { id: '1', familyProduct: 'TRATOR', quantity: 1 }
     ];
-    return defaultEquipments;
   };
   
   const [reminders, setReminders] = useState<Reminder[]>([]);
