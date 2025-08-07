@@ -630,6 +630,16 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="reportDate">Data do Relatório</Label>
+                <Input 
+                  id="reportDate" 
+                  value={new Date().toLocaleDateString('pt-BR')} 
+                  readOnly 
+                  className="bg-muted cursor-not-allowed"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="client">Nome do Cliente</Label>
                 <Input id="client" value={task.client} onChange={e => setTask(prev => ({
                 ...prev,
