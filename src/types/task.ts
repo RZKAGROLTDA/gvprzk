@@ -32,6 +32,9 @@ export interface Task {
   prospectItems?: ProductType[];
   salesValue?: number;
   salesConfirmed?: boolean;
+  familyProduct?: string;
+  equipmentQuantity?: number;
+  propertyHectares?: number;
 }
 
 export interface ProductType {

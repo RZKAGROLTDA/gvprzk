@@ -558,7 +558,72 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             </CardContent>
           </Card>
 
-          {/* Data e Hora */}
+          {/* Informações de Equipamentos - apenas para visita a campo */}
+          {taskCategory === 'field-visit' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Informações de Equipamentos
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="familyProduct">Família do Produto</Label>
+                  <Select onValueChange={value => setTask(prev => ({
+                    ...prev,
+                    familyProduct: value
+                  }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a família do produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TRATOR">TRATOR</SelectItem>
+                      <SelectItem value="PLATAFORMA">PLATAFORMA</SelectItem>
+                      <SelectItem value="COLHEITADEIRA">COLHEITADEIRA</SelectItem>
+                      <SelectItem value="PLANTADEIRA">PLANTADEIRA</SelectItem>
+                      <SelectItem value="PULVERIZADOR">PULVERIZADOR</SelectItem>
+                      <SelectItem value="COLHEDORA">COLHEDORA</SelectItem>
+                      <SelectItem value="FORRAGEIRA">FORRAGEIRA</SelectItem>
+                      <SelectItem value="OUTROS">OUTROS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="equipmentQuantity">Quantidade de Equipamentos</Label>
+                    <Input 
+                      id="equipmentQuantity" 
+                      type="number" 
+                      value={task.equipmentQuantity || 0}
+                      onChange={e => setTask(prev => ({
+                        ...prev,
+                        equipmentQuantity: parseInt(e.target.value) || 0
+                      }))} 
+                      placeholder="0" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                    <Input 
+                      id="propertyHectares" 
+                      type="number" 
+                      step="0.1"
+                      value={task.propertyHectares || 0}
+                      onChange={e => setTask(prev => ({
+                        ...prev,
+                        propertyHectares: parseFloat(e.target.value) || 0
+                      }))} 
+                      placeholder="0.0" 
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+           {/* Data e Hora */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
