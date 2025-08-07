@@ -172,14 +172,37 @@ const Reports: React.FC = () => {
       loadFilialStats();
       loadCollaborators();
       
-      // Configurar atualização automática silenciosa a cada 10 segundos
+      // Configurar atualização automática silenciosa a cada 5 segundos
       const interval = setInterval(() => {
         loadFilialStats(true); // true = silent update
-      }, 10000);
+      }, 5000);
       
       return () => clearInterval(interval);
     }
   }, [user, selectedPeriod, selectedUser]);
+
+  // Set up realtime subscription for task updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('task-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks'
+        },
+        () => {
+          // Reload data when any task changes
+          loadFilialStats(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const exportReport = () => {
     // Implementar exportação para PDF/Excel

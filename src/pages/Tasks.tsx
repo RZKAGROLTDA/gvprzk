@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Task } from '@/types/task';
 import { TaskDetailsModal } from '@/components/TaskDetailsModal';
+import { TaskEditModal } from '@/components/TaskEditModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +37,8 @@ const Tasks: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [vendors, setVendors] = useState<{id: string, name: string}[]>([]);
   const [filiais, setFiliais] = useState<{id: string, nome: string}[]>([]);
 
@@ -108,6 +111,24 @@ const Tasks: React.FC = () => {
   const handleViewTask = (task: Task) => {
     setSelectedTask(task);
     setIsModalOpen(true);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditTask(task);
+    setIsEditModalOpen(true);
+  };
+
+  const handleTaskUpdate = () => {
+    // Reload tasks after update
+    const loadTasks = () => {
+      if (onlineTasks.length > 0) {
+        setTasks(onlineTasks);
+      } else {
+        const offlineTasks = getOfflineTasks();
+        setTasks(offlineTasks);
+      }
+    };
+    loadTasks();
   };
 
   const getStatusColor = (status: string) => {
@@ -316,7 +337,11 @@ const Tasks: React.FC = () => {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleEditTask(task)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                   </div>
@@ -332,6 +357,14 @@ const Tasks: React.FC = () => {
         task={selectedTask}
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+      />
+
+      {/* Modal de Edição da Tarefa */}
+      <TaskEditModal 
+        task={editTask}
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onTaskUpdate={handleTaskUpdate}
       />
     </div>
   );

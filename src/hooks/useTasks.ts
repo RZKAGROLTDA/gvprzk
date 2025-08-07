@@ -227,8 +227,8 @@ export const useTasks = () => {
           description: "Tarefa salva com sucesso no banco de dados!",
         });
 
-        // Recarregar tarefas
-        await loadTasks();
+        // Recarregar tarefas para atualizar a lista
+        setTimeout(() => loadTasks(), 100);
         
         return task;
       } catch (error: any) {
