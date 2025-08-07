@@ -141,7 +141,7 @@ const Reports: React.FC = () => {
         const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
         const totalTasks = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-        const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+        const prospectsValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const salesValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const conversionRate = totalTasks > 0 ? (prospects / totalTasks) * 100 : 0;
 
