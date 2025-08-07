@@ -4,6 +4,7 @@ export interface Task {
   responsible: string;
   client: string;
   property: string;
+  cpf?: string;
   filial?: string;
   taskType: 'prospection' | 'ligacao' | 'checklist';
   checklist: ProductType[];

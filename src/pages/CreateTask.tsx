@@ -615,6 +615,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="cpf">CPF</Label>
+                <Input 
+                  id="cpf" 
+                  value={task.cpf || ''} 
+                  onChange={e => setTask(prev => ({
+                    ...prev,
+                    cpf: e.target.value
+                  }))} 
+                  placeholder="000.000.000-00" 
+                  maxLength={14}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="client">Nome do Cliente</Label>
                 <Input id="client" value={task.client} onChange={e => setTask(prev => ({
                 ...prev,
