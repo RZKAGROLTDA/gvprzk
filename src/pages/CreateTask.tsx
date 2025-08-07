@@ -103,12 +103,11 @@ const CreateTask: React.FC = () => {
     documents: []
   });
 
-  // Definir responsável e filial automaticamente quando o perfil carregar
+  // Definir apenas a filial automaticamente quando o perfil carregar
   useEffect(() => {
     if (profile) {
       setTask(prev => ({
         ...prev,
-        responsible: profile.name,
         filial: profile.filial_id || ''
       }));
     }
@@ -605,7 +604,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-2">
                 <Label htmlFor="responsible">Contato</Label>
-                <Input id="responsible" value={task.responsible} readOnly className="bg-gray-50" placeholder="Carregando usuário..." />
+                <Input id="responsible" value={task.responsible} onChange={e => setTask(prev => ({
+                  ...prev,
+                  responsible: e.target.value
+                }))} placeholder="Nome do contato da visita" />
               </div>
 
               <div className="space-y-2">
