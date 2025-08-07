@@ -141,7 +141,7 @@ const Reports: React.FC = () => {
         const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
         const totalTasks = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-        const prospectsValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+        const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const salesValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const conversionRate = totalTasks > 0 ? (prospects / totalTasks) * 100 : 0;
 
@@ -312,9 +312,9 @@ const Reports: React.FC = () => {
         <Card className="border border-border bg-card/50 backdrop-blur-sm">
           <CardContent className="p-4">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Vendas</p>
+              <p className="text-xs font-medium text-muted-foreground">Taxa de Conversão</p>
               <p className="text-lg font-bold tracking-tight">
-                R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
+                {overallConversionRate.toFixed(1)}%
               </p>
             </div>
           </CardContent>
@@ -378,9 +378,9 @@ const Reports: React.FC = () => {
                        </div>
                       <div className="text-center">
                         <div className="text-lg font-bold">
-                          R$ {filial.salesValue.toLocaleString('pt-BR')}
+                          {filial.conversionRate}%
                         </div>
-                        <div className="text-xs text-muted-foreground">Vendas</div>
+                        <div className="text-xs text-muted-foreground">Taxa de Conversão</div>
                       </div>
                     </div>
                   </div>
