@@ -619,7 +619,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               {taskCategory === 'field-visit' && <div className="space-y-2">
-                  <Label htmlFor="property">Propriedade</Label>
+                  <Label htmlFor="property">Nome da Propriedade</Label>
                   <Input id="property" value={task.property} onChange={e => setTask(prev => ({
                 ...prev,
                 property: e.target.value
