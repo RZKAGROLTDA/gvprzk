@@ -560,22 +560,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </div>}
 
 
-              <div className="space-y-2">
-                <Label htmlFor="priority">Prioridade</Label>
-                <Select onValueChange={value => setTask(prev => ({
-                ...prev,
-                priority: value as 'low' | 'medium' | 'high'
-              }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a prioridade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </CardContent>
           </Card>
 
