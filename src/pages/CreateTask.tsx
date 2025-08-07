@@ -1397,7 +1397,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Observações e Informações Financeiras
+              Observação do Orçamento
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
