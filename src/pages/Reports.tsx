@@ -14,7 +14,8 @@ import {
   DollarSign,
   Target,
   Activity,
-  Building2
+  Building2,
+  RefreshCw
 } from 'lucide-react';
 import { TaskStats } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
@@ -80,14 +81,34 @@ const Reports: React.FC = () => {
 
       // Buscar estatísticas por filial
       const filialStatsPromises = filiais?.map(async (filial) => {
-        // Buscar tarefas da filial
+        // Buscar usuários da filial primeiro
+        const { data: profilesFromFilial, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('filial_id', filial.id);
+
+        if (profilesError) {
+          console.error('Erro ao buscar perfis:', profilesError);
+          return {
+            id: filial.id,
+            nome: filial.nome,
+            visitas: 0,
+            checklist: 0,
+            ligacoes: 0,
+            prospects: 0,
+            prospectsValue: 0,
+            salesValue: 0,
+            conversionRate: 0
+          };
+        }
+
+        const userIds = profilesFromFilial?.map(p => p.user_id) || [];
+        
+        // Buscar tarefas dos usuários desta filial
         const { data: tasks, error: tasksError } = await supabase
           .from('tasks')
-          .select(`
-            *,
-            profiles!tasks_created_by_fkey(filial_id)
-          `)
-          .eq('profiles.filial_id', filial.id);
+          .select('*')
+          .in('created_by', userIds);
 
         if (tasksError) {
           console.error('Erro ao buscar tarefas:', tasksError);
@@ -140,6 +161,13 @@ const Reports: React.FC = () => {
     if (user) {
       loadFilialStats();
       loadCollaborators();
+      
+      // Configurar atualização automática a cada 30 segundos
+      const interval = setInterval(() => {
+        loadFilialStats();
+      }, 30000);
+      
+      return () => clearInterval(interval);
     }
   }, [user, selectedPeriod]);
 
@@ -204,9 +232,10 @@ const Reports: React.FC = () => {
               </Select>
             </div>
 
-            <div className="flex items-end">
-              <Button variant="outline" className="w-full" onClick={loadFilialStats}>
-                Aplicar Filtros
+            <div className="flex items-end gap-2">
+              <Button variant="outline" className="flex-1" onClick={loadFilialStats}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Atualizando...' : 'Atualizar Dados'}
               </Button>
             </div>
           </div>
