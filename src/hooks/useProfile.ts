@@ -9,6 +9,9 @@ interface Profile {
   role: string;
   filial_id: string | null;
   approval_status: 'pending' | 'approved' | 'rejected';
+  filial?: {
+    nome: string;
+  };
 }
 
 export const useProfile = () => {
@@ -46,7 +49,10 @@ export const useProfile = () => {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          filial:filials(nome)
+        `)
         .eq('user_id', user.id)
         .maybeSingle(); // Use maybeSingle instead of single to handle no results
 
