@@ -243,81 +243,81 @@ const Reports: React.FC = () => {
 
       {/* Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Tarefas</CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-40 hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total de Tarefas</CardTitle>
+            <CheckSquare className="h-5 w-5 text-primary" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="space-y-2">
+            <div className="text-3xl font-bold text-foreground">{filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}</div>
+            <p className="text-sm text-muted-foreground">
               Todas as filiais
             </p>
           </CardContent>
         </Card>
 
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Visitas</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-40 hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Visitas</CardTitle>
+            <Activity className="h-5 w-5 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.visitas, 0)}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="space-y-2">
+            <div className="text-3xl font-bold text-blue-600">{filialStats.reduce((sum, f) => sum + f.visitas, 0)}</div>
+            <p className="text-sm text-muted-foreground">
               Todas as filiais
             </p>
           </CardContent>
         </Card>
 
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Checklist</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-40 hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Checklist</CardTitle>
+            <Target className="h-5 w-5 text-purple-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.checklist, 0)}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="space-y-2">
+            <div className="text-3xl font-bold text-purple-600">{filialStats.reduce((sum, f) => sum + f.checklist, 0)}</div>
+            <p className="text-sm text-muted-foreground">
               Todas as filiais
             </p>
           </CardContent>
         </Card>
 
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ligações</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-40 hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Ligações</CardTitle>
+            <DollarSign className="h-5 w-5 text-orange-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="space-y-2">
+            <div className="text-3xl font-bold text-orange-600">{filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}</div>
+            <p className="text-sm text-muted-foreground">
               Todas as filiais
             </p>
           </CardContent>
         </Card>
 
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Oportunidades</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-40 hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Oportunidades</CardTitle>
+            <Target className="h-5 w-5 text-green-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="space-y-2">
+            <div className="text-2xl font-bold text-green-600">R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}</div>
+            <p className="text-sm text-muted-foreground">
               Todas as filiais
             </p>
           </CardContent>
         </Card>
 
-        <Card className="h-32">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vendas</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+        <Card className="h-40 hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Vendas</CardTitle>
+            <DollarSign className="h-5 w-5 text-emerald-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="space-y-2">
+            <div className="text-2xl font-bold text-emerald-600">
               R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Todas as filiais
             </p>
           </CardContent>
