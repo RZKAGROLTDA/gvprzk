@@ -137,17 +137,17 @@ const CreateTask: React.FC = () => {
 
   // Estado para controlar campos condicionais das perguntas da ligação
   const [callQuestions, setCallQuestions] = useState({
-    lubricants: { needsProduct: false, quantity: 0, value: 0 },
-    tires: { needsProduct: false, quantity: 0, value: 0 },
-    filters: { needsProduct: false, quantity: 0, value: 0 },
-    batteries: { needsProduct: false, quantity: 0, value: 0 },
-    parts: { needsProduct: false, quantity: 0, value: 0 },
-    silobag: { needsProduct: false, quantity: 0, value: 0 },
-    disk: { needsProduct: false, quantity: 0, value: 0 }
+    lubricants: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    tires: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    filters: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    batteries: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    parts: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    silobag: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    disk: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 }
   });
 
   // Função para atualizar perguntas da ligação
-  const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'value', value: boolean | number) => {
+  const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'unitValue', value: boolean | number) => {
     setCallQuestions(prev => {
       const updated = {
         ...prev,
@@ -156,16 +156,24 @@ const CreateTask: React.FC = () => {
           [field]: value
         }
       };
+
+      // Calcular valor total do produto específico
+      const productData = updated[product];
+      const totalValue = productData.quantity * productData.unitValue;
+      updated[product] = {
+        ...productData,
+        totalValue: totalValue
+      };
       
-      // Calcular valor total automaticamente quando há mudanças nos valores
-      const totalValue = Object.values(updated).reduce((sum, item) => {
-        return sum + (item.needsProduct ? item.value : 0);
+      // Calcular valor total geral automaticamente
+      const totalSalesValue = Object.values(updated).reduce((sum, item) => {
+        return sum + (item.needsProduct ? item.totalValue : 0);
       }, 0);
       
       // Atualizar o valor de venda da tarefa
       setTask(prev => ({
         ...prev,
-        salesValue: totalValue
+        salesValue: totalSalesValue
       }));
       
       return updated;
@@ -357,6 +365,7 @@ const CreateTask: React.FC = () => {
       taskType: getTaskTypeFromCategory(taskCategory)
     }));
   }, [taskCategory]);
+
   const handleChecklistChange = (id: string, checked: boolean) => {
     setChecklist(prev => {
       const updated = prev.map(item => item.id === id ? {
@@ -378,6 +387,7 @@ const CreateTask: React.FC = () => {
       return updated;
     });
   };
+
   const handleProductChange = (id: string, field: keyof ProductType, value: any) => {
     setChecklist(prev => {
       const updated = prev.map(item => item.id === id ? {
@@ -399,6 +409,7 @@ const CreateTask: React.FC = () => {
       return updated;
     });
   };
+
   const handleProductPhotoChange = (productId: string, photos: string[]) => {
     setChecklist(prev => prev.map(item => item.id === productId ? {
       ...item,
@@ -629,6 +640,64 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       description: "Suas alterações foram salvas como rascunho!"
     });
   };
+
+  // Componente para renderizar campos de valor unitário e total
+  const renderValueFields = (product: keyof typeof callQuestions) => {
+    const productData = callQuestions[product];
+    return (
+      <div className="ml-6 space-y-4">
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label>Quantidade</Label>
+            <Input 
+              type="number" 
+              placeholder="Digite a quantidade"
+              value={productData.quantity || ''}
+              onChange={(e) => updateCallQuestion(product, 'quantity', parseInt(e.target.value) || 0)}
+              min="0"
+              step="1"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Valor Unitário (R$)</Label>
+            <div className="relative">
+              <Input 
+                type="text" 
+                placeholder="0,00" 
+                className="pl-8"
+                value={productData.unitValue ? new Intl.NumberFormat('pt-BR', { 
+                  minimumFractionDigits: 2, 
+                  maximumFractionDigits: 2 
+                }).format(productData.unitValue) : ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  const numericValue = parseFloat(value) / 100;
+                  updateCallQuestion(product, 'unitValue', isNaN(numericValue) ? 0 : numericValue);
+                }}
+              />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Valor Total (R$)</Label>
+            <div className="relative">
+              <Input 
+                type="text" 
+                className="pl-8 bg-muted cursor-not-allowed"
+                value={productData.totalValue ? new Intl.NumberFormat('pt-BR', { 
+                  minimumFractionDigits: 2, 
+                  maximumFractionDigits: 2 
+                }).format(productData.totalValue) : '0,00'}
+                readOnly
+              />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">{getTaskTitle(taskCategory)}</h1>
@@ -681,8 +750,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              
-
               <div className="space-y-2">
                 <Label htmlFor="responsible">Nome do Contato</Label>
                 <Input id="responsible" value={task.responsible} onChange={e => setTask(prev => ({
@@ -736,13 +803,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   <Label htmlFor="phone">Telefone</Label>
                   <Input id="phone" type="tel" placeholder="Telefone do cliente" />
                 </div>}
-
-
             </CardContent>
           </Card>
 
-          {/* Informações de Equipamentos - apenas para visita a campo */}
-          {taskCategory === 'field-visit' && <Card>
+          {/* Informações de Equipamentos - para ambos: visita a campo e ligação */}
+          {(taskCategory === 'field-visit' || taskCategory === 'call') && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="h-5 w-5" />
@@ -824,10 +889,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardContent>
             </Card>}
 
-           {/* Data e Hora */}
-          
-
-          {/* Produtos / Checklist */}
+          {/* Produtos / Checklist - apenas para visita a campo e workshop */}
           {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -848,13 +910,13 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           </div>
                           
                           {item.selected && <div className="ml-6 space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
+                              <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor={`qty-${item.id}`}>QTD</Label>
                                   <Input id={`qty-${item.id}`} type="number" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
                                 </div>
                                 <div className="space-y-2">
-                                  <Label htmlFor={`price-${item.id}`}>Valor</Label>
+                                  <Label htmlFor={`price-${item.id}`}>Valor Unitário</Label>
                                   <div className="relative">
                                     <Input 
                                       id={`price-${item.id}`} 
@@ -870,6 +932,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                       }} 
                                       placeholder="0,00" 
                                       className="pl-8" 
+                                    />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Valor Total</Label>
+                                  <div className="relative">
+                                    <Input 
+                                      type="text" 
+                                      className="pl-8 bg-muted cursor-not-allowed"
+                                      value={item.selected && item.price && item.quantity ? 
+                                        new Intl.NumberFormat('pt-BR', { 
+                                          minimumFractionDigits: 2, 
+                                          maximumFractionDigits: 2 
+                                        }).format(item.price * item.quantity) : '0,00'}
+                                      readOnly
                                     />
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                                   </div>
@@ -895,89 +973,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
           {/* Campos específicos para Ligação */}
           {taskCategory === 'call' && <>
-              {/* Informações de Equipamentos - para ligação */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5" />
-                    Lista de Equipamentos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Hectares da Propriedade */}
-                   <div className="space-y-2">
-                     <Label htmlFor="propertyHectares">Hectares da Propriedade *</Label>
-                     <Input 
-                       id="propertyHectares" 
-                       type="number" 
-                       value={task.propertyHectares || ''} 
-                       onChange={e => setTask(prev => ({
-                         ...prev,
-                         propertyHectares: parseInt(e.target.value) || undefined
-                       }))} 
-                       placeholder="Digite os hectares da propriedade" 
-                       required
-                     />
-                   </div>
-
-                  {/* Lista de Equipamentos */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label>Equipamentos do Cliente</Label>
-                      <Button type="button" onClick={addEquipment} variant="outline" size="sm" className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Adicionar Equipamento
-                      </Button>
-                    </div>
-
-                    {equipmentList.length === 0 && <div className="text-center text-muted-foreground py-8 border-2 border-dashed border-border rounded-lg">
-                        <Building className="h-8 w-8 mx-auto mb-2" />
-                        <p>Nenhum equipamento adicionado</p>
-                        <p className="text-sm">Clique em "Adicionar Equipamento" para começar</p>
-                      </div>}
-
-                    {equipmentList.map((equipment, index) => <Card key={equipment.id} className="border border-border/50">
-                        <CardContent className="p-4">
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium">Equipamento {index + 1}</h4>
-                              <Button type="button" onClick={() => removeEquipment(equipment.id)} variant="outline" size="sm" className="h-8 w-8 p-0">
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label>Família do Produto</Label>
-                                <Select value={equipment.familyProduct} onValueChange={value => updateEquipment(equipment.id, 'familyProduct', value)}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Selecione a família" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="TRATOR">TRATOR</SelectItem>
-                                    <SelectItem value="PLATAFORMA">PLATAFORMA</SelectItem>
-                                    <SelectItem value="COLHEITADEIRA">COLHEITADEIRA</SelectItem>
-                                    <SelectItem value="PLANTADEIRA">PLANTADEIRA</SelectItem>
-                                    <SelectItem value="PULVERIZADOR">PULVERIZADOR</SelectItem>
-                                    <SelectItem value="COLHEDORA">COLHEDORA</SelectItem>
-                                    <SelectItem value="FORRAGEIRA">FORRAGEIRA</SelectItem>
-                                    <SelectItem value="OUTROS">OUTROS</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label>Quantidade</Label>
-                                <Input type="number" value={equipment.quantity} onChange={e => updateEquipment(equipment.id, 'quantity', parseInt(e.target.value) || 1)} placeholder="1" min="1" />
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>)}
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Perguntas da Ligação */}
               <Card>
                 <CardHeader>
@@ -1023,43 +1018,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="lubricants-no">NÃO</Label>
                         </div>
                       </div>
-                      {callQuestions.lubricants.needsProduct && (
-                        <div className="ml-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                placeholder="Digite a quantidade"
-                                value={callQuestions.lubricants.quantity || ''}
-                                onChange={(e) => updateCallQuestion('lubricants', 'quantity', parseInt(e.target.value) || 0)}
-                                min="0"
-                                step="1"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor (R$)</Label>
-                              <div className="relative">
-                                <Input 
-                                  type="text" 
-                                  placeholder="0,00" 
-                                  className="pl-8"
-                                  value={callQuestions.lubricants.value ? new Intl.NumberFormat('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  }).format(callQuestions.lubricants.value) : ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    const numericValue = parseFloat(value) / 100;
-                                    updateCallQuestion('lubricants', 'value', isNaN(numericValue) ? 0 : numericValue);
-                                  }}
-                                />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {callQuestions.lubricants.needsProduct && renderValueFields('lubricants')}
                     </div>
 
                     <div className="space-y-2">
@@ -1082,41 +1041,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="tires-no">NÃO</Label>
                         </div>
                       </div>
-                      {callQuestions.tires.needsProduct && (
-                        <div className="ml-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                placeholder="Digite a quantidade"
-                                value={callQuestions.tires.quantity}
-                                onChange={(e) => updateCallQuestion('tires', 'quantity', parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor (R$)</Label>
-                              <div className="relative">
-                                <Input 
-                                  type="text" 
-                                  placeholder="0,00" 
-                                  className="pl-8"
-                                  value={callQuestions.tires.value ? new Intl.NumberFormat('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  }).format(callQuestions.tires.value) : ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    const numericValue = parseFloat(value) / 100;
-                                    updateCallQuestion('tires', 'value', isNaN(numericValue) ? 0 : numericValue);
-                                  }}
-                                />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {callQuestions.tires.needsProduct && renderValueFields('tires')}
                     </div>
 
                     <div className="space-y-2">
@@ -1139,41 +1064,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="filters-no">NÃO</Label>
                         </div>
                       </div>
-                      {callQuestions.filters.needsProduct && (
-                        <div className="ml-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                placeholder="Digite a quantidade"
-                                value={callQuestions.filters.quantity}
-                                onChange={(e) => updateCallQuestion('filters', 'quantity', parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor (R$)</Label>
-                              <div className="relative">
-                                <Input 
-                                  type="text" 
-                                  placeholder="0,00" 
-                                  className="pl-8"
-                                  value={callQuestions.filters.value ? new Intl.NumberFormat('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  }).format(callQuestions.filters.value) : ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    const numericValue = parseFloat(value) / 100;
-                                    updateCallQuestion('filters', 'value', isNaN(numericValue) ? 0 : numericValue);
-                                  }}
-                                />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {callQuestions.filters.needsProduct && renderValueFields('filters')}
                     </div>
 
                     <div className="space-y-2">
@@ -1196,41 +1087,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="batteries-no">NÃO</Label>
                         </div>
                       </div>
-                      {callQuestions.batteries.needsProduct && (
-                        <div className="ml-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                placeholder="Digite a quantidade"
-                                value={callQuestions.batteries.quantity}
-                                onChange={(e) => updateCallQuestion('batteries', 'quantity', parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor (R$)</Label>
-                              <div className="relative">
-                                <Input 
-                                  type="text" 
-                                  placeholder="0,00" 
-                                  className="pl-8"
-                                  value={callQuestions.batteries.value ? new Intl.NumberFormat('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  }).format(callQuestions.batteries.value) : ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    const numericValue = parseFloat(value) / 100;
-                                    updateCallQuestion('batteries', 'value', isNaN(numericValue) ? 0 : numericValue);
-                                  }}
-                                />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {callQuestions.batteries.needsProduct && renderValueFields('batteries')}
                     </div>
 
                     <div className="space-y-2">
@@ -1253,41 +1110,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="parts-no">NÃO</Label>
                         </div>
                       </div>
-                      {callQuestions.parts.needsProduct && (
-                        <div className="ml-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                placeholder="Digite a quantidade"
-                                value={callQuestions.parts.quantity}
-                                onChange={(e) => updateCallQuestion('parts', 'quantity', parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor (R$)</Label>
-                              <div className="relative">
-                                <Input 
-                                  type="text" 
-                                  placeholder="0,00" 
-                                  className="pl-8"
-                                  value={callQuestions.parts.value ? new Intl.NumberFormat('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  }).format(callQuestions.parts.value) : ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    const numericValue = parseFloat(value) / 100;
-                                    updateCallQuestion('parts', 'value', isNaN(numericValue) ? 0 : numericValue);
-                                  }}
-                                />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {callQuestions.parts.needsProduct && renderValueFields('parts')}
                     </div>
 
                     <div className="space-y-2">
@@ -1310,41 +1133,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="silobag-no">NÃO</Label>
                         </div>
                       </div>
-                      {callQuestions.silobag.needsProduct && (
-                        <div className="ml-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                placeholder="Digite a quantidade"
-                                value={callQuestions.silobag.quantity}
-                                onChange={(e) => updateCallQuestion('silobag', 'quantity', parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor (R$)</Label>
-                              <div className="relative">
-                                <Input 
-                                  type="text" 
-                                  placeholder="0,00" 
-                                  className="pl-8"
-                                  value={callQuestions.silobag.value ? new Intl.NumberFormat('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  }).format(callQuestions.silobag.value) : ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    const numericValue = parseFloat(value) / 100;
-                                    updateCallQuestion('silobag', 'value', isNaN(numericValue) ? 0 : numericValue);
-                                  }}
-                                />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {callQuestions.silobag.needsProduct && renderValueFields('silobag')}
                     </div>
 
                     <div className="space-y-2">
@@ -1367,41 +1156,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="disk-no">NÃO</Label>
                         </div>
                       </div>
-                      {callQuestions.disk.needsProduct && (
-                        <div className="ml-6 space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input 
-                                type="number" 
-                                placeholder="Digite a quantidade"
-                                value={callQuestions.disk.quantity}
-                                onChange={(e) => updateCallQuestion('disk', 'quantity', parseInt(e.target.value) || 0)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Valor (R$)</Label>
-                              <div className="relative">
-                                <Input 
-                                  type="text" 
-                                  placeholder="0,00" 
-                                  className="pl-8"
-                                  value={callQuestions.disk.value ? new Intl.NumberFormat('pt-BR', { 
-                                    minimumFractionDigits: 2, 
-                                    maximumFractionDigits: 2 
-                                  }).format(callQuestions.disk.value) : ''}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '');
-                                    const numericValue = parseFloat(value) / 100;
-                                    updateCallQuestion('disk', 'value', isNaN(numericValue) ? 0 : numericValue);
-                                  }}
-                                />
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {callQuestions.disk.needsProduct && renderValueFields('disk')}
                     </div>
                   </div>
 
@@ -1434,9 +1189,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </CardContent>
               </Card>
             </>}
-
-          {/* Lembretes */}
-          
         </div>
 
         {/* Observações e Valores */}
@@ -1473,16 +1225,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
                     }).format(task.salesValue) : ''} 
-                    onChange={e => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      const numericValue = parseFloat(value) / 100;
-                      setTask(prev => ({
-                        ...prev,
-                        salesValue: isNaN(numericValue) ? 0 : numericValue
-                      }));
-                    }} 
-                    placeholder="0,00" 
-                    className="pl-8" 
+                    className="pl-8 bg-muted cursor-not-allowed"
+                    readOnly
                   />
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 </div>
