@@ -261,11 +261,11 @@ const Reports: React.FC = () => {
       loadCollaborators();
       loadUserStats();
       
-      // Configurar atualização automática silenciosa a cada 5 segundos
+      // Configurar atualização automática silenciosa a cada 30 segundos para melhorar performance
       const interval = setInterval(() => {
         loadFilialStats(true); // true = silent update
         loadUserStats();
-      }, 5000);
+      }, 30000);
       
       return () => clearInterval(interval);
     }
@@ -322,157 +322,208 @@ const Reports: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data Inicial</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateFrom && "text-muted-foreground"
-                    )}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data Inicial</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateFrom && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFrom ? format(dateFrom, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateFrom}
+                      onSelect={setDateFrom}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data Final</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateTo && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateTo ? format(dateTo, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateTo}
+                      onSelect={setDateTo}
+                      initialFocus
+                      disabled={(date) => dateFrom ? date < dateFrom : false}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Colaborador</label>
+                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os colaboradores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Colaboradores</SelectItem>
+                    {collaborators.map((collaborator) => (
+                      <SelectItem key={collaborator.id} value={collaborator.id}>
+                        {collaborator.name} - {collaborator.role === 'consultant' ? 'Consultor' : collaborator.role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium opacity-0">Ações</label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => loadFilialStats(false)}
+                    disabled={loading}
+                    className="flex-1"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    {loading ? 'Atualizando...' : 'Atualizar'}
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data Final</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateTo && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                  <Button variant="ghost" onClick={clearFilters} size="icon" className="shrink-0">
+                    <X className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                    disabled={(date) => dateFrom ? date < dateFrom : false}
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Colaborador</label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o colaborador" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Colaboradores</SelectItem>
-                  {collaborators.map((collaborator) => (
-                    <SelectItem key={collaborator.id} value={collaborator.id}>
-                      {collaborator.name} - {collaborator.role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-end gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => loadFilialStats(false)}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Atualizando...' : 'Atualizar'}
-              </Button>
-              <Button variant="outline" onClick={clearFilters} className="gap-2">
-                <X className="h-4 w-4" />
-                Limpar Filtros
-              </Button>
-            </div>
+            {(dateFrom || dateTo || selectedUser !== 'all') && (
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <p className="text-sm text-muted-foreground">Filtros ativos:</p>
+                {dateFrom && (
+                  <Badge variant="secondary" className="gap-1">
+                    De: {format(dateFrom, "dd/MM/yyyy")}
+                  </Badge>
+                )}
+                {dateTo && (
+                  <Badge variant="secondary" className="gap-1">
+                    Até: {format(dateTo, "dd/MM/yyyy")}
+                  </Badge>
+                )}
+                {selectedUser !== 'all' && (
+                  <Badge variant="secondary" className="gap-1">
+                    {collaborators.find(c => c.id === selectedUser)?.name || 'Colaborador específico'}
+                  </Badge>
+                )}
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2">
+                  Limpar todos
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Resumo Geral */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
           <CardContent className="p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Total de Tarefas</p>
-              <p className="text-xl font-bold tracking-tight">
-                {filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold text-primary">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}
+                </p>
+              </div>
+              <Activity className="h-8 w-8 text-primary/50" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+        <Card className="bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
           <CardContent className="p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Visitas</p>
-              <p className="text-xl font-bold tracking-tight">
-                {filialStats.reduce((sum, f) => sum + f.visitas, 0)}
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Visitas</p>
+                <p className="text-2xl font-bold text-accent">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.visitas, 0)}
+                </p>
+              </div>
+              <Target className="h-8 w-8 text-accent/50" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+        <Card className="bg-gradient-to-r from-success/10 to-success/5 border-success/20">
           <CardContent className="p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Checklist</p>
-              <p className="text-xl font-bold tracking-tight">
-                {filialStats.reduce((sum, f) => sum + f.checklist, 0)}
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Checklist</p>
+                <p className="text-2xl font-bold text-success">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.checklist, 0)}
+                </p>
+              </div>
+              <CheckSquare className="h-8 w-8 text-success/50" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+        <Card className="bg-gradient-to-r from-warning/10 to-warning/5 border-warning/20">
           <CardContent className="p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Ligações</p>
-              <p className="text-xl font-bold tracking-tight">
-                {filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Ligações</p>
+                <p className="text-2xl font-bold text-warning">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
+                </p>
+              </div>
+              <Users className="h-8 w-8 text-warning/50" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+        <Card className="bg-gradient-to-r from-secondary/30 to-secondary/10 border-secondary/30">
           <CardContent className="p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Oportunidades</p>
-              <p className="text-lg font-bold tracking-tight">
-                R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Oportunidades</p>
+                <p className="text-lg font-bold text-secondary-foreground">
+                  {loading ? '...' : `R$ ${filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}`}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-secondary-foreground/50" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+        <Card className="bg-gradient-to-r from-primary/15 to-primary/5 border-primary/30">
           <CardContent className="p-4">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Taxa de Conversão</p>
-              <p className="text-lg font-bold tracking-tight">
-                {overallConversionRate.toFixed(1)}%
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Conversão</p>
+                <p className="text-lg font-bold text-primary">
+                  {loading ? '...' : `${overallConversionRate.toFixed(1)}%`}
+                </p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-primary/50" />
             </div>
           </CardContent>
         </Card>
@@ -483,68 +534,90 @@ const Reports: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Dados por Filial
+            Desempenho por Filial
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50 animate-spin" />
-                <p>Carregando dados das filiais...</p>
-              </div>
-            ) : filialStats.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhuma filial com dados disponíveis</p>
-                <p className="text-sm">Os dados aparecerão conforme as tarefas forem criadas</p>
-              </div>
-            ) : (
-              filialStats.map((filial) => (
-                <div key={filial.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <Building2 className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{filial.nome}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {filial.visitas + filial.checklist + filial.ligacoes} tarefas realizadas
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <div className="flex items-center gap-6">
-                      <div className="text-center">
-                        <div className="text-lg font-bold">{filial.visitas}</div>
-                        <div className="text-xs text-muted-foreground">Visitas</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold">{filial.checklist}</div>
-                        <div className="text-xs text-muted-foreground">Checklist</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold">{filial.ligacoes}</div>
-                        <div className="text-xs text-muted-foreground">Ligações</div>
-                      </div>
-                       <div className="text-center">
-                         <div className="text-lg font-bold">
-                           R$ {filial.prospectsValue.toLocaleString('pt-BR')}
-                         </div>
-                         <div className="text-xs text-muted-foreground">Oportunidades</div>
-                       </div>
-                      <div className="text-center">
-                        <div className="text-lg font-bold">
-                          {filial.conversionRate}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">Taxa de Conversão</div>
-                      </div>
-                    </div>
+          {loading && filialStats.length === 0 ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="h-12 bg-muted rounded"></div>
+                    <div className="h-12 bg-muted rounded"></div>
+                    <div className="h-12 bg-muted rounded"></div>
+                    <div className="h-12 bg-muted rounded"></div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          ) : filialStats.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Building2 className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <p className="text-lg mb-2">Nenhuma filial encontrada</p>
+              <p className="text-sm">Verifique os filtros ou aguarde o carregamento dos dados</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filialStats.map((filial) => (
+                <Card key={filial.id} className="border-l-4 border-l-primary/50 hover:shadow-lg transition-all duration-200">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+                      <div>
+                        <h3 className="text-xl font-bold text-foreground mb-1">{filial.nome}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {filial.visitas + filial.checklist + filial.ligacoes} atividades totais
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge 
+                          variant={filial.conversionRate > 15 ? "default" : "secondary"}
+                          className="text-sm px-3 py-1"
+                        >
+                          {filial.conversionRate}% conversão
+                        </Badge>
+                        <div className="text-right hidden md:block">
+                          <p className="text-lg font-bold text-success">
+                            R$ {filial.salesValue.toLocaleString('pt-BR')}
+                          </p>
+                          <p className="text-xs text-muted-foreground">em vendas</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="bg-primary/5 rounded-lg p-4 text-center">
+                        <Target className="h-6 w-6 mx-auto mb-2 text-primary" />
+                        <p className="text-2xl font-bold text-primary">{filial.visitas}</p>
+                        <p className="text-xs text-muted-foreground">Visitas</p>
+                      </div>
+                      <div className="bg-success/5 rounded-lg p-4 text-center">
+                        <CheckSquare className="h-6 w-6 mx-auto mb-2 text-success" />
+                        <p className="text-2xl font-bold text-success">{filial.checklist}</p>
+                        <p className="text-xs text-muted-foreground">Checklist</p>
+                      </div>
+                      <div className="bg-warning/5 rounded-lg p-4 text-center">
+                        <Users className="h-6 w-6 mx-auto mb-2 text-warning" />
+                        <p className="text-2xl font-bold text-warning">{filial.ligacoes}</p>
+                        <p className="text-xs text-muted-foreground">Ligações</p>
+                      </div>
+                      <div className="bg-accent/5 rounded-lg p-4 text-center">
+                        <TrendingUp className="h-6 w-6 mx-auto mb-2 text-accent" />
+                        <p className="text-2xl font-bold text-accent">{filial.prospects}</p>
+                        <p className="text-xs text-muted-foreground">Prospects</p>
+                      </div>
+                      <div className="bg-secondary/5 rounded-lg p-4 text-center md:hidden">
+                        <DollarSign className="h-6 w-6 mx-auto mb-2 text-success" />
+                        <p className="text-lg font-bold text-success">R$ {filial.salesValue.toLocaleString('pt-BR')}</p>
+                        <p className="text-xs text-muted-foreground">Vendas</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -553,54 +626,87 @@ const Reports: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Performance por Colaborador
+            Top Performance dos Colaboradores
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {userStats.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum colaborador com dados ainda</p>
-                <p className="text-sm">Os dados aparecerão conforme as tarefas forem realizadas</p>
-              </div>
-            ) : (
-              userStats.map((user, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
-                      <Users className="h-6 w-6 text-accent" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{user.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{user.role}</Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {user.visits} visitas realizadas
-                        </span>
-                      </div>
-                    </div>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="animate-pulse flex items-center gap-4 p-4">
+                  <div className="w-10 h-10 bg-muted rounded-full"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-muted rounded w-1/3"></div>
+                    <div className="h-3 bg-muted rounded w-1/4"></div>
                   </div>
-                  <div className="text-right space-y-1">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <div className="text-sm font-medium">{user.prospects}</div>
-                        <div className="text-xs text-muted-foreground">Prospects</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-medium">R$ {user.sales.toLocaleString('pt-BR')}</div>
-                        <div className="text-xs text-muted-foreground">Vendas</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-sm font-medium">{user.conversionRate}%</div>
-                        <div className="text-xs text-muted-foreground">Conversão</div>
-                      </div>
-                    </div>
+                  <div className="text-right space-y-2">
+                    <div className="h-4 bg-muted rounded w-20"></div>
+                    <div className="h-3 bg-muted rounded w-16"></div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          ) : userStats.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <p className="text-lg mb-2">Nenhum colaborador encontrado</p>
+              <p className="text-sm">Verifique os filtros ou aguarde o carregamento dos dados</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {userStats.map((user, index) => (
+                <Card 
+                  key={user.name} 
+                  className={`transition-all duration-200 hover:shadow-md ${
+                    index < 3 ? 'ring-1 ring-primary/20 bg-primary/5' : ''
+                  }`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
+                        index === 0 ? 'bg-yellow-500 text-white' :
+                        index === 1 ? 'bg-gray-400 text-white' :
+                        index === 2 ? 'bg-amber-600 text-white' :
+                        'bg-muted text-muted-foreground'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold truncate">{user.name}</h4>
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            {user.role === 'consultant' ? 'Consultor' : user.role}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="font-medium text-primary">{user.visits}</p>
+                            <p className="text-xs text-muted-foreground">Visitas</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-accent">{user.prospects}</p>
+                            <p className="text-xs text-muted-foreground">Prospects</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-success">{user.conversionRate}%</p>
+                            <p className="text-xs text-muted-foreground">Conversão</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-bold text-success">
+                          R$ {user.sales.toLocaleString('pt-BR')}
+                        </p>
+                        <p className="text-xs text-muted-foreground">em vendas</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
