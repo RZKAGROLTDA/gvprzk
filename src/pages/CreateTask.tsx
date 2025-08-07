@@ -506,6 +506,35 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       setIsSubmitting(false);
     }
   };
+
+  const handleSaveDraft = () => {
+    const draftData = {
+      ...task,
+      taskType: getTaskTypeFromCategory(taskCategory),
+      checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
+      reminders,
+      equipmentList,
+      isDraft: true
+    };
+
+    // Salvar no localStorage como rascunho
+    const existingDrafts = JSON.parse(localStorage.getItem('task_drafts') || '[]');
+    const draftId = `draft_${Date.now()}`;
+    const newDraft = {
+      id: draftId,
+      ...draftData,
+      savedAt: new Date(),
+      category: taskCategory
+    };
+
+    existingDrafts.push(newDraft);
+    localStorage.setItem('task_drafts', JSON.stringify(existingDrafts));
+
+    toast({
+      title: "💾 Rascunho Salvo",
+      description: "Suas alterações foram salvas como rascunho!"
+    });
+  };
   return <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Nova Tarefa</h1>
@@ -977,6 +1006,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
              <Button type="submit" className="flex-1" variant="gradient" disabled={isSubmitting}>
                <CheckSquare className="h-4 w-4 mr-2" />
                {isSubmitting ? 'Criando...' : 'Criar Tarefa'}
+             </Button>
+             <Button type="button" variant="outline" className="flex-1" onClick={handleSaveDraft}>
+               <FileText className="h-4 w-4 mr-2" />
+               Salvar Rascunho
              </Button>
              <Button type="button" variant="outline" className="flex-1">
                Cancelar
