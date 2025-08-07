@@ -244,72 +244,72 @@ const Reports: React.FC = () => {
 
       {/* Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        <Card>
+        <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Tarefas</CardTitle>
             <CheckSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}</div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Todas as filiais</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Todas as filiais
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Visitas</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.visitas, 0)}</div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Todas as filiais</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Todas as filiais
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Checklist</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.checklist, 0)}</div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Todas as filiais</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Todas as filiais
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ligações</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}</div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Todas as filiais</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Todas as filiais
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Oportunidades Geradas</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}</div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Todas as filiais</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Todas as filiais
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Vendas Realizadas</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -318,9 +318,9 @@ const Reports: React.FC = () => {
             <div className="text-2xl font-bold">
               R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Todas as filiais</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Todas as filiais
+            </p>
           </CardContent>
         </Card>
       </div>
