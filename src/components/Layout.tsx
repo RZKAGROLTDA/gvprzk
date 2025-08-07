@@ -32,6 +32,10 @@ export const Layout: React.FC<LayoutProps> = ({
     icon: LayoutDashboard,
     label: 'Nova Tarefa'
   }, {
+    path: '/tasks',
+    icon: CheckSquare,
+    label: 'Resumo Tarefas'
+  }, {
     path: '/reports',
     icon: BarChart3,
     label: 'Relatórios'
