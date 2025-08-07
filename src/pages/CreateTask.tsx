@@ -23,6 +23,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
+
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -133,6 +134,29 @@ const CreateTask: React.FC = () => {
     date: new Date(),
     time: '09:00'
   });
+
+  // Estado para controlar campos condicionais das perguntas da ligação
+  const [callQuestions, setCallQuestions] = useState({
+    lubricants: { needsProduct: false, quantity: 0, value: 0 },
+    tires: { needsProduct: false, quantity: 0, value: 0 },
+    filters: { needsProduct: false, quantity: 0, value: 0 },
+    batteries: { needsProduct: false, quantity: 0, value: 0 },
+    parts: { needsProduct: false, quantity: 0, value: 0 },
+    silobag: { needsProduct: false, quantity: 0, value: 0 },
+    disk: { needsProduct: false, quantity: 0, value: 0 }
+  });
+
+  // Função para atualizar perguntas da ligação
+  const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'value', value: boolean | number) => {
+    setCallQuestions(prev => ({
+      ...prev,
+      [product]: {
+        ...prev[product],
+        [field]: value
+      }
+    }));
+  };
+
   const fieldVisitProducts: ProductType[] = [{
     id: '1',
     name: 'Pneus',
@@ -938,98 +962,399 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Label>Está precisando de Lubrificantes:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="lubricants-yes" />
+                          <Checkbox 
+                            id="lubricants-yes" 
+                            checked={callQuestions.lubricants.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('lubricants', 'needsProduct', checked as boolean)}
+                          />
                           <Label htmlFor="lubricants-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="lubricants-no" />
+                          <Checkbox 
+                            id="lubricants-no" 
+                            checked={!callQuestions.lubricants.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('lubricants', 'needsProduct', !(checked as boolean))}
+                          />
                           <Label htmlFor="lubricants-no">NÃO</Label>
                         </div>
                       </div>
+                      {callQuestions.lubricants.needsProduct && (
+                        <div className="ml-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Quantidade</Label>
+                              <Input 
+                                type="number" 
+                                placeholder="Digite a quantidade"
+                                value={callQuestions.lubricants.quantity}
+                                onChange={(e) => updateCallQuestion('lubricants', 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor (R$)</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text" 
+                                  placeholder="0,00" 
+                                  className="pl-8"
+                                  value={callQuestions.lubricants.value ? new Intl.NumberFormat('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  }).format(callQuestions.lubricants.value) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const numericValue = parseFloat(value) / 100;
+                                    updateCallQuestion('lubricants', 'value', isNaN(numericValue) ? 0 : numericValue);
+                                  }}
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label>Está precisando de Pneus:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="tires-yes" />
+                          <Checkbox 
+                            id="tires-yes" 
+                            checked={callQuestions.tires.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('tires', 'needsProduct', checked as boolean)}
+                          />
                           <Label htmlFor="tires-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="tires-no" />
+                          <Checkbox 
+                            id="tires-no" 
+                            checked={!callQuestions.tires.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('tires', 'needsProduct', !(checked as boolean))}
+                          />
                           <Label htmlFor="tires-no">NÃO</Label>
                         </div>
                       </div>
+                      {callQuestions.tires.needsProduct && (
+                        <div className="ml-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Quantidade</Label>
+                              <Input 
+                                type="number" 
+                                placeholder="Digite a quantidade"
+                                value={callQuestions.tires.quantity}
+                                onChange={(e) => updateCallQuestion('tires', 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor (R$)</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text" 
+                                  placeholder="0,00" 
+                                  className="pl-8"
+                                  value={callQuestions.tires.value ? new Intl.NumberFormat('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  }).format(callQuestions.tires.value) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const numericValue = parseFloat(value) / 100;
+                                    updateCallQuestion('tires', 'value', isNaN(numericValue) ? 0 : numericValue);
+                                  }}
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label>Está precisando de Filtros:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="filters-yes" />
+                          <Checkbox 
+                            id="filters-yes" 
+                            checked={callQuestions.filters.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('filters', 'needsProduct', checked as boolean)}
+                          />
                           <Label htmlFor="filters-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="filters-no" />
+                          <Checkbox 
+                            id="filters-no" 
+                            checked={!callQuestions.filters.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('filters', 'needsProduct', !(checked as boolean))}
+                          />
                           <Label htmlFor="filters-no">NÃO</Label>
                         </div>
                       </div>
+                      {callQuestions.filters.needsProduct && (
+                        <div className="ml-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Quantidade</Label>
+                              <Input 
+                                type="number" 
+                                placeholder="Digite a quantidade"
+                                value={callQuestions.filters.quantity}
+                                onChange={(e) => updateCallQuestion('filters', 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor (R$)</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text" 
+                                  placeholder="0,00" 
+                                  className="pl-8"
+                                  value={callQuestions.filters.value ? new Intl.NumberFormat('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  }).format(callQuestions.filters.value) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const numericValue = parseFloat(value) / 100;
+                                    updateCallQuestion('filters', 'value', isNaN(numericValue) ? 0 : numericValue);
+                                  }}
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label>Está precisando de Baterias:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="batteries-yes" />
+                          <Checkbox 
+                            id="batteries-yes" 
+                            checked={callQuestions.batteries.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('batteries', 'needsProduct', checked as boolean)}
+                          />
                           <Label htmlFor="batteries-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="batteries-no" />
+                          <Checkbox 
+                            id="batteries-no" 
+                            checked={!callQuestions.batteries.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('batteries', 'needsProduct', !(checked as boolean))}
+                          />
                           <Label htmlFor="batteries-no">NÃO</Label>
                         </div>
                       </div>
+                      {callQuestions.batteries.needsProduct && (
+                        <div className="ml-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Quantidade</Label>
+                              <Input 
+                                type="number" 
+                                placeholder="Digite a quantidade"
+                                value={callQuestions.batteries.quantity}
+                                onChange={(e) => updateCallQuestion('batteries', 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor (R$)</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text" 
+                                  placeholder="0,00" 
+                                  className="pl-8"
+                                  value={callQuestions.batteries.value ? new Intl.NumberFormat('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  }).format(callQuestions.batteries.value) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const numericValue = parseFloat(value) / 100;
+                                    updateCallQuestion('batteries', 'value', isNaN(numericValue) ? 0 : numericValue);
+                                  }}
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label>Está precisando de Peças:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="parts-yes" />
+                          <Checkbox 
+                            id="parts-yes" 
+                            checked={callQuestions.parts.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('parts', 'needsProduct', checked as boolean)}
+                          />
                           <Label htmlFor="parts-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="parts-no" />
+                          <Checkbox 
+                            id="parts-no" 
+                            checked={!callQuestions.parts.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('parts', 'needsProduct', !(checked as boolean))}
+                          />
                           <Label htmlFor="parts-no">NÃO</Label>
                         </div>
                       </div>
+                      {callQuestions.parts.needsProduct && (
+                        <div className="ml-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Quantidade</Label>
+                              <Input 
+                                type="number" 
+                                placeholder="Digite a quantidade"
+                                value={callQuestions.parts.quantity}
+                                onChange={(e) => updateCallQuestion('parts', 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor (R$)</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text" 
+                                  placeholder="0,00" 
+                                  className="pl-8"
+                                  value={callQuestions.parts.value ? new Intl.NumberFormat('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  }).format(callQuestions.parts.value) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const numericValue = parseFloat(value) / 100;
+                                    updateCallQuestion('parts', 'value', isNaN(numericValue) ? 0 : numericValue);
+                                  }}
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label>Está precisando de Silo Bolsa:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="silobag-yes" />
+                          <Checkbox 
+                            id="silobag-yes" 
+                            checked={callQuestions.silobag.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('silobag', 'needsProduct', checked as boolean)}
+                          />
                           <Label htmlFor="silobag-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="silobag-no" />
+                          <Checkbox 
+                            id="silobag-no" 
+                            checked={!callQuestions.silobag.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('silobag', 'needsProduct', !(checked as boolean))}
+                          />
                           <Label htmlFor="silobag-no">NÃO</Label>
                         </div>
                       </div>
+                      {callQuestions.silobag.needsProduct && (
+                        <div className="ml-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Quantidade</Label>
+                              <Input 
+                                type="number" 
+                                placeholder="Digite a quantidade"
+                                value={callQuestions.silobag.quantity}
+                                onChange={(e) => updateCallQuestion('silobag', 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor (R$)</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text" 
+                                  placeholder="0,00" 
+                                  className="pl-8"
+                                  value={callQuestions.silobag.value ? new Intl.NumberFormat('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  }).format(callQuestions.silobag.value) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const numericValue = parseFloat(value) / 100;
+                                    updateCallQuestion('silobag', 'value', isNaN(numericValue) ? 0 : numericValue);
+                                  }}
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label>Está precisando de Disco:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="disk-yes" />
+                          <Checkbox 
+                            id="disk-yes" 
+                            checked={callQuestions.disk.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('disk', 'needsProduct', checked as boolean)}
+                          />
                           <Label htmlFor="disk-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox id="disk-no" />
+                          <Checkbox 
+                            id="disk-no" 
+                            checked={!callQuestions.disk.needsProduct}
+                            onCheckedChange={(checked) => updateCallQuestion('disk', 'needsProduct', !(checked as boolean))}
+                          />
                           <Label htmlFor="disk-no">NÃO</Label>
                         </div>
                       </div>
+                      {callQuestions.disk.needsProduct && (
+                        <div className="ml-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Quantidade</Label>
+                              <Input 
+                                type="number" 
+                                placeholder="Digite a quantidade"
+                                value={callQuestions.disk.quantity}
+                                onChange={(e) => updateCallQuestion('disk', 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Valor (R$)</Label>
+                              <div className="relative">
+                                <Input 
+                                  type="text" 
+                                  placeholder="0,00" 
+                                  className="pl-8"
+                                  value={callQuestions.disk.value ? new Intl.NumberFormat('pt-BR', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                  }).format(callQuestions.disk.value) : ''}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '');
+                                    const numericValue = parseFloat(value) / 100;
+                                    updateCallQuestion('disk', 'value', isNaN(numericValue) ? 0 : numericValue);
+                                  }}
+                                />
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
