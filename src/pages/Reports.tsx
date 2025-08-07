@@ -186,11 +186,11 @@ const Reports: React.FC = () => {
     if (!user) return;
     
     try {
-      // Buscar perfis de consultores
+      // Buscar perfis de todos os usuários ativos
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, name, role')
-        .eq('role', 'consultant')
+        .in('role', ['consultant', 'manager', 'admin'])
         .order('name');
 
       if (profilesError) throw profilesError;
@@ -389,7 +389,11 @@ const Reports: React.FC = () => {
                     <SelectItem value="all">Todos os Colaboradores</SelectItem>
                     {collaborators.map((collaborator) => (
                       <SelectItem key={collaborator.id} value={collaborator.id}>
-                        {collaborator.name} - {collaborator.role === 'consultant' ? 'Consultor' : collaborator.role}
+                        {collaborator.name} - {
+                          collaborator.role === 'consultant' ? 'Consultor' : 
+                          collaborator.role === 'manager' ? 'Gerente' : 
+                          collaborator.role === 'admin' ? 'Admin' : collaborator.role
+                        }
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -675,9 +679,11 @@ const Reports: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold truncate">{user.name}</h4>
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            {user.role === 'consultant' ? 'Consultor' : user.role}
-                          </Badge>
+            <Badge variant="outline" className="text-xs shrink-0">
+              {user.role === 'consultant' ? 'Consultor' : 
+               user.role === 'manager' ? 'Gerente' : 
+               user.role === 'admin' ? 'Admin' : user.role}
+            </Badge>
                         </div>
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
