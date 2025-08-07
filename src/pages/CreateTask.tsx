@@ -43,6 +43,20 @@ const CreateTask: React.FC = () => {
         return 'field-visit';
     }
   };
+
+  // Função para obter o título da tarefa
+  const getTaskTitle = (category: 'field-visit' | 'call' | 'workshop-checklist'): string => {
+    switch (category) {
+      case 'field-visit':
+        return 'Visita a Fazenda';
+      case 'call':
+        return 'Ligação para Cliente';
+      case 'workshop-checklist':
+        return 'Checklist da Oficina';
+      default:
+        return 'Nova Tarefa';
+    }
+  };
   const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(getTaskCategoryFromUrl(urlTaskType));
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -537,8 +551,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   };
   return <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Nova Tarefa</h1>
-        <p className="text-muted-foreground">Criar uma nova tarefa</p>
+        <h1 className="text-3xl font-bold">{getTaskTitle(taskCategory)}</h1>
+        <p className="text-muted-foreground">
+          {taskCategory === 'field-visit' 
+            ? 'Criar uma nova visita à fazenda' 
+            : taskCategory === 'call' 
+            ? 'Registrar uma nova ligação para cliente'
+            : 'Criar um novo checklist da oficina'
+          }
+        </p>
       </div>
 
       {/* Indicador de Status Offline */}
