@@ -559,10 +559,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   <Input id="phone" type="tel" placeholder="Telefone do cliente" />
                 </div>}
 
-              <div className="space-y-2">
-                <Label htmlFor="filial">Filial</Label>
-                <Input id="filial" value={task.filial} readOnly className="bg-gray-50" placeholder="Filial do usuário" />
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="priority">Prioridade</Label>
