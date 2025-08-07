@@ -252,122 +252,52 @@ const Reports: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Métricas Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Total de Tarefas</p>
-                <p className="text-3xl font-bold tracking-tight">
-                  {filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}
-                </p>
+      {/* Resumo Geral */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">Resumo Geral</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
+            <div className="space-y-1">
+              <div className="text-2xl font-bold">
+                {filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}
               </div>
-              <div className="rounded-full bg-primary/10 p-3">
-                <CheckSquare className="h-6 w-6 text-primary" />
+              <div className="text-xs text-muted-foreground">Total de Tarefas</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-bold text-blue-600">
+                {filialStats.reduce((sum, f) => sum + f.visitas, 0)}
               </div>
+              <div className="text-xs text-muted-foreground">Visitas</div>
             </div>
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground">Todas as filiais</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Visitas</p>
-                <p className="text-3xl font-bold tracking-tight text-blue-600">
-                  {filialStats.reduce((sum, f) => sum + f.visitas, 0)}
-                </p>
+            <div className="space-y-1">
+              <div className="text-2xl font-bold text-purple-600">
+                {filialStats.reduce((sum, f) => sum + f.checklist, 0)}
               </div>
-              <div className="rounded-full bg-blue-100 p-3">
-                <Activity className="h-6 w-6 text-blue-600" />
+              <div className="text-xs text-muted-foreground">Checklist</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-2xl font-bold text-orange-600">
+                {filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
               </div>
+              <div className="text-xs text-muted-foreground">Ligações</div>
             </div>
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground">Todas as filiais</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Checklist</p>
-                <p className="text-3xl font-bold tracking-tight text-purple-600">
-                  {filialStats.reduce((sum, f) => sum + f.checklist, 0)}
-                </p>
+            <div className="space-y-1">
+              <div className="text-xl font-bold text-green-600">
+                R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}
               </div>
-              <div className="rounded-full bg-purple-100 p-3">
-                <Target className="h-6 w-6 text-purple-600" />
+              <div className="text-xs text-muted-foreground">Oportunidades</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xl font-bold text-emerald-600">
+                R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
               </div>
+              <div className="text-xs text-muted-foreground">Vendas</div>
             </div>
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground">Todas as filiais</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Ligações</p>
-                <p className="text-3xl font-bold tracking-tight text-orange-600">
-                  {filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
-                </p>
-              </div>
-              <div className="rounded-full bg-orange-100 p-3">
-                <DollarSign className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground">Todas as filiais</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Oportunidades</p>
-                <p className="text-2xl font-bold tracking-tight text-green-600">
-                  R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}
-                </p>
-              </div>
-              <div className="rounded-full bg-green-100 p-3">
-                <Target className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground">Todas as filiais</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">Vendas</p>
-                <p className="text-2xl font-bold tracking-tight text-emerald-600">
-                  R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
-                </p>
-              </div>
-              <div className="rounded-full bg-emerald-100 p-3">
-                <DollarSign className="h-6 w-6 text-emerald-600" />
-              </div>
-            </div>
-            <div className="mt-4">
-              <p className="text-xs text-muted-foreground">Todas as filiais</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dados por Filial */}
       <Card>
