@@ -269,7 +269,7 @@ const Reports: React.FC = () => {
           <CardContent className="p-4">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Visitas</p>
-              <p className="text-xl font-bold tracking-tight text-blue-600">
+              <p className="text-xl font-bold tracking-tight">
                 {filialStats.reduce((sum, f) => sum + f.visitas, 0)}
               </p>
             </div>
@@ -280,7 +280,7 @@ const Reports: React.FC = () => {
           <CardContent className="p-4">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Checklist</p>
-              <p className="text-xl font-bold tracking-tight text-purple-600">
+              <p className="text-xl font-bold tracking-tight">
                 {filialStats.reduce((sum, f) => sum + f.checklist, 0)}
               </p>
             </div>
@@ -291,7 +291,7 @@ const Reports: React.FC = () => {
           <CardContent className="p-4">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Ligações</p>
-              <p className="text-xl font-bold tracking-tight text-orange-600">
+              <p className="text-xl font-bold tracking-tight">
                 {filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
               </p>
             </div>
@@ -302,7 +302,7 @@ const Reports: React.FC = () => {
           <CardContent className="p-4">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Oportunidades</p>
-              <p className="text-lg font-bold tracking-tight text-green-600">
+              <p className="text-lg font-bold tracking-tight">
                 R$ {filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}
               </p>
             </div>
@@ -313,7 +313,7 @@ const Reports: React.FC = () => {
           <CardContent className="p-4">
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Vendas</p>
-              <p className="text-lg font-bold tracking-tight text-emerald-600">
+              <p className="text-lg font-bold tracking-tight">
                 R$ {filialStats.reduce((sum, f) => sum + f.salesValue, 0).toLocaleString('pt-BR')}
               </p>
             </div>
