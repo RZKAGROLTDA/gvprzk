@@ -8,6 +8,7 @@ interface Profile {
   email: string;
   role: string;
   filial_id: string | null;
+  filial_nome?: string;
   approval_status: 'pending' | 'approved' | 'rejected';
 }
 
@@ -46,7 +47,12 @@ export const useProfile = () => {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          filiais:filial_id (
+            nome
+          )
+        `)
         .eq('user_id', user.id)
         .maybeSingle(); // Use maybeSingle instead of single to handle no results
 
@@ -57,7 +63,11 @@ export const useProfile = () => {
         console.error('Erro ao carregar perfil:', error);
         setProfile(null);
       } else {
-        setProfile(data);
+        const profileData = data ? {
+          ...data,
+          filial_nome: data.filiais?.nome
+        } : null;
+        setProfile(profileData);
       }
     } catch (error) {
       console.error('Erro inesperado ao carregar perfil:', error);

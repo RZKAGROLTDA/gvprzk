@@ -51,7 +51,7 @@ export const OfflineIndicator: React.FC = () => {
           <div className="flex items-center gap-2">
             <Building className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Filial:</span>
-            <span className="text-sm">{profile?.filial_id || 'Carregando...'}</span>
+            <span className="text-sm">{profile?.filial_nome || 'Carregando...'}</span>
           </div>
         </div>
 
