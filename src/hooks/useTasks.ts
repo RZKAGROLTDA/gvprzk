@@ -125,7 +125,7 @@ export const useTasks = () => {
       client: taskData.client || '',
       property: taskData.property || '',
       filial: taskData.filial || '',
-      taskType: 'prospection',
+      taskType: taskData.taskType || 'prospection',
       checklist: taskData.checklist || [],
       startDate: taskData.startDate || new Date(),
       endDate: taskData.endDate || new Date(),
