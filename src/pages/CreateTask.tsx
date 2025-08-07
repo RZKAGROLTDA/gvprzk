@@ -603,7 +603,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               
 
               <div className="space-y-2">
-                <Label htmlFor="responsible">Contato</Label>
+                <Label htmlFor="responsible">Nome do Contato</Label>
                 <Input id="responsible" value={task.responsible} onChange={e => setTask(prev => ({
                   ...prev,
                   responsible: e.target.value
