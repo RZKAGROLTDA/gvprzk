@@ -121,10 +121,20 @@ const Reports: React.FC = () => {
         const userIds = profilesFromFilial?.map(p => p.user_id) || [];
         
         // Buscar tarefas dos usuários desta filial
-        const { data: tasks, error: tasksError } = await supabase
+        let query = supabase
           .from('tasks')
           .select('*')
           .in('created_by', userIds);
+
+        // Aplicar filtros de data se definidos
+        if (dateFrom) {
+          query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
+        }
+        if (dateTo) {
+          query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
+        }
+
+        const { data: tasks, error: tasksError } = await query;
 
         if (tasksError) {
           console.error('Erro ao buscar tarefas:', tasksError);
