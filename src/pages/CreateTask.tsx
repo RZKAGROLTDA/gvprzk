@@ -670,7 +670,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor={`price-${item.id}`}>Valor</Label>
-                                  <Input id={`price-${item.id}`} type="number" step="0.01" value={item.price || 0} onChange={e => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)} placeholder="0,00" />
+                                  <Input id={`price-${item.id}`} type="number" step="0.01" value={item.price || ''} onChange={e => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)} placeholder="" />
                                 </div>
                               </div>
                               
