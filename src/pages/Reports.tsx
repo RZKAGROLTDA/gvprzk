@@ -297,7 +297,7 @@ const Reports: React.FC = () => {
 
         <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Oportunidades Geradas</CardTitle>
+            <CardTitle className="text-sm font-medium">Oportunidades</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -310,7 +310,7 @@ const Reports: React.FC = () => {
 
         <Card className="h-32">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vendas Realizadas</CardTitle>
+            <CardTitle className="text-sm font-medium">Vendas</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
