@@ -666,11 +666,14 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                               <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor={`qty-${item.id}`}>QTD</Label>
-                                  <Input id={`qty-${item.id}`} type="number" value={item.quantity || 0} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="0" />
+                                  <Input id={`qty-${item.id}`} type="number" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor={`price-${item.id}`}>Valor</Label>
-                                  <Input id={`price-${item.id}`} type="number" step="0.01" value={item.price || ''} onChange={e => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)} placeholder="" />
+                                  <div className="relative">
+                                    <Input id={`price-${item.id}`} type="number" step="0.01" value={item.price || ''} onChange={e => handleProductChange(item.id, 'price', parseFloat(e.target.value) || 0)} placeholder="" className="pl-8" />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                                  </div>
                                 </div>
                               </div>
                               
