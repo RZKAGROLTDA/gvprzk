@@ -368,22 +368,33 @@ const CreateTask: React.FC = () => {
       const { data: tasks } = await supabase
         .from('tasks')
         .select('*')
-        .eq('cpf', cpf)
+        .ilike('observations', `%${cpf}%`)
         .order('created_at', { ascending: false })
         .limit(1);
 
       if (tasks && tasks.length > 0) {
         const lastTask = tasks[0];
+        
+        // Extrair hectares das observações se existir
+        let hectares = '';
+        if (lastTask.observations) {
+          const hectaresMatch = lastTask.observations.match(/hectares?\s*:?\s*(\d+(?:[.,]\d+)?)/i);
+          if (hectaresMatch) {
+            hectares = hectaresMatch[1];
+          }
+        }
+
         setTask(prev => ({
           ...prev,
           client: lastTask.client || '',
           responsible: lastTask.responsible || '',
-          property: lastTask.property || ''
+          property: lastTask.property || '',
+          observations: hectares ? `Hectares: ${hectares}` : ''
         }));
         
         toast({
-          title: "Informações encontradas",
-          description: "Dados preenchidos automaticamente baseados em registros anteriores"
+          title: "📋 Dados encontrados",
+          description: "Informações do CPF foram preenchidas automaticamente"
         });
       } else {
         // Buscar no localStorage como fallback
@@ -394,12 +405,13 @@ const CreateTask: React.FC = () => {
             ...prev,
             client: data.client || '',
             responsible: data.responsible || '',
-            property: data.property || ''
+            property: data.property || '',
+            observations: data.hectares ? `Hectares: ${data.hectares}` : ''
           }));
           
           toast({
-            title: "Informações encontradas",
-            description: "Dados preenchidos automaticamente baseados em registros anteriores"
+            title: "📋 Dados encontrados",
+            description: "Informações do CPF foram preenchidas automaticamente"
           });
         }
       }
@@ -409,8 +421,8 @@ const CreateTask: React.FC = () => {
   };
 
   // Função para salvar dados do CPF no localStorage
-  const saveCPFData = (cpf: string, data: { client: string; responsible: string; property: string }) => {
-    if (cpf && (data.client || data.responsible || data.property)) {
+  const saveCPFData = (cpf: string, data: { client: string; responsible: string; property: string; hectares?: string }) => {
+    if (cpf && (data.client || data.responsible || data.property || data.hectares)) {
       localStorage.setItem(`cpf_data_${cpf}`, JSON.stringify(data));
     }
   };
@@ -742,10 +754,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
       // Salvar dados do CPF para reutilização futura
       if (task.cpf) {
+        // Extrair hectares das observações se existir
+        let hectares = '';
+        if (task.observations) {
+          const hectaresMatch = task.observations.match(/hectares?\s*:?\s*(\d+(?:[.,]\d+)?)/i);
+          if (hectaresMatch) {
+            hectares = hectaresMatch[1];
+          }
+        }
+
         saveCPFData(task.cpf.replace(/\D/g, ''), {
           client: task.client || '',
           responsible: task.responsible || '',
-          property: task.property || ''
+          property: task.property || '',
+          hectares: hectares || ''
         });
       }
 
