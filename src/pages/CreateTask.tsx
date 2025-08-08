@@ -958,6 +958,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               }))} placeholder="Nome do cliente" />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  value={task.email || ''} 
+                  onChange={e => setTask(prev => ({
+                    ...prev,
+                    email: e.target.value
+                  }))} 
+                  placeholder="email@exemplo.com" 
+                />
+              </div>
+
               {taskCategory === 'field-visit' && <div className="space-y-2">
                   <Label htmlFor="property">Nome da Propriedade</Label>
                   <Input id="property" value={task.property} onChange={e => setTask(prev => ({
