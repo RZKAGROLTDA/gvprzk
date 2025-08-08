@@ -19,11 +19,14 @@ import {
   Activity,
   Building2,
   RefreshCw,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { TaskStats } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { toast } from '@/components/ui/use-toast';
 
 interface FilialStats {
   id: string;
@@ -253,6 +256,11 @@ const Reports: React.FC = () => {
     setDateFrom(undefined);
     setDateTo(undefined);
     setSelectedUser('all');
+    
+    toast({
+      title: "✨ Filtros limpos",
+      description: "Todos os filtros foram resetados com sucesso"
+    });
   };
 
   useEffect(() => {
@@ -412,9 +420,27 @@ const Reports: React.FC = () => {
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     {loading ? 'Atualizando...' : 'Atualizar'}
                   </Button>
-                  <Button variant="ghost" onClick={clearFilters} size="icon" className="shrink-0">
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="icon" className="shrink-0">
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Limpar filtros</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja limpar todos os filtros aplicados? Os dados serão atualizados para mostrar informações completas.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={clearFilters}>
+                          Sim, limpar filtros
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </div>
