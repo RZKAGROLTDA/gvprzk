@@ -285,7 +285,7 @@ const Tasks: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {format(new Date(task.startDate), "PPP", { locale: ptBR })}
+                            {format(new Date(task.createdAt), "PPP", { locale: ptBR })}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
