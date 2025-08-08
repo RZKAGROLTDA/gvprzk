@@ -651,9 +651,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
+    // Capturar data e hora atual exatos no momento da criação
+    const now = new Date();
+    const currentTime = format(now, 'HH:mm');
+    
     const taskData = {
       ...task,
       taskType: getTaskTypeFromCategory(taskCategory), // Garantir que taskType está correto
+      startDate: now, // Data atual exata
+      endDate: now, // Data atual exata
+      startTime: currentTime, // Horário atual exato
+      endTime: currentTime, // Horário atual exato
       checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
       reminders,
       equipmentList
@@ -664,8 +673,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       const finalTaskData = {
         ...taskData,
         id: taskId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
         status: 'pending' as const,
         createdBy: taskData.responsible || 'Usuário'
       };
