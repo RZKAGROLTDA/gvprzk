@@ -23,6 +23,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
+import { supabase } from '@/integrations/supabase/client';
 
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -357,6 +358,62 @@ const CreateTask: React.FC = () => {
   const [checklist, setChecklist] = useState<ProductType[]>(getProductsForCategory());
   const [callProducts, setCallProducts] = useState<ProductType[]>(fieldVisitProducts);
 
+  // Função para buscar informações anteriores pelo CPF
+  const searchPreviousDataByCPF = async (cpf: string) => {
+    if (!cpf || cpf.length < 11) return;
+
+    try {
+      // Buscar no Supabase
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('cpf', cpf)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (tasks && tasks.length > 0) {
+        const lastTask = tasks[0];
+        setTask(prev => ({
+          ...prev,
+          client: lastTask.client || '',
+          responsible: lastTask.responsible || '',
+          property: lastTask.property || ''
+        }));
+        
+        toast({
+          title: "Informações encontradas",
+          description: "Dados preenchidos automaticamente baseados em registros anteriores"
+        });
+      } else {
+        // Buscar no localStorage como fallback
+        const savedData = localStorage.getItem(`cpf_data_${cpf}`);
+        if (savedData) {
+          const data = JSON.parse(savedData);
+          setTask(prev => ({
+            ...prev,
+            client: data.client || '',
+            responsible: data.responsible || '',
+            property: data.property || ''
+          }));
+          
+          toast({
+            title: "Informações encontradas",
+            description: "Dados preenchidos automaticamente baseados em registros anteriores"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados anteriores:', error);
+    }
+  };
+
+  // Função para salvar dados do CPF no localStorage
+  const saveCPFData = (cpf: string, data: { client: string; responsible: string; property: string }) => {
+    if (cpf && (data.client || data.responsible || data.property)) {
+      localStorage.setItem(`cpf_data_${cpf}`, JSON.stringify(data));
+    }
+  };
+
   // Atualiza o checklist e taskType quando o tipo de tarefa muda
   useEffect(() => {
     setChecklist(getProductsForCategory());
@@ -622,18 +679,27 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       isDraft: true
     };
 
-    // Salvar no localStorage como rascunho
-    const existingDrafts = JSON.parse(localStorage.getItem('task_drafts') || '[]');
-    const draftId = `draft_${Date.now()}`;
-    const newDraft = {
-      id: draftId,
-      ...draftData,
-      savedAt: new Date(),
-      category: taskCategory
-    };
+      // Salvar dados do CPF para reutilização futura
+      if (task.cpf) {
+        saveCPFData(task.cpf.replace(/\D/g, ''), {
+          client: task.client || '',
+          responsible: task.responsible || '',
+          property: task.property || ''
+        });
+      }
 
-    existingDrafts.push(newDraft);
-    localStorage.setItem('task_drafts', JSON.stringify(existingDrafts));
+      // Salvar no localStorage como rascunho
+      const existingDrafts = JSON.parse(localStorage.getItem('task_drafts') || '[]');
+      const draftId = `draft_${Date.now()}`;
+      const newDraft = {
+        id: draftId,
+        ...draftData,
+        savedAt: new Date(),
+        category: taskCategory
+      };
+
+      existingDrafts.push(newDraft);
+      localStorage.setItem('task_drafts', JSON.stringify(existingDrafts));
 
     toast({
       title: "💾 Rascunho Salvo",
@@ -763,10 +829,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 <Input 
                   id="cpf" 
                   value={task.cpf || ''} 
-                  onChange={e => setTask(prev => ({
-                    ...prev,
-                    cpf: e.target.value
-                  }))} 
+                  onChange={e => {
+                    const cpf = e.target.value;
+                    setTask(prev => ({
+                      ...prev,
+                      cpf: cpf
+                    }));
+                    
+                    // Buscar dados anteriores quando CPF for digitado (apenas números)
+                    const cleanCPF = cpf.replace(/\D/g, '');
+                    if (cleanCPF.length === 11) {
+                      searchPreviousDataByCPF(cleanCPF);
+                    }
+                  }} 
                   placeholder="000.000.000-00" 
                   maxLength={14}
                   required
