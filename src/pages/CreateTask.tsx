@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X, Download, RotateCcw } from 'lucide-react';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
@@ -24,6 +24,7 @@ import { toast } from '@/components/ui/use-toast';
 import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -412,6 +413,66 @@ const CreateTask: React.FC = () => {
     if (cpf && (data.client || data.responsible || data.property)) {
       localStorage.setItem(`cpf_data_${cpf}`, JSON.stringify(data));
     }
+  };
+
+  // Função para resetar todos os campos do formulário
+  const resetAllFields = () => {
+    // Reset task state (mantém apenas filial)
+    setTask({
+      name: '',
+      responsible: '',
+      client: '',
+      property: '',
+      filial: profile?.filial_id || '',
+      taskType: getTaskTypeFromCategory(taskCategory),
+      priority: 'medium',
+      observations: '',
+      startDate: new Date(),
+      endDate: new Date(),
+      startTime: '09:00',
+      endTime: '17:00',
+      initialKm: 0,
+      finalKm: 0,
+      checklist: [],
+      reminders: [],
+      photos: [],
+      documents: []
+    });
+
+    // Reset call questions
+    setCallQuestions({
+      lubricants: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+      tires: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+      filters: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+      batteries: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+      parts: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+      silobag: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+      disk: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 }
+    });
+
+    // Reset product lists
+    setChecklist(getProductsForCategory());
+    setCallProducts(fieldVisitProducts);
+
+    // Reset equipment list
+    setEquipmentList(initializeEquipmentList());
+
+    // Reset reminders
+    setReminders([]);
+    setNewReminder({
+      title: '',
+      description: '',
+      date: new Date(),
+      time: '09:00'
+    });
+
+    // Reset WhatsApp webhook
+    setWhatsappWebhook('');
+
+    toast({
+      title: "✨ Formulário limpo",
+      description: "Todas as informações foram resetadas com sucesso"
+    });
   };
 
   // Atualiza o checklist e taskType quando o tipo de tarefa muda
@@ -1342,19 +1403,41 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         {taskCategory === 'field-visit' && <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />}
 
          <div className="flex flex-col gap-4 mt-6">
-           <div className="flex gap-4">
-             <Button type="submit" className="flex-1" variant="gradient" disabled={isSubmitting}>
-               <CheckSquare className="h-4 w-4 mr-2" />
-               {isSubmitting ? 'Criando...' : 'Criar Tarefa'}
-             </Button>
-             <Button type="button" variant="outline" className="flex-1" onClick={handleSaveDraft}>
-               <FileText className="h-4 w-4 mr-2" />
-               Salvar Rascunho
-             </Button>
-             <Button type="button" variant="outline" className="flex-1">
-               Cancelar
-             </Button>
-           </div>
+            <div className="flex gap-4">
+              <Button type="submit" className="flex-1" variant="gradient" disabled={isSubmitting}>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                {isSubmitting ? 'Criando...' : 'Criar Tarefa'}
+              </Button>
+              <Button type="button" variant="outline" className="flex-1" onClick={handleSaveDraft}>
+                <FileText className="h-4 w-4 mr-2" />
+                Salvar Rascunho
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="outline" className="flex-1">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Limpar Tudo
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar limpeza</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja limpar todas as informações do formulário? Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={resetAllFields} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Sim, limpar tudo
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button type="button" variant="outline" className="flex-1">
+                Cancelar
+              </Button>
+            </div>
            
            {/* Botões de Exportar Relatório */}
            <div className="border-t pt-4">
