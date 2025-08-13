@@ -152,42 +152,51 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
               
               {/* Estatísticas principais */}
               <div className="grid grid-cols-6 gap-3 text-sm">
-                <div className="text-center">
-                  <p className="font-medium text-blue-600">{visitas || user.visits}</p>
-                  <p className="text-xs text-muted-foreground">Visitas</p>
-                  <p className="text-xs text-accent-foreground font-medium">
-                    R$ {(userTasks.filter(t => t.task_type === 'prospection').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
-                  </p>
+                <div className="text-center bg-blue-50 dark:bg-blue-950/20 rounded-lg p-2 border border-blue-200 dark:border-blue-800">
+                  <p className="font-bold text-blue-700 dark:text-blue-400 text-base">{visitas || user.visits}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Visitas</p>
+                  <div className="mt-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 rounded">
+                    <p className="text-xs text-blue-800 dark:text-blue-300 font-semibold">
+                      R$ {(userTasks.filter(t => t.task_type === 'prospection').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">oportunidades</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="font-medium text-purple-600">{checklists}</p>
-                  <p className="text-xs text-muted-foreground">Checklists</p>
-                  <p className="text-xs text-accent-foreground font-medium">
-                    R$ {(userTasks.filter(t => t.task_type === 'checklist').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
-                  </p>
+                <div className="text-center bg-purple-50 dark:bg-purple-950/20 rounded-lg p-2 border border-purple-200 dark:border-purple-800">
+                  <p className="font-bold text-purple-700 dark:text-purple-400 text-base">{checklists}</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Checklists</p>
+                  <div className="mt-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded">
+                    <p className="text-xs text-purple-800 dark:text-purple-300 font-semibold">
+                      R$ {(userTasks.filter(t => t.task_type === 'checklist').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs text-purple-600 dark:text-purple-400">oportunidades</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="font-medium text-orange-600">{ligacoes}</p>
-                  <p className="text-xs text-muted-foreground">Ligações</p>
-                  <p className="text-xs text-accent-foreground font-medium">
-                    R$ {(userTasks.filter(t => t.task_type === 'ligacao').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
-                  </p>
+                <div className="text-center bg-orange-50 dark:bg-orange-950/20 rounded-lg p-2 border border-orange-200 dark:border-orange-800">
+                  <p className="font-bold text-orange-700 dark:text-orange-400 text-base">{ligacoes}</p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">Ligações</p>
+                  <div className="mt-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 rounded">
+                    <p className="text-xs text-orange-800 dark:text-orange-300 font-semibold">
+                      R$ {(userTasks.filter(t => t.task_type === 'ligacao').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                    </p>
+                    <p className="text-xs text-orange-600 dark:text-orange-400">oportunidades</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="font-medium text-green-600">
+                <div className="text-center bg-green-50 dark:bg-green-950/20 rounded-lg p-2 border border-green-200 dark:border-green-800">
+                  <p className="font-bold text-green-700 dark:text-green-400 text-base">
                     R$ {totalOportunidades.toLocaleString('pt-BR')}
                   </p>
-                  <p className="text-xs text-muted-foreground">Total Oport.</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium">Total Oport.</p>
                 </div>
-                <div className="text-center">
-                  <p className="font-medium text-emerald-600">
+                <div className="text-center bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-2 border border-emerald-200 dark:border-emerald-800">
+                  <p className="font-bold text-emerald-700 dark:text-emerald-400 text-base">
                     R$ {vendasConfirmadas.toLocaleString('pt-BR')}
                   </p>
-                  <p className="text-xs text-muted-foreground">Vendas</p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Vendas Confirm.</p>
                 </div>
-                <div className="text-center">
-                  <p className="font-medium text-accent">{taxaConversao.toFixed(1)}%</p>
-                  <p className="text-xs text-muted-foreground">Conversão</p>
+                <div className="text-center bg-accent/10 rounded-lg p-2 border border-accent/20">
+                  <p className="font-bold text-accent text-base">{taxaConversao.toFixed(1)}%</p>
+                  <p className="text-xs text-accent/80 font-medium">Taxa Conversão</p>
                 </div>
               </div>
             </div>
