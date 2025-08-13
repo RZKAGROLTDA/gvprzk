@@ -165,10 +165,8 @@ export const SalesFunnel: React.FC = () => {
       const key = `${task.client}-${task.filial}`;
       
       if (!clientMap.has(key)) {
-        // Buscar nome da filial nos dados carregados
-        const filialName = task.filial ? 
-          (filiais.find(f => f.nome === task.filial)?.nome || task.filial) : 
-          '';
+        // Buscar nome da filial nos dados carregados ou usar o valor da tarefa
+        const filialName = task.filial || 'Não informado';
         
         clientMap.set(key, {
           client: task.client,
