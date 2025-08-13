@@ -42,6 +42,7 @@ export const SalesFunnel: React.FC = () => {
   const { user } = useAuth();
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
+  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   
   // Filtros
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -303,90 +304,175 @@ export const SalesFunnel: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Indicadores principais */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Contatos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{funnelData[0]?.value || 0}</div>
-            <p className="text-xs text-muted-foreground">Atividades registradas</p>
-          </CardContent>
-        </Card>
+      {/* Cards de Navegação */}
+      {activeView === 'overview' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
+            onClick={() => setActiveView('funnel')}
+          >
+            <CardHeader className="text-center">
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <TrendingUp className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle>Análise do Funil</CardTitle>
+              <CardDescription>
+                Visualize o fluxo de conversão desde contatos até vendas fechadas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{funnelData[0]?.value || 0}</div>
+                <p className="text-sm text-muted-foreground">Total de Contatos</p>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{conversionRate}%</div>
-            <p className="text-xs text-muted-foreground">De contatos para vendas</p>
-          </CardContent>
-        </Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
+            onClick={() => setActiveView('coverage')}
+          >
+            <CardHeader className="text-center">
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <Target className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle>Cobertura de Carteira</CardTitle>
+              <CardDescription>
+                Analise a distribuição e cobertura da sua base de clientes
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{new Set(filteredTasks.map(t => t.client)).size}</div>
+                <p className="text-sm text-muted-foreground">Clientes Únicos</p>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-              }).format(totalSalesValue)}
-            </div>
-            <p className="text-xs text-muted-foreground">Em oportunidades</p>
-          </CardContent>
-        </Card>
+          <Card 
+            className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
+            onClick={() => setActiveView('details')}
+          >
+            <CardHeader className="text-center">
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <DollarSign className="h-6 w-6 text-primary" />
+              </div>
+              <CardTitle>Detalhes por Cliente</CardTitle>
+              <CardDescription>
+                Veja o breakdown detalhado das atividades e valores por cliente
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    maximumFractionDigits: 0
+                  }).format(totalSalesValue)}
+                </div>
+                <p className="text-sm text-muted-foreground">Valor Total</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clientes Únicos</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{new Set(filteredTasks.map(t => t.client)).size}</div>
-            <p className="text-xs text-muted-foreground">No período selecionado</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Botão Voltar quando não estiver na overview */}
+      {activeView !== 'overview' && (
+        <Button variant="outline" onClick={() => setActiveView('overview')} className="mb-4">
+          ← Voltar ao Menu Principal
+        </Button>
+      )}
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Funil de Vendas */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Funil de Vendas</CardTitle>
-            <CardDescription>Fluxo de conversão das atividades comerciais</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="min-h-[300px]">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={funnelData} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={120} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="value" fill="hsl(var(--chart-1))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+      {/* Conteúdo do Funil */}
+      {activeView === 'funnel' && (
+        <div className="space-y-6">
+          {/* Indicadores principais */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total de Contatos</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{funnelData[0]?.value || 0}</div>
+                <p className="text-xs text-muted-foreground">Atividades registradas</p>
+              </CardContent>
+            </Card>
 
-        {/* Cobertura de Carteira */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{conversionRate}%</div>
+                <p className="text-xs text-muted-foreground">De contatos para vendas</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(totalSalesValue)}
+                </div>
+                <p className="text-xs text-muted-foreground">Em oportunidades</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Clientes Únicos</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{new Set(filteredTasks.map(t => t.client)).size}</div>
+                <p className="text-xs text-muted-foreground">No período selecionado</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Gráfico de Funil */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Funil de Vendas</CardTitle>
+              <CardDescription>Fluxo de conversão das atividades comerciais</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="min-h-[300px]">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={funnelData} layout="horizontal">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={120} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" fill="hsl(var(--chart-1))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Conteúdo da Cobertura */}
+      {activeView === 'coverage' && (
         <Card>
           <CardHeader>
             <CardTitle>Cobertura de Carteira</CardTitle>
             <CardDescription>Distribuição da cobertura por tipo de interação</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="min-h-[300px]">
-              <ResponsiveContainer width="100%" height={300}>
+            <ChartContainer config={chartConfig} className="min-h-[400px]">
+              <ResponsiveContainer width="100%" height={400}>
                 <PieChart>
                   <Pie
                     data={coverageData}
@@ -394,7 +480,7 @@ export const SalesFunnel: React.FC = () => {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percentage }) => `${name}: ${percentage}%`}
-                    outerRadius={80}
+                    outerRadius={120}
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -408,72 +494,74 @@ export const SalesFunnel: React.FC = () => {
             </ChartContainer>
           </CardContent>
         </Card>
-      </div>
+      )}
 
-      {/* Tabela de detalhes por cliente */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Detalhes por Cliente</CardTitle>
-          <CardDescription>Breakdown detalhado das atividades por cliente</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Filial</TableHead>
-                <TableHead>Consultor</TableHead>
-                <TableHead>Visitas</TableHead>
-                <TableHead>Ligações</TableHead>
-                <TableHead>Checklists</TableHead>
-                <TableHead>Prospects</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Última Atividade</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {clientDetails.slice(0, 10).map((client, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{client.client}</TableCell>
-                  <TableCell>{client.filial}</TableCell>
-                  <TableCell>{client.responsible}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{client.totalVisits}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{client.totalCalls}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{client.totalChecklists}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={client.prospects > 0 ? "default" : "outline"}>
-                      {client.prospects}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(client.salesValue)}
-                  </TableCell>
-                  <TableCell>
-                    {format(client.lastActivity, 'dd/MM/yyyy', { locale: ptBR })}
-                  </TableCell>
+      {/* Conteúdo dos Detalhes */}
+      {activeView === 'details' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Detalhes por Cliente</CardTitle>
+            <CardDescription>Breakdown detalhado das atividades por cliente</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Filial</TableHead>
+                  <TableHead>Consultor</TableHead>
+                  <TableHead>Visitas</TableHead>
+                  <TableHead>Ligações</TableHead>
+                  <TableHead>Checklists</TableHead>
+                  <TableHead>Prospects</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Última Atividade</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {clientDetails.length > 10 && (
-            <div className="mt-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Mostrando 10 de {clientDetails.length} clientes. Use os filtros para refinar a busca.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {clientDetails.slice(0, 10).map((client, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{client.client}</TableCell>
+                    <TableCell>{client.filial}</TableCell>
+                    <TableCell>{client.responsible}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{client.totalVisits}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{client.totalCalls}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{client.totalChecklists}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={client.prospects > 0 ? "default" : "outline"}>
+                        {client.prospects}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      }).format(client.salesValue)}
+                    </TableCell>
+                    <TableCell>
+                      {format(client.lastActivity, 'dd/MM/yyyy', { locale: ptBR })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            
+            {clientDetails.length > 10 && (
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando 10 de {clientDetails.length} clientes. Use os filtros para refinar a busca.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
