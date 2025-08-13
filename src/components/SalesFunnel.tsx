@@ -118,6 +118,19 @@ export const SalesFunnel: React.FC = () => {
     const closedWon = filteredTasks.filter(task => task.salesConfirmed).length;
     const closedLost = filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).length;
     
+    // Valores das prospecções
+    const totalProspectValue = filteredTasks
+      .filter(task => task.isProspect)
+      .reduce((sum, task) => sum + (task.salesValue || 0), 0);
+    
+    const openProspectValue = filteredTasks
+      .filter(task => task.isProspect && task.status === 'pending')
+      .reduce((sum, task) => sum + (task.salesValue || 0), 0);
+    
+    const closedWonValue = filteredTasks
+      .filter(task => task.salesConfirmed)
+      .reduce((sum, task) => sum + (task.salesValue || 0), 0);
+    
     // Terceira barra: Vendas/Faturamento
     const openSales = filteredTasks.filter(task => task.salesConfirmed && task.status === 'pending').length;
     const faturado = filteredTasks.filter(task => task.salesConfirmed && task.status === 'completed').length;
@@ -125,7 +138,15 @@ export const SalesFunnel: React.FC = () => {
 
     return {
       contacts: { total: totalContacts, visitas: totalVisitas, ligacoes: totalLigacoes, checklists: totalChecklists },
-      prospects: { total: prospects, abertas: openProspects, fechadas: closedWon, perdidas: closedLost },
+      prospects: { 
+        total: prospects, 
+        abertas: openProspects, 
+        fechadas: closedWon, 
+        perdidas: closedLost,
+        totalValue: totalProspectValue,
+        openValue: openProspectValue,
+        closedWonValue: closedWonValue
+      },
       sales: { abertos: openSales, faturado, perdido }
     };
   }, [filteredTasks]);
@@ -550,7 +571,13 @@ export const SalesFunnel: React.FC = () => {
                 <h4 className="text-sm font-medium text-muted-foreground">Vendas</h4>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-green-600 text-white p-4 rounded-lg text-center">
-                    <div className="font-bold text-xl">{funnelData.sales.abertos}</div>
+                    <div className="font-bold text-xl">
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                        maximumFractionDigits: 0
+                      }).format(funnelData.prospects.openValue)}
+                    </div>
                     <div className="text-sm opacity-90">Abertos</div>
                     <div className="text-xs opacity-75">
                       {funnelData.prospects.fechadas > 0 ? 
@@ -558,7 +585,13 @@ export const SalesFunnel: React.FC = () => {
                     </div>
                   </div>
                   <div className="bg-green-500 text-white p-4 rounded-lg text-center">
-                    <div className="font-bold text-xl">{funnelData.sales.faturado}</div>
+                    <div className="font-bold text-xl">
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                        maximumFractionDigits: 0
+                      }).format(funnelData.prospects.closedWonValue)}
+                    </div>
                     <div className="text-sm opacity-90">Faturado</div>
                     <div className="text-xs opacity-75">
                       {funnelData.prospects.fechadas > 0 ? 
@@ -575,7 +608,10 @@ export const SalesFunnel: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
-                  Total: {funnelData.sales.abertos + funnelData.sales.faturado + funnelData.sales.perdido}
+                  Valor Total: {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(funnelData.prospects.totalValue)}
                 </div>
               </div>
 
