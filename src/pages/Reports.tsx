@@ -814,9 +814,9 @@ const Reports: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Conversão</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Oportunidades</p>
                 <p className="text-lg font-bold text-primary">
-                  {loading ? '...' : `${overallConversionRate.toFixed(1)}%`}
+                  {loading ? '...' : `R$ ${totalProspectsValue.toLocaleString('pt-BR')}`}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-primary/50" />
