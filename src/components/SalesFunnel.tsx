@@ -575,9 +575,9 @@ export const SalesFunnel: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cliente</TableHead>
+                  <TableHead>Cliente (Proprietário)</TableHead>
                   <TableHead>Filial</TableHead>
-                  <TableHead>Consultor</TableHead>
+                  <TableHead>Vendedor</TableHead>
                   <TableHead>Visitas</TableHead>
                   <TableHead>Ligações</TableHead>
                   <TableHead>Checklists</TableHead>
