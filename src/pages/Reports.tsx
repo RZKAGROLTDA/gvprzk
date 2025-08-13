@@ -155,14 +155,23 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
                 <div className="text-center">
                   <p className="font-medium text-blue-600">{visitas || user.visits}</p>
                   <p className="text-xs text-muted-foreground">Visitas</p>
+                  <p className="text-xs text-accent-foreground font-medium">
+                    R$ {(userTasks.filter(t => t.task_type === 'prospection').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="font-medium text-purple-600">{checklists}</p>
                   <p className="text-xs text-muted-foreground">Checklists</p>
+                  <p className="text-xs text-accent-foreground font-medium">
+                    R$ {(userTasks.filter(t => t.task_type === 'checklist').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="font-medium text-orange-600">{ligacoes}</p>
                   <p className="text-xs text-muted-foreground">Ligações</p>
+                  <p className="text-xs text-accent-foreground font-medium">
+                    R$ {(userTasks.filter(t => t.task_type === 'ligacao').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="font-medium text-green-600">
@@ -878,21 +887,33 @@ const Reports: React.FC = () => {
                         <Target className="h-6 w-6 mx-auto mb-2 text-primary" />
                         <p className="text-2xl font-bold text-primary">{filial.visitas}</p>
                         <p className="text-xs text-muted-foreground">Visitas</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {(filial.prospectsValue * (filial.visitas / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
+                        </p>
                       </div>
                       <div className="bg-success/5 rounded-lg p-4 text-center">
                         <CheckSquare className="h-6 w-6 mx-auto mb-2 text-success" />
                         <p className="text-2xl font-bold text-success">{filial.checklist}</p>
                         <p className="text-xs text-muted-foreground">Checklist</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {(filial.prospectsValue * (filial.checklist / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
+                        </p>
                       </div>
                       <div className="bg-warning/5 rounded-lg p-4 text-center">
                         <Users className="h-6 w-6 mx-auto mb-2 text-warning" />
                         <p className="text-2xl font-bold text-warning">{filial.ligacoes}</p>
                         <p className="text-xs text-muted-foreground">Ligações</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {(filial.prospectsValue * (filial.ligacoes / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
+                        </p>
                       </div>
                       <div className="bg-accent/5 rounded-lg p-4 text-center">
                         <TrendingUp className="h-6 w-6 mx-auto mb-2 text-accent" />
                         <p className="text-2xl font-bold text-accent">{filial.prospects}</p>
                         <p className="text-xs text-muted-foreground">Prospects</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {filial.prospectsValue.toLocaleString('pt-BR')}
+                        </p>
                       </div>
                       <div className="bg-secondary/5 rounded-lg p-4 text-center md:hidden">
                         <DollarSign className="h-6 w-6 mx-auto mb-2 text-success" />
