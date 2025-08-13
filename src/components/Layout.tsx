@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Settings, LogOut, Users, Building } from 'lucide-react';
+import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Settings, LogOut, Users, Building, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 interface LayoutProps {
@@ -35,6 +35,10 @@ export const Layout: React.FC<LayoutProps> = ({
     path: '/tasks',
     icon: CheckSquare,
     label: 'Resumo Tarefas'
+  }, {
+    path: '/dashboard',
+    icon: TrendingUp,
+    label: 'Funil de Vendas'
   }, {
     path: '/reports',
     icon: BarChart3,

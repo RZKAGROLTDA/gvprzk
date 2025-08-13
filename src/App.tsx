@@ -9,6 +9,7 @@ import { AuthProvider } from '@/components/AuthProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginForm } from '@/components/LoginForm';
 import Dashboard from "./pages/Dashboard";
+import { SalesFunnel } from "./components/SalesFunnel";
 import CreateTask from "./pages/CreateTask";
 import Tasks from "./pages/Tasks";
 import Reports from "./pages/Reports";
@@ -79,7 +80,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   return (
     <Routes>
       <Route path="/" element={<Layout><Home /></Layout>} />
-      <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+      <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
       <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
