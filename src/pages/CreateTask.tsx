@@ -1550,10 +1550,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                             name="saleType"
                             value="total"
                             checked={!task.prospectItems || task.prospectItems.length === 0}
-                            onChange={() => setTask(prev => ({
-                              ...prev,
-                              prospectItems: []
-                            }))}
+                            onChange={() => {
+                              // Calcular valor total automaticamente com base no checklist
+                              const totalValue = checklist.reduce((sum, item) => {
+                                return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                              }, 0);
+                              
+                              setTask(prev => ({
+                                ...prev,
+                                prospectItems: [],
+                                salesValue: totalValue > 0 ? totalValue : prev.salesValue
+                              }));
+                            }}
                             className="h-4 w-4"
                           />
                           <Label htmlFor="totalSale">Valor Total</Label>
@@ -1580,6 +1588,40 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                         </div>
                       </div>
                     </div>
+
+                    {/* Campo de valor total editável quando não há produtos selecionados */}
+                    {(!task.prospectItems || task.prospectItems.length === 0) && (
+                      <div className="space-y-2">
+                        <Label htmlFor="totalSaleValue">Valor Total da Venda (R$)</Label>
+                        <div className="relative">
+                          <Input
+                            id="totalSaleValue"
+                            type="text"
+                            value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            }).format(task.salesValue) : ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const numericValue = parseFloat(value) / 100;
+                              setTask(prev => ({
+                                ...prev,
+                                salesValue: isNaN(numericValue) ? undefined : numericValue
+                              }));
+                            }}
+                            placeholder="0,00"
+                            className="pl-8"
+                          />
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {checklist.some(item => item.selected) 
+                            ? "Valor calculado automaticamente com base nos produtos selecionados. Você pode editá-lo se necessário."
+                            : "Digite o valor total da venda realizada."
+                          }
+                        </p>
+                      </div>
+                    )}
 
                     {/* Campo de valor para venda parcial */}
                     {task.prospectItems && task.prospectItems.length > 0 && (
