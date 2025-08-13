@@ -300,6 +300,13 @@ const Reports: React.FC = () => {
   const totalSalesValue = filialStats.reduce((sum, f) => sum + f.salesValue, 0);
   const overallConversionRate = totalTasks > 0 ? (totalProspects / totalTasks) * 100 : 0;
 
+  // Calcular oportunidades por tipo de tarefa
+  const [taskTypeOpportunities, setTaskTypeOpportunities] = useState({
+    prospection: { count: 0, value: 0 },
+    checklist: { count: 0, value: 0 },
+    ligacao: { count: 0, value: 0 }
+  });
+
   const stats: TaskStats = {
     totalVisits: totalVisitas,
     completedVisits: totalVisitas, // Assumindo que visitas registradas são completadas
@@ -629,13 +636,13 @@ const Reports: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Colaborador</label>
+                <label className="text-sm font-medium">CEP</label>
                 <Select value={selectedUser} onValueChange={setSelectedUser}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos os colaboradores" />
+                    <SelectValue placeholder="Todos os CEPs" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos os Colaboradores</SelectItem>
+                    <SelectItem value="all">Todos os CEPs</SelectItem>
                     {collaborators.map((collaborator) => (
                       <SelectItem key={collaborator.id} value={collaborator.id}>
                         {collaborator.name} - {
@@ -701,7 +708,7 @@ const Reports: React.FC = () => {
                 )}
                 {selectedUser !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
-                    {collaborators.find(c => c.id === selectedUser)?.name || 'Colaborador específico'}
+                    {collaborators.find(c => c.id === selectedUser)?.name || 'CEP específico'}
                   </Badge>
                 )}
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2">
@@ -737,6 +744,9 @@ const Reports: React.FC = () => {
                 <p className="text-2xl font-bold text-accent">
                   {loading ? '...' : filialStats.reduce((sum, f) => sum + f.visitas, 0)}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Oport: R$ {loading ? '...' : filialStats.filter(f => f.visitas > 0).reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}
+                </p>
               </div>
               <Target className="h-8 w-8 text-accent/50" />
             </div>
@@ -751,6 +761,9 @@ const Reports: React.FC = () => {
                 <p className="text-2xl font-bold text-success">
                   {loading ? '...' : filialStats.reduce((sum, f) => sum + f.checklist, 0)}
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  Oport: R$ {loading ? '...' : filialStats.filter(f => f.checklist > 0).reduce((sum, f) => sum + f.prospectsValue * (f.checklist / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString('pt-BR')}
+                </p>
               </div>
               <CheckSquare className="h-8 w-8 text-success/50" />
             </div>
@@ -764,6 +777,9 @@ const Reports: React.FC = () => {
                 <p className="text-sm font-medium text-muted-foreground">Ligações</p>
                 <p className="text-2xl font-bold text-warning">
                   {loading ? '...' : filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Oport: R$ {loading ? '...' : filialStats.filter(f => f.ligacoes > 0).reduce((sum, f) => sum + f.prospectsValue * (f.ligacoes / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString('pt-BR')}
                 </p>
               </div>
               <Users className="h-8 w-8 text-warning/50" />
@@ -892,12 +908,12 @@ const Reports: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Performance por Colaborador */}
+      {/* Performance por CEP */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Performance dos Colaboradores
+            Performance dos CEPs
           </CardTitle>
         </CardHeader>
         <CardContent>
