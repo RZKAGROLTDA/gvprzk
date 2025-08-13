@@ -43,6 +43,7 @@ export const SalesFunnel: React.FC = () => {
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
+  const [selectedFunnelSection, setSelectedFunnelSection] = useState<'contacts' | 'prospects' | 'sales' | null>(null);
   
   // Filtros
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -197,7 +198,52 @@ export const SalesFunnel: React.FC = () => {
     });
 
     return Array.from(clientMap.values()).sort((a, b) => b.salesValue - a.salesValue);
-  }, [filteredTasks]);
+  }, [filteredTasks, filiais]);
+
+  // Dados detalhados para a seção selecionada
+  const getDetailedData = useMemo(() => {
+    if (!selectedFunnelSection) return [];
+
+    switch (selectedFunnelSection) {
+      case 'contacts':
+        return filteredTasks.map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          type: task.taskType,
+          date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+          filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+          value: task.salesValue || 0
+        }));
+      
+      case 'prospects':
+        return filteredTasks
+          .filter(task => task.isProspect)
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            status: task.status,
+            confirmed: task.salesConfirmed,
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+      
+      case 'sales':
+        return filteredTasks
+          .filter(task => task.salesConfirmed)
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            status: task.status,
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+      
+      default:
+        return [];
+    }
+  }, [selectedFunnelSection, filteredTasks, filiais]);
 
   const totalSalesValue = filteredTasks.reduce((sum, task) => sum + (task.salesValue || 0), 0);
 
@@ -390,9 +436,19 @@ export const SalesFunnel: React.FC = () => {
 
               {/* Segunda Barra: Prospecções */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Prospecções</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-muted-foreground">Prospecções</h4>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}
+                  >
+                    {selectedFunnelSection === 'prospects' ? 'Ocultar Detalhes' : 'Ver Detalhes'}
+                  </Button>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-green-600 text-white p-4 rounded-lg text-center">
+                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors"
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
                     <div className="font-bold text-xl">{funnelData.prospects.abertas}</div>
                     <div className="text-sm opacity-90">Abertas</div>
                     <div className="text-xs opacity-75">
@@ -400,7 +456,8 @@ export const SalesFunnel: React.FC = () => {
                         Math.round((funnelData.prospects.abertas / funnelData.contacts.total) * 100) : 0}%
                     </div>
                   </div>
-                  <div className="bg-green-500 text-white p-4 rounded-lg text-center">
+                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors"
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
                     <div className="font-bold text-xl">{funnelData.prospects.fechadas}</div>
                     <div className="text-sm opacity-90">Fechadas</div>
                     <div className="text-xs opacity-75">
@@ -408,7 +465,8 @@ export const SalesFunnel: React.FC = () => {
                         Math.round((funnelData.prospects.fechadas / funnelData.contacts.total) * 100) : 0}%
                     </div>
                   </div>
-                  <div className="bg-green-400 text-white p-4 rounded-lg text-center">
+                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors"
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
                     <div className="font-bold text-xl">{funnelData.prospects.perdidas}</div>
                     <div className="text-sm opacity-90">Perdidas</div>
                     <div className="text-xs opacity-75">
@@ -421,6 +479,71 @@ export const SalesFunnel: React.FC = () => {
                   Total: {funnelData.prospects.total}
                 </div>
               </div>
+
+              {/* Detalhes das Prospecções */}
+              {selectedFunnelSection === 'prospects' && getDetailedData.length > 0 && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle>Detalhes das Prospecções</CardTitle>
+                    <CardDescription>Lista detalhada de todas as prospecções</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Vendedor</TableHead>
+                          <TableHead>Filial</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Confirmada</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Valor</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {getDetailedData.slice(0, 10).map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{item.client}</TableCell>
+                            <TableCell>{item.responsible}</TableCell>
+                            <TableCell>{item.filial}</TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                item.status === 'completed' ? 'default' : 
+                                item.status === 'pending' ? 'secondary' : 
+                                'outline'
+                              }>
+                                {item.status === 'completed' ? 'Concluída' : 
+                                 item.status === 'pending' ? 'Pendente' : 
+                                 'Fechada'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={item.confirmed ? 'default' : 'outline'}>
+                                {item.confirmed ? 'Sim' : 'Não'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{item.date}</TableCell>
+                            <TableCell>
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                              }).format(item.value)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    
+                    {getDetailedData.length > 10 && (
+                      <div className="mt-4 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Mostrando 10 de {getDetailedData.length} prospecções.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Terceira Barra: Vendas */}
               <div className="space-y-3">
