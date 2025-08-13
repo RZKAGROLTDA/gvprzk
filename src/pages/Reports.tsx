@@ -40,6 +40,247 @@ interface FilialStats {
   conversionRate: number;
 }
 
+interface UserPerformanceItemProps {
+  user: any;
+  index: number;
+  dateFrom?: Date;
+  dateTo?: Date;
+}
+
+const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, dateFrom, dateTo }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [userTasks, setUserTasks] = useState<any[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+
+  const loadUserTasks = async () => {
+    if (isExpanded || userTasks.length > 0) return;
+    
+    setLoadingTasks(true);
+    try {
+      // Buscar o user_id do perfil
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('name', user.name)
+        .single();
+
+      if (profileError || !profile) {
+        console.error('Erro ao buscar perfil:', profileError);
+        return;
+      }
+
+      let query = supabase
+        .from('tasks')
+        .select('*')
+        .eq('created_by', profile.user_id)
+        .order('created_at', { ascending: false });
+
+      // Aplicar filtros de data se definidos
+      if (dateFrom) {
+        query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
+      }
+      if (dateTo) {
+        query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
+      }
+
+      const { data: tasks, error: tasksError } = await query;
+
+      if (tasksError) {
+        console.error('Erro ao buscar tarefas:', tasksError);
+        return;
+      }
+
+      setUserTasks(tasks || []);
+    } catch (error) {
+      console.error('Erro ao carregar tarefas do usuário:', error);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  const handleToggleExpand = () => {
+    setIsExpanded(!isExpanded);
+    if (!isExpanded) {
+      loadUserTasks();
+    }
+  };
+
+  // Calcular estatísticas detalhadas
+  const visitas = userTasks.filter(task => task.task_type === 'prospection').length;
+  const checklists = userTasks.filter(task => task.task_type === 'checklist').length;
+  const ligacoes = userTasks.filter(task => task.task_type === 'ligacao').length;
+  const totalOportunidades = userTasks.reduce((sum, task) => sum + (task.sales_value || 0), 0);
+  const vendasConfirmadas = userTasks
+    .filter(task => task.sales_confirmed === true)
+    .reduce((sum, task) => sum + (task.sales_value || 0), 0);
+  const taxaConversao = userTasks.length > 0 ? 
+    (userTasks.filter(task => task.is_prospect === true).length / userTasks.length) * 100 : 0;
+
+  return (
+    <Card 
+      className={`transition-all duration-200 hover:shadow-md ${
+        index < 3 ? 'ring-1 ring-primary/20 bg-primary/5' : ''
+      }`}
+    >
+      <CardContent className="p-4">
+        <div className="space-y-4">
+          {/* Cabeçalho do colaborador */}
+          <div 
+            className="flex items-center gap-4 cursor-pointer"
+            onClick={handleToggleExpand}
+          >
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
+              index === 0 ? 'bg-yellow-500 text-white' :
+              index === 1 ? 'bg-gray-400 text-white' :
+              index === 2 ? 'bg-amber-600 text-white' :
+              'bg-muted text-muted-foreground'
+            }`}>
+              {index + 1}
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-semibold truncate hover:text-primary transition-colors">
+                  {user.name}
+                </h4>
+                <Badge variant="outline" className="text-xs shrink-0">
+                  {user.role === 'consultant' ? 'Consultor' : 
+                   user.role === 'manager' ? 'Gerente' : 
+                   user.role === 'admin' ? 'Admin' : user.role}
+                </Badge>
+              </div>
+              
+              {/* Estatísticas principais */}
+              <div className="grid grid-cols-6 gap-3 text-sm">
+                <div className="text-center">
+                  <p className="font-medium text-blue-600">{visitas || user.visits}</p>
+                  <p className="text-xs text-muted-foreground">Visitas</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium text-purple-600">{checklists}</p>
+                  <p className="text-xs text-muted-foreground">Checklists</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium text-orange-600">{ligacoes}</p>
+                  <p className="text-xs text-muted-foreground">Ligações</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium text-green-600">
+                    R$ {totalOportunidades.toLocaleString('pt-BR')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Total Oport.</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium text-emerald-600">
+                    R$ {vendasConfirmadas.toLocaleString('pt-BR')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Vendas</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-medium text-accent">{taxaConversao.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Conversão</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-right shrink-0">
+              <Button variant="ghost" size="sm" className="p-2">
+                {isExpanded ? '▼' : '▶'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Lista expandida de visitas */}
+          {isExpanded && (
+            <div className="border-t pt-4">
+              {loadingTasks ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">Carregando visitas...</p>
+                </div>
+              ) : userTasks.length === 0 ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm">Nenhuma visita encontrada no período</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  <h5 className="font-medium text-sm mb-3">
+                    Lista de Visitas ({userTasks.length})
+                  </h5>
+                  {userTasks.map((task, taskIndex) => (
+                    <div 
+                      key={task.id} 
+                      className="bg-muted/50 rounded-lg p-3 text-sm"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="font-medium">{task.name}</p>
+                          <p className="text-muted-foreground text-xs">
+                            {task.client} • {task.property}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={
+                            task.task_type === 'prospection' ? 'default' :
+                            task.task_type === 'checklist' ? 'secondary' :
+                            'outline'
+                          } className="text-xs">
+                            {task.task_type === 'prospection' ? 'Visita' :
+                             task.task_type === 'checklist' ? 'Checklist' :
+                             'Ligação'}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Data:</p>
+                          <p>{new Date(task.start_date).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Status:</p>
+                          <Badge variant={
+                            task.is_prospect ? 'default' : 'secondary'
+                          } className="text-xs">
+                            {task.is_prospect ? 'Prospect' : 'Não prospect'}
+                          </Badge>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Valor:</p>
+                          <p className="font-medium text-green-600">
+                            {task.sales_value ? 
+                              `R$ ${task.sales_value.toLocaleString('pt-BR')}` : 
+                              'R$ 0'
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {task.sales_confirmed !== undefined && (
+                        <div className="mt-2 pt-2 border-t border-muted">
+                          <Badge variant={
+                            task.sales_confirmed === true ? 'default' :
+                            task.sales_confirmed === false ? 'destructive' :
+                            'secondary'
+                          } className="text-xs">
+                            {task.sales_confirmed === true ? 'Venda Confirmada' :
+                             task.sales_confirmed === false ? 'Venda Perdida' :
+                             'Prospect'}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const Reports: React.FC = () => {
   const { user } = useAuth();
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
@@ -684,240 +925,15 @@ const Reports: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {userStats.map((user, index) => {
-                const [isExpanded, setIsExpanded] = useState(false);
-                const [userTasks, setUserTasks] = useState<any[]>([]);
-                const [loadingTasks, setLoadingTasks] = useState(false);
-
-                const loadUserTasks = async () => {
-                  if (isExpanded || userTasks.length > 0) return;
-                  
-                  setLoadingTasks(true);
-                  try {
-                    // Buscar o user_id do perfil
-                    const { data: profile, error: profileError } = await supabase
-                      .from('profiles')
-                      .select('user_id')
-                      .eq('name', user.name)
-                      .single();
-
-                    if (profileError || !profile) {
-                      console.error('Erro ao buscar perfil:', profileError);
-                      return;
-                    }
-
-                    let query = supabase
-                      .from('tasks')
-                      .select('*')
-                      .eq('created_by', profile.user_id)
-                      .order('created_at', { ascending: false });
-
-                    // Aplicar filtros de data se definidos
-                    if (dateFrom) {
-                      query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
-                    }
-                    if (dateTo) {
-                      query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
-                    }
-
-                    const { data: tasks, error: tasksError } = await query;
-
-                    if (tasksError) {
-                      console.error('Erro ao buscar tarefas:', tasksError);
-                      return;
-                    }
-
-                    setUserTasks(tasks || []);
-                  } catch (error) {
-                    console.error('Erro ao carregar tarefas do usuário:', error);
-                  } finally {
-                    setLoadingTasks(false);
-                  }
-                };
-
-                const handleToggleExpand = () => {
-                  setIsExpanded(!isExpanded);
-                  if (!isExpanded) {
-                    loadUserTasks();
-                  }
-                };
-
-                // Calcular estatísticas detalhadas
-                const visitas = userTasks.filter(task => task.task_type === 'prospection').length;
-                const checklists = userTasks.filter(task => task.task_type === 'checklist').length;
-                const ligacoes = userTasks.filter(task => task.task_type === 'ligacao').length;
-                const totalOportunidades = userTasks.reduce((sum, task) => sum + (task.sales_value || 0), 0);
-                const vendasConfirmadas = userTasks
-                  .filter(task => task.sales_confirmed === true)
-                  .reduce((sum, task) => sum + (task.sales_value || 0), 0);
-                const taxaConversao = userTasks.length > 0 ? 
-                  (userTasks.filter(task => task.is_prospect === true).length / userTasks.length) * 100 : 0;
-
-                return (
-                  <Card 
-                    key={user.name} 
-                    className={`transition-all duration-200 hover:shadow-md ${
-                      index < 3 ? 'ring-1 ring-primary/20 bg-primary/5' : ''
-                    }`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="space-y-4">
-                        {/* Cabeçalho do colaborador */}
-                        <div 
-                          className="flex items-center gap-4 cursor-pointer"
-                          onClick={handleToggleExpand}
-                        >
-                          <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
-                            index === 0 ? 'bg-yellow-500 text-white' :
-                            index === 1 ? 'bg-gray-400 text-white' :
-                            index === 2 ? 'bg-amber-600 text-white' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
-                            {index + 1}
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold truncate hover:text-primary transition-colors">
-                                {user.name}
-                              </h4>
-                              <Badge variant="outline" className="text-xs shrink-0">
-                                {user.role === 'consultant' ? 'Consultor' : 
-                                 user.role === 'manager' ? 'Gerente' : 
-                                 user.role === 'admin' ? 'Admin' : user.role}
-                              </Badge>
-                            </div>
-                            
-                            {/* Estatísticas principais */}
-                            <div className="grid grid-cols-6 gap-3 text-sm">
-                              <div className="text-center">
-                                <p className="font-medium text-blue-600">{visitas || user.visits}</p>
-                                <p className="text-xs text-muted-foreground">Visitas</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-medium text-purple-600">{checklists}</p>
-                                <p className="text-xs text-muted-foreground">Checklists</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-medium text-orange-600">{ligacoes}</p>
-                                <p className="text-xs text-muted-foreground">Ligações</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-medium text-green-600">
-                                  R$ {totalOportunidades.toLocaleString('pt-BR')}
-                                </p>
-                                <p className="text-xs text-muted-foreground">Total Oport.</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-medium text-emerald-600">
-                                  R$ {vendasConfirmadas.toLocaleString('pt-BR')}
-                                </p>
-                                <p className="text-xs text-muted-foreground">Vendas</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="font-medium text-accent">{taxaConversao.toFixed(1)}%</p>
-                                <p className="text-xs text-muted-foreground">Conversão</p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right shrink-0">
-                            <Button variant="ghost" size="sm" className="p-2">
-                              {isExpanded ? '▼' : '▶'}
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Lista expandida de visitas */}
-                        {isExpanded && (
-                          <div className="border-t pt-4">
-                            {loadingTasks ? (
-                              <div className="text-center py-4">
-                                <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent mx-auto"></div>
-                                <p className="text-sm text-muted-foreground mt-2">Carregando visitas...</p>
-                              </div>
-                            ) : userTasks.length === 0 ? (
-                              <div className="text-center py-4 text-muted-foreground">
-                                <p className="text-sm">Nenhuma visita encontrada no período</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2 max-h-64 overflow-y-auto">
-                                <h5 className="font-medium text-sm mb-3">
-                                  Lista de Visitas ({userTasks.length})
-                                </h5>
-                                {userTasks.map((task, taskIndex) => (
-                                  <div 
-                                    key={task.id} 
-                                    className="bg-muted/50 rounded-lg p-3 text-sm"
-                                  >
-                                    <div className="flex justify-between items-start mb-2">
-                                      <div className="flex-1">
-                                        <p className="font-medium">{task.name}</p>
-                                        <p className="text-muted-foreground text-xs">
-                                          {task.client} • {task.property}
-                                        </p>
-                                      </div>
-                                      <div className="text-right">
-                                        <Badge variant={
-                                          task.task_type === 'prospection' ? 'default' :
-                                          task.task_type === 'checklist' ? 'secondary' :
-                                          'outline'
-                                        } className="text-xs">
-                                          {task.task_type === 'prospection' ? 'Visita' :
-                                           task.task_type === 'checklist' ? 'Checklist' :
-                                           'Ligação'}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-3 gap-2 text-xs">
-                                      <div>
-                                        <p className="text-muted-foreground">Data:</p>
-                                        <p>{new Date(task.start_date).toLocaleDateString('pt-BR')}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Status:</p>
-                                        <Badge variant={
-                                          task.is_prospect ? 'default' : 'secondary'
-                                        } className="text-xs">
-                                          {task.is_prospect ? 'Prospect' : 'Não prospect'}
-                                        </Badge>
-                                      </div>
-                                      <div>
-                                        <p className="text-muted-foreground">Valor:</p>
-                                        <p className="font-medium text-green-600">
-                                          {task.sales_value ? 
-                                            `R$ ${task.sales_value.toLocaleString('pt-BR')}` : 
-                                            'R$ 0'
-                                          }
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    {task.sales_confirmed !== undefined && (
-                                      <div className="mt-2 pt-2 border-t border-muted">
-                                        <Badge variant={
-                                          task.sales_confirmed === true ? 'default' :
-                                          task.sales_confirmed === false ? 'destructive' :
-                                          'secondary'
-                                        } className="text-xs">
-                                          {task.sales_confirmed === true ? 'Venda Confirmada' :
-                                           task.sales_confirmed === false ? 'Venda Perdida' :
-                                           'Prospect'}
-                                        </Badge>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              {userStats.map((user, index) => (
+                <UserPerformanceItem 
+                  key={user.name}
+                  user={user}
+                  index={index}
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                />
+              ))}
             </div>
           )}
         </CardContent>
