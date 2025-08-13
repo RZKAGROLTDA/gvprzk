@@ -1416,57 +1416,102 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <div className="space-y-4">
                 <div>
                   <Label className="text-base font-medium">Status da Oportunidade</Label>
-                  <div className="space-y-3 mt-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="prospect"
-                        name="opportunityStatus"
-                        value="prospect"
-                        checked={task.isProspect && !task.salesConfirmed}
-                        onChange={() => setTask(prev => ({
-                          ...prev,
-                          isProspect: true,
-                          salesConfirmed: false,
-                          salesValue: undefined
-                        }))}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor="prospect">Marcar como Prospect</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+                    <div 
+                      className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                        task.isProspect && !task.salesConfirmed 
+                          ? 'border-blue-500 bg-blue-50 shadow-lg' 
+                          : 'border-gray-200 bg-white hover:border-blue-300'
+                      }`}
+                      onClick={() => setTask(prev => ({
+                        ...prev,
+                        isProspect: true,
+                        salesConfirmed: false,
+                        salesValue: undefined
+                      }))}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          task.isProspect && !task.salesConfirmed 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-100 text-gray-400'
+                        }`}>
+                          👤
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">Prospect</div>
+                          <div className="text-xs text-muted-foreground">Oportunidade identificada</div>
+                        </div>
+                      </div>
+                      {task.isProspect && !task.salesConfirmed && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="saleConfirmed"
-                        name="opportunityStatus"
-                        value="saleConfirmed"
-                        checked={task.salesConfirmed === true}
-                        onChange={() => setTask(prev => ({
-                          ...prev,
-                          salesConfirmed: true,
-                          isProspect: true
-                        }))}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor="saleConfirmed">Venda Realizada</Label>
+                    <div 
+                      className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                        task.salesConfirmed === true
+                          ? 'border-green-500 bg-green-50 shadow-lg' 
+                          : 'border-gray-200 bg-white hover:border-green-300'
+                      }`}
+                      onClick={() => setTask(prev => ({
+                        ...prev,
+                        salesConfirmed: true,
+                        isProspect: true
+                      }))}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          task.salesConfirmed === true
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-100 text-gray-400'
+                        }`}>
+                          💰
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">Venda Realizada</div>
+                          <div className="text-xs text-muted-foreground">Negócio fechado</div>
+                        </div>
+                      </div>
+                      {task.salesConfirmed === true && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      )}
                     </div>
                     
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="saleLost"
-                        name="opportunityStatus"
-                        value="saleLost"
-                        checked={task.salesConfirmed === false}
-                        onChange={() => setTask(prev => ({
-                          ...prev,
-                          salesConfirmed: false,
-                          isProspect: true
-                        }))}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor="saleLost">Venda Perdida</Label>
+                    <div 
+                      className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                        task.salesConfirmed === false
+                          ? 'border-red-500 bg-red-50 shadow-lg' 
+                          : 'border-gray-200 bg-white hover:border-red-300'
+                      }`}
+                      onClick={() => setTask(prev => ({
+                        ...prev,
+                        salesConfirmed: false,
+                        isProspect: true
+                      }))}
+                    >
+                      <div className="flex flex-col items-center text-center space-y-2">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          task.salesConfirmed === false
+                            ? 'bg-red-500 text-white' 
+                            : 'bg-gray-100 text-gray-400'
+                        }`}>
+                          ❌
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">Venda Perdida</div>
+                          <div className="text-xs text-muted-foreground">Negócio não realizado</div>
+                        </div>
+                      </div>
+                      {task.salesConfirmed === false && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
