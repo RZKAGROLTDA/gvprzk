@@ -1413,18 +1413,171 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="isProspect" 
-                    checked={task.isProspect || false}
-                    onCheckedChange={(checked) => setTask(prev => ({
-                      ...prev,
-                      isProspect: checked as boolean
-                    }))}
-                  />
-                  <Label htmlFor="isProspect">Marcar como Prospect</Label>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-base font-medium">Status da Oportunidade</Label>
+                  <div className="space-y-3 mt-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="prospect"
+                        name="opportunityStatus"
+                        value="prospect"
+                        checked={task.isProspect && !task.salesConfirmed}
+                        onChange={() => setTask(prev => ({
+                          ...prev,
+                          isProspect: true,
+                          salesConfirmed: false,
+                          salesValue: undefined
+                        }))}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="prospect">Marcar como Prospect</Label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="saleConfirmed"
+                        name="opportunityStatus"
+                        value="saleConfirmed"
+                        checked={task.salesConfirmed === true}
+                        onChange={() => setTask(prev => ({
+                          ...prev,
+                          salesConfirmed: true,
+                          isProspect: true
+                        }))}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="saleConfirmed">Venda Realizada</Label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="saleLost"
+                        name="opportunityStatus"
+                        value="saleLost"
+                        checked={task.salesConfirmed === false}
+                        onChange={() => setTask(prev => ({
+                          ...prev,
+                          salesConfirmed: false,
+                          isProspect: true
+                        }))}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="saleLost">Venda Perdida</Label>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Campo de observação para venda perdida */}
+                {task.salesConfirmed === false && (
+                  <div className="space-y-2">
+                    <Label htmlFor="lossReason">Motivo da Perda</Label>
+                    <select
+                      id="lossReason"
+                      value={task.prospectNotes || ''}
+                      onChange={(e) => setTask(prev => ({
+                        ...prev,
+                        prospectNotes: e.target.value
+                      }))}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                    >
+                      <option value="">Selecione o motivo</option>
+                      <option value="Falta de peça">Falta de peça</option>
+                      <option value="Preço">Preço</option>
+                      <option value="Prazo">Prazo</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Opções para venda realizada */}
+                {task.salesConfirmed === true && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium">Tipo de Venda</Label>
+                      <div className="space-y-2 mt-2">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="totalSale"
+                            name="saleType"
+                            value="total"
+                            checked={!task.prospectItems || task.prospectItems.length === 0}
+                            onChange={() => setTask(prev => ({
+                              ...prev,
+                              prospectItems: []
+                            }))}
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor="totalSale">Valor Total</Label>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            id="partialSale"
+                            name="saleType"
+                            value="partial"
+                            checked={task.prospectItems && task.prospectItems.length > 0}
+                            onChange={() => setTask(prev => ({
+                              ...prev,
+                              prospectItems: task.checklist.map(item => ({
+                                ...item,
+                                selected: false,
+                                quantity: 0
+                              }))
+                            }))}
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor="partialSale">Valor Parcial</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lista de produtos para venda parcial */}
+                    {task.prospectItems && task.prospectItems.length > 0 && (
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Produtos Vendidos</Label>
+                        <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                          {task.prospectItems.map((item, index) => (
+                            <div key={item.id} className="flex items-center space-x-3 p-2 bg-muted/50 rounded">
+                              <Checkbox
+                                checked={item.selected}
+                                onCheckedChange={(checked) => {
+                                  const updatedItems = [...task.prospectItems!];
+                                  updatedItems[index] = { ...item, selected: checked as boolean };
+                                  setTask(prev => ({ ...prev, prospectItems: updatedItems }));
+                                }}
+                              />
+                              <div className="flex-1">
+                                <span className="text-sm font-medium">{item.name}</span>
+                                <span className="text-xs text-muted-foreground ml-2">({item.category})</span>
+                              </div>
+                              {item.selected && (
+                                <div className="flex items-center space-x-2">
+                                  <Label className="text-xs">Qtd:</Label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantity || 1}
+                                    onChange={(e) => {
+                                      const updatedItems = [...task.prospectItems!];
+                                      updatedItems[index] = { ...item, quantity: parseInt(e.target.value) || 1 };
+                                      setTask(prev => ({ ...prev, prospectItems: updatedItems }));
+                                    }}
+                                    className="w-16 px-1 py-1 text-xs border rounded"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
