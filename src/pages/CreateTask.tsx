@@ -1419,20 +1419,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                     <div 
                       className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                        task.isProspect && !task.salesConfirmed 
+                        task.isProspect && task.salesConfirmed === undefined
                           ? 'border-blue-500 bg-blue-50 shadow-lg' 
                           : 'border-gray-200 bg-white hover:border-blue-300'
                       }`}
                       onClick={() => setTask(prev => ({
                         ...prev,
                         isProspect: true,
-                        salesConfirmed: false,
+                        salesConfirmed: undefined,
                         salesValue: undefined
                       }))}
                     >
                       <div className="flex flex-col items-center text-center space-y-2">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          task.isProspect && !task.salesConfirmed 
+                          task.isProspect && task.salesConfirmed === undefined
                             ? 'bg-blue-500 text-white' 
                             : 'bg-gray-100 text-gray-400'
                         }`}>
@@ -1443,7 +1443,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="text-xs text-muted-foreground">Oportunidade identificada</div>
                         </div>
                       </div>
-                      {task.isProspect && !task.salesConfirmed && (
+                      {task.isProspect && task.salesConfirmed === undefined && (
                         <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs">✓</span>
                         </div>
@@ -1517,7 +1517,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </div>
 
                 {/* Campo de observação para venda perdida */}
-                {task.salesConfirmed === false && (
+                {task.salesConfirmed === false && task.isProspect && (
                   <div className="space-y-2">
                     <Label htmlFor="lossReason">Motivo da Perda</Label>
                     <select
