@@ -105,20 +105,28 @@ export const SalesFunnel: React.FC = () => {
 
   // Dados do funil de vendas
   const funnelData = useMemo(() => {
-    const totalContacts = filteredTasks.length;
+    // Primeira barra: Contatos com Clientes por tipo
+    const totalVisitas = filteredTasks.filter(task => task.taskType === 'prospection').length;
+    const totalLigacoes = filteredTasks.filter(task => task.taskType === 'ligacao').length;
+    const totalChecklists = filteredTasks.filter(task => task.taskType === 'checklist').length;
+    const totalContacts = totalVisitas + totalLigacoes + totalChecklists;
+    
+    // Segunda barra: Prospecções
     const prospects = filteredTasks.filter(task => task.isProspect).length;
     const openProspects = filteredTasks.filter(task => task.isProspect && task.status === 'pending').length;
     const closedWon = filteredTasks.filter(task => task.salesConfirmed).length;
     const closedLost = filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).length;
-    const totalSalesValue = filteredTasks.reduce((sum, task) => sum + (task.salesValue || 0), 0);
+    
+    // Terceira barra: Vendas/Faturamento
+    const openSales = filteredTasks.filter(task => task.salesConfirmed && task.status === 'pending').length;
+    const faturado = filteredTasks.filter(task => task.salesConfirmed && task.status === 'completed').length;
+    const perdido = filteredTasks.filter(task => task.salesConfirmed && task.status === 'closed' && !task.salesValue).length;
 
-    return [
-      { name: 'Contatos com Clientes', value: totalContacts, color: '#8884d8' },
-      { name: 'Prospecções Criadas', value: prospects, color: '#82ca9d' },
-      { name: 'Abertas', value: openProspects, color: '#ffc658' },
-      { name: 'Fechadas (Ganhas)', value: closedWon, color: '#00ff00' },
-      { name: 'Perdidas', value: closedLost, color: '#ff0000' },
-    ];
+    return {
+      contacts: { total: totalContacts, visitas: totalVisitas, ligacoes: totalLigacoes, checklists: totalChecklists },
+      prospects: { total: prospects, abertas: openProspects, fechadas: closedWon, perdidas: closedLost },
+      sales: { abertos: openSales, faturado, perdido }
+    };
   }, [filteredTasks]);
 
   // Dados de cobertura de carteira
@@ -193,7 +201,6 @@ export const SalesFunnel: React.FC = () => {
   }, [filteredTasks]);
 
   const totalSalesValue = filteredTasks.reduce((sum, task) => sum + (task.salesValue || 0), 0);
-  const conversionRate = funnelData[0]?.value ? Math.round((funnelData[3]?.value / funnelData[0]?.value) * 100) : 0;
 
   const chartConfig = {
     value: {
@@ -322,7 +329,7 @@ export const SalesFunnel: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{funnelData[0]?.value || 0}</div>
+                <div className="text-2xl font-bold text-primary">{funnelData.contacts?.total || 0}</div>
                 <p className="text-sm text-muted-foreground">Total de Contatos</p>
               </div>
             </CardContent>
@@ -388,7 +395,123 @@ export const SalesFunnel: React.FC = () => {
       {/* Conteúdo do Funil */}
       {activeView === 'funnel' && (
         <div className="space-y-6">
-          {/* Indicadores principais */}
+          {/* Funil Hierárquico Visual */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Funil de Vendas</CardTitle>
+              <CardDescription>Fluxo de conversão hierárquico</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              
+              {/* Primeira Barra: Contatos com Clientes */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">Contatos com Clientes</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-green-600 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.contacts.visitas}</div>
+                    <div className="text-sm opacity-90">Visitas</div>
+                  </div>
+                  <div className="bg-green-500 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.contacts.checklists}</div>
+                    <div className="text-sm opacity-90">Checklists</div>
+                  </div>
+                  <div className="bg-green-400 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.contacts.ligacoes}</div>
+                    <div className="text-sm opacity-90">Ligações</div>
+                  </div>
+                </div>
+                <div className="text-right text-sm text-muted-foreground">
+                  Total: {funnelData.contacts.total}
+                </div>
+              </div>
+
+              {/* Segunda Barra: Prospecções */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">Prospecções</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-green-600 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.prospects.abertas}</div>
+                    <div className="text-sm opacity-90">Abertas</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.contacts.total > 0 ? 
+                        Math.round((funnelData.prospects.abertas / funnelData.contacts.total) * 100) : 0}%
+                    </div>
+                  </div>
+                  <div className="bg-green-500 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.prospects.fechadas}</div>
+                    <div className="text-sm opacity-90">Fechadas</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.contacts.total > 0 ? 
+                        Math.round((funnelData.prospects.fechadas / funnelData.contacts.total) * 100) : 0}%
+                    </div>
+                  </div>
+                  <div className="bg-green-400 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.prospects.perdidas}</div>
+                    <div className="text-sm opacity-90">Perdidas</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.contacts.total > 0 ? 
+                        Math.round((funnelData.prospects.perdidas / funnelData.contacts.total) * 100) : 0}%
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-sm text-muted-foreground">
+                  Total: {funnelData.prospects.total}
+                </div>
+              </div>
+
+              {/* Terceira Barra: Vendas */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">Vendas</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-green-600 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.sales.abertos}</div>
+                    <div className="text-sm opacity-90">Abertos</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.prospects.fechadas > 0 ? 
+                        Math.round((funnelData.sales.abertos / funnelData.prospects.fechadas) * 100) : 0}%
+                    </div>
+                  </div>
+                  <div className="bg-green-500 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.sales.faturado}</div>
+                    <div className="text-sm opacity-90">Faturado</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.prospects.fechadas > 0 ? 
+                        Math.round((funnelData.sales.faturado / funnelData.prospects.fechadas) * 100) : 0}%
+                    </div>
+                  </div>
+                  <div className="bg-green-400 text-white p-4 rounded-lg text-center">
+                    <div className="font-bold text-xl">{funnelData.sales.perdido}</div>
+                    <div className="text-sm opacity-90">Perdido</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.prospects.fechadas > 0 ? 
+                        Math.round((funnelData.sales.perdido / funnelData.prospects.fechadas) * 100) : 0}%
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-sm text-muted-foreground">
+                  Total: {funnelData.sales.abertos + funnelData.sales.faturado + funnelData.sales.perdido}
+                </div>
+              </div>
+
+              {/* Quarta Barra: Faturamento */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">Faturamento</h4>
+                <div className="w-2/3 mx-auto">
+                  <div className="bg-green-600 text-white p-6 rounded-lg text-center">
+                    <div className="font-bold text-2xl">{funnelData.sales.faturado}</div>
+                    <div className="text-sm opacity-90">Faturado</div>
+                    <div className="text-xs opacity-75">
+                      {(funnelData.sales.abertos + funnelData.sales.faturado) > 0 ? 
+                        Math.round((funnelData.sales.faturado / (funnelData.sales.abertos + funnelData.sales.faturado)) * 100) : 0}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </CardContent>
+          </Card>
+          
+          {/* Indicadores Resumo */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -396,7 +519,7 @@ export const SalesFunnel: React.FC = () => {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{funnelData[0]?.value || 0}</div>
+                <div className="text-2xl font-bold">{funnelData.contacts.total}</div>
                 <p className="text-xs text-muted-foreground">Atividades registradas</p>
               </CardContent>
             </Card>
@@ -407,7 +530,10 @@ export const SalesFunnel: React.FC = () => {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{conversionRate}%</div>
+                <div className="text-2xl font-bold">
+                  {funnelData.contacts.total > 0 ? 
+                    Math.round((funnelData.sales.faturado / funnelData.contacts.total) * 100) : 0}%
+                </div>
                 <p className="text-xs text-muted-foreground">De contatos para vendas</p>
               </CardContent>
             </Card>
@@ -440,26 +566,6 @@ export const SalesFunnel: React.FC = () => {
             </Card>
           </div>
 
-          {/* Gráfico de Funil */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Funil de Vendas</CardTitle>
-              <CardDescription>Fluxo de conversão das atividades comerciais</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="min-h-[300px]">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={funnelData} layout="horizontal">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={120} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="value" fill="hsl(var(--chart-1))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </CardContent>
-          </Card>
         </div>
       )}
 
