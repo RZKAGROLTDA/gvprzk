@@ -856,10 +856,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     );
   };
 
-  return <div className="space-y-6">
+  return <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       <div>
-        <h1 className="text-3xl font-bold">{getTaskTitle(taskCategory)}</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold">{getTaskTitle(taskCategory)}</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
           {taskCategory === 'field-visit' 
             ? 'Criar uma nova visita à fazenda' 
             : taskCategory === 'call' 
@@ -1716,23 +1716,25 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         {taskCategory === 'field-visit' && <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />}
 
          <div className="flex flex-col gap-4 mt-6">
-            <div className="flex gap-4">
-              <Button type="submit" className="flex-1" variant="gradient" disabled={isSubmitting}>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+              <Button type="submit" className="flex-1 order-1" variant="gradient" disabled={isSubmitting}>
                 <CheckSquare className="h-4 w-4 mr-2" />
                 {isSubmitting ? 'Criando...' : 'Criar Tarefa'}
               </Button>
-              <Button type="button" variant="outline" className="flex-1" onClick={handleSaveDraft}>
+              <Button type="button" variant="outline" className="flex-1 order-2" onClick={handleSaveDraft}>
                 <FileText className="h-4 w-4 mr-2" />
-                Salvar Rascunho
+                <span className="hidden sm:inline">Salvar Rascunho</span>
+                <span className="sm:hidden">Rascunho</span>
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button type="button" variant="outline" className="flex-1">
+                  <Button type="button" variant="outline" className="flex-1 order-3">
                     <RotateCcw className="h-4 w-4 mr-2" />
-                    Limpar Tudo
+                    <span className="hidden sm:inline">Limpar Tudo</span>
+                    <span className="sm:hidden">Limpar</span>
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="mx-4">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirmar limpeza</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -1747,7 +1749,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button type="button" variant="outline" className="flex-1">
+              <Button type="button" variant="outline" className="flex-1 order-4">
                 Cancelar
               </Button>
             </div>

@@ -56,34 +56,34 @@ export const Layout: React.FC<LayoutProps> = ({
   return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b shadow-sm">
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Car className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl font-bold text-foreground">CheckList Vendas</h1>
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <Car className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                <h1 className="text-lg sm:text-2xl font-bold text-foreground">CheckList Vendas</h1>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="hidden sm:flex items-center space-x-2">
                 <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                   <User className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <span className="text-sm font-medium">{user?.email || 'Usuário'}</span>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
-                <LogOut className="h-5 w-5" />
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="h-8 w-8 sm:h-10 sm:w-10">
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          {/* Sidebar */}
-          <aside className="w-64 space-y-2">
+      <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-6">
+        <div className="flex flex-col lg:flex-row gap-2 lg:gap-6">
+          {/* Sidebar - Hidden on mobile, visible on desktop */}
+          <aside className="hidden lg:block w-64 space-y-2">
             <Card className="p-4">
               <nav className="space-y-1">
                 {navItems.map(item => <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
@@ -104,8 +104,25 @@ export const Layout: React.FC<LayoutProps> = ({
             </Card>
           </aside>
 
+          {/* Mobile Navigation */}
+          <div className="lg:hidden mb-4">
+            <Card className="p-2">
+              <nav className="flex overflow-x-auto space-x-2 pb-2">
+                {navItems.map(item => <Link key={item.path} to={item.path} className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap min-w-fit ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
+                    <item.icon className="h-4 w-4" />
+                    <span className="text-[10px]">{item.label}</span>
+                  </Link>)}
+                
+                {isAdmin && adminItems.map(item => <Link key={item.path} to={item.path} className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap min-w-fit ${isActive(item.path) ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
+                    <item.icon className="h-4 w-4" />
+                    <span className="text-[10px]">{item.label}</span>
+                  </Link>)}
+              </nav>
+            </Card>
+          </div>
+
           {/* Main Content */}
-          <main className="flex-1">
+          <main className="flex-1 min-w-0">
             <div className="animate-fade-in">
               {children}
             </div>
