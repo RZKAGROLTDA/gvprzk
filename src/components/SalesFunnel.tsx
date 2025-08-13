@@ -316,19 +316,12 @@ export const SalesFunnel: React.FC = () => {
             className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
             onClick={() => setActiveView('funnel')}
           >
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Análise do Funil</CardTitle>
-              <CardDescription>
-                Visualize o fluxo de conversão desde contatos até vendas fechadas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{funnelData.contacts?.total || 0}</div>
-                <p className="text-sm text-muted-foreground">Total de Contatos</p>
+                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold">Análise do Funil</h3>
               </div>
             </CardContent>
           </Card>
@@ -337,19 +330,12 @@ export const SalesFunnel: React.FC = () => {
             className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
             onClick={() => setActiveView('coverage')}
           >
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <Target className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Cobertura de Carteira</CardTitle>
-              <CardDescription>
-                Analise a distribuição e cobertura da sua base de clientes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{new Set(filteredTasks.map(t => t.client)).size}</div>
-                <p className="text-sm text-muted-foreground">Clientes Únicos</p>
+                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <Target className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold">Cobertura de Carteira</h3>
               </div>
             </CardContent>
           </Card>
@@ -358,25 +344,12 @@ export const SalesFunnel: React.FC = () => {
             className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
             onClick={() => setActiveView('details')}
           >
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <DollarSign className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Detalhes por Cliente</CardTitle>
-              <CardDescription>
-                Veja o breakdown detalhado das atividades e valores por cliente
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                    maximumFractionDigits: 0
-                  }).format(totalSalesValue)}
+                <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <DollarSign className="h-6 w-6 text-primary" />
                 </div>
-                <p className="text-sm text-muted-foreground">Valor Total</p>
+                <h3 className="text-lg font-semibold">Detalhes por Cliente</h3>
               </div>
             </CardContent>
           </Card>
