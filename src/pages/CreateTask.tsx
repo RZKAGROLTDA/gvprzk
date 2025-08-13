@@ -1581,6 +1581,34 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </div>
                     </div>
 
+                    {/* Campo de valor para venda parcial */}
+                    {task.prospectItems && task.prospectItems.length > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
+                        <div className="relative">
+                          <Input
+                            id="partialSaleValue"
+                            type="text"
+                            value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            }).format(task.salesValue) : ''}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const numericValue = parseFloat(value) / 100;
+                              setTask(prev => ({
+                                ...prev,
+                                salesValue: isNaN(numericValue) ? 0 : numericValue
+                              }));
+                            }}
+                            placeholder="0,00"
+                            className="pl-8"
+                          />
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Lista de produtos para venda parcial */}
                     {task.prospectItems && task.prospectItems.length > 0 && (
                       <div className="space-y-3">
