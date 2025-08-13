@@ -43,7 +43,7 @@ export const SalesFunnel: React.FC = () => {
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
-  const [selectedFunnelSection, setSelectedFunnelSection] = useState<'contacts' | 'prospects' | 'sales' | null>(null);
+  const [selectedFunnelSection, setSelectedFunnelSection] = useState<string | null>(null);
   
   // Filtros
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -226,6 +226,84 @@ export const SalesFunnel: React.FC = () => {
     if (!selectedFunnelSection) return [];
 
     switch (selectedFunnelSection) {
+      // Filtros para Contatos específicos
+      case 'contacts-visitas':
+        return filteredTasks
+          .filter(task => task.taskType === 'prospection')
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            type: 'Visita',
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+      
+      case 'contacts-checklists':
+        return filteredTasks
+          .filter(task => task.taskType === 'checklist')
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            type: 'Checklist',
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+      
+      case 'contacts-ligacoes':
+        return filteredTasks
+          .filter(task => task.taskType === 'ligacao')
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            type: 'Ligação',
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+
+      // Filtros para Prospecções específicas
+      case 'prospects-abertas':
+        return filteredTasks
+          .filter(task => task.isProspect && task.status === 'pending')
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            status: 'Aberta',
+            confirmed: task.salesConfirmed,
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+      
+      case 'prospects-fechadas':
+        return filteredTasks
+          .filter(task => task.salesConfirmed)
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            status: 'Fechada',
+            confirmed: true,
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+      
+      case 'prospects-perdidas':
+        return filteredTasks
+          .filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed)
+          .map(task => ({
+            client: task.client,
+            responsible: task.responsible,
+            status: 'Perdida',
+            confirmed: false,
+            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            value: task.salesValue || 0
+          }));
+
+      // Filtros gerais
       case 'contacts':
         return filteredTasks.map(task => ({
           client: task.client,
@@ -437,15 +515,18 @@ export const SalesFunnel: React.FC = () => {
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-muted-foreground">Contatos com Clientes</h4>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-green-600 text-white p-4 rounded-lg text-center">
+                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors"
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}>
                     <div className="font-bold text-xl">{funnelData.contacts.visitas}</div>
                     <div className="text-sm opacity-90">Visitas</div>
                   </div>
-                  <div className="bg-green-500 text-white p-4 rounded-lg text-center">
+                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors"
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}>
                     <div className="font-bold text-xl">{funnelData.contacts.checklists}</div>
                     <div className="text-sm opacity-90">Checklists</div>
                   </div>
-                  <div className="bg-green-400 text-white p-4 rounded-lg text-center">
+                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors"
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}>
                     <div className="font-bold text-xl">{funnelData.contacts.ligacoes}</div>
                     <div className="text-sm opacity-90">Ligações</div>
                   </div>
@@ -469,7 +550,7 @@ export const SalesFunnel: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}>
                     <div className="font-bold text-xl">{funnelData.prospects.abertas}</div>
                     <div className="text-sm opacity-90">Abertas</div>
                     <div className="text-xs opacity-75">
@@ -478,7 +559,7 @@ export const SalesFunnel: React.FC = () => {
                     </div>
                   </div>
                   <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}>
                     <div className="font-bold text-xl">{funnelData.prospects.fechadas}</div>
                     <div className="text-sm opacity-90">Fechadas</div>
                     <div className="text-xs opacity-75">
@@ -487,7 +568,7 @@ export const SalesFunnel: React.FC = () => {
                     </div>
                   </div>
                   <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
+                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}>
                     <div className="font-bold text-xl">{funnelData.prospects.perdidas}</div>
                     <div className="text-sm opacity-90">Perdidas</div>
                     <div className="text-xs opacity-75">
@@ -501,12 +582,24 @@ export const SalesFunnel: React.FC = () => {
                 </div>
               </div>
 
-              {/* Detalhes das Prospecções */}
-              {selectedFunnelSection === 'prospects' && getDetailedData.length > 0 && (
+              {/* Detalhes das Seções Selecionadas */}
+              {selectedFunnelSection && getDetailedData.length > 0 && (
                 <Card className="mt-4">
                   <CardHeader>
-                    <CardTitle>Detalhes das Prospecções</CardTitle>
-                    <CardDescription>Lista detalhada de todas as prospecções</CardDescription>
+                    <CardTitle>
+                      {selectedFunnelSection.includes('contacts-visitas') && 'Detalhes das Visitas'}
+                      {selectedFunnelSection.includes('contacts-checklists') && 'Detalhes dos Checklists'}
+                      {selectedFunnelSection.includes('contacts-ligacoes') && 'Detalhes das Ligações'}
+                      {selectedFunnelSection.includes('prospects-abertas') && 'Detalhes das Prospecções Abertas'}
+                      {selectedFunnelSection.includes('prospects-fechadas') && 'Detalhes das Prospecções Fechadas'}
+                      {selectedFunnelSection.includes('prospects-perdidas') && 'Detalhes das Prospecções Perdidas'}
+                      {selectedFunnelSection === 'prospects' && 'Detalhes das Prospecções'}
+                      {selectedFunnelSection === 'contacts' && 'Detalhes dos Contatos'}
+                      {selectedFunnelSection === 'sales' && 'Detalhes das Vendas'}
+                    </CardTitle>
+                    <CardDescription>
+                      Lista específica para: {selectedFunnelSection}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -515,8 +608,9 @@ export const SalesFunnel: React.FC = () => {
                           <TableHead>Cliente</TableHead>
                           <TableHead>Vendedor</TableHead>
                           <TableHead>Filial</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Confirmada</TableHead>
+                          {(selectedFunnelSection.includes('contacts-') || selectedFunnelSection === 'contacts') && <TableHead>Tipo</TableHead>}
+                          {selectedFunnelSection.includes('prospects-') && <TableHead>Status</TableHead>}
+                          {selectedFunnelSection.includes('prospects-') && <TableHead>Confirmada</TableHead>}
                           <TableHead>Data</TableHead>
                           <TableHead>Valor</TableHead>
                         </TableRow>
@@ -527,22 +621,29 @@ export const SalesFunnel: React.FC = () => {
                             <TableCell className="font-medium">{item.client}</TableCell>
                             <TableCell>{item.responsible}</TableCell>
                             <TableCell>{item.filial}</TableCell>
-                            <TableCell>
-                              <Badge variant={
-                                item.status === 'completed' ? 'default' : 
-                                item.status === 'pending' ? 'secondary' : 
-                                'outline'
-                              }>
-                                {item.status === 'completed' ? 'Concluída' : 
-                                 item.status === 'pending' ? 'Pendente' : 
-                                 'Fechada'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={item.confirmed ? 'default' : 'outline'}>
-                                {item.confirmed ? 'Sim' : 'Não'}
-                              </Badge>
-                            </TableCell>
+                            {(selectedFunnelSection.includes('contacts-') || selectedFunnelSection === 'contacts') && 
+                              <TableCell>
+                                <Badge variant="secondary">{item.type}</Badge>
+                              </TableCell>
+                            }
+                            {selectedFunnelSection.includes('prospects-') && 
+                              <TableCell>
+                                <Badge variant={
+                                  item.status === 'Fechada' ? 'default' : 
+                                  item.status === 'Aberta' ? 'secondary' : 
+                                  'outline'
+                                }>
+                                  {item.status}
+                                </Badge>
+                              </TableCell>
+                            }
+                            {selectedFunnelSection.includes('prospects-') && 
+                              <TableCell>
+                                <Badge variant={item.confirmed ? 'default' : 'outline'}>
+                                  {item.confirmed ? 'Sim' : 'Não'}
+                                </Badge>
+                              </TableCell>
+                            }
                             <TableCell>{item.date}</TableCell>
                             <TableCell>
                               {new Intl.NumberFormat('pt-BR', {
@@ -558,7 +659,7 @@ export const SalesFunnel: React.FC = () => {
                     {getDetailedData.length > 10 && (
                       <div className="mt-4 text-center">
                         <p className="text-sm text-muted-foreground">
-                          Mostrando 10 de {getDetailedData.length} prospecções.
+                          Mostrando 10 de {getDetailedData.length} registros.
                         </p>
                       </div>
                     )}
