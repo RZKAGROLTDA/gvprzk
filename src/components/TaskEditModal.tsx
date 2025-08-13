@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -161,21 +162,107 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-status">Status</Label>
-              <Select
-                value={editedTask.status}
-                onValueChange={(value) => setEditedTask(prev => ({ ...prev, status: value as 'pending' | 'in_progress' | 'completed' | 'closed' }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="in_progress">Em Andamento</SelectItem>
-                  <SelectItem value="completed">Concluída</SelectItem>
-                  <SelectItem value="closed">Fechada</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="text-base font-medium">Status da Oportunidade</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+                <div 
+                  className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                    editedTask.status === 'in_progress'
+                      ? 'border-blue-500 bg-blue-50 shadow-lg' 
+                      : 'border-gray-200 bg-white hover:border-blue-300'
+                  }`}
+                  onClick={() => setEditedTask(prev => ({
+                    ...prev,
+                    status: 'in_progress',
+                    salesConfirmed: undefined,
+                    prospectNotes: ''
+                  }))}
+                >
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      editedTask.status === 'in_progress'
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      ⏳
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Em Andamento</div>
+                      <div className="text-xs text-muted-foreground">Negociação em curso</div>
+                    </div>
+                  </div>
+                  {editedTask.status === 'in_progress' && (
+                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div 
+                  className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                    editedTask.salesConfirmed === true
+                      ? 'border-green-500 bg-green-50 shadow-lg' 
+                      : 'border-gray-200 bg-white hover:border-green-300'
+                  }`}
+                  onClick={() => setEditedTask(prev => ({
+                    ...prev,
+                    salesConfirmed: true,
+                    status: 'completed',
+                    isProspect: true
+                  }))}
+                >
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      editedTask.salesConfirmed === true
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      💰
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Venda Realizada</div>
+                      <div className="text-xs text-muted-foreground">Negócio fechado</div>
+                    </div>
+                  </div>
+                  {editedTask.salesConfirmed === true && (
+                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div 
+                  className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                    editedTask.salesConfirmed === false
+                      ? 'border-red-500 bg-red-50 shadow-lg' 
+                      : 'border-gray-200 bg-white hover:border-red-300'
+                  }`}
+                  onClick={() => setEditedTask(prev => ({
+                    ...prev,
+                    salesConfirmed: false,
+                    status: 'closed',
+                    isProspect: true
+                  }))}
+                >
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      editedTask.salesConfirmed === false
+                        ? 'bg-red-500 text-white' 
+                        : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      ❌
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Venda Perdida</div>
+                      <div className="text-xs text-muted-foreground">Negócio não realizado</div>
+                    </div>
+                  </div>
+                  {editedTask.salesConfirmed === false && (
+                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -203,6 +290,123 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
             </div>
           </div>
+
+          {/* Campo de observação para venda perdida */}
+          {editedTask.salesConfirmed === false && (
+            <div className="space-y-2">
+              <Label htmlFor="edit-lossReason">Motivo da Perda</Label>
+              <Select
+                value={editedTask.prospectNotes || ''}
+                onValueChange={(value) => setEditedTask(prev => ({
+                  ...prev,
+                  prospectNotes: value
+                }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Falta de peça">Falta de peça</SelectItem>
+                  <SelectItem value="Preço">Preço</SelectItem>
+                  <SelectItem value="Prazo">Prazo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Opções para venda realizada */}
+          {editedTask.salesConfirmed === true && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Tipo de Venda</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div 
+                    className={`cursor-pointer p-3 rounded-lg border-2 transition-all duration-200 ${
+                      !editedTask.prospectItems || editedTask.prospectItems.length === 0
+                        ? 'border-green-500 bg-green-50' 
+                        : 'border-gray-200 bg-white hover:border-green-300'
+                    }`}
+                    onClick={() => setEditedTask(prev => ({
+                      ...prev,
+                      prospectItems: []
+                    }))}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full border-2 ${
+                        !editedTask.prospectItems || editedTask.prospectItems.length === 0
+                          ? 'border-green-500 bg-green-500' 
+                          : 'border-gray-300'
+                      }`}>
+                        {(!editedTask.prospectItems || editedTask.prospectItems.length === 0) && (
+                          <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
+                        )}
+                      </div>
+                      <Label className="cursor-pointer">Valor Total</Label>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    className={`cursor-pointer p-3 rounded-lg border-2 transition-all duration-200 ${
+                      editedTask.prospectItems && editedTask.prospectItems.length > 0
+                        ? 'border-green-500 bg-green-50' 
+                        : 'border-gray-200 bg-white hover:border-green-300'
+                    }`}
+                    onClick={() => setEditedTask(prev => ({
+                      ...prev,
+                      prospectItems: task?.checklist?.map(item => ({
+                        ...item,
+                        selected: false,
+                        quantity: 0
+                      })) || []
+                    }))}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-4 h-4 rounded-full border-2 ${
+                        editedTask.prospectItems && editedTask.prospectItems.length > 0
+                          ? 'border-green-500 bg-green-500' 
+                          : 'border-gray-300'
+                      }`}>
+                        {(editedTask.prospectItems && editedTask.prospectItems.length > 0) && (
+                          <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
+                        )}
+                      </div>
+                      <Label className="cursor-pointer">Valor Parcial</Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campo de valor para venda parcial */}
+              {editedTask.prospectItems && editedTask.prospectItems.length > 0 && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-partialValue">Valor da Venda Parcial (R$)</Label>
+                    <div className="relative">
+                      <Input
+                        id="edit-partialValue"
+                        type="text"
+                        value={editedTask.salesValue ? new Intl.NumberFormat('pt-BR', { 
+                          minimumFractionDigits: 2, 
+                          maximumFractionDigits: 2 
+                        }).format(editedTask.salesValue) : ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          const numericValue = parseFloat(value) / 100;
+                          setEditedTask(prev => ({
+                            ...prev,
+                            salesValue: isNaN(numericValue) ? 0 : numericValue
+                          }));
+                        }}
+                        placeholder="0,00"
+                        className="pl-8"
+                      />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="edit-observations">Observações</Label>
