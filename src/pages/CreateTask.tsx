@@ -1439,7 +1439,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       maximumFractionDigits: 2 
                     }).format(task.salesValue) : '0,00'} 
                     className="pl-8 bg-background"
+                    readOnly={task.prospectItems && task.prospectItems.length > 0}
                     onChange={(e) => {
+                      if (task.prospectItems && task.prospectItems.length > 0) return;
+                      
                       const value = e.target.value.replace(/\D/g, '');
                       const numericValue = parseFloat(value) / 100;
                       setTask(prev => ({
