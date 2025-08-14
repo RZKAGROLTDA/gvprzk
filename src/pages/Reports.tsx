@@ -113,8 +113,10 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
   const vendasConfirmadas = userTasks
     .filter(task => task.sales_confirmed === true)
     .reduce((sum, task) => sum + (task.sales_value || 0), 0);
-  const taxaConversao = userTasks.length > 0 ? 
-    (userTasks.filter(task => task.is_prospect === true).length / userTasks.length) * 100 : 0;
+  
+  // Taxa de conversão correta: (Vendas Realizadas / Valor Total de Prospects) * 100
+  const taxaConversao = totalOportunidades > 0 ? 
+    (vendasConfirmadas / totalOportunidades) * 100 : 0;
 
   return (
     <Card 
@@ -152,7 +154,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
                 variant={taxaConversao > 15 ? "default" : "secondary"}
                 className="text-xs"
               >
-                {taxaConversao.toFixed(1)}%
+                {taxaConversao.toFixed(1)}% conversão
               </Badge>
               <div className="text-right">
                 <p className="text-sm font-bold text-success">
@@ -315,7 +317,8 @@ const Reports: React.FC = () => {
   const totalProspects = filialStats.reduce((sum, f) => sum + f.prospects, 0);
   const totalProspectsValue = filialStats.reduce((sum, f) => sum + f.prospectsValue, 0);
   const totalSalesValue = filialStats.reduce((sum, f) => sum + f.salesValue, 0);
-  const overallConversionRate = totalTasks > 0 ? (totalProspects / totalTasks) * 100 : 0;
+  // Taxa de conversão geral corrigida: (Vendas Realizadas / Valor Total de Prospects) * 100
+  const overallConversionRate = totalProspectsValue > 0 ? (totalSalesValue / totalProspectsValue) * 100 : 0;
 
   // Calcular oportunidades por tipo de tarefa
   const [taskTypeOpportunities, setTaskTypeOpportunities] = useState({
@@ -463,7 +466,9 @@ const Reports: React.FC = () => {
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
         const prospectsValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-        const conversionRate = totalTasks > 0 ? (prospects / totalTasks) * 100 : 0;
+        
+        // Taxa de conversão corrigida para filial: (Vendas Realizadas / Valor Total de Prospects) * 100
+        const conversionRate = prospectsValue > 0 ? (salesValue / prospectsValue) * 100 : 0;
 
         return {
           id: filial.id,
@@ -562,7 +567,9 @@ const Reports: React.FC = () => {
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
         const salesValue = tasks?.reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
         const confirmedSales = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
-        const conversionRate = totalActivities > 0 ? (prospects / totalActivities) * 100 : 0;
+        
+        // Taxa de conversão corrigida para usuário: (Vendas Realizadas / Valor Total de Prospects) * 100
+        const conversionRate = salesValue > 0 ? (confirmedSales / salesValue) * 100 : 0;
 
         const userStat = {
           name: profile.name,
