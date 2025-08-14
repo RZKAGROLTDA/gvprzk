@@ -83,7 +83,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Tarefa</DialogTitle>
+          <DialogTitle>Editar Tarefa: {task.name}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
