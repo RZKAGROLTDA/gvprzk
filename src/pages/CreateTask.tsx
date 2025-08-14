@@ -148,6 +148,10 @@ const CreateTask: React.FC = () => {
     disk: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 }
   });
 
+  // Estado para o checklist (deve ser declarado antes das funções que o usam)
+  const [checklist, setChecklist] = useState<ProductType[]>([]);
+  const [callProducts, setCallProducts] = useState<ProductType[]>([]);
+
   // Função para calcular valor total automático
   const calculateTotalSalesValue = () => {
     let total = 0;
@@ -375,8 +379,11 @@ const CreateTask: React.FC = () => {
         return [];
     }
   };
-  const [checklist, setChecklist] = useState<ProductType[]>(getProductsForCategory());
-  const [callProducts, setCallProducts] = useState<ProductType[]>(fieldVisitProducts);
+  // Inicializar checklist com produtos baseados na categoria
+  useEffect(() => {
+    setChecklist(getProductsForCategory());
+    setCallProducts(fieldVisitProducts);
+  }, [taskCategory]);
 
   // Função para buscar informações anteriores pelo CPF
   const searchPreviousDataByCPF = async (cpf: string) => {
