@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOffline } from '@/hooks/useOffline';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { toast } from '@/components/ui/use-toast';
+import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 
 export const useTasks = () => {
   const { user } = useAuth();
@@ -41,41 +42,7 @@ export const useTasks = () => {
         }
 
         // Converter dados do Supabase para o formato da aplicação
-        const formattedTasks: Task[] = tasksData?.map(task => ({
-          id: task.id,
-          name: task.name,
-          responsible: task.responsible,
-          client: task.client,
-          property: task.property || '',
-          filial: task.filial || '',
-          taskType: task.task_type || 'prospection',
-          checklist: task.products || [],
-          startDate: new Date(task.start_date),
-          endDate: new Date(task.end_date),
-          startTime: task.start_time,
-          endTime: task.end_time,
-          observations: task.observations || '',
-          priority: task.priority as 'low' | 'medium' | 'high',
-          reminders: task.reminders || [],
-          photos: task.photos || [],
-          documents: task.documents || [],
-          checkInLocation: task.check_in_location ? {
-            lat: task.check_in_location.lat,
-            lng: task.check_in_location.lng,
-            timestamp: new Date(task.check_in_location.timestamp)
-          } : undefined,
-          initialKm: task.initial_km || 0,
-          finalKm: task.final_km || 0,
-          status: task.status as 'pending' | 'in_progress' | 'completed' | 'closed',
-          createdBy: task.created_by,
-          createdAt: new Date(task.created_at),
-          updatedAt: new Date(task.updated_at),
-          isProspect: task.is_prospect || false,
-          prospectNotes: task.prospect_notes || '',
-          prospectItems: [],
-          salesValue: task.sales_value ? Number(task.sales_value) : 0,
-          salesConfirmed: task.sales_confirmed || false
-        })) || [];
+        const formattedTasks: Task[] = tasksData?.map(mapSupabaseTaskToTask) || [];
 
         setTasks(formattedTasks);
       } else {

@@ -26,6 +26,7 @@ import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 
 const Tasks: React.FC = () => {
   const { getOfflineTasks } = useOffline();
@@ -41,7 +42,6 @@ const Tasks: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [vendors, setVendors] = useState<{id: string, name: string}[]>([]);
   const [filiais, setFiliais] = useState<{id: string, nome: string}[]>([]);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Carregar vendedores e filiais registrados
   useEffect(() => {
@@ -86,7 +86,7 @@ const Tasks: React.FC = () => {
     };
     
     loadTasks();
-  }, [onlineTasks, refreshTrigger]);
+  }, [onlineTasks]);
 
   // Configurar realtime listener separadamente
   useEffect(() => {
@@ -109,8 +109,8 @@ const Tasks: React.FC = () => {
             .order('created_at', { ascending: false });
           
           if (!error && freshTasks) {
-            setTasks(freshTasks);
-            setRefreshTrigger(prev => prev + 1);
+            const mappedTasks = freshTasks.map(mapSupabaseTaskToTask);
+            setTasks(mappedTasks);
           }
         }
       )
@@ -148,9 +148,9 @@ const Tasks: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleTaskUpdate = async () => {
+  const handleTaskUpdate = () => {
+    // O realtime já atualiza automaticamente a lista
     setIsEditModalOpen(false);
-    setRefreshTrigger(prev => prev + 1);
   };
 
   const getStatusColor = (status: string) => {
@@ -285,8 +285,8 @@ const Tasks: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-          filteredTasks.map((task) => (
-            <Card key={`${task.id}-${refreshTrigger}`} className="hover:shadow-lg transition-shadow">
+           filteredTasks.map((task) => (
+            <Card key={task.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
