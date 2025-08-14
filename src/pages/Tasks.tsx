@@ -118,17 +118,25 @@ const Tasks: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleTaskUpdate = () => {
-    // Reload tasks after update
-    const loadTasks = () => {
-      if (onlineTasks.length > 0) {
-        setTasks(onlineTasks);
-      } else {
-        const offlineTasks = getOfflineTasks();
-        setTasks(offlineTasks);
+  const handleTaskUpdate = async () => {
+    // Recarregar tarefas do Supabase após atualização
+    try {
+      const { data: updatedTasks, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      if (updatedTasks) {
+        setTasks(updatedTasks);
       }
-    };
-    loadTasks();
+    } catch (error) {
+      console.error('Erro ao recarregar tarefas:', error);
+      // Fallback para tarefas offline
+      const offlineTasks = getOfflineTasks();
+      setTasks(offlineTasks);
+    }
   };
 
   const getStatusColor = (status: string) => {
