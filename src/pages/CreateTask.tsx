@@ -119,11 +119,9 @@ const CreateTask: React.FC = () => {
     }
   }, [profile]);
   
-  // Inicializar com apenas um equipamento já adicionado
+  // Inicializar lista de equipamentos vazia
   const initializeEquipmentList = () => {
-    return [
-      { id: '1', familyProduct: 'TRATOR', quantity: 1 }
-    ];
+    return [];
   };
   
   const [reminders, setReminders] = useState<Reminder[]>([]);
