@@ -216,6 +216,38 @@ export const useTasks = () => {
     }
   };
 
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    if (!user) return;
+
+    try {
+      // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
+      let finalUpdates = { ...updates };
+      if (updates.salesConfirmed === true || updates.salesConfirmed === false) {
+        finalUpdates.status = 'completed';
+      }
+
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          ...finalUpdates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      // Atualizar state local
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, ...finalUpdates } : task
+      ));
+
+      return true;
+    } catch (error: any) {
+      console.error('Erro ao atualizar tarefa:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     if (user) {
       loadTasks();
@@ -226,6 +258,7 @@ export const useTasks = () => {
     tasks,
     loading,
     createTask,
+    updateTask,
     loadTasks
   };
 };

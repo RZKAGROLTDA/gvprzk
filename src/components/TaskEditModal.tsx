@@ -60,6 +60,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     if (!task || !editedTask.id) return;
     setLoading(true);
     try {
+      // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
+      let finalStatus = editedTask.status;
+      if (editedTask.salesConfirmed === true || editedTask.salesConfirmed === false) {
+        finalStatus = 'completed';
+      }
+
       const {
         error
       } = await supabase.from('tasks').update({
@@ -69,7 +75,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         property: editedTask.property,
         observations: editedTask.observations,
         priority: editedTask.priority,
-        status: editedTask.status,
+        status: finalStatus,
         sales_value: editedTask.salesValue || 0,
         sales_confirmed: editedTask.salesConfirmed || false,
         is_prospect: editedTask.isProspect || false,
