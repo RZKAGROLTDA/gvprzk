@@ -364,14 +364,14 @@ const Tasks: React.FC = () => {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => handleViewTask(task)}
+                      onClick={() => navigate(`/tasks/${task.id}/view`)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => handleEditTask(task)}
+                      onClick={() => navigate(`/tasks/${task.id}/edit`)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
