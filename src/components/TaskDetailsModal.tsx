@@ -377,7 +377,17 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Valor da Oportunidade:</span>
                     <span className="text-lg font-bold text-muted-foreground">
-                      R$ {currentTask.salesValue.toLocaleString('pt-BR')}
+                      R$ {(() => {
+                        // Calcular soma total dos produtos selecionados no checklist
+                        const checklistTotal = currentTask.checklist?.reduce((sum, product) => {
+                          return sum + (product.selected && product.price ? product.price * (product.quantity || 1) : 0);
+                        }, 0) || 0;
+                        
+                        // Se não há checklist com produtos, usar salesValue diretamente
+                        const totalValue = checklistTotal > 0 ? checklistTotal : (currentTask.salesValue || 0);
+                        
+                        return totalValue.toLocaleString('pt-BR');
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
