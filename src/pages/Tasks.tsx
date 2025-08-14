@@ -302,20 +302,19 @@ const Tasks: React.FC = () => {
                     )}
 
                     <div className="flex items-center gap-2 pl-13">
-                      <Badge variant={getPriorityColor(task.priority)}>
-                        {getPriorityLabel(task.priority)}
-                      </Badge>
-                      <Badge variant={getStatusColor(task.status)}>
-                        {getStatusLabel(task.status)}
-                      </Badge>
-                      {task.isProspect && (
-                        <Badge variant="default">
+                      {task.isProspect && task.salesConfirmed === undefined && (
+                        <Badge variant="warning">
                           Prospect
                         </Badge>
                       )}
-                      {task.salesConfirmed && (
+                      {task.salesConfirmed === true && (
                         <Badge variant="success">
-                          Venda Confirmada
+                          Venda Realizada
+                        </Badge>
+                      )}
+                      {task.salesConfirmed === false && (
+                        <Badge variant="destructive">
+                          Venda Perdida
                         </Badge>
                       )}
                     </div>
