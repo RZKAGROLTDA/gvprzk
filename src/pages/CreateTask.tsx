@@ -104,7 +104,9 @@ const CreateTask: React.FC = () => {
     checklist: [],
     reminders: [],
     photos: [],
-    documents: []
+    documents: [],
+    isProspect: true,
+    salesConfirmed: undefined
   });
 
   // Definir apenas a filial automaticamente quando o perfil carregar
