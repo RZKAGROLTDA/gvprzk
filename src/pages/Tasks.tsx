@@ -96,10 +96,24 @@ const Tasks: React.FC = () => {
           schema: 'public',
           table: 'tasks'
         },
-        (payload) => {
+        async (payload) => {
           console.log('Task updated:', payload);
-          // Recarregar tarefas quando houver mudanças
-          loadTasks();
+          // Recarregar tarefas imediatamente quando houver mudanças
+          try {
+            const { data: updatedTasks, error } = await supabase
+              .from('tasks')
+              .select('*,products(*),reminders(*)')
+              .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            if (updatedTasks) {
+              setTasks(updatedTasks);
+            }
+          } catch (error) {
+            console.error('Erro ao recarregar tarefas:', error);
+            loadTasks(); // Fallback
+          }
         }
       )
       .subscribe();
@@ -141,27 +155,29 @@ const Tasks: React.FC = () => {
   };
 
   const handleTaskUpdate = async () => {
-    // Força atualização imediata das tarefas
-    try {
-      const { data: updatedTasks, error } = await supabase
-        .from('tasks')
-        .select('*,products(*),reminders(*)')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      if (updatedTasks) {
-        setTasks(updatedTasks);
-      }
-    } catch (error) {
-      console.error('Erro ao recarregar tarefas:', error);
-      // Fallback para tarefas offline
-      const offlineTasks = getOfflineTasks();
-      setTasks(offlineTasks);
-    }
-    
-    // Forçar re-render do componente
+    // Fecha o modal primeiro
     setIsEditModalOpen(false);
+    
+    // Força atualização imediata das tarefas
+    setTimeout(async () => {
+      try {
+        const { data: updatedTasks, error } = await supabase
+          .from('tasks')
+          .select('*,products(*),reminders(*)')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (updatedTasks) {
+          setTasks(updatedTasks);
+        }
+      } catch (error) {
+        console.error('Erro ao recarregar tarefas:', error);
+        // Fallback para tarefas offline
+        const offlineTasks = getOfflineTasks();
+        setTasks(offlineTasks);
+      }
+    }, 100);
   };
 
   const getStatusColor = (status: string) => {
