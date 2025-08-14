@@ -656,6 +656,17 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     e.preventDefault();
     setIsSubmitting(true);
     
+    // Validação obrigatória do status da oportunidade
+    if (task.salesConfirmed === undefined && !task.isProspect) {
+      toast({
+        title: "Campo obrigatório",
+        description: "Selecione o status da oportunidade (Prospect, Venda Realizada ou Venda Perdida)",
+        variant: "destructive"
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    
     // Capturar data e hora atual exatos no momento da criação
     const now = new Date();
     const currentTime = format(now, 'HH:mm');
@@ -1405,7 +1416,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-base font-medium">Status da Oportunidade</Label>
+                  <Label className="text-base font-medium">Status da Oportunidade <span className="text-red-500">*</span></Label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                     <div 
                       className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
@@ -1416,8 +1427,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       onClick={() => setTask(prev => ({
                         ...prev,
                         isProspect: true,
-                        salesConfirmed: undefined,
-                        salesValue: undefined
+                        salesConfirmed: undefined
+                        // Manter salesValue preservado
                       }))}
                     >
                       <div className="flex flex-col items-center text-center space-y-2">
