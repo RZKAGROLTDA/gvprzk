@@ -124,71 +124,95 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
+            <div className="space-y-2">
+              <Label htmlFor="edit-priority">Prioridade</Label>
+              <Select value={editedTask.priority || ''} onValueChange={(value: 'low' | 'medium' | 'high') => setEditedTask(prev => ({ ...prev, priority: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a prioridade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="space-y-2">
-              <Label className="text-base font-medium">Status do Prospect</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.status === 'in_progress' ? 'border-blue-500 bg-blue-50 shadow-lg' : 'border-gray-200 bg-white hover:border-blue-300'}`} onClick={() => setEditedTask(prev => ({
+              <Label htmlFor="edit-status">Status da Tarefa</Label>
+              <Select value={editedTask.status || ''} onValueChange={(value: 'pending' | 'in_progress' | 'completed' | 'closed') => setEditedTask(prev => ({ ...prev, status: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="completed">Concluída</SelectItem>
+                  <SelectItem value="closed">Fechada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-base font-medium">Status do Prospect</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+              <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === undefined && editedTask.isProspect ? 'border-blue-500 bg-blue-50 shadow-lg' : 'border-gray-200 bg-white hover:border-blue-300'}`} onClick={() => setEditedTask(prev => ({
                 ...prev,
-                status: 'in_progress',
                 salesConfirmed: undefined,
                 isProspect: true,
                 prospectNotes: ''
               }))}>
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.status === 'in_progress' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                      ⏳
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">Prospect Em Andamento</div>
-                      <div className="text-xs text-muted-foreground">Negociação em curso</div>
-                    </div>
+                <div className="flex flex-col items-center text-center space-y-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === undefined && editedTask.isProspect ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    ⏳
                   </div>
-                  {editedTask.status === 'in_progress' && <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
-                    </div>}
+                  <div>
+                    <div className="font-medium text-sm">Prospect Em Andamento</div>
+                    <div className="text-xs text-muted-foreground">Negociação em curso</div>
+                  </div>
                 </div>
-                
-                <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === true ? 'border-green-500 bg-green-50 shadow-lg' : 'border-gray-200 bg-white hover:border-green-300'}`} onClick={() => setEditedTask(prev => ({
+                {editedTask.salesConfirmed === undefined && editedTask.isProspect && <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>}
+              </div>
+              
+              <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === true ? 'border-green-500 bg-green-50 shadow-lg' : 'border-gray-200 bg-white hover:border-green-300'}`} onClick={() => setEditedTask(prev => ({
                 ...prev,
                 salesConfirmed: true,
-                status: 'completed',
                 isProspect: true
               }))}>
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === true ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                      💰
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">Prospect Convertido</div>
-                      <div className="text-xs text-muted-foreground">Venda realizada</div>
-                    </div>
+                <div className="flex flex-col items-center text-center space-y-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === true ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    💰
                   </div>
-                  {editedTask.salesConfirmed === true && <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
-                    </div>}
+                  <div>
+                    <div className="font-medium text-sm">Venda Realizada</div>
+                    <div className="text-xs text-muted-foreground">Prospect convertido</div>
+                  </div>
                 </div>
-                
-                <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === false ? 'border-red-500 bg-red-50 shadow-lg' : 'border-gray-200 bg-white hover:border-red-300'}`} onClick={() => setEditedTask(prev => ({
+                {editedTask.salesConfirmed === true && <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>}
+              </div>
+              
+              <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === false ? 'border-red-500 bg-red-50 shadow-lg' : 'border-gray-200 bg-white hover:border-red-300'}`} onClick={() => setEditedTask(prev => ({
                 ...prev,
                 salesConfirmed: false,
-                status: 'closed',
                 isProspect: true
               }))}>
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                      ❌
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">Prospect Perdido</div>
-                      <div className="text-xs text-muted-foreground">Negócio não realizado</div>
-                    </div>
+                <div className="flex flex-col items-center text-center space-y-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    ❌
                   </div>
-                  {editedTask.salesConfirmed === false && <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
-                    </div>}
+                  <div>
+                    <div className="font-medium text-sm">Venda Perdida</div>
+                    <div className="text-xs text-muted-foreground">Negócio não realizado</div>
+                  </div>
                 </div>
+                {editedTask.salesConfirmed === false && <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>}
               </div>
             </div>
           </div>
