@@ -37,10 +37,25 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesValue: task.salesValue || 0,
         salesConfirmed: task.salesConfirmed || false,
         isProspect: task.isProspect || false,
-        prospectNotes: task.prospectNotes || ''
+        prospectNotes: task.prospectNotes || '',
+        prospectItems: task.prospectItems || []
       });
     }
   }, [task]);
+
+  // Atualizar valor da venda parcial automaticamente
+  useEffect(() => {
+    if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
+      const partialValue = editedTask.prospectItems.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
+      
+      setEditedTask(prev => ({
+        ...prev,
+        salesValue: partialValue
+      }));
+    }
+  }, [editedTask.prospectItems]);
   const handleSave = async () => {
     if (!task || !editedTask.id) return;
     setLoading(true);
@@ -245,7 +260,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 prospectItems: task?.checklist?.map(item => ({
                   ...item,
                   selected: false,
-                  quantity: 0
+                  quantity: item.quantity || 1,
+                  price: item.price || 0
                 })) || []
               }))}>
                     <div className="flex items-center space-x-2">
@@ -258,26 +274,97 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 </div>
               </div>
 
-              {/* Campo de valor para venda parcial */}
-              {editedTask.prospectItems && editedTask.prospectItems.length > 0 && <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-partialValue">Valor da Venda Parcial (R$)</Label>
-                    <div className="relative">
-                      <Input id="edit-partialValue" type="text" value={editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }).format(editedTask.salesValue) : ''} onChange={e => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  const numericValue = parseFloat(value) / 100;
-                  setEditedTask(prev => ({
-                    ...prev,
-                    salesValue: isNaN(numericValue) ? 0 : numericValue
-                  }));
-                }} placeholder="0,00" className="pl-8" />
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+              {/* Lista de produtos para venda parcial */}
+              {editedTask.prospectItems && editedTask.prospectItems.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Produtos Vendidos</Label>
+                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                    {editedTask.prospectItems.map((item, index) => (
+                      <div key={item.id} className="flex items-center justify-between space-x-3 p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            checked={item.selected}
+                            onCheckedChange={(checked) => {
+                              const updatedItems = [...(editedTask.prospectItems || [])];
+                              updatedItems[index] = { ...updatedItems[index], selected: checked as boolean };
+                              setEditedTask(prev => ({ ...prev, prospectItems: updatedItems }));
+                            }}
+                          />
+                          <div className="flex-1">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">{item.name}</span>
+                              <span className="text-xs text-muted-foreground">({item.category})</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 min-w-[200px]">
+                          <div className="flex flex-col space-y-1">
+                            <Label className="text-xs">Qtd</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={item.quantity || 1}
+                              onChange={(e) => {
+                                const quantity = parseInt(e.target.value) || 1;
+                                const updatedItems = [...(editedTask.prospectItems || [])];
+                                updatedItems[index] = { ...updatedItems[index], quantity };
+                                setEditedTask(prev => ({ ...prev, prospectItems: updatedItems }));
+                              }}
+                              className="w-16 h-8 text-xs"
+                            />
+                          </div>
+                          
+                          <div className="flex flex-col space-y-1">
+                            <Label className="text-xs">Preço Unit.</Label>
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                value={item.price ? new Intl.NumberFormat('pt-BR', { 
+                                  minimumFractionDigits: 2, 
+                                  maximumFractionDigits: 2 
+                                }).format(item.price) : '0,00'}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '');
+                                  const price = parseFloat(value) / 100;
+                                  const updatedItems = [...(editedTask.prospectItems || [])];
+                                  updatedItems[index] = { ...updatedItems[index], price: isNaN(price) ? 0 : price };
+                                  setEditedTask(prev => ({ ...prev, prospectItems: updatedItems }));
+                                }}
+                                className="w-20 h-8 text-xs pl-4"
+                              />
+                              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col space-y-1">
+                            <Label className="text-xs">Total</Label>
+                            <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
+                              R$ {new Intl.NumberFormat('pt-BR', { 
+                                minimumFractionDigits: 2, 
+                                maximumFractionDigits: 2 
+                              }).format((item.price || 0) * (item.quantity || 1))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Valor total calculado automaticamente */}
+                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                    <Label className="text-sm font-medium text-green-700">Valor Total da Venda Parcial:</Label>
+                    <div className="text-lg font-bold text-green-700">
+                      R$ {new Intl.NumberFormat('pt-BR', { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                      }).format(editedTask.prospectItems?.reduce((sum, item) => {
+                        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                      }, 0) || 0)}
                     </div>
                   </div>
-                </div>}
+                </div>
+              )}
             </div>}
 
           <div className="space-y-2">
