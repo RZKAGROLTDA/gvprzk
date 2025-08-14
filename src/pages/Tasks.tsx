@@ -74,7 +74,7 @@ const Tasks: React.FC = () => {
 
   // Carregar tarefas quando componente montar
   useEffect(() => {
-    const loadTasks = () => {
+    const loadTasks = async () => {
       // Priorizar tarefas online do Supabase
       if (onlineTasks.length > 0) {
         setTasks(onlineTasks);
@@ -86,50 +86,40 @@ const Tasks: React.FC = () => {
     };
     
     loadTasks();
-    
-    // Configurar realtime para atualizações automáticas
+  }, [onlineTasks, refreshTrigger]);
+
+  // Configurar realtime listener separadamente
+  useEffect(() => {
     const channel = supabase
-      .channel('tasks-changes')
+      .channel('tasks-realtime')
       .on(
         'postgres_changes',
         {
-          event: '*', // Escutar todos os eventos (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'tasks'
         },
         async (payload) => {
-          console.log('Task updated:', payload);
-          // Forçar atualização imediata
-          setRefreshTrigger(prev => prev + 1);
+          console.log('Realtime task change:', payload);
           
-          // Recarregar tarefas imediatamente quando houver mudanças
-          try {
-            const { data: updatedTasks, error } = await supabase
-              .from('tasks')
-              .select('*,products(*),reminders(*)')
-              .order('created_at', { ascending: false });
-            
-            if (error) throw error;
-            
-            if (updatedTasks) {
-              setTasks(updatedTasks);
-            }
-          } catch (error) {
-            console.error('Erro ao recarregar tarefas:', error);
-            loadTasks(); // Fallback
+          // Recarregar dados imediatamente
+          const { data: freshTasks, error } = await supabase
+            .from('tasks')
+            .select('*,products(*),reminders(*)')
+            .order('created_at', { ascending: false });
+          
+          if (!error && freshTasks) {
+            setTasks(freshTasks);
+            setRefreshTrigger(prev => prev + 1);
           }
         }
       )
       .subscribe();
-    
-    // Recarregar quando onlineTasks mudarem
-    const interval = setInterval(loadTasks, 3000);
-    
+
     return () => {
-      clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [onlineTasks]);
+  }, []);
 
   const filteredTasks = tasks.filter(task => {
     const matchesVendor = vendorFilter === 'all' || task.responsible === vendorFilter;
@@ -159,32 +149,8 @@ const Tasks: React.FC = () => {
   };
 
   const handleTaskUpdate = async () => {
-    // Fecha o modal primeiro
     setIsEditModalOpen(false);
-    
-    // Força re-render imediato
     setRefreshTrigger(prev => prev + 1);
-    
-    // Força atualização imediata das tarefas
-    setTimeout(async () => {
-      try {
-        const { data: updatedTasks, error } = await supabase
-          .from('tasks')
-          .select('*,products(*),reminders(*)')
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        if (updatedTasks) {
-          setTasks(updatedTasks);
-        }
-      } catch (error) {
-        console.error('Erro ao recarregar tarefas:', error);
-        // Fallback para tarefas offline
-        const offlineTasks = getOfflineTasks();
-        setTasks(offlineTasks);
-      }
-    }, 100);
   };
 
   const getStatusColor = (status: string) => {
