@@ -251,43 +251,18 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <p className="text-muted-foreground">Data:</p>
-                        <p>{new Date(task.start_date).toLocaleDateString('pt-BR')}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Status:</p>
-                        <Badge variant={
-                          task.is_prospect ? 'default' : 'secondary'
-                        } className="text-xs">
-                          {task.is_prospect ? 'Prospect' : 'Não prospect'}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Valor:</p>
-                        <p className="font-medium text-green-600">
-                          {task.sales_value ? 
-                            `R$ ${task.sales_value.toLocaleString('pt-BR')}` : 
-                            'R$ 0'
-                          }
-                        </p>
-                      </div>
+                    <div className="mt-2">
+                      <p className="text-muted-foreground mb-1">Status:</p>
+                      <Badge variant={
+                        task.sales_confirmed === true ? 'default' :
+                        task.sales_confirmed === false ? 'destructive' :
+                        task.is_prospect ? 'secondary' : 'outline'
+                      } className="text-xs">
+                        {task.sales_confirmed === true ? 'Venda Confirmada' :
+                         task.sales_confirmed === false ? 'Venda Perdida' :
+                         task.is_prospect ? 'Prospect' : 'Em Análise'}
+                      </Badge>
                     </div>
-
-                    {task.sales_confirmed !== undefined && (
-                      <div className="mt-2 pt-2 border-t border-muted">
-                        <Badge variant={
-                          task.sales_confirmed === true ? 'default' :
-                          task.sales_confirmed === false ? 'destructive' :
-                          'secondary'
-                        } className="text-xs">
-                          {task.sales_confirmed === true ? 'Venda Confirmada' :
-                           task.sales_confirmed === false ? 'Venda Perdida' :
-                           'Prospect'}
-                        </Badge>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
