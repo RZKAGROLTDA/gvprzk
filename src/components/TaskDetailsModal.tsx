@@ -161,25 +161,25 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Responsável:</span>
-                  <span>{task.responsible}</span>
+                  <span>{currentTask.responsible}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Cliente:</span>
-                  <span>{task.client}</span>
+                  <span>{currentTask.client}</span>
                 </div>
-                {task.property && (
+                {currentTask.property && (
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Propriedade:</span>
-                    <span>{task.property}</span>
+                    <span>{currentTask.property}</span>
                   </div>
                 )}
-                {task.filial && (
+                {currentTask.filial && (
                   <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Filial:</span>
-                    <span>{task.filial}</span>
+                    <span>{currentTask.filial}</span>
                   </div>
                 )}
               </CardContent>
@@ -196,39 +196,39 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Data:</span>
-                  <span>{format(task.startDate, "PPP", { locale: ptBR })}</span>
+                  <span>{format(currentTask.startDate, "PPP", { locale: ptBR })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Horário:</span>
-                  <span>{task.startTime} - {task.endTime}</span>
+                  <span>{currentTask.startTime} - {currentTask.endTime}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Km Inicial:</span>
-                  <span>{task.initialKm}</span>
+                  <span>{currentTask.initialKm}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Km Final:</span>
-                  <span>{task.finalKm}</span>
+                  <span>{currentTask.finalKm}</span>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Observações */}
-          {task.observations && (
+          {currentTask.observations && (
             <Card>
               <CardHeader>
                 <CardTitle>Observações</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{task.observations}</p>
+                <p className="text-muted-foreground">{currentTask.observations}</p>
               </CardContent>
             </Card>
           )}
 
           {/* Check-in Location */}
-          {task.checkInLocation && (
+          {currentTask.checkInLocation && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -237,13 +237,13 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <TaskLocationInfo checkInLocation={task.checkInLocation} />
+                <TaskLocationInfo checkInLocation={currentTask.checkInLocation} />
               </CardContent>
             </Card>
           )}
 
           {/* Checklist de Produtos */}
-          {task.checklist && task.checklist.length > 0 && (
+          {currentTask.checklist && currentTask.checklist.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -253,7 +253,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {task.checklist.map((product, index) => (
+                  {currentTask.checklist.map((product, index) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
@@ -285,14 +285,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
 
           {/* Lembretes */}
-          {task.reminders && task.reminders.length > 0 && (
+          {currentTask.reminders && currentTask.reminders.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Lembretes</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {task.reminders.map((reminder, index) => (
+                  {currentTask.reminders.map((reminder, index) => (
                     <div key={index} className="flex items-center gap-3 p-2 border rounded">
                       <div className={`w-4 h-4 rounded border-2 ${
                         reminder.completed ? 'bg-success border-success' : 'border-muted-foreground'
@@ -314,7 +314,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
 
           {/* Vendas */}
-          {task.salesValue && task.salesValue > 0 && (
+          {currentTask.salesValue && currentTask.salesValue > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -327,19 +327,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Valor da Venda:</span>
                     <span className="text-lg font-bold text-success">
-                      R$ {task.salesValue.toLocaleString('pt-BR')}
+                      R$ {currentTask.salesValue.toLocaleString('pt-BR')}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Status:</span>
-                    <Badge variant={task.salesConfirmed ? 'success' : 'secondary'}>
-                      {task.salesConfirmed ? 'Confirmada' : 'Pendente'}
+                    <Badge variant={currentTask.salesConfirmed ? 'success' : 'secondary'}>
+                      {currentTask.salesConfirmed ? 'Confirmada' : 'Pendente'}
                     </Badge>
                   </div>
-                  {task.prospectNotes && (
+                  {currentTask.prospectNotes && (
                     <div className="mt-4">
                       <span className="font-medium">Notas do Prospect:</span>
-                      <p className="text-muted-foreground mt-1">{task.prospectNotes}</p>
+                      <p className="text-muted-foreground mt-1">{currentTask.prospectNotes}</p>
                     </div>
                   )}
                 </div>
@@ -348,17 +348,17 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
 
           {/* Fotos */}
-          {task.photos && task.photos.length > 0 && (
+          {currentTask.photos && currentTask.photos.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Camera className="h-5 w-5" />
-                  Fotos ({task.photos.length})
+                  Fotos ({currentTask.photos.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {task.photos.map((photo, index) => (
+                  {currentTask.photos.map((photo, index) => (
                     <div key={index} className="aspect-square bg-muted rounded-lg flex items-center justify-center">
                       <Camera className="h-8 w-8 text-muted-foreground" />
                     </div>
