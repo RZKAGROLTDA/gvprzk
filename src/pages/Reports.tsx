@@ -869,7 +869,7 @@ const Reports: React.FC = () => {
                   {loading ? '...' : filialStats.reduce((sum, f) => sum + f.visitas, 0)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Oport: R$ {loading ? '...' : filialStats.filter(f => f.visitas > 0).reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}
+                  R$ {loading ? "..." : filialStats.filter(f => f.visitas > 0).reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString("pt-BR")}
                 </p>
               </div>
               <Target className="h-8 w-8 text-accent/50" />
@@ -886,7 +886,7 @@ const Reports: React.FC = () => {
                   {loading ? '...' : filialStats.reduce((sum, f) => sum + f.checklist, 0)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Oport: R$ {loading ? '...' : filialStats.filter(f => f.checklist > 0).reduce((sum, f) => sum + f.prospectsValue * (f.checklist / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString('pt-BR')}
+                  R$ {loading ? "..." : filialStats.filter(f => f.checklist > 0).reduce((sum, f) => sum + f.prospectsValue * (f.checklist / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString("pt-BR")}
                 </p>
               </div>
               <CheckSquare className="h-8 w-8 text-success/50" />
@@ -903,7 +903,7 @@ const Reports: React.FC = () => {
                   {loading ? '...' : filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Oport: R$ {loading ? '...' : filialStats.filter(f => f.ligacoes > 0).reduce((sum, f) => sum + f.prospectsValue * (f.ligacoes / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString('pt-BR')}
+                  R$ {loading ? "..." : filialStats.filter(f => f.ligacoes > 0).reduce((sum, f) => sum + f.prospectsValue * (f.ligacoes / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString("pt-BR")}
                 </p>
               </div>
               <Users className="h-8 w-8 text-warning/50" />
