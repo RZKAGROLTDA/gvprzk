@@ -148,6 +148,36 @@ const CreateTask: React.FC = () => {
     disk: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 }
   });
 
+  // Função para calcular valor total automático
+  const calculateTotalSalesValue = () => {
+    let total = 0;
+
+    // Somar valores dos produtos selecionados (visita a campo e workshop)
+    if (taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') {
+      total += checklist.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
+    }
+
+    // Somar valores das perguntas da ligação
+    if (taskCategory === 'call') {
+      total += Object.values(callQuestions).reduce((sum, item) => {
+        return sum + (item.needsProduct ? item.totalValue : 0);
+      }, 0);
+    }
+
+    return total;
+  };
+
+  // Atualizar valor total automaticamente quando checklist muda
+  useEffect(() => {
+    const totalValue = calculateTotalSalesValue();
+    setTask(prev => ({
+      ...prev,
+      salesValue: totalValue
+    }));
+  }, [checklist, callQuestions, taskCategory]);
+
   // Função para atualizar perguntas da ligação
   const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'unitValue', value: boolean | number) => {
     setCallQuestions(prev => {
@@ -166,17 +196,6 @@ const CreateTask: React.FC = () => {
         ...productData,
         totalValue: totalValue
       };
-      
-      // Calcular valor total geral automaticamente
-      const totalSalesValue = Object.values(updated).reduce((sum, item) => {
-        return sum + (item.needsProduct ? item.totalValue : 0);
-      }, 0);
-      
-      // Atualizar o valor de venda da tarefa
-      setTask(prev => ({
-        ...prev,
-        salesValue: totalSalesValue
-      }));
       
       return updated;
     });
@@ -503,17 +522,6 @@ const CreateTask: React.FC = () => {
         selected: checked
       } : item);
       
-      // Calcular valor total automaticamente quando há mudanças na seleção
-      const totalValue = updated.reduce((sum, item) => {
-        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-      }, 0);
-      
-      // Atualizar o valor de venda da tarefa
-      setTask(prev => ({
-        ...prev,
-        salesValue: totalValue
-      }));
-      
       return updated;
     });
   };
@@ -524,17 +532,6 @@ const CreateTask: React.FC = () => {
         ...item,
         [field]: value
       } : item);
-      
-      // Calcular valor total automaticamente quando há mudanças nos valores
-      const totalValue = updated.reduce((sum, item) => {
-        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-      }, 0);
-      
-      // Atualizar o valor de venda da tarefa
-      setTask(prev => ({
-        ...prev,
-        salesValue: totalValue
-      }));
       
       return updated;
     });
@@ -1381,12 +1378,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
-                    }).format(task.salesValue) : ''} 
-                    className="pl-8 bg-muted cursor-not-allowed"
-                    readOnly
+                    }).format(task.salesValue) : '0,00'} 
+                    className="pl-8 bg-background"
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      const numericValue = parseFloat(value) / 100;
+                      setTask(prev => ({
+                        ...prev,
+                        salesValue: isNaN(numericValue) ? 0 : numericValue
+                      }));
+                    }}
                   />
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Valor calculado automaticamente com base nos produtos/serviços selecionados. Você pode editá-lo se necessário.
+                </p>
               </div>
 
               <div className="space-y-4">
