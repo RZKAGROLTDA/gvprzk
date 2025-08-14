@@ -123,19 +123,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-priority">Prioridade</Label>
-            <Select value={editedTask.priority || ''} onValueChange={(value: 'low' | 'medium' | 'high') => setEditedTask(prev => ({ ...prev, priority: value }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a prioridade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Baixa</SelectItem>
-                <SelectItem value="medium">Média</SelectItem>
-                <SelectItem value="high">Alta</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="space-y-2">
             <Label className="text-base font-medium">Status do Prospect</Label>
