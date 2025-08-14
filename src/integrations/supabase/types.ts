@@ -307,6 +307,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      diagnostic_query: {
+        Args: { query_text: string }
+        Returns: Json
+      }
       generate_invitation_token: {
         Args: Record<PropertyKey, never>
         Returns: string
