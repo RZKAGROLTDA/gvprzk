@@ -461,7 +461,7 @@ const Reports: React.FC = () => {
         const totalTasks = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
         const prospectsValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-        const salesValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+        const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const conversionRate = totalTasks > 0 ? (prospects / totalTasks) * 100 : 0;
 
         return {
@@ -903,9 +903,9 @@ const Reports: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Total Oportunidades</p>
+                <p className="text-sm font-medium text-muted-foreground">Vendas Realizadas</p>
                 <p className="text-lg font-bold text-primary">
-                  {loading ? '...' : `R$ ${totalProspectsValue.toLocaleString('pt-BR')}`}
+                  {loading ? '...' : `R$ ${totalSalesValue.toLocaleString('pt-BR')}`}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-primary/50" />
