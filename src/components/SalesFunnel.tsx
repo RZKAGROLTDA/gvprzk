@@ -519,16 +519,28 @@ export const SalesFunnel: React.FC = () => {
                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}>
                     <div className="font-bold text-xl">{funnelData.contacts.visitas}</div>
                     <div className="text-sm opacity-90">Visitas</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.contacts.total > 0 ? 
+                        Math.round((funnelData.contacts.visitas / funnelData.contacts.total) * 100) : 0}%
+                    </div>
                   </div>
                   <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors"
                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}>
                     <div className="font-bold text-xl">{funnelData.contacts.checklists}</div>
                     <div className="text-sm opacity-90">Checklists</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.contacts.total > 0 ? 
+                        Math.round((funnelData.contacts.checklists / funnelData.contacts.total) * 100) : 0}%
+                    </div>
                   </div>
                   <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors"
                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}>
                     <div className="font-bold text-xl">{funnelData.contacts.ligacoes}</div>
                     <div className="text-sm opacity-90">Ligações</div>
+                    <div className="text-xs opacity-75">
+                      {funnelData.contacts.total > 0 ? 
+                        Math.round((funnelData.contacts.ligacoes / funnelData.contacts.total) * 100) : 0}%
+                    </div>
                   </div>
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
