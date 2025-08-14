@@ -172,6 +172,11 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
 
           <div className="grid grid-cols-5 gap-3">
             <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total</p>
+              <p className="font-bold text-foreground">{visitas + checklists + ligacoes}</p>
+              <p className="text-xs text-muted-foreground">atividades</p>
+            </div>
+            <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Visitas</p>
               <p className="font-bold text-primary">{visitas}</p>
               <p className="text-xs text-muted-foreground">
@@ -198,11 +203,6 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
               <p className="text-xs text-muted-foreground">
                 R$ {totalOportunidades.toLocaleString('pt-BR')}
               </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total</p>
-              <p className="font-bold text-foreground">{visitas + checklists + ligacoes}</p>
-              <p className="text-xs text-muted-foreground">atividades</p>
             </div>
           </div>
         </div>
