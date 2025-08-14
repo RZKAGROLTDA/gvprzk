@@ -40,7 +40,7 @@ export const OfflineIndicator: React.FC = () => {
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2">
         {/* Informações do Usuário */}
         <div className="bg-secondary/20 rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
