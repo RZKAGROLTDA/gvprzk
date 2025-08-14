@@ -41,6 +41,7 @@ const Tasks: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [vendors, setVendors] = useState<{id: string, name: string}[]>([]);
   const [filiais, setFiliais] = useState<{id: string, nome: string}[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Carregar vendedores e filiais registrados
   useEffect(() => {
@@ -98,6 +99,9 @@ const Tasks: React.FC = () => {
         },
         async (payload) => {
           console.log('Task updated:', payload);
+          // Forçar atualização imediata
+          setRefreshTrigger(prev => prev + 1);
+          
           // Recarregar tarefas imediatamente quando houver mudanças
           try {
             const { data: updatedTasks, error } = await supabase
@@ -157,6 +161,9 @@ const Tasks: React.FC = () => {
   const handleTaskUpdate = async () => {
     // Fecha o modal primeiro
     setIsEditModalOpen(false);
+    
+    // Força re-render imediato
+    setRefreshTrigger(prev => prev + 1);
     
     // Força atualização imediata das tarefas
     setTimeout(async () => {
@@ -313,7 +320,7 @@ const Tasks: React.FC = () => {
           </Card>
         ) : (
           filteredTasks.map((task) => (
-            <Card key={task.id} className="hover:shadow-lg transition-shadow">
+            <Card key={`${task.id}-${refreshTrigger}`} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
