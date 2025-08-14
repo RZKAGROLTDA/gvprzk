@@ -25,21 +25,45 @@ export const useAuthProvider = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    // Verificar sessão atual primeiro
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('DEBUG: Initial session check:', { session: session?.user?.id, error });
+        
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('DEBUG: Error getting initial session:', error);
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    getInitialSession();
 
     // Escutar mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
+      (event, session) => {
+        console.log('DEBUG: Auth state change:', { event, userId: session?.user?.id });
+        
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
       }
     );
 
-    return () => subscription?.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

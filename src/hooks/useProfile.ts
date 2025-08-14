@@ -45,6 +45,10 @@ export const useProfile = () => {
       setLoading(true);
       console.log('DEBUG: Carregando perfil para user:', user.id);
       
+      // First check if we can get current user from auth
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('DEBUG: Current session in profile load:', session?.user?.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -54,13 +58,21 @@ export const useProfile = () => {
           )
         `)
         .eq('user_id', user.id)
-        .maybeSingle(); // Use maybeSingle instead of single to handle no results
+        .maybeSingle();
 
       console.log('DEBUG: Dados do perfil:', data);
       console.log('DEBUG: Erro:', error);
 
       if (error) {
         console.error('Erro ao carregar perfil:', error);
+        // If error is related to RLS, try alternative approach
+        if (error.message?.includes('policy')) {
+          console.log('DEBUG: RLS policy error detected, checking auth state...');
+          
+          // Check if this is an auth issue
+          const { data: authTest } = await supabase.auth.getUser();
+          console.log('DEBUG: Auth test result:', authTest.user?.id);
+        }
         setProfile(null);
       } else {
         const profileData = data ? {
@@ -68,6 +80,7 @@ export const useProfile = () => {
           filial_nome: data.filiais?.nome
         } : null;
         setProfile(profileData);
+        console.log('DEBUG: Perfil carregado com sucesso:', profileData?.name);
       }
     } catch (error) {
       console.error('Erro inesperado ao carregar perfil:', error);

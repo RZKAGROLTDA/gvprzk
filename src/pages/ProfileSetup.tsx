@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { DiagnosticTest } from '@/components/DiagnosticTest';
 import { User, Building2, Copy, Check, Mail, Link as LinkIcon } from 'lucide-react';
 
 interface Filial {
@@ -317,15 +318,22 @@ Equipe de Gestão`);
                     )}
                   </Button>
 
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
+                   </div>
+                 </div>
+               </>
+             )}
+
+             {/* Seção de diagnóstico para debug */}
+             <Separator className="my-8" />
+             <div className="space-y-4">
+               <h3 className="text-lg font-semibold text-center">Diagnóstico do Sistema</h3>
+               <DiagnosticTest />
+             </div>
+           </CardContent>
+         </Card>
+       </div>
+     </div>
+   );
+ };
 
 export default ProfileSetup;

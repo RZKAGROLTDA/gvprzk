@@ -98,6 +98,12 @@ const AppContent: React.FC = () => {
   const { profile, loading: profileLoading } = useProfile();
 
   console.log('DEBUG AppContent: loading auth:', loading, 'loading profile:', profileLoading, 'user:', !!user, 'profile:', !!profile);
+  console.log('DEBUG: User:', user?.id);
+  console.log('DEBUG: Profile:', profile?.id);
+  console.log('DEBUG: Profile status:', { 
+    _type: typeof profile?.approval_status, 
+    value: profile?.approval_status 
+  });
 
   // Wait for auth to load first
   if (loading) {
