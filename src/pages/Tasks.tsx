@@ -192,10 +192,6 @@ const Tasks: React.FC = () => {
           <h1 className="text-3xl font-bold">Tarefas</h1>
           <p className="text-muted-foreground">Gerenciar tarefas de visitas</p>
         </div>
-        <Button variant="gradient" className="gap-2" onClick={() => navigate('/create-task')}>
-          <Plus className="h-4 w-4" />
-          Nova Tarefa
-        </Button>
       </div>
 
       {/* Filters */}
