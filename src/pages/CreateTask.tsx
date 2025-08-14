@@ -1077,7 +1077,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="flex items-center space-x-2">
                             <Checkbox id={item.id} checked={item.selected} onCheckedChange={checked => handleChecklistChange(item.id, checked as boolean)} />
                             <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                              {item.name}
+                              Aditivo
                             </Label>
                           </div>
                           
