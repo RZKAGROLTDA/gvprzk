@@ -162,7 +162,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-base font-medium">Status da Oportunidade</Label>
+              <Label className="text-base font-medium">Status do Prospect</Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
                 <div 
                   className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
@@ -174,6 +174,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     ...prev,
                     status: 'in_progress',
                     salesConfirmed: undefined,
+                    isProspect: true,
                     prospectNotes: ''
                   }))}
                 >
@@ -186,7 +187,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                       ⏳
                     </div>
                     <div>
-                      <div className="font-medium text-sm">Em Andamento</div>
+                      <div className="font-medium text-sm">Prospect Em Andamento</div>
                       <div className="text-xs text-muted-foreground">Negociação em curso</div>
                     </div>
                   </div>
@@ -219,8 +220,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                       💰
                     </div>
                     <div>
-                      <div className="font-medium text-sm">Venda Realizada</div>
-                      <div className="text-xs text-muted-foreground">Negócio fechado</div>
+                      <div className="font-medium text-sm">Prospect Convertido</div>
+                      <div className="text-xs text-muted-foreground">Venda realizada</div>
                     </div>
                   </div>
                   {editedTask.salesConfirmed === true && (
@@ -252,7 +253,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                       ❌
                     </div>
                     <div>
-                      <div className="font-medium text-sm">Venda Perdida</div>
+                      <div className="font-medium text-sm">Prospect Perdido</div>
                       <div className="text-xs text-muted-foreground">Negócio não realizado</div>
                     </div>
                   </div>
