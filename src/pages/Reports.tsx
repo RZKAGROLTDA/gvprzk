@@ -151,57 +151,53 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
               </div>
               
               {/* Métricas resumidas no cabeçalho */}
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-primary rounded-full"></div>
-                  <span>{visitas} visitas</span>
+              <div className="flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-primary rounded-full"></div>
+                  <span className="text-xs">{visitas}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-success rounded-full"></div>
-                  <span>{checklists} checklists</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                  <span className="text-xs">{checklists}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-warning rounded-full"></div>
-                  <span>{ligacoes} ligações</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-warning rounded-full"></div>
+                  <span className="text-xs">{ligacoes}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span>R$ {totalOportunidades.toLocaleString('pt-BR')} total</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-xs font-medium">R$ {totalOportunidades.toLocaleString('pt-BR')}</span>
                 </div>
               </div>
             </div>
             
-            {/* Estatísticas detalhadas - igual ao formato das filiais */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-              <div className="bg-primary/5 rounded-lg p-4 text-center">
-                <Target className="h-6 w-6 mx-auto mb-2 text-primary" />
-                <p className="text-2xl font-bold text-primary">{visitas}</p>
-                <p className="text-xs text-muted-foreground">Visitas</p>
+            {/* Estatísticas detalhadas - formato compacto */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
+              <div className="bg-primary/5 rounded-lg p-2 text-center">
+                <Target className="h-4 w-4 mx-auto mb-1 text-primary" />
+                <p className="text-lg font-bold text-primary">{visitas}</p>
                 <p className="text-xs text-muted-foreground font-medium">
                   R$ {(userTasks.filter(t => t.task_type === 'prospection').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
                 </p>
               </div>
-              <div className="bg-success/5 rounded-lg p-4 text-center">
-                <CheckSquare className="h-6 w-6 mx-auto mb-2 text-success" />
-                <p className="text-2xl font-bold text-success">{checklists}</p>
-                <p className="text-xs text-muted-foreground">Checklist</p>
+              <div className="bg-success/5 rounded-lg p-2 text-center">
+                <CheckSquare className="h-4 w-4 mx-auto mb-1 text-success" />
+                <p className="text-lg font-bold text-success">{checklists}</p>
                 <p className="text-xs text-muted-foreground font-medium">
                   R$ {(userTasks.filter(t => t.task_type === 'checklist').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
                 </p>
               </div>
-              <div className="bg-warning/5 rounded-lg p-4 text-center">
-                <Users className="h-6 w-6 mx-auto mb-2 text-warning" />
-                <p className="text-2xl font-bold text-warning">{ligacoes}</p>
-                <p className="text-xs text-muted-foreground">Ligações</p>
+              <div className="bg-warning/5 rounded-lg p-2 text-center">
+                <Users className="h-4 w-4 mx-auto mb-1 text-warning" />
+                <p className="text-lg font-bold text-warning">{ligacoes}</p>
                 <p className="text-xs text-muted-foreground font-medium">
                   R$ {(userTasks.filter(t => t.task_type === 'ligacao').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
                 </p>
               </div>
-              <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-4 text-center">
-                <DollarSign className="h-6 w-6 mx-auto mb-2 text-green-600" />
-                <p className="text-lg font-bold text-green-600">R$ {vendasConfirmadas.toLocaleString('pt-BR')}</p>
-                <p className="text-xs text-muted-foreground">Vendas Confirmadas</p>
-                <p className="text-xs text-accent font-medium">{taxaConversao.toFixed(1)}% conversão</p>
+              <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-2 text-center">
+                <DollarSign className="h-4 w-4 mx-auto mb-1 text-green-600" />
+                <p className="text-sm font-bold text-green-600">R$ {vendasConfirmadas.toLocaleString('pt-BR')}</p>
+                <p className="text-xs text-accent font-medium">{taxaConversao.toFixed(1)}%</p>
               </div>
             </div>
             
