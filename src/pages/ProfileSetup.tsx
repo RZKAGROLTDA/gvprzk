@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { DiagnosticTest } from '@/components/DiagnosticTest';
+import { SessionRefresh } from '@/components/SessionRefresh';
 import { User, Building2, Copy, Check, Mail, Link as LinkIcon } from 'lucide-react';
 
 interface Filial {
@@ -323,11 +324,13 @@ Equipe de Gestão`);
                </>
              )}
 
-             {/* Seção de diagnóstico para debug */}
-             <Separator className="my-8" />
-             <div className="space-y-4">
-               <h3 className="text-lg font-semibold text-center">Diagnóstico do Sistema</h3>
-               <DiagnosticTest />
+             {/* Seção de controle de sessão */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+               <SessionRefresh />
+               <div>
+                 <h3 className="text-lg font-semibold mb-4">Diagnóstico do Sistema</h3>
+                 <DiagnosticTest />
+               </div>
              </div>
            </CardContent>
          </Card>
