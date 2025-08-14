@@ -211,17 +211,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           <div className="space-y-2">
             <Label htmlFor="edit-salesValue">Valor de Venda/Oportunidade (R$)</Label>
             <div className="relative">
-              <Input id="edit-salesValue" type="text" value={editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            }).format(editedTask.salesValue) : ''} onChange={e => {
-              const value = e.target.value.replace(/\D/g, '');
-              const numericValue = parseFloat(value) / 100;
-              setEditedTask(prev => ({
-                ...prev,
-                salesValue: isNaN(numericValue) ? 0 : numericValue
-              }));
-            }} placeholder="0,00" className="pl-8" />
+              <Input 
+                id="edit-salesValue" 
+                type="text" 
+                disabled
+                value={editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }).format(editedTask.salesValue) : ''} 
+                placeholder="0,00" 
+                className="pl-8" 
+              />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
             </div>
           </div>
