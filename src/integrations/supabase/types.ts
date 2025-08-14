@@ -327,6 +327,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      user_same_filial: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
