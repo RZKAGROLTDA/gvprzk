@@ -597,8 +597,8 @@ const CreateTask: React.FC = () => {
   const addEquipment = () => {
     const newEquipment = {
       id: Date.now().toString(),
-      familyProduct: '', // Sem valor pré-selecionado
-      quantity: 0
+      familyProduct: 'TRATOR', // Opção padrão pré-selecionada
+      quantity: 1
     };
     setEquipmentList(prev => [...prev, newEquipment]);
   };
@@ -1051,7 +1051,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                             
                             <div className="space-y-2">
                               <Label>Quantidade</Label>
-                              <Input type="number" value={equipment.quantity || ''} onChange={e => updateEquipment(equipment.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="Digite a quantidade" min="1" />
+                              <Input type="number" value={equipment.quantity} onChange={e => updateEquipment(equipment.id, 'quantity', parseInt(e.target.value) || 1)} placeholder="1" min="1" />
                             </div>
                           </div>
                         </div>
