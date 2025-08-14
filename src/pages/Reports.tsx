@@ -305,6 +305,7 @@ const Reports: React.FC = () => {
   const [filialStats, setFilialStats] = useState<FilialStats[]>([]);
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [userStats, setUserStats] = useState<any[]>([]);
 
   // Calcular estatísticas agregadas dos dados das filiais
   const totalTasks = filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0);
@@ -332,16 +333,16 @@ const Reports: React.FC = () => {
   };
 
   const detailedStats: any[] = [];
-  const [userStats, setUserStats] = useState<any[]>([]);
 
   const loadCollaborators = async () => {
     try {
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id, name, role')
+        .select('id, name, role, user_id')
         .order('name');
 
       if (error) throw error;
+      console.log('DEBUG: Colaboradores carregados:', profiles);
       setCollaborators(profiles || []);
     } catch (error) {
       console.error('Erro ao carregar colaboradores:', error);
@@ -487,20 +488,39 @@ const Reports: React.FC = () => {
   };
 
   const loadUserStats = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('DEBUG: Usuário não está logado, não carregando stats de usuários');
+      return;
+    }
+    
+    console.log('DEBUG: Carregando estatísticas dos usuários');
     
     try {
-      // Buscar perfis de todos os usuários ativos
+      // Buscar perfis de todos os usuários ativos com mais detalhes
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, name, role')
+        .select('user_id, name, role, id')
         .in('role', ['consultant', 'manager', 'admin'])
+        .eq('approval_status', 'approved')
         .order('name');
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Erro ao buscar perfis:', profilesError);
+        throw profilesError;
+      }
+
+      console.log('DEBUG: Perfis encontrados para stats:', profiles);
+
+      if (!profiles || profiles.length === 0) {
+        console.log('DEBUG: Nenhum perfil encontrado');
+        setUserStats([]);
+        return;
+      }
 
       // Buscar estatísticas por usuário
-      const userStatsPromises = profiles?.map(async (profile) => {
+      const userStatsPromises = profiles.map(async (profile) => {
+        console.log('DEBUG: Carregando stats para usuário:', profile.name, profile.user_id);
+        
         let query = supabase
           .from('tasks')
           .select('*')
@@ -517,39 +537,62 @@ const Reports: React.FC = () => {
         const { data: tasks, error: tasksError } = await query;
 
         if (tasksError) {
-          console.error('Erro ao buscar tarefas do usuário:', tasksError);
+          console.error('Erro ao buscar tarefas do usuário:', profile.name, tasksError);
           return {
             name: profile.name,
             role: profile.role,
+            user_id: profile.user_id,
             visits: 0,
             prospects: 0,
             sales: 0,
-            conversionRate: 0
+            conversionRate: 0,
+            totalActivities: 0,
+            visitas: 0,
+            checklist: 0,
+            ligacoes: 0
           };
         }
 
-        const visits = tasks?.length || 0;
-        const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-        const sales = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-        const conversionRate = visits > 0 ? (prospects / visits) * 100 : 0;
+        console.log('DEBUG: Tasks encontradas para usuário', profile.name, ':', tasks?.length || 0);
 
-        return {
+        const visitas = tasks?.filter(task => task.task_type === 'prospection').length || 0;
+        const checklist = tasks?.filter(task => task.task_type === 'checklist').length || 0;
+        const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
+        const totalActivities = tasks?.length || 0;
+        const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
+        const salesValue = tasks?.reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
+        const confirmedSales = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
+        const conversionRate = totalActivities > 0 ? (prospects / totalActivities) * 100 : 0;
+
+        const userStat = {
           name: profile.name,
           role: profile.role,
-          visits,
+          user_id: profile.user_id,
+          visits: totalActivities,
           prospects,
-          sales: Number(sales),
-          conversionRate: Math.round(conversionRate * 10) / 10
+          sales: Number(confirmedSales),
+          conversionRate: Math.round(conversionRate * 10) / 10,
+          totalActivities,
+          visitas,
+          checklist,
+          ligacoes,
+          salesValue: Number(salesValue)
         };
-      }) || [];
+
+        console.log('DEBUG: Stats calculadas para', profile.name, ':', userStat);
+        return userStat;
+      });
 
       const results = await Promise.all(userStatsPromises);
       
-      // Ordenar por valor de vendas (maior para menor)
+      // Ordenar por valor de vendas confirmadas (maior para menor)
       const sortedResults = results.sort((a, b) => b.sales - a.sales);
+      
+      console.log('DEBUG: Resultados finais dos usuários:', sortedResults);
       setUserStats(sortedResults);
     } catch (error) {
       console.error('Erro ao carregar estatísticas dos usuários:', error);
+      setUserStats([]);
     }
   };
 
@@ -566,6 +609,7 @@ const Reports: React.FC = () => {
 
   useEffect(() => {
     if (user) {
+      console.log('DEBUG: Iniciando carregamento dos dados...');
       loadFilialStats();
       loadCollaborators();
       loadUserStats();
@@ -1053,7 +1097,7 @@ const Reports: React.FC = () => {
             <div className="space-y-3">
               {userStats.map((user, index) => (
                 <UserPerformanceItem 
-                  key={user.name}
+                  key={`${user.name}-${user.user_id}`}
                   user={user}
                   index={index}
                   dateFrom={dateFrom}
