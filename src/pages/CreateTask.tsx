@@ -1030,15 +1030,16 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 {/* Hectares da Propriedade */}
                  <div className="space-y-2">
                    <Label htmlFor="propertyHectares">Hectares da Propriedade *</Label>
-                   <Input 
-                     id="propertyHectares" 
-                     type="number" 
-                     value={task.propertyHectares || ''} 
-                     onChange={e => setTask(prev => ({
-                       ...prev,
-                       propertyHectares: parseInt(e.target.value) || undefined
-                     }))} 
-                     placeholder="Digite os hectares da propriedade" 
+                    <Input 
+                      id="propertyHectares" 
+                      type="number" 
+                      min="0"
+                      value={task.propertyHectares || ''} 
+                      onChange={e => setTask(prev => ({
+                        ...prev,
+                        propertyHectares: parseInt(e.target.value) || undefined
+                      }))} 
+                      placeholder="Digite os hectares da propriedade"
                      required
                    />
                  </div>
@@ -1125,7 +1126,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                               <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor={`qty-${item.id}`}>QTD</Label>
-                                  <Input id={`qty-${item.id}`} type="number" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
+                                  <Input id={`qty-${item.id}`} type="number" min="0" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
                                 </div>
                                 <div className="space-y-2">
                                   <Label htmlFor={`price-${item.id}`}>Valor Unitário</Label>
@@ -1206,7 +1207,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
                   <div className="space-y-2">
                     <Label htmlFor="johnDeereEquipment">Total de Equipamentos John Deere na região:</Label>
-                    <Input id="johnDeereEquipment" type="number" placeholder="Quantidade de equipamentos" />
+                    <Input id="johnDeereEquipment" type="number" min="0" placeholder="Quantidade de equipamentos" />
                   </div>
 
                   <div className="space-y-4">
