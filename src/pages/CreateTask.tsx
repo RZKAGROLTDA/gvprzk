@@ -1047,7 +1047,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Equipamentos do Cliente</Label>
-                    <Button type="button" onClick={addEquipment} variant="outline" size="sm" className="flex items-center gap-2">
+                    <Button type="button" onClick={addEquipment} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700" size="sm">
                       <Plus className="h-4 w-4" />
                       Adicionar Equipamento
                     </Button>
