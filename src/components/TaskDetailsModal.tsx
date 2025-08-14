@@ -376,8 +376,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Valor da Oportunidade:</span>
-                    <span className="text-lg font-bold text-success">
+                    <span className="text-lg font-bold text-muted-foreground">
                       R$ {currentTask.salesValue.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Venda Realizada:</span>
+                    <span className="text-lg font-bold text-success">
+                      R$ {currentTask.salesConfirmed ? currentTask.salesValue.toLocaleString('pt-BR') : '0,00'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
