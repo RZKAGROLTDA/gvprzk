@@ -27,10 +27,10 @@ export const Home: React.FC = () => {
     color: 'from-purple-500 to-violet-600',
     onClick: () => navigate('/create-task?type=client_call')
   }];
-  return <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 p-3 sm:p-6">
-      <div className="max-w-4xl mx-auto">
+  return <div className="bg-gradient-to-br from-background to-muted/20 p-4 sm:p-6 pt-8 sm:pt-12">
+      <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8 sm:mb-12">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center mb-4 sm:mb-6">
             <div className="p-3 sm:p-4 bg-primary/10 rounded-full">
               <Building className="h-8 w-8 sm:h-12 sm:w-12 text-primary" />
