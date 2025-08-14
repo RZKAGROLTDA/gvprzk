@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
 import { TaskLocationInfo } from './TaskLocationInfo';
+import { TaskReportExporter } from './TaskReportExporter';
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -73,7 +74,15 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{task.name}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl font-bold">{task.name}</DialogTitle>
+            <TaskReportExporter 
+              task={task} 
+              filialName={task.filial}
+              variant="outline"
+              size="sm"
+            />
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
