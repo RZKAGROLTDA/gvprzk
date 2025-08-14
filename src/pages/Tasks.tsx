@@ -293,7 +293,17 @@ const Tasks: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {format(new Date(task.createdAt), "PPP", { locale: ptBR })}
+                            {(() => {
+                              try {
+                                const date = new Date(task.createdAt);
+                                if (isNaN(date.getTime())) {
+                                  return 'Data inválida';
+                                }
+                                return format(date, "PPP", { locale: ptBR });
+                              } catch (error) {
+                                return 'Data inválida';
+                              }
+                            })()}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
