@@ -230,8 +230,8 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
                     className="bg-muted/50 rounded-lg p-3 text-sm"
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <p className="font-medium">{task.name}</p>
+                     <div className="flex-1">
+                        <p className="font-medium">{task.name || task.client || 'Tarefa sem nome'}</p>
                         <p className="text-muted-foreground text-xs">
                           {task.client} • {task.property}
                         </p>
