@@ -307,6 +307,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_user_is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       diagnostic_query: {
         Args: { query_text: string }
         Returns: Json
