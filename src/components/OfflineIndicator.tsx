@@ -25,7 +25,7 @@ export const OfflineIndicator: React.FC = () => {
 
   return (
     <Card className="border-l-4 border-l-primary">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-lg">
           <div className="flex items-center gap-2">
             {isOnline ? (
