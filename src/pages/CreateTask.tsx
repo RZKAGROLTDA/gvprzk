@@ -1434,27 +1434,17 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   <Input 
                     id="salesValue" 
                     type="text" 
-                    value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
+                    value={calculateTotalSalesValue() ? new Intl.NumberFormat('pt-BR', { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
-                    }).format(task.salesValue) : '0,00'} 
-                    className="pl-8 bg-background"
-                    readOnly={task.prospectItems && task.prospectItems.length > 0}
-                    onChange={(e) => {
-                      if (task.prospectItems && task.prospectItems.length > 0) return;
-                      
-                      const value = e.target.value.replace(/\D/g, '');
-                      const numericValue = parseFloat(value) / 100;
-                      setTask(prev => ({
-                        ...prev,
-                        salesValue: isNaN(numericValue) ? 0 : numericValue
-                      }));
-                    }}
+                    }).format(calculateTotalSalesValue()) : '0,00'} 
+                    className="pl-8 bg-muted cursor-not-allowed"
+                    readOnly
                   />
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Valor calculado automaticamente com base nos produtos/serviços selecionados. Você pode editá-lo se necessário.
+                  Valor calculado automaticamente com base nos produtos/serviços selecionados nas oportunidades.
                 </p>
               </div>
 
