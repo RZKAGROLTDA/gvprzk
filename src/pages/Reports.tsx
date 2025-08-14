@@ -122,64 +122,88 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
         index < 3 ? 'ring-1 ring-primary/20 bg-primary/5' : ''
       }`}
     >
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs ${
-              index === 0 ? 'bg-yellow-500 text-white' :
-              index === 1 ? 'bg-gray-400 text-white' :
-              index === 2 ? 'bg-amber-600 text-white' :
-              'bg-muted text-muted-foreground'
-            }`}>
-              {index + 1}
-            </div>
-            
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-sm truncate">{user.name}</h4>
-                <Badge variant="outline" className="text-xs px-1 py-0">
-                  {user.role === 'consultant' ? 'C' : 
-                   user.role === 'manager' ? 'G' : 
-                   user.role === 'admin' ? 'A' : user.role[0]}
-                </Badge>
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${
+                index === 0 ? 'bg-yellow-500 text-white' :
+                index === 1 ? 'bg-gray-400 text-white' :
+                index === 2 ? 'bg-amber-600 text-white' :
+                'bg-muted text-muted-foreground'
+              }`}>
+                {index + 1}
+              </div>
+              
+              <div>
+                <h4 className="font-semibold text-base">{user.name}</h4>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {user.role === 'consultant' ? 'Consultor' : 
+                     user.role === 'manager' ? 'Gerente' : 
+                     user.role === 'admin' ? 'Admin' : user.role}
+                  </Badge>
+                </div>
               </div>
             </div>
+            
+            <div className="flex items-center gap-3">
+              <Badge 
+                variant={taxaConversao > 15 ? "default" : "secondary"}
+                className="text-xs"
+              >
+                {taxaConversao.toFixed(1)}%
+              </Badge>
+              <div className="text-right">
+                <p className="text-sm font-bold text-success">
+                  R$ {vendasConfirmadas.toLocaleString('pt-BR')}
+                </p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs h-6 w-6 p-0"
+                onClick={handleToggleExpand}
+              >
+                {isExpanded ? '▼' : '▶'}
+              </Button>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-primary rounded-full"></div>
-              <span>{visitas}</span>
+
+          <div className="grid grid-cols-5 gap-3">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Visitas</p>
+              <p className="font-bold text-primary">{visitas}</p>
+              <p className="text-xs text-muted-foreground">
+                R$ {(userTasks.filter(t => t.task_type === 'prospection').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+              </p>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-success rounded-full"></div>
-              <span>{checklists}</span>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Checklist</p>
+              <p className="font-bold text-success">{checklists}</p>
+              <p className="text-xs text-muted-foreground">
+                R$ {(userTasks.filter(t => t.task_type === 'checklist').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+              </p>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-warning rounded-full"></div>
-              <span>{ligacoes}</span>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Ligações</p>
+              <p className="font-bold text-warning">{ligacoes}</p>
+              <p className="text-xs text-muted-foreground">
+                R$ {(userTasks.filter(t => t.task_type === 'ligacao').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+              </p>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-accent rounded-full"></div>
-              <span>{userTasks.filter(task => task.is_prospect === true).length}</span>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Prospects</p>
+              <p className="font-bold text-accent">{userTasks.filter(task => task.is_prospect === true).length}</p>
+              <p className="text-xs text-muted-foreground">
+                R$ {totalOportunidades.toLocaleString('pt-BR')}
+              </p>
             </div>
-            <div className="text-xs font-medium text-success">
-              R$ {totalOportunidades.toLocaleString('pt-BR')}
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total</p>
+              <p className="font-bold text-foreground">{visitas + checklists + ligacoes}</p>
+              <p className="text-xs text-muted-foreground">atividades</p>
             </div>
-            <Badge 
-              variant={taxaConversao > 15 ? "default" : "secondary"}
-              className="text-xs px-1 py-0"
-            >
-              {taxaConversao.toFixed(1)}%
-            </Badge>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-xs h-5 w-5 p-0"
-              onClick={handleToggleExpand}
-            >
-              {isExpanded ? '▼' : '▶'}
-            </Button>
           </div>
         </div>
         
