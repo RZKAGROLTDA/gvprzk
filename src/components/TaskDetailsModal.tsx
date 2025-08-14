@@ -375,7 +375,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">Valor da Venda:</span>
+                    <span className="font-medium">Valor da Oportunidade:</span>
                     <span className="text-lg font-bold text-success">
                       R$ {currentTask.salesValue.toLocaleString('pt-BR')}
                     </span>
