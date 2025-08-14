@@ -1577,7 +1577,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                             checked={task.prospectItems && task.prospectItems.length > 0}
                             onChange={() => setTask(prev => ({
                               ...prev,
-                              prospectItems: task.checklist.map(item => ({
+                              prospectItems: checklist.map(item => ({
                                 ...item,
                                 selected: false,
                                 quantity: 0
