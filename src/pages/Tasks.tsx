@@ -86,9 +86,31 @@ const Tasks: React.FC = () => {
     
     loadTasks();
     
+    // Configurar realtime para atualizações automáticas
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escutar todos os eventos (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'tasks'
+        },
+        (payload) => {
+          console.log('Task updated:', payload);
+          // Recarregar tarefas quando houver mudanças
+          loadTasks();
+        }
+      )
+      .subscribe();
+    
     // Recarregar quando onlineTasks mudarem
     const interval = setInterval(loadTasks, 3000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [onlineTasks]);
 
   const filteredTasks = tasks.filter(task => {

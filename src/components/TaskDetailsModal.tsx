@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
 import { TaskLocationInfo } from './TaskLocationInfo';
 import { TaskReportExporter } from './TaskReportExporter';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -31,7 +32,49 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   open,
   onOpenChange
 }) => {
-  if (!task) return null;
+  const [currentTask, setCurrentTask] = useState<Task | null>(task);
+
+  // Atualizar estado local quando a prop task mudar
+  useEffect(() => {
+    setCurrentTask(task);
+  }, [task]);
+
+  // Configurar realtime listener para atualizar a tarefa específica
+  useEffect(() => {
+    if (!task?.id || !open) return;
+
+    const channel = supabase
+      .channel(`task-${task.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tasks',
+          filter: `id=eq.${task.id}`
+        },
+        async (payload) => {
+          console.log('Task detail updated:', payload);
+          // Buscar dados atualizados da tarefa
+          const { data: updatedTask } = await supabase
+            .from('tasks')
+            .select('*,products(*),reminders(*)')
+            .eq('id', task.id)
+            .single();
+          
+          if (updatedTask) {
+            setCurrentTask(updatedTask);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [task?.id, open]);
+
+  if (!currentTask) return null;
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -75,10 +118,10 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold">{task.name}</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">{currentTask.name}</DialogTitle>
             <TaskReportExporter 
-              task={task} 
-              filialName={task.filial}
+              task={currentTask} 
+              filialName={currentTask.filial}
               variant="outline"
               size="sm"
             />
@@ -88,17 +131,17 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         <div className="space-y-6">
           {/* Status do Formulário */}
           <div className="flex items-center gap-4">
-            {task.isProspect && task.salesConfirmed === undefined && (
+            {currentTask.isProspect && currentTask.salesConfirmed === undefined && (
               <Badge variant="warning" className="text-sm">
                 Prospect
               </Badge>
             )}
-            {task.salesConfirmed === true && (
+            {currentTask.salesConfirmed === true && (
               <Badge variant="success" className="text-sm">
                 Venda Realizada
               </Badge>
             )}
-            {task.salesConfirmed === false && (
+            {currentTask.salesConfirmed === false && (
               <Badge variant="destructive" className="text-sm">
                 Venda Perdida
               </Badge>
