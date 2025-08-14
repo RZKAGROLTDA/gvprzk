@@ -540,11 +540,11 @@ const Reports: React.FC = () => {
         const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
         const totalActivities = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-        const salesValue = tasks?.reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
+        const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
         const confirmedSales = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
         
         // Taxa de conversão corrigida para usuário: (Vendas Realizadas / Valor Total de Prospects) * 100
-        const conversionRate = salesValue > 0 ? (confirmedSales / salesValue) * 100 : 0;
+        const conversionRate = prospectsValue > 0 ? (confirmedSales / prospectsValue) * 100 : 0;
 
         const userStat = {
           name: profile.name,
@@ -558,7 +558,7 @@ const Reports: React.FC = () => {
           visitas,
           checklist,
           ligacoes,
-          salesValue: Number(salesValue)
+          salesValue: Number(prospectsValue)
         };
 
         console.log('DEBUG: Stats calculadas para', profile.name, ':', userStat);
