@@ -603,23 +603,68 @@ const Reports: React.FC = () => {
     };
   }, []);
 
-  const exportReport = () => {
-    // Implementar exportação para PDF/Excel
-    console.log('Exportando relatório...');
+  const exportReport = (type: 'filial' | 'cep') => {
+    console.log(`Exportando relatório por ${type}...`);
+    
+    // Dados dos filtros aplicados
+    const filtrosAplicados = {
+      dataInicial: dateFrom ? format(dateFrom, "dd/MM/yyyy") : 'Não definida',
+      dataFinal: dateTo ? format(dateTo, "dd/MM/yyyy") : 'Não definida',
+      cepSelecionado: selectedUser !== 'all' ? 
+        collaborators.find(c => c.id === selectedUser)?.name || 'CEP específico' : 
+        'Todos os CEPs'
+    };
+
+    if (type === 'filial') {
+      // Lógica para exportar relatório por filial
+      console.log('Dados das filiais:', filialStats);
+      console.log('Filtros aplicados:', filtrosAplicados);
+      
+      toast({
+        title: "📊 Relatório por Filial",
+        description: "Exportação em desenvolvimento - dados das filiais com filtros aplicados"
+      });
+    } else {
+      // Lógica para exportar relatório por CEP
+      console.log('Dados dos CEPs:', userStats);
+      console.log('Filtros aplicados:', filtrosAplicados);
+      
+      toast({
+        title: "📍 Relatório por CEP", 
+        description: "Exportação em desenvolvimento - dados dos CEPs com filtros aplicados"
+      });
+    }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Relatórios</h1>
-          <p className="text-muted-foreground">Análises e métricas de desempenho</p>
-        </div>
-        <Button variant="gradient" onClick={exportReport} className="gap-2">
-          <Download className="h-4 w-4" />
-          Exportar Relatório
-        </Button>
+         <div>
+           <h1 className="text-3xl font-bold">Relatórios</h1>
+           <p className="text-muted-foreground">Análises e métricas de desempenho</p>
+         </div>
+         
+         {/* Botões de Exportação */}
+         <div className="flex gap-2">
+           <Button 
+             variant="gradient" 
+             onClick={() => exportReport('filial')} 
+             className="gap-2"
+           >
+             <Download className="h-4 w-4" />
+             Relatório por Filial
+           </Button>
+           
+           <Button 
+             variant="outline" 
+             onClick={() => exportReport('cep')} 
+             className="gap-2 border-green-600 text-green-600 hover:bg-green-50"
+           >
+             <Download className="h-4 w-4" />
+             Relatório por CEP
+           </Button>
+         </div>
       </div>
 
       {/* Filtros */}
