@@ -360,14 +360,14 @@ const Tasks: React.FC = () => {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => navigate(`/tasks/${task.id}/view`)}
+                      onClick={() => handleViewTask(task)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={() => navigate(`/tasks/${task.id}/edit`)}
+                      onClick={() => handleEditTask(task)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>

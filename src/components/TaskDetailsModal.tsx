@@ -182,6 +182,29 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <span>{currentTask.filial}</span>
                   </div>
                 )}
+                {currentTask.taskType && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Tipo:</span>
+                    <Badge variant="outline">
+                      {currentTask.taskType === 'prospection' ? 'Visita' :
+                       currentTask.taskType === 'checklist' ? 'Checklist' :
+                       currentTask.taskType === 'ligacao' ? 'Ligação' : currentTask.taskType}
+                    </Badge>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Flag className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Prioridade:</span>
+                  <Badge variant={getPriorityColor(currentTask.priority)}>
+                    {getPriorityLabel(currentTask.priority)}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Status:</span>
+                  <Badge variant={getStatusColor(currentTask.status)}>
+                    {getStatusLabel(currentTask.status)}
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
 
