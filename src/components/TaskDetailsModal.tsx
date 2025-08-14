@@ -86,19 +86,22 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Status e Prioridade */}
+          {/* Status do Formulário */}
           <div className="flex items-center gap-4">
-            <Badge variant={getStatusColor(task.status)} className="text-sm">
-              {getStatusLabel(task.status)}
-            </Badge>
-            <Badge variant={getPriorityColor(task.priority)} className="text-sm">
-              {getPriorityLabel(task.priority)}
-            </Badge>
-            {task.isProspect && (
-              <Badge variant="default">Prospect</Badge>
+            {task.isProspect && task.salesConfirmed === undefined && (
+              <Badge variant="warning" className="text-sm">
+                Prospect
+              </Badge>
             )}
-            {task.salesConfirmed && (
-              <Badge variant="success">Venda Confirmada</Badge>
+            {task.salesConfirmed === true && (
+              <Badge variant="success" className="text-sm">
+                Venda Realizada
+              </Badge>
+            )}
+            {task.salesConfirmed === false && (
+              <Badge variant="destructive" className="text-sm">
+                Venda Perdida
+              </Badge>
             )}
           </div>
 
