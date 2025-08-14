@@ -175,14 +175,17 @@ const CreateTask: React.FC = () => {
     return total;
   };
 
-  // Atualizar valor total automaticamente quando checklist muda
+  // Atualizar valor total automaticamente quando checklist muda (apenas se não há venda parcial ativa)
   useEffect(() => {
-    const totalValue = calculateTotalSalesValue();
-    setTask(prev => ({
-      ...prev,
-      salesValue: totalValue
-    }));
-  }, [checklist, callQuestions, taskCategory]);
+    // Só atualizar automaticamente se não há prospectItems (venda parcial) ativas
+    if (!task.prospectItems || task.prospectItems.length === 0) {
+      const totalValue = calculateTotalSalesValue();
+      setTask(prev => ({
+        ...prev,
+        salesValue: totalValue
+      }));
+    }
+  }, [checklist, callQuestions, taskCategory, task.prospectItems]);
 
   // Atualizar valor da venda parcial automaticamente
   useEffect(() => {
@@ -190,6 +193,8 @@ const CreateTask: React.FC = () => {
       const partialValue = task.prospectItems.reduce((sum, item) => {
         return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
       }, 0);
+      
+      console.log('DEBUG: Calculando valor parcial:', partialValue, 'para produtos:', task.prospectItems);
       
       setTask(prev => ({
         ...prev,
@@ -565,6 +570,27 @@ const CreateTask: React.FC = () => {
       ...item,
       photos
     } : item));
+  };
+
+  // Função para atualizar produtos do prospectItems (venda parcial)
+  const handleProspectItemChange = (index: number, field: 'selected' | 'quantity' | 'price', value: boolean | number) => {
+    console.log('DEBUG: Atualizando produto da venda parcial -', field, ':', value, 'para índice:', index);
+    
+    const updatedItems = [...(task.prospectItems || [])];
+    if (field === 'selected') {
+      updatedItems[index] = { ...updatedItems[index], selected: value as boolean };
+    } else if (field === 'quantity') {
+      updatedItems[index] = { ...updatedItems[index], quantity: value as number };
+    } else if (field === 'price') {
+      updatedItems[index] = { ...updatedItems[index], price: value as number };
+    }
+    
+    console.log('DEBUG: Produto atualizado:', updatedItems[index]);
+    
+    setTask(prev => ({
+      ...prev,
+      prospectItems: updatedItems
+    }));
   };
 
   // Funções para gerenciar produtos da ligação
@@ -1584,30 +1610,35 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="totalSale">Valor Total</Label>
                         </div>
                         
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            id="partialSale"
-                            name="saleType"
-                            value="partial"
-                            checked={task.prospectItems && task.prospectItems.length > 0}
-                            onChange={() => {
-                              // Pegar apenas produtos selecionados do checklist com seus valores
-                              const selectedProducts = checklist.filter(item => item.selected).map(item => ({
-                                ...item,
-                                selected: false, // Resetar seleção para o usuário escolher
-                                quantity: item.quantity || 1
-                              }));
-                              
-                              setTask(prev => ({
-                                ...prev,
-                                prospectItems: selectedProducts
-                              }));
-                            }}
-                            className="h-4 w-4"
-                          />
-                          <Label htmlFor="partialSale">Valor Parcial</Label>
-                        </div>
+                         <div className="flex items-center space-x-2">
+                           <input
+                             type="radio"
+                             id="partialSale"
+                             name="saleType"
+                             value="partial"
+                             checked={task.prospectItems && task.prospectItems.length > 0}
+                             onChange={() => {
+                               console.log('DEBUG: Ativando venda parcial');
+                               
+                               // Pegar apenas produtos selecionados do checklist com seus valores
+                               const selectedProducts = checklist.filter(item => item.selected).map(item => ({
+                                 ...item,
+                                 selected: true, // Manter seleção inicial
+                                 quantity: item.quantity || 1,
+                                 price: item.price || 0
+                               }));
+                               
+                               console.log('DEBUG: Produtos selecionados para venda parcial:', selectedProducts);
+                               
+                               setTask(prev => ({
+                                 ...prev,
+                                 prospectItems: selectedProducts
+                               }));
+                             }}
+                             className="h-4 w-4"
+                           />
+                           <Label htmlFor="partialSale">Valor Parcial</Label>
+                         </div>
                       </div>
                     </div>
 
@@ -1645,88 +1676,101 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </div>
                     )}
 
-                    {/* Campo de valor para venda parcial */}
-                    {task.prospectItems && task.prospectItems.length > 0 && (
-                      <div className="space-y-2">
-                        <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
-                        <div className="relative">
-                          <Input
-                            id="partialSaleValue"
-                            type="text"
-                            value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
-                              minimumFractionDigits: 2, 
-                              maximumFractionDigits: 2 
-                            }).format(task.salesValue) : ''}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '');
-                              const numericValue = parseFloat(value) / 100;
-                              setTask(prev => ({
-                                ...prev,
-                                salesValue: isNaN(numericValue) ? 0 : numericValue
-                              }));
-                            }}
-                            placeholder="0,00"
-                            className="pl-8"
-                          />
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Lista de produtos para venda parcial */}
-                    {task.prospectItems && task.prospectItems.length > 0 && (
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium">Produtos Vendidos</Label>
-                         <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                           {task.prospectItems.map((item, index) => (
-                             <div key={item.id} className="flex items-center space-x-3 p-2 bg-muted/50 rounded">
-                               <Checkbox
-                                 checked={item.selected}
-                                 onCheckedChange={(checked) => {
-                                   const updatedItems = [...task.prospectItems!];
-                                   updatedItems[index] = { ...item, selected: checked as boolean };
-                                   setTask(prev => ({ ...prev, prospectItems: updatedItems }));
-                                 }}
-                               />
-                               <div className="flex-1">
-                                 <span className="text-sm font-medium">{item.name}</span>
-                                 <span className="text-xs text-muted-foreground ml-2">({item.category})</span>
-                                 {item.price && (
-                                   <span className="text-xs text-green-600 ml-2">
-                                     R$ {new Intl.NumberFormat('pt-BR', { 
-                                       minimumFractionDigits: 2, 
-                                       maximumFractionDigits: 2 
-                                     }).format(item.price)}
-                                   </span>
-                                 )}
-                               </div>
-                               {item.selected && (
-                                 <div className="flex items-center space-x-2">
-                                   <Label className="text-xs">Qtd:</Label>
-                                   <input
-                                     type="number"
-                                     min="1"
-                                     value={item.quantity || 1}
-                                     onChange={(e) => {
-                                       const updatedItems = [...task.prospectItems!];
-                                       updatedItems[index] = { ...item, quantity: parseInt(e.target.value) || 1 };
-                                       setTask(prev => ({ ...prev, prospectItems: updatedItems }));
-                                     }}
-                                     className="w-16 px-1 py-1 text-xs border rounded"
-                                   />
-                                   <span className="text-xs text-muted-foreground">
-                                     = R$ {item.price ? new Intl.NumberFormat('pt-BR', { 
-                                       minimumFractionDigits: 2, 
-                                       maximumFractionDigits: 2 
-                                     }).format(item.price * (item.quantity || 1)) : '0,00'}
-                                   </span>
-                                 </div>
-                               )}
-                             </div>
-                           ))}
+                     {/* Campo de valor para venda parcial - calculado automaticamente */}
+                     {task.prospectItems && task.prospectItems.length > 0 && (
+                       <div className="space-y-2">
+                         <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
+                         <div className="relative">
+                           <Input
+                             id="partialSaleValue"
+                             type="text"
+                             value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
+                               minimumFractionDigits: 2, 
+                               maximumFractionDigits: 2 
+                             }).format(task.salesValue) : '0,00'}
+                             className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium"
+                             readOnly
+                           />
+                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-green-600">R$</span>
                          </div>
-                      </div>
-                    )}
+                         <p className="text-xs text-green-600 font-medium">
+                           ⚡ Valor calculado automaticamente com base nos produtos selecionados
+                         </p>
+                       </div>
+                     )}
+
+                     {/* Lista de produtos para venda parcial */}
+                     {task.prospectItems && task.prospectItems.length > 0 && (
+                       <div className="space-y-3">
+                         <Label className="text-sm font-medium">Produtos Vendidos</Label>
+                          <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                            {task.prospectItems.map((item, index) => (
+                              <div key={item.id} className="flex items-center justify-between space-x-3 p-3 bg-muted/50 rounded-lg">
+                                <div className="flex items-center space-x-3">
+                                  <Checkbox
+                                    checked={item.selected}
+                                    onCheckedChange={(checked) => {
+                                      handleProspectItemChange(index, 'selected', checked as boolean);
+                                    }}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">{item.name}</span>
+                                      <span className="text-xs text-muted-foreground">({item.category})</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2 min-w-[200px]">
+                                  <div className="flex flex-col space-y-1">
+                                    <Label className="text-xs">Qtd</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      value={item.quantity || 1}
+                                      onChange={(e) => {
+                                        const quantity = parseInt(e.target.value) || 1;
+                                        handleProspectItemChange(index, 'quantity', quantity);
+                                      }}
+                                      className="w-16 h-8 text-xs"
+                                    />
+                                  </div>
+                                  
+                                  <div className="flex flex-col space-y-1">
+                                    <Label className="text-xs">Preço Unit.</Label>
+                                    <div className="relative">
+                                      <Input
+                                        type="text"
+                                        value={item.price ? new Intl.NumberFormat('pt-BR', { 
+                                          minimumFractionDigits: 2, 
+                                          maximumFractionDigits: 2 
+                                        }).format(item.price) : '0,00'}
+                                        onChange={(e) => {
+                                          const value = e.target.value.replace(/\D/g, '');
+                                          const price = parseFloat(value) / 100;
+                                          handleProspectItemChange(index, 'price', isNaN(price) ? 0 : price);
+                                        }}
+                                        className="w-20 h-8 text-xs pl-4"
+                                      />
+                                      <span className="absolute left-1 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex flex-col space-y-1">
+                                    <Label className="text-xs">Total</Label>
+                                    <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
+                                      R$ {new Intl.NumberFormat('pt-BR', { 
+                                        minimumFractionDigits: 2, 
+                                        maximumFractionDigits: 2 
+                                      }).format((item.price || 0) * (item.quantity || 1))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                       </div>
+                     )}
                   </div>
                 )}
               </div>
