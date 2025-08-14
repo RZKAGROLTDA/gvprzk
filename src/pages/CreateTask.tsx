@@ -185,21 +185,21 @@ const CreateTask: React.FC = () => {
     }
   }, [checklist, callQuestions, taskCategory, task.prospectItems]);
 
-  // Atualizar valor da venda parcial automaticamente
-  useEffect(() => {
-    if (task.prospectItems && task.prospectItems.length > 0) {
-      const partialValue = task.prospectItems.reduce((sum, item) => {
-        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-      }, 0);
-      
-      console.log('DEBUG: Calculando valor parcial:', partialValue, 'para produtos:', task.prospectItems);
-      
-      setTask(prev => ({
-        ...prev,
-        salesValue: partialValue
-      }));
-    }
-  }, [task.prospectItems]);
+  // REMOVER este useEffect que estava alterando o valor quando prospectItems mudava
+  // useEffect(() => {
+  //   if (task.prospectItems && task.prospectItems.length > 0) {
+  //     const partialValue = task.prospectItems.reduce((sum, item) => {
+  //       return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+  //     }, 0);
+  //     
+  //     console.log('DEBUG: Calculando valor parcial:', partialValue, 'para produtos:', task.prospectItems);
+  //     
+  //     setTask(prev => ({
+  //       ...prev,
+  //       salesValue: partialValue
+  //     }));
+  //   }
+  // }, [task.prospectItems]);
 
   // Função para atualizar perguntas da ligação
   const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'unitValue', value: boolean | number) => {
@@ -1444,7 +1444,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Valor calculado automaticamente com base nos produtos/serviços selecionados nas oportunidades.
+                  Valor fixo calculado com base nos produtos/serviços selecionados nas oportunidades. Não é afetado pela venda parcial.
                 </p>
               </div>
 
@@ -1676,17 +1676,21 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                            <Input
                              id="partialSaleValue"
                              type="text"
-                             value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
+                             value={task.prospectItems ? task.prospectItems.reduce((sum, item) => {
+                               return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                             }, 0) : 0 ? new Intl.NumberFormat('pt-BR', { 
                                minimumFractionDigits: 2, 
                                maximumFractionDigits: 2 
-                             }).format(task.salesValue) : '0,00'}
+                             }).format(task.prospectItems.reduce((sum, item) => {
+                               return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                             }, 0)) : '0,00'}
                              className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium"
                              readOnly
                            />
                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-green-600">R$</span>
                          </div>
                          <p className="text-xs text-green-600 font-medium">
-                           ⚡ Valor calculado automaticamente com base nos produtos selecionados
+                           ⚡ Valor calculado automaticamente com base nos produtos selecionados para venda parcial
                          </p>
                        </div>
                      )}
