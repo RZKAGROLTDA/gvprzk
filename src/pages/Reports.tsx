@@ -122,10 +122,10 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
         index < 3 ? 'ring-1 ring-primary/20 bg-primary/5' : ''
       }`}
     >
-      <CardContent className="p-6">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm ${
+      <CardContent className="p-4">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${
               index === 0 ? 'bg-yellow-500 text-white' :
               index === 1 ? 'bg-gray-400 text-white' :
               index === 2 ? 'bg-amber-600 text-white' :
@@ -135,84 +135,79 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
             </div>
             
             <div>
-              <h3 className="text-xl font-bold text-foreground mb-1">{user.name}</h3>
+              <h3 className="text-lg font-bold text-foreground">{user.name}</h3>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
                   {user.role === 'consultant' ? 'Consultor' : 
                    user.role === 'manager' ? 'Gerente' : 
                    user.role === 'admin' ? 'Admin' : user.role}
                 </Badge>
-                <p className="text-sm text-muted-foreground">
-                  {visitas + checklists + ligacoes} atividades totais
-                </p>
+                <span className="text-xs text-muted-foreground">
+                  {visitas + checklists + ligacoes} atividades
+                </span>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Badge 
               variant={taxaConversao > 15 ? "default" : "secondary"}
-              className="text-sm px-3 py-1"
+              className="text-xs px-2 py-1"
             >
-              {taxaConversao.toFixed(1)}% conversão
+              {taxaConversao.toFixed(1)}%
             </Badge>
-            <div className="text-right hidden md:block">
-              <p className="text-lg font-bold text-success">
+            <div className="text-right">
+              <p className="text-sm font-bold text-success">
                 R$ {vendasConfirmadas.toLocaleString('pt-BR')}
               </p>
-              <p className="text-xs text-muted-foreground">em vendas</p>
             </div>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-          <div className="bg-primary/5 rounded-lg p-4 text-center">
-            <Target className="h-6 w-6 mx-auto mb-2 text-primary" />
-            <p className="text-2xl font-bold text-primary">{visitas}</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <div className="bg-primary/5 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-primary">{visitas}</p>
             <p className="text-xs text-muted-foreground">Visitas</p>
             <p className="text-xs text-muted-foreground font-medium">
               R$ {(userTasks.filter(t => t.task_type === 'prospection').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
             </p>
           </div>
-          <div className="bg-success/5 rounded-lg p-4 text-center">
-            <CheckSquare className="h-6 w-6 mx-auto mb-2 text-success" />
-            <p className="text-2xl font-bold text-success">{checklists}</p>
+          <div className="bg-success/5 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-success">{checklists}</p>
             <p className="text-xs text-muted-foreground">Checklist</p>
             <p className="text-xs text-muted-foreground font-medium">
               R$ {(userTasks.filter(t => t.task_type === 'checklist').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
             </p>
           </div>
-          <div className="bg-warning/5 rounded-lg p-4 text-center">
-            <Users className="h-6 w-6 mx-auto mb-2 text-warning" />
-            <p className="text-2xl font-bold text-warning">{ligacoes}</p>
+          <div className="bg-warning/5 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-warning">{ligacoes}</p>
             <p className="text-xs text-muted-foreground">Ligações</p>
             <p className="text-xs text-muted-foreground font-medium">
               R$ {(userTasks.filter(t => t.task_type === 'ligacao').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
             </p>
           </div>
-          <div className="bg-accent/5 rounded-lg p-4 text-center">
-            <TrendingUp className="h-6 w-6 mx-auto mb-2 text-accent" />
-            <p className="text-2xl font-bold text-accent">{userTasks.filter(task => task.is_prospect === true).length}</p>
+          <div className="bg-accent/5 rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-accent">{userTasks.filter(task => task.is_prospect === true).length}</p>
             <p className="text-xs text-muted-foreground">Prospects</p>
             <p className="text-xs text-muted-foreground font-medium">
               R$ {totalOportunidades.toLocaleString('pt-BR')}
             </p>
           </div>
-          <div className="bg-secondary/5 rounded-lg p-4 text-center md:hidden">
-            <DollarSign className="h-6 w-6 mx-auto mb-2 text-success" />
-            <p className="text-lg font-bold text-success">R$ {vendasConfirmadas.toLocaleString('pt-BR')}</p>
+          <div className="bg-secondary/5 rounded-lg p-2 text-center">
+            <p className="text-sm font-bold text-success">R$ {vendasConfirmadas.toLocaleString('pt-BR')}</p>
             <p className="text-xs text-muted-foreground">Vendas</p>
+            <p className="text-xs text-accent font-medium">{taxaConversao.toFixed(1)}%</p>
           </div>
         </div>
         
-        <div className="flex justify-end">
+        <div className="flex justify-end mt-2">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="p-2"
+            className="text-xs h-6 px-2"
             onClick={handleToggleExpand}
           >
-            {isExpanded ? '▼ Ocultar detalhes' : '▶ Ver detalhes'}
+            {isExpanded ? '▼' : '▶'}
           </Button>
         </div>
         
