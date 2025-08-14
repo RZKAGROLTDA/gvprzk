@@ -349,18 +349,36 @@ const Reports: React.FC = () => {
   };
 
   const loadFilialStats = async (silent = false) => {
-    if (!user) return;
+    if (!user) {
+      console.log('DEBUG: Usuário não está logado, não carregando stats');
+      return;
+    }
+    
+    console.log('DEBUG: Carregando estatísticas das filiais para usuário:', user);
     
     // Apenas mostrar loading na primeira carga
     if (!silent && filialStats.length === 0) setLoading(true);
     try {
+      // Testar acesso à tabela de tasks primeiro
+      const { data: testTasks, error: testError } = await supabase
+        .from('tasks')
+        .select('id, name, client, task_type, created_by, sales_value')
+        .limit(5);
+
+      console.log('DEBUG: Teste de acesso às tasks:', { testTasks, testError });
+
       // Buscar todas as filiais
       const { data: filiais, error: filiaisError } = await supabase
         .from('filiais')
         .select('*')
         .order('nome');
 
-      if (filiaisError) throw filiaisError;
+      if (filiaisError) {
+        console.error('Erro ao buscar filiais:', filiaisError);
+        throw filiaisError;
+      }
+
+      console.log('DEBUG: Filiais encontradas:', filiais);
 
       // Buscar estatísticas por filial
       const filialStatsPromises = filiais?.map(async (filial) => {
@@ -387,6 +405,23 @@ const Reports: React.FC = () => {
 
         const userIds = profilesFromFilial?.map(p => p.user_id) || [];
         
+        console.log('DEBUG: IDs dos usuários da filial', filial.nome, ':', userIds);
+        
+        if (userIds.length === 0) {
+          console.log('DEBUG: Nenhum usuário encontrado para filial:', filial.nome);
+          return {
+            id: filial.id,
+            nome: filial.nome,
+            visitas: 0,
+            checklist: 0,
+            ligacoes: 0,
+            prospects: 0,
+            prospectsValue: 0,
+            salesValue: 0,
+            conversionRate: 0
+          };
+        }
+        
         // Buscar tarefas dos usuários desta filial
         let query = supabase
           .from('tasks')
@@ -402,6 +437,8 @@ const Reports: React.FC = () => {
         }
 
         const { data: tasks, error: tasksError } = await query;
+
+        console.log('DEBUG: Tasks encontradas para filial', filial.nome, ':', { tasks, tasksError });
 
         if (tasksError) {
           console.error('Erro ao buscar tarefas:', tasksError);
