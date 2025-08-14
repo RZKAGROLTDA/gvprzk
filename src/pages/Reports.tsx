@@ -109,7 +109,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
   const visitas = userTasks.filter(task => task.task_type === 'prospection').length;
   const checklists = userTasks.filter(task => task.task_type === 'checklist').length;
   const ligacoes = userTasks.filter(task => task.task_type === 'ligacao').length;
-  const totalOportunidades = userTasks.reduce((sum, task) => sum + (task.sales_value || 0), 0);
+  const totalOportunidades = userTasks.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0);
   const vendasConfirmadas = userTasks
     .filter(task => task.sales_confirmed === true)
     .reduce((sum, task) => sum + (task.sales_value || 0), 0);
@@ -182,21 +182,21 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
               <p className="text-xs text-muted-foreground mb-1">Visitas</p>
               <p className="font-bold text-primary">{visitas}</p>
               <p className="text-xs text-muted-foreground">
-                R$ {(userTasks.filter(t => t.task_type === 'prospection').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                R$ {(userTasks.filter(t => t.task_type === 'prospection' && t.is_prospect === true).reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Checklist</p>
               <p className="font-bold text-success">{checklists}</p>
               <p className="text-xs text-muted-foreground">
-                R$ {(userTasks.filter(t => t.task_type === 'checklist').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                R$ {(userTasks.filter(t => t.task_type === 'checklist' && t.is_prospect === true).reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Ligações</p>
               <p className="font-bold text-warning">{ligacoes}</p>
               <p className="text-xs text-muted-foreground">
-                R$ {(userTasks.filter(t => t.task_type === 'ligacao').reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
+                R$ {(userTasks.filter(t => t.task_type === 'ligacao' && t.is_prospect === true).reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
               </p>
             </div>
             <div className="text-center">
@@ -439,7 +439,7 @@ const Reports: React.FC = () => {
         const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
         const totalTasks = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-        const prospectsValue = tasks?.reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+        const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         
         // Taxa de conversão corrigida para filial: (Vendas Realizadas / Valor Total de Prospects) * 100
