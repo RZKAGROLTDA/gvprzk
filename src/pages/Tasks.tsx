@@ -119,11 +119,11 @@ const Tasks: React.FC = () => {
   };
 
   const handleTaskUpdate = async () => {
-    // Recarregar tarefas do Supabase após atualização
+    // Força atualização imediata das tarefas
     try {
       const { data: updatedTasks, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select('*,products(*),reminders(*)')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -137,6 +137,9 @@ const Tasks: React.FC = () => {
       const offlineTasks = getOfflineTasks();
       setTasks(offlineTasks);
     }
+    
+    // Forçar re-render do componente
+    setIsEditModalOpen(false);
   };
 
   const getStatusColor = (status: string) => {
