@@ -184,6 +184,20 @@ const CreateTask: React.FC = () => {
     }));
   }, [checklist, callQuestions, taskCategory]);
 
+  // Atualizar valor da venda parcial automaticamente
+  useEffect(() => {
+    if (task.prospectItems && task.prospectItems.length > 0) {
+      const partialValue = task.prospectItems.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
+      
+      setTask(prev => ({
+        ...prev,
+        salesValue: partialValue
+      }));
+    }
+  }, [task.prospectItems]);
+
   // Função para atualizar perguntas da ligação
   const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'unitValue', value: boolean | number) => {
     setCallQuestions(prev => {
@@ -1577,14 +1591,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                             name="saleType"
                             value="partial"
                             checked={task.prospectItems && task.prospectItems.length > 0}
-                            onChange={() => setTask(prev => ({
-                              ...prev,
-                              prospectItems: checklist.map(item => ({
+                            onChange={() => {
+                              // Pegar apenas produtos selecionados do checklist com seus valores
+                              const selectedProducts = checklist.filter(item => item.selected).map(item => ({
                                 ...item,
-                                selected: false,
-                                quantity: 0
-                              }))
-                            }))}
+                                selected: false, // Resetar seleção para o usuário escolher
+                                quantity: item.quantity || 1
+                              }));
+                              
+                              setTask(prev => ({
+                                ...prev,
+                                prospectItems: selectedProducts
+                              }));
+                            }}
                             className="h-4 w-4"
                           />
                           <Label htmlFor="partialSale">Valor Parcial</Label>
@@ -1658,40 +1677,54 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     {task.prospectItems && task.prospectItems.length > 0 && (
                       <div className="space-y-3">
                         <Label className="text-sm font-medium">Produtos Vendidos</Label>
-                        <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                          {task.prospectItems.map((item, index) => (
-                            <div key={item.id} className="flex items-center space-x-3 p-2 bg-muted/50 rounded">
-                              <Checkbox
-                                checked={item.selected}
-                                onCheckedChange={(checked) => {
-                                  const updatedItems = [...task.prospectItems!];
-                                  updatedItems[index] = { ...item, selected: checked as boolean };
-                                  setTask(prev => ({ ...prev, prospectItems: updatedItems }));
-                                }}
-                              />
-                              <div className="flex-1">
-                                <span className="text-sm font-medium">{item.name}</span>
-                                <span className="text-xs text-muted-foreground ml-2">({item.category})</span>
-                              </div>
-                              {item.selected && (
-                                <div className="flex items-center space-x-2">
-                                  <Label className="text-xs">Qtd:</Label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={item.quantity || 1}
-                                    onChange={(e) => {
-                                      const updatedItems = [...task.prospectItems!];
-                                      updatedItems[index] = { ...item, quantity: parseInt(e.target.value) || 1 };
-                                      setTask(prev => ({ ...prev, prospectItems: updatedItems }));
-                                    }}
-                                    className="w-16 px-1 py-1 text-xs border rounded"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                         <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                           {task.prospectItems.map((item, index) => (
+                             <div key={item.id} className="flex items-center space-x-3 p-2 bg-muted/50 rounded">
+                               <Checkbox
+                                 checked={item.selected}
+                                 onCheckedChange={(checked) => {
+                                   const updatedItems = [...task.prospectItems!];
+                                   updatedItems[index] = { ...item, selected: checked as boolean };
+                                   setTask(prev => ({ ...prev, prospectItems: updatedItems }));
+                                 }}
+                               />
+                               <div className="flex-1">
+                                 <span className="text-sm font-medium">{item.name}</span>
+                                 <span className="text-xs text-muted-foreground ml-2">({item.category})</span>
+                                 {item.price && (
+                                   <span className="text-xs text-green-600 ml-2">
+                                     R$ {new Intl.NumberFormat('pt-BR', { 
+                                       minimumFractionDigits: 2, 
+                                       maximumFractionDigits: 2 
+                                     }).format(item.price)}
+                                   </span>
+                                 )}
+                               </div>
+                               {item.selected && (
+                                 <div className="flex items-center space-x-2">
+                                   <Label className="text-xs">Qtd:</Label>
+                                   <input
+                                     type="number"
+                                     min="1"
+                                     value={item.quantity || 1}
+                                     onChange={(e) => {
+                                       const updatedItems = [...task.prospectItems!];
+                                       updatedItems[index] = { ...item, quantity: parseInt(e.target.value) || 1 };
+                                       setTask(prev => ({ ...prev, prospectItems: updatedItems }));
+                                     }}
+                                     className="w-16 px-1 py-1 text-xs border rounded"
+                                   />
+                                   <span className="text-xs text-muted-foreground">
+                                     = R$ {item.price ? new Intl.NumberFormat('pt-BR', { 
+                                       minimumFractionDigits: 2, 
+                                       maximumFractionDigits: 2 
+                                     }).format(item.price * (item.quantity || 1)) : '0,00'}
+                                   </span>
+                                 </div>
+                               )}
+                             </div>
+                           ))}
+                         </div>
                       </div>
                     )}
                   </div>
