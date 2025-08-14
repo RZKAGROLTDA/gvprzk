@@ -27,37 +27,37 @@ export const Home: React.FC = () => {
     color: 'from-purple-500 to-violet-600',
     onClick: () => navigate('/create-task?type=client_call')
   }];
-  return <div className="bg-gradient-to-br from-background to-muted/20 p-4 sm:p-6 pt-8 sm:pt-12">
-      <div className="max-w-3xl mx-auto">
+  return <div className="bg-gradient-to-br from-background to-muted/20 p-4 sm:p-6 pt-4 sm:pt-6">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <div className="flex items-center justify-center mb-4 sm:mb-6">
-            <div className="p-3 sm:p-4 bg-primary/10 rounded-full">
-              <Building className="h-8 w-8 sm:h-12 sm:w-12 text-primary" />
+        <div className="text-center mb-4 sm:mb-6">
+          <div className="flex items-center justify-center mb-3 sm:mb-4">
+            <div className="p-2 sm:p-3 bg-primary/10 rounded-full">
+              <Building className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4">Gestão Visitas</h1>
-          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
+          <h1 className="text-xl sm:text-3xl font-bold mb-2 sm:mb-3">Gestão Visitas</h1>
+          <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto px-4">
             Gerencie suas atividades de campo, oficina e contatos de forma simples e eficiente
           </p>
         </div>
 
         {/* Menu Principal */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 mb-8 sm:mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
           {menuItems.map(item => {
           const IconComponent = item.icon;
           return <Card key={item.id} className="group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer border-0 bg-gradient-to-br from-card to-card/80" onClick={item.onClick}>
-                <CardContent className="p-4 sm:p-8 text-center">
-                  <div className={`mx-auto mb-4 sm:mb-6 p-4 sm:p-6 rounded-full bg-gradient-to-br ${item.color} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                    <IconComponent className="h-8 w-8 sm:h-12 sm:w-12 text-white" />
+                <CardContent className="p-3 sm:p-6 text-center">
+                  <div className={`mx-auto mb-3 sm:mb-4 p-3 sm:p-4 rounded-full bg-gradient-to-br ${item.color} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                    <IconComponent className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                   </div>
-                  <h3 className="text-lg sm:text-2xl font-bold mb-2 sm:mb-3 group-hover:text-primary transition-colors">
+                  <h3 className="text-base sm:text-xl font-bold mb-1 sm:mb-2 group-hover:text-primary transition-colors">
                     {item.title}
                   </h3>
-                  <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-4 sm:mb-6">
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-3 sm:mb-4">
                     {item.description}
                   </p>
-                  <Button className="w-full group-hover:bg-primary/90 transition-colors" size="lg" onClick={e => {
+                  <Button className="w-full group-hover:bg-primary/90 transition-colors" size="sm" onClick={e => {
                 e.stopPropagation();
                 item.onClick();
               }}>
