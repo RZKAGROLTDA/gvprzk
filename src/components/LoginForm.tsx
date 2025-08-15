@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings, Trash } from 'lucide-react';
+import { SessionRefresh } from '@/components/SessionRefresh';
 
 export const LoginForm: React.FC = () => {
   const { signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -19,19 +21,53 @@ export const LoginForm: React.FC = () => {
     role: 'consultant'
   });
 
+  // Limpar dados locais se houver erro persistente
+  const clearLocalData = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Limpar especificamente os dados do Supabase
+      localStorage.removeItem('sb-wuvbrkbhunifudaewhng-auth-token');
+      
+      toast({
+        title: "Dados locais limpos",
+        description: "Cache e tokens removidos. Tente fazer login novamente.",
+      });
+      
+      console.log('DEBUG: Dados locais limpos');
+    } catch (error) {
+      console.error('Erro ao limpar dados:', error);
+    }
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
+    console.log('DEBUG: Tentando login com:', formData.email);
+    
     const { error } = await signIn(formData.email, formData.password);
     
     if (error) {
+      console.error('DEBUG: Erro no login:', error);
+      
+      let errorMessage = error.message;
+      
+      // Mensagens mais amigáveis para erros comuns
+      if (error.message === 'Invalid login credentials') {
+        errorMessage = 'Email ou senha incorretos. Verifique suas credenciais.';
+      } else if (error.message.includes('refresh_token_not_found')) {
+        errorMessage = 'Sessão expirada. Limpe os dados locais e tente novamente.';
+      }
+      
       toast({
         title: "Erro no login",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } else {
+      console.log('DEBUG: Login bem-sucedido');
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo ao sistema de tarefas",
@@ -45,18 +81,22 @@ export const LoginForm: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
+    console.log('DEBUG: Tentando cadastro com:', formData.email);
+
     const { error } = await signUp(formData.email, formData.password, {
       name: formData.name,
       role: formData.role
     });
     
     if (error) {
+      console.error('DEBUG: Erro no cadastro:', error);
       toast({
         title: "Erro no cadastro",
         description: error.message,
         variant: "destructive",
       });
     } else {
+      console.log('DEBUG: Cadastro bem-sucedido');
       toast({
         title: "Cadastro realizado com sucesso!",
         description: "Verifique seu email para confirmar a conta",
@@ -99,11 +139,24 @@ export const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Sistema de Tarefas</CardTitle>
-        </CardHeader>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-4xl flex flex-col lg:flex-row gap-6">
+        {/* Login Form */}
+        <Card className="w-full max-w-md mx-auto lg:mx-0">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Sistema de Tarefas</CardTitle>
+            <div className="flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-xs"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                {showDebug ? 'Ocultar' : 'Mostrar'} Debug
+              </Button>
+            </div>
+          </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -140,7 +193,7 @@ export const LoginForm: React.FC = () => {
                   Entrar
                 </Button>
                 
-                <div className="text-center mt-4">
+                <div className="flex justify-between items-center mt-4">
                   <button
                     type="button"
                     className="text-sm text-primary hover:underline"
@@ -149,6 +202,18 @@ export const LoginForm: React.FC = () => {
                   >
                     Esqueci minha senha
                   </button>
+                  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearLocalData}
+                    className="text-xs"
+                    disabled={loading}
+                  >
+                    <Trash className="h-3 w-3 mr-1" />
+                    Limpar Cache
+                  </Button>
                 </div>
               </form>
             </TabsContent>
@@ -196,6 +261,37 @@ export const LoginForm: React.FC = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Debug Panel */}
+      {showDebug && (
+        <div className="w-full max-w-md mx-auto lg:mx-0">
+          <SessionRefresh />
+          
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-sm">Contas de Teste</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-xs">
+              <div className="p-2 bg-muted rounded">
+                <p className="font-medium">Manager:</p>
+                <p>Email: robson.ferro@rzkagro.com.br</p>
+                <p>Email: hugo@rzkagro.com.br</p>
+                <p className="text-muted-foreground mt-1">Use "Esqueci minha senha" para redefinir</p>
+              </div>
+              
+              <div className="p-2 bg-muted rounded">
+                <p className="font-medium">Problemas comuns:</p>
+                <ul className="list-disc list-inside text-muted-foreground">
+                  <li>Use "Limpar Cache" se tiver erro de token</li>
+                  <li>Verifique console para logs detalhados</li>
+                  <li>Use "Testar Autenticação" para diagnóstico</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
     </div>
   );
 };
