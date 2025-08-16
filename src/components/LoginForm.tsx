@@ -26,6 +26,12 @@ export const LoginForm: React.FC = () => {
     role: 'consultant'
   });
 
+  // Lista de emails de administradores
+  const ADMIN_EMAILS = ['robson.ferro@rzkagro.com.br', 'hugo@rzkagro.com.br'];
+  
+  // Verificar se o email digitado é de administrador
+  const isAdminEmail = ADMIN_EMAILS.includes(formData.email.toLowerCase());
+
   // Sistema de bloqueio temporário
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -201,17 +207,19 @@ export const LoginForm: React.FC = () => {
         <Card className="w-full max-w-md mx-auto lg:mx-0">
           <CardHeader>
             <CardTitle className="text-2xl text-center">Sistema de Tarefas</CardTitle>
-            <div className="flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDebug(!showDebug)}
-                className="text-xs"
-              >
-                <Settings className="h-3 w-3 mr-1" />
-                {showDebug ? 'Ocultar' : 'Mostrar'} Debug
-              </Button>
-            </div>
+            {isAdminEmail && (
+              <div className="flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDebug(!showDebug)}
+                  className="text-xs"
+                >
+                  <Settings className="h-3 w-3 mr-1" />
+                  {showDebug ? 'Ocultar' : 'Mostrar'} Debug
+                </Button>
+              </div>
+            )}
           </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
@@ -359,7 +367,7 @@ export const LoginForm: React.FC = () => {
       </Card>
 
       {/* Debug Panel */}
-      {showDebug && (
+      {showDebug && isAdminEmail && (
         <div className="w-full max-w-md mx-auto lg:mx-0">
           <SessionRefresh />
           
