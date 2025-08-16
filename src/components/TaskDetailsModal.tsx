@@ -397,10 +397,20 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">Status:</span>
-                    <Badge variant={currentTask.salesConfirmed ? 'success' : 'secondary'}>
-                      {currentTask.salesConfirmed ? 'Confirmada' : 'Pendente'}
-                    </Badge>
+                    <span className="font-medium">Status do Prospect:</span>
+                    {(() => {
+                      // Mesma lógica do getProspectStatus do Tasks.tsx
+                      if (currentTask.isProspect) {
+                        if (currentTask.salesConfirmed === true) {
+                          return <Badge variant="success">Venda Realizada</Badge>;
+                        } else if (currentTask.salesConfirmed === false) {
+                          return <Badge variant="destructive">Venda Perdida</Badge>;
+                        } else {
+                          return <Badge variant="warning">Prospect</Badge>;
+                        }
+                      }
+                      return <Badge variant="secondary">Não é Prospect</Badge>;
+                    })()}
                   </div>
                   {currentTask.prospectNotes && (
                     <div className="mt-4">
