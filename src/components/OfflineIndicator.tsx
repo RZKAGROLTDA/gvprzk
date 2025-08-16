@@ -54,6 +54,16 @@ export const OfflineIndicator: React.FC = () => {
             <span className="text-xs font-medium">Filial:</span>
             <span className="text-xs">{profile?.filial_nome || 'Não informado'}</span>
           </div>
+          <div className="flex items-center gap-2">
+            <User className="h-3 w-3 text-primary" />
+            <span className="text-xs font-medium">Email:</span>
+            <span className="text-xs">{profile?.email || 'Não informado'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <User className="h-3 w-3 text-primary" />
+            <span className="text-xs font-medium">Cargo:</span>
+            <span className="text-xs">{profile?.role === 'manager' ? 'Gerente' : profile?.role === 'supervisor' ? 'Supervisor' : profile?.role === 'sales_consultant' ? 'Consultor de Vendas' : profile?.role === 'rac' ? 'RAC' : profile?.role === 'technical_consultant' ? 'Consultor Técnico' : profile?.role || 'Não informado'}</span>
+          </div>
         </div>
 
         <Separator className="my-1" />
