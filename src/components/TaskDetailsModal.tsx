@@ -196,14 +196,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <span className="font-medium">Horário:</span>
                   <span>{currentTask.startTime} - {currentTask.endTime}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Km Inicial:</span>
-                  <span>{currentTask.initialKm}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Km Final:</span>
-                  <span>{currentTask.finalKm}</span>
-                </div>
               </CardContent>
             </Card>
           </div>
