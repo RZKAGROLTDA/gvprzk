@@ -46,7 +46,7 @@ export const OfflineIndicator: React.FC = () => {
         <div className="bg-secondary/20 rounded-lg p-2 space-y-1">
           <div className="flex items-center gap-2">
             <User className="h-3 w-3 text-primary" />
-            <span className="text-xs font-medium">Usuário:</span>
+            <span className="text-xs font-medium">CEP:</span>
             <span className="text-xs">{profile?.name || 'Carregando...'}</span>
           </div>
           <div className="flex items-center gap-2">
