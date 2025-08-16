@@ -315,7 +315,7 @@ export const Users: React.FC = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="manager">Admin</SelectItem>
+                          <SelectItem value="manager">Gerente</SelectItem>
                           <SelectItem value="supervisor">Supervisor</SelectItem>
                           <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                           <SelectItem value="rac">RAC</SelectItem>
