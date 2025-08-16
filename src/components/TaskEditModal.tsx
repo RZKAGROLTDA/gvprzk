@@ -39,7 +39,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         priority: task.priority,
         status: task.status,
         salesValue: task.salesValue || 0,
-        salesConfirmed: task.salesConfirmed || false,
+        salesConfirmed: task.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
         prospectItems: task.prospectItems || []
@@ -76,7 +76,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       // Garantir que isProspect seja sempre verdadeiro quando há informações de prospect
       const finalIsProspect = editedTask.isProspect || 
-                             editedTask.salesConfirmed !== undefined || 
+                             editedTask.salesConfirmed !== null || 
                              (editedTask.salesValue && editedTask.salesValue > 0);
 
       const updateData = {
@@ -180,15 +180,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
               <div 
                 className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                  editedTask.salesConfirmed === undefined && editedTask.isProspect 
+                  editedTask.salesConfirmed === null && editedTask.isProspect
                     ? 'border-blue-500 bg-blue-50 shadow-lg' 
                     : 'border-gray-200 bg-white hover:border-blue-300'
                 }`} 
-                onClick={() => {
+                 onClick={() => {
                   console.log('Selecionando: Prospect Em Andamento');
                   setEditedTask(prev => ({
                     ...prev,
-                    salesConfirmed: undefined,
+                    salesConfirmed: null,
                     isProspect: true,
                     prospectNotes: ''
                   }));
@@ -196,7 +196,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               >
                 <div className="flex flex-col items-center text-center space-y-2">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    editedTask.salesConfirmed === undefined && editedTask.isProspect 
+                    editedTask.salesConfirmed === null && editedTask.isProspect
                       ? 'bg-blue-500 text-white' 
                       : 'bg-gray-100 text-gray-400'
                   }`}>
@@ -207,7 +207,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     <div className="text-xs text-muted-foreground">Negociação em curso</div>
                   </div>
                 </div>
-                {editedTask.salesConfirmed === undefined && editedTask.isProspect && (
+                {editedTask.salesConfirmed === null && editedTask.isProspect && (
                   <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
