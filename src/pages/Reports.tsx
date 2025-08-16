@@ -166,6 +166,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
                 size="sm" 
                 className="text-xs h-6 w-6 p-0"
                 onClick={handleToggleExpand}
+                title="Ver todas as tarefas preenchidas do usuário"
               >
                 {isExpanded ? '▼' : '▶'}
               </Button>
