@@ -80,22 +80,18 @@ const Tasks: React.FC = () => {
   // Função para carregar tarefas com informações do usuário e filial
   const loadTasksWithUserInfo = async () => {
     try {
-      const { data: tasksData, error } = await supabase
+      // Buscar tarefas
+      const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select(`
           *,
           products(*),
-          reminders(*),
-          profiles!tasks_created_by_fkey(
-            name,
-            filiais(nome)
-          )
+          reminders(*)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erro ao carregar tarefas:', error);
-        // Fallback para tarefas básicas se houver erro
+      if (tasksError) {
+        console.error('Erro ao carregar tarefas:', tasksError);
         setTasks(onlineTasks.map(task => ({
           ...task,
           userName: task.responsible,
@@ -104,67 +100,101 @@ const Tasks: React.FC = () => {
         return;
       }
 
+      if (!tasksData?.length) {
+        setTasks([]);
+        return;
+      }
+
+      // Buscar perfis dos usuários que criaram as tarefas
+      const userIds = [...new Set(tasksData.map(task => task.created_by))];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          user_id,
+          name,
+          filial_id,
+          filiais(nome)
+        `)
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Erro ao carregar perfis:', profilesError);
+      }
+
+      // Criar mapa de perfis para facilitar lookup
+      const profilesMap = new Map();
+      profilesData?.forEach(profile => {
+        profilesMap.set(profile.user_id, {
+          name: profile.name,
+          filialName: (profile as any).filiais?.nome || null
+        });
+      });
+
       // Mapear dados completos
-      const tasksWithUserInfo: TaskWithUserInfo[] = tasksData?.map(task => ({
-        id: task.id,
-        name: task.name,
-        responsible: task.responsible,
-        client: task.client,
-        property: task.property || '',
-        filial: task.filial || '',
-        cpf: task.cpf || '',
-        email: task.email || '',
-        taskType: task.task_type || 'prospection',
-        checklist: task.products?.map((product: any) => ({
-          id: product.id,
-          name: product.name,
-          category: product.category,
-          selected: product.selected || false,
-          quantity: product.quantity || 0,
-          price: product.price || 0,
-          observations: product.observations || '',
-          photos: product.photos || [],
-        })) || [],
-        startDate: new Date(task.start_date),
-        endDate: new Date(task.end_date),
-        startTime: task.start_time,
-        endTime: task.end_time,
-        observations: task.observations || '',
-        priority: task.priority,
-        reminders: task.reminders?.map((reminder: any) => ({
-          id: reminder.id,
-          title: reminder.title,
-          description: reminder.description || '',
-          date: new Date(reminder.date),
-          time: reminder.time,
-          completed: reminder.completed || false,
-        })) || [],
-        photos: task.photos || [],
-        documents: task.documents || [],
-        checkInLocation: task.check_in_location ? {
-          lat: task.check_in_location.lat,
-          lng: task.check_in_location.lng,
-          timestamp: new Date(task.check_in_location.timestamp),
-        } : undefined,
-        initialKm: task.initial_km || 0,
-        finalKm: task.final_km || 0,
-        status: task.status,
-        createdBy: task.created_by,
-        createdAt: new Date(task.created_at),
-        updatedAt: new Date(task.updated_at),
-        isProspect: Boolean(task.is_prospect || task.sales_confirmed !== null || (task.sales_value && task.sales_value > 0)),
-        prospectNotes: task.prospect_notes || '',
-        prospectItems: task.products?.filter((p: any) => p.selected) || [],
-        salesValue: task.sales_value || 0,
-        salesConfirmed: task.sales_confirmed,
-        familyProduct: task.family_product || '',
-        equipmentQuantity: task.equipment_quantity || 0,
-        propertyHectares: task.property_hectares || 0,
-        equipmentList: task.equipment_list || [],
-        // Informações do usuário e filial
-        userName: task.profiles?.name || task.responsible,
-        userFilial: task.profiles?.filiais?.nome || task.filial
-      })) || [];
+      const tasksWithUserInfo: TaskWithUserInfo[] = tasksData.map(task => {
+        const userProfile = profilesMap.get(task.created_by);
+        
+        return {
+          id: task.id,
+          name: task.name,
+          responsible: task.responsible,
+          client: task.client,
+          property: task.property || '',
+          filial: task.filial || '',
+          cpf: task.cpf || '',
+          email: task.email || '',
+          taskType: task.task_type || 'prospection',
+          checklist: task.products?.map((product: any) => ({
+            id: product.id,
+            name: product.name,
+            category: product.category,
+            selected: product.selected || false,
+            quantity: product.quantity || 0,
+            price: product.price || 0,
+            observations: product.observations || '',
+            photos: product.photos || [],
+          })) || [],
+          startDate: new Date(task.start_date),
+          endDate: new Date(task.end_date),
+          startTime: task.start_time,
+          endTime: task.end_time,
+          observations: task.observations || '',
+          priority: task.priority,
+          reminders: task.reminders?.map((reminder: any) => ({
+            id: reminder.id,
+            title: reminder.title,
+            description: reminder.description || '',
+            date: new Date(reminder.date),
+            time: reminder.time,
+            completed: reminder.completed || false,
+          })) || [],
+          photos: task.photos || [],
+          documents: task.documents || [],
+          checkInLocation: task.check_in_location ? {
+            lat: task.check_in_location.lat,
+            lng: task.check_in_location.lng,
+            timestamp: new Date(task.check_in_location.timestamp),
+          } : undefined,
+          initialKm: task.initial_km || 0,
+          finalKm: task.final_km || 0,
+          status: task.status,
+          createdBy: task.created_by,
+          createdAt: new Date(task.created_at),
+          updatedAt: new Date(task.updated_at),
+          isProspect: Boolean(task.is_prospect || task.sales_confirmed !== null || (task.sales_value && task.sales_value > 0)),
+          prospectNotes: task.prospect_notes || '',
+          prospectItems: task.products?.filter((p: any) => p.selected) || [],
+          salesValue: task.sales_value || 0,
+          salesConfirmed: task.sales_confirmed,
+          familyProduct: task.family_product || '',
+          equipmentQuantity: task.equipment_quantity || 0,
+          propertyHectares: task.property_hectares || 0,
+          equipmentList: task.equipment_list || [],
+          // Informações do usuário e filial (dados corretos do banco)
+          userName: userProfile?.name || task.responsible,
+          userFilial: userProfile?.filialName || task.filial
+        };
+      });
 
       setTasks(tasksWithUserInfo);
     } catch (error) {
