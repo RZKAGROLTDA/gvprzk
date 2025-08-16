@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -181,6 +182,30 @@ const Tasks: React.FC = () => {
     }
   };
 
+  // Nova função para determinar se é prospect e o status correto
+  const getProspectStatus = (task: Task) => {
+    console.log('Verificando status do prospect para tarefa:', task.id, {
+      isProspect: task.isProspect,
+      salesConfirmed: task.salesConfirmed,
+      salesValue: task.salesValue
+    });
+
+    // Se isProspect é true, então é um prospect
+    if (task.isProspect) {
+      // Se salesConfirmed está definido, usar esse valor
+      if (task.salesConfirmed === true) {
+        return { type: 'sale_confirmed', label: 'Venda Realizada', variant: 'success' as const };
+      } else if (task.salesConfirmed === false) {
+        return { type: 'sale_lost', label: 'Venda Perdida', variant: 'destructive' as const };
+      } else {
+        // Se salesConfirmed é undefined/null, é prospect em andamento
+        return { type: 'prospect_active', label: 'Prospect', variant: 'warning' as const };
+      }
+    }
+    
+    return null;
+  };
+
   return (
     <div className="space-y-6">
       {/* Indicador de Status Offline */}
@@ -281,7 +306,10 @@ const Tasks: React.FC = () => {
             </CardContent>
           </Card>
         ) : (
-           filteredTasks.map((task) => (
+           filteredTasks.map((task) => {
+             const prospectStatus = getProspectStatus(task);
+             
+             return (
             <Card key={task.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
@@ -330,19 +358,9 @@ const Tasks: React.FC = () => {
                     )}
 
                     <div className="flex items-center gap-2 pl-13">
-                      {task.isProspect && task.salesConfirmed === undefined && (
-                        <Badge variant="warning">
-                          Prospect
-                        </Badge>
-                      )}
-                      {task.salesConfirmed === true && (
-                        <Badge variant="success">
-                          Venda Realizada
-                        </Badge>
-                      )}
-                      {task.salesConfirmed === false && (
-                        <Badge variant="destructive">
-                          Venda Perdida
+                      {prospectStatus && (
+                        <Badge variant={prospectStatus.variant}>
+                          {prospectStatus.label}
                         </Badge>
                       )}
                     </div>
@@ -375,7 +393,8 @@ const Tasks: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-          ))
+             );
+           })
         )}
       </div>
 
