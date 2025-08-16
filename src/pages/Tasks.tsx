@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,7 +81,9 @@ const Tasks: React.FC = () => {
   // Função para carregar tarefas com informações do usuário e filial
   const loadTasksWithUserInfo = async () => {
     try {
-      // Buscar tarefas
+      console.log('Iniciando carregamento de tarefas com informações do usuário...');
+      
+      // 1. Buscar todas as tarefas
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select(`
@@ -101,12 +104,17 @@ const Tasks: React.FC = () => {
       }
 
       if (!tasksData?.length) {
+        console.log('Nenhuma tarefa encontrada');
         setTasks([]);
         return;
       }
 
-      // Buscar perfis dos usuários que criaram as tarefas
-      const userIds = [...new Set(tasksData.map(task => task.created_by))];
+      console.log('Tarefas carregadas:', tasksData.length);
+
+      // 2. Buscar todos os profiles únicos
+      const uniqueUserIds = [...new Set(tasksData.map(task => task.created_by))];
+      console.log('User IDs únicos:', uniqueUserIds);
+      
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -115,13 +123,30 @@ const Tasks: React.FC = () => {
           filial_id,
           filiais(nome)
         `)
-        .in('user_id', userIds);
+        .in('user_id', uniqueUserIds);
 
       if (profilesError) {
-        console.error('Erro ao carregar perfis:', profilesError);
+        console.error('Erro ao carregar profiles:', profilesError);
       }
 
-      // Criar mapa de perfis para facilitar lookup
+      console.log('Profiles carregados:', profilesData);
+
+      // 3. Buscar todas as filiais únicas das tarefas
+      const uniqueFilialIds = [...new Set(tasksData.map(task => task.filial).filter(Boolean))];
+      console.log('Filial IDs únicos das tarefas:', uniqueFilialIds);
+
+      const { data: taskFiliaisData, error: taskFiliaisError } = await supabase
+        .from('filiais')
+        .select('id, nome')
+        .in('id', uniqueFilialIds);
+
+      if (taskFiliaisError) {
+        console.error('Erro ao carregar filiais das tarefas:', taskFiliaisError);
+      }
+
+      console.log('Filiais das tarefas carregadas:', taskFiliaisData);
+
+      // 4. Criar mapas para facilitar lookup
       const profilesMap = new Map();
       profilesData?.forEach(profile => {
         profilesMap.set(profile.user_id, {
@@ -130,11 +155,25 @@ const Tasks: React.FC = () => {
         });
       });
 
-      // Mapear dados completos
+      const taskFiliaisMap = new Map();
+      taskFiliaisData?.forEach(filial => {
+        taskFiliaisMap.set(filial.id, filial.nome);
+      });
+
       console.log('ProfilesMap:', profilesMap);
-      console.log('TasksData sample:', tasksData[0]);
+      console.log('TaskFiliaisMap:', taskFiliaisMap);
+
+      // 5. Mapear dados completos
       const tasksWithUserInfo: TaskWithUserInfo[] = tasksData.map(task => {
         const userProfile = profilesMap.get(task.created_by);
+        const taskFilialName = taskFiliaisMap.get(task.filial);
+        
+        console.log(`Task ${task.id}:`, {
+          created_by: task.created_by,
+          userProfile: userProfile,
+          filial: task.filial,
+          taskFilialName: taskFilialName
+        });
         
         return {
           id: task.id,
@@ -192,12 +231,14 @@ const Tasks: React.FC = () => {
           equipmentQuantity: task.equipment_quantity || 0,
           propertyHectares: task.property_hectares || 0,
           equipmentList: task.equipment_list || [],
-          // Informações do usuário e filial (dados corretos do banco)
-          userName: userProfile?.name || task.responsible,
-          userFilial: userProfile?.filialName || task.filial
+          // Informações mapeadas do usuário e filial
+          userName: userProfile?.name || task.responsible || 'N/A',
+          userFilial: userProfile?.filialName || taskFilialName || 'N/A'
         };
       });
 
+      console.log('Tarefas finais mapeadas:', tasksWithUserInfo.length);
+      console.log('Exemplo de tarefa mapeada:', tasksWithUserInfo[0]);
       setTasks(tasksWithUserInfo);
     } catch (error) {
       console.error('Erro ao carregar tarefas com informações do usuário:', error);
@@ -435,13 +476,13 @@ const Tasks: React.FC = () => {
                         <CheckSquare className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base mb-2 truncate">{task.name}</h3>
+                        <h3 className="font-semibold text-base mb-2 truncate">{task.name || 'Tarefa sem nome'}</h3>
                         
                         {/* Grid layout para informações organizadas com dados corretos */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1 truncate">
                             <User className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{task.userName || task.responsible}</span>
+                            <span className="truncate">{task.userName}</span>
                           </div>
                           <div className="flex items-center gap-1 truncate">
                             <Calendar className="h-3 w-3 flex-shrink-0" />
@@ -462,7 +503,7 @@ const Tasks: React.FC = () => {
                           
                           <div className="flex items-center gap-1 truncate">
                             <MapPin className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{task.client}</span>
+                            <span className="truncate">{task.client || 'Cliente não informado'}</span>
                           </div>
                           <div className="flex items-center gap-1 truncate">
                             <Clock className="h-3 w-3 flex-shrink-0" />
@@ -471,10 +512,10 @@ const Tasks: React.FC = () => {
 
                           <div className="col-span-2 flex items-center gap-1 truncate">
                             <span className="text-xs font-medium">Propriedade:</span>
-                            <span className="truncate">{task.property}</span>
+                            <span className="truncate">{task.property || 'Não informada'}</span>
                           </div>
 
-                          {task.userFilial && (
+                          {task.userFilial && task.userFilial !== 'N/A' && (
                             <div className="col-span-2 flex items-center gap-1 truncate">
                               <span className="text-xs font-medium">Filial:</span>
                               <span className="truncate">{task.userFilial}</span>
