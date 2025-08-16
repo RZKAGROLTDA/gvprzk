@@ -1470,23 +1470,42 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Label htmlFor="totalSale">Valor Total</Label>
                         </div>
                         
-                        {taskCategory !== 'call' && <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2">
                            <input type="radio" id="partialSale" name="saleType" value="partial" checked={task.prospectItems && task.prospectItems.length > 0} onChange={() => {
-                        // Pegar apenas produtos selecionados do checklist com seus valores
-                        const selectedProducts = checklist.filter(item => item.selected).map(item => ({
-                          ...item,
-                          selected: true,
-                          quantity: item.quantity || 1,
-                          price: item.price || 0
-                        }));
-                        
-                        setTask(prev => ({
-                          ...prev,
-                          prospectItems: selectedProducts
-                        }));
+                        if (taskCategory === 'call') {
+                          // Para ligações, usar produtos que precisam de fornecimento
+                          const selectedProducts = Object.entries(callQuestions)
+                            .filter(([key, value]) => value.needsProduct)
+                            .map(([key, value]) => ({
+                              id: key,
+                              name: key.charAt(0).toUpperCase() + key.slice(1),
+                              category: 'other' as const,
+                              selected: true,
+                              quantity: value.quantity || 1,
+                              price: value.unitValue || 0
+                            }));
+                          
+                          setTask(prev => ({
+                            ...prev,
+                            prospectItems: selectedProducts
+                          }));
+                        } else {
+                          // Para visitas/checklist, usar produtos selecionados
+                          const selectedProducts = checklist.filter(item => item.selected).map(item => ({
+                            ...item,
+                            selected: true,
+                            quantity: item.quantity || 1,
+                            price: item.price || 0
+                          }));
+                          
+                          setTask(prev => ({
+                            ...prev,
+                            prospectItems: selectedProducts
+                          }));
+                        }
                       }} className="h-4 w-4" />
                            <Label htmlFor="partialSale">Valor Parcial</Label>
-                         </div>}
+                         </div>
                       </div>
                     </div>
 
@@ -1516,8 +1535,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                         </p>
                       </div>}
 
-                     {/* Campo de valor para venda parcial - apenas para field-visit e workshop */}
-                     {taskCategory !== 'call' && task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-2">
+                     {/* Campo de valor para venda parcial */}
+                     {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-2">
                          <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
                          <div className="relative">
                            <Input id="partialSaleValue" type="text" value={task.prospectItems ? task.prospectItems.reduce((sum, item) => {
@@ -1535,8 +1554,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                          </p>
                        </div>}
 
-                     {/* Lista de produtos para venda parcial - apenas para field-visit e workshop */}
-                     {taskCategory !== 'call' && task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-3">
+                     {/* Lista de produtos para venda parcial */}
+                     {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-3">
                          <Label className="text-sm font-medium">Produtos Vendidos</Label>
                           <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
                             {task.prospectItems.map((item, index) => <div key={item.id} className="flex items-center justify-between space-x-3 p-3 bg-muted/50 rounded-lg">
