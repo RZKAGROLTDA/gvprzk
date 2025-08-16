@@ -47,19 +47,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     }
   }, [task]);
 
-  // Atualizar valor da venda parcial automaticamente
-  useEffect(() => {
-    if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
-      const partialValue = editedTask.prospectItems.reduce((sum, item) => {
-        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-      }, 0);
-      
-      setEditedTask(prev => ({
-        ...prev,
-        salesValue: partialValue
-      }));
-    }
-  }, [editedTask.prospectItems]);
+  // Remover a atualização automática do valor da venda parcial
+  // O valor principal não deve ser alterado automaticamente
 
   const handleSave = async () => {
     if (!task || !editedTask.id) return;
