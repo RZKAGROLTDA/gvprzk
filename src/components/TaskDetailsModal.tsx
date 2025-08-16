@@ -120,15 +120,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         <div className="space-y-6">
           {/* Status do Formulário */}
           <div className="flex items-center gap-4">
-            {currentTask.isProspect && currentTask.salesConfirmed === undefined && <Badge variant="warning" className="text-sm">
-                Prospect
-              </Badge>}
-            {currentTask.salesConfirmed === true && <Badge variant="success" className="text-sm">
-                Venda Realizada
-              </Badge>}
-            {currentTask.salesConfirmed === false && <Badge variant="destructive" className="text-sm">
-                Venda Perdida
-              </Badge>}
+            {currentTask.isProspect && (
+              <>
+                {currentTask.salesConfirmed === true && <Badge variant="success" className="text-sm">
+                    Venda Realizada
+                  </Badge>}
+                {currentTask.salesConfirmed === false && <Badge variant="destructive" className="text-sm">
+                    Venda Perdida
+                  </Badge>}
+                {(currentTask.salesConfirmed === null || currentTask.salesConfirmed === undefined) && <Badge variant="warning" className="text-sm">
+                    Prospect
+                  </Badge>}
+              </>
+            )}
           </div>
 
           {/* Informações Principais */}
