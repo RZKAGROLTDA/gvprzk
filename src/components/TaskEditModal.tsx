@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,12 +10,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+
 interface TaskEditModalProps {
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskUpdate: () => void;
 }
+
 export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   task,
   open,
@@ -23,6 +26,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 }) => {
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     if (task) {
       setEditedTask({
@@ -56,19 +60,26 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       }));
     }
   }, [editedTask.prospectItems]);
+
   const handleSave = async () => {
     if (!task || !editedTask.id) return;
+    
     setLoading(true);
     try {
+      console.log('Salvando tarefa com dados:', editedTask);
+      
       // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
       let finalStatus = editedTask.status;
       if (editedTask.salesConfirmed === true || editedTask.salesConfirmed === false) {
         finalStatus = 'completed';
       }
 
-      const {
-        error
-      } = await supabase.from('tasks').update({
+      // Garantir que isProspect seja sempre verdadeiro quando há informações de prospect
+      const finalIsProspect = editedTask.isProspect || 
+                             editedTask.salesConfirmed !== undefined || 
+                             (editedTask.salesValue && editedTask.salesValue > 0);
+
+      const updateData = {
         name: editedTask.name,
         responsible: editedTask.responsible,
         client: editedTask.client,
@@ -77,16 +88,32 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         priority: editedTask.priority,
         status: finalStatus,
         sales_value: editedTask.salesValue || 0,
-        sales_confirmed: editedTask.salesConfirmed || false,
-        is_prospect: editedTask.isProspect || false,
+        sales_confirmed: editedTask.salesConfirmed,
+        is_prospect: finalIsProspect,
         prospect_notes: editedTask.prospectNotes || '',
         updated_at: new Date().toISOString()
-      }).eq('id', editedTask.id);
-      if (error) throw error;
+      };
+
+      console.log('Dados sendo enviados para Supabase:', updateData);
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', editedTask.id);
+
+      if (error) {
+        console.error('Erro no Supabase:', error);
+        throw error;
+      }
+
+      console.log('Tarefa atualizada com sucesso no banco de dados');
+
       toast({
         title: "✅ Tarefa Atualizada",
         description: "As alterações foram salvas com sucesso!"
       });
+
+      // Recarregar os dados para garantir sincronização
       onTaskUpdate();
       onOpenChange(false);
     } catch (error: any) {
@@ -100,8 +127,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       setLoading(false);
     }
   };
+
   if (!task) return null;
-  return <Dialog open={open} onOpenChange={onOpenChange}>
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Tarefa: {task.name}</DialogTitle>
@@ -148,14 +178,28 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           <div className="space-y-2">
             <Label className="text-base font-medium">Status do Prospect</Label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-              <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === undefined && editedTask.isProspect ? 'border-blue-500 bg-blue-50 shadow-lg' : 'border-gray-200 bg-white hover:border-blue-300'}`} onClick={() => setEditedTask(prev => ({
-                ...prev,
-                salesConfirmed: undefined,
-                isProspect: true,
-                prospectNotes: ''
-              }))}>
+              <div 
+                className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                  editedTask.salesConfirmed === undefined && editedTask.isProspect 
+                    ? 'border-blue-500 bg-blue-50 shadow-lg' 
+                    : 'border-gray-200 bg-white hover:border-blue-300'
+                }`} 
+                onClick={() => {
+                  console.log('Selecionando: Prospect Em Andamento');
+                  setEditedTask(prev => ({
+                    ...prev,
+                    salesConfirmed: undefined,
+                    isProspect: true,
+                    prospectNotes: ''
+                  }));
+                }}
+              >
                 <div className="flex flex-col items-center text-center space-y-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === undefined && editedTask.isProspect ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    editedTask.salesConfirmed === undefined && editedTask.isProspect 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-100 text-gray-400'
+                  }`}>
                     ⏳
                   </div>
                   <div>
@@ -163,18 +207,34 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     <div className="text-xs text-muted-foreground">Negociação em curso</div>
                   </div>
                 </div>
-                {editedTask.salesConfirmed === undefined && editedTask.isProspect && <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                {editedTask.salesConfirmed === undefined && editedTask.isProspect && (
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
-                  </div>}
+                  </div>
+                )}
               </div>
               
-              <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === true ? 'border-green-500 bg-green-50 shadow-lg' : 'border-gray-200 bg-white hover:border-green-300'}`} onClick={() => setEditedTask(prev => ({
-                ...prev,
-                salesConfirmed: true,
-                isProspect: true
-              }))}>
+              <div 
+                className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                  editedTask.salesConfirmed === true 
+                    ? 'border-green-500 bg-green-50 shadow-lg' 
+                    : 'border-gray-200 bg-white hover:border-green-300'
+                }`} 
+                onClick={() => {
+                  console.log('Selecionando: Venda Realizada');
+                  setEditedTask(prev => ({
+                    ...prev,
+                    salesConfirmed: true,
+                    isProspect: true
+                  }));
+                }}
+              >
                 <div className="flex flex-col items-center text-center space-y-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === true ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    editedTask.salesConfirmed === true 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-gray-100 text-gray-400'
+                  }`}>
                     💰
                   </div>
                   <div>
@@ -182,18 +242,34 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     <div className="text-xs text-muted-foreground">Prospect convertido</div>
                   </div>
                 </div>
-                {editedTask.salesConfirmed === true && <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                {editedTask.salesConfirmed === true && (
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
-                  </div>}
+                  </div>
+                )}
               </div>
               
-              <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${editedTask.salesConfirmed === false ? 'border-red-500 bg-red-50 shadow-lg' : 'border-gray-200 bg-white hover:border-red-300'}`} onClick={() => setEditedTask(prev => ({
-                ...prev,
-                salesConfirmed: false,
-                isProspect: true
-              }))}>
+              <div 
+                className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
+                  editedTask.salesConfirmed === false 
+                    ? 'border-red-500 bg-red-50 shadow-lg' 
+                    : 'border-gray-200 bg-white hover:border-red-300'
+                }`} 
+                onClick={() => {
+                  console.log('Selecionando: Venda Perdida');
+                  setEditedTask(prev => ({
+                    ...prev,
+                    salesConfirmed: false,
+                    isProspect: true
+                  }));
+                }}
+              >
                 <div className="flex flex-col items-center text-center space-y-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${editedTask.salesConfirmed === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    editedTask.salesConfirmed === false 
+                      ? 'bg-red-500 text-white' 
+                      : 'bg-gray-100 text-gray-400'
+                  }`}>
                     ❌
                   </div>
                   <div>
@@ -201,9 +277,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     <div className="text-xs text-muted-foreground">Negócio não realizado</div>
                   </div>
                 </div>
-                {editedTask.salesConfirmed === false && <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                {editedTask.salesConfirmed === false && (
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
-                  </div>}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -391,5 +469,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           </div>
         </div>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };

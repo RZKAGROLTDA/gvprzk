@@ -1,8 +1,15 @@
+
 import { Task } from '@/types/task';
 
 // Utility function to map Supabase task data to application Task format
 export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
-  return {
+  console.log('Mapeando tarefa do Supabase:', supabaseTask.id, {
+    is_prospect: supabaseTask.is_prospect,
+    sales_confirmed: supabaseTask.sales_confirmed,
+    sales_value: supabaseTask.sales_value
+  });
+
+  const mappedTask: Task = {
     id: supabaseTask.id,
     name: supabaseTask.name,
     responsible: supabaseTask.responsible,
@@ -49,14 +56,23 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     createdBy: supabaseTask.created_by,
     createdAt: new Date(supabaseTask.created_at),
     updatedAt: new Date(supabaseTask.updated_at),
-    isProspect: supabaseTask.is_prospect || false,
+    // Garantir que isProspect seja consistente
+    isProspect: Boolean(supabaseTask.is_prospect || supabaseTask.sales_confirmed !== null || (supabaseTask.sales_value && supabaseTask.sales_value > 0)),
     prospectNotes: supabaseTask.prospect_notes || '',
     prospectItems: supabaseTask.products?.filter((p: any) => p.selected) || [],
     salesValue: supabaseTask.sales_value || 0,
-    salesConfirmed: supabaseTask.sales_confirmed || false,
+    salesConfirmed: supabaseTask.sales_confirmed,
     familyProduct: supabaseTask.family_product || '',
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
     propertyHectares: supabaseTask.property_hectares || 0,
     equipmentList: supabaseTask.equipment_list || [],
   };
+
+  console.log('Tarefa mapeada:', mappedTask.id, {
+    isProspect: mappedTask.isProspect,
+    salesConfirmed: mappedTask.salesConfirmed,
+    salesValue: mappedTask.salesValue
+  });
+
+  return mappedTask;
 };

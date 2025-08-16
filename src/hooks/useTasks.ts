@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +19,8 @@ export const useTasks = () => {
     setLoading(true);
     try {
       if (isOnline) {
+        console.log('Carregando tarefas do Supabase...');
+        
         // Carregar do Supabase quando online
         const { data: tasksData, error } = await supabase
           .from('tasks')
@@ -43,6 +46,9 @@ export const useTasks = () => {
 
         // Converter dados do Supabase para o formato da aplicação
         const formattedTasks: Task[] = tasksData?.map(mapSupabaseTaskToTask) || [];
+        
+        console.log('Tarefas carregadas:', formattedTasks.length);
+        console.log('Exemplo de tarefa (primeiro item):', formattedTasks[0]);
 
         setTasks(formattedTasks);
       } else {
@@ -220,10 +226,17 @@ export const useTasks = () => {
     if (!user) return;
 
     try {
+      console.log('Atualizando tarefa:', taskId, 'com dados:', updates);
+      
       // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
       let finalUpdates = { ...updates };
       if (updates.salesConfirmed === true || updates.salesConfirmed === false) {
         finalUpdates.status = 'completed';
+      }
+
+      // Garantir que isProspect seja sempre verdadeiro quando há informações de prospect
+      if (updates.salesConfirmed !== undefined || (updates.salesValue && updates.salesValue > 0)) {
+        finalUpdates.isProspect = true;
       }
 
       const { error } = await supabase
@@ -234,12 +247,20 @@ export const useTasks = () => {
         })
         .eq('id', taskId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao atualizar tarefa no Supabase:', error);
+        throw error;
+      }
 
-      // Atualizar state local
+      console.log('Tarefa atualizada com sucesso no banco');
+
+      // Atualizar state local imediatamente
       setTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, ...finalUpdates } : task
       ));
+
+      // Recarregar dados do servidor para garantir sincronização
+      setTimeout(() => loadTasks(), 500);
 
       return true;
     } catch (error: any) {
