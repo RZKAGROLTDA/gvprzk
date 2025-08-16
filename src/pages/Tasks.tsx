@@ -131,6 +131,8 @@ const Tasks: React.FC = () => {
       });
 
       // Mapear dados completos
+      console.log('ProfilesMap:', profilesMap);
+      console.log('TasksData sample:', tasksData[0]);
       const tasksWithUserInfo: TaskWithUserInfo[] = tasksData.map(task => {
         const userProfile = profilesMap.get(task.created_by);
         
