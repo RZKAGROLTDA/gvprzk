@@ -28,6 +28,7 @@ export const Users: React.FC = () => {
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filiais, setFiliais] = useState<Filial[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +53,21 @@ export const Users: React.FC = () => {
         `);
 
       if (profilesError) throw profilesError;
+
+      // Carregar perfil do usuário atual
+      if (user) {
+        const { data: currentProfile, error: currentProfileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (currentProfileError) {
+          console.error('Erro ao carregar perfil atual:', currentProfileError);
+        } else {
+          setCurrentUserProfile(currentProfile);
+        }
+      }
 
       // Carregar filiais
       const { data: filiaisData, error: filiaisError } = await supabase
@@ -306,40 +322,61 @@ export const Users: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      <Select
-                        value={profile.role}
-                        onValueChange={(value) => updateUserRole(profile.id, value)}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manager">Gerente</SelectItem>
-                          <SelectItem value="supervisor">Supervisor</SelectItem>
-                          <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
-                          <SelectItem value="rac">RAC</SelectItem>
-                          <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
-                        </SelectContent>
-                      </Select>
+                     <div className="flex gap-2">
+                       {/* Só permitir alteração de permissão se o usuário atual for administrador */}
+                       {currentUserProfile?.role === 'manager' ? (
+                         <Select
+                           value={profile.role}
+                           onValueChange={(value) => updateUserRole(profile.id, value)}
+                         >
+                           <SelectTrigger className="w-32">
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="manager">Gerente</SelectItem>
+                             <SelectItem value="supervisor">Supervisor</SelectItem>
+                             <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
+                             <SelectItem value="rac">RAC</SelectItem>
+                             <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       ) : (
+                         <Badge variant={getRoleBadgeVariant(profile.role)} className="w-32 justify-center">
+                           {getRoleLabel(profile.role)}
+                         </Badge>
+                       )}
 
-                      <Select
-                        value={profile.filial_id || "none"}
-                        onValueChange={(value) => updateUserFilial(profile.id, value)}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue placeholder="Selecionar filial" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sem filial</SelectItem>
-                          {filiais.map((filial) => (
-                            <SelectItem key={filial.id} value={filial.id}>
-                              {filial.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                       {/* Só permitir alteração de filial se o usuário atual for administrador */}
+                       {currentUserProfile?.role === 'manager' ? (
+                         <Select
+                           value={profile.filial_id || "none"}
+                           onValueChange={(value) => updateUserFilial(profile.id, value)}
+                         >
+                           <SelectTrigger className="w-40">
+                             <SelectValue placeholder="Selecionar filial" />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="none">Sem filial</SelectItem>
+                             {filiais.map((filial) => (
+                               <SelectItem key={filial.id} value={filial.id}>
+                                 {filial.nome}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       ) : (
+                         <div className="w-40 flex items-center">
+                           {profile.filial_nome ? (
+                             <div className="flex items-center gap-1">
+                               <Building className="h-4 w-4" />
+                               {profile.filial_nome}
+                             </div>
+                           ) : (
+                             <span className="text-muted-foreground">Sem filial</span>
+                           )}
+                         </div>
+                       )}
+                     </div>
                   </TableCell>
                 </TableRow>
               ))}
