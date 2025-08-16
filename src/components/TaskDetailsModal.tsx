@@ -291,7 +291,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                             <p className="text-sm">Qtd: {product.quantity}</p>
                           )}
                           {product.price && (
-                            <p className="text-sm font-medium">R$ {product.price.toFixed(2)}</p>
+                            <p className="text-sm font-medium">R$ {product.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           )}
                         </div>
                       </div>
@@ -386,14 +386,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         // Se não há checklist com produtos, usar salesValue diretamente
                         const totalValue = checklistTotal > 0 ? checklistTotal : (currentTask.salesValue || 0);
                         
-                        return totalValue.toLocaleString('pt-BR');
+                        return totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       })()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Venda Realizada:</span>
                     <span className="text-lg font-bold text-success">
-                      R$ {currentTask.salesConfirmed ? currentTask.salesValue.toLocaleString('pt-BR') : '0,00'}
+                      R$ {currentTask.salesConfirmed ? currentTask.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
