@@ -280,7 +280,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                           </div>
                           <div>
                             <p className="font-medium">{product.name}</p>
-                            <p className="text-sm text-muted-foreground">{product.category}</p>
+                            
                             {product.observations && (
                               <p className="text-xs text-muted-foreground">{product.observations}</p>
                             )}
