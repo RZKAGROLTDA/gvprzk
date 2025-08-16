@@ -198,7 +198,7 @@ const Tasks: React.FC = () => {
       } else if (task.salesConfirmed === false) {
         return { type: 'sale_lost', label: 'Venda Perdida', variant: 'destructive' as const };
       } else {
-        // Se salesConfirmed é undefined/null, é prospect em andamento
+        // Se salesConfirmed é null/undefined, é prospect em andamento
         return { type: 'prospect_active', label: 'Prospect', variant: 'warning' as const };
       }
     }
