@@ -48,28 +48,20 @@ const Tasks: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [vendors, setVendors] = useState<{id: string, name: string}[]>([]);
   const [filiais, setFiliais] = useState<{id: string, nome: string}[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Carregar vendedores e filiais registrados
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Carregar vendedores
-        const { data: vendorsData, error: vendorsError } = await supabase
-          .from('profiles')
-          .select('id, name')
-          .order('name');
+        // Carregar vendedores e filiais em paralelo
+        const [vendorsResponse, filiaisResponse] = await Promise.all([
+          supabase.from('profiles').select('id, name').order('name'),
+          supabase.from('filiais').select('id, nome').order('nome')
+        ]);
         
-        if (vendorsError) throw vendorsError;
-        setVendors(vendorsData || []);
-
-        // Carregar filiais
-        const { data: filiaisData, error: filiaisError } = await supabase
-          .from('filiais')
-          .select('id, nome')
-          .order('nome');
-        
-        if (filiaisError) throw filiaisError;
-        setFiliais(filiaisData || []);
+        if (vendorsResponse.data) setVendors(vendorsResponse.data);
+        if (filiaisResponse.data) setFiliais(filiaisResponse.data);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
       }
@@ -78,16 +70,18 @@ const Tasks: React.FC = () => {
     loadData();
   }, []);
 
-  // Função para carregar tarefas com informações do usuário e filial
+  // Função otimizada para carregar tarefas com informações do usuário e filial
   const loadTasksWithUserInfo = async () => {
     try {
-      console.log('Iniciando carregamento de tarefas com informações do usuário...');
+      console.log('Iniciando carregamento otimizado de tarefas...');
+      setLoading(true);
       
-      // 1. Buscar todas as tarefas
+      // Uma única consulta mais eficiente usando JOIN
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select(`
           *,
+          profiles!tasks_created_by_fkey(name, filial_id, filiais(nome)),
           products(*),
           reminders(*)
         `)
@@ -95,10 +89,11 @@ const Tasks: React.FC = () => {
 
       if (tasksError) {
         console.error('Erro ao carregar tarefas:', tasksError);
+        // Fallback para dados do hook useTasks
         setTasks(onlineTasks.map(task => ({
           ...task,
-          userName: task.responsible,
-          userFilial: task.filial
+          userName: task.responsible || 'N/A',
+          userFilial: task.filial || 'N/A'
         })));
         return;
       }
@@ -109,71 +104,13 @@ const Tasks: React.FC = () => {
         return;
       }
 
-      console.log('Tarefas carregadas:', tasksData.length);
+      console.log('Tarefas carregadas com JOIN:', tasksData.length);
 
-      // 2. Buscar todos os profiles únicos
-      const uniqueUserIds = [...new Set(tasksData.map(task => task.created_by))];
-      console.log('User IDs únicos:', uniqueUserIds);
-      
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          user_id,
-          name,
-          filial_id,
-          filiais(nome)
-        `)
-        .in('user_id', uniqueUserIds);
-
-      if (profilesError) {
-        console.error('Erro ao carregar profiles:', profilesError);
-      }
-
-      console.log('Profiles carregados:', profilesData);
-
-      // 3. Buscar todas as filiais únicas das tarefas
-      const uniqueFilialIds = [...new Set(tasksData.map(task => task.filial).filter(Boolean))];
-      console.log('Filial IDs únicos das tarefas:', uniqueFilialIds);
-
-      const { data: taskFiliaisData, error: taskFiliaisError } = await supabase
-        .from('filiais')
-        .select('id, nome')
-        .in('id', uniqueFilialIds);
-
-      if (taskFiliaisError) {
-        console.error('Erro ao carregar filiais das tarefas:', taskFiliaisError);
-      }
-
-      console.log('Filiais das tarefas carregadas:', taskFiliaisData);
-
-      // 4. Criar mapas para facilitar lookup
-      const profilesMap = new Map();
-      profilesData?.forEach(profile => {
-        profilesMap.set(profile.user_id, {
-          name: profile.name,
-          filialName: (profile as any).filiais?.nome || null
-        });
-      });
-
-      const taskFiliaisMap = new Map();
-      taskFiliaisData?.forEach(filial => {
-        taskFiliaisMap.set(filial.id, filial.nome);
-      });
-
-      console.log('ProfilesMap:', profilesMap);
-      console.log('TaskFiliaisMap:', taskFiliaisMap);
-
-      // 5. Mapear dados completos
+      // Mapear dados de forma mais eficiente
       const tasksWithUserInfo: TaskWithUserInfo[] = tasksData.map(task => {
-        const userProfile = profilesMap.get(task.created_by);
-        const taskFilialName = taskFiliaisMap.get(task.filial);
-        
-        console.log(`Task ${task.id}:`, {
-          created_by: task.created_by,
-          userProfile: userProfile,
-          filial: task.filial,
-          taskFilialName: taskFilialName
-        });
+        const profile = (task as any).profiles;
+        const userFilial = profile?.filiais?.nome || 'N/A';
+        const userName = profile?.name || task.responsible || 'N/A';
         
         return {
           id: task.id,
@@ -231,23 +168,24 @@ const Tasks: React.FC = () => {
           equipmentQuantity: task.equipment_quantity || 0,
           propertyHectares: task.property_hectares || 0,
           equipmentList: task.equipment_list || [],
-          // Informações mapeadas do usuário e filial
-          userName: userProfile?.name || task.responsible || 'N/A',
-          userFilial: userProfile?.filialName || taskFilialName || 'N/A'
+          // Informações otimizadas do usuário e filial
+          userName,
+          userFilial
         };
       });
 
-      console.log('Tarefas finais mapeadas:', tasksWithUserInfo.length);
-      console.log('Exemplo de tarefa mapeada:', tasksWithUserInfo[0]);
+      console.log('Processamento concluído:', tasksWithUserInfo.length, 'tarefas');
       setTasks(tasksWithUserInfo);
     } catch (error) {
-      console.error('Erro ao carregar tarefas com informações do usuário:', error);
+      console.error('Erro ao carregar tarefas:', error);
       // Fallback para tarefas básicas
       setTasks(onlineTasks.map(task => ({
         ...task,
-        userName: task.responsible,
-        userFilial: task.filial
+        userName: task.responsible || 'N/A',
+        userFilial: task.filial || 'N/A'
       })));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -257,12 +195,14 @@ const Tasks: React.FC = () => {
       loadTasksWithUserInfo();
     } else {
       // Fallback para tarefas offline
+      setLoading(true);
       const offlineTasks = getOfflineTasks();
       setTasks(offlineTasks.map(task => ({
         ...task,
-        userName: task.responsible,
-        userFilial: task.filial
+        userName: task.responsible || 'N/A',
+        userFilial: task.filial || 'N/A'
       })));
+      setLoading(false);
     }
   }, [onlineTasks]);
 
@@ -279,7 +219,7 @@ const Tasks: React.FC = () => {
         },
         async (payload) => {
           console.log('Realtime task change:', payload);
-          // Recarregar dados imediatamente com informações completas
+          // Recarregar dados otimizados
           loadTasksWithUserInfo();
         }
       )
@@ -438,7 +378,17 @@ const Tasks: React.FC = () => {
 
       {/* Tasks List */}
       <div className="space-y-4">
-        {filteredTasks.length === 0 && tasks.length === 0 ? (
+        {loading ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold mb-2">Carregando tarefas...</h3>
+              <p className="text-muted-foreground">
+                Aguarde enquanto buscamos as informações das tarefas
+              </p>
+            </CardContent>
+          </Card>
+        ) : filteredTasks.length === 0 && tasks.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <CheckSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
