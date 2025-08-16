@@ -7,19 +7,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Settings, Trash } from 'lucide-react';
+import { Loader2, Settings, Trash, Eye, EyeOff } from 'lucide-react';
 import { SessionRefresh } from '@/components/SessionRefresh';
 
 export const LoginForm: React.FC = () => {
   const { signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockTimeLeft, setBlockTimeLeft] = useState(0);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
     role: 'consultant'
   });
+
+  // Sistema de bloqueio temporário
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isBlocked && blockTimeLeft > 0) {
+      interval = setInterval(() => {
+        setBlockTimeLeft(prev => {
+          if (prev <= 1) {
+            setIsBlocked(false);
+            setLoginAttempts(0);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isBlocked, blockTimeLeft]);
 
   // Limpar dados locais se houver erro persistente
   const clearLocalData = () => {
@@ -30,9 +53,14 @@ export const LoginForm: React.FC = () => {
       // Limpar especificamente os dados do Supabase
       localStorage.removeItem('sb-wuvbrkbhunifudaewhng-auth-token');
       
+      // Reset login attempts
+      setLoginAttempts(0);
+      setIsBlocked(false);
+      setBlockTimeLeft(0);
+      
       toast({
         title: "Dados locais limpos",
-        description: "Cache e tokens removidos. Tente fazer login novamente.",
+        description: "Cache e tokens removidos. Contador de tentativas resetado.",
       });
       
       console.log('DEBUG: Dados locais limpos');
@@ -43,8 +71,18 @@ export const LoginForm: React.FC = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    
+    // Verificar se está bloqueado
+    if (isBlocked) {
+      toast({
+        title: "Muitas tentativas",
+        description: `Aguarde ${blockTimeLeft} segundos antes de tentar novamente.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
+    setLoading(true);
     console.log('DEBUG: Tentando login com:', formData.email);
     
     const { error } = await signIn(formData.email, formData.password);
@@ -52,13 +90,30 @@ export const LoginForm: React.FC = () => {
     if (error) {
       console.error('DEBUG: Erro no login:', error);
       
+      // Incrementar contador de tentativas
+      const newAttempts = loginAttempts + 1;
+      setLoginAttempts(newAttempts);
+      
       let errorMessage = error.message;
       
       // Mensagens mais amigáveis para erros comuns
       if (error.message === 'Invalid login credentials') {
-        errorMessage = 'Email ou senha incorretos. Verifique suas credenciais.';
+        errorMessage = `Email ou senha incorretos. Tentativa ${newAttempts}/5.`;
+        
+        // Bloquear após 5 tentativas
+        if (newAttempts >= 5) {
+          setIsBlocked(true);
+          setBlockTimeLeft(300); // 5 minutos
+          errorMessage = 'Muitas tentativas incorretas. Conta bloqueada por 5 minutos.';
+        } else if (newAttempts >= 3) {
+          errorMessage += ` Atenção: ${5 - newAttempts} tentativas restantes.`;
+        }
       } else if (error.message.includes('refresh_token_not_found')) {
         errorMessage = 'Sessão expirada. Limpe os dados locais e tente novamente.';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
+      } else if (error.message.includes('User not found')) {
+        errorMessage = 'Usuário não encontrado. Verifique o email ou cadastre-se.';
       }
       
       toast({
@@ -68,6 +123,7 @@ export const LoginForm: React.FC = () => {
       });
     } else {
       console.log('DEBUG: Login bem-sucedido');
+      setLoginAttempts(0); // Reset contador em caso de sucesso
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo ao sistema de tarefas",
@@ -179,19 +235,41 @@ export const LoginForm: React.FC = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      required
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || isBlocked}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Entrar
+                  {isBlocked ? `Bloqueado (${blockTimeLeft}s)` : 'Entrar'}
                 </Button>
+                
+                {loginAttempts > 0 && !isBlocked && (
+                  <div className="text-center text-sm text-amber-600 dark:text-amber-400">
+                    Tentativas: {loginAttempts}/5
+                  </div>
+                )}
                 
                 <div className="flex justify-between items-center mt-4">
                   <button
@@ -243,13 +321,31 @@ export const LoginForm: React.FC = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Senha</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="signup-password"
+                      type={showSignupPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      required
+                      minLength={6}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                    >
+                      {showSignupPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
                 </div>
                 
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -285,8 +381,21 @@ export const LoginForm: React.FC = () => {
                   <li>Use "Limpar Cache" se tiver erro de token</li>
                   <li>Verifique console para logs detalhados</li>
                   <li>Use "Testar Autenticação" para diagnóstico</li>
+                  <li>Sistema bloqueia por 5min após 5 tentativas</li>
                 </ul>
               </div>
+              
+              {(loginAttempts > 0 || isBlocked) && (
+                <div className="p-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded">
+                  <p className="font-medium text-amber-800 dark:text-amber-200">Status de Segurança:</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {isBlocked 
+                      ? `Conta bloqueada - ${blockTimeLeft}s restantes`
+                      : `Tentativas de login: ${loginAttempts}/5`
+                    }
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
