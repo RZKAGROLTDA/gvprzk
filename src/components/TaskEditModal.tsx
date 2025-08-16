@@ -214,7 +214,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   setEditedTask(prev => ({
                     ...prev,
                     salesConfirmed: true,
-                    isProspect: true
+                    isProspect: true,
+                    prospectItems: [] // Sempre selecionar "Valor Total" quando escolher "Venda Realizada"
                   }));
                 }}
               >
