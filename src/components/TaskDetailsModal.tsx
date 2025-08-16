@@ -40,7 +40,15 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       // Buscar dados atualizados da tarefa
       const {
         data: updatedTask
-      } = await supabase.from('tasks').select('*,products(*),reminders(*)').eq('id', task.id).single();
+      } = await supabase.from('tasks').select(`
+        *,
+        products(*),
+        reminders(*),
+        profiles!tasks_created_by_fkey(
+          name,
+          filiais(nome)
+        )
+      `).eq('id', task.id).single();
       if (updatedTask) {
         setCurrentTask(updatedTask);
       }
@@ -148,10 +156,10 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <span className="font-medium">Propriedade:</span>
                     <span>{currentTask.property}</span>
                   </div>}
-                {currentTask.filial && <div className="flex items-center gap-2">
+                {(currentTask as any).profiles?.filiais?.nome && <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Filial:</span>
-                    <span>{currentTask.filial}</span>
+                    <span>{(currentTask as any).profiles.filiais.nome}</span>
                   </div>}
                 {currentTask.taskType && <div className="flex items-center gap-2">
                     <span className="font-medium">Tipo:</span>
