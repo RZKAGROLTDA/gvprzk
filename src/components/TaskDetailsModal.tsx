@@ -10,11 +10,13 @@ import { Task } from '@/types/task';
 import { TaskLocationInfo } from './TaskLocationInfo';
 import { TaskReportExporter } from './TaskReportExporter';
 import { supabase } from '@/integrations/supabase/client';
+
 interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   task,
   open,
@@ -57,7 +59,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       supabase.removeChannel(channel);
     };
   }, [task?.id, open]);
+
   if (!currentTask) return null;
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -70,6 +74,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return 'secondary';
     }
   };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -82,6 +87,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return 'secondary';
     }
   };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'completed':
@@ -96,6 +102,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return status;
     }
   };
+
   const getPriorityLabel = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -108,6 +115,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return priority;
     }
   };
+
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -135,74 +143,82 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Informações Principais */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Informações Gerais
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+          {/* Informações Principais - Reorganizadas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Informações da Tarefa
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* CEP (Usuário) */}
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Responsável:</span>
+                  <span className="font-medium">CEP:</span>
                   <span>{currentTask.responsible}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Cliente:</span>
-                  <span>{currentTask.client}</span>
-                </div>
-                {currentTask.property && <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Propriedade:</span>
-                    <span>{currentTask.property}</span>
-                  </div>}
-                {(currentTask as any).profiles?.filiais?.nome && <div className="flex items-center gap-2">
+
+                {/* Filial */}
+                {(currentTask as any).profiles?.filiais?.nome && (
+                  <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Filial:</span>
                     <span>{(currentTask as any).profiles.filiais.nome}</span>
-                  </div>}
-                {currentTask.taskType && <div className="flex items-center gap-2">
+                  </div>
+                )}
+
+                {/* Nome do Contato */}
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Contato:</span>
+                  <span>{currentTask.client}</span>
+                </div>
+
+                {/* Nome da Propriedade */}
+                {currentTask.property && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Propriedade:</span>
+                    <span>{currentTask.property}</span>
+                  </div>
+                )}
+
+                {/* Tipo */}
+                {currentTask.taskType && (
+                  <div className="flex items-center gap-2">
                     <span className="font-medium">Tipo:</span>
                     <Badge variant="outline">
                       {currentTask.taskType === 'prospection' ? 'Visita' : currentTask.taskType === 'checklist' ? 'Checklist' : currentTask.taskType === 'ligacao' ? 'Ligação' : currentTask.taskType}
                     </Badge>
-                  </div>}
+                  </div>
+                )}
+
+                {/* Status */}
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Status:</span>
                   <Badge variant={getStatusColor(currentTask.status)}>
                     {getStatusLabel(currentTask.status)}
                   </Badge>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Data e Horário
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+                {/* Data */}
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Data:</span>
-                  <span>{format(currentTask.startDate, "PPP", {
-                    locale: ptBR
-                  })}</span>
+                  <span>{format(currentTask.startDate, "PPP", { locale: ptBR })}</span>
                 </div>
+
+                {/* Horário */}
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Horário:</span>
                   <span>{currentTask.startTime} - {currentTask.endTime}</span>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Observações */}
           {currentTask.observations && <Card>
