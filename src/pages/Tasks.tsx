@@ -315,38 +315,55 @@ const Tasks: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                        <CheckSquare className="h-5 w-5 text-primary" />
+                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckSquare className="h-4 w-4 text-primary" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{task.name}</h3>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <User className="h-4 w-4" />
-                            {task.responsible}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base mb-2 truncate">{task.name}</h3>
+                        
+                        {/* Grid layout para informações organizadas */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1 truncate">
+                            <User className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{task.responsible}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            {task.client} - {task.property}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {(() => {
-                              try {
-                                const date = new Date(task.createdAt);
-                                if (isNaN(date.getTime())) {
+                          <div className="flex items-center gap-1 truncate">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">
+                              {(() => {
+                                try {
+                                  const date = new Date(task.startDate);
+                                  if (isNaN(date.getTime())) {
+                                    return 'Data inválida';
+                                  }
+                                  return format(date, "dd/MM/yyyy", { locale: ptBR });
+                                } catch (error) {
                                   return 'Data inválida';
                                 }
-                                return format(date, "PPP", { locale: ptBR });
-                              } catch (error) {
-                                return 'Data inválida';
-                              }
-                            })()}
+                              })()}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {task.startTime} - {task.endTime}
+                          
+                          <div className="flex items-center gap-1 truncate">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{task.client}</span>
                           </div>
+                          <div className="flex items-center gap-1 truncate">
+                            <Clock className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{task.startTime} - {task.endTime}</span>
+                          </div>
+
+                          <div className="col-span-2 flex items-center gap-1 truncate">
+                            <span className="text-xs font-medium">Propriedade:</span>
+                            <span className="truncate">{task.property}</span>
+                          </div>
+
+                          {task.filial && (
+                            <div className="col-span-2 flex items-center gap-1 truncate">
+                              <span className="text-xs font-medium">Filial:</span>
+                              <span className="truncate">{task.filial}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
