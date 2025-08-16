@@ -183,13 +183,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </div>
 
                 {/* Filial */}
-                {(currentTask as any).profiles?.filiais?.nome && (
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Filial:</span>
-                    <span>{(currentTask as any).profiles.filiais.nome}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Filial:</span>
+                  <span>{(currentTask as any).profiles?.filiais?.nome || currentTask.filial || 'N/A'}</span>
+                </div>
 
                 {/* Nome do Contato */}
                 <div className="flex items-center gap-2">
