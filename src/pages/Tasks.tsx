@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,12 @@ import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
+
+// Interface para os dados completos da tarefa com informações do usuário e filial
+interface TaskWithUserInfo extends Task {
+  userName?: string;
+  userFilial?: string;
+}
 
 const Tasks: React.FC = () => {
   const { getOfflineTasks } = useOffline();
@@ -36,7 +40,7 @@ const Tasks: React.FC = () => {
   const [vendorFilter, setVendorFilter] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [filialFilter, setFilialFilter] = useState('all');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskWithUserInfo[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -73,20 +77,120 @@ const Tasks: React.FC = () => {
     loadData();
   }, []);
 
+  // Função para carregar tarefas com informações do usuário e filial
+  const loadTasksWithUserInfo = async () => {
+    try {
+      const { data: tasksData, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          products(*),
+          reminders(*),
+          profiles!tasks_created_by_fkey(
+            name,
+            filiais(nome)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao carregar tarefas:', error);
+        // Fallback para tarefas básicas se houver erro
+        setTasks(onlineTasks.map(task => ({
+          ...task,
+          userName: task.responsible,
+          userFilial: task.filial
+        })));
+        return;
+      }
+
+      // Mapear dados completos
+      const tasksWithUserInfo: TaskWithUserInfo[] = tasksData?.map(task => ({
+        id: task.id,
+        name: task.name,
+        responsible: task.responsible,
+        client: task.client,
+        property: task.property || '',
+        filial: task.filial || '',
+        cpf: task.cpf || '',
+        email: task.email || '',
+        taskType: task.task_type || 'prospection',
+        checklist: task.products?.map((product: any) => ({
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          selected: product.selected || false,
+          quantity: product.quantity || 0,
+          price: product.price || 0,
+          observations: product.observations || '',
+          photos: product.photos || [],
+        })) || [],
+        startDate: new Date(task.start_date),
+        endDate: new Date(task.end_date),
+        startTime: task.start_time,
+        endTime: task.end_time,
+        observations: task.observations || '',
+        priority: task.priority,
+        reminders: task.reminders?.map((reminder: any) => ({
+          id: reminder.id,
+          title: reminder.title,
+          description: reminder.description || '',
+          date: new Date(reminder.date),
+          time: reminder.time,
+          completed: reminder.completed || false,
+        })) || [],
+        photos: task.photos || [],
+        documents: task.documents || [],
+        checkInLocation: task.check_in_location ? {
+          lat: task.check_in_location.lat,
+          lng: task.check_in_location.lng,
+          timestamp: new Date(task.check_in_location.timestamp),
+        } : undefined,
+        initialKm: task.initial_km || 0,
+        finalKm: task.final_km || 0,
+        status: task.status,
+        createdBy: task.created_by,
+        createdAt: new Date(task.created_at),
+        updatedAt: new Date(task.updated_at),
+        isProspect: Boolean(task.is_prospect || task.sales_confirmed !== null || (task.sales_value && task.sales_value > 0)),
+        prospectNotes: task.prospect_notes || '',
+        prospectItems: task.products?.filter((p: any) => p.selected) || [],
+        salesValue: task.sales_value || 0,
+        salesConfirmed: task.sales_confirmed,
+        familyProduct: task.family_product || '',
+        equipmentQuantity: task.equipment_quantity || 0,
+        propertyHectares: task.property_hectares || 0,
+        equipmentList: task.equipment_list || [],
+        // Informações do usuário e filial
+        userName: task.profiles?.name || task.responsible,
+        userFilial: task.profiles?.filiais?.nome || task.filial
+      })) || [];
+
+      setTasks(tasksWithUserInfo);
+    } catch (error) {
+      console.error('Erro ao carregar tarefas com informações do usuário:', error);
+      // Fallback para tarefas básicas
+      setTasks(onlineTasks.map(task => ({
+        ...task,
+        userName: task.responsible,
+        userFilial: task.filial
+      })));
+    }
+  };
+
   // Carregar tarefas quando componente montar
   useEffect(() => {
-    const loadTasks = async () => {
-      // Priorizar tarefas online do Supabase
-      if (onlineTasks.length > 0) {
-        setTasks(onlineTasks);
-      } else {
-        // Fallback para tarefas offline
-        const offlineTasks = getOfflineTasks();
-        setTasks(offlineTasks);
-      }
-    };
-    
-    loadTasks();
+    if (onlineTasks.length > 0) {
+      loadTasksWithUserInfo();
+    } else {
+      // Fallback para tarefas offline
+      const offlineTasks = getOfflineTasks();
+      setTasks(offlineTasks.map(task => ({
+        ...task,
+        userName: task.responsible,
+        userFilial: task.filial
+      })));
+    }
   }, [onlineTasks]);
 
   // Configurar realtime listener separadamente
@@ -102,17 +206,8 @@ const Tasks: React.FC = () => {
         },
         async (payload) => {
           console.log('Realtime task change:', payload);
-          
-          // Recarregar dados imediatamente
-          const { data: freshTasks, error } = await supabase
-            .from('tasks')
-            .select('*,products(*),reminders(*)')
-            .order('created_at', { ascending: false });
-          
-          if (!error && freshTasks) {
-            const mappedTasks = freshTasks.map(mapSupabaseTaskToTask);
-            setTasks(mappedTasks);
-          }
+          // Recarregar dados imediatamente com informações completas
+          loadTasksWithUserInfo();
         }
       )
       .subscribe();
@@ -123,9 +218,9 @@ const Tasks: React.FC = () => {
   }, []);
 
   const filteredTasks = tasks.filter(task => {
-    const matchesVendor = vendorFilter === 'all' || task.responsible === vendorFilter;
+    const matchesVendor = vendorFilter === 'all' || task.userName === vendorFilter || task.responsible === vendorFilter;
     const matchesTaskType = taskTypeFilter === 'all' || task.taskType === taskTypeFilter;
-    const matchesFilial = filialFilter === 'all' || task.filial === filialFilter;
+    const matchesFilial = filialFilter === 'all' || task.userFilial === filialFilter || task.filial === filialFilter;
     
     return matchesVendor && matchesTaskType && matchesFilial;
   });
@@ -182,27 +277,16 @@ const Tasks: React.FC = () => {
     }
   };
 
-  // Nova função para determinar se é prospect e o status correto
-  const getProspectStatus = (task: Task) => {
-    console.log('Verificando status do prospect para tarefa:', task.id, {
-      isProspect: task.isProspect,
-      salesConfirmed: task.salesConfirmed,
-      salesValue: task.salesValue
-    });
-
-    // Se isProspect é true, então é um prospect
+  const getProspectStatus = (task: TaskWithUserInfo) => {
     if (task.isProspect) {
-      // Se salesConfirmed está definido, usar esse valor
       if (task.salesConfirmed === true) {
         return { type: 'sale_confirmed', label: 'Venda Realizada', variant: 'success' as const };
       } else if (task.salesConfirmed === false) {
         return { type: 'sale_lost', label: 'Venda Perdida', variant: 'destructive' as const };
       } else {
-        // Se salesConfirmed é null/undefined, é prospect em andamento
         return { type: 'prospect_active', label: 'Prospect', variant: 'warning' as const };
       }
     }
-    
     return null;
   };
 
@@ -321,11 +405,11 @@ const Tasks: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-base mb-2 truncate">{task.name}</h3>
                         
-                        {/* Grid layout para informações organizadas */}
+                        {/* Grid layout para informações organizadas com dados corretos */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1 truncate">
                             <User className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{task.responsible}</span>
+                            <span className="truncate">{task.userName || task.responsible}</span>
                           </div>
                           <div className="flex items-center gap-1 truncate">
                             <Calendar className="h-3 w-3 flex-shrink-0" />
@@ -358,10 +442,10 @@ const Tasks: React.FC = () => {
                             <span className="truncate">{task.property}</span>
                           </div>
 
-                          {task.filial && (
+                          {task.userFilial && (
                             <div className="col-span-2 flex items-center gap-1 truncate">
                               <span className="text-xs font-medium">Filial:</span>
-                              <span className="truncate">{task.filial}</span>
+                              <span className="truncate">{task.userFilial}</span>
                             </div>
                           )}
                         </div>
