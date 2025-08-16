@@ -88,8 +88,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
+  const getStatusLabel = (task: Task) => {
+    // Se é prospect e ainda não foi finalizado (null/undefined), mostrar Em Andamento
+    if (task.isProspect && (task.salesConfirmed === null || task.salesConfirmed === undefined)) {
+      return 'Em Andamento';
+    }
+    
+    // Se é prospect e foi finalizado (true ou false), mostrar Concluído
+    if (task.isProspect && (task.salesConfirmed === true || task.salesConfirmed === false)) {
+      return 'Concluído';
+    }
+
+    // Para não-prospects, usar a lógica original
+    switch (task.status) {
       case 'completed':
         return 'Concluída';
       case 'in_progress':
@@ -99,7 +110,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       case 'closed':
         return 'Fechada';
       default:
-        return status;
+        return task.status;
     }
   };
 
@@ -195,11 +206,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   </div>
                 )}
 
-                {/* Status */}
+                 {/* Status */}
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Status:</span>
                   <Badge variant={getStatusColor(currentTask.status)}>
-                    {getStatusLabel(currentTask.status)}
+                    {getStatusLabel(currentTask)}
                   </Badge>
                 </div>
 
