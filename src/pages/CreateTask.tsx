@@ -25,7 +25,6 @@ import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-
 const CreateTask: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -85,7 +84,6 @@ const CreateTask: React.FC = () => {
         return 'prospection';
     }
   };
-
   const [task, setTask] = useState<Partial<Task>>({
     name: '',
     responsible: '',
@@ -118,12 +116,11 @@ const CreateTask: React.FC = () => {
       }));
     }
   }, [profile]);
-  
+
   // Inicializar lista de equipamentos vazia
   const initializeEquipmentList = () => {
     return [];
   };
-  
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [equipmentList, setEquipmentList] = useState<{
     id: string;
@@ -139,13 +136,48 @@ const CreateTask: React.FC = () => {
 
   // Estado para controlar campos condicionais das perguntas da ligação
   const [callQuestions, setCallQuestions] = useState({
-    lubricants: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-    tires: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-    filters: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-    batteries: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-    parts: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-    silobag: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-    disk: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 }
+    lubricants: {
+      needsProduct: false,
+      quantity: 0,
+      unitValue: 0,
+      totalValue: 0
+    },
+    tires: {
+      needsProduct: false,
+      quantity: 0,
+      unitValue: 0,
+      totalValue: 0
+    },
+    filters: {
+      needsProduct: false,
+      quantity: 0,
+      unitValue: 0,
+      totalValue: 0
+    },
+    batteries: {
+      needsProduct: false,
+      quantity: 0,
+      unitValue: 0,
+      totalValue: 0
+    },
+    parts: {
+      needsProduct: false,
+      quantity: 0,
+      unitValue: 0,
+      totalValue: 0
+    },
+    silobag: {
+      needsProduct: false,
+      quantity: 0,
+      unitValue: 0,
+      totalValue: 0
+    },
+    disk: {
+      needsProduct: false,
+      quantity: 0,
+      unitValue: 0,
+      totalValue: 0
+    }
   });
 
   // Estado para o checklist (deve ser declarado antes das funções que o usam)
@@ -169,7 +201,6 @@ const CreateTask: React.FC = () => {
         return sum + (item.needsProduct ? item.totalValue : 0);
       }, 0);
     }
-
     return total;
   };
 
@@ -219,11 +250,9 @@ const CreateTask: React.FC = () => {
         ...productData,
         totalValue: totalValue
       };
-      
       return updated;
     });
   };
-
   const fieldVisitProducts: ProductType[] = [{
     id: '1',
     name: 'Pneus',
@@ -407,19 +436,16 @@ const CreateTask: React.FC = () => {
   // Função para buscar informações anteriores pelo CPF
   const searchPreviousDataByCPF = async (cpf: string) => {
     if (!cpf || cpf.length < 11) return;
-
     try {
       // Buscar no Supabase
-      const { data: tasks } = await supabase
-        .from('tasks')
-        .select('*')
-        .ilike('observations', `%${cpf}%`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
+      const {
+        data: tasks
+      } = await supabase.from('tasks').select('*').ilike('observations', `%${cpf}%`).order('created_at', {
+        ascending: false
+      }).limit(1);
       if (tasks && tasks.length > 0) {
         const lastTask = tasks[0];
-        
+
         // Extrair hectares das observações se existir
         let hectares = '';
         if (lastTask.observations) {
@@ -428,7 +454,6 @@ const CreateTask: React.FC = () => {
             hectares = hectaresMatch[1];
           }
         }
-
         setTask(prev => ({
           ...prev,
           client: lastTask.client || '',
@@ -436,7 +461,6 @@ const CreateTask: React.FC = () => {
           property: lastTask.property || '',
           observations: hectares ? `Hectares: ${hectares}` : ''
         }));
-        
         toast({
           title: "📋 Dados encontrados",
           description: "Informações do CPF foram preenchidas automaticamente"
@@ -453,7 +477,6 @@ const CreateTask: React.FC = () => {
             property: data.property || '',
             observations: data.hectares ? `Hectares: ${data.hectares}` : ''
           }));
-          
           toast({
             title: "📋 Dados encontrados",
             description: "Informações do CPF foram preenchidas automaticamente"
@@ -466,7 +489,12 @@ const CreateTask: React.FC = () => {
   };
 
   // Função para salvar dados do CPF no localStorage
-  const saveCPFData = (cpf: string, data: { client: string; responsible: string; property: string; hectares?: string }) => {
+  const saveCPFData = (cpf: string, data: {
+    client: string;
+    responsible: string;
+    property: string;
+    hectares?: string;
+  }) => {
     if (cpf && (data.client || data.responsible || data.property || data.hectares)) {
       localStorage.setItem(`cpf_data_${cpf}`, JSON.stringify(data));
     }
@@ -498,13 +526,48 @@ const CreateTask: React.FC = () => {
 
     // Reset call questions
     setCallQuestions({
-      lubricants: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-      tires: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-      filters: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-      batteries: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-      parts: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-      silobag: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
-      disk: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 }
+      lubricants: {
+        needsProduct: false,
+        quantity: 0,
+        unitValue: 0,
+        totalValue: 0
+      },
+      tires: {
+        needsProduct: false,
+        quantity: 0,
+        unitValue: 0,
+        totalValue: 0
+      },
+      filters: {
+        needsProduct: false,
+        quantity: 0,
+        unitValue: 0,
+        totalValue: 0
+      },
+      batteries: {
+        needsProduct: false,
+        quantity: 0,
+        unitValue: 0,
+        totalValue: 0
+      },
+      parts: {
+        needsProduct: false,
+        quantity: 0,
+        unitValue: 0,
+        totalValue: 0
+      },
+      silobag: {
+        needsProduct: false,
+        quantity: 0,
+        unitValue: 0,
+        totalValue: 0
+      },
+      disk: {
+        needsProduct: false,
+        quantity: 0,
+        unitValue: 0,
+        totalValue: 0
+      }
     });
 
     // Reset product lists
@@ -525,7 +588,6 @@ const CreateTask: React.FC = () => {
 
     // Reset WhatsApp webhook
     setWhatsappWebhook('');
-
     toast({
       title: "✨ Formulário limpo",
       description: "Todas as informações foram resetadas com sucesso"
@@ -540,29 +602,24 @@ const CreateTask: React.FC = () => {
       taskType: getTaskTypeFromCategory(taskCategory)
     }));
   }, [taskCategory]);
-
   const handleChecklistChange = (id: string, checked: boolean) => {
     setChecklist(prev => {
       const updated = prev.map(item => item.id === id ? {
         ...item,
         selected: checked
       } : item);
-      
       return updated;
     });
   };
-
   const handleProductChange = (id: string, field: keyof ProductType, value: any) => {
     setChecklist(prev => {
       const updated = prev.map(item => item.id === id ? {
         ...item,
         [field]: value
       } : item);
-      
       return updated;
     });
   };
-
   const handleProductPhotoChange = (productId: string, photos: string[]) => {
     setChecklist(prev => prev.map(item => item.id === productId ? {
       ...item,
@@ -573,18 +630,24 @@ const CreateTask: React.FC = () => {
   // Função para atualizar produtos do prospectItems (venda parcial)
   const handleProspectItemChange = (index: number, field: 'selected' | 'quantity' | 'price', value: boolean | number) => {
     console.log('DEBUG: Atualizando produto da venda parcial -', field, ':', value, 'para índice:', index);
-    
     const updatedItems = [...(task.prospectItems || [])];
     if (field === 'selected') {
-      updatedItems[index] = { ...updatedItems[index], selected: value as boolean };
+      updatedItems[index] = {
+        ...updatedItems[index],
+        selected: value as boolean
+      };
     } else if (field === 'quantity') {
-      updatedItems[index] = { ...updatedItems[index], quantity: value as number };
+      updatedItems[index] = {
+        ...updatedItems[index],
+        quantity: value as number
+      };
     } else if (field === 'price') {
-      updatedItems[index] = { ...updatedItems[index], price: value as number };
+      updatedItems[index] = {
+        ...updatedItems[index],
+        price: value as number
+      };
     }
-    
     console.log('DEBUG: Produto atualizado:', updatedItems[index]);
-    
     setTask(prev => ({
       ...prev,
       prospectItems: updatedItems
@@ -637,7 +700,8 @@ const CreateTask: React.FC = () => {
   const addEquipment = () => {
     const newEquipment = {
       id: Date.now().toString(),
-      familyProduct: '', // Campo vazio para o usuário preencher
+      familyProduct: '',
+      // Campo vazio para o usuário preencher
       quantity: 0 // Campo vazio para o usuário preencher
     };
     setEquipmentList(prev => [...prev, newEquipment]);
@@ -695,7 +759,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     // Validação obrigatória do status da oportunidade
     if (task.salesConfirmed === undefined && !task.isProspect) {
       toast({
@@ -706,18 +770,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       setIsSubmitting(false);
       return;
     }
-    
+
     // Capturar data e hora atual exatos no momento da criação
     const now = new Date();
     const currentTime = format(now, 'HH:mm');
-    
     const taskData = {
       ...task,
-      taskType: getTaskTypeFromCategory(taskCategory), // Garantir que taskType está correto
-      startDate: now, // Data atual exata
-      endDate: now, // Data atual exata
-      startTime: currentTime, // Horário atual exato
-      endTime: currentTime, // Horário atual exato
+      taskType: getTaskTypeFromCategory(taskCategory),
+      // Garantir que taskType está correto
+      startDate: now,
+      // Data atual exata
+      endDate: now,
+      // Data atual exata
+      startTime: currentTime,
+      // Horário atual exato
+      endTime: currentTime,
+      // Horário atual exato
       checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
       reminders,
       equipmentList
@@ -791,7 +859,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         title: "✅ Tarefa Criada",
         description: isOnline ? "Tarefa salva com sucesso no servidor!" : "Tarefa salva offline - será sincronizada quando conectar!"
       });
-      
+
       // Redirecionar para a página de tarefas
       navigate('/tasks');
     } catch (error) {
@@ -805,7 +873,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       setIsSubmitting(false);
     }
   };
-
   const handleSaveDraft = () => {
     const draftData = {
       ...task,
@@ -816,38 +883,35 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       isDraft: true
     };
 
-      // Salvar dados do CPF para reutilização futura
-      if (task.cpf) {
-        // Extrair hectares das observações se existir
-        let hectares = '';
-        if (task.observations) {
-          const hectaresMatch = task.observations.match(/hectares?\s*:?\s*(\d+(?:[.,]\d+)?)/i);
-          if (hectaresMatch) {
-            hectares = hectaresMatch[1];
-          }
+    // Salvar dados do CPF para reutilização futura
+    if (task.cpf) {
+      // Extrair hectares das observações se existir
+      let hectares = '';
+      if (task.observations) {
+        const hectaresMatch = task.observations.match(/hectares?\s*:?\s*(\d+(?:[.,]\d+)?)/i);
+        if (hectaresMatch) {
+          hectares = hectaresMatch[1];
         }
-
-        saveCPFData(task.cpf.replace(/\D/g, ''), {
-          client: task.client || '',
-          responsible: task.responsible || '',
-          property: task.property || '',
-          hectares: hectares || ''
-        });
       }
+      saveCPFData(task.cpf.replace(/\D/g, ''), {
+        client: task.client || '',
+        responsible: task.responsible || '',
+        property: task.property || '',
+        hectares: hectares || ''
+      });
+    }
 
-      // Salvar no localStorage como rascunho
-      const existingDrafts = JSON.parse(localStorage.getItem('task_drafts') || '[]');
-      const draftId = `draft_${Date.now()}`;
-      const newDraft = {
-        id: draftId,
-        ...draftData,
-        savedAt: new Date(),
-        category: taskCategory
-      };
-
-      existingDrafts.push(newDraft);
-      localStorage.setItem('task_drafts', JSON.stringify(existingDrafts));
-
+    // Salvar no localStorage como rascunho
+    const existingDrafts = JSON.parse(localStorage.getItem('task_drafts') || '[]');
+    const draftId = `draft_${Date.now()}`;
+    const newDraft = {
+      id: draftId,
+      ...draftData,
+      savedAt: new Date(),
+      category: taskCategory
+    };
+    existingDrafts.push(newDraft);
+    localStorage.setItem('task_drafts', JSON.stringify(existingDrafts));
     toast({
       title: "💾 Rascunho Salvo",
       description: "Suas alterações foram salvas como rascunho!"
@@ -857,70 +921,44 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   // Componente para renderizar campos de valor unitário e total
   const renderValueFields = (product: keyof typeof callQuestions) => {
     const productData = callQuestions[product];
-    return (
-      <div className="ml-6 space-y-4">
+    return <div className="ml-6 space-y-4">
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>Quantidade</Label>
-            <Input 
-              type="number" 
-              placeholder="Digite a quantidade"
-              value={productData.quantity || ''}
-              onChange={(e) => updateCallQuestion(product, 'quantity', parseInt(e.target.value) || 0)}
-              min="0"
-              step="1"
-            />
+            <Input type="number" placeholder="Digite a quantidade" value={productData.quantity || ''} onChange={e => updateCallQuestion(product, 'quantity', parseInt(e.target.value) || 0)} min="0" step="1" />
           </div>
           <div className="space-y-2">
             <Label>Valor Unitário (R$)</Label>
             <div className="relative">
-              <Input 
-                type="text" 
-                placeholder="0,00" 
-                className="pl-8"
-                value={productData.unitValue ? new Intl.NumberFormat('pt-BR', { 
-                  minimumFractionDigits: 2, 
-                  maximumFractionDigits: 2 
-                }).format(productData.unitValue) : ''}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  const numericValue = parseFloat(value) / 100;
-                  updateCallQuestion(product, 'unitValue', isNaN(numericValue) ? 0 : numericValue);
-                }}
-              />
+              <Input type="text" placeholder="0,00" className="pl-8" value={productData.unitValue ? new Intl.NumberFormat('pt-BR', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }).format(productData.unitValue) : ''} onChange={e => {
+              const value = e.target.value.replace(/\D/g, '');
+              const numericValue = parseFloat(value) / 100;
+              updateCallQuestion(product, 'unitValue', isNaN(numericValue) ? 0 : numericValue);
+            }} />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
             </div>
           </div>
           <div className="space-y-2">
             <Label>Valor Total (R$)</Label>
             <div className="relative">
-              <Input 
-                type="text" 
-                className="pl-8 bg-muted cursor-not-allowed"
-                value={productData.totalValue ? new Intl.NumberFormat('pt-BR', { 
-                  minimumFractionDigits: 2, 
-                  maximumFractionDigits: 2 
-                }).format(productData.totalValue) : '0,00'}
-                readOnly
-              />
+              <Input type="text" className="pl-8 bg-muted cursor-not-allowed" value={productData.totalValue ? new Intl.NumberFormat('pt-BR', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            }).format(productData.totalValue) : '0,00'} readOnly />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
             </div>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   };
-
   return <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold">{getTaskTitle(taskCategory)}</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
-          {taskCategory === 'field-visit' 
-            ? 'Criar uma nova visita à fazenda' 
-            : taskCategory === 'call' 
-            ? 'Registrar uma nova ligação para cliente'
-            : 'Criar um novo checklist da oficina'
-          }
+          {taskCategory === 'field-visit' ? 'Criar uma nova visita à fazenda' : taskCategory === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
         </p>
       </div>
 
@@ -942,43 +980,31 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <div className="space-y-2">
                 <Label htmlFor="responsible">Nome do Contato</Label>
                 <Input id="responsible" value={task.responsible} onChange={e => setTask(prev => ({
-                  ...prev,
-                  responsible: e.target.value
-                }))} placeholder="Nome do Contato" />
+                ...prev,
+                responsible: e.target.value
+              }))} placeholder="Nome do Contato" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="cpf">CPF *</Label>
-                <Input 
-                  id="cpf" 
-                  value={task.cpf || ''} 
-                  onChange={e => {
-                    const cpf = e.target.value;
-                    setTask(prev => ({
-                      ...prev,
-                      cpf: cpf
-                    }));
-                    
-                    // Buscar dados anteriores quando CPF for digitado (apenas números)
-                    const cleanCPF = cpf.replace(/\D/g, '');
-                    if (cleanCPF.length === 11) {
-                      searchPreviousDataByCPF(cleanCPF);
-                    }
-                  }} 
-                  placeholder="000.000.000-00" 
-                  maxLength={14}
-                  required
-                />
+                <Input id="cpf" value={task.cpf || ''} onChange={e => {
+                const cpf = e.target.value;
+                setTask(prev => ({
+                  ...prev,
+                  cpf: cpf
+                }));
+
+                // Buscar dados anteriores quando CPF for digitado (apenas números)
+                const cleanCPF = cpf.replace(/\D/g, '');
+                if (cleanCPF.length === 11) {
+                  searchPreviousDataByCPF(cleanCPF);
+                }
+              }} placeholder="000.000.000-00" maxLength={14} required />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="reportDate">Data do Relatório</Label>
-                <Input 
-                  id="reportDate" 
-                  value={new Date().toLocaleDateString('pt-BR')} 
-                  readOnly 
-                  className="bg-muted cursor-not-allowed"
-                />
+                <Input id="reportDate" value={new Date().toLocaleDateString('pt-BR')} readOnly className="bg-muted cursor-not-allowed" />
               </div>
 
               <div className="space-y-2">
@@ -991,16 +1017,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  value={task.email || ''} 
-                  onChange={e => setTask(prev => ({
-                    ...prev,
-                    email: e.target.value
-                  }))} 
-                  placeholder="email@exemplo.com" 
-                />
+                <Input id="email" type="email" value={task.email || ''} onChange={e => setTask(prev => ({
+                ...prev,
+                email: e.target.value
+              }))} placeholder="email@exemplo.com" />
               </div>
 
               {taskCategory === 'field-visit' && <div className="space-y-2">
@@ -1030,18 +1050,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 {/* Hectares da Propriedade */}
                  <div className="space-y-2">
                    <Label htmlFor="propertyHectares">Hectares da Propriedade *</Label>
-                    <Input 
-                      id="propertyHectares" 
-                      type="number" 
-                      min="0"
-                      value={task.propertyHectares || ''} 
-                      onChange={e => setTask(prev => ({
-                        ...prev,
-                        propertyHectares: parseInt(e.target.value) || undefined
-                      }))} 
-                      placeholder="Digite os hectares da propriedade"
-                     required
-                   />
+                    <Input id="propertyHectares" type="number" min="0" value={task.propertyHectares || ''} onChange={e => setTask(prev => ({
+                ...prev,
+                propertyHectares: parseInt(e.target.value) || undefined
+              }))} placeholder="Digite os hectares da propriedade" required />
                  </div>
 
                 {/* Lista de Equipamentos */}
@@ -1131,37 +1143,24 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                 <div className="space-y-2">
                                   <Label htmlFor={`price-${item.id}`}>Valor Unitário</Label>
                                   <div className="relative">
-                                    <Input 
-                                      id={`price-${item.id}`} 
-                                      type="text" 
-                                      value={item.price ? new Intl.NumberFormat('pt-BR', { 
-                                        minimumFractionDigits: 2, 
-                                        maximumFractionDigits: 2 
-                                      }).format(item.price) : ''} 
-                                      onChange={e => {
-                                        const value = e.target.value.replace(/\D/g, '');
-                                        const numericValue = parseFloat(value) / 100;
-                                        handleProductChange(item.id, 'price', isNaN(numericValue) ? 0 : numericValue);
-                                      }} 
-                                      placeholder="0,00" 
-                                      className="pl-8" 
-                                    />
+                                    <Input id={`price-${item.id}`} type="text" value={item.price ? new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format(item.price) : ''} onChange={e => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const numericValue = parseFloat(value) / 100;
+                              handleProductChange(item.id, 'price', isNaN(numericValue) ? 0 : numericValue);
+                            }} placeholder="0,00" className="pl-8" />
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                                   </div>
                                 </div>
                                 <div className="space-y-2">
                                   <Label>Valor Total</Label>
                                   <div className="relative">
-                                    <Input 
-                                      type="text" 
-                                      className="pl-8 bg-muted cursor-not-allowed"
-                                      value={item.selected && item.price && item.quantity ? 
-                                        new Intl.NumberFormat('pt-BR', { 
-                                          minimumFractionDigits: 2, 
-                                          maximumFractionDigits: 2 
-                                        }).format(item.price * item.quantity) : '0,00'}
-                                      readOnly
-                                    />
+                                    <Input type="text" className="pl-8 bg-muted cursor-not-allowed" value={item.selected && item.price && item.quantity ? new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format(item.price * item.quantity) : '0,00'} readOnly />
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                                   </div>
                                 </div>
@@ -1195,39 +1194,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customerName">Nome do Cliente:</Label>
-                    <Input id="customerName" placeholder="Nome completo do cliente" />
-                  </div>
+                  
 
-                  <div className="space-y-2">
-                    <Label htmlFor="propertyArea">Total de área da propriedade na região:</Label>
-                    <Input id="propertyArea" placeholder="Área em hectares" />
-                  </div>
+                  
 
-                  <div className="space-y-2">
-                    <Label htmlFor="johnDeereEquipment">Total de Equipamentos John Deere na região:</Label>
-                    <Input id="johnDeereEquipment" type="number" min="0" placeholder="Quantidade de equipamentos" />
-                  </div>
+                  
 
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Está precisando de Lubrificantes:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="lubricants-yes" 
-                            checked={callQuestions.lubricants.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('lubricants', 'needsProduct', checked as boolean)}
-                          />
+                          <Checkbox id="lubricants-yes" checked={callQuestions.lubricants.needsProduct} onCheckedChange={checked => updateCallQuestion('lubricants', 'needsProduct', checked as boolean)} />
                           <Label htmlFor="lubricants-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="lubricants-no" 
-                            checked={!callQuestions.lubricants.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('lubricants', 'needsProduct', !(checked as boolean))}
-                          />
+                          <Checkbox id="lubricants-no" checked={!callQuestions.lubricants.needsProduct} onCheckedChange={checked => updateCallQuestion('lubricants', 'needsProduct', !(checked as boolean))} />
                           <Label htmlFor="lubricants-no">NÃO</Label>
                         </div>
                       </div>
@@ -1238,19 +1220,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Label>Está precisando de Pneus:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="tires-yes" 
-                            checked={callQuestions.tires.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('tires', 'needsProduct', checked as boolean)}
-                          />
+                          <Checkbox id="tires-yes" checked={callQuestions.tires.needsProduct} onCheckedChange={checked => updateCallQuestion('tires', 'needsProduct', checked as boolean)} />
                           <Label htmlFor="tires-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="tires-no" 
-                            checked={!callQuestions.tires.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('tires', 'needsProduct', !(checked as boolean))}
-                          />
+                          <Checkbox id="tires-no" checked={!callQuestions.tires.needsProduct} onCheckedChange={checked => updateCallQuestion('tires', 'needsProduct', !(checked as boolean))} />
                           <Label htmlFor="tires-no">NÃO</Label>
                         </div>
                       </div>
@@ -1261,19 +1235,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Label>Está precisando de Filtros:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="filters-yes" 
-                            checked={callQuestions.filters.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('filters', 'needsProduct', checked as boolean)}
-                          />
+                          <Checkbox id="filters-yes" checked={callQuestions.filters.needsProduct} onCheckedChange={checked => updateCallQuestion('filters', 'needsProduct', checked as boolean)} />
                           <Label htmlFor="filters-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="filters-no" 
-                            checked={!callQuestions.filters.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('filters', 'needsProduct', !(checked as boolean))}
-                          />
+                          <Checkbox id="filters-no" checked={!callQuestions.filters.needsProduct} onCheckedChange={checked => updateCallQuestion('filters', 'needsProduct', !(checked as boolean))} />
                           <Label htmlFor="filters-no">NÃO</Label>
                         </div>
                       </div>
@@ -1284,19 +1250,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Label>Está precisando de Baterias:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="batteries-yes" 
-                            checked={callQuestions.batteries.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('batteries', 'needsProduct', checked as boolean)}
-                          />
+                          <Checkbox id="batteries-yes" checked={callQuestions.batteries.needsProduct} onCheckedChange={checked => updateCallQuestion('batteries', 'needsProduct', checked as boolean)} />
                           <Label htmlFor="batteries-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="batteries-no" 
-                            checked={!callQuestions.batteries.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('batteries', 'needsProduct', !(checked as boolean))}
-                          />
+                          <Checkbox id="batteries-no" checked={!callQuestions.batteries.needsProduct} onCheckedChange={checked => updateCallQuestion('batteries', 'needsProduct', !(checked as boolean))} />
                           <Label htmlFor="batteries-no">NÃO</Label>
                         </div>
                       </div>
@@ -1307,19 +1265,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Label>Está precisando de Peças:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="parts-yes" 
-                            checked={callQuestions.parts.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('parts', 'needsProduct', checked as boolean)}
-                          />
+                          <Checkbox id="parts-yes" checked={callQuestions.parts.needsProduct} onCheckedChange={checked => updateCallQuestion('parts', 'needsProduct', checked as boolean)} />
                           <Label htmlFor="parts-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="parts-no" 
-                            checked={!callQuestions.parts.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('parts', 'needsProduct', !(checked as boolean))}
-                          />
+                          <Checkbox id="parts-no" checked={!callQuestions.parts.needsProduct} onCheckedChange={checked => updateCallQuestion('parts', 'needsProduct', !(checked as boolean))} />
                           <Label htmlFor="parts-no">NÃO</Label>
                         </div>
                       </div>
@@ -1330,19 +1280,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Label>Está precisando de Silo Bolsa:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="silobag-yes" 
-                            checked={callQuestions.silobag.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('silobag', 'needsProduct', checked as boolean)}
-                          />
+                          <Checkbox id="silobag-yes" checked={callQuestions.silobag.needsProduct} onCheckedChange={checked => updateCallQuestion('silobag', 'needsProduct', checked as boolean)} />
                           <Label htmlFor="silobag-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="silobag-no" 
-                            checked={!callQuestions.silobag.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('silobag', 'needsProduct', !(checked as boolean))}
-                          />
+                          <Checkbox id="silobag-no" checked={!callQuestions.silobag.needsProduct} onCheckedChange={checked => updateCallQuestion('silobag', 'needsProduct', !(checked as boolean))} />
                           <Label htmlFor="silobag-no">NÃO</Label>
                         </div>
                       </div>
@@ -1353,19 +1295,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Label>Está precisando de Disco:</Label>
                       <div className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="disk-yes" 
-                            checked={callQuestions.disk.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('disk', 'needsProduct', checked as boolean)}
-                          />
+                          <Checkbox id="disk-yes" checked={callQuestions.disk.needsProduct} onCheckedChange={checked => updateCallQuestion('disk', 'needsProduct', checked as boolean)} />
                           <Label htmlFor="disk-yes">SIM</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
-                            id="disk-no" 
-                            checked={!callQuestions.disk.needsProduct}
-                            onCheckedChange={(checked) => updateCallQuestion('disk', 'needsProduct', !(checked as boolean))}
-                          />
+                          <Checkbox id="disk-no" checked={!callQuestions.disk.needsProduct} onCheckedChange={checked => updateCallQuestion('disk', 'needsProduct', !(checked as boolean))} />
                           <Label htmlFor="disk-no">NÃO</Label>
                         </div>
                       </div>
@@ -1415,32 +1349,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="observations">Observações</Label>
-              <Textarea 
-                id="observations" 
-                value={task.observations} 
-                onChange={e => setTask(prev => ({
-                  ...prev,
-                  observations: e.target.value
-                }))} 
-                placeholder="Observações sobre a tarefa..." 
-                className="min-h-[80px]" 
-              />
+              <Textarea id="observations" value={task.observations} onChange={e => setTask(prev => ({
+              ...prev,
+              observations: e.target.value
+            }))} placeholder="Observações sobre a tarefa..." className="min-h-[80px]" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="salesValue">Valor de Venda/Oportunidade (R$)</Label>
                 <div className="relative">
-                  <Input 
-                    id="salesValue" 
-                    type="text" 
-                    value={calculateTotalSalesValue() ? new Intl.NumberFormat('pt-BR', { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
-                    }).format(calculateTotalSalesValue()) : '0,00'} 
-                    className="pl-8 bg-muted cursor-not-allowed"
-                    readOnly
-                  />
+                  <Input id="salesValue" type="text" value={calculateTotalSalesValue() ? new Intl.NumberFormat('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }).format(calculateTotalSalesValue()) : '0,00'} className="pl-8 bg-muted cursor-not-allowed" readOnly />
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1452,25 +1374,14 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 <div>
                   <Label className="text-base font-medium">Status da Oportunidade <span className="text-red-500">*</span></Label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                    <div 
-                      className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                        task.isProspect && task.salesConfirmed === undefined
-                          ? 'border-blue-500 bg-blue-50 shadow-lg' 
-                          : 'border-gray-200 bg-white hover:border-blue-300'
-                      }`}
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        isProspect: true,
-                        salesConfirmed: undefined
-                        // Manter salesValue preservado
-                      }))}
-                    >
+                    <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${task.isProspect && task.salesConfirmed === undefined ? 'border-blue-500 bg-blue-50 shadow-lg' : 'border-gray-200 bg-white hover:border-blue-300'}`} onClick={() => setTask(prev => ({
+                    ...prev,
+                    isProspect: true,
+                    salesConfirmed: undefined
+                    // Manter salesValue preservado
+                  }))}>
                       <div className="flex flex-col items-center text-center space-y-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          task.isProspect && task.salesConfirmed === undefined
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-100 text-gray-400'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.isProspect && task.salesConfirmed === undefined ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
                           👤
                         </div>
                         <div>
@@ -1478,31 +1389,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="text-xs text-muted-foreground">Oportunidade identificada</div>
                         </div>
                       </div>
-                      {task.isProspect && task.salesConfirmed === undefined && (
-                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      {task.isProspect && task.salesConfirmed === undefined && <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs">✓</span>
-                        </div>
-                      )}
+                        </div>}
                     </div>
                     
-                    <div 
-                      className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                        task.salesConfirmed === true
-                          ? 'border-green-500 bg-green-50 shadow-lg' 
-                          : 'border-gray-200 bg-white hover:border-green-300'
-                      }`}
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        salesConfirmed: true,
-                        isProspect: true
-                      }))}
-                    >
+                    <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${task.salesConfirmed === true ? 'border-green-500 bg-green-50 shadow-lg' : 'border-gray-200 bg-white hover:border-green-300'}`} onClick={() => setTask(prev => ({
+                    ...prev,
+                    salesConfirmed: true,
+                    isProspect: true
+                  }))}>
                       <div className="flex flex-col items-center text-center space-y-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          task.salesConfirmed === true
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-100 text-gray-400'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.salesConfirmed === true ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
                           💰
                         </div>
                         <div>
@@ -1510,31 +1408,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="text-xs text-muted-foreground">Negócio fechado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === true && (
-                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      {task.salesConfirmed === true && <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs">✓</span>
-                        </div>
-                      )}
+                        </div>}
                     </div>
                     
-                    <div 
-                      className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                        task.salesConfirmed === false
-                          ? 'border-red-500 bg-red-50 shadow-lg' 
-                          : 'border-gray-200 bg-white hover:border-red-300'
-                      }`}
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        salesConfirmed: false,
-                        isProspect: true
-                      }))}
-                    >
+                    <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${task.salesConfirmed === false ? 'border-red-500 bg-red-50 shadow-lg' : 'border-gray-200 bg-white hover:border-red-300'}`} onClick={() => setTask(prev => ({
+                    ...prev,
+                    salesConfirmed: false,
+                    isProspect: true
+                  }))}>
                       <div className="flex flex-col items-center text-center space-y-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                          task.salesConfirmed === false
-                            ? 'bg-red-500 text-white' 
-                            : 'bg-gray-100 text-gray-400'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.salesConfirmed === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
                           ❌
                         </div>
                         <div>
@@ -1542,173 +1427,120 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="text-xs text-muted-foreground">Negócio não realizado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === false && (
-                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                      {task.salesConfirmed === false && <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs">✓</span>
-                        </div>
-                      )}
+                        </div>}
                     </div>
                   </div>
                 </div>
 
                 {/* Campo de observação para venda perdida */}
-                {task.salesConfirmed === false && task.isProspect && (
-                  <div className="space-y-2">
+                {task.salesConfirmed === false && task.isProspect && <div className="space-y-2">
                     <Label htmlFor="lossReason">Motivo da Perda</Label>
-                    <select
-                      id="lossReason"
-                      value={task.prospectNotes || ''}
-                      onChange={(e) => setTask(prev => ({
-                        ...prev,
-                        prospectNotes: e.target.value
-                      }))}
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                    >
+                    <select id="lossReason" value={task.prospectNotes || ''} onChange={e => setTask(prev => ({
+                  ...prev,
+                  prospectNotes: e.target.value
+                }))} className="w-full px-3 py-2 border border-input rounded-md bg-background">
                       <option value="">Selecione o motivo</option>
                       <option value="Falta de peça">Falta de peça</option>
                       <option value="Preço">Preço</option>
                       <option value="Prazo">Prazo</option>
                     </select>
-                  </div>
-                )}
+                  </div>}
 
                 {/* Opções para venda realizada */}
-                {task.salesConfirmed === true && (
-                  <div className="space-y-4">
+                {task.salesConfirmed === true && <div className="space-y-4">
                     <div>
                       <Label className="text-sm font-medium">Tipo de Venda</Label>
                       <div className="space-y-2 mt-2">
                         <div className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            id="totalSale"
-                            name="saleType"
-                            value="total"
-                            checked={!task.prospectItems || task.prospectItems.length === 0}
-                            onChange={() => {
-                              // Calcular valor total automaticamente com base no checklist
-                              const totalValue = checklist.reduce((sum, item) => {
-                                return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-                              }, 0);
-                              
-                              setTask(prev => ({
-                                ...prev,
-                                prospectItems: [],
-                                salesValue: totalValue > 0 ? totalValue : prev.salesValue
-                              }));
-                            }}
-                            className="h-4 w-4"
-                          />
+                          <input type="radio" id="totalSale" name="saleType" value="total" checked={!task.prospectItems || task.prospectItems.length === 0} onChange={() => {
+                        // Calcular valor total automaticamente com base no checklist
+                        const totalValue = checklist.reduce((sum, item) => {
+                          return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                        }, 0);
+                        setTask(prev => ({
+                          ...prev,
+                          prospectItems: [],
+                          salesValue: totalValue > 0 ? totalValue : prev.salesValue
+                        }));
+                      }} className="h-4 w-4" />
                           <Label htmlFor="totalSale">Valor Total</Label>
                         </div>
                         
                          <div className="flex items-center space-x-2">
-                           <input
-                             type="radio"
-                             id="partialSale"
-                             name="saleType"
-                             value="partial"
-                             checked={task.prospectItems && task.prospectItems.length > 0}
-                             onChange={() => {
-                               console.log('DEBUG: Ativando venda parcial');
-                               
-                               // Pegar apenas produtos selecionados do checklist com seus valores
-                               const selectedProducts = checklist.filter(item => item.selected).map(item => ({
-                                 ...item,
-                                 selected: true, // Manter seleção inicial
-                                 quantity: item.quantity || 1,
-                                 price: item.price || 0
-                               }));
-                               
-                               console.log('DEBUG: Produtos selecionados para venda parcial:', selectedProducts);
-                               
-                               setTask(prev => ({
-                                 ...prev,
-                                 prospectItems: selectedProducts
-                               }));
-                             }}
-                             className="h-4 w-4"
-                           />
+                           <input type="radio" id="partialSale" name="saleType" value="partial" checked={task.prospectItems && task.prospectItems.length > 0} onChange={() => {
+                        console.log('DEBUG: Ativando venda parcial');
+
+                        // Pegar apenas produtos selecionados do checklist com seus valores
+                        const selectedProducts = checklist.filter(item => item.selected).map(item => ({
+                          ...item,
+                          selected: true,
+                          // Manter seleção inicial
+                          quantity: item.quantity || 1,
+                          price: item.price || 0
+                        }));
+                        console.log('DEBUG: Produtos selecionados para venda parcial:', selectedProducts);
+                        setTask(prev => ({
+                          ...prev,
+                          prospectItems: selectedProducts
+                        }));
+                      }} className="h-4 w-4" />
                            <Label htmlFor="partialSale">Valor Parcial</Label>
                          </div>
                       </div>
                     </div>
 
                     {/* Campo de valor total editável quando não há produtos selecionados */}
-                    {(!task.prospectItems || task.prospectItems.length === 0) && (
-                      <div className="space-y-2">
+                    {(!task.prospectItems || task.prospectItems.length === 0) && <div className="space-y-2">
                         <Label htmlFor="totalSaleValue">Valor Total da Venda (R$)</Label>
                         <div className="relative">
-                          <Input
-                            id="totalSaleValue"
-                            type="text"
-                            value={task.salesValue ? new Intl.NumberFormat('pt-BR', { 
-                              minimumFractionDigits: 2, 
-                              maximumFractionDigits: 2 
-                            }).format(task.salesValue) : ''}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '');
-                              const numericValue = parseFloat(value) / 100;
-                              setTask(prev => ({
-                                ...prev,
-                                salesValue: isNaN(numericValue) ? undefined : numericValue
-                              }));
-                            }}
-                            placeholder="0,00"
-                            className="pl-8"
-                          />
+                          <Input id="totalSaleValue" type="text" value={task.salesValue ? new Intl.NumberFormat('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }).format(task.salesValue) : ''} onChange={e => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      const numericValue = parseFloat(value) / 100;
+                      setTask(prev => ({
+                        ...prev,
+                        salesValue: isNaN(numericValue) ? undefined : numericValue
+                      }));
+                    }} placeholder="0,00" className="pl-8" />
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {checklist.some(item => item.selected) 
-                            ? "Valor calculado automaticamente com base nos produtos selecionados. Você pode editá-lo se necessário."
-                            : "Digite o valor total da venda realizada."
-                          }
+                          {checklist.some(item => item.selected) ? "Valor calculado automaticamente com base nos produtos selecionados. Você pode editá-lo se necessário." : "Digite o valor total da venda realizada."}
                         </p>
-                      </div>
-                    )}
+                      </div>}
 
                      {/* Campo de valor para venda parcial - calculado automaticamente */}
-                     {task.prospectItems && task.prospectItems.length > 0 && (
-                       <div className="space-y-2">
+                     {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-2">
                          <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
                          <div className="relative">
-                           <Input
-                             id="partialSaleValue"
-                             type="text"
-                             value={task.prospectItems ? task.prospectItems.reduce((sum, item) => {
-                               return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-                             }, 0) : 0 ? new Intl.NumberFormat('pt-BR', { 
-                               minimumFractionDigits: 2, 
-                               maximumFractionDigits: 2 
-                             }).format(task.prospectItems.reduce((sum, item) => {
-                               return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-                             }, 0)) : '0,00'}
-                             className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium"
-                             readOnly
-                           />
+                           <Input id="partialSaleValue" type="text" value={task.prospectItems ? task.prospectItems.reduce((sum, item) => {
+                      return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                    }, 0) : 0 ? new Intl.NumberFormat('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }).format(task.prospectItems.reduce((sum, item) => {
+                      return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                    }, 0)) : '0,00'} className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium" readOnly />
                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-green-600">R$</span>
                          </div>
                          <p className="text-xs text-green-600 font-medium">
                            ⚡ Valor calculado automaticamente com base nos produtos selecionados para venda parcial
                          </p>
-                       </div>
-                     )}
+                       </div>}
 
                      {/* Lista de produtos para venda parcial */}
-                     {task.prospectItems && task.prospectItems.length > 0 && (
-                       <div className="space-y-3">
+                     {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-3">
                          <Label className="text-sm font-medium">Produtos Vendidos</Label>
                           <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                            {task.prospectItems.map((item, index) => (
-                              <div key={item.id} className="flex items-center justify-between space-x-3 p-3 bg-muted/50 rounded-lg">
+                            {task.prospectItems.map((item, index) => <div key={item.id} className="flex items-center justify-between space-x-3 p-3 bg-muted/50 rounded-lg">
                                 <div className="flex items-center space-x-3">
-                                  <Checkbox
-                                    checked={item.selected}
-                                    onCheckedChange={(checked) => {
-                                      handleProspectItemChange(index, 'selected', checked as boolean);
-                                    }}
-                                  />
+                                  <Checkbox checked={item.selected} onCheckedChange={checked => {
+                          handleProspectItemChange(index, 'selected', checked as boolean);
+                        }} />
                                   <div className="flex-1">
                                     <div className="flex flex-col">
                                       <span className="text-sm font-medium">{item.name}</span>
@@ -1720,34 +1552,23 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                 <div className="flex items-center space-x-2 min-w-[200px]">
                                   <div className="flex flex-col space-y-1">
                                     <Label className="text-xs">Qtd</Label>
-                                    <Input
-                                      type="number"
-                                      min="0"
-                                      value={item.quantity || 1}
-                                      onChange={(e) => {
-                                        const quantity = parseInt(e.target.value) || 1;
-                                        handleProspectItemChange(index, 'quantity', quantity);
-                                      }}
-                                      className="w-16 h-8 text-xs"
-                                    />
+                                    <Input type="number" min="0" value={item.quantity || 1} onChange={e => {
+                            const quantity = parseInt(e.target.value) || 1;
+                            handleProspectItemChange(index, 'quantity', quantity);
+                          }} className="w-16 h-8 text-xs" />
                                   </div>
                                   
                                   <div className="flex flex-col space-y-1">
                                     <Label className="text-xs">Preço Unit.</Label>
                                     <div className="relative">
-                                      <Input
-                                        type="text"
-                                        value={item.price ? new Intl.NumberFormat('pt-BR', { 
-                                          minimumFractionDigits: 2, 
-                                          maximumFractionDigits: 2 
-                                        }).format(item.price) : '0,00'}
-                                        onChange={(e) => {
-                                          const value = e.target.value.replace(/\D/g, '');
-                                          const price = parseFloat(value) / 100;
-                                          handleProspectItemChange(index, 'price', isNaN(price) ? 0 : price);
-                                        }}
-                                        className="w-20 h-8 text-xs pl-4"
-                                      />
+                                      <Input type="text" value={item.price ? new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format(item.price) : '0,00'} onChange={e => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const price = parseFloat(value) / 100;
+                              handleProspectItemChange(index, 'price', isNaN(price) ? 0 : price);
+                            }} className="w-20 h-8 text-xs pl-4" />
                                       <span className="absolute left-1 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
                                     </div>
                                   </div>
@@ -1755,20 +1576,17 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                   <div className="flex flex-col space-y-1">
                                     <Label className="text-xs">Total</Label>
                                     <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
-                                      R$ {new Intl.NumberFormat('pt-BR', { 
-                                        minimumFractionDigits: 2, 
-                                        maximumFractionDigits: 2 
-                                      }).format((item.price || 0) * (item.quantity || 1))}
+                                      R$ {new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format((item.price || 0) * (item.quantity || 1))}
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              </div>)}
                           </div>
-                       </div>
-                     )}
-                  </div>
-                )}
+                       </div>}
+                  </div>}
               </div>
             </div>
           </CardContent>
