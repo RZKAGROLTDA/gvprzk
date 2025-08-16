@@ -75,8 +75,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusColor = (task: Task) => {
+    // Se é prospect e ainda não foi finalizado, usar cor de warning (mesmo do prospect)
+    if (task.isProspect && (task.salesConfirmed === null || task.salesConfirmed === undefined)) {
+      return 'warning';
+    }
+    
+    // Se é prospect e foi finalizado, usar cor de success
+    if (task.isProspect && (task.salesConfirmed === true || task.salesConfirmed === false)) {
+      return 'success';
+    }
+
+    // Para não-prospects, usar a lógica original
+    switch (task.status) {
       case 'completed':
         return 'success';
       case 'in_progress':
@@ -209,7 +220,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                  {/* Status */}
                 <div className="flex items-center gap-2">
                   <span className="font-medium">Status:</span>
-                  <Badge variant={getStatusColor(currentTask.status)}>
+                  <Badge variant={getStatusColor(currentTask)}>
                     {getStatusLabel(currentTask)}
                   </Badge>
                 </div>
