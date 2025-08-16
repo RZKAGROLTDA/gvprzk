@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -175,18 +176,18 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* CEP (Usuário que criou a tarefa) */}
+                {/* CEP - Usuário responsável pela tarefa */}
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">CEP:</span>
-                  <span>{(currentTask as any).profiles?.name || 'N/A'}</span>
+                  <span>{currentTask.responsible}</span>
                 </div>
 
-                {/* Filial */}
+                {/* Filial - Filial da tarefa */}
                 <div className="flex items-center gap-2">
                   <Building className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Filial:</span>
-                  <span>{(currentTask as any).profiles?.filiais?.nome || currentTask.filial || 'N/A'}</span>
+                  <span>{currentTask.filial || 'N/A'}</span>
                 </div>
 
                 {/* Nome do Contato */}
