@@ -366,10 +366,15 @@ const Tasks: React.FC = () => {
                     </div>
 
                     {task.salesValue && task.salesValue > 0 && (
-                      <div className="pl-13">
-                        <p className="text-sm font-medium text-success">
-                          Valor da Venda: R$ {task.salesValue.toLocaleString('pt-BR')}
+                      <div className="pl-13 space-y-1">
+                        <p className="text-sm font-medium text-primary">
+                          Valor da Oportunidade: R$ {task.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
+                        {task.salesConfirmed === true && (
+                          <p className="text-sm font-medium text-success">
+                            Venda Realizada: R$ {task.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
