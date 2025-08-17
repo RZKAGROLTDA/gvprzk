@@ -49,7 +49,7 @@ const Tasks: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [vendors, setVendors] = useState<{id: string, name: string}[]>([]);
   const [filiais, setFiliais] = useState<{id: string, nome: string}[]>([]);
-  const [loading, setLoading] = useState(true);
+  
 
   // Carregar vendedores e filiais registrados
   useEffect(() => {
@@ -71,30 +71,24 @@ const Tasks: React.FC = () => {
     loadData();
   }, []);
 
-  // Função otimizada para carregar tarefas com informações do usuário e filial
+  // Função simplificada para carregar tarefas sem JOIN problemático
   const loadTasksWithUserInfo = async () => {
     try {
-      console.log('Iniciando carregamento otimizado de tarefas...');
-      setLoading(true);
+      console.log('Carregando tarefas...');
       
-      // Uma única consulta mais eficiente usando JOIN
+      // Carregar apenas as tarefas sem JOIN problemático
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
-        .select(`
-          *,
-          profiles!tasks_created_by_fkey(name, filial_id, filiais(nome)),
-          products(*),
-          reminders(*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (tasksError) {
         console.error('Erro ao carregar tarefas:', tasksError);
-        // Fallback para dados do hook useTasks
+        // Usar tarefas do hook como fallback
         setTasks(onlineTasks.map(task => ({
           ...task,
           userName: task.responsible || 'N/A',
-          userFilial: task.filial || 'N/A'
+          userFilial: 'N/A'
         })));
         return;
       }
@@ -105,75 +99,53 @@ const Tasks: React.FC = () => {
         return;
       }
 
-      console.log('Tarefas carregadas com JOIN:', tasksData.length);
+      console.log('Tarefas carregadas:', tasksData.length);
 
-      // Mapear dados de forma mais eficiente
-      const tasksWithUserInfo: TaskWithUserInfo[] = tasksData.map(task => {
-        const profile = (task as any).profiles;
-        const userFilial = profile?.filiais?.nome || 'N/A';
-        const userName = profile?.name || task.responsible || 'N/A';
-        
-        return {
-          id: task.id,
-          name: task.name,
-          responsible: task.responsible,
-          client: task.client,
-          property: task.property || '',
-          filial: task.filial || '',
-          cpf: task.cpf || '',
-          email: task.email || '',
-          taskType: task.task_type || 'prospection',
-          checklist: task.products?.map((product: any) => ({
-            id: product.id,
-            name: product.name,
-            category: product.category,
-            selected: product.selected || false,
-            quantity: product.quantity || 0,
-            price: product.price || 0,
-            observations: product.observations || '',
-            photos: product.photos || [],
-          })) || [],
-          startDate: new Date(task.start_date),
-          endDate: new Date(task.end_date),
-          startTime: task.start_time,
-          endTime: task.end_time,
-          observations: task.observations || '',
-          priority: task.priority,
-          reminders: task.reminders?.map((reminder: any) => ({
-            id: reminder.id,
-            title: reminder.title,
-            description: reminder.description || '',
-            date: new Date(reminder.date),
-            time: reminder.time,
-            completed: reminder.completed || false,
-          })) || [],
-          photos: task.photos || [],
-          documents: task.documents || [],
-          checkInLocation: task.check_in_location ? {
-            lat: task.check_in_location.lat,
-            lng: task.check_in_location.lng,
-            timestamp: new Date(task.check_in_location.timestamp),
-          } : undefined,
-          initialKm: task.initial_km || 0,
-          finalKm: task.final_km || 0,
-          status: task.status,
-          createdBy: task.created_by,
-          createdAt: new Date(task.created_at),
-          updatedAt: new Date(task.updated_at),
-          isProspect: Boolean(task.is_prospect || task.sales_confirmed !== null || (task.sales_value && task.sales_value > 0)),
-          prospectNotes: task.prospect_notes || '',
-          prospectItems: task.products?.filter((p: any) => p.selected) || [],
-          salesValue: task.sales_value || 0,
-          salesConfirmed: task.sales_confirmed,
-          familyProduct: task.family_product || '',
-          equipmentQuantity: task.equipment_quantity || 0,
-          propertyHectares: task.property_hectares || 0,
-          equipmentList: task.equipment_list || [],
-          // Informações otimizadas do usuário e filial
-          userName,
-          userFilial
-        };
-      });
+      // Mapear dados de forma mais simples
+      const tasksWithUserInfo: TaskWithUserInfo[] = tasksData.map(task => ({
+        id: task.id,
+        name: task.name,
+        responsible: task.responsible,
+        client: task.client,
+        property: task.property || '',
+        filial: task.filial || '',
+        cpf: task.cpf || '',
+        email: task.email || '',
+        taskType: task.task_type || 'prospection',
+        checklist: [],
+        startDate: new Date(task.start_date),
+        endDate: new Date(task.end_date),
+        startTime: task.start_time,
+        endTime: task.end_time,
+        observations: task.observations || '',
+        priority: task.priority,
+        reminders: [],
+        photos: task.photos || [],
+        documents: task.documents || [],
+        checkInLocation: task.check_in_location ? {
+          lat: task.check_in_location.lat,
+          lng: task.check_in_location.lng,
+          timestamp: new Date(task.check_in_location.timestamp),
+        } : undefined,
+        initialKm: task.initial_km || 0,
+        finalKm: task.final_km || 0,
+        status: task.status,
+        createdBy: task.created_by,
+        createdAt: new Date(task.created_at),
+        updatedAt: new Date(task.updated_at),
+        isProspect: Boolean(task.is_prospect || task.sales_confirmed !== null || (task.sales_value && task.sales_value > 0)),
+        prospectNotes: task.prospect_notes || '',
+        prospectItems: [],
+        salesValue: task.sales_value || 0,
+        salesConfirmed: task.sales_confirmed,
+        familyProduct: task.family_product || '',
+        equipmentQuantity: task.equipment_quantity || 0,
+        propertyHectares: task.property_hectares || 0,
+        equipmentList: task.equipment_list || [],
+        // Usar informações disponíveis
+        userName: task.responsible || 'N/A',
+        userFilial: 'N/A'
+      }));
 
       console.log('Processamento concluído:', tasksWithUserInfo.length, 'tarefas');
       setTasks(tasksWithUserInfo);
@@ -183,28 +155,14 @@ const Tasks: React.FC = () => {
       setTasks(onlineTasks.map(task => ({
         ...task,
         userName: task.responsible || 'N/A',
-        userFilial: task.filial || 'N/A'
+        userFilial: 'N/A'
       })));
-    } finally {
-      setLoading(false);
     }
   };
 
   // Carregar tarefas quando componente montar
   useEffect(() => {
-    if (onlineTasks.length > 0) {
-      loadTasksWithUserInfo();
-    } else {
-      // Fallback para tarefas offline
-      setLoading(true);
-      const offlineTasks = getOfflineTasks();
-      setTasks(offlineTasks.map(task => ({
-        ...task,
-        userName: task.responsible || 'N/A',
-        userFilial: task.filial || 'N/A'
-      })));
-      setLoading(false);
-    }
+    loadTasksWithUserInfo();
   }, [onlineTasks]);
 
   // Configurar realtime listener separadamente
@@ -379,17 +337,7 @@ const Tasks: React.FC = () => {
 
       {/* Tasks List */}
       <div className="space-y-4">
-        {loading ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <h3 className="text-lg font-semibold mb-2">Carregando tarefas...</h3>
-              <p className="text-muted-foreground">
-                Aguarde enquanto buscamos as informações das tarefas
-              </p>
-            </CardContent>
-          </Card>
-        ) : filteredTasks.length === 0 && tasks.length === 0 ? (
+        {filteredTasks.length === 0 && tasks.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <CheckSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
