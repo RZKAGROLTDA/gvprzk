@@ -64,7 +64,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     // Garantir que isProspect seja consistente
     isProspect: Boolean(supabaseTask.is_prospect || supabaseTask.sales_confirmed !== null || (supabaseTask.sales_value && supabaseTask.sales_value > 0)),
     prospectNotes: supabaseTask.prospect_notes || '',
-    prospectItems: supabaseTask.products?.filter((p: any) => p.selected) || [],
+    prospectItems: supabaseTask.products || [], // Carregar TODOS os produtos, não apenas os selecionados
     salesValue: supabaseTask.sales_value || 0,
     salesConfirmed: supabaseTask.sales_confirmed,
     familyProduct: supabaseTask.family_product || '',

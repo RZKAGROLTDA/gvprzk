@@ -60,15 +60,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesConfirmed: task.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
-        // Garantir que os prospectItems mantenham os valores salvos
-        prospectItems: task.prospectItems && task.prospectItems.length > 0 
-          ? task.prospectItems.map(item => ({
-              ...item,
-              quantity: item.quantity || 1,
-              price: item.price || 0,
-              selected: item.selected !== undefined ? item.selected : false
-            }))
-          : []
+        // Carregar os prospectItems com os valores salvos exatos
+        prospectItems: task.prospectItems?.map(item => ({
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          quantity: item.quantity || 0,
+          price: item.price || 0,
+          selected: item.selected || false,
+          observations: item.observations || '',
+          photos: item.photos || []
+        })) || []
       });
     }
   }, [task]);
