@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X, Download, RotateCcw } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X, Download, RotateCcw, Phone, Wrench } from 'lucide-react';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
@@ -47,6 +47,23 @@ const CreateTask: React.FC = () => {
     }
   };
 
+  // Estado para controlar o tipo de tarefa selecionado
+  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist'>(
+    getTaskCategoryFromUrl(urlTaskType)
+  );
+
+  // Função para alterar o tipo de tarefa
+  const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist') => {
+    setSelectedTaskType(newType);
+    setTaskCategory(newType);
+    
+    // Atualizar o taskType no estado da tarefa
+    setTask(prev => ({
+      ...prev,
+      taskType: getTaskTypeFromCategory(newType)
+    }));
+  };
+
   // Função para obter o título da tarefa
   const getTaskTitle = (category: 'field-visit' | 'call' | 'workshop-checklist'): string => {
     switch (category) {
@@ -60,7 +77,7 @@ const CreateTask: React.FC = () => {
         return 'Nova Tarefa';
     }
   };
-  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(getTaskCategoryFromUrl(urlTaskType));
+  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(selectedTaskType);
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
@@ -959,9 +976,58 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   };
   return <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">{getTaskTitle(taskCategory)}</h1>
-        <p className="text-muted-foreground text-sm sm:text-base">
-          {taskCategory === 'field-visit' ? 'Criar uma nova visita à fazenda' : taskCategory === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
+        <h1 className="text-2xl sm:text-3xl font-bold">Nova Tarefa</h1>
+        
+        {/* Seletor de Tipo de Tarefa */}
+        <div className="mt-6">
+          <p className="text-muted-foreground text-sm sm:text-base mb-4">Selecione o tipo de tarefa que deseja criar:</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Button
+              type="button"
+              variant={selectedTaskType === 'field-visit' ? 'default' : 'outline'}
+              className="h-auto p-6 flex-col gap-3"
+              onClick={() => handleTaskTypeChange('field-visit')}
+            >
+              <MapPin className="h-8 w-8" />
+              <div className="text-center">
+                <div className="font-semibold">Visita à Fazenda</div>
+                <div className="text-sm opacity-80">Prospecção de clientes</div>
+              </div>
+            </Button>
+            
+            <Button
+              type="button"
+              variant={selectedTaskType === 'call' ? 'default' : 'outline'}
+              className="h-auto p-6 flex-col gap-3"
+              onClick={() => handleTaskTypeChange('call')}
+            >
+              <Phone className="h-8 w-8" />
+              <div className="text-center">
+                <div className="font-semibold">Ligação</div>
+                <div className="text-sm opacity-80">Contato telefônico</div>
+              </div>
+            </Button>
+            
+            <Button
+              type="button"
+              variant={selectedTaskType === 'workshop-checklist' ? 'default' : 'outline'}
+              className="h-auto p-6 flex-col gap-3"
+              onClick={() => handleTaskTypeChange('workshop-checklist')}
+            >
+              <Wrench className="h-8 w-8" />
+              <div className="text-center">
+                <div className="font-semibold">Checklist Oficina</div>
+                <div className="text-sm opacity-80">Verificação de produtos</div>
+              </div>
+            </Button>
+          </div>
+        </div>
+
+        <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
+          {getTaskTitle(selectedTaskType)}
+        </h2>
+        <p className="text-muted-foreground text-sm sm:text-base mb-4">
+          {selectedTaskType === 'field-visit' ? 'Criar uma nova visita à fazenda' : selectedTaskType === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
         </p>
       </div>
 
