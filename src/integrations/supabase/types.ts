@@ -296,6 +296,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_directory_cache: {
+        Row: {
+          approval_status: string
+          email: string | null
+          filial_id: string | null
+          filial_nome: string | null
+          id: string
+          last_updated: string | null
+          name: string
+          profile_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          approval_status: string
+          email?: string | null
+          filial_id?: string | null
+          filial_nome?: string | null
+          id?: string
+          last_updated?: string | null
+          name: string
+          profile_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          approval_status?: string
+          email?: string | null
+          filial_id?: string | null
+          filial_nome?: string | null
+          id?: string
+          last_updated?: string | null
+          name?: string
+          profile_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_invitations: {
         Row: {
           created_at: string
@@ -381,6 +420,10 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      refresh_user_directory_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       update_user_role_secure: {
         Args: { new_role: string; target_user_id: string }
