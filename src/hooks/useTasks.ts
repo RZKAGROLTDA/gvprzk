@@ -124,7 +124,7 @@ export const useTasks = () => {
       prospectNotes: taskData.prospectNotes || '',
       prospectItems: [],
       salesValue: taskData.salesValue || 0,
-      salesConfirmed: taskData.salesConfirmed || false
+      salesConfirmed: taskData.salesConfirmed
     };
 
     if (isOnline) {
@@ -157,7 +157,7 @@ export const useTasks = () => {
             is_prospect: standardizedTaskData.isProspect || false,
             prospect_notes: standardizedTaskData.prospectNotes || '',
             sales_value: standardizedTaskData.salesValue || 0,
-            sales_confirmed: standardizedTaskData.salesConfirmed || false
+            sales_confirmed: standardizedTaskData.salesConfirmed
           })
           .select()
           .single();
