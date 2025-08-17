@@ -92,12 +92,29 @@ export const Users: React.FC = () => {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      const { error } = await supabase
+      // First, get the target user's profile using their user_id from the profiles table
+      const { data: targetProfile, error: profileError } = await supabase
         .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
+        .select('user_id')
+        .eq('id', userId)
+        .single();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // Use RPC function for secure role updates with server-side authorization
+      const { error } = await supabase.rpc('update_user_role_secure', {
+        target_user_id: targetProfile.user_id,
+        new_role: newRole
+      });
+
+      if (error) {
+        if (error.message.includes('insufficient privilege')) {
+          toast.error('Você não tem permissão para alterar este usuário');
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       toast.success('Permissão atualizada com sucesso');
       loadData();
