@@ -250,9 +250,12 @@ const Tasks: React.FC = () => {
   };
 
   const getProspectStatus = (task: TaskWithUserInfo) => {
-    if (!task.isProspect) return null;
+    // Só mostra badge se tiver informações de venda preenchidas
+    const hasProspectInfo = task.salesValue && task.salesValue > 0;
     
-    // Match the form completion behavior exactly
+    if (!hasProspectInfo) return null;
+    
+    // Se tem salesConfirmed definido, mostra o resultado
     if (task.salesConfirmed === true) {
       return { 
         type: 'ganho',
@@ -266,7 +269,7 @@ const Tasks: React.FC = () => {
         variant: 'destructive' as const
       };
     } else {
-      // salesConfirmed is null or undefined - this is a prospect in progress
+      // Tem valor de venda mas salesConfirmed não foi definido ainda
       return { 
         type: 'prospect',
         label: 'Prospect', 
