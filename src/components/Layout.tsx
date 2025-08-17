@@ -24,10 +24,6 @@ export const Layout: React.FC<LayoutProps> = ({
     await signOut();
   };
   const navItems = [{
-    path: '/management',
-    icon: Settings,
-    label: 'Dados Gerenciais'
-  }, {
     path: '/create-task',
     icon: LayoutDashboard,
     label: 'Nova Tarefa'
