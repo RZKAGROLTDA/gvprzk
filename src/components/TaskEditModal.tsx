@@ -44,6 +44,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
   useEffect(() => {
     if (task) {
+      console.log('Carregando task no modal:', task);
+      console.log('prospectItems da task:', task.prospectItems);
+      
       setEditedTask({
         id: task.id,
         name: task.name,
@@ -57,7 +60,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesConfirmed: task.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
-        prospectItems: task.prospectItems || []
+        // Garantir que os prospectItems mantenham os valores salvos
+        prospectItems: task.prospectItems && task.prospectItems.length > 0 
+          ? task.prospectItems.map(item => ({
+              ...item,
+              quantity: item.quantity || 1,
+              price: item.price || 0,
+              selected: item.selected !== undefined ? item.selected : false
+            }))
+          : []
       });
     }
   }, [task]);
