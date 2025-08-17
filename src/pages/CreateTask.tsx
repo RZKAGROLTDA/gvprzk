@@ -132,13 +132,12 @@ const CreateTask: React.FC = () => {
     salesConfirmed: undefined
   });
 
-  // Definir filial e responsável automaticamente quando o perfil carregar
+  // Definir filial automaticamente quando o perfil carregar
   useEffect(() => {
     if (profile) {
       setTask(prev => ({
         ...prev,
-        filial: profile.filial_id || '',
-        responsible: profile.name || ''
+        filial: profile.filial_id || ''
       }));
     }
   }, [profile]);
