@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +11,11 @@ import { TaskLocationInfo } from './TaskLocationInfo';
 import { TaskReportExporter } from './TaskReportExporter';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialName } from '@/lib/taskStandardization';
-
 interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   task,
   open,
@@ -61,9 +58,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       supabase.removeChannel(channel);
     };
   }, [task?.id, open]);
-
   if (!currentTask) return null;
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -76,13 +71,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return 'secondary';
     }
   };
-
   const getStatusColor = (task: Task) => {
     // Se é prospect e ainda não foi finalizado, usar cor de warning (mesmo do prospect)
     if (task.isProspect && (task.salesConfirmed === null || task.salesConfirmed === undefined)) {
       return 'warning';
     }
-    
+
     // Se é prospect e foi finalizado, usar cor de success
     if (task.isProspect && (task.salesConfirmed === true || task.salesConfirmed === false)) {
       return 'success';
@@ -100,13 +94,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return 'secondary';
     }
   };
-
   const getStatusLabel = (task: Task) => {
     // Se é prospect e ainda não foi finalizado (null/undefined), mostrar Em Andamento
     if (task.isProspect && (task.salesConfirmed === null || task.salesConfirmed === undefined)) {
       return 'Em Andamento';
     }
-    
+
     // Se é prospect e foi finalizado (true ou false), mostrar Concluído
     if (task.isProspect && (task.salesConfirmed === true || task.salesConfirmed === false)) {
       return 'Concluído';
@@ -126,7 +119,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return task.status;
     }
   };
-
   const getPriorityLabel = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -139,7 +131,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         return priority;
     }
   };
-
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -152,8 +143,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         <div className="space-y-6">
           {/* Status do Formulário */}
           <div className="flex items-center gap-4">
-            {currentTask.isProspect && (
-              <>
+            {currentTask.isProspect && <>
                 {currentTask.salesConfirmed === true && <Badge variant="success" className="text-sm">
                     Venda Realizada
                   </Badge>}
@@ -163,8 +153,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 {(currentTask.salesConfirmed === null || currentTask.salesConfirmed === undefined) && <Badge variant="warning" className="text-sm">
                     Prospect
                   </Badge>}
-              </>
-            )}
+              </>}
           </div>
 
           {/* Informações Principais - Reorganizadas */}
@@ -183,7 +172,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Nome do Contato:</span>
+                    <span className="font-medium">Contato:</span>
                     <span>{currentTask.client}</span>
                   </div>
 
@@ -193,27 +182,25 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <span>{currentTask.client}</span>
                   </div>
 
-                  {currentTask.property && (
-                    <div className="flex items-center gap-2">
+                  {currentTask.property && <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Propriedade:</span>
                       <span>{currentTask.property}</span>
-                    </div>
-                  )}
+                    </div>}
 
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Data do Relatório:</span>
-                    <span>{format(currentTask.startDate, "PPP", { locale: ptBR })}</span>
+                    <span>{format(currentTask.startDate, "PPP", {
+                      locale: ptBR
+                    })}</span>
                   </div>
 
-                  {currentTask.email && (
-                    <div className="flex items-center gap-2">
+                  {currentTask.email && <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Email:</span>
                       <span>{currentTask.email}</span>
-                    </div>
-                  )}
+                    </div>}
                 </div>
 
                 {/* Coluna Direita - Informações RZKAgro */}
