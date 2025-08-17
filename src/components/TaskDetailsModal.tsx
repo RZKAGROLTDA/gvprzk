@@ -191,13 +191,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <span>{currentTask.cpf || 'Não informado'}</span>
                 </div>
 
-                {/* Vendedor (Responsável) */}
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Vendedor:</span>
-                  <span>{currentTask.responsible}</span>
-                </div>
-
                 {/* Cliente */}
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
