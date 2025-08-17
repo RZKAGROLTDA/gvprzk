@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import toast from 'react-hot-toast';
 import { createTaskWithFilialSnapshot, resolveFilialName } from '@/lib/taskStandardization';
 
 interface TaskEditModalProps {
@@ -94,7 +94,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     
     setLoading(true);
     try {
-      console.log('Salvando tarefa com dados:', editedTask);
+      console.log('🔍 DEBUG: Estado inicial do editedTask:', editedTask);
+      console.log('🔍 DEBUG: salesConfirmed valor:', editedTask.salesConfirmed, 'tipo:', typeof editedTask.salesConfirmed);
+      console.log('🔍 DEBUG: isProspect valor:', editedTask.isProspect);
       
       // Criar dados padronizados com snapshot de filial atualizado
       const standardizedData = await createTaskWithFilialSnapshot({
@@ -102,16 +104,24 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         filial: task.filial // Manter filial original
       });
       
+      console.log('🔍 DEBUG: Dados padronizados:', standardizedData);
+      
       // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
       let finalStatus = editedTask.status;
       if (editedTask.salesConfirmed === true || editedTask.salesConfirmed === false) {
         finalStatus = 'completed';
       }
 
-      // Garantir que isProspect seja sempre verdadeiro quando há informações de prospect
-      const finalIsProspect = editedTask.isProspect || 
-                             editedTask.salesConfirmed !== null || 
-                             (editedTask.salesValue && editedTask.salesValue > 0);
+      // Lógica corrigida para isProspect: deve ser true se é um prospect ativo
+      const finalIsProspect = editedTask.isProspect === true;
+
+      // Preservar o valor exato de salesConfirmed - NUNCA converter null para false
+      let finalSalesConfirmed = editedTask.salesConfirmed;
+      
+      console.log('🔍 DEBUG: Valores finais antes do update:');
+      console.log('  - finalSalesConfirmed:', finalSalesConfirmed, 'tipo:', typeof finalSalesConfirmed);
+      console.log('  - finalIsProspect:', finalIsProspect);
+      console.log('  - finalStatus:', finalStatus);
 
       const updateData = {
         name: editedTask.name,
@@ -122,13 +132,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         priority: editedTask.priority,
         status: finalStatus,
         sales_value: editedTask.salesValue || 0,
-        sales_confirmed: editedTask.salesConfirmed,
+        sales_confirmed: finalSalesConfirmed, // Preservar valor exato
         is_prospect: finalIsProspect,
         prospect_notes: editedTask.prospectNotes || '',
         updated_at: new Date().toISOString()
       };
 
-      console.log('Dados sendo enviados para Supabase:', updateData);
+      console.log('🔍 DEBUG: Dados sendo enviados para Supabase:', updateData);
+      console.log('🔍 DEBUG: sales_confirmed no updateData:', updateData.sales_confirmed, 'tipo:', typeof updateData.sales_confirmed);
 
       const { error } = await supabase
         .from('tasks')
@@ -142,21 +153,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       console.log('Tarefa atualizada com sucesso no banco de dados');
 
-      toast({
-        title: "✅ Tarefa Atualizada",
-        description: "As alterações foram salvas com sucesso!"
-      });
+      toast.success("✅ Tarefa Atualizada - As alterações foram salvas com sucesso!");
 
       // Recarregar os dados para garantir sincronização
       onTaskUpdate();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Erro ao atualizar tarefa:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar as alterações",
-        variant: "destructive"
-      });
+      toast.error("❌ Erro - Não foi possível salvar as alterações");
     } finally {
       setLoading(false);
     }
