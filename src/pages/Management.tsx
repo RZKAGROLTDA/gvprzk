@@ -124,6 +124,135 @@ const Management: React.FC = () => {
   const getProgressPercentage = (current: number, target: number) => {
     return target > 0 ? Math.min(current / target * 100, 100) : 0;
   };
-  return;
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Settings className="h-6 w-6" />
+        <h1 className="text-2xl font-bold">Gestão</h1>
+      </div>
+
+      {/* Metas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Metas e Objetivos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {showNewGoalForm && (
+              <Card className="p-4 border-dashed">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Título da Meta</Label>
+                    <Input
+                      id="title"
+                      value={newGoal.title}
+                      onChange={(e) => setNewGoal({...newGoal, title: e.target.value})}
+                      placeholder="Ex: Meta de Visitas Mensais"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      value={newGoal.description}
+                      onChange={(e) => setNewGoal({...newGoal, description: e.target.value})}
+                      placeholder="Descreva a meta..."
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="target">Valor Alvo</Label>
+                    <Input
+                      id="target"
+                      type="number"
+                      value={newGoal.target_value}
+                      onChange={(e) => setNewGoal({...newGoal, target_value: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleCreateGoal}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar Meta
+                    </Button>
+                    <Button variant="outline" onClick={() => setShowNewGoalForm(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
+            
+            {!showNewGoalForm && (
+              <Button onClick={() => setShowNewGoalForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Meta
+              </Button>
+            )}
+
+            <div className="grid gap-4">
+              {goals.map((goal) => (
+                <Card key={goal.id}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold">{goal.title}</h3>
+                      {getStatusBadge(goal.status)}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">{goal.description}</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Progresso</span>
+                        <span>{goal.current_value} / {goal.target_value}</span>
+                      </div>
+                      <div className="w-full bg-secondary rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full transition-all"
+                          style={{ width: `${getProgressPercentage(goal.current_value, goal.target_value)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Relatórios */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Relatórios Gerenciais
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            {reports.map((report) => (
+              <Card key={report.id}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{report.title}</h3>
+                      <p className="text-sm text-muted-foreground">{report.description}</p>
+                      <Badge variant="outline" className="mt-2">
+                        {report.type}
+                      </Badge>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Visualizar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 export default Management;
