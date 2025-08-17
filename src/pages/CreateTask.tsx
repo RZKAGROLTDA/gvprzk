@@ -90,6 +90,8 @@ const CreateTask: React.FC = () => {
     client: '',
     property: '',
     filial: '',
+    cpf: '',
+    email: '',
     taskType: getTaskTypeFromCategory(getTaskCategoryFromUrl(urlTaskType)),
     priority: 'medium',
     observations: '',
@@ -107,12 +109,13 @@ const CreateTask: React.FC = () => {
     salesConfirmed: undefined
   });
 
-  // Definir apenas a filial automaticamente quando o perfil carregar
+  // Definir filial e responsável automaticamente quando o perfil carregar
   useEffect(() => {
     if (profile) {
       setTask(prev => ({
         ...prev,
-        filial: profile.filial_id || ''
+        filial: profile.filial_id || '',
+        responsible: profile.name || ''
       }));
     }
   }, [profile]);
@@ -457,7 +460,7 @@ const CreateTask: React.FC = () => {
         setTask(prev => ({
           ...prev,
           client: lastTask.client || '',
-          responsible: lastTask.responsible || '',
+          responsible: profile?.name || lastTask.responsible || '',
           property: lastTask.property || '',
           observations: hectares ? `Hectares: ${hectares}` : ''
         }));
@@ -473,7 +476,7 @@ const CreateTask: React.FC = () => {
           setTask(prev => ({
             ...prev,
             client: data.client || '',
-            responsible: data.responsible || '',
+            responsible: profile?.name || data.responsible || '',
             property: data.property || '',
             observations: data.hectares ? `Hectares: ${data.hectares}` : ''
           }));
@@ -1016,20 +1019,42 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email do Cliente</Label>
                 <Input id="email" type="email" value={task.email || ''} onChange={e => setTask(prev => ({
                 ...prev,
                 email: e.target.value
               }))} placeholder="email@exemplo.com" />
               </div>
 
-              {taskCategory === 'field-visit' && <div className="space-y-2">
-                  <Label htmlFor="property">Nome da Propriedade</Label>
-                  <Input id="property" value={task.property} onChange={e => setTask(prev => ({
-                ...prev,
-                property: e.target.value
-              }))} placeholder="Propriedade da visita" />
-                </div>}
+              <div className="space-y-2">
+                <Label htmlFor="property">Nome da Propriedade</Label>
+                <Input id="property" value={task.property} onChange={e => setTask(prev => ({
+              ...prev,
+              property: e.target.value
+            }))} placeholder="Nome da propriedade" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="vendor">Vendedor</Label>
+                <Input 
+                  id="vendor" 
+                  value={profile?.name || ''} 
+                  disabled
+                  placeholder="Nome do vendedor" 
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="filial">Filial</Label>
+                <Input 
+                  id="filial" 
+                  value={profile?.filial_nome || 'Não informado'} 
+                  disabled
+                  placeholder="Filial" 
+                  className="bg-muted"
+                />
+              </div>
 
               {taskCategory === 'call' && <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>

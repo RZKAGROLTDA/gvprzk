@@ -11,6 +11,7 @@ import { Task } from '@/types/task';
 import { TaskLocationInfo } from './TaskLocationInfo';
 import { TaskReportExporter } from './TaskReportExporter';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveFilialName } from '@/lib/taskStandardization';
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -176,26 +177,42 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* CEP - Usuário responsável pela tarefa */}
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">CEP:</span>
-                  <span>{currentTask.responsible}</span>
-                </div>
-
-                {/* Filial - Filial da tarefa */}
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Filial:</span>
-                  <span>{currentTask.filial || 'N/A'}</span>
-                </div>
-
                 {/* Nome do Contato */}
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Contato:</span>
+                  <span className="font-medium">Nome do Contato:</span>
                   <span>{currentTask.client}</span>
                 </div>
+
+                {/* CPF */}
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">CPF:</span>
+                  <span>{currentTask.cpf || 'Não informado'}</span>
+                </div>
+
+                {/* Vendedor (Responsável) */}
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Vendedor:</span>
+                  <span>{currentTask.responsible}</span>
+                </div>
+
+                {/* Cliente */}
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Cliente:</span>
+                  <span>{currentTask.client}</span>
+                </div>
+
+                {/* Email do Cliente */}
+                {currentTask.email && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Email:</span>
+                    <span>{currentTask.email}</span>
+                  </div>
+                )}
 
                 {/* Nome da Propriedade */}
                 {currentTask.property && (
@@ -205,6 +222,13 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <span>{currentTask.property}</span>
                   </div>
                 )}
+
+                {/* Filial - sempre mostrar nome, não UUID */}
+                <div className="flex items-center gap-2">
+                  <Building className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Filial:</span>
+                  <span>{resolveFilialName(currentTask.filial) || 'Não informado'}</span>
+                </div>
 
                 {/* Tipo */}
                 {currentTask.taskType && (
@@ -227,7 +251,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 {/* Data */}
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Data:</span>
+                  <span className="font-medium">Data Relatório:</span>
                   <span>{format(currentTask.startDate, "PPP", { locale: ptBR })}</span>
                 </div>
 

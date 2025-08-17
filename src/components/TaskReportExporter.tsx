@@ -8,6 +8,7 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
+import { mapTaskToStandardFields, mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -64,6 +65,10 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
     try {
       setIsExporting(true);
       
+      // Mapear dados para formato padronizado
+      const standardData = await mapTaskToStandardFields(task);
+      const salesStatus = mapSalesStatus(task);
+      
       const doc = new jsPDF();
       let yPosition = 20;
 
@@ -115,7 +120,7 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       doc.text(`${task.startTime} - ${task.endTime}`, 150, yPosition);
       yPosition += 15;
 
-      // Seção - Dados do Cliente
+      // Seção - Dados Padronizados do Cliente
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('DADOS DO CLIENTE', 20, yPosition);
@@ -123,18 +128,52 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text('Cliente:', 20, yPosition);
+      doc.text('Nome do Contato:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(task.client, 50, yPosition);
+      doc.text(standardData.nome_contato, 70, yPosition);
       yPosition += 8;
 
-      if (task.property) {
+      if (standardData.cpf) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('CPF:', 20, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(standardData.cpf, 45, yPosition);
+        yPosition += 8;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Cliente:', 20, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(standardData.cliente_nome, 50, yPosition);
+      yPosition += 8;
+
+      if (standardData.cliente_email) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Email:', 20, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(standardData.cliente_email, 45, yPosition);
+        yPosition += 8;
+      }
+
+      if (standardData.propriedade_nome) {
         doc.setFont('helvetica', 'bold');
         doc.text('Propriedade:', 20, yPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(task.property, 60, yPosition);
+        doc.text(standardData.propriedade_nome, 60, yPosition);
         yPosition += 8;
       }
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Vendedor:', 20, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(standardData.vendedor_nome, 55, yPosition);
+      yPosition += 8;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Filial:', 20, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(standardData.filial_nome, 45, yPosition);
+      yPosition += 8;
 
       doc.setFont('helvetica', 'bold');
       doc.text('Prioridade:', 20, yPosition);
@@ -228,18 +267,16 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
         yPosition += 8;
 
         doc.setFont('helvetica', 'bold');
-        doc.text('Status da Venda:', 20, yPosition);
+        doc.text('Status da Oportunidade:', 20, yPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(task.salesConfirmed ? 'Confirmada' : 'Pendente', 75, yPosition);
+        doc.text(getStatusLabel(salesStatus), 85, yPosition);
         yPosition += 8;
 
-        if (task.isProspect) {
-          doc.setFont('helvetica', 'bold');
-          doc.text('Tipo:', 20, yPosition);
-          doc.setFont('helvetica', 'normal');
-          doc.text('Prospect', 45, yPosition);
-          yPosition += 8;
-        }
+        doc.setFont('helvetica', 'bold');
+        doc.text('Valor Confirmado:', 20, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(standardData.oportunidades.confirmada ? 'Sim' : 'Não', 75, yPosition);
+        yPosition += 8;
 
         if (task.prospectNotes) {
           yPosition += 5;

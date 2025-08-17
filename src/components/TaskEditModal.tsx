@@ -144,17 +144,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-responsible">Responsável</Label>
+              <Label htmlFor="edit-responsible">Vendedor/Responsável</Label>
               <Input id="edit-responsible" value={editedTask.responsible || ''} onChange={e => setEditedTask(prev => ({
               ...prev,
               responsible: e.target.value
-            }))} placeholder="Nome do responsável" />
+            }))} placeholder="Nome do vendedor" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-client">Cliente</Label>
+              <Label htmlFor="edit-client">Nome do Contato/Cliente</Label>
               <Input id="edit-client" value={editedTask.client || ''} onChange={e => setEditedTask(prev => ({
               ...prev,
               client: e.target.value
@@ -162,11 +162,48 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-property">Propriedade</Label>
+              <Label htmlFor="edit-property">Nome da Propriedade</Label>
               <Input id="edit-property" value={editedTask.property || ''} onChange={e => setEditedTask(prev => ({
               ...prev,
               property: e.target.value
             }))} placeholder="Nome da propriedade" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-cpf">CPF</Label>
+              <Input 
+                id="edit-cpf" 
+                value={task?.cpf || ''} 
+                disabled
+                placeholder="CPF do cliente" 
+                className="bg-muted"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email do Cliente</Label>
+              <Input 
+                id="edit-email" 
+                value={task?.email || ''} 
+                disabled
+                placeholder="Email do cliente" 
+                className="bg-muted"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-filial">Filial</Label>
+              <Input 
+                id="edit-filial" 
+                value={resolveFilialName(task?.filial) || 'Não informado'} 
+                disabled
+                placeholder="Filial" 
+                className="bg-muted"
+              />
             </div>
           </div>
 
