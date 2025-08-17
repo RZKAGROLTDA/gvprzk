@@ -150,10 +150,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-client">Nome do Contato/Cliente</Label>
-              <Input id="edit-client" value={editedTask.client || ''} onChange={e => setEditedTask(prev => ({
-              ...prev,
-              client: e.target.value
-            }))} placeholder="Nome do cliente" />
+              <Input 
+                id="edit-client" 
+                value={task?.client || ''} 
+                disabled
+                placeholder="Nome do cliente" 
+                className="bg-muted"
+              />
             </div>
 
             <div className="space-y-2">
