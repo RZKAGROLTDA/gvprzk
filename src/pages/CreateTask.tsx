@@ -876,8 +876,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         description: isOnline ? "Tarefa salva com sucesso no servidor!" : "Tarefa salva offline - será sincronizada quando conectar!"
       });
 
-      // Redirecionar para a página de tarefas
-      navigate('/tasks');
+      // Redirecionar para nova tarefa
+      navigate('/create-task');
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
       toast({
