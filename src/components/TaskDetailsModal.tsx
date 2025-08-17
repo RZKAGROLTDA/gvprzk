@@ -176,9 +176,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Coluna Esquerda - Informações do Cliente */}
-                <div className="space-y-4">
+                <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
                   <h4 className="font-semibold text-primary border-b pb-2">Informações do Cliente</h4>
                   
                   <div className="flex items-center gap-2">
@@ -216,9 +216,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   )}
                 </div>
 
-                {/* Coluna Direita - Informações do Sistema */}
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-primary border-b pb-2">Informações do Sistema</h4>
+                {/* Coluna Direita - Informações RZKAgro */}
+                <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+                  <h4 className="font-semibold text-primary border-b pb-2">Informações RZKAgro</h4>
                   
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
