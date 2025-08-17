@@ -12,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X, Download, RotateCcw, Phone, Wrench } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, Camera, FileText, Plus, X, Download, RotateCcw, Phone, Wrench, Search, Check, CheckCircle, XCircle } from 'lucide-react';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
@@ -1419,62 +1419,62 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-base font-medium">Status da Oportunidade <span className="text-red-500">*</span></Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-                    <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${task.isProspect && task.salesConfirmed === undefined ? 'border-blue-500 bg-blue-50 shadow-lg' : 'border-gray-200 bg-white hover:border-blue-300'}`} onClick={() => setTask(prev => ({
+                  <Label className="text-lg font-bold text-foreground mb-4 block">🎯 Status da Oportunidade <span className="text-destructive">*</span></Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                    <div className={`group relative cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-xl ${task.isProspect && task.salesConfirmed === undefined ? 'border-blue-500 bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 shadow-lg transform scale-105 ring-2 ring-blue-200' : 'border-border/50 bg-gradient-to-br from-card to-muted/20 hover:border-blue-300 hover:from-blue-50 hover:to-blue-100'}`} onClick={() => setTask(prev => ({
                     ...prev,
                     isProspect: true,
                     salesConfirmed: undefined
                   }))}>
-                      <div className="flex flex-col items-center text-center space-y-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.isProspect && task.salesConfirmed === undefined ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                          👤
+                      <div className="flex flex-col items-center text-center space-y-3">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-md ${task.isProspect && task.salesConfirmed === undefined ? 'bg-blue-500 text-white shadow-blue-200' : 'bg-muted group-hover:bg-blue-100 text-muted-foreground group-hover:text-blue-600'}`}>
+                          <Search className="h-7 w-7" />
                         </div>
                         <div>
-                          <div className="font-medium text-sm">Prospect</div>
-                          <div className="text-xs text-muted-foreground">Oportunidade identificada</div>
+                          <div className="font-bold text-base mb-1">Prospect</div>
+                          <div className="text-xs text-muted-foreground">Cliente em análise</div>
                         </div>
                       </div>
-                      {task.isProspect && task.salesConfirmed === undefined && <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs">✓</span>
+                      {task.isProspect && task.salesConfirmed === undefined && <div className="absolute -top-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                          <Check className="h-4 w-4 text-white" />
                         </div>}
                     </div>
                     
-                    <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${task.salesConfirmed === true ? 'border-green-500 bg-green-50 shadow-lg' : 'border-gray-200 bg-white hover:border-green-300'}`} onClick={() => setTask(prev => ({
+                    <div className={`group relative cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-xl ${task.salesConfirmed === true ? 'border-green-500 bg-gradient-to-br from-green-50 via-green-100 to-green-50 shadow-lg transform scale-105 ring-2 ring-green-200' : 'border-border/50 bg-gradient-to-br from-card to-muted/20 hover:border-green-300 hover:from-green-50 hover:to-green-100'}`} onClick={() => setTask(prev => ({
                     ...prev,
                     salesConfirmed: true,
                     isProspect: true
                   }))}>
-                      <div className="flex flex-col items-center text-center space-y-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.salesConfirmed === true ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                          💰
+                      <div className="flex flex-col items-center text-center space-y-3">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-md ${task.salesConfirmed === true ? 'bg-green-500 text-white shadow-green-200' : 'bg-muted group-hover:bg-green-100 text-muted-foreground group-hover:text-green-600'}`}>
+                          <CheckCircle className="h-7 w-7" />
                         </div>
                         <div>
-                          <div className="font-medium text-sm">Venda Realizada</div>
+                          <div className="font-bold text-base mb-1">Venda Realizada</div>
                           <div className="text-xs text-muted-foreground">Negócio fechado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === true && <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs">✓</span>
+                      {task.salesConfirmed === true && <div className="absolute -top-2 -right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                          <Check className="h-4 w-4 text-white" />
                         </div>}
                     </div>
                     
-                    <div className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${task.salesConfirmed === false ? 'border-red-500 bg-red-50 shadow-lg' : 'border-gray-200 bg-white hover:border-red-300'}`} onClick={() => setTask(prev => ({
+                    <div className={`group relative cursor-pointer p-6 rounded-xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-xl ${task.salesConfirmed === false ? 'border-red-500 bg-gradient-to-br from-red-50 via-red-100 to-red-50 shadow-lg transform scale-105 ring-2 ring-red-200' : 'border-border/50 bg-gradient-to-br from-card to-muted/20 hover:border-red-300 hover:from-red-50 hover:to-red-100'}`} onClick={() => setTask(prev => ({
                     ...prev,
                     salesConfirmed: false,
                     isProspect: true
                   }))}>
-                      <div className="flex flex-col items-center text-center space-y-2">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${task.salesConfirmed === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                          ❌
+                      <div className="flex flex-col items-center text-center space-y-3">
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-md ${task.salesConfirmed === false ? 'bg-red-500 text-white shadow-red-200' : 'bg-muted group-hover:bg-red-100 text-muted-foreground group-hover:text-red-600'}`}>
+                          <XCircle className="h-7 w-7" />
                         </div>
                         <div>
-                          <div className="font-medium text-sm">Venda Perdida</div>
+                          <div className="font-bold text-base mb-1">Venda Perdida</div>
                           <div className="text-xs text-muted-foreground">Negócio não realizado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === false && <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs">✓</span>
+                      {task.salesConfirmed === false && <div className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                          <Check className="h-4 w-4 text-white" />
                         </div>}
                     </div>
                   </div>
