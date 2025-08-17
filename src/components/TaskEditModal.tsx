@@ -374,15 +374,30 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     </div>
                   </div>
                   
-                  <div className={`cursor-pointer p-3 rounded-lg border-2 transition-all duration-200 ${editedTask.prospectItems && editedTask.prospectItems.length > 0 ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:border-green-300'}`} onClick={() => setEditedTask(prev => ({
-                ...prev,
-                prospectItems: task?.checklist?.map(item => ({
-                  ...item,
-                  selected: false,
-                  quantity: item.quantity || 1,
-                  price: item.price || 0
-                })) || []
-              }))}>
+                  <div className={`cursor-pointer p-3 rounded-lg border-2 transition-all duration-200 ${editedTask.prospectItems && editedTask.prospectItems.length > 0 ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:border-green-300'}`} onClick={() => {
+                    // Create default prospect items based on task type
+                    const defaultItems = [
+                      { id: '1', name: 'Pneus', category: 'tires' as const, selected: false, quantity: 1, price: 0 },
+                      { id: '2', name: 'Lubrificantes', category: 'lubricants' as const, selected: false, quantity: 1, price: 0 },
+                      { id: '3', name: 'Óleos', category: 'oils' as const, selected: false, quantity: 1, price: 0 },
+                      { id: '4', name: 'Graxas', category: 'greases' as const, selected: false, quantity: 1, price: 0 },
+                      { id: '5', name: 'Baterias', category: 'batteries' as const, selected: false, quantity: 1, price: 0 },
+                      { id: '6', name: 'Silo Bolsa', category: 'other' as const, selected: false, quantity: 1, price: 0 },
+                      { id: '7', name: 'Cool Gard', category: 'other' as const, selected: false, quantity: 1, price: 0 },
+                      { id: '8', name: 'Disco', category: 'other' as const, selected: false, quantity: 1, price: 0 }
+                    ];
+                    
+                    setEditedTask(prev => ({
+                      ...prev,
+                      prospectItems: task?.checklist && task.checklist.length > 0 ? 
+                        task.checklist.map(item => ({
+                          ...item,
+                          selected: false,
+                          quantity: item.quantity || 1,
+                          price: item.price || 0
+                        })) : defaultItems
+                    }));
+                  }}>
                     <div className="flex items-center space-x-2">
                       <div className={`w-4 h-4 rounded-full border-2 ${editedTask.prospectItems && editedTask.prospectItems.length > 0 ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
                         {editedTask.prospectItems && editedTask.prospectItems.length > 0 && <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>}
