@@ -804,35 +804,110 @@ export const SalesFunnel: React.FC = () => {
         </div>
       )}
 
-      {/* Conteúdo da Cobertura */}
+      {/* Conteúdo dos Relatórios */}
       {activeView === 'coverage' && (
         <Card>
           <CardHeader>
-            <CardTitle>Cobertura de Carteira</CardTitle>
-            <CardDescription>Distribuição da cobertura por tipo de interação</CardDescription>
+            <CardTitle>Relatório de Atividades</CardTitle>
+            <CardDescription>Resumo das atividades realizadas com status e oportunidades</CardDescription>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="min-h-[400px]">
-              <ResponsiveContainer width="100%" height={400}>
-                <PieChart>
-                  <Pie
-                    data={coverageData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percentage }) => `${name}: ${percentage}%`}
-                    outerRadius={120}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {coverageData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome da Atividade</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Responsável</TableHead>
+                  <TableHead>Valor da Oportunidade</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTasks.slice(0, 20).map((task) => {
+                  const getTaskStatus = () => {
+                    if (task.salesConfirmed && task.status === 'completed') {
+                      return { label: 'Venda Realizada', variant: 'default' as const };
+                    } else if (task.salesConfirmed && task.status === 'pending') {
+                      return { label: 'Venda em Andamento', variant: 'secondary' as const };
+                    } else if (task.isProspect && task.status === 'closed' && !task.salesConfirmed) {
+                      return { label: 'Venda Perdida', variant: 'destructive' as const };
+                    } else if (task.isProspect) {
+                      return { label: 'Prospect', variant: 'outline' as const };
+                    } else {
+                      return { label: 'Atividade', variant: 'secondary' as const };
+                    }
+                  };
+
+                  const status = getTaskStatus();
+                  
+                  return (
+                    <TableRow key={task.id}>
+                      <TableCell className="font-medium">
+                        {task.name}
+                        <div className="text-xs text-muted-foreground">
+                          {task.taskType === 'prospection' ? 'Visita' : 
+                           task.taskType === 'ligacao' ? 'Ligação' : 
+                           task.taskType === 'checklist' ? 'Checklist' : task.taskType}
+                        </div>
+                      </TableCell>
+                      <TableCell>{task.client}</TableCell>
+                      <TableCell>{task.responsible}</TableCell>
+                      <TableCell>
+                        {task.salesValue ? 
+                          new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                          }).format(task.salesValue) : 
+                          '-'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant}>
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              // TODO: Implementar visualização do formulário
+                              console.log('Visualizar tarefa:', task.id);
+                            }}
+                          >
+                            Ver
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              // TODO: Implementar edição do formulário
+                              console.log('Editar tarefa:', task.id);
+                            }}
+                          >
+                            Editar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            
+            {filteredTasks.length > 20 && (
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando 20 de {filteredTasks.length} atividades. Use os filtros para refinar a busca.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
