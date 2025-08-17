@@ -28,11 +28,11 @@ export const Layout: React.FC<LayoutProps> = ({
     icon: Settings,
     label: 'Dados Gerenciais'
   }, {
-    path: '/',
+    path: '/create-task',
     icon: LayoutDashboard,
     label: 'Nova Tarefa'
   }, {
-    path: '/tasks',
+    path: '/',
     icon: CheckSquare,
     label: 'Resumo Tarefas'
   }, {

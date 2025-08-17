@@ -79,7 +79,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   // If everything is approved, show main app routes
   return (
     <Routes>
-      <Route path="/" element={<Layout><Home /></Layout>} />
+      <Route path="/" element={<Layout><Tasks /></Layout>} />
       <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
       <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
