@@ -178,7 +178,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Nome do Cliente:</span>
+                    <span className="font-medium">Cliente:</span>
                     <span>{currentTask.client}</span>
                   </div>
 
