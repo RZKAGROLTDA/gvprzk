@@ -352,7 +352,7 @@ const CreateTask: React.FC = () => {
     photos: []
   }, {
     id: '9',
-    name: 'disco',
+    name: 'Disco',
     category: 'other',
     selected: false,
     quantity: 0,
