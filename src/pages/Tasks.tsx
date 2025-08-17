@@ -363,7 +363,12 @@ const Tasks: React.FC = () => {
                         <CheckSquare className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-base mb-2 truncate">{task.name || 'Tarefa sem nome'}</h3>
+                        <h3 className="font-semibold text-base mb-2 truncate">
+                          {task.taskType === 'prospection' ? 'Visita' : 
+                           task.taskType === 'ligacao' ? 'Ligação' : 
+                           task.taskType === 'checklist' ? 'Checklist' : 
+                           'Tarefa'}
+                        </h3>
                         
                         {/* Grid layout para informações organizadas com dados corretos */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
