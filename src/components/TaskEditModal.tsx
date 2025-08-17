@@ -158,10 +158,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="edit-property">Nome da Propriedade</Label>
-              <Input id="edit-property" value={editedTask.property || ''} onChange={e => setEditedTask(prev => ({
-              ...prev,
-              property: e.target.value
-            }))} placeholder="Nome da propriedade" />
+              <Input 
+                id="edit-property" 
+                value={task?.property || ''} 
+                disabled
+                placeholder="Nome da propriedade" 
+                className="bg-muted"
+              />
             </div>
           </div>
 
