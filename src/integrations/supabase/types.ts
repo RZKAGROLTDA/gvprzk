@@ -389,6 +389,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      update_user_role_secure: {
+        Args: { new_role: string; target_user_id: string }
+        Returns: undefined
+      }
       user_same_filial: {
         Args: { target_user_id: string }
         Returns: boolean

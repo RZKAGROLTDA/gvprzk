@@ -435,12 +435,22 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   target.style.display = 'none';
                   const parent = target.parentElement;
                   if (parent) {
-                    parent.innerHTML = `
-                              <div class="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                                <Camera class="h-8 w-8 mb-2" />
-                                <span class="text-xs text-center">Imagem não disponível</span>
-                              </div>
-                            `;
+                    // Safe DOM manipulation without innerHTML
+                    parent.removeChild(target);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'w-full h-full flex flex-col items-center justify-center text-muted-foreground';
+                    
+                    const iconDiv = document.createElement('div');
+                    iconDiv.innerHTML = '📷'; // Safe emoji instead of HTML
+                    iconDiv.className = 'text-2xl mb-2';
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = 'Imagem não disponível';
+                    textSpan.className = 'text-xs text-center';
+                    
+                    errorDiv.appendChild(iconDiv);
+                    errorDiv.appendChild(textSpan);
+                    parent.appendChild(errorDiv);
                   }
                 }} />
                     </div>)}
