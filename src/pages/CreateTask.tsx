@@ -1046,22 +1046,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               }))} placeholder="Nome do Contato" />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF *</Label>
-                <Input id="cpf" value={task.cpf || ''} onChange={e => {
-                const cpf = e.target.value;
-                setTask(prev => ({
-                  ...prev,
-                  cpf: cpf
-                }));
-
-                // Buscar dados anteriores quando CPF for digitado (apenas números)
-                const cleanCPF = cpf.replace(/\D/g, '');
-                if (cleanCPF.length === 11) {
-                  searchPreviousDataByCPF(cleanCPF);
-                }
-              }} placeholder="000.000.000-00" maxLength={14} required />
-              </div>
+              
 
               <div className="space-y-2">
                 <Label htmlFor="reportDate">Data do Relatório</Label>
