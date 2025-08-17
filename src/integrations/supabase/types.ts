@@ -334,27 +334,7 @@ export type Database = {
       }
     }
     Views: {
-      user_directory: {
-        Row: {
-          approval_status: string | null
-          email: string | null
-          filial_id: string | null
-          filial_nome: string | null
-          id: string | null
-          name: string | null
-          role: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_filial_id_fkey"
-            columns: ["filial_id"]
-            isOneToOne: false
-            referencedRelation: "filiais"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       can_modify_user_role: {
@@ -380,6 +360,19 @@ export type Database = {
       generate_invitation_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_user_directory: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          approval_status: string
+          email: string
+          filial_id: string
+          filial_nome: string
+          id: string
+          name: string
+          role: string
+          user_id: string
+        }[]
       }
       get_user_filial_id: {
         Args: Record<PropertyKey, never>
