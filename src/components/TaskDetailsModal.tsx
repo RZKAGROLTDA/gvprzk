@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, MapPin, User, Building, Flag, CheckSquare, DollarSign, Camera } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Building, Flag, CheckSquare, DollarSign, Camera, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
@@ -176,83 +176,83 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Nome do Contato */}
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Nome do Contato:</span>
-                  <span>{currentTask.client}</span>
-                </div>
-
-                {/* CPF */}
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">CPF:</span>
-                  <span>{currentTask.responsible || 'Não informado'}</span>
-                </div>
-
-                {/* Cliente */}
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Cliente:</span>
-                  <span>{currentTask.client}</span>
-                </div>
-
-                {/* Email do Cliente */}
-                {currentTask.email && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Coluna Esquerda - Informações do Cliente */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-primary border-b pb-2">Informações do Cliente</h4>
+                  
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Email:</span>
-                    <span>{currentTask.email}</span>
+                    <span className="font-medium">Nome do Contato:</span>
+                    <span>{currentTask.client}</span>
                   </div>
-                )}
 
-                {/* Nome da Propriedade */}
-                {currentTask.property && (
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Propriedade:</span>
-                    <span>{currentTask.property}</span>
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Nome do Cliente:</span>
+                    <span>{currentTask.client}</span>
                   </div>
-                )}
 
-                {/* Filial - sempre mostrar nome, não UUID */}
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Filial:</span>
-                  <span>{resolveFilialName(currentTask.filial) || 'Não informado'}</span>
+                  {currentTask.property && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Propriedade:</span>
+                      <span>{currentTask.property}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Data do Relatório:</span>
+                    <span>{format(currentTask.startDate, "PPP", { locale: ptBR })}</span>
+                  </div>
+
+                  {currentTask.email && (
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Email:</span>
+                      <span>{currentTask.email}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Tipo */}
-                {currentTask.taskType && (
+                {/* Coluna Direita - Informações do Sistema */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-primary border-b pb-2">Informações do Sistema</h4>
+                  
                   <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Vendedor/CEP:</span>
+                    <span>{currentTask.responsible}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Building className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Filial:</span>
+                    <span>{resolveFilialName(currentTask.filial) || 'Não informado'}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Tipo:</span>
                     <Badge variant="outline">
                       {currentTask.taskType === 'prospection' ? 'Visita' : currentTask.taskType === 'checklist' ? 'Checklist' : currentTask.taskType === 'ligacao' ? 'Ligação' : currentTask.taskType}
                     </Badge>
                   </div>
-                )}
 
-                 {/* Status */}
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Status:</span>
-                  <Badge variant={getStatusColor(currentTask)}>
-                    {getStatusLabel(currentTask)}
-                  </Badge>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Horário:</span>
+                    <span>{currentTask.startTime} - {currentTask.endTime}</span>
+                  </div>
 
-                {/* Data */}
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Data Relatório:</span>
-                  <span>{format(currentTask.startDate, "PPP", { locale: ptBR })}</span>
-                </div>
-
-                {/* Horário */}
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Horário:</span>
-                  <span>{currentTask.startTime} - {currentTask.endTime}</span>
+                  <div className="flex items-center gap-2">
+                    <Flag className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Status:</span>
+                    <Badge variant={getStatusColor(currentTask)}>
+                      {getStatusLabel(currentTask)}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </CardContent>
