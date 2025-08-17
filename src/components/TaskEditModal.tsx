@@ -137,10 +137,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-responsible">Vendedor/Responsável</Label>
-              <Input id="edit-responsible" value={editedTask.responsible || ''} onChange={e => setEditedTask(prev => ({
-              ...prev,
-              responsible: e.target.value
-            }))} placeholder="Nome do vendedor" />
+              <Input 
+                id="edit-responsible" 
+                value={task?.responsible || ''} 
+                disabled
+                placeholder="Nome do vendedor" 
+                className="bg-muted"
+              />
             </div>
           </div>
 
