@@ -133,7 +133,7 @@ const Tasks: React.FC = () => {
         createdBy: task.created_by,
         createdAt: new Date(task.created_at),
         updatedAt: new Date(task.updated_at),
-        isProspect: Boolean(task.is_prospect || task.sales_confirmed !== null || (task.sales_value && task.sales_value > 0)),
+        isProspect: task.is_prospect || false,
         prospectNotes: task.prospect_notes || '',
         prospectItems: [],
         salesValue: task.sales_value || 0,
@@ -250,32 +250,46 @@ const Tasks: React.FC = () => {
   };
 
   const getProspectStatus = (task: TaskWithUserInfo) => {
-    // Só mostra badge se tiver informações de venda preenchidas
-    const hasProspectInfo = task.salesValue && task.salesValue > 0;
-    
-    if (!hasProspectInfo) return null;
-    
-    // Se tem salesConfirmed definido, mostra o resultado
-    if (task.salesConfirmed === true) {
-      return { 
-        type: 'ganho',
-        label: 'Venda Realizada', 
-        variant: 'success' as const
-      };
-    } else if (task.salesConfirmed === false) {
-      return { 
-        type: 'perdido',
-        label: 'Venda Perdida', 
-        variant: 'destructive' as const
-      };
-    } else {
-      // Tem valor de venda mas salesConfirmed não foi definido ainda
+    console.log('🔍 [Tasks] Analisando prospect status para task:', {
+      id: task.id,
+      isProspect: task.isProspect,
+      salesConfirmed: task.salesConfirmed,
+      salesValue: task.salesValue
+    });
+
+    // Prioridade 1: Se é prospect e salesConfirmed é null = Prospect Em Andamento
+    if (task.isProspect === true && task.salesConfirmed === null) {
+      console.log('✅ [Tasks] Classificado como: Prospect Em Andamento');
       return { 
         type: 'prospect',
         label: 'Prospect', 
         variant: 'secondary' as const
       };
     }
+    
+    // Prioridade 2: Se é prospect e salesConfirmed é true = Venda Realizada
+    if (task.isProspect === true && task.salesConfirmed === true) {
+      console.log('✅ [Tasks] Classificado como: Venda Realizada');
+      return { 
+        type: 'ganho',
+        label: 'Venda Realizada', 
+        variant: 'success' as const
+      };
+    }
+    
+    // Prioridade 3: Se é prospect e salesConfirmed é false = Venda Perdida
+    if (task.isProspect === true && task.salesConfirmed === false) {
+      console.log('✅ [Tasks] Classificado como: Venda Perdida');
+      return { 
+        type: 'perdido',
+        label: 'Venda Perdida', 
+        variant: 'destructive' as const
+      };
+    }
+
+    // Se não é prospect, não mostra badge
+    console.log('❌ [Tasks] Não é prospect, sem badge');
+    return null;
   };
 
   return (
