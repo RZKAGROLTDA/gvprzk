@@ -1041,8 +1041,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         )}
       </div>
 
-      {/* Indicador de Status Offline */}
-      <OfflineIndicator />
+        {/* Indicador de Status Offline - apenas quando tipo de tarefa selecionado */}
+        {selectedTaskType && <OfflineIndicator />}
 
       {selectedTaskType && (
 
