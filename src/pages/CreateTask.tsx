@@ -48,9 +48,15 @@ const CreateTask: React.FC = () => {
   };
 
   // Estado para controlar o tipo de tarefa selecionado
-  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist'>(
-    getTaskCategoryFromUrl(urlTaskType)
-  );
+  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | null>(null);
+  // Inicializar com URL se existir
+  useEffect(() => {
+    if (urlTaskType) {
+      const initialType = getTaskCategoryFromUrl(urlTaskType);
+      setSelectedTaskType(initialType);
+      setTaskCategory(initialType);
+    }
+  }, [urlTaskType]);
 
   // Função para alterar o tipo de tarefa
   const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist') => {
@@ -1023,16 +1029,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           </div>
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
-          {getTaskTitle(selectedTaskType)}
-        </h2>
-        <p className="text-muted-foreground text-sm sm:text-base mb-4">
-          {selectedTaskType === 'field-visit' ? 'Criar uma nova visita à fazenda' : selectedTaskType === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
-        </p>
+        {selectedTaskType && (
+          <>
+            <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
+              {getTaskTitle(selectedTaskType)}
+            </h2>
+            <p className="text-muted-foreground text-sm sm:text-base mb-4">
+              {selectedTaskType === 'field-visit' ? 'Criar uma nova visita à fazenda' : selectedTaskType === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
+            </p>
+          </>
+        )}
       </div>
 
       {/* Indicador de Status Offline */}
       <OfflineIndicator />
+
+      {selectedTaskType && (
 
       <form onSubmit={handleSubmit}>
 
@@ -1772,7 +1784,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
              <ReportExporter variant="outline" className="w-auto" />
            </div>
          </div>
-      </form>
-    </div>;
+       </form>
+       )}
+     </div>;
 };
 export default CreateTask;
