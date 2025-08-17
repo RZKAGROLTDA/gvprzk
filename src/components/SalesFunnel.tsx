@@ -864,7 +864,13 @@ export const SalesFunnel: React.FC = () => {
                         }
                       </TableCell>
                       <TableCell>
-                        <Badge variant={status.variant}>
+                        <Badge variant={status.variant} className={
+                          status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' :
+                          status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' :
+                          status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' :
+                          status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' :
+                          ''
+                        }>
                           {status.label}
                         </Badge>
                       </TableCell>
