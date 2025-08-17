@@ -254,15 +254,15 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
                     
                     <div className="mt-2">
                       <p className="text-muted-foreground mb-1">Status:</p>
-                      <Badge variant={
-                        task.sales_confirmed === true ? 'default' :
-                        task.sales_confirmed === false ? 'destructive' :
-                        task.is_prospect ? 'secondary' : 'outline'
-                      } className="text-xs">
-                        {task.sales_confirmed === true ? 'Venda Confirmada' :
-                         task.sales_confirmed === false ? 'Venda Perdida' :
-                         task.is_prospect ? 'Prospect' : 'Em Análise'}
-                      </Badge>
+                       <Badge variant={
+                         task.sales_confirmed === true ? 'default' :
+                         task.is_prospect && task.sales_confirmed === null ? 'secondary' :
+                         task.sales_confirmed === false ? 'destructive' : 'outline'
+                       } className="text-xs">
+                         {task.sales_confirmed === true ? 'Venda Confirmada' :
+                          task.is_prospect && task.sales_confirmed === null ? 'Prospect' :
+                          task.sales_confirmed === false ? 'Venda Perdida' : 'Em Análise'}
+                       </Badge>
                     </div>
                   </div>
                 ))}
