@@ -475,7 +475,7 @@ export const SalesFunnel: React.FC = () => {
           >
             <CardContent className="p-6">
               <div className="text-center">
-                <h3 className="text-lg font-semibold">Cobertura de Carteira</h3>
+                <h3 className="text-lg font-semibold">Relatórios</h3>
               </div>
             </CardContent>
           </Card>
