@@ -338,19 +338,7 @@ const Tasks: React.FC = () => {
       {/* Tasks List */}
       <div className="space-y-4">
         {filteredTasks.length === 0 && tasks.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <CheckSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhuma tarefa criada ainda</h3>
-              <p className="text-muted-foreground mb-4">
-                Crie sua primeira tarefa para começar!
-              </p>
-              <Button variant="gradient" className="gap-2" onClick={() => navigate('/create-task')}>
-                <Plus className="h-4 w-4" />
-                Criar Primeira Tarefa
-              </Button>
-            </CardContent>
-          </Card>
+          <div></div>
         ) : filteredTasks.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
