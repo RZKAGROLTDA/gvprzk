@@ -62,7 +62,7 @@ const CreateTask: React.FC = () => {
   const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist') => {
     setSelectedTaskType(newType);
     setTaskCategory(newType);
-    
+
     // Atualizar o taskType no estado da tarefa
     setTask(prev => ({
       ...prev,
@@ -987,12 +987,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         <div className="mt-6">
           <p className="text-muted-foreground text-sm sm:text-base mb-4">Selecione o tipo de tarefa que deseja criar:</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Button
-              type="button"
-              variant={selectedTaskType === 'field-visit' ? 'default' : 'outline'}
-              className="h-auto p-6 flex-col gap-3"
-              onClick={() => handleTaskTypeChange('field-visit')}
-            >
+            <Button type="button" variant={selectedTaskType === 'field-visit' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3" onClick={() => handleTaskTypeChange('field-visit')}>
               <MapPin className="h-8 w-8" />
               <div className="text-center">
                 <div className="font-semibold">Visita à Fazenda</div>
@@ -1000,12 +995,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
             </Button>
             
-            <Button
-              type="button"
-              variant={selectedTaskType === 'call' ? 'default' : 'outline'}
-              className="h-auto p-6 flex-col gap-3"
-              onClick={() => handleTaskTypeChange('call')}
-            >
+            <Button type="button" variant={selectedTaskType === 'call' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3" onClick={() => handleTaskTypeChange('call')}>
               <Phone className="h-8 w-8" />
               <div className="text-center">
                 <div className="font-semibold">Ligação</div>
@@ -1013,12 +1003,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
             </Button>
             
-            <Button
-              type="button"
-              variant={selectedTaskType === 'workshop-checklist' ? 'default' : 'outline'}
-              className="h-auto p-6 flex-col gap-3"
-              onClick={() => handleTaskTypeChange('workshop-checklist')}
-            >
+            <Button type="button" variant={selectedTaskType === 'workshop-checklist' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3" onClick={() => handleTaskTypeChange('workshop-checklist')}>
               <Wrench className="h-8 w-8" />
               <div className="text-center">
                 <div className="font-semibold">Checklist Oficina</div>
@@ -1028,24 +1013,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           </div>
         </div>
 
-        {selectedTaskType && (
-          <>
+        {selectedTaskType && <>
             <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
               {getTaskTitle(selectedTaskType)}
             </h2>
             <p className="text-muted-foreground text-sm sm:text-base mb-4">
               {selectedTaskType === 'field-visit' ? 'Criar uma nova visita à fazenda' : selectedTaskType === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
             </p>
-          </>
-        )}
+          </>}
       </div>
 
         {/* Indicador de Status Offline - apenas quando tipo de tarefa selecionado */}
         {selectedTaskType && <OfflineIndicator />}
 
-      {selectedTaskType && (
-
-      <form onSubmit={handleSubmit}>
+      {selectedTaskType && <form onSubmit={handleSubmit}>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Informações Básicas */}
@@ -1096,7 +1077,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email do Cliente</Label>
+                <Label htmlFor="email">Email do Cliente/Contato</Label>
                 <Input id="email" type="email" value={task.email || ''} onChange={e => setTask(prev => ({
                 ...prev,
                 email: e.target.value
@@ -1106,31 +1087,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <div className="space-y-2">
                 <Label htmlFor="property">Nome da Propriedade</Label>
                 <Input id="property" value={task.property} onChange={e => setTask(prev => ({
-              ...prev,
-              property: e.target.value
-            }))} placeholder="Nome da propriedade" />
+                ...prev,
+                property: e.target.value
+              }))} placeholder="Nome da propriedade" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="vendor">Vendedor</Label>
-                <Input 
-                  id="vendor" 
-                  value={profile?.name || ''} 
-                  disabled
-                  placeholder="Nome do vendedor" 
-                  className="bg-muted"
-                />
+                <Input id="vendor" value={profile?.name || ''} disabled placeholder="Nome do vendedor" className="bg-muted" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="filial">Filial</Label>
-                <Input 
-                  id="filial" 
-                  value={profile?.filial_nome || 'Não informado'} 
-                  disabled
-                  placeholder="Filial" 
-                  className="bg-muted"
-                />
+                <Input id="filial" value={profile?.filial_nome || 'Não informado'} disabled placeholder="Filial" className="bg-muted" />
               </div>
 
               {taskCategory === 'call' && <div className="space-y-2">
@@ -1468,9 +1437,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {taskCategory === 'call' 
-                    ? "Valor calculado com base nas perguntas da ligação" 
-                    : "Valor calculado com base nos produtos/serviços selecionados"}
+                  {taskCategory === 'call' ? "Valor calculado com base nas perguntas da ligação" : "Valor calculado com base nos produtos/serviços selecionados"}
                 </p>
               </div>
 
@@ -1559,10 +1526,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                         <div className="flex items-center space-x-2">
                           <input type="radio" id="totalSale" name="saleType" value="total" checked={!task.prospectItems || task.prospectItems.length === 0} onChange={() => {
                         // Calcular valor total automaticamente baseado no tipo de tarefa
-                        const totalValue = taskCategory === 'call' 
-                          ? Object.values(callQuestions).reduce((sum, item) => sum + (item.needsProduct ? item.totalValue : 0), 0)
-                          : checklist.reduce((sum, item) => sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0), 0);
-                        
+                        const totalValue = taskCategory === 'call' ? Object.values(callQuestions).reduce((sum, item) => sum + (item.needsProduct ? item.totalValue : 0), 0) : checklist.reduce((sum, item) => sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0), 0);
                         setTask(prev => ({
                           ...prev,
                           prospectItems: [],
@@ -1576,17 +1540,14 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                            <input type="radio" id="partialSale" name="saleType" value="partial" checked={task.prospectItems && task.prospectItems.length > 0} onChange={() => {
                         if (taskCategory === 'call') {
                           // Para ligações, usar produtos que precisam de fornecimento
-                          const selectedProducts = Object.entries(callQuestions)
-                            .filter(([key, value]) => value.needsProduct)
-                            .map(([key, value]) => ({
-                              id: key,
-                              name: key.charAt(0).toUpperCase() + key.slice(1),
-                              category: 'other' as const,
-                              selected: true,
-                              quantity: value.quantity || 1,
-                              price: value.unitValue || 0
-                            }));
-                          
+                          const selectedProducts = Object.entries(callQuestions).filter(([key, value]) => value.needsProduct).map(([key, value]) => ({
+                            id: key,
+                            name: key.charAt(0).toUpperCase() + key.slice(1),
+                            category: 'other' as const,
+                            selected: true,
+                            quantity: value.quantity || 1,
+                            price: value.unitValue || 0
+                          }));
                           setTask(prev => ({
                             ...prev,
                             prospectItems: selectedProducts
@@ -1599,7 +1560,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                             quantity: item.quantity || 1,
                             price: item.price || 0
                           }));
-                          
                           setTask(prev => ({
                             ...prev,
                             prospectItems: selectedProducts
@@ -1629,11 +1589,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {taskCategory === 'call' 
-                            ? "Valor calculado com base nas perguntas da ligação. Você pode editá-lo se necessário."
-                            : checklist.some(item => item.selected) 
-                              ? "Valor calculado automaticamente com base nos produtos selecionados. Você pode editá-lo se necessário." 
-                              : "Digite o valor total da venda realizada."}
+                          {taskCategory === 'call' ? "Valor calculado com base nas perguntas da ligação. Você pode editá-lo se necessário." : checklist.some(item => item.selected) ? "Valor calculado automaticamente com base nos produtos selecionados. Você pode editá-lo se necessário." : "Digite o valor total da venda realizada."}
                         </p>
                       </div>}
 
@@ -1783,8 +1739,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
              <ReportExporter variant="outline" className="w-auto" />
            </div>
          </div>
-       </form>
-       )}
+       </form>}
      </div>;
 };
 export default CreateTask;
