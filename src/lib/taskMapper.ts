@@ -1,13 +1,18 @@
 
 import { Task } from '@/types/task';
+import { resolveFilialName, loadFiliaisCache } from './taskStandardization';
 
 // Utility function to map Supabase task data to application Task format
 export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
   console.log('Mapeando tarefa do Supabase:', supabaseTask.id, {
     is_prospect: supabaseTask.is_prospect,
     sales_confirmed: supabaseTask.sales_confirmed,
-    sales_value: supabaseTask.sales_value
+    sales_value: supabaseTask.sales_value,
+    filial: supabaseTask.filial
   });
+
+  // Resolver nome da filial automaticamente
+  const filialResolved = resolveFilialName(supabaseTask.filial);
 
   const mappedTask: Task = {
     id: supabaseTask.id,
@@ -71,7 +76,9 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
   console.log('Tarefa mapeada:', mappedTask.id, {
     isProspect: mappedTask.isProspect,
     salesConfirmed: mappedTask.salesConfirmed,
-    salesValue: mappedTask.salesValue
+    salesValue: mappedTask.salesValue,
+    filialOriginal: supabaseTask.filial,
+    filialResolved: filialResolved
   });
 
   return mappedTask;

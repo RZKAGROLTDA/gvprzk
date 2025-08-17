@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { createTaskWithFilialSnapshot, resolveFilialName } from '@/lib/taskStandardization';
 
 interface TaskEditModalProps {
   task: Task | null;
@@ -56,6 +57,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     setLoading(true);
     try {
       console.log('Salvando tarefa com dados:', editedTask);
+      
+      // Criar dados padronizados com snapshot de filial atualizado
+      const standardizedData = await createTaskWithFilialSnapshot({
+        ...editedTask,
+        filial: task.filial // Manter filial original
+      });
       
       // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
       let finalStatus = editedTask.status;

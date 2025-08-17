@@ -27,6 +27,7 @@ import { useOffline } from '@/hooks/useOffline';
 import { useTasks } from '@/hooks/useTasks';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 
 // Interface para os dados completos da tarefa com informações do usuário e filial
 interface TaskWithUserInfo extends Task {
@@ -291,16 +292,16 @@ const Tasks: React.FC = () => {
   };
 
   const getProspectStatus = (task: TaskWithUserInfo) => {
-    if (task.isProspect) {
-      if (task.salesConfirmed === true) {
-        return { type: 'sale_confirmed', label: 'Venda Realizada', variant: 'success' as const };
-      } else if (task.salesConfirmed === false) {
-        return { type: 'sale_lost', label: 'Venda Perdida', variant: 'destructive' as const };
-      } else {
-        return { type: 'prospect_active', label: 'Prospect', variant: 'warning' as const };
-      }
-    }
-    return null;
+    if (!task.isProspect) return null;
+    
+    const status = mapSalesStatus(task);
+    return { 
+      type: status,
+      label: getStatusLabel(status), 
+      variant: status === 'ganho' ? 'success' as const : 
+               status === 'perdido' ? 'destructive' as const :
+               status === 'parcial' ? 'warning' as const : 'secondary' as const
+    };
   };
 
   return (
@@ -465,12 +466,10 @@ const Tasks: React.FC = () => {
                             <span className="truncate">{task.property || 'Não informada'}</span>
                           </div>
 
-                          {task.userFilial && task.userFilial !== 'N/A' && (
-                            <div className="col-span-2 flex items-center gap-1 truncate">
-                              <span className="text-xs font-medium">Filial:</span>
-                              <span className="truncate">{task.userFilial}</span>
-                            </div>
-                          )}
+          <div className="col-span-2 flex items-center gap-1 truncate">
+            <span className="text-xs font-medium">Filial:</span>
+            <span className="truncate">{resolveFilialName(task.filial) || 'Não informado'}</span>
+          </div>
                         </div>
                       </div>
                     </div>

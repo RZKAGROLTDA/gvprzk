@@ -6,6 +6,7 @@ import { useOffline } from '@/hooks/useOffline';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { toast } from '@/components/ui/use-toast';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
+import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
 
 export const useTasks = () => {
   const { user } = useAuth();
@@ -18,6 +19,9 @@ export const useTasks = () => {
     
     setLoading(true);
     try {
+      // Carregar cache de filiais para resolução de nomes
+      await loadFiliaisCache();
+      
       if (isOnline) {
         console.log('Carregando tarefas do Supabase...');
         
@@ -125,32 +129,35 @@ export const useTasks = () => {
 
     if (isOnline) {
       try {
+        // Criar dados padronizados com snapshot de filial
+        const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
+        
         // Tentar salvar online
         const { data: task, error: taskError } = await supabase
           .from('tasks')
           .insert({
-            name: taskData.name,
-            responsible: taskData.responsible,
-            client: taskData.client,
-            property: taskData.property || '',
-            filial: taskData.filial || '',
-            task_type: taskData.taskType || 'prospection',
-            start_date: taskData.startDate?.toISOString().split('T')[0],
-            end_date: taskData.endDate?.toISOString().split('T')[0],
-            start_time: taskData.startTime,
-            end_time: taskData.endTime,
-            observations: taskData.observations || '',
-            priority: taskData.priority,
-            photos: taskData.photos || [],
-            documents: taskData.documents || [],
-            check_in_location: taskData.checkInLocation,
-            initial_km: taskData.initialKm || 0,
-            final_km: taskData.finalKm || 0,
+            name: standardizedTaskData.name,
+            responsible: standardizedTaskData.responsible,
+            client: standardizedTaskData.client,
+            property: standardizedTaskData.property || '',
+            filial: standardizedTaskData.filial || '',
+            task_type: standardizedTaskData.taskType || 'prospection',
+            start_date: standardizedTaskData.startDate?.toISOString().split('T')[0],
+            end_date: standardizedTaskData.endDate?.toISOString().split('T')[0],
+            start_time: standardizedTaskData.startTime,
+            end_time: standardizedTaskData.endTime,
+            observations: standardizedTaskData.observations || '',
+            priority: standardizedTaskData.priority,
+            photos: standardizedTaskData.photos || [],
+            documents: standardizedTaskData.documents || [],
+            check_in_location: standardizedTaskData.checkInLocation,
+            initial_km: standardizedTaskData.initialKm || 0,
+            final_km: standardizedTaskData.finalKm || 0,
             created_by: user.id,
-            is_prospect: taskData.isProspect || false,
-            prospect_notes: taskData.prospectNotes || '',
-            sales_value: taskData.salesValue || 0,
-            sales_confirmed: taskData.salesConfirmed || false
+            is_prospect: standardizedTaskData.isProspect || false,
+            prospect_notes: standardizedTaskData.prospectNotes || '',
+            sales_value: standardizedTaskData.salesValue || 0,
+            sales_confirmed: standardizedTaskData.salesConfirmed || false
           })
           .select()
           .single();

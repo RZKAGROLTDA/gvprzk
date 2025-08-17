@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 
 interface SalesFunnelData {
   name: string;
@@ -187,9 +188,8 @@ export const SalesFunnel: React.FC = () => {
       const key = `${task.client}-${task.filial}`;
       
       if (!clientMap.has(key)) {
-        // Buscar nome da filial nos dados carregados convertendo UUID para nome
-        const filialObj = filiais.find(f => f.id === task.filial);
-        const filialName = filialObj ? filialObj.nome : (task.filial || 'Não informado');
+        // Usar função padronizada para resolver nome da filial
+        const filialName = resolveFilialName(task.filial);
         
         clientMap.set(key, {
           client: task.client,
@@ -235,7 +235,7 @@ export const SalesFunnel: React.FC = () => {
             responsible: task.responsible,
             type: 'Visita',
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
       
@@ -247,7 +247,7 @@ export const SalesFunnel: React.FC = () => {
             responsible: task.responsible,
             type: 'Checklist',
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
       
@@ -259,7 +259,7 @@ export const SalesFunnel: React.FC = () => {
             responsible: task.responsible,
             type: 'Ligação',
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
 
@@ -273,7 +273,7 @@ export const SalesFunnel: React.FC = () => {
             status: 'Aberta',
             confirmed: task.salesConfirmed,
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
       
@@ -286,7 +286,7 @@ export const SalesFunnel: React.FC = () => {
             status: 'Fechada',
             confirmed: true,
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
       
@@ -299,7 +299,7 @@ export const SalesFunnel: React.FC = () => {
             status: 'Perdida',
             confirmed: false,
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
 
@@ -310,7 +310,7 @@ export const SalesFunnel: React.FC = () => {
           responsible: task.responsible,
           type: task.taskType,
           date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-          filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+          filial: resolveFilialName(task.filial),
           value: task.salesValue || 0
         }));
       
@@ -323,7 +323,7 @@ export const SalesFunnel: React.FC = () => {
             status: task.status,
             confirmed: task.salesConfirmed,
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
       
@@ -335,7 +335,7 @@ export const SalesFunnel: React.FC = () => {
             responsible: task.responsible,
             status: task.status,
             date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: filiais.find(f => f.id === task.filial)?.nome || task.filial || 'Não informado',
+            filial: resolveFilialName(task.filial),
             value: task.salesValue || 0
           }));
       
