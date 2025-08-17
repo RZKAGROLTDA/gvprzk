@@ -61,7 +61,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="flex items-center space-x-2 sm:space-x-4">
               <div className="flex items-center space-x-1 sm:space-x-2">
                 <Car className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                <h1 className="text-lg sm:text-2xl font-bold text-foreground">CheckList Vendas</h1>
+                <h1 className="text-lg sm:text-2xl font-bold text-foreground">Ferramenta de Vendas</h1>
               </div>
             </div>
             
