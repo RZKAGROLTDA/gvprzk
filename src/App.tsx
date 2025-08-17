@@ -12,7 +12,7 @@ import { LoginForm } from '@/components/LoginForm';
 import Dashboard from "./pages/Dashboard";
 import { SalesFunnel } from "./components/SalesFunnel";
 import CreateTask from "./pages/CreateTask";
-import Tasks from "./pages/Tasks";
+
 import Reports from "./pages/Reports";
 import Management from "./pages/Management";
 import { Users } from "./pages/Users";
@@ -80,9 +80,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   // If everything is approved, show main app routes
   return (
     <Routes>
-      <Route path="/" element={<Layout><Tasks /></Layout>} />
-      <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
-      <Route path="/tasks" element={<Layout><Tasks /></Layout>} />
+      <Route path="/" element={<Layout><SalesFunnel /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
       <Route path="/reports" element={<Layout><Reports /></Layout>} />
