@@ -30,7 +30,7 @@ export const Layout: React.FC<LayoutProps> = ({
   }, {
     path: '/dashboard',
     icon: TrendingUp,
-    label: 'Funil de Vendas'
+    label: 'Dashboard'
   }, {
     path: '/reports',
     icon: BarChart3,
