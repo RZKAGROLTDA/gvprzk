@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          created_at: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          operation: string
+          table_name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation: string
+          table_name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          operation?: string
+          table_name?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       filiais: {
         Row: {
           created_at: string
@@ -304,9 +334,41 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_directory: {
+        Row: {
+          approval_status: string | null
+          email: string | null
+          filial_id: string | null
+          filial_nome: string | null
+          id: string | null
+          name: string | null
+          role: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_modify_user_role: {
+        Args: { new_role: string; target_user_id: string }
+        Returns: boolean
+      }
+      cleanup_invitation_tokens: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      consume_invitation_token: {
+        Args: { token_value: string }
+        Returns: Json
+      }
       current_user_is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
