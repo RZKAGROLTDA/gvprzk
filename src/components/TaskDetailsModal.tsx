@@ -172,8 +172,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Contato:</span>
-                    <span>{currentTask.client}</span>
+                    <span className="font-medium">Nome do Contato:</span>
+                    <span>{currentTask.responsible}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -188,6 +188,24 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       <span>{currentTask.property}</span>
                     </div>}
 
+                  {currentTask.cpf && <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">CPF:</span>
+                      <span>{currentTask.cpf}</span>
+                    </div>}
+
+                  {currentTask.email && <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Email:</span>
+                      <span>{currentTask.email}</span>
+                    </div>}
+
+                  {currentTask.propertyHectares && <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Hectares:</span>
+                      <span>{currentTask.propertyHectares} ha</span>
+                    </div>}
+
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Data do Relatório:</span>
@@ -195,12 +213,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       locale: ptBR
                     })}</span>
                   </div>
-
-                  {currentTask.email && <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Email:</span>
-                      <span>{currentTask.email}</span>
-                    </div>}
                 </div>
 
                 {/* Coluna Direita - Informações RZKAgro */}
@@ -209,7 +221,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Vendedor/CEP:</span>
+                    <span className="font-medium">Vendedor:</span>
                     <span>{currentTask.responsible}</span>
                   </div>
 
@@ -238,6 +250,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <span className="font-medium">Status:</span>
                     <Badge variant={getStatusColor(currentTask)}>
                       {getStatusLabel(currentTask)}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Flag className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">Prioridade:</span>
+                    <Badge variant={getPriorityColor(currentTask.priority)}>
+                      {getPriorityLabel(currentTask.priority)}
                     </Badge>
                   </div>
                 </div>
@@ -331,6 +351,118 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                           </div>
                         </div>}
                     </div>)}
+                </div>
+              </CardContent>
+            </Card>}
+
+          {/* Lista de Equipamentos */}
+          {currentTask.equipmentList && currentTask.equipmentList.length > 0 && <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Lista de Equipamentos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {currentTask.equipmentList.map((equipment, index) => (
+                    <div key={equipment.id} className="border rounded-lg p-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-medium">Família do Produto:</span>
+                          <p className="text-muted-foreground">{equipment.familyProduct}</p>
+                        </div>
+                        <div>
+                          <span className="font-medium">Quantidade:</span>
+                          <p className="text-muted-foreground">{equipment.quantity}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>}
+
+          {/* Produtos da Venda Parcial */}
+          {currentTask.prospectItems && currentTask.prospectItems.length > 0 && <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckSquare className="h-5 w-5" />
+                  Produtos da Venda Parcial
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {currentTask.prospectItems.map((product, index) => (
+                    <div key={product.id} className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${product.selected ? 'bg-green-500 border-green-500' : 'border-muted-foreground'}`}>
+                            {product.selected && <CheckSquare className="h-3 w-3 text-white" />}
+                          </div>
+                          <div>
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-xs text-muted-foreground">({product.category})</p>
+                            {product.observations && <p className="text-xs text-muted-foreground">{product.observations}</p>}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {product.quantity && <p className="text-sm">Qtd: {product.quantity}</p>}
+                          {product.price && <p className="text-sm font-medium">R$ {product.price.toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}</p>}
+                          {product.selected && product.price && product.quantity && (
+                            <p className="text-sm font-bold text-green-600">
+                              Total: R$ {(product.price * product.quantity).toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Fotos do produto da venda parcial */}
+                      {product.photos && product.photos.length > 0 && <div className="mt-3 pt-3 border-t">
+                          <p className="text-sm font-medium mb-2">Fotos do produto:</p>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {product.photos.map((photo, photoIndex) => (
+                              <div key={photoIndex} className="aspect-square border rounded overflow-hidden bg-muted">
+                                <img 
+                                  src={photo} 
+                                  alt={`Foto ${photoIndex + 1} do produto ${product.name}`} 
+                                  className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" 
+                                  onClick={() => window.open(photo, '_blank')} 
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.removeChild(target);
+                                      const errorDiv = document.createElement('div');
+                                      errorDiv.className = 'w-full h-full flex flex-col items-center justify-center text-muted-foreground';
+                                      
+                                      const iconDiv = document.createElement('div');
+                                      iconDiv.innerHTML = '📷';
+                                      iconDiv.className = 'text-lg mb-1';
+                                      
+                                      const textSpan = document.createElement('span');
+                                      textSpan.textContent = 'Imagem não disponível';
+                                      textSpan.className = 'text-xs text-center';
+                                      
+                                      errorDiv.appendChild(iconDiv);
+                                      errorDiv.appendChild(textSpan);
+                                      parent.appendChild(errorDiv);
+                                    }
+                                  }} 
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>}
