@@ -972,7 +972,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   };
   return <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Nova Tarefa</h1>
+        
         
         {/* Seletor de Tipo de Tarefa */}
         <div className="mt-6">
@@ -1426,24 +1426,13 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   </Label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
                     {/* PROSPECT CARD */}
-                    <div 
-                      className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${
-                        task.isProspect && task.salesConfirmed === undefined 
-                          ? 'border-primary bg-gradient-to-br from-primary/10 via-primary/20 to-primary/10 shadow-2xl transform scale-110 ring-4 ring-primary/30' 
-                          : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-primary hover:from-primary/5 hover:to-primary/15'
-                      }`} 
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        isProspect: true,
-                        salesConfirmed: undefined
-                      }))}
-                    >
+                    <div className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${task.isProspect && task.salesConfirmed === undefined ? 'border-primary bg-gradient-to-br from-primary/10 via-primary/20 to-primary/10 shadow-2xl transform scale-110 ring-4 ring-primary/30' : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-primary hover:from-primary/5 hover:to-primary/15'}`} onClick={() => setTask(prev => ({
+                    ...prev,
+                    isProspect: true,
+                    salesConfirmed: undefined
+                  }))}>
                       <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${
-                          task.isProspect && task.salesConfirmed === undefined 
-                            ? 'bg-primary text-primary-foreground shadow-primary/30 animate-pulse' 
-                            : 'bg-muted group-hover:bg-primary/20 text-muted-foreground group-hover:text-primary'
-                        }`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${task.isProspect && task.salesConfirmed === undefined ? 'bg-primary text-primary-foreground shadow-primary/30 animate-pulse' : 'bg-muted group-hover:bg-primary/20 text-muted-foreground group-hover:text-primary'}`}>
                           <Search className="h-10 w-10" />
                         </div>
                         <div>
@@ -1451,32 +1440,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="text-sm text-muted-foreground">Cliente em análise</div>
                         </div>
                       </div>
-                      {task.isProspect && task.salesConfirmed === undefined && (
-                        <div className="absolute -top-3 -right-3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl animate-bounce">
+                      {task.isProspect && task.salesConfirmed === undefined && <div className="absolute -top-3 -right-3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl animate-bounce">
                           <Check className="h-6 w-6 text-primary-foreground" />
-                        </div>
-                      )}
+                        </div>}
                     </div>
                     
                     {/* VENDA REALIZADA CARD */}
-                    <div 
-                      className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${
-                        task.salesConfirmed === true 
-                          ? 'border-success bg-gradient-to-br from-success/10 via-success/20 to-success/10 shadow-2xl transform scale-110 ring-4 ring-success/30' 
-                          : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-success hover:from-success/5 hover:to-success/15'
-                      }`} 
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        salesConfirmed: true,
-                        isProspect: true
-                      }))}
-                    >
+                    <div className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${task.salesConfirmed === true ? 'border-success bg-gradient-to-br from-success/10 via-success/20 to-success/10 shadow-2xl transform scale-110 ring-4 ring-success/30' : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-success hover:from-success/5 hover:to-success/15'}`} onClick={() => setTask(prev => ({
+                    ...prev,
+                    salesConfirmed: true,
+                    isProspect: true
+                  }))}>
                       <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${
-                          task.salesConfirmed === true 
-                            ? 'bg-success text-success-foreground shadow-success/30 animate-pulse' 
-                            : 'bg-muted group-hover:bg-success/20 text-muted-foreground group-hover:text-success'
-                        }`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${task.salesConfirmed === true ? 'bg-success text-success-foreground shadow-success/30 animate-pulse' : 'bg-muted group-hover:bg-success/20 text-muted-foreground group-hover:text-success'}`}>
                           <CheckCircle className="h-10 w-10" />
                         </div>
                         <div>
@@ -1484,32 +1460,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="text-sm text-muted-foreground">Negócio fechado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === true && (
-                        <div className="absolute -top-3 -right-3 w-12 h-12 bg-success rounded-full flex items-center justify-center shadow-xl animate-bounce">
+                      {task.salesConfirmed === true && <div className="absolute -top-3 -right-3 w-12 h-12 bg-success rounded-full flex items-center justify-center shadow-xl animate-bounce">
                           <Check className="h-6 w-6 text-success-foreground" />
-                        </div>
-                      )}
+                        </div>}
                     </div>
                     
                     {/* VENDA PERDIDA CARD */}
-                    <div 
-                      className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${
-                        task.salesConfirmed === false 
-                          ? 'border-destructive bg-gradient-to-br from-destructive/10 via-destructive/20 to-destructive/10 shadow-2xl transform scale-110 ring-4 ring-destructive/30' 
-                          : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-destructive hover:from-destructive/5 hover:to-destructive/15'
-                      }`} 
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        salesConfirmed: false,
-                        isProspect: true
-                      }))}
-                    >
+                    <div className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${task.salesConfirmed === false ? 'border-destructive bg-gradient-to-br from-destructive/10 via-destructive/20 to-destructive/10 shadow-2xl transform scale-110 ring-4 ring-destructive/30' : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-destructive hover:from-destructive/5 hover:to-destructive/15'}`} onClick={() => setTask(prev => ({
+                    ...prev,
+                    salesConfirmed: false,
+                    isProspect: true
+                  }))}>
                       <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${
-                          task.salesConfirmed === false 
-                            ? 'bg-destructive text-destructive-foreground shadow-destructive/30 animate-pulse' 
-                            : 'bg-muted group-hover:bg-destructive/20 text-muted-foreground group-hover:text-destructive'
-                        }`}>
+                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${task.salesConfirmed === false ? 'bg-destructive text-destructive-foreground shadow-destructive/30 animate-pulse' : 'bg-muted group-hover:bg-destructive/20 text-muted-foreground group-hover:text-destructive'}`}>
                           <XCircle className="h-10 w-10" />
                         </div>
                         <div>
@@ -1517,11 +1480,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <div className="text-sm text-muted-foreground">Negócio não realizado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === false && (
-                        <div className="absolute -top-3 -right-3 w-12 h-12 bg-destructive rounded-full flex items-center justify-center shadow-xl animate-bounce">
+                      {task.salesConfirmed === false && <div className="absolute -top-3 -right-3 w-12 h-12 bg-destructive rounded-full flex items-center justify-center shadow-xl animate-bounce">
                           <Check className="h-6 w-6 text-destructive-foreground" />
-                        </div>
-                      )}
+                        </div>}
                     </div>
                   </div>
                 </div>
