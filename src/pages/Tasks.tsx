@@ -254,7 +254,11 @@ const Tasks: React.FC = () => {
       id: task.id,
       isProspect: task.isProspect,
       salesConfirmed: task.salesConfirmed,
-      salesValue: task.salesValue
+      salesValue: task.salesValue,
+      salesConfirmedType: typeof task.salesConfirmed,
+      salesConfirmedNullCheck: task.salesConfirmed === null,
+      salesConfirmedTrueCheck: task.salesConfirmed === true,
+      salesConfirmedFalseCheck: task.salesConfirmed === false
     });
 
     // Prioridade 1: Se é prospect e salesConfirmed é null = Prospect Em Andamento
