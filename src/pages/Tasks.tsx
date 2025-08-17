@@ -252,14 +252,27 @@ const Tasks: React.FC = () => {
   const getProspectStatus = (task: TaskWithUserInfo) => {
     if (!task.isProspect) return null;
     
-    const status = mapSalesStatus(task);
-    return { 
-      type: status,
-      label: getStatusLabel(status), 
-      variant: status === 'ganho' ? 'success' as const : 
-               status === 'perdido' ? 'destructive' as const :
-               status === 'parcial' ? 'warning' as const : 'secondary' as const
-    };
+    // Match the form completion behavior exactly
+    if (task.salesConfirmed === true) {
+      return { 
+        type: 'ganho',
+        label: 'Venda Realizada', 
+        variant: 'success' as const
+      };
+    } else if (task.salesConfirmed === false) {
+      return { 
+        type: 'perdido',
+        label: 'Venda Perdida', 
+        variant: 'destructive' as const
+      };
+    } else {
+      // salesConfirmed is null or undefined - this is a prospect in progress
+      return { 
+        type: 'prospect',
+        label: 'Prospect', 
+        variant: 'secondary' as const
+      };
+    }
   };
 
   return (
