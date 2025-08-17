@@ -23,8 +23,6 @@ export const useTasks = () => {
       await loadFiliaisCache();
       
       if (isOnline) {
-        console.log('Carregando tarefas do Supabase...');
-        
         // Carregar do Supabase quando online
         const { data: tasksData, error } = await supabase
           .from('tasks')
@@ -36,7 +34,6 @@ export const useTasks = () => {
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('Erro ao carregar tarefas do servidor:', error);
           // Fallback para dados offline
           const offlineTasks = getOfflineTasks();
           setTasks(offlineTasks);
@@ -50,9 +47,6 @@ export const useTasks = () => {
 
         // Converter dados do Supabase para o formato da aplicação
         const formattedTasks: Task[] = tasksData?.map(mapSupabaseTaskToTask) || [];
-        
-        console.log('Tarefas carregadas:', formattedTasks.length);
-        console.log('Exemplo de tarefa (primeiro item):', formattedTasks[0]);
 
         setTasks(formattedTasks);
       } else {
@@ -68,8 +62,6 @@ export const useTasks = () => {
         }
       }
     } catch (error: any) {
-      console.error('Erro ao carregar tarefas:', error);
-      
       // Fallback para dados offline em caso de erro
       const offlineTasks = getOfflineTasks();
       setTasks(offlineTasks);
@@ -212,8 +204,6 @@ export const useTasks = () => {
         
         return task;
       } catch (error: any) {
-        console.error('Erro ao criar tarefa online, salvando offline:', error);
-        
         // Se falhar online, salvar offline
         saveTaskOffline(tempTask);
         setTasks(prev => [tempTask, ...prev]);
@@ -233,8 +223,6 @@ export const useTasks = () => {
     if (!user) return;
 
     try {
-      console.log('Atualizando tarefa:', taskId, 'com dados:', updates);
-      
       // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
       let finalUpdates = { ...updates };
       if (updates.salesConfirmed === true || updates.salesConfirmed === false) {
@@ -255,11 +243,8 @@ export const useTasks = () => {
         .eq('id', taskId);
 
       if (error) {
-        console.error('Erro ao atualizar tarefa no Supabase:', error);
         throw error;
       }
-
-      console.log('Tarefa atualizada com sucesso no banco');
 
       // Atualizar state local imediatamente
       setTasks(prev => prev.map(task => 
@@ -271,7 +256,6 @@ export const useTasks = () => {
 
       return true;
     } catch (error: any) {
-      console.error('Erro ao atualizar tarefa:', error);
       throw error;
     }
   };

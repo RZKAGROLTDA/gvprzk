@@ -4,19 +4,6 @@ import { resolveFilialName, loadFiliaisCache } from './taskStandardization';
 
 // Utility function to map Supabase task data to application Task format
 export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
-  console.log('🔍 MAPPER: Mapeando tarefa do Supabase:', supabaseTask.id, {
-    is_prospect: supabaseTask.is_prospect,
-    sales_confirmed: supabaseTask.sales_confirmed,
-    sales_value: supabaseTask.sales_value,
-    filial: supabaseTask.filial
-  });
-  
-  console.log('🔍 MAPPER: Tipos dos valores:', {
-    'is_prospect tipo': typeof supabaseTask.is_prospect,
-    'sales_confirmed tipo': typeof supabaseTask.sales_confirmed,
-    'sales_confirmed === null': supabaseTask.sales_confirmed === null,
-    'sales_confirmed === undefined': supabaseTask.sales_confirmed === undefined
-  });
 
   // Resolver nome da filial automaticamente
   const filialResolved = resolveFilialName(supabaseTask.filial);
@@ -79,21 +66,6 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     propertyHectares: supabaseTask.property_hectares || 0,
     equipmentList: supabaseTask.equipment_list || [],
   };
-
-  console.log('🔍 MAPPER: Tarefa mapeada:', mappedTask.id, {
-    isProspect: mappedTask.isProspect,
-    salesConfirmed: mappedTask.salesConfirmed,
-    salesValue: mappedTask.salesValue,
-    filialOriginal: supabaseTask.filial,
-    filialResolved: filialResolved
-  });
-  
-  console.log('🔍 MAPPER: Valores finais para status:', {
-    'salesConfirmed === null': mappedTask.salesConfirmed === null,
-    'salesConfirmed === true': mappedTask.salesConfirmed === true,
-    'salesConfirmed === false': mappedTask.salesConfirmed === false,
-    'isProspect': mappedTask.isProspect
-  });
 
   return mappedTask;
 };

@@ -9,6 +9,8 @@ import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Settings, Trash, Eye, EyeOff } from 'lucide-react';
 import { SessionRefresh } from '@/components/SessionRefresh';
+import { useInputValidation } from '@/hooks/useInputValidation';
+import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 
 export const LoginForm: React.FC = () => {
   const { signIn, signUp } = useAuth();
@@ -19,6 +21,7 @@ export const LoginForm: React.FC = () => {
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockTimeLeft, setBlockTimeLeft] = useState(0);
+  const [isAdminEmail, setIsAdminEmail] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -26,11 +29,38 @@ export const LoginForm: React.FC = () => {
     role: 'consultant'
   });
 
-  // Lista de emails de administradores
-  const ADMIN_EMAILS = ['robson.ferro@rzkagro.com.br', 'hugo@rzkagro.com.br'];
-  
-  // Verificar se o email digitado é de administrador
-  const isAdminEmail = ADMIN_EMAILS.includes(formData.email.toLowerCase());
+  const { validateField, getFieldErrors, hasErrors, validationRules } = useInputValidation();
+  const { monitorLoginAttempt, monitorPasswordReset } = useSecurityMonitor();
+
+  // Check if email is admin using database
+  const checkAdminStatus = async (email: string) => {
+    if (!email) {
+      setIsAdminEmail(false);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase.rpc('is_admin_by_email', { 
+        check_email: email.toLowerCase() 
+      });
+      
+      if (!error) {
+        setIsAdminEmail(data || false);
+      }
+    } catch (error) {
+      // Silently fail - not critical for login
+      setIsAdminEmail(false);
+    }
+  };
+
+  // Check admin status when email changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      checkAdminStatus(formData.email);
+    }, 500); // Debounce the check
+
+    return () => clearTimeout(timeoutId);
+  }, [formData.email]);
 
   // Sistema de bloqueio temporário
   useEffect(() => {
@@ -68,15 +98,26 @@ export const LoginForm: React.FC = () => {
         title: "Dados locais limpos",
         description: "Cache e tokens removidos. Contador de tentativas resetado.",
       });
-      
-      console.log('DEBUG: Dados locais limpos');
     } catch (error) {
-      console.error('Erro ao limpar dados:', error);
+      // Error handling for cache clearing
     }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate inputs
+    const isEmailValid = validateField('email', formData.email, validationRules.email);
+    const isPasswordValid = validateField('password', formData.password, { required: true });
+    
+    if (!isEmailValid.isValid || !isPasswordValid.isValid) {
+      toast({
+        title: "Dados inválidos",
+        description: "Verifique os campos em vermelho",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Verificar se está bloqueado
     if (isBlocked) {
@@ -89,22 +130,22 @@ export const LoginForm: React.FC = () => {
     }
 
     setLoading(true);
-    console.log('DEBUG: Tentando login com:', formData.email);
     
     const { error } = await signIn(formData.email, formData.password);
     
     if (error) {
-      console.error('DEBUG: Erro no login:', error);
-      
       // Incrementar contador de tentativas
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
       
-      let errorMessage = error.message;
+      // Monitor failed login attempt
+      monitorLoginAttempt(formData.email, false);
+      
+      let errorMessage = "Erro no login";
       
       // Mensagens mais amigáveis para erros comuns
       if (error.message === 'Invalid login credentials') {
-        errorMessage = `Email ou senha incorretos. Tentativa ${newAttempts}/5.`;
+        errorMessage = `Credenciais inválidas. Tentativa ${newAttempts}/5.`;
         
         // Bloquear após 5 tentativas
         if (newAttempts >= 5) {
@@ -128,8 +169,8 @@ export const LoginForm: React.FC = () => {
         variant: "destructive",
       });
     } else {
-      console.log('DEBUG: Login bem-sucedido');
       setLoginAttempts(0); // Reset contador em caso de sucesso
+      monitorLoginAttempt(formData.email, true);
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo ao sistema de tarefas",
@@ -141,9 +182,22 @@ export const LoginForm: React.FC = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all signup fields
+    const isNameValid = validateField('name', formData.name, validationRules.name);
+    const isEmailValid = validateField('email', formData.email, validationRules.email);
+    const isPasswordValid = validateField('password', formData.password, validationRules.password);
+    
+    if (!isNameValid.isValid || !isEmailValid.isValid || !isPasswordValid.isValid) {
+      toast({
+        title: "Dados inválidos",
+        description: "Verifique os campos em vermelho",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
-
-    console.log('DEBUG: Tentando cadastro com:', formData.email);
 
     const { error } = await signUp(formData.email, formData.password, {
       name: formData.name,
@@ -151,14 +205,20 @@ export const LoginForm: React.FC = () => {
     });
     
     if (error) {
-      console.error('DEBUG: Erro no cadastro:', error);
+      let errorMessage = "Erro no cadastro";
+      
+      if (error.message.includes('already_registered')) {
+        errorMessage = "Email já cadastrado. Tente fazer login.";
+      } else if (error.message.includes('weak_password')) {
+        errorMessage = "Senha muito fraca. Use uma senha mais forte.";
+      }
+      
       toast({
         title: "Erro no cadastro",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } else {
-      console.log('DEBUG: Cadastro bem-sucedido');
       toast({
         title: "Cadastro realizado com sucesso!",
         description: "Verifique seu email para confirmar a conta",
@@ -169,10 +229,12 @@ export const LoginForm: React.FC = () => {
   };
 
   const handleForgotPassword = async () => {
-    if (!formData.email) {
+    const isEmailValid = validateField('email', formData.email, validationRules.email);
+    
+    if (!isEmailValid.isValid) {
       toast({
-        title: "Email necessário",
-        description: "Digite seu email para recuperar a senha",
+        title: "Email inválido",
+        description: "Digite um email válido para recuperar a senha",
         variant: "destructive",
       });
       return;
@@ -184,10 +246,12 @@ export const LoginForm: React.FC = () => {
       redirectTo: `${window.location.origin}/reset-password`,
     });
 
+    monitorPasswordReset(formData.email);
+
     if (error) {
       toast({
         title: "Erro ao enviar email",
-        description: error.message,
+        description: "Não foi possível enviar o email de recuperação",
         variant: "destructive",
       });
     } else {
@@ -198,6 +262,24 @@ export const LoginForm: React.FC = () => {
     }
 
     setLoading(false);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear field errors when user starts typing
+    if (hasErrors(field)) {
+      // Validate on change for immediate feedback
+      setTimeout(() => {
+        if (field === 'email') {
+          validateField(field, value, validationRules.email);
+        } else if (field === 'password') {
+          validateField(field, value, field === 'password' ? validationRules.password : { required: true });
+        } else if (field === 'name') {
+          validateField(field, value, validationRules.name);
+        }
+      }, 300);
+    }
   };
 
   return (
@@ -236,9 +318,15 @@ export const LoginForm: React.FC = () => {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     required
+                    className={hasErrors('email') ? 'border-destructive' : ''}
                   />
+                  {hasErrors('email') && (
+                    <p className="text-sm text-destructive">
+                      {getFieldErrors('email').join(', ')}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -248,7 +336,7 @@ export const LoginForm: React.FC = () => {
                       id="password"
                       type={showPassword ? "text" : "password"}
                       value={formData.password}
-                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
                       required
                       className="pr-10"
                     />
@@ -311,9 +399,15 @@ export const LoginForm: React.FC = () => {
                   <Input
                     id="signup-name"
                     value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
                     required
+                    className={hasErrors('name') ? 'border-destructive' : ''}
                   />
+                  {hasErrors('name') && (
+                    <p className="text-sm text-destructive">
+                      {getFieldErrors('name').join(', ')}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -322,9 +416,15 @@ export const LoginForm: React.FC = () => {
                     id="signup-email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     required
+                    className={hasErrors('email') ? 'border-destructive' : ''}
                   />
+                  {hasErrors('email') && (
+                    <p className="text-sm text-destructive">
+                      {getFieldErrors('email').join(', ')}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -334,10 +434,9 @@ export const LoginForm: React.FC = () => {
                       id="signup-password"
                       type={showSignupPassword ? "text" : "password"}
                       value={formData.password}
-                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
                       required
-                      minLength={6}
-                      className="pr-10"
+                      className={`pr-10 ${hasErrors('password') ? 'border-destructive' : ''}`}
                     />
                     <Button
                       type="button"
@@ -353,7 +452,16 @@ export const LoginForm: React.FC = () => {
                       )}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+                  {hasErrors('password') && (
+                    <div className="text-xs text-destructive space-y-1">
+                      {getFieldErrors('password').map((error, index) => (
+                        <div key={index}>• {error}</div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Senha forte: 8+ caracteres, maiúscula, minúscula, número e símbolo
+                  </p>
                 </div>
                 
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -373,21 +481,18 @@ export const LoginForm: React.FC = () => {
           
           <Card className="mt-4">
             <CardHeader>
-              <CardTitle className="text-sm">Contas de Teste</CardTitle>
+              <CardTitle className="text-sm">Ferramentas de Administrador</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
               <div className="p-2 bg-muted rounded">
-                <p className="font-medium">Manager:</p>
-                <p>Email: robson.ferro@rzkagro.com.br</p>
-                <p>Email: hugo@rzkagro.com.br</p>
-                <p className="text-muted-foreground mt-1">Use "Esqueci minha senha" para redefinir</p>
+                <p className="font-medium">Acesso Administrativo:</p>
+                <p className="text-muted-foreground mt-1">Você tem acesso às funcionalidades de administrador</p>
               </div>
               
               <div className="p-2 bg-muted rounded">
                 <p className="font-medium">Problemas comuns:</p>
                 <ul className="list-disc list-inside text-muted-foreground">
                   <li>Use "Limpar Cache" se tiver erro de token</li>
-                  <li>Verifique console para logs detalhados</li>
                   <li>Use "Testar Autenticação" para diagnóstico</li>
                   <li>Sistema bloqueia por 5min após 5 tentativas</li>
                 </ul>
