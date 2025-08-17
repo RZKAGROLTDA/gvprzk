@@ -521,10 +521,12 @@ const CreateTask: React.FC = () => {
     // Reset task state (mantém apenas filial)
     setTask({
       name: '',
-      responsible: '',
+      responsible: profile?.name || '',
       client: '',
       property: '',
       filial: profile?.filial_id || '',
+      cpf: '',
+      email: '',
       taskType: getTaskTypeFromCategory(taskCategory),
       priority: 'medium',
       observations: '',
@@ -537,7 +539,15 @@ const CreateTask: React.FC = () => {
       checklist: [],
       reminders: [],
       photos: [],
-      documents: []
+      documents: [],
+      isProspect: true,
+      salesConfirmed: undefined,
+      salesValue: 0,
+      prospectItems: [],
+      prospectNotes: '',
+      propertyHectares: 0,
+      equipmentQuantity: 0,
+      familyProduct: ''
     });
 
     // Reset call questions
@@ -604,10 +614,6 @@ const CreateTask: React.FC = () => {
 
     // Reset WhatsApp webhook
     setWhatsappWebhook('');
-    toast({
-      title: "✨ Formulário limpo",
-      description: "Todas as informações foram resetadas com sucesso"
-    });
   };
 
   // Atualiza o checklist e taskType quando o tipo de tarefa muda
@@ -844,40 +850,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         }
       }
 
-      // Resetar formulário após sucesso
-      setTask({
-        name: '',
-        responsible: profile?.name || '',
-        client: '',
-        property: '',
-        filial: profile?.filial_id || '',
-        taskType: getTaskTypeFromCategory(taskCategory),
-        startDate: new Date(),
-        endDate: new Date(),
-        startTime: '',
-        endTime: '',
-        observations: '',
-        priority: 'medium',
-        photos: [],
-        documents: [],
-        initialKm: 0,
-        finalKm: 0,
-        isProspect: false,
-        prospectNotes: '',
-        prospectItems: [],
-        salesValue: 0,
-        salesConfirmed: false
-      });
-      setChecklist([]);
-      setReminders([]);
-      setWhatsappWebhook('');
+      // Reset completo do formulário e voltar à seleção de tipo de tarefa
+      resetAllFields();
+      
+      // Reset do tipo de tarefa selecionado para voltar à tela inicial
+      setSelectedTaskType(null);
+      setTaskCategory('field-visit');
+      
+      // Scroll para o topo da página
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
       toast({
-        title: "✅ Tarefa Criada",
-        description: isOnline ? "Tarefa salva com sucesso no servidor!" : "Tarefa salva offline - será sincronizada quando conectar!"
+        title: "✅ Tarefa Criada com Sucesso!",
+        description: isOnline 
+          ? "Tarefa salva no servidor. Você pode criar uma nova tarefa." 
+          : "Tarefa salva offline - será sincronizada quando conectar. Você pode criar uma nova tarefa."
       });
-
-      // Redirecionar para nova tarefa
-      navigate('/create-task');
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
       toast({
@@ -1700,7 +1688,14 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={resetAllFields} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    <AlertDialogAction onClick={() => {
+                      resetAllFields();
+                      setSelectedTaskType(null);
+                      toast({
+                        title: "✨ Formulário limpo",
+                        description: "Todas as informações foram resetadas com sucesso"
+                      });
+                    }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                       Sim, limpar tudo
                     </AlertDialogAction>
                   </AlertDialogFooter>
