@@ -827,16 +827,20 @@ export const SalesFunnel: React.FC = () => {
               <TableBody>
                 {filteredTasks.slice(0, 20).map((task) => {
                   const getTaskStatus = () => {
-                    if (task.salesConfirmed && task.status === 'completed') {
-                      return { label: 'Venda Realizada', variant: 'default' as const };
-                    } else if (task.salesConfirmed && task.status === 'pending') {
-                      return { label: 'Venda em Andamento', variant: 'secondary' as const };
-                    } else if (task.isProspect && task.status === 'closed' && !task.salesConfirmed) {
-                      return { label: 'Venda Perdida', variant: 'destructive' as const };
-                    } else if (task.isProspect) {
-                      return { label: 'Prospect', variant: 'outline' as const };
-                    } else {
-                      return { label: 'Atividade', variant: 'secondary' as const };
+                    const salesStatus = mapSalesStatus(task);
+                    const statusLabel = getStatusLabel(salesStatus);
+                    
+                    switch (salesStatus) {
+                      case 'ganho':
+                        return { label: statusLabel, variant: 'default' as const };
+                      case 'parcial':
+                        return { label: statusLabel, variant: 'secondary' as const };
+                      case 'perdido':
+                        return { label: statusLabel, variant: 'destructive' as const };
+                      case 'prospect':
+                        return { label: statusLabel, variant: 'outline' as const };
+                      default:
+                        return { label: 'Atividade', variant: 'secondary' as const };
                     }
                   };
 
