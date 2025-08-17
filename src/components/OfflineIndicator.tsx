@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,31 +8,24 @@ import { useProfile } from '@/hooks/useProfile';
 import { Wifi, WifiOff, RefreshCw, Database, Clock, Trash2, User, Building } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
 export const OfflineIndicator: React.FC = () => {
-  const { 
-    isOnline, 
-    isSyncing, 
-    pendingSync, 
-    syncData, 
+  const {
+    isOnline,
+    isSyncing,
+    pendingSync,
+    syncData,
     clearOfflineData,
-    loadOfflineData 
+    loadOfflineData
   } = useOffline();
-  
-  const { profile } = useProfile();
-
+  const {
+    profile
+  } = useProfile();
   const offlineData = loadOfflineData();
-
-  return (
-    <Card className="border-l-4 border-l-primary">
+  return <Card className="border-l-4 border-l-primary">
       <CardHeader className="pb-1">
         <CardTitle className="flex items-center justify-between text-base">
           <div className="flex items-center gap-2">
-            {isOnline ? (
-              <Wifi className="h-4 w-4 text-green-500" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-red-500" />
-            )}
+            {isOnline ? <Wifi className="h-4 w-4 text-green-500" /> : <WifiOff className="h-4 w-4 text-red-500" />}
             Status de Conectividade
           </div>
           <Badge variant={isOnline ? "default" : "destructive"} className="text-xs">
@@ -46,7 +38,7 @@ export const OfflineIndicator: React.FC = () => {
         <div className="bg-secondary/20 rounded-lg p-2 space-y-1">
           <div className="flex items-center gap-2">
             <User className="h-3 w-3 text-primary" />
-            <span className="text-xs font-medium">Vendedor/CEP:</span>
+            <span className="text-xs font-medium">Vendedor:</span>
             <span className="text-xs">{profile?.name || 'Carregando...'}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -80,14 +72,14 @@ export const OfflineIndicator: React.FC = () => {
         </div>
 
         {/* Última Sincronização */}
-        {offlineData.lastSyncTime && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {offlineData.lastSyncTime && <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             <span>
-              Última sync: {format(offlineData.lastSyncTime, "PPp", { locale: ptBR })}
+              Última sync: {format(offlineData.lastSyncTime, "PPp", {
+            locale: ptBR
+          })}
             </span>
-          </div>
-        )}
+          </div>}
 
         <Separator className="my-1" />
 
@@ -105,47 +97,31 @@ export const OfflineIndicator: React.FC = () => {
 
         {/* Ações */}
         <div className="flex gap-2 pt-1">
-          <Button
-            onClick={syncData}
-            disabled={!isOnline || isSyncing || pendingSync === 0}
-            size="sm"
-            variant="outline"
-            className="flex-1 h-7 text-xs"
-          >
+          <Button onClick={syncData} disabled={!isOnline || isSyncing || pendingSync === 0} size="sm" variant="outline" className="flex-1 h-7 text-xs">
             <RefreshCw className={`h-3 w-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
             {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
           </Button>
           
-          <Button
-            onClick={clearOfflineData}
-            size="sm"
-            variant="outline"
-            className="flex-1 h-7 text-xs"
-          >
+          <Button onClick={clearOfflineData} size="sm" variant="outline" className="flex-1 h-7 text-xs">
             <Trash2 className="h-3 w-3 mr-1" />
             Limpar Cache
           </Button>
         </div>
 
         {/* Indicador de Sincronização */}
-        {isSyncing && (
-          <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-md">
+        {isSyncing && <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-md">
             <RefreshCw className="h-3 w-3 animate-spin text-primary" />
             <span className="text-xs text-primary">
               Sincronizando dados com o servidor...
             </span>
-          </div>
-        )}
+          </div>}
 
         {/* Aviso Offline */}
-        {!isOnline && (
-          <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+        {!isOnline && <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
             <p className="text-xs text-yellow-700 dark:text-yellow-300">
               ⚠️ Modo offline ativo. Suas alterações serão sincronizadas quando a conexão for restaurada.
             </p>
-          </div>
-        )}
+          </div>}
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
