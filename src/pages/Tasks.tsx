@@ -298,8 +298,6 @@ const Tasks: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Indicador de Status Offline */}
-      <OfflineIndicator />
 
       {/* Header */}
       <div className="flex justify-between items-center">
