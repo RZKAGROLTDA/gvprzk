@@ -28,6 +28,20 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [loading, setLoading] = useState(false);
 
+  // Função para calcular valor total automático igual ao CreateTask
+  const calculateTotalSalesValue = () => {
+    let total = 0;
+
+    // Somar valores dos produtos prospectItems selecionados
+    if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
+      total = editedTask.prospectItems.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
+    }
+
+    return total;
+  };
+
   useEffect(() => {
     if (task) {
       setEditedTask({
@@ -47,6 +61,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       });
     }
   }, [task]);
+
+  // Atualizar valor total automaticamente quando prospectItems muda
+  useEffect(() => {
+    if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
+      const totalValue = calculateTotalSalesValue();
+      setEditedTask(prev => ({
+        ...prev,
+        salesValue: totalValue
+      }));
+    }
+  }, [editedTask.prospectItems]);
 
   // Remover a atualização automática do valor da venda parcial
   // O valor principal não deve ser alterado automaticamente
@@ -327,16 +352,21 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               <Input 
                 id="edit-salesValue" 
                 type="text" 
-                disabled
-                value={editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
+                value={calculateTotalSalesValue() ? new Intl.NumberFormat('pt-BR', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
-                }).format(editedTask.salesValue) : ''} 
-                placeholder="0,00" 
-                className="pl-8" 
+                }).format(calculateTotalSalesValue()) : (editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                }).format(editedTask.salesValue) : '0,00')} 
+                className="pl-8 bg-muted cursor-not-allowed" 
+                readOnly
               />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {editedTask.prospectItems && editedTask.prospectItems.length > 0 ? "Valor calculado com base nos produtos selecionados" : "Valor original da tarefa"}
+            </p>
           </div>
 
           {/* Campo de observação para venda perdida */}
