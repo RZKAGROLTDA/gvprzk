@@ -134,15 +134,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome da Tarefa</Label>
-              <Input id="edit-name" value={editedTask.name || ''} onChange={e => setEditedTask(prev => ({
-              ...prev,
-              name: e.target.value
-            }))} placeholder="Nome da tarefa" />
-            </div>
-
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-responsible">Vendedor/Responsável</Label>
               <Input id="edit-responsible" value={editedTask.responsible || ''} onChange={e => setEditedTask(prev => ({
