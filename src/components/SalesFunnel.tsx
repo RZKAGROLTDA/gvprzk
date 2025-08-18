@@ -1001,6 +1001,12 @@ export const SalesFunnel: React.FC = () => {
           setIsModalOpen(false);
           setSelectedTask(null);
         }}
+        onTaskUpdated={(updatedTask) => {
+          console.log('🔄 Task updated in SalesFunnel:', updatedTask);
+          // Update selectedTask immediately for UI consistency
+          setSelectedTask(updatedTask);
+          // Note: The tasks list will be updated when loadTasks() completes in the modal
+        }}
       />
     </div>
   );

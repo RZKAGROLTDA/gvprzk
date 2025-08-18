@@ -18,12 +18,14 @@ interface OpportunityDetailsModalProps {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
+  onTaskUpdated?: (updatedTask: Task) => void;
 }
 
 export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = ({
   task,
   isOpen,
-  onClose
+  onClose,
+  onTaskUpdated
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
@@ -137,7 +139,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       });
 
       // Update task in database with comprehensive status update
-      const { data: updatedTask, error: taskError } = await supabase
+      const { data: taskUpdateResult, error: taskError } = await supabase
         .from('tasks')
         .update({
           sales_confirmed: salesConfirmed,
@@ -154,7 +156,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         throw taskError;
       }
 
-      console.log('✅ Tarefa atualizada com sucesso:', updatedTask);
+      console.log('✅ Tarefa atualizada com sucesso:', taskUpdateResult);
 
       // Update products in database - usar uma abordagem mais robusta
       if (task.checklist && task.checklist.length > 0) {
@@ -203,11 +205,32 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         }
       }
 
-      console.log('✅ Atualização completa realizada com sucesso');
-      toast.success('Status da oportunidade atualizado com sucesso!');
+      console.log('✅ Status update completed successfully');
       
-      // Recarregar tarefas e fechar modal
+      // Create updated task object for immediate UI update
+      const updatedTask: Task = {
+        ...task,
+        salesConfirmed: salesConfirmed,
+        status: taskStatus,
+        isProspect: isProspect,
+        checklist: updatedChecklist
+      };
+      
+      console.log('📤 Updated task object:', updatedTask);
+      
+      // Show success toast
+      toast.success('Status da oportunidade atualizado com sucesso!');
+
+      // Update parent component immediately (optimistic update)
+      if (onTaskUpdated) {
+        console.log('📋 Calling onTaskUpdated with updated task');
+        onTaskUpdated(updatedTask);
+      }
+
+      // Reload tasks in background to sync with server
       await loadTasks();
+      
+      // Close modal and reset state
       onClose();
     } catch (error) {
       console.error('❌ Erro ao atualizar status:', error);

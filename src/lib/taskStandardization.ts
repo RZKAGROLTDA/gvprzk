@@ -45,15 +45,34 @@ export const resolveFilialName = (filialId: string | null | undefined): string =
  * Mapeia status de vendas para padrão unificado
  */
 export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | 'perdido' => {
+  console.log('🔍 mapSalesStatus - Input task:', {
+    id: task.id,
+    salesConfirmed: task.salesConfirmed,
+    isProspect: task.isProspect,
+    checklistLength: task.checklist?.length || 0,
+    selectedChecklistItems: task.checklist?.filter(item => item.selected).length || 0,
+    prospectItemsLength: task.prospectItems?.length || 0,
+    selectedProspectItems: task.prospectItems?.filter(item => item.selected).length || 0
+  });
+
   // Verificar venda confirmada primeiro (ganho)
   if (task.salesConfirmed === true) {
+    console.log('✅ Sales confirmed = true, checking for partial sale...');
+    
     // Verificar se é venda parcial (tem produtos específicos selecionados no checklist)
     if (task.checklist && task.checklist.length > 0) {
       const selectedItems = task.checklist.filter(item => item.selected);
       const totalItems = task.checklist.length;
       
+      console.log('📋 Checklist analysis:', {
+        totalItems,
+        selectedItems: selectedItems.length,
+        isPartial: selectedItems.length > 0 && selectedItems.length < totalItems
+      });
+      
       // Se há itens selecionados mas não todos, é venda parcial
       if (selectedItems.length > 0 && selectedItems.length < totalItems) {
+        console.log('🟡 Result: parcial (based on checklist)');
         return 'parcial';
       }
     }
@@ -63,21 +82,36 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | '
       const selectedProspectItems = task.prospectItems.filter(item => item.selected);
       const totalProspectItems = task.prospectItems.length;
       
+      console.log('📦 ProspectItems analysis:', {
+        totalProspectItems,
+        selectedProspectItems: selectedProspectItems.length,
+        isPartial: selectedProspectItems.length > 0 && selectedProspectItems.length < totalProspectItems
+      });
+      
       if (selectedProspectItems.length > 0 && selectedProspectItems.length < totalProspectItems) {
+        console.log('🟡 Result: parcial (based on prospectItems)');
         return 'parcial';
       }
     }
     
+    console.log('🟢 Result: ganho (full sale)');
     return 'ganho';
   }
   
   // Venda perdida
-  if (task.salesConfirmed === false) return 'perdido';
+  if (task.salesConfirmed === false) {
+    console.log('🔴 Result: perdido (sales confirmed = false)');
+    return 'perdido';
+  }
   
   // Se salesConfirmed é undefined, mas ainda é prospect ativo
-  if (task.isProspect) return 'prospect';
+  if (task.isProspect) {
+    console.log('🔵 Result: prospect (isProspect = true)');
+    return 'prospect';
+  }
   
   // Default para prospect se não há definição clara
+  console.log('🔵 Result: prospect (default)');
   return 'prospect';
 };
 
