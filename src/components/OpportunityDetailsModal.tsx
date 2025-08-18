@@ -1,10 +1,11 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Task } from '@/types/task';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { format } from 'date-fns';
@@ -26,13 +27,51 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
+  const [selectedItems, setSelectedItems] = useState<{[key: string]: boolean}>({});
+  const [partialValue, setPartialValue] = useState<number>(0);
   const { loadTasks } = useTasks();
 
   React.useEffect(() => {
     if (task) {
       setSelectedStatus(mapSalesStatus(task));
+      
+      // Initialize selected items based on current checklist
+      if (task.checklist) {
+        const initialSelected: {[key: string]: boolean} = {};
+        let calculatedPartialValue = 0;
+        
+        task.checklist.forEach(item => {
+          initialSelected[item.id] = item.selected || false;
+          if (item.selected && item.price) {
+            calculatedPartialValue += item.price * (item.quantity || 1);
+          }
+        });
+        
+        setSelectedItems(initialSelected);
+        setPartialValue(calculatedPartialValue);
+      }
     }
   }, [task]);
+
+  const handleItemSelection = (itemId: string, selected: boolean) => {
+    if (!task) return;
+    
+    setSelectedItems(prev => ({
+      ...prev,
+      [itemId]: selected
+    }));
+
+    // Recalculate partial value
+    let newPartialValue = 0;
+    task.checklist?.forEach(item => {
+      const isSelected = itemId === item.id ? selected : selectedItems[item.id];
+      if (isSelected && item.price) {
+        newPartialValue += item.price * (item.quantity || 1);
+      }
+    });
+    
+    setPartialValue(newPartialValue);
+  };
 
   const handleStatusUpdate = async () => {
     if (!task) return;
@@ -40,22 +79,36 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     setIsUpdating(true);
     try {
       let salesConfirmed: boolean | null = null;
+      let updatedChecklist = [...(task.checklist || [])];
       
       // Mapear o status selecionado para o valor correto de salesConfirmed
       switch (selectedStatus) {
         case 'ganho':
+          salesConfirmed = true;
+          // Mark all items as selected for full sale
+          updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: true }));
+          break;
         case 'parcial':
           salesConfirmed = true;
+          // Update checklist with selected items for partial sale
+          updatedChecklist = updatedChecklist.map(item => ({
+            ...item,
+            selected: selectedItems[item.id] || false
+          }));
           break;
         case 'perdido':
           salesConfirmed = false;
+          // Mark all items as not selected for lost sale
+          updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: false }));
           break;
         case 'prospect':
           salesConfirmed = null;
+          // Keep current selection state
           break;
       }
 
-      const { error } = await supabase
+      // Update task in database
+      const { error: taskError } = await supabase
         .from('tasks')
         .update({
           sales_confirmed: salesConfirmed,
@@ -63,7 +116,23 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         })
         .eq('id', task.id);
 
-      if (error) throw error;
+      if (taskError) throw taskError;
+
+      // Update products in database
+      if (updatedChecklist.length > 0) {
+        for (const item of updatedChecklist) {
+          const { error: productError } = await supabase
+            .from('products')
+            .update({
+              selected: item.selected,
+              updated_at: new Date().toISOString()
+            })
+            .eq('task_id', task.id)
+            .eq('id', item.id);
+
+          if (productError) throw productError;
+        }
+      }
 
       toast.success('Status da oportunidade atualizado com sucesso!');
       await loadTasks();
@@ -80,10 +149,12 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
   const currentStatus = mapSalesStatus(task);
   const filialName = resolveFilialName(task.filial);
+  const totalOpportunityValue = task.salesValue || 0;
+  const conversionRate = totalOpportunityValue > 0 ? (partialValue / totalOpportunityValue) * 100 : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Detalhes da Oportunidade</DialogTitle>
         </DialogHeader>
@@ -148,9 +219,9 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                 <p className="text-sm bg-muted p-2 rounded capitalize">{task.priority}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Valor da Oportunidade</label>
-                <p className="text-sm bg-muted p-2 rounded">
-                  {task.salesValue ? `R$ ${task.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informado'}
+                <label className="text-sm font-medium text-muted-foreground">Valor Total da Oportunidade</label>
+                <p className="text-sm bg-muted p-2 rounded font-semibold">
+                  {totalOpportunityValue ? `R$ ${totalOpportunityValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informado'}
                 </p>
               </div>
               <div>
@@ -159,6 +230,19 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   {getStatusLabel(currentStatus)}
                 </Badge>
               </div>
+              {selectedStatus === 'parcial' && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Valor Parcial</label>
+                  <p className="text-sm bg-yellow-50 p-2 rounded font-semibold text-yellow-800">
+                    R$ {partialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {totalOpportunityValue > 0 && (
+                      <span className="text-xs ml-2">
+                        ({conversionRate.toFixed(1)}% do total)
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
               {task.familyProduct && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Família de Produtos</label>
@@ -226,20 +310,34 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                 {task.checklist.map((item, index) => (
                   <div key={index} className="border rounded-lg p-3">
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">Categoria: {item.category}</p>
-                        {item.quantity && (
-                          <p className="text-sm text-muted-foreground">Quantidade: {item.quantity}</p>
+                      <div className="flex items-start space-x-3 flex-1">
+                        {selectedStatus === 'parcial' && (
+                          <Checkbox
+                            checked={selectedItems[item.id] || false}
+                            onCheckedChange={(checked) => handleItemSelection(item.id, checked as boolean)}
+                            className="mt-1"
+                          />
                         )}
-                        {item.price && (
-                          <p className="text-sm text-muted-foreground">
-                            Preço: R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        )}
-                        {item.observations && (
-                          <p className="text-sm text-muted-foreground mt-1">{item.observations}</p>
-                        )}
+                        <div className="flex-1">
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">Categoria: {item.category}</p>
+                          {item.quantity && (
+                            <p className="text-sm text-muted-foreground">Quantidade: {item.quantity}</p>
+                          )}
+                          {item.price && (
+                            <p className="text-sm text-muted-foreground">
+                              Preço: R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              {item.quantity && item.quantity > 1 && (
+                                <span className="ml-2 font-medium">
+                                  (Total: R$ {(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+                                </span>
+                              )}
+                            </p>
+                          )}
+                          {item.observations && (
+                            <p className="text-sm text-muted-foreground mt-1">{item.observations}</p>
+                          )}
+                        </div>
                       </div>
                       <Badge variant={item.selected ? 'default' : 'secondary'}>
                         {item.selected ? 'Selecionado' : 'Não selecionado'}
@@ -271,6 +369,27 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   </SelectContent>
                 </Select>
               </div>
+
+              {selectedStatus === 'parcial' && (
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <h4 className="font-medium text-yellow-800 mb-2">Configuração de Venda Parcial</h4>
+                  <p className="text-sm text-yellow-700 mb-3">
+                    Selecione os produtos/serviços que foram vendidos parcialmente marcando as caixas de seleção acima.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-yellow-700">Valor Parcial:</span>
+                      <span className="font-semibold ml-2">
+                        R$ {partialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-yellow-700">Taxa de Conversão:</span>
+                      <span className="font-semibold ml-2">{conversionRate.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={onClose}>
