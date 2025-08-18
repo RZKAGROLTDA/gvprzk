@@ -15,19 +15,16 @@ import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { Task } from '@/types/task';
-
 interface SalesFunnelData {
   name: string;
   value: number;
   color: string;
 }
-
 interface CoverageData {
   name: string;
   value: number;
   percentage: number;
 }
-
 interface ClientDetails {
   client: string;
   filial: string;
@@ -39,17 +36,22 @@ interface ClientDetails {
   lastActivity: Date;
   responsible: string;
 }
-
 export const SalesFunnel: React.FC = () => {
-  const { tasks, loading, loadTasks } = useTasks();
-  const { user } = useAuth();
+  const {
+    tasks,
+    loading,
+    loadTasks
+  } = useTasks();
+  const {
+    user
+  } = useAuth();
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   const [selectedFunnelSection, setSelectedFunnelSection] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Filtros
   const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
@@ -60,23 +62,18 @@ export const SalesFunnel: React.FC = () => {
   useEffect(() => {
     const loadFilters = async () => {
       try {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('approval_status', 'approved');
-        
-        const { data: filiaisData } = await supabase
-          .from('filiais')
-          .select('*')
-          .order('nome');
-
+        const {
+          data: profilesData
+        } = await supabase.from('profiles').select('*').eq('approval_status', 'approved');
+        const {
+          data: filiaisData
+        } = await supabase.from('filiais').select('*').order('nome');
         setConsultants(profilesData || []);
         setFiliais(filiaisData || []);
       } catch (error) {
         console.error('Erro ao carregar filtros:', error);
       }
     };
-
     loadFilters();
   }, []);
 
@@ -102,10 +99,8 @@ export const SalesFunnel: React.FC = () => {
 
       // Filtro de tipo de atividade
       if (selectedActivity !== 'all' && task.taskType !== selectedActivity) return false;
-
       return true;
     });
-
     return filtered;
   }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants]);
 
@@ -116,43 +111,43 @@ export const SalesFunnel: React.FC = () => {
     const totalLigacoes = filteredTasks.filter(task => task.taskType === 'ligacao').length;
     const totalChecklists = filteredTasks.filter(task => task.taskType === 'checklist').length;
     const totalContacts = totalVisitas + totalLigacoes + totalChecklists;
-    
+
     // Segunda barra: Prospecções
     const prospects = filteredTasks.filter(task => task.isProspect).length;
     const openProspects = filteredTasks.filter(task => task.isProspect && task.status === 'pending').length;
     const closedWon = filteredTasks.filter(task => task.salesConfirmed).length;
     const closedLost = filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).length;
-    
+
     // Valores das prospecções
-    const totalProspectValue = filteredTasks
-      .filter(task => task.isProspect)
-      .reduce((sum, task) => sum + (task.salesValue || 0), 0);
-    
-    const openProspectValue = filteredTasks
-      .filter(task => task.isProspect && task.status === 'pending')
-      .reduce((sum, task) => sum + (task.salesValue || 0), 0);
-    
-    const closedWonValue = filteredTasks
-      .filter(task => task.salesConfirmed)
-      .reduce((sum, task) => sum + (task.salesValue || 0), 0);
-    
+    const totalProspectValue = filteredTasks.filter(task => task.isProspect).reduce((sum, task) => sum + (task.salesValue || 0), 0);
+    const openProspectValue = filteredTasks.filter(task => task.isProspect && task.status === 'pending').reduce((sum, task) => sum + (task.salesValue || 0), 0);
+    const closedWonValue = filteredTasks.filter(task => task.salesConfirmed).reduce((sum, task) => sum + (task.salesValue || 0), 0);
+
     // Terceira barra: Vendas/Faturamento
     const openSales = filteredTasks.filter(task => task.salesConfirmed && task.status === 'pending').length;
     const faturado = filteredTasks.filter(task => task.salesConfirmed && task.status === 'completed').length;
     const perdido = filteredTasks.filter(task => task.salesConfirmed && task.status === 'closed' && !task.salesValue).length;
-
     return {
-      contacts: { total: totalContacts, visitas: totalVisitas, ligacoes: totalLigacoes, checklists: totalChecklists },
-      prospects: { 
-        total: prospects, 
-        abertas: openProspects, 
-        fechadas: closedWon, 
+      contacts: {
+        total: totalContacts,
+        visitas: totalVisitas,
+        ligacoes: totalLigacoes,
+        checklists: totalChecklists
+      },
+      prospects: {
+        total: prospects,
+        abertas: openProspects,
+        fechadas: closedWon,
         perdidas: closedLost,
         totalValue: totalProspectValue,
         openValue: openProspectValue,
         closedWonValue: closedWonValue
       },
-      sales: { abertos: openSales, faturado, perdido }
+      sales: {
+        abertos: openSales,
+        faturado,
+        perdido
+      }
     };
   }, [filteredTasks]);
 
@@ -162,39 +157,31 @@ export const SalesFunnel: React.FC = () => {
     const clientsWithVisits = new Set(filteredTasks.filter(task => task.taskType === 'prospection').map(task => task.client));
     const clientsWithProposals = new Set(filteredTasks.filter(task => task.isProspect).map(task => task.client));
     const clientsWithSales = new Set(filteredTasks.filter(task => task.salesConfirmed).map(task => task.client));
-
     const totalClients = uniqueClients.size || 1; // Evitar divisão por zero
 
-    return [
-      {
-        name: 'Clientes com Visitas',
-        value: clientsWithVisits.size,
-        percentage: Math.round((clientsWithVisits.size / totalClients) * 100)
-      },
-      {
-        name: 'Clientes com Propostas',
-        value: clientsWithProposals.size,
-        percentage: Math.round((clientsWithProposals.size / totalClients) * 100)
-      },
-      {
-        name: 'Clientes com Vendas',
-        value: clientsWithSales.size,
-        percentage: Math.round((clientsWithSales.size / totalClients) * 100)
-      }
-    ];
+    return [{
+      name: 'Clientes com Visitas',
+      value: clientsWithVisits.size,
+      percentage: Math.round(clientsWithVisits.size / totalClients * 100)
+    }, {
+      name: 'Clientes com Propostas',
+      value: clientsWithProposals.size,
+      percentage: Math.round(clientsWithProposals.size / totalClients * 100)
+    }, {
+      name: 'Clientes com Vendas',
+      value: clientsWithSales.size,
+      percentage: Math.round(clientsWithSales.size / totalClients * 100)
+    }];
   }, [filteredTasks]);
 
   // Detalhes por cliente
   const clientDetails = useMemo(() => {
     const clientMap = new Map<string, ClientDetails>();
-
     filteredTasks.forEach(task => {
       const key = `${task.client}-${task.filial}`;
-      
       if (!clientMap.has(key)) {
         // Usar função padronizada para resolver nome da filial
         const filialName = resolveFilialName(task.filial);
-        
         clientMap.set(key, {
           client: task.client,
           filial: filialName,
@@ -207,105 +194,95 @@ export const SalesFunnel: React.FC = () => {
           responsible: task.responsible
         });
       }
-
       const client = clientMap.get(key)!;
-      
       if (task.taskType === 'prospection') client.totalVisits++;
       if (task.taskType === 'ligacao') client.totalCalls++;
       if (task.taskType === 'checklist') client.totalChecklists++;
       if (task.isProspect) client.prospects++;
-      
       client.salesValue += task.salesValue || 0;
-      
       if (task.createdAt > client.lastActivity) {
         client.lastActivity = task.createdAt;
       }
     });
-
     return Array.from(clientMap.values()).sort((a, b) => b.salesValue - a.salesValue);
   }, [filteredTasks, filiais]);
 
   // Dados detalhados para a seção selecionada
   const getDetailedData = useMemo(() => {
     if (!selectedFunnelSection) return [];
-
     switch (selectedFunnelSection) {
       // Filtros para Contatos específicos
       case 'contacts-visitas':
-        return filteredTasks
-          .filter(task => task.taskType === 'prospection')
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            type: 'Visita',
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
-      
+        return filteredTasks.filter(task => task.taskType === 'prospection').map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          type: 'Visita',
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
       case 'contacts-checklists':
-        return filteredTasks
-          .filter(task => task.taskType === 'checklist')
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            type: 'Checklist',
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
-      
+        return filteredTasks.filter(task => task.taskType === 'checklist').map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          type: 'Checklist',
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
       case 'contacts-ligacoes':
-        return filteredTasks
-          .filter(task => task.taskType === 'ligacao')
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            type: 'Ligação',
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
+        return filteredTasks.filter(task => task.taskType === 'ligacao').map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          type: 'Ligação',
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
 
       // Filtros para Prospecções específicas
       case 'prospects-abertas':
-        return filteredTasks
-          .filter(task => task.isProspect && task.status === 'pending')
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            status: 'Aberta',
-            confirmed: task.salesConfirmed,
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
-      
+        return filteredTasks.filter(task => task.isProspect && task.status === 'pending').map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          status: 'Aberta',
+          confirmed: task.salesConfirmed,
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
       case 'prospects-fechadas':
-        return filteredTasks
-          .filter(task => task.salesConfirmed)
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            status: 'Fechada',
-            confirmed: true,
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
-      
+        return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          status: 'Fechada',
+          confirmed: true,
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
       case 'prospects-perdidas':
-        return filteredTasks
-          .filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed)
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            status: 'Perdida',
-            confirmed: false,
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
+        return filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          status: 'Perdida',
+          confirmed: false,
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
 
       // Filtros gerais
       case 'contacts':
@@ -313,66 +290,59 @@ export const SalesFunnel: React.FC = () => {
           client: task.client,
           responsible: task.responsible,
           type: task.taskType,
-          date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
           filial: resolveFilialName(task.filial),
           value: task.salesValue || 0
         }));
-      
       case 'prospects':
-        return filteredTasks
-          .filter(task => task.isProspect)
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            status: task.status,
-            confirmed: task.salesConfirmed,
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
-      
+        return filteredTasks.filter(task => task.isProspect).map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          status: task.status,
+          confirmed: task.salesConfirmed,
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
       case 'sales':
-        return filteredTasks
-          .filter(task => task.salesConfirmed)
-          .map(task => ({
-            client: task.client,
-            responsible: task.responsible,
-            status: task.status,
-            date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
-            filial: resolveFilialName(task.filial),
-            value: task.salesValue || 0
-          }));
-      
+        return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          status: task.status,
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
       default:
         return [];
     }
   }, [selectedFunnelSection, filteredTasks, filiais]);
-
   const totalSalesValue = filteredTasks.reduce((sum, task) => sum + (task.salesValue || 0), 0);
-
   const chartConfig = {
     value: {
       label: "Quantidade",
-      color: "hsl(var(--chart-1))",
-    },
+      color: "hsl(var(--chart-1))"
+    }
   };
-
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
+    return <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold">Funil de Vendas & Cobertura</h1>
+          <h1 className="text-3xl font-bold">Análise Gerencial
+
+        </h1>
           <p className="text-muted-foreground">Análise de performance comercial e cobertura de carteira</p>
         </div>
         
@@ -415,11 +385,9 @@ export const SalesFunnel: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os consultores</SelectItem>
-                  {consultants.map(consultant => (
-                    <SelectItem key={consultant.id} value={consultant.id}>
+                  {consultants.map(consultant => <SelectItem key={consultant.id} value={consultant.id}>
                       {consultant.name}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -432,11 +400,9 @@ export const SalesFunnel: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as filiais</SelectItem>
-                  {filiais.map(filial => (
-                    <SelectItem key={filial.id} value={filial.nome}>
+                  {filiais.map(filial => <SelectItem key={filial.id} value={filial.nome}>
                       {filial.nome}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -460,12 +426,8 @@ export const SalesFunnel: React.FC = () => {
       </Card>
 
       {/* Cards de Navegação */}
-      {activeView === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
-            onClick={() => setActiveView('funnel')}
-          >
+      {activeView === 'overview' && <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50" onClick={() => setActiveView('funnel')}>
             <CardContent className="p-6">
               <div className="text-center">
                 <h3 className="text-lg font-semibold">Análise do Funil</h3>
@@ -473,10 +435,7 @@ export const SalesFunnel: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
-            onClick={() => setActiveView('coverage')}
-          >
+          <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50" onClick={() => setActiveView('coverage')}>
             <CardContent className="p-6">
               <div className="text-center">
                 <h3 className="text-lg font-semibold">Relatórios</h3>
@@ -484,29 +443,22 @@ export const SalesFunnel: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50"
-            onClick={() => setActiveView('details')}
-          >
+          <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50" onClick={() => setActiveView('details')}>
             <CardContent className="p-6">
               <div className="text-center">
                 <h3 className="text-lg font-semibold">Detalhes por Cliente</h3>
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
+        </div>}
 
       {/* Botão Voltar quando não estiver na overview */}
-      {activeView !== 'overview' && (
-        <Button variant="outline" onClick={() => setActiveView('overview')} className="mb-4">
+      {activeView !== 'overview' && <Button variant="outline" onClick={() => setActiveView('overview')} className="mb-4">
           ← Voltar ao Menu Principal
-        </Button>
-      )}
+        </Button>}
 
       {/* Conteúdo do Funil */}
-      {activeView === 'funnel' && (
-        <div className="space-y-6">
+      {activeView === 'funnel' && <div className="space-y-6">
           {/* Funil Hierárquico Visual */}
           <Card>
             <CardHeader>
@@ -519,31 +471,25 @@ export const SalesFunnel: React.FC = () => {
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-muted-foreground">Contatos com Clientes</h4>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}>
+                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}>
                     <div className="font-bold text-xl">{funnelData.contacts.visitas}</div>
                     <div className="text-sm opacity-90">Visitas</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? 
-                        Math.round((funnelData.contacts.visitas / funnelData.contacts.total) * 100) : 0}%
+                      {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.visitas / funnelData.contacts.total * 100) : 0}%
                     </div>
                   </div>
-                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}>
+                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}>
                     <div className="font-bold text-xl">{funnelData.contacts.checklists}</div>
                     <div className="text-sm opacity-90">Checklists</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? 
-                        Math.round((funnelData.contacts.checklists / funnelData.contacts.total) * 100) : 0}%
+                      {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.checklists / funnelData.contacts.total * 100) : 0}%
                     </div>
                   </div>
-                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}>
+                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}>
                     <div className="font-bold text-xl">{funnelData.contacts.ligacoes}</div>
                     <div className="text-sm opacity-90">Ligações</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? 
-                        Math.round((funnelData.contacts.ligacoes / funnelData.contacts.total) * 100) : 0}%
+                      {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.ligacoes / funnelData.contacts.total * 100) : 0}%
                     </div>
                   </div>
                 </div>
@@ -556,40 +502,30 @@ export const SalesFunnel: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium text-muted-foreground">Prospecções</h4>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
                     {selectedFunnelSection === 'prospects' ? 'Ocultar Detalhes' : 'Ver Detalhes'}
                   </Button>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}>
+                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}>
                     <div className="font-bold text-xl">{funnelData.prospects.abertas}</div>
                     <div className="text-sm opacity-90">Abertas</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? 
-                        Math.round((funnelData.prospects.abertas / funnelData.contacts.total) * 100) : 0}%
+                      {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.abertas / funnelData.contacts.total * 100) : 0}%
                     </div>
                   </div>
-                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}>
+                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}>
                     <div className="font-bold text-xl">{funnelData.prospects.fechadas}</div>
                     <div className="text-sm opacity-90">Fechadas</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? 
-                        Math.round((funnelData.prospects.fechadas / funnelData.contacts.total) * 100) : 0}%
+                      {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.fechadas / funnelData.contacts.total * 100) : 0}%
                     </div>
                   </div>
-                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors"
-                       onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}>
+                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}>
                     <div className="font-bold text-xl">{funnelData.prospects.perdidas}</div>
                     <div className="text-sm opacity-90">Perdidas</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? 
-                        Math.round((funnelData.prospects.perdidas / funnelData.contacts.total) * 100) : 0}%
+                      {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.perdidas / funnelData.contacts.total * 100) : 0}%
                     </div>
                   </div>
                 </div>
@@ -599,8 +535,7 @@ export const SalesFunnel: React.FC = () => {
               </div>
 
               {/* Detalhes das Seções Selecionadas */}
-              {selectedFunnelSection && getDetailedData.length > 0 && (
-                <Card className="mt-4">
+              {selectedFunnelSection && getDetailedData.length > 0 && <Card className="mt-4">
                   <CardHeader>
                     <CardTitle>
                       {selectedFunnelSection.includes('contacts-visitas') && 'Detalhes das Visitas'}
@@ -632,56 +567,41 @@ export const SalesFunnel: React.FC = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {getDetailedData.slice(0, 10).map((item, index) => (
-                          <TableRow key={index}>
+                        {getDetailedData.slice(0, 10).map((item, index) => <TableRow key={index}>
                             <TableCell className="font-medium">{item.client}</TableCell>
                             <TableCell>{item.responsible}</TableCell>
                             <TableCell>{item.filial}</TableCell>
-                            {(selectedFunnelSection.includes('contacts-') || selectedFunnelSection === 'contacts') && 
-                              <TableCell>
+                            {(selectedFunnelSection.includes('contacts-') || selectedFunnelSection === 'contacts') && <TableCell>
                                 <Badge variant="secondary">{item.type}</Badge>
-                              </TableCell>
-                            }
-                            {selectedFunnelSection.includes('prospects-') && 
-                              <TableCell>
-                                <Badge variant={
-                                  item.status === 'Fechada' ? 'default' : 
-                                  item.status === 'Aberta' ? 'secondary' : 
-                                  'outline'
-                                }>
+                              </TableCell>}
+                            {selectedFunnelSection.includes('prospects-') && <TableCell>
+                                <Badge variant={item.status === 'Fechada' ? 'default' : item.status === 'Aberta' ? 'secondary' : 'outline'}>
                                   {item.status}
                                 </Badge>
-                              </TableCell>
-                            }
-                            {selectedFunnelSection.includes('prospects-') && 
-                              <TableCell>
+                              </TableCell>}
+                            {selectedFunnelSection.includes('prospects-') && <TableCell>
                                 <Badge variant={item.confirmed ? 'default' : 'outline'}>
                                   {item.confirmed ? 'Sim' : 'Não'}
                                 </Badge>
-                              </TableCell>
-                            }
+                              </TableCell>}
                             <TableCell>{item.date}</TableCell>
                             <TableCell>
                               {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL'
-                              }).format(item.value)}
+                        style: 'currency',
+                        currency: 'BRL'
+                      }).format(item.value)}
                             </TableCell>
-                          </TableRow>
-                        ))}
+                          </TableRow>)}
                       </TableBody>
                     </Table>
                     
-                    {getDetailedData.length > 10 && (
-                      <div className="mt-4 text-center">
+                    {getDetailedData.length > 10 && <div className="mt-4 text-center">
                         <p className="text-sm text-muted-foreground">
                           Mostrando 10 de {getDetailedData.length} registros.
                         </p>
-                      </div>
-                    )}
+                      </div>}
                   </CardContent>
-                </Card>
-              )}
+                </Card>}
 
               {/* Terceira Barra: Vendas */}
               <div className="space-y-3">
@@ -690,45 +610,42 @@ export const SalesFunnel: React.FC = () => {
                   <div className="bg-green-600 text-white p-4 rounded-lg text-center">
                     <div className="font-bold text-xl">
                       {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                        maximumFractionDigits: 0
-                      }).format(funnelData.prospects.openValue)}
+                    style: 'currency',
+                    currency: 'BRL',
+                    maximumFractionDigits: 0
+                  }).format(funnelData.prospects.openValue)}
                     </div>
                     <div className="text-sm opacity-90">Abertos</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.prospects.fechadas > 0 ? 
-                        Math.round((funnelData.sales.abertos / funnelData.prospects.fechadas) * 100) : 0}%
+                      {funnelData.prospects.fechadas > 0 ? Math.round(funnelData.sales.abertos / funnelData.prospects.fechadas * 100) : 0}%
                     </div>
                   </div>
                   <div className="bg-green-500 text-white p-4 rounded-lg text-center">
                     <div className="font-bold text-xl">
                       {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL',
-                        maximumFractionDigits: 0
-                      }).format(funnelData.prospects.closedWonValue)}
+                    style: 'currency',
+                    currency: 'BRL',
+                    maximumFractionDigits: 0
+                  }).format(funnelData.prospects.closedWonValue)}
                     </div>
                     <div className="text-sm opacity-90">Faturado</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.prospects.fechadas > 0 ? 
-                        Math.round((funnelData.sales.faturado / funnelData.prospects.fechadas) * 100) : 0}%
+                      {funnelData.prospects.fechadas > 0 ? Math.round(funnelData.sales.faturado / funnelData.prospects.fechadas * 100) : 0}%
                     </div>
                   </div>
                   <div className="bg-green-400 text-white p-4 rounded-lg text-center">
                     <div className="font-bold text-xl">{funnelData.sales.perdido}</div>
                     <div className="text-sm opacity-90">Perdido</div>
                     <div className="text-xs opacity-75">
-                      {funnelData.prospects.fechadas > 0 ? 
-                        Math.round((funnelData.sales.perdido / funnelData.prospects.fechadas) * 100) : 0}%
+                      {funnelData.prospects.fechadas > 0 ? Math.round(funnelData.sales.perdido / funnelData.prospects.fechadas * 100) : 0}%
                     </div>
                   </div>
                 </div>
                 <div className="text-right text-sm text-muted-foreground">
                   Valor Total: {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(funnelData.prospects.totalValue)}
+                style: 'currency',
+                currency: 'BRL'
+              }).format(funnelData.prospects.totalValue)}
                 </div>
               </div>
 
@@ -740,8 +657,7 @@ export const SalesFunnel: React.FC = () => {
                     <div className="font-bold text-2xl">{funnelData.sales.faturado}</div>
                     <div className="text-sm opacity-90">Faturado</div>
                     <div className="text-xs opacity-75">
-                      {(funnelData.sales.abertos + funnelData.sales.faturado) > 0 ? 
-                        Math.round((funnelData.sales.faturado / (funnelData.sales.abertos + funnelData.sales.faturado)) * 100) : 0}%
+                      {funnelData.sales.abertos + funnelData.sales.faturado > 0 ? Math.round(funnelData.sales.faturado / (funnelData.sales.abertos + funnelData.sales.faturado) * 100) : 0}%
                     </div>
                   </div>
                 </div>
@@ -770,8 +686,7 @@ export const SalesFunnel: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {funnelData.contacts.total > 0 ? 
-                    Math.round((funnelData.sales.faturado / funnelData.contacts.total) * 100) : 0}%
+                  {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.faturado / funnelData.contacts.total * 100) : 0}%
                 </div>
                 <p className="text-xs text-muted-foreground">De contatos para vendas</p>
               </CardContent>
@@ -785,9 +700,9 @@ export const SalesFunnel: React.FC = () => {
               <CardContent>
                 <div className="text-2xl font-bold">
                   {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(totalSalesValue)}
+                style: 'currency',
+                currency: 'BRL'
+              }).format(totalSalesValue)}
                 </div>
                 <p className="text-xs text-muted-foreground">Em oportunidades</p>
               </CardContent>
@@ -805,12 +720,10 @@ export const SalesFunnel: React.FC = () => {
             </Card>
           </div>
 
-        </div>
-      )}
+        </div>}
 
       {/* Conteúdo dos Relatórios */}
-      {activeView === 'coverage' && (
-        <Card>
+      {activeView === 'coverage' && <Card>
           <CardHeader>
             <CardTitle>Relatório de Atividades</CardTitle>
             <CardDescription>Resumo das atividades realizadas com status e oportunidades</CardDescription>
@@ -829,106 +742,95 @@ export const SalesFunnel: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks.slice(0, 20).map((task) => {
-                  const getTaskStatus = () => {
-                    const salesStatus = mapSalesStatus(task);
-                    const statusLabel = getStatusLabel(salesStatus);
-                    
-                    switch (salesStatus) {
-                      case 'ganho':
-                        return { label: statusLabel, variant: 'default' as const };
-                      case 'parcial':
-                        return { label: statusLabel, variant: 'secondary' as const };
-                      case 'perdido':
-                        return { label: statusLabel, variant: 'destructive' as const };
-                      case 'prospect':
-                        return { label: statusLabel, variant: 'outline' as const };
-                      default:
-                        return { label: 'Atividade', variant: 'secondary' as const };
-                    }
-                  };
-
-                  const status = getTaskStatus();
-                  
-                  return (
-                    <TableRow key={task.id}>
+                {filteredTasks.slice(0, 20).map(task => {
+              const getTaskStatus = () => {
+                const salesStatus = mapSalesStatus(task);
+                const statusLabel = getStatusLabel(salesStatus);
+                switch (salesStatus) {
+                  case 'ganho':
+                    return {
+                      label: statusLabel,
+                      variant: 'default' as const
+                    };
+                  case 'parcial':
+                    return {
+                      label: statusLabel,
+                      variant: 'secondary' as const
+                    };
+                  case 'perdido':
+                    return {
+                      label: statusLabel,
+                      variant: 'destructive' as const
+                    };
+                  case 'prospect':
+                    return {
+                      label: statusLabel,
+                      variant: 'outline' as const
+                    };
+                  default:
+                    return {
+                      label: 'Atividade',
+                      variant: 'secondary' as const
+                    };
+                }
+              };
+              const status = getTaskStatus();
+              return <TableRow key={task.id}>
                       <TableCell className="font-medium">
                         {task.name}
                         <div className="text-xs text-muted-foreground">
-                          {task.taskType === 'prospection' ? 'Visita' : 
-                           task.taskType === 'ligacao' ? 'Ligação' : 
-                           task.taskType === 'checklist' ? 'Checklist' : task.taskType}
+                          {task.taskType === 'prospection' ? 'Visita' : task.taskType === 'ligacao' ? 'Ligação' : task.taskType === 'checklist' ? 'Checklist' : task.taskType}
                         </div>
                       </TableCell>
                       <TableCell>{task.client}</TableCell>
                       <TableCell>{task.responsible}</TableCell>
                       <TableCell>
-                        {task.salesValue ? 
-                          new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL'
-                          }).format(task.salesValue) : 
-                          '-'
-                        }
+                        {task.salesValue ? new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(task.salesValue) : '-'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={status.variant} className={
-                          status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' :
-                          status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' :
-                          status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' :
-                          status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' :
-                          ''
-                        }>
+                        <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' : status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' : ''}>
                           {status.label}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR })}
+                        {format(task.createdAt, 'dd/MM/yyyy', {
+                    locale: ptBR
+                  })}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Implementar visualização do formulário
-                              console.log('Visualizar tarefa:', task.id);
-                            }}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => {
+                      // TODO: Implementar visualização do formulário
+                      console.log('Visualizar tarefa:', task.id);
+                    }}>
                             Ver
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedTask(task);
-                              setIsModalOpen(true);
-                            }}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => {
+                      setSelectedTask(task);
+                      setIsModalOpen(true);
+                    }}>
                             Editar
                           </Button>
                         </div>
                       </TableCell>
-                    </TableRow>
-                  );
-                })}
+                    </TableRow>;
+            })}
               </TableBody>
             </Table>
             
-            {filteredTasks.length > 20 && (
-              <div className="mt-4 text-center">
+            {filteredTasks.length > 20 && <div className="mt-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   Mostrando 20 de {filteredTasks.length} atividades. Use os filtros para refinar a busca.
                 </p>
-              </div>
-            )}
+              </div>}
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {/* Conteúdo dos Detalhes */}
-      {activeView === 'details' && (
-        <Card>
+      {activeView === 'details' && <Card>
           <CardHeader>
             <CardTitle>Detalhes por Cliente</CardTitle>
             <CardDescription>Breakdown detalhado das atividades por cliente</CardDescription>
@@ -949,8 +851,7 @@ export const SalesFunnel: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clientDetails.slice(0, 10).map((client, index) => (
-                  <TableRow key={index}>
+                {clientDetails.slice(0, 10).map((client, index) => <TableRow key={index}>
                     <TableCell className="font-medium">{client.client}</TableCell>
                     <TableCell>{client.filial}</TableCell>
                     <TableCell>{client.responsible}</TableCell>
@@ -970,61 +871,53 @@ export const SalesFunnel: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       {new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(client.salesValue)}
+                  style: 'currency',
+                  currency: 'BRL'
+                }).format(client.salesValue)}
                     </TableCell>
                     <TableCell>
-                      {format(client.lastActivity, 'dd/MM/yyyy', { locale: ptBR })}
+                      {format(client.lastActivity, 'dd/MM/yyyy', {
+                  locale: ptBR
+                })}
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
             </Table>
             
-            {clientDetails.length > 10 && (
-              <div className="mt-4 text-center">
+            {clientDetails.length > 10 && <div className="mt-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   Mostrando 10 de {clientDetails.length} clientes. Use os filtros para refinar a busca.
                 </p>
-              </div>
-            )}
+              </div>}
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {/* Modal de Detalhes da Oportunidade */}
-      <OpportunityDetailsModal
-        task={selectedTask}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedTask(null);
-        }}
-        onTaskUpdated={(updatedTask) => {
-          console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
-          
-          // Force reload of all tasks to ensure data consistency
-          console.log('🔄 FUNNEL: Forçando reload completo de tasks...');
-          loadTasks().then(() => {
-            console.log('✅ FUNNEL: Tasks recarregadas com sucesso');
-            
-            // Update selected task with latest data from database
-            const refreshedTask = tasks.find(t => t.id === updatedTask.id);
-            if (refreshedTask) {
-              console.log('🔄 FUNNEL: Atualizando selectedTask com dados refreshed:', refreshedTask);
-              setSelectedTask(refreshedTask);
-            } else {
-              console.log('⚠️ FUNNEL: Task refreshed não encontrada, mantendo dados atualizados');
-              setSelectedTask(updatedTask);
-            }
-          }).catch(error => {
-            console.error('❌ FUNNEL: Erro ao recarregar tasks:', error);
-            // Fallback to optimistic update
-            setSelectedTask(updatedTask);
-          });
-        }}
-      />
-    </div>
-  );
+      <OpportunityDetailsModal task={selectedTask} isOpen={isModalOpen} onClose={() => {
+      setIsModalOpen(false);
+      setSelectedTask(null);
+    }} onTaskUpdated={updatedTask => {
+      console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
+
+      // Force reload of all tasks to ensure data consistency
+      console.log('🔄 FUNNEL: Forçando reload completo de tasks...');
+      loadTasks().then(() => {
+        console.log('✅ FUNNEL: Tasks recarregadas com sucesso');
+
+        // Update selected task with latest data from database
+        const refreshedTask = tasks.find(t => t.id === updatedTask.id);
+        if (refreshedTask) {
+          console.log('🔄 FUNNEL: Atualizando selectedTask com dados refreshed:', refreshedTask);
+          setSelectedTask(refreshedTask);
+        } else {
+          console.log('⚠️ FUNNEL: Task refreshed não encontrada, mantendo dados atualizados');
+          setSelectedTask(updatedTask);
+        }
+      }).catch(error => {
+        console.error('❌ FUNNEL: Erro ao recarregar tasks:', error);
+        // Fallback to optimistic update
+        setSelectedTask(updatedTask);
+      });
+    }} />
+    </div>;
 };
