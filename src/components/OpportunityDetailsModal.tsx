@@ -30,6 +30,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
   const [selectedItems, setSelectedItems] = useState<{[key: string]: boolean}>({});
+  const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
   const [partialValue, setPartialValue] = useState<number>(0);
   const { loadTasks } = useTasks();
 
@@ -37,19 +38,22 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     if (task) {
       setSelectedStatus(mapSalesStatus(task));
       
-      // Initialize selected items based on current checklist
+      // Initialize selected items and quantities based on current checklist
       if (task.checklist) {
         const initialSelected: {[key: string]: boolean} = {};
+        const initialQuantities: {[key: string]: number} = {};
         let calculatedPartialValue = 0;
         
         task.checklist.forEach(item => {
           initialSelected[item.id] = item.selected || false;
+          initialQuantities[item.id] = item.quantity || 1;
           if (item.selected && item.price) {
             calculatedPartialValue += item.price * (item.quantity || 1);
           }
         });
         
         setSelectedItems(initialSelected);
+        setItemQuantities(initialQuantities);
         setPartialValue(calculatedPartialValue);
       }
     }
@@ -67,8 +71,30 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     let newPartialValue = 0;
     task.checklist?.forEach(item => {
       const isSelected = itemId === item.id ? selected : selectedItems[item.id];
+      const quantity = itemQuantities[item.id] || item.quantity || 1;
       if (isSelected && item.price) {
-        newPartialValue += item.price * (item.quantity || 1);
+        newPartialValue += item.price * quantity;
+      }
+    });
+    
+    setPartialValue(newPartialValue);
+  };
+
+  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    if (!task || newQuantity < 1) return;
+    
+    setItemQuantities(prev => ({
+      ...prev,
+      [itemId]: newQuantity
+    }));
+
+    // Recalculate partial value
+    let newPartialValue = 0;
+    task.checklist?.forEach(item => {
+      const isSelected = selectedItems[item.id];
+      const quantity = itemId === item.id ? newQuantity : (itemQuantities[item.id] || item.quantity || 1);
+      if (isSelected && item.price) {
+        newPartialValue += item.price * quantity;
       }
     });
     
@@ -183,12 +209,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           );
 
           if (existingProduct) {
-            console.log(`🔄 MODAL: Atualizando produto: ${existingProduct.name} - selected: ${checklistItem.selected}`);
+            const newQuantity = itemQuantities[checklistItem.id] || checklistItem.quantity || 1;
+            console.log(`🔄 MODAL: Atualizando produto: ${existingProduct.name} - selected: ${checklistItem.selected}, quantity: ${newQuantity}`);
             
             const { error: productError } = await supabase
               .from('products')
               .update({
                 selected: checklistItem.selected,
+                quantity: newQuantity,
                 updated_at: new Date().toISOString()
               })
               .eq('id', existingProduct.id);
@@ -198,7 +226,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
               throw productError;
             }
             
-            console.log(`✅ MODAL: Produto atualizado: ${existingProduct.name}`);
+            console.log(`✅ MODAL: Produto atualizado: ${existingProduct.name} com quantidade ${newQuantity}`);
           } else {
             console.warn(`⚠️ MODAL: Produto não encontrado na base de dados: ${checklistItem.name}`);
           }
@@ -428,18 +456,36 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                         <div className="flex-1">
                           <p className="font-medium">{item.name}</p>
                           <p className="text-sm text-muted-foreground">Categoria: {item.category}</p>
-                          {item.quantity && (
-                            <p className="text-sm text-muted-foreground">Quantidade: {item.quantity}</p>
-                          )}
+                          
+                          {/* Quantidade com opção de editar */}
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className="text-sm text-muted-foreground">Quantidade:</span>
+                            {selectedStatus === 'parcial' && selectedItems[item.id] ? (
+                              <div className="flex items-center space-x-1">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={itemQuantities[item.id] || item.quantity || 1}
+                                  onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                                  className="w-20 h-7 text-sm"
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">
+                                {itemQuantities[item.id] || item.quantity || 1}
+                              </span>
+                            )}
+                          </div>
+
                           {item.price && (
-                            <p className="text-sm text-muted-foreground">
-                              Preço: R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              {item.quantity && item.quantity > 1 && (
-                                <span className="ml-2 font-medium">
-                                  (Total: R$ {(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
-                                </span>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              <p>Preço unitário: R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                              {(itemQuantities[item.id] || item.quantity || 1) > 1 && (
+                                <p className="font-medium text-primary">
+                                  Total: R$ {(item.price * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
                               )}
-                            </p>
+                            </div>
                           )}
                           {item.observations && (
                             <p className="text-sm text-muted-foreground mt-1">{item.observations}</p>
