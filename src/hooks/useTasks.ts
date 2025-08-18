@@ -14,10 +14,10 @@ export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadTasks = async () => {
+  const loadTasks = async (forceRefresh = false) => {
     if (!user) return;
     
-    console.log('🔄 useTasks: Loading tasks...');
+    console.log(`🔄 useTasks: Loading tasks... ${forceRefresh ? '(FORCE REFRESH)' : ''}`);
     setLoading(true);
     try {
       // Carregar cache de filiais para resolução de nomes
@@ -52,6 +52,17 @@ export const useTasks = () => {
 
         console.log(`✅ useTasks: Loaded ${formattedTasks.length} tasks from Supabase`);
         setTasks(formattedTasks);
+        
+        // Log status distribution for debugging
+        const statusBreakdown = formattedTasks.reduce((acc, task) => {
+          const status = task.salesConfirmed === true ? 'ganho' : 
+                        task.salesConfirmed === false ? 'perdido' : 
+                        task.isProspect ? 'prospect' : 'atividade';
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        console.log('📊 useTasks: Status breakdown:', statusBreakdown);
       } else {
         // Carregar dados offline quando desconectado
         const offlineTasks = getOfflineTasks();

@@ -41,7 +41,7 @@ interface ClientDetails {
 }
 
 export const SalesFunnel: React.FC = () => {
-  const { tasks, loading } = useTasks();
+  const { tasks, loading, loadTasks } = useTasks();
   const { user } = useAuth();
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
@@ -1002,10 +1002,27 @@ export const SalesFunnel: React.FC = () => {
           setSelectedTask(null);
         }}
         onTaskUpdated={(updatedTask) => {
-          console.log('🔄 Task updated in SalesFunnel:', updatedTask);
-          // Update selectedTask immediately for UI consistency
-          setSelectedTask(updatedTask);
-          // Note: The tasks list will be updated when loadTasks() completes in the modal
+          console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
+          
+          // Force reload of all tasks to ensure data consistency
+          console.log('🔄 FUNNEL: Forçando reload completo de tasks...');
+          loadTasks().then(() => {
+            console.log('✅ FUNNEL: Tasks recarregadas com sucesso');
+            
+            // Update selected task with latest data from database
+            const refreshedTask = tasks.find(t => t.id === updatedTask.id);
+            if (refreshedTask) {
+              console.log('🔄 FUNNEL: Atualizando selectedTask com dados refreshed:', refreshedTask);
+              setSelectedTask(refreshedTask);
+            } else {
+              console.log('⚠️ FUNNEL: Task refreshed não encontrada, mantendo dados atualizados');
+              setSelectedTask(updatedTask);
+            }
+          }).catch(error => {
+            console.error('❌ FUNNEL: Erro ao recarregar tasks:', error);
+            // Fallback to optimistic update
+            setSelectedTask(updatedTask);
+          });
         }}
       />
     </div>

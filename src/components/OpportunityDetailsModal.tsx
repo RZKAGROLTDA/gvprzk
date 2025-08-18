@@ -78,7 +78,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const handleStatusUpdate = async () => {
     if (!task) return;
     
-    console.log('🔄 Iniciando atualização de status:', {
+    console.log('🔄 MODAL: Iniciando atualização de status:', {
       taskId: task.id,
       selectedStatus,
       currentTaskStatus: task.status,
@@ -101,7 +101,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           isProspect = true;
           // Mark all items as selected for full sale
           updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: true }));
-          console.log('📈 Configurando venda ganha - todos os produtos selecionados');
+          console.log('📈 MODAL: Configurando venda ganha - todos os produtos selecionados');
           break;
         case 'parcial':
           salesConfirmed = true;
@@ -112,7 +112,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
             ...item,
             selected: selectedItems[item.id] || false
           }));
-          console.log('📊 Configurando venda parcial - produtos selecionados:', selectedItems);
+          console.log('📊 MODAL: Configurando venda parcial - produtos selecionados:', selectedItems);
           break;
         case 'perdido':
           salesConfirmed = false;
@@ -120,18 +120,18 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           isProspect = false;
           // Mark all items as not selected for lost sale
           updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: false }));
-          console.log('❌ Configurando venda perdida - nenhum produto selecionado');
+          console.log('❌ MODAL: Configurando venda perdida - nenhum produto selecionado');
           break;
         case 'prospect':
           salesConfirmed = null;
           taskStatus = 'in_progress';
           isProspect = true;
           // Keep current selection state
-          console.log('🎯 Mantendo como prospect ativo');
+          console.log('🎯 MODAL: Mantendo como prospect ativo');
           break;
       }
 
-      console.log('📝 Dados para atualização da tarefa:', {
+      console.log('📝 MODAL: Dados para atualização da tarefa:', {
         sales_confirmed: salesConfirmed,
         status: taskStatus,
         is_prospect: isProspect,
@@ -152,15 +152,15 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         .single();
 
       if (taskError) {
-        console.error('❌ Erro ao atualizar tarefa:', taskError);
+        console.error('❌ MODAL: Erro ao atualizar tarefa:', taskError);
         throw taskError;
       }
 
-      console.log('✅ Tarefa atualizada com sucesso:', taskUpdateResult);
+      console.log('✅ MODAL: Tarefa atualizada com sucesso:', taskUpdateResult);
 
       // Update products in database - usar uma abordagem mais robusta
       if (task.checklist && task.checklist.length > 0) {
-        console.log('🔄 Atualizando produtos...');
+        console.log('🔄 MODAL: Atualizando produtos...');
         
         // Buscar produtos existentes na base de dados
         const { data: existingProducts, error: fetchError } = await supabase
@@ -169,11 +169,11 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           .eq('task_id', task.id);
 
         if (fetchError) {
-          console.error('❌ Erro ao buscar produtos:', fetchError);
+          console.error('❌ MODAL: Erro ao buscar produtos:', fetchError);
           throw fetchError;
         }
 
-        console.log('📦 Produtos existentes encontrados:', existingProducts);
+        console.log('📦 MODAL: Produtos existentes encontrados:', existingProducts);
 
         // Atualizar cada produto baseado no checklist
         for (const checklistItem of updatedChecklist) {
@@ -183,7 +183,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           );
 
           if (existingProduct) {
-            console.log(`🔄 Atualizando produto: ${existingProduct.name} - selected: ${checklistItem.selected}`);
+            console.log(`🔄 MODAL: Atualizando produto: ${existingProduct.name} - selected: ${checklistItem.selected}`);
             
             const { error: productError } = await supabase
               .from('products')
@@ -194,18 +194,18 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
               .eq('id', existingProduct.id);
 
             if (productError) {
-              console.error('❌ Erro ao atualizar produto:', existingProduct.name, productError);
+              console.error('❌ MODAL: Erro ao atualizar produto:', existingProduct.name, productError);
               throw productError;
             }
             
-            console.log(`✅ Produto atualizado: ${existingProduct.name}`);
+            console.log(`✅ MODAL: Produto atualizado: ${existingProduct.name}`);
           } else {
-            console.warn(`⚠️ Produto não encontrado na base de dados: ${checklistItem.name}`);
+            console.warn(`⚠️ MODAL: Produto não encontrado na base de dados: ${checklistItem.name}`);
           }
         }
       }
 
-      console.log('✅ Status update completed successfully');
+      console.log('✅ MODAL: Status update completed successfully');
       
       // Create updated task object for immediate UI update
       const updatedTask: Task = {
@@ -213,27 +213,31 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         salesConfirmed: salesConfirmed,
         status: taskStatus,
         isProspect: isProspect,
-        checklist: updatedChecklist
+        checklist: updatedChecklist,
+        updatedAt: new Date() // Add current timestamp
       };
       
-      console.log('📤 Updated task object:', updatedTask);
+      console.log('📤 MODAL: Updated task object created:', updatedTask);
       
-      // Show success toast
-      toast.success('Status da oportunidade atualizado com sucesso!');
+      // CRITICAL: Wait for database sync before proceeding
+      console.log('🔄 MODAL: Aguardando sincronização com banco de dados...');
+      await loadTasks();
+      console.log('✅ MODAL: Sincronização completa, dados atualizados');
 
-      // Update parent component immediately (optimistic update)
+      // Update parent component with the refreshed data
       if (onTaskUpdated) {
-        console.log('📋 Calling onTaskUpdated with updated task');
+        console.log('📋 MODAL: Calling onTaskUpdated with updated task');
         onTaskUpdated(updatedTask);
       }
 
-      // Reload tasks in background to sync with server
-      await loadTasks();
+      // Show success toast
+      toast.success('Status da oportunidade atualizado com sucesso!');
       
-      // Close modal and reset state
+      // Close modal and reset state ONLY after everything is synced
+      console.log('🚪 MODAL: Fechando modal após sincronização completa');
       onClose();
     } catch (error) {
-      console.error('❌ Erro ao atualizar status:', error);
+      console.error('❌ MODAL: Erro ao atualizar status:', error);
       toast.error(`Erro ao atualizar status da oportunidade: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsUpdating(false);

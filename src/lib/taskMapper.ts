@@ -4,9 +4,33 @@ import { resolveFilialName, loadFiliaisCache } from './taskStandardization';
 
 // Utility function to map Supabase task data to application Task format
 export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
+  console.log('🔄 MAPPER: Mapping Supabase task:', {
+    id: supabaseTask.id,
+    salesConfirmed: supabaseTask.sales_confirmed,
+    isProspect: supabaseTask.is_prospect,
+    status: supabaseTask.status,
+    productsCount: supabaseTask.products?.length || 0
+  });
 
   // Resolver nome da filial automaticamente
   const filialResolved = resolveFilialName(supabaseTask.filial);
+
+  // Map products with detailed logging
+  const checklist = supabaseTask.products?.map((product: any) => {
+    const mappedProduct = {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      selected: Boolean(product.selected), // Ensure boolean conversion
+      quantity: product.quantity || 0,
+      price: product.price || 0,
+      observations: product.observations || '',
+      photos: product.photos || [],
+    };
+    
+    console.log(`🔄 MAPPER: Product mapped - ${product.name}: selected=${mappedProduct.selected}`);
+    return mappedProduct;
+  }) || [];
 
   const mappedTask: Task = {
     id: supabaseTask.id,
@@ -18,16 +42,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     cpf: supabaseTask.cpf || '',
     email: supabaseTask.email || '',
     taskType: supabaseTask.task_type || 'prospection',
-    checklist: supabaseTask.products?.map((product: any) => ({
-      id: product.id,
-      name: product.name,
-      category: product.category,
-      selected: product.selected || false,
-      quantity: product.quantity || 0,
-      price: product.price || 0,
-      observations: product.observations || '',
-      photos: product.photos || [],
-    })) || [],
+    checklist: checklist,
     startDate: new Date(supabaseTask.start_date),
     endDate: new Date(supabaseTask.end_date),
     startTime: supabaseTask.start_time,
@@ -66,6 +81,15 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     propertyHectares: supabaseTask.property_hectares || 0,
     equipmentList: supabaseTask.equipment_list || [],
   };
+
+  console.log('✅ MAPPER: Task mapped successfully:', {
+    id: mappedTask.id,
+    salesConfirmed: mappedTask.salesConfirmed,
+    isProspect: mappedTask.isProspect,
+    status: mappedTask.status,
+    checklistLength: mappedTask.checklist.length,
+    selectedItems: mappedTask.checklist.filter(item => item.selected).length
+  });
 
   return mappedTask;
 };
