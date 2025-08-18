@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -130,10 +131,6 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Detalhes da Oportunidade</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Tipo de Atividade</label>
-                <p className="text-sm bg-muted p-2 rounded capitalize">{task.taskType}</p>
-              </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Data da Atividade</label>
                 <p className="text-sm bg-muted p-2 rounded">
