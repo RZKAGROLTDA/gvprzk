@@ -45,13 +45,7 @@ export const resolveFilialName = (filialId: string | null | undefined): string =
  * Mapeia status de vendas para padrão unificado
  */
 export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | 'perdido' => {
-  // Se não é prospect, considerar como inativo
-  if (!task.isProspect) return 'prospect';
-  
-  // Venda perdida
-  if (task.salesConfirmed === false) return 'perdido';
-  
-  // Venda confirmada
+  // Verificar venda confirmada primeiro (ganho)
   if (task.salesConfirmed === true) {
     // Verificar se é venda parcial (tem produtos específicos selecionados)
     if (task.prospectItems && task.prospectItems.length > 0) {
@@ -61,7 +55,13 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | '
     return 'ganho';
   }
   
-  // Prospect em andamento
+  // Venda perdida
+  if (task.salesConfirmed === false) return 'perdido';
+  
+  // Se salesConfirmed é undefined, mas ainda é prospect ativo
+  if (task.isProspect) return 'prospect';
+  
+  // Default para prospect se não há definição clara
   return 'prospect';
 };
 
