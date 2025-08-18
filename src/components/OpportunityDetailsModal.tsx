@@ -76,77 +76,142 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const handleStatusUpdate = async () => {
     if (!task) return;
     
+    console.log('🔄 Iniciando atualização de status:', {
+      taskId: task.id,
+      selectedStatus,
+      currentTaskStatus: task.status,
+      currentSalesConfirmed: task.salesConfirmed,
+      selectedItems
+    });
+    
     setIsUpdating(true);
     try {
       let salesConfirmed: boolean | null = null;
       let updatedChecklist = [...(task.checklist || [])];
-      let taskStatus = task.status; // Manter o status atual da tarefa como padrão
+      let taskStatus = task.status;
+      let isProspect = task.isProspect;
       
       // Mapear o status selecionado para os valores corretos
       switch (selectedStatus) {
         case 'ganho':
           salesConfirmed = true;
-          taskStatus = 'completed'; // Atualizar status da tarefa para concluída
+          taskStatus = 'completed';
+          isProspect = true;
           // Mark all items as selected for full sale
           updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: true }));
+          console.log('📈 Configurando venda ganha - todos os produtos selecionados');
           break;
         case 'parcial':
           salesConfirmed = true;
-          taskStatus = 'completed'; // Atualizar status da tarefa para concluída
+          taskStatus = 'completed';
+          isProspect = true;
           // Update checklist with selected items for partial sale
           updatedChecklist = updatedChecklist.map(item => ({
             ...item,
             selected: selectedItems[item.id] || false
           }));
+          console.log('📊 Configurando venda parcial - produtos selecionados:', selectedItems);
           break;
         case 'perdido':
           salesConfirmed = false;
-          taskStatus = 'completed'; // Atualizar status da tarefa para concluída
+          taskStatus = 'completed';
+          isProspect = false;
           // Mark all items as not selected for lost sale
           updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: false }));
+          console.log('❌ Configurando venda perdida - nenhum produto selecionado');
           break;
         case 'prospect':
           salesConfirmed = null;
-          taskStatus = 'in_progress'; // Manter como em progresso para prospects ativos
+          taskStatus = 'in_progress';
+          isProspect = true;
           // Keep current selection state
+          console.log('🎯 Mantendo como prospect ativo');
           break;
       }
 
+      console.log('📝 Dados para atualização da tarefa:', {
+        sales_confirmed: salesConfirmed,
+        status: taskStatus,
+        is_prospect: isProspect,
+        taskId: task.id
+      });
+
       // Update task in database with comprehensive status update
-      const { error: taskError } = await supabase
+      const { data: updatedTask, error: taskError } = await supabase
         .from('tasks')
         .update({
           sales_confirmed: salesConfirmed,
-          status: taskStatus, // Atualizar o status da tarefa
-          is_prospect: selectedStatus !== 'perdido', // Manter como prospect exceto quando perdido
+          status: taskStatus,
+          is_prospect: isProspect,
           updated_at: new Date().toISOString()
         })
-        .eq('id', task.id);
+        .eq('id', task.id)
+        .select()
+        .single();
 
-      if (taskError) throw taskError;
+      if (taskError) {
+        console.error('❌ Erro ao atualizar tarefa:', taskError);
+        throw taskError;
+      }
 
-      // Update products in database
-      if (updatedChecklist.length > 0) {
-        for (const item of updatedChecklist) {
-          const { error: productError } = await supabase
-            .from('products')
-            .update({
-              selected: item.selected,
-              updated_at: new Date().toISOString()
-            })
-            .eq('task_id', task.id)
-            .eq('id', item.id);
+      console.log('✅ Tarefa atualizada com sucesso:', updatedTask);
 
-          if (productError) throw productError;
+      // Update products in database - usar uma abordagem mais robusta
+      if (task.checklist && task.checklist.length > 0) {
+        console.log('🔄 Atualizando produtos...');
+        
+        // Buscar produtos existentes na base de dados
+        const { data: existingProducts, error: fetchError } = await supabase
+          .from('products')
+          .select('id, name, task_id')
+          .eq('task_id', task.id);
+
+        if (fetchError) {
+          console.error('❌ Erro ao buscar produtos:', fetchError);
+          throw fetchError;
+        }
+
+        console.log('📦 Produtos existentes encontrados:', existingProducts);
+
+        // Atualizar cada produto baseado no checklist
+        for (const checklistItem of updatedChecklist) {
+          // Encontrar o produto correspondente na base de dados
+          const existingProduct = existingProducts?.find(p => 
+            p.name === checklistItem.name || p.id === checklistItem.id
+          );
+
+          if (existingProduct) {
+            console.log(`🔄 Atualizando produto: ${existingProduct.name} - selected: ${checklistItem.selected}`);
+            
+            const { error: productError } = await supabase
+              .from('products')
+              .update({
+                selected: checklistItem.selected,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingProduct.id);
+
+            if (productError) {
+              console.error('❌ Erro ao atualizar produto:', existingProduct.name, productError);
+              throw productError;
+            }
+            
+            console.log(`✅ Produto atualizado: ${existingProduct.name}`);
+          } else {
+            console.warn(`⚠️ Produto não encontrado na base de dados: ${checklistItem.name}`);
+          }
         }
       }
 
+      console.log('✅ Atualização completa realizada com sucesso');
       toast.success('Status da oportunidade atualizado com sucesso!');
+      
+      // Recarregar tarefas e fechar modal
       await loadTasks();
       onClose();
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
-      toast.error('Erro ao atualizar status da oportunidade');
+      console.error('❌ Erro ao atualizar status:', error);
+      toast.error(`Erro ao atualizar status da oportunidade: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsUpdating(false);
     }

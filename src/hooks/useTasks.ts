@@ -17,6 +17,7 @@ export const useTasks = () => {
   const loadTasks = async () => {
     if (!user) return;
     
+    console.log('🔄 useTasks: Loading tasks...');
     setLoading(true);
     try {
       // Carregar cache de filiais para resolução de nomes
@@ -34,6 +35,7 @@ export const useTasks = () => {
           .order('created_at', { ascending: false });
 
         if (error) {
+          console.error('❌ useTasks: Error loading tasks from Supabase:', error);
           // Fallback para dados offline
           const offlineTasks = getOfflineTasks();
           setTasks(offlineTasks);
@@ -48,11 +50,14 @@ export const useTasks = () => {
         // Converter dados do Supabase para o formato da aplicação
         const formattedTasks: Task[] = tasksData?.map(mapSupabaseTaskToTask) || [];
 
+        console.log(`✅ useTasks: Loaded ${formattedTasks.length} tasks from Supabase`);
         setTasks(formattedTasks);
       } else {
         // Carregar dados offline quando desconectado
         const offlineTasks = getOfflineTasks();
         setTasks(offlineTasks);
+        
+        console.log(`📱 useTasks: Loaded ${offlineTasks.length} tasks from offline cache`);
         
         if (offlineTasks.length > 0) {
           toast({
@@ -62,6 +67,7 @@ export const useTasks = () => {
         }
       }
     } catch (error: any) {
+      console.error('❌ useTasks: Error in loadTasks:', error);
       // Fallback para dados offline em caso de erro
       const offlineTasks = getOfflineTasks();
       setTasks(offlineTasks);
@@ -222,17 +228,23 @@ export const useTasks = () => {
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
     if (!user) return;
 
+    console.log('🔄 useTasks: Iniciando updateTask', { taskId, updates });
+
     try {
       // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
       let finalUpdates = { ...updates };
       if (updates.salesConfirmed === true || updates.salesConfirmed === false) {
         finalUpdates.status = 'completed';
+        console.log('🔄 useTasks: Auto-setting status to completed due to salesConfirmed');
       }
 
       // Garantir que isProspect seja sempre verdadeiro quando há informações de prospect
       if (updates.salesConfirmed !== undefined || (updates.salesValue && updates.salesValue > 0)) {
         finalUpdates.isProspect = true;
+        console.log('🔄 useTasks: Setting isProspect to true');
       }
+
+      console.log('🔄 useTasks: Final updates to be sent:', finalUpdates);
 
       const { error } = await supabase
         .from('tasks')
@@ -243,19 +255,28 @@ export const useTasks = () => {
         .eq('id', taskId);
 
       if (error) {
+        console.error('❌ useTasks: Error updating task:', error);
         throw error;
       }
+
+      console.log('✅ useTasks: Task updated successfully');
 
       // Atualizar state local imediatamente
       setTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, ...finalUpdates } : task
       ));
 
+      console.log('🔄 useTasks: Local state updated, scheduling reload...');
+      
       // Recarregar dados do servidor para garantir sincronização
-      setTimeout(() => loadTasks(), 500);
+      setTimeout(() => {
+        console.log('🔄 useTasks: Reloading tasks from server...');
+        loadTasks();
+      }, 500);
 
       return true;
     } catch (error: any) {
+      console.error('❌ useTasks: Error in updateTask:', error);
       throw error;
     }
   };
