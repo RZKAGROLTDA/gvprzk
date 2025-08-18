@@ -80,16 +80,19 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     try {
       let salesConfirmed: boolean | null = null;
       let updatedChecklist = [...(task.checklist || [])];
+      let taskStatus = task.status; // Manter o status atual da tarefa como padrão
       
-      // Mapear o status selecionado para o valor correto de salesConfirmed
+      // Mapear o status selecionado para os valores corretos
       switch (selectedStatus) {
         case 'ganho':
           salesConfirmed = true;
+          taskStatus = 'completed'; // Atualizar status da tarefa para concluída
           // Mark all items as selected for full sale
           updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: true }));
           break;
         case 'parcial':
           salesConfirmed = true;
+          taskStatus = 'completed'; // Atualizar status da tarefa para concluída
           // Update checklist with selected items for partial sale
           updatedChecklist = updatedChecklist.map(item => ({
             ...item,
@@ -98,20 +101,24 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           break;
         case 'perdido':
           salesConfirmed = false;
+          taskStatus = 'completed'; // Atualizar status da tarefa para concluída
           // Mark all items as not selected for lost sale
           updatedChecklist = updatedChecklist.map(item => ({ ...item, selected: false }));
           break;
         case 'prospect':
           salesConfirmed = null;
+          taskStatus = 'in_progress'; // Manter como em progresso para prospects ativos
           // Keep current selection state
           break;
       }
 
-      // Update task in database
+      // Update task in database with comprehensive status update
       const { error: taskError } = await supabase
         .from('tasks')
         .update({
           sales_confirmed: salesConfirmed,
+          status: taskStatus, // Atualizar o status da tarefa
+          is_prospect: selectedStatus !== 'perdido', // Manter como prospect exceto quando perdido
           updated_at: new Date().toISOString()
         })
         .eq('id', task.id);
@@ -219,13 +226,21 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                 <p className="text-sm bg-muted p-2 rounded capitalize">{task.priority}</p>
               </div>
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Status da Tarefa</label>
+                <Badge variant="outline" className="capitalize">
+                  {task.status === 'pending' ? 'Pendente' : 
+                   task.status === 'in_progress' ? 'Em Progresso' : 
+                   task.status === 'completed' ? 'Concluída' : 'Fechada'}
+                </Badge>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Valor Total da Oportunidade</label>
                 <p className="text-sm bg-muted p-2 rounded font-semibold">
                   {totalOpportunityValue ? `R$ ${totalOpportunityValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informado'}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Status Atual</label>
+                <label className="text-sm font-medium text-muted-foreground">Status da Oportunidade</label>
                 <Badge className={getStatusColor(currentStatus)}>
                   {getStatusLabel(currentStatus)}
                 </Badge>
@@ -356,7 +371,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
             <h3 className="text-lg font-semibold">Atualizar Status da Oportunidade</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Novo Status</label>
+                <label className="text-sm font-medium text-muted-foreground">Status da Oportunidade</label>
                 <Select value={selectedStatus} onValueChange={(value: 'prospect' | 'ganho' | 'perdido' | 'parcial') => setSelectedStatus(value)}>
                   <SelectTrigger>
                     <SelectValue />
