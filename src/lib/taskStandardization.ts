@@ -47,11 +47,27 @@ export const resolveFilialName = (filialId: string | null | undefined): string =
 export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | 'perdido' => {
   // Verificar venda confirmada primeiro (ganho)
   if (task.salesConfirmed === true) {
-    // Verificar se é venda parcial (tem produtos específicos selecionados)
-    if (task.prospectItems && task.prospectItems.length > 0) {
-      const hasSelectedItems = task.prospectItems.some(item => item.selected);
-      if (hasSelectedItems) return 'parcial';
+    // Verificar se é venda parcial (tem produtos específicos selecionados no checklist)
+    if (task.checklist && task.checklist.length > 0) {
+      const selectedItems = task.checklist.filter(item => item.selected);
+      const totalItems = task.checklist.length;
+      
+      // Se há itens selecionados mas não todos, é venda parcial
+      if (selectedItems.length > 0 && selectedItems.length < totalItems) {
+        return 'parcial';
+      }
     }
+    
+    // Verificar se é venda parcial nos prospectItems (fallback)
+    if (task.prospectItems && task.prospectItems.length > 0) {
+      const selectedProspectItems = task.prospectItems.filter(item => item.selected);
+      const totalProspectItems = task.prospectItems.length;
+      
+      if (selectedProspectItems.length > 0 && selectedProspectItems.length < totalProspectItems) {
+        return 'parcial';
+      }
+    }
+    
     return 'ganho';
   }
   
@@ -167,11 +183,11 @@ export const getStatusLabel = (status: 'prospect' | 'parcial' | 'ganho' | 'perdi
     case 'prospect':
       return 'Prospect';
     case 'parcial':
-      return 'Parcial';
+      return 'Venda Parcial';
     case 'ganho':
-      return 'Ganho';
+      return 'Venda Realizada';
     case 'perdido':
-      return 'Perdido';
+      return 'Venda Perdida';
     default:
       return 'Prospect';
   }

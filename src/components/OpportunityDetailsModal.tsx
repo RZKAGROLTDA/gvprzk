@@ -100,13 +100,9 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                 <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
                 <p className="text-sm bg-muted p-2 rounded">{task.property || 'Não informado'}</p>
               </div>
-              <div>
+              <div className="col-span-2">
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
                 <p className="text-sm bg-muted p-2 rounded">{task.email || 'Não informado'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">CPF</label>
-                <p className="text-sm bg-muted p-2 rounded">{task.cpf || 'Não informado'}</p>
               </div>
             </div>
           </div>
@@ -145,6 +141,16 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                 </p>
               </div>
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Horário</label>
+                <p className="text-sm bg-muted p-2 rounded">
+                  {task.startTime} - {task.endTime}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
+                <p className="text-sm bg-muted p-2 rounded capitalize">{task.priority}</p>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Valor da Oportunidade</label>
                 <p className="text-sm bg-muted p-2 rounded">
                   {task.salesValue ? `R$ ${task.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informado'}
@@ -156,12 +162,59 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   {getStatusLabel(currentStatus)}
                 </Badge>
               </div>
+              {task.familyProduct && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Família de Produtos</label>
+                  <p className="text-sm bg-muted p-2 rounded">{task.familyProduct}</p>
+                </div>
+              )}
+              {task.equipmentQuantity && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Quantidade de Equipamentos</label>
+                  <p className="text-sm bg-muted p-2 rounded">{task.equipmentQuantity}</p>
+                </div>
+              )}
+              {task.propertyHectares && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Hectares da Propriedade</label>
+                  <p className="text-sm bg-muted p-2 rounded">{task.propertyHectares}</p>
+                </div>
+              )}
+              {(task.initialKm > 0 || task.finalKm > 0) && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">Quilometragem</label>
+                  <p className="text-sm bg-muted p-2 rounded">
+                    Inicial: {task.initialKm}km - Final: {task.finalKm}km
+                    {task.finalKm > task.initialKm && ` (Total: ${task.finalKm - task.initialKm}km)`}
+                  </p>
+                </div>
+              )}
             </div>
+
+            {task.observations && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Observações da Atividade</label>
+                <p className="text-sm bg-muted p-2 rounded whitespace-pre-wrap">{task.observations}</p>
+              </div>
+            )}
 
             {task.prospectNotes && (
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                <label className="text-sm font-medium text-muted-foreground">Observações da Oportunidade</label>
                 <p className="text-sm bg-muted p-2 rounded whitespace-pre-wrap">{task.prospectNotes}</p>
+              </div>
+            )}
+
+            {task.checkInLocation && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Localização do Check-in</label>
+                <p className="text-sm bg-muted p-2 rounded">
+                  Lat: {task.checkInLocation.lat.toFixed(6)}, Lng: {task.checkInLocation.lng.toFixed(6)}
+                  <br />
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(task.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  </span>
+                </p>
               </div>
             )}
           </div>
@@ -215,6 +268,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="prospect">Prospect</SelectItem>
+                    <SelectItem value="parcial">Venda Parcial</SelectItem>
                     <SelectItem value="ganho">Venda Realizada</SelectItem>
                     <SelectItem value="perdido">Venda Perdida</SelectItem>
                   </SelectContent>
