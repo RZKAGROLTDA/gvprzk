@@ -13,6 +13,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
+import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
+import { Task } from '@/types/task';
 
 interface SalesFunnelData {
   name: string;
@@ -45,6 +47,8 @@ export const SalesFunnel: React.FC = () => {
   const [filiais, setFiliais] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   const [selectedFunnelSection, setSelectedFunnelSection] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Filtros
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -897,8 +901,8 @@ export const SalesFunnel: React.FC = () => {
                             variant="outline" 
                             size="sm"
                             onClick={() => {
-                              // TODO: Implementar edição do formulário
-                              console.log('Editar tarefa:', task.id);
+                              setSelectedTask(task);
+                              setIsModalOpen(true);
                             }}
                           >
                             Editar
@@ -988,6 +992,16 @@ export const SalesFunnel: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de Detalhes da Oportunidade */}
+      <OpportunityDetailsModal
+        task={selectedTask}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedTask(null);
+        }}
+      />
     </div>
   );
 };
