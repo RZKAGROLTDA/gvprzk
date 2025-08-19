@@ -9,6 +9,7 @@ import { Layout } from "@/components/Layout";
 import { AuthProvider } from '@/components/AuthProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginForm } from '@/components/LoginForm';
+import { SecurityHeaders } from '@/components/SecurityHeaders';
 import Dashboard from "./pages/Dashboard";
 import { SalesFunnel } from "./components/SalesFunnel";
 import CreateTask from "./pages/CreateTask";
@@ -149,6 +150,7 @@ const AppContent: React.FC = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <SecurityHeaders />
       <Toaster />
       <Sonner />
       <HotToaster />

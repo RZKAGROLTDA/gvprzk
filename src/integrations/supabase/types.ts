@@ -238,31 +238,40 @@ export type Database = {
       }
       security_audit_log: {
         Row: {
+          blocked: boolean | null
           created_at: string
           event_type: string
           id: string
           ip_address: unknown | null
           metadata: Json | null
+          risk_score: number | null
+          session_id: string | null
           target_user_id: string | null
           user_agent: string | null
           user_id: string | null
         }
         Insert: {
+          blocked?: boolean | null
           created_at?: string
           event_type: string
           id?: string
           ip_address?: unknown | null
           metadata?: Json | null
+          risk_score?: number | null
+          session_id?: string | null
           target_user_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
         Update: {
+          blocked?: boolean | null
           created_at?: string
           event_type?: string
           id?: string
           ip_address?: unknown | null
           metadata?: Json | null
+          risk_score?: number | null
+          session_id?: string | null
           target_user_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -440,6 +449,10 @@ export type Database = {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
       }
+      check_login_rate_limit: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
       cleanup_invitation_tokens: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -459,6 +472,19 @@ export type Database = {
       generate_invitation_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_secure_user_directory: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          approval_status: string
+          email: string
+          filial_id: string
+          filial_nome: string
+          id: string
+          name: string
+          role: string
+          user_id: string
+        }[]
       }
       get_user_directory: {
         Args: Record<PropertyKey, never>
@@ -484,6 +510,14 @@ export type Database = {
       is_admin_by_email: {
         Args: { check_email: string }
         Returns: boolean
+      }
+      log_high_risk_activity: {
+        Args: {
+          activity_type: string
+          additional_data?: Json
+          risk_level?: number
+        }
+        Returns: undefined
       }
       log_security_event: {
         Args: { event_type: string; metadata?: Json; target_user_id?: string }

@@ -30,7 +30,7 @@ export const LoginForm: React.FC = () => {
   });
 
   const { validateField, getFieldErrors, hasErrors, validationRules } = useInputValidation();
-  const { monitorLoginAttempt, monitorPasswordReset } = useSecurityMonitor();
+  const { monitorLoginAttempt, monitorPasswordReset, checkRateLimit } = useSecurityMonitor();
 
   // Check if email is admin using database
   const checkAdminStatus = async (email: string) => {
@@ -114,6 +114,19 @@ export const LoginForm: React.FC = () => {
       toast({
         title: "Dados inválidos",
         description: "Verifique os campos em vermelho",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check rate limiting before attempting login
+    const isAllowed = await checkRateLimit(formData.email.trim().toLowerCase());
+    if (!isAllowed) {
+      setIsBlocked(true);
+      setBlockTimeLeft(900); // 15 minutes
+      toast({
+        title: "Muitas tentativas",
+        description: "Muitas tentativas de login falharam. Tente novamente em 15 minutos.",
         variant: "destructive",
       });
       return;
