@@ -102,22 +102,27 @@ export const Users: React.FC = () => {
       if (profileError) throw profileError;
 
       // Use RPC function for secure role updates with server-side authorization
-      const { error } = await supabase.rpc('update_user_role_secure', {
+      const { data, error } = await supabase.rpc('update_user_role_secure', {
         target_user_id: targetProfile.user_id,
         new_role: newRole
       });
 
       if (error) {
-        if (error.message.includes('insufficient privilege')) {
-          toast.error('Você não tem permissão para alterar este usuário');
-        } else {
-          throw error;
-        }
+        console.error('Erro RPC:', error);
+        toast.error('Erro ao atualizar permissão: ' + error.message);
         return;
       }
 
-      toast.success('Permissão atualizada com sucesso');
-      loadData();
+      // A função retorna JSON, então verificamos o resultado
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.success) {
+        toast.success(data.message || 'Permissão atualizada com sucesso');
+        loadData();
+      }
     } catch (error) {
       console.error('Erro ao atualizar permissão:', error);
       toast.error('Erro ao atualizar permissão');
@@ -163,9 +168,15 @@ export const Users: React.FC = () => {
     switch (role) {
       case 'manager':
         return 'default';
+      case 'supervisor':
+        return 'secondary';
       case 'rac':
         return 'secondary';
       case 'consultant':
+        return 'outline';
+      case 'sales_consultant':
+        return 'outline';
+      case 'technical_consultant':
         return 'outline';
       default:
         return 'outline';
@@ -176,10 +187,16 @@ export const Users: React.FC = () => {
     switch (role) {
       case 'manager':
         return 'Administrador';
+      case 'supervisor':
+        return 'Supervisor';
       case 'rac':
         return 'RAC';
       case 'consultant':
         return 'Consultor';
+      case 'sales_consultant':
+        return 'Consultor de Vendas';
+      case 'technical_consultant':
+        return 'Consultor Técnico';
       default:
         return role;
     }
@@ -315,7 +332,7 @@ export const Users: React.FC = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Permissão</TableHead>
                 <TableHead>Filial</TableHead>
-                <TableHead>CEP</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -349,13 +366,14 @@ export const Users: React.FC = () => {
                            <SelectTrigger className="w-32">
                              <SelectValue />
                            </SelectTrigger>
-                           <SelectContent>
-                             <SelectItem value="manager">Gerente</SelectItem>
-                             <SelectItem value="supervisor">Supervisor</SelectItem>
-                             <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
-                             <SelectItem value="rac">RAC</SelectItem>
-                             <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
-                           </SelectContent>
+                            <SelectContent>
+                              <SelectItem value="manager">Gerente</SelectItem>
+                              <SelectItem value="supervisor">Supervisor</SelectItem>
+                              <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
+                              <SelectItem value="consultant">Consultor</SelectItem>
+                              <SelectItem value="rac">RAC</SelectItem>
+                              <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
+                            </SelectContent>
                          </Select>
                        ) : (
                          <Badge variant={getRoleBadgeVariant(profile.role)} className="w-32 justify-center">

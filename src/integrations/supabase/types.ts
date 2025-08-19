@@ -529,7 +529,7 @@ export type Database = {
       }
       update_user_role_secure: {
         Args: { new_role: string; target_user_id: string }
-        Returns: undefined
+        Returns: Json
       }
       user_same_filial: {
         Args: { target_user_id: string }
