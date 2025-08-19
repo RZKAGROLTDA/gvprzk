@@ -237,7 +237,7 @@ export const LoginForm: React.FC = () => {
     const { error } = await signUp(formData.email, formData.password, {
       name: formData.name,
       role: formData.role,
-      filial_id: formData.filial_id || null
+      filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
     });
     
     if (error) {
@@ -523,7 +523,7 @@ export const LoginForm: React.FC = () => {
                       <SelectValue placeholder="Selecione sua filial" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem filial</SelectItem>
+                      <SelectItem value="none">Sem filial</SelectItem>
                       {filiais.map((filial) => (
                         <SelectItem key={filial.id} value={filial.id}>
                           <div className="flex items-center gap-2">
