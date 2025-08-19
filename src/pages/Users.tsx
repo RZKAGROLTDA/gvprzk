@@ -99,7 +99,16 @@ export const Users: React.FC = () => {
         .eq('id', userId)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Erro ao buscar perfil do usuário:', profileError);
+        toast.error('Erro ao buscar dados do usuário');
+        return;
+      }
+
+      if (!targetProfile) {
+        toast.error('Usuário não encontrado');
+        return;
+      }
 
       // Use RPC function for secure role updates with server-side authorization
       const { data, error } = await supabase.rpc('update_user_role_secure', {
@@ -114,18 +123,20 @@ export const Users: React.FC = () => {
       }
 
       // A função retorna JSON, então verificamos o resultado
-      if (data.error) {
+      if (data && data.error) {
         toast.error(data.error);
         return;
       }
 
-      if (data.success) {
+      if (data && data.success) {
         toast.success(data.message || 'Permissão atualizada com sucesso');
-        loadData();
+        await loadData(); // Recarregar dados após sucesso
+      } else {
+        toast.error('Erro inesperado ao atualizar permissão');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar permissão:', error);
-      toast.error('Erro ao atualizar permissão');
+      toast.error(error?.message || 'Erro ao atualizar permissão');
     }
   };
 
