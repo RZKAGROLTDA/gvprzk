@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Settings, Trash, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Settings, Trash, Eye, EyeOff, Building } from 'lucide-react';
 import { SessionRefresh } from '@/components/SessionRefresh';
 import { useInputValidation } from '@/hooks/useInputValidation';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const LoginForm: React.FC = () => {
   const { signIn, signUp } = useAuth();
@@ -26,11 +27,32 @@ export const LoginForm: React.FC = () => {
     email: '',
     password: '',
     name: '',
-    role: 'consultant'
+    role: 'consultant',
+    filial_id: ''
   });
+  const [filiais, setFiliais] = useState<Array<{id: string, nome: string}>>([]);
 
   const { validateField, getFieldErrors, hasErrors, validationRules } = useInputValidation();
   const { monitorLoginAttempt, monitorPasswordReset, checkRateLimit } = useSecurityMonitor();
+
+  // Load filiais on component mount
+  useEffect(() => {
+    loadFiliais();
+  }, []);
+
+  const loadFiliais = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('filiais')
+        .select('id, nome')
+        .order('nome');
+      
+      if (error) throw error;
+      setFiliais(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar filiais:', error);
+    }
+  };
 
   // Check if email is admin using database
   const checkAdminStatus = async (email: string) => {
@@ -214,7 +236,8 @@ export const LoginForm: React.FC = () => {
 
     const { error } = await signUp(formData.email, formData.password, {
       name: formData.name,
-      role: formData.role
+      role: formData.role,
+      filial_id: formData.filial_id || null
     });
     
     if (error) {
@@ -475,6 +498,42 @@ export const LoginForm: React.FC = () => {
                   <p className="text-xs text-muted-foreground">
                     Senha forte: 8+ caracteres, maiúscula, minúscula, número e símbolo
                   </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-role">Cargo</Label>
+                  <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione seu cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="consultant">Consultor</SelectItem>
+                      <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
+                      <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
+                      <SelectItem value="rac">RAC</SelectItem>
+                      <SelectItem value="supervisor">Supervisor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-filial">Filial</Label>
+                  <Select value={formData.filial_id} onValueChange={(value) => handleInputChange('filial_id', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione sua filial" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Sem filial</SelectItem>
+                      {filiais.map((filial) => (
+                        <SelectItem key={filial.id} value={filial.id}>
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4" />
+                            {filial.nome}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <Button type="submit" className="w-full" disabled={loading}>
