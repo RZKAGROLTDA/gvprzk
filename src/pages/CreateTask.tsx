@@ -966,24 +966,24 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         <div className="mt-6">
           <p className="text-muted-foreground text-sm sm:text-base mb-4">Selecione o tipo de tarefa que deseja criar:</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Button type="button" variant={selectedTaskType === 'field-visit' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3" onClick={() => handleTaskTypeChange('field-visit')}>
-              <MapPin className="h-8 w-8" />
+            <Button type="button" variant={selectedTaskType === 'field-visit' ? 'success' : 'outline'} className="h-auto p-6 flex-col gap-3 border-success/20 hover:border-success/40" onClick={() => handleTaskTypeChange('field-visit')}>
+              <MapPin className="h-8 w-8 text-success" />
               <div className="text-center">
                 <div className="font-semibold">Visita à Fazenda</div>
                 <div className="text-sm opacity-80">Prospecção de clientes</div>
               </div>
             </Button>
             
-            <Button type="button" variant={selectedTaskType === 'call' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3" onClick={() => handleTaskTypeChange('call')}>
-              <Phone className="h-8 w-8" />
+            <Button type="button" variant={selectedTaskType === 'call' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3 border-primary/20 hover:border-primary/40" onClick={() => handleTaskTypeChange('call')}>
+              <Phone className="h-8 w-8 text-primary" />
               <div className="text-center">
                 <div className="font-semibold">Ligação</div>
                 <div className="text-sm opacity-80">Contato telefônico</div>
               </div>
             </Button>
             
-            <Button type="button" variant={selectedTaskType === 'workshop-checklist' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3" onClick={() => handleTaskTypeChange('workshop-checklist')}>
-              <Wrench className="h-8 w-8" />
+            <Button type="button" variant={selectedTaskType === 'workshop-checklist' ? 'warning' : 'outline'} className="h-auto p-6 flex-col gap-3 border-warning/20 hover:border-warning/40" onClick={() => handleTaskTypeChange('workshop-checklist')}>
+              <Wrench className="h-8 w-8 text-warning" />
               <div className="text-center">
                 <div className="font-semibold">Checklist Oficina</div>
                 <div className="text-sm opacity-80">Verificação de produtos</div>
