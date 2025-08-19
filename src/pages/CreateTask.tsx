@@ -962,34 +962,67 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       <div>
         
         
-        {/* Seletor de Tipo de Tarefa */}
-        <div className="mt-6">
-          <p className="text-muted-foreground text-sm sm:text-base mb-4">Gestão de Visitas - Selecione o tipo de tarefa que deseja criar:</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Button type="button" variant={selectedTaskType === 'field-visit' ? 'success' : 'outline'} className="h-auto p-6 flex-col gap-3 border-success/20 hover:border-success/40" onClick={() => handleTaskTypeChange('field-visit')}>
-              <MapPin className="h-8 w-8 text-success" />
-              <div className="text-center">
-                <div className="font-semibold">Visita à Fazenda</div>
-                <div className="text-sm opacity-80">Prospecção de clientes</div>
+        {/* Hero Section */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Gestão de Visitas</h1>
+          <p className="text-muted-foreground text-lg">Escolha o tipo de atividade que deseja realizar</p>
+        </div>
+
+        {/* Seletor de Tipo de Tarefa - Layout Melhorado */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card 
+            className="group relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 border-2"
+            onClick={() => navigate('/farm-visit')}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
+                <MapPin className="h-8 w-8 text-success" />
               </div>
-            </Button>
-            
-            <Button type="button" variant={selectedTaskType === 'call' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3 border-primary/20 hover:border-primary/40" onClick={() => handleTaskTypeChange('call')}>
-              <Phone className="h-8 w-8 text-primary" />
-              <div className="text-center">
-                <div className="font-semibold">Ligação</div>
-                <div className="text-sm opacity-80">Contato telefônico</div>
+              <h3 className="text-xl font-semibold mb-2">Visita à Fazenda</h3>
+              <p className="text-muted-foreground">Prospecção de clientes e venda de produtos no campo</p>
+              <div className="mt-4">
+                <Button variant="outline" className="w-full">
+                  Iniciar Visita
+                </Button>
               </div>
-            </Button>
-            
-            <Button type="button" variant={selectedTaskType === 'workshop-checklist' ? 'warning' : 'outline'} className="h-auto p-6 flex-col gap-3 border-warning/20 hover:border-warning/40" onClick={() => handleTaskTypeChange('workshop-checklist')}>
-              <Wrench className="h-8 w-8 text-warning" />
-              <div className="text-center">
-                <div className="font-semibold">Checklist Oficina</div>
-                <div className="text-sm opacity-80">Verificação de produtos</div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="group relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 border-2"
+            onClick={() => navigate('/client-call')}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <Phone className="h-8 w-8 text-primary" />
               </div>
-            </Button>
-          </div>
+              <h3 className="text-xl font-semibold mb-2">Ligação</h3>
+              <p className="text-muted-foreground">Contato telefônico para prospecção e vendas</p>
+              <div className="mt-4">
+                <Button variant="outline" className="w-full">
+                  Iniciar Ligação
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="group relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-105 border-2"
+            onClick={() => navigate('/workshop-checklist')}
+          >
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
+                <Wrench className="h-8 w-8 text-warning" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Checklist Oficina</h3>
+              <p className="text-muted-foreground">Verificação e manutenção de produtos na oficina</p>
+              <div className="mt-4">
+                <Button variant="outline" className="w-full">
+                  Iniciar Checklist
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {selectedTaskType && <>

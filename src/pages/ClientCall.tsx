@@ -1,0 +1,279 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Phone, Save, X } from 'lucide-react';
+import { Task } from '@/types/task';
+import { useProfile } from '@/hooks/useProfile';
+import { useTasks } from '@/hooks/useTasks';
+import { useOffline } from '@/hooks/useOffline';
+import { toast } from '@/components/ui/use-toast';
+
+const ClientCall: React.FC = () => {
+  const navigate = useNavigate();
+  const { profile } = useProfile();
+  const { createTask } = useTasks();
+  const { isOnline, saveTaskOffline } = useOffline();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [task, setTask] = useState<Partial<Task>>({
+    name: 'Ligação para Cliente',
+    responsible: profile?.name || '',
+    client: '',
+    property: '',
+    filial: profile?.filial_id || '',
+    cpf: '',
+    email: '',
+    taskType: 'ligacao',
+    priority: 'medium',
+    observations: '',
+    startDate: new Date(),
+    endDate: new Date(),
+    startTime: '09:00',
+    endTime: '17:00',
+    photos: [],
+    documents: [],
+    isProspect: true,
+    salesConfirmed: undefined
+  });
+
+  const [callQuestions, setCallQuestions] = useState({
+    lubricants: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    tires: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    filters: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    batteries: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    parts: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    silobag: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 },
+    disk: { needsProduct: false, quantity: 0, unitValue: 0, totalValue: 0 }
+  });
+
+  const updateCallQuestion = (product: keyof typeof callQuestions, field: 'needsProduct' | 'quantity' | 'unitValue', value: boolean | number) => {
+    setCallQuestions(prev => {
+      const updated = {
+        ...prev,
+        [product]: {
+          ...prev[product],
+          [field]: value
+        }
+      };
+
+      const productData = updated[product];
+      const totalValue = productData.quantity * productData.unitValue;
+      updated[product] = {
+        ...productData,
+        totalValue: totalValue
+      };
+      return updated;
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const taskData = {
+        ...task,
+        taskCategory: 'call' as const,
+        callQuestions
+      };
+
+      if (isOnline) {
+        await createTask(taskData);
+        toast({
+          title: "✅ Ligação registrada com sucesso!",
+          description: "A tarefa foi registrada no sistema"
+        });
+      } else {
+        await saveTaskOffline(taskData);
+        toast({
+          title: "📱 Ligação salva offline",
+          description: "Será sincronizada quando voltar a conexão"
+        });
+      }
+
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: "❌ Erro ao registrar ligação",
+        description: "Tente novamente"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const productLabels = {
+    lubricants: 'Lubrificantes',
+    tires: 'Pneus',
+    filters: 'Filtros',
+    batteries: 'Baterias',
+    parts: 'Peças',
+    silobag: 'Silo Bolsa',
+    disk: 'Disco'
+  };
+
+  return (
+    <div className="space-y-6 px-2 sm:px-0">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => navigate('/')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <Phone className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-bold">Ligação para Cliente</h1>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Informações Básicas */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações da Ligação</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="client">Cliente</Label>
+                <Input
+                  id="client"
+                  value={task.client || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, client: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="property">Propriedade</Label>
+                <Input
+                  id="property"
+                  value={task.property || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, property: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
+                  id="cpf"
+                  value={task.cpf || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, cpf: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={task.email || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="observations">Resumo da Conversa</Label>
+              <Textarea
+                id="observations"
+                value={task.observations || ''}
+                onChange={(e) => setTask(prev => ({ ...prev, observations: e.target.value }))}
+                rows={4}
+                placeholder="Descreva o que foi conversado durante a ligação..."
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Perguntas da Ligação */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Interesse em Produtos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {Object.entries(callQuestions).map(([key, data]) => (
+                <div key={key} className="p-4 border rounded-lg space-y-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={data.needsProduct}
+                      onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'needsProduct', e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="font-medium text-lg">{productLabels[key as keyof typeof productLabels]}</span>
+                  </div>
+                  
+                  {data.needsProduct && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-6">
+                      <div>
+                        <Label>Quantidade</Label>
+                        <Input
+                          type="number"
+                          value={data.quantity}
+                          onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'quantity', parseInt(e.target.value) || 0)}
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <Label>Valor Unitário (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={data.unitValue}
+                          onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'unitValue', parseFloat(e.target.value) || 0)}
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <Label>Valor Total (R$)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={data.totalValue}
+                          readOnly
+                          className="bg-muted"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Botões de Ação */}
+        <div className="flex justify-end gap-3">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={() => navigate('/')}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancelar
+          </Button>
+          <Button 
+            type="submit"
+            disabled={isSubmitting}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isSubmitting ? 'Salvando...' : 'Salvar Ligação'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default ClientCall;
