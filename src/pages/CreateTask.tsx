@@ -964,7 +964,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         
         {/* Seletor de Tipo de Tarefa */}
         <div className="mt-6">
-          <p className="text-muted-foreground text-sm sm:text-base mb-4">Selecione o tipo de tarefa que deseja criar:</p>
+          <p className="text-muted-foreground text-sm sm:text-base mb-4">Gestão de Visitas - Selecione o tipo de tarefa que deseja criar:</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Button type="button" variant={selectedTaskType === 'field-visit' ? 'success' : 'outline'} className="h-auto p-6 flex-col gap-3 border-success/20 hover:border-success/40" onClick={() => handleTaskTypeChange('field-visit')}>
               <MapPin className="h-8 w-8 text-success" />
