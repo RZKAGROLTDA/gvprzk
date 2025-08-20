@@ -1173,7 +1173,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           </div>
                           
                           {item.selected && <div className="ml-6 space-y-4">
-                              <div className="grid grid-cols-3 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                   <Label htmlFor={`qty-${item.id}`}>QTD</Label>
                                   <Input id={`qty-${item.id}`} type="number" min="0" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
