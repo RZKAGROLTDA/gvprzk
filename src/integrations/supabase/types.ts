@@ -527,6 +527,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      secure_log_security_event: {
+        Args: {
+          event_type: string
+          metadata?: Json
+          risk_score?: number
+          target_user_id?: string
+        }
+        Returns: undefined
+      }
       update_user_role_secure: {
         Args: { new_role: string; target_user_id: string }
         Returns: Json
