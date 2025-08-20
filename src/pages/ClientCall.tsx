@@ -60,6 +60,7 @@ const ClientCall: React.FC = () => {
         }
       };
 
+      // Recalcular valor total quando quantidade ou valor unitário mudarem
       const productData = updated[product];
       const totalValue = productData.quantity * productData.unitValue;
       updated[product] = {
@@ -108,13 +109,47 @@ const ClientCall: React.FC = () => {
 
   const productLabels = {
     lubricants: 'Lubrificantes',
-    tires: 'Pneus',
+    tires: 'Pneus', 
     filters: 'Filtros',
     batteries: 'Baterias',
     parts: 'Peças',
     silobag: 'Silo Bolsa',
     disk: 'Disco'
   };
+
+  const renderValueFields = (product: keyof typeof callQuestions) => (
+    <div className="ml-6 grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+      <div className="space-y-2">
+        <Label>Quantidade</Label>
+        <Input
+          type="number"
+          value={callQuestions[product].quantity}
+          onChange={(e) => updateCallQuestion(product, 'quantity', parseInt(e.target.value) || 0)}
+          min="0"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Valor Unitário (R$)</Label>
+        <Input
+          type="number"
+          step="0.01"
+          value={callQuestions[product].unitValue}
+          onChange={(e) => updateCallQuestion(product, 'unitValue', parseFloat(e.target.value) || 0)}
+          min="0"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Valor Total (R$)</Label>
+        <Input
+          type="number"
+          step="0.01"
+          value={callQuestions[product].totalValue}
+          readOnly
+          className="bg-muted"
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6 px-2 sm:px-0">
@@ -232,55 +267,38 @@ const ClientCall: React.FC = () => {
         {/* Perguntas da Ligação */}
         <Card>
           <CardHeader>
-            <CardTitle>Interesse em Produtos</CardTitle>
+            <CardTitle>Perguntas da Ligação</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
               {Object.entries(callQuestions).map(([key, data]) => (
-                <div key={key} className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={data.needsProduct}
-                      onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'needsProduct', e.target.checked)}
-                      className="rounded"
-                    />
-                    <span className="font-medium text-lg">{productLabels[key as keyof typeof productLabels]}</span>
-                  </div>
-                  
-                  {data.needsProduct && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-6">
-                      <div>
-                        <Label>Quantidade</Label>
-                        <Input
-                          type="number"
-                          value={data.quantity}
-                          onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'quantity', parseInt(e.target.value) || 0)}
-                          min="0"
+                <div key={key} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Está precisando de {productLabels[key as keyof typeof productLabels]}:</Label>
+                    <div className="flex gap-4">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`${key}-yes`}
+                          checked={data.needsProduct}
+                          onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'needsProduct', e.target.checked)}
+                          className="rounded"
                         />
+                        <Label htmlFor={`${key}-yes`}>SIM</Label>
                       </div>
-                      <div>
-                        <Label>Valor Unitário (R$)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={data.unitValue}
-                          onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'unitValue', parseFloat(e.target.value) || 0)}
-                          min="0"
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`${key}-no`}
+                          checked={!data.needsProduct}
+                          onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'needsProduct', !e.target.checked)}
+                          className="rounded"
                         />
-                      </div>
-                      <div>
-                        <Label>Valor Total (R$)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={data.totalValue}
-                          readOnly
-                          className="bg-muted"
-                        />
+                        <Label htmlFor={`${key}-no`}>NÃO</Label>
                       </div>
                     </div>
-                  )}
+                    {data.needsProduct && renderValueFields(key as keyof typeof callQuestions)}
+                  </div>
                 </div>
               ))}
             </div>
