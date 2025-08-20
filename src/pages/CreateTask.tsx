@@ -1080,14 +1080,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="client">Nome do Cliente</Label>
-                <Input id="client" value={task.client} onChange={e => setTask(prev => ({
-                ...prev,
-                client: e.target.value
-              }))} placeholder="Nome do cliente" />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="clientCode">Código do Cliente</Label>
                 <div className="relative">
                   <Input 
@@ -1147,6 +1139,14 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="client">Nome do Cliente</Label>
+                <Input id="client" value={task.client} onChange={e => setTask(prev => ({
+                ...prev,
+                client: e.target.value
+              }))} placeholder="Nome do cliente" />
               </div>
 
               <div className="space-y-2">
