@@ -13,6 +13,9 @@ import { SecurityHeaders } from '@/components/SecurityHeaders';
 import Dashboard from "./pages/Dashboard";
 import { SalesFunnel } from "./components/SalesFunnel";
 import CreateTask from "./pages/CreateTask";
+import CreateFieldVisit from "./pages/CreateFieldVisit";
+import CreateCall from "./pages/CreateCall";
+import CreateWorkshopChecklist from "./pages/CreateWorkshopChecklist";
 
 import Reports from "./pages/Reports";
 import Management from "./pages/Management";
@@ -86,6 +89,9 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/" element={<Layout><CreateTask /></Layout>} />
       <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
+      <Route path="/create-field-visit" element={<Layout><CreateFieldVisit /></Layout>} />
+      <Route path="/create-call" element={<Layout><CreateCall /></Layout>} />
+      <Route path="/create-workshop-checklist" element={<Layout><CreateWorkshopChecklist /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
       <Route path="/reports" element={<Layout><Reports /></Layout>} />
       <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />

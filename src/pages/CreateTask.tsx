@@ -25,7 +25,11 @@ import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-const CreateTask: React.FC = () => {
+interface CreateTaskProps {
+  taskType?: 'field-visit' | 'call' | 'workshop-checklist';
+}
+
+const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const urlTaskType = searchParams.get('type');
@@ -49,14 +53,17 @@ const CreateTask: React.FC = () => {
 
   // Estado para controlar o tipo de tarefa selecionado
   const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | null>(null);
-  // Inicializar com URL se existir
+  // Inicializar com URL ou prop se existir
   useEffect(() => {
-    if (urlTaskType) {
+    if (propTaskType) {
+      setSelectedTaskType(propTaskType);
+      setTaskCategory(propTaskType);
+    } else if (urlTaskType) {
       const initialType = getTaskCategoryFromUrl(urlTaskType);
       setSelectedTaskType(initialType);
       setTaskCategory(initialType);
     }
-  }, [urlTaskType]);
+  }, [urlTaskType, propTaskType]);
 
   // Função para alterar o tipo de tarefa
   const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist') => {
@@ -962,14 +969,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       <div>
         
         
-        {/* Seletor de Tipo de Tarefa */}
-        <div className="mt-8 p-6 bg-card/50 border border-border/50 rounded-xl shadow-sm">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-foreground mb-2">Gestão de Vendas de Peças</h2>
-            <p className="text-muted-foreground text-sm sm:text-base">Selecione o tipo de tarefa que deseja criar:</p>
-          </div>
+        {/* Seletor de Tipo de Tarefa - só mostra se não há taskType via prop */}
+        {!propTaskType && (
+          <div className="mt-8 p-6 bg-card/50 border border-border/50 rounded-xl shadow-sm">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Gestão de Vendas de Peças</h2>
+              <p className="text-muted-foreground text-sm sm:text-base">Selecione o tipo de tarefa que deseja criar:</p>
+            </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Button type="button" variant={selectedTaskType === 'field-visit' ? 'success' : 'outline'} className="h-auto p-6 flex-col gap-3 border-success/20 hover:border-success/40" onClick={() => handleTaskTypeChange('field-visit')}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="h-auto p-6 flex-col gap-3 border-success/20 hover:border-success/40 hover:bg-success/5"
+              onClick={() => window.location.href = '/create-field-visit'}
+            >
               <MapPin className="h-8 w-8 text-success" />
               <div className="text-center">
                 <div className="font-semibold">Visita à Fazenda</div>
@@ -977,7 +990,12 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
             </Button>
             
-            <Button type="button" variant={selectedTaskType === 'call' ? 'default' : 'outline'} className="h-auto p-6 flex-col gap-3 border-primary/20 hover:border-primary/40" onClick={() => handleTaskTypeChange('call')}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="h-auto p-6 flex-col gap-3 border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+              onClick={() => window.location.href = '/create-call'}
+            >
               <Phone className="h-8 w-8 text-primary" />
               <div className="text-center">
                 <div className="font-semibold">Ligação</div>
@@ -985,7 +1003,12 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
             </Button>
             
-            <Button type="button" variant={selectedTaskType === 'workshop-checklist' ? 'warning' : 'outline'} className="h-auto p-6 flex-col gap-3 border-warning/20 hover:border-warning/40" onClick={() => handleTaskTypeChange('workshop-checklist')}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="h-auto p-6 flex-col gap-3 border-warning/20 hover:border-warning/40 hover:bg-warning/5"
+              onClick={() => window.location.href = '/create-workshop-checklist'}
+            >
               <Wrench className="h-8 w-8 text-warning" />
               <div className="text-center">
                 <div className="font-semibold">Checklist Oficina</div>
@@ -994,21 +1017,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             </Button>
           </div>
         </div>
+        )}
 
-        {selectedTaskType && <>
+        {(selectedTaskType || propTaskType) && <>
             <h2 className="text-xl sm:text-2xl font-semibold text-foreground mb-2">
-              {getTaskTitle(selectedTaskType)}
+              {getTaskTitle(selectedTaskType || propTaskType!)}
             </h2>
             <p className="text-muted-foreground text-sm sm:text-base mb-4">
-              {selectedTaskType === 'field-visit' ? 'Criar uma nova visita à fazenda' : selectedTaskType === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
+              {(selectedTaskType || propTaskType) === 'field-visit' ? 'Criar uma nova visita à fazenda' : (selectedTaskType || propTaskType) === 'call' ? 'Registrar uma nova ligação para cliente' : 'Criar um novo checklist da oficina'}
             </p>
           </>}
       </div>
 
         {/* Indicador de Status Offline - apenas quando tipo de tarefa selecionado */}
-        {selectedTaskType && <OfflineIndicator />}
+        {(selectedTaskType || propTaskType) && <OfflineIndicator />}
 
-      {selectedTaskType && <form onSubmit={handleSubmit}>
+      {(selectedTaskType || propTaskType) && <form onSubmit={handleSubmit}>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Informações Básicas */}
