@@ -456,21 +456,6 @@ const Reports: React.FC = () => {
               <ArrowRight className="h-5 w-5 text-muted-foreground" />
             </div>
             
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="text-xs text-muted-foreground">Total Filiais</p>
-                <p className="text-lg font-bold text-primary">5</p>
-              </div>
-              <div className="text-center p-3 bg-success/10 rounded-lg">
-                <p className="text-xs text-muted-foreground">Ativas</p>
-                <p className="text-lg font-bold text-success">5</p>
-              </div>
-              <div className="text-center p-3 bg-accent/10 rounded-lg">
-                <p className="text-xs text-muted-foreground">Conversão Média</p>
-                <p className="text-lg font-bold text-accent">{overallConversionRate.toFixed(1)}%</p>
-              </div>
-            </div>
-            
             <div className="text-center">
               <Button variant="outline" size="sm" className="w-full">
                 Ver Análise Completa
