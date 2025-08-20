@@ -3,6 +3,7 @@ export interface Task {
   name: string;
   responsible: string;
   client: string;
+  clientCode?: string;
   property: string;
   cpf?: string;
   email?: string;

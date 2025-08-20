@@ -118,6 +118,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
     name: '',
     responsible: '',
     client: '',
+    clientCode: '',
     property: '',
     filial: '',
     cpf: '',
@@ -159,6 +160,24 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
     familyProduct: string;
     quantity: number;
   }[]>(initializeEquipmentList());
+  
+  // Estado para autocomplete de códigos de cliente
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filteredClientCodes, setFilteredClientCodes] = useState<{code: string, name: string}[]>([]);
+  
+  // Mock de códigos de cliente - em produção viria do banco de dados
+  const clientCodes = [
+    { code: "001", name: "João Silva" },
+    { code: "002", name: "Maria Santos" },
+    { code: "003", name: "Pedro Oliveira" },
+    { code: "004", name: "Ana Costa" },
+    { code: "005", name: "Carlos Pereira" },
+    { code: "010", name: "Fazenda São João" },
+    { code: "011", name: "Fazenda Santa Maria" },
+    { code: "012", name: "Agropecuária Silva" },
+    { code: "100", name: "Cooperativa Central" },
+    { code: "101", name: "Cooperativa Norte" },
+  ];
   const [newReminder, setNewReminder] = useState({
     title: '',
     description: '',
@@ -1065,6 +1084,68 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 ...prev,
                 client: e.target.value
               }))} placeholder="Nome do cliente" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="clientCode">Código do Cliente</Label>
+                <div className="relative">
+                  <Input 
+                    id="clientCode" 
+                    value={task.clientCode || ''} 
+                    onChange={e => {
+                      const value = e.target.value;
+                      setTask(prev => ({
+                        ...prev,
+                        clientCode: value
+                      }));
+                      // Filtrar códigos baseado no input
+                      if (value) {
+                        const filtered = clientCodes.filter(code => 
+                          code.code.includes(value) || code.name.toLowerCase().includes(value.toLowerCase())
+                        );
+                        setFilteredClientCodes(filtered);
+                        setShowDropdown(true);
+                      } else {
+                        setShowDropdown(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (task.clientCode) {
+                        const filtered = clientCodes.filter(code => 
+                          code.code.includes(task.clientCode) || code.name.toLowerCase().includes(task.clientCode.toLowerCase())
+                        );
+                        setFilteredClientCodes(filtered);
+                        setShowDropdown(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Delay para permitir clique no dropdown
+                      setTimeout(() => setShowDropdown(false), 200);
+                    }}
+                    placeholder="Digite o código ou nome do cliente" 
+                  />
+                  {showDropdown && filteredClientCodes.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                      {filteredClientCodes.map((clientCodeItem) => (
+                        <div
+                          key={clientCodeItem.code}
+                          className="px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center"
+                          onClick={() => {
+                            setTask(prev => ({
+                              ...prev,
+                              clientCode: clientCodeItem.code,
+                              client: clientCodeItem.name
+                            }));
+                            setShowDropdown(false);
+                          }}
+                        >
+                          <span className="font-medium">{clientCodeItem.code}</span>
+                          <span className="text-muted-foreground text-sm">{clientCodeItem.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
