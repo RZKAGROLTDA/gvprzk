@@ -33,6 +33,25 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const urlTaskType = searchParams.get('type');
+  
+  // Estado para autocomplete de códigos de cliente - mover para o topo
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filteredClientCodes, setFilteredClientCodes] = useState<{code: string, name: string}[]>([]);
+  
+  // Mock de códigos de cliente - em produção viria do banco de dados
+  const clientCodes = [
+    { code: "001", name: "João Silva" },
+    { code: "002", name: "Maria Santos" },
+    { code: "003", name: "Pedro Oliveira" },
+    { code: "004", name: "Ana Costa" },
+    { code: "005", name: "Carlos Pereira" },
+    { code: "010", name: "Fazenda São João" },
+    { code: "011", name: "Fazenda Santa Maria" },
+    { code: "012", name: "Agropecuária Silva" },
+    { code: "100", name: "Cooperativa Central" },
+    { code: "101", name: "Cooperativa Norte" },
+  ];
+  
   const {
     profile
   } = useProfile();
@@ -160,24 +179,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
     familyProduct: string;
     quantity: number;
   }[]>(initializeEquipmentList());
-  
-  // Estado para autocomplete de códigos de cliente
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [filteredClientCodes, setFilteredClientCodes] = useState<{code: string, name: string}[]>([]);
-  
-  // Mock de códigos de cliente - em produção viria do banco de dados
-  const clientCodes = [
-    { code: "001", name: "João Silva" },
-    { code: "002", name: "Maria Santos" },
-    { code: "003", name: "Pedro Oliveira" },
-    { code: "004", name: "Ana Costa" },
-    { code: "005", name: "Carlos Pereira" },
-    { code: "010", name: "Fazenda São João" },
-    { code: "011", name: "Fazenda Santa Maria" },
-    { code: "012", name: "Agropecuária Silva" },
-    { code: "100", name: "Cooperativa Central" },
-    { code: "101", name: "Cooperativa Norte" },
-  ];
   const [newReminder, setNewReminder] = useState({
     title: '',
     description: '',
