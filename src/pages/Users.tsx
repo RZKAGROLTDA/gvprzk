@@ -343,7 +343,7 @@ export const Users: React.FC = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Permissão</TableHead>
                 <TableHead>Filial</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead>Cargo</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
