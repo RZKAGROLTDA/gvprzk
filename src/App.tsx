@@ -18,6 +18,8 @@ import Reports from "./pages/Reports";
 import Management from "./pages/Management";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
+import PerformanceByFilial from "./pages/PerformanceByFilial";
+import PerformanceBySeller from "./pages/PerformanceBySeller";
 import { Home } from "./pages/Home";
 import InviteAccept from "./pages/InviteAccept";
 import UserRegistration from "./pages/UserRegistration";
@@ -86,6 +88,8 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
       <Route path="/reports" element={<Layout><Reports /></Layout>} />
+      <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />
+      <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
       <Route path="/users" element={<Layout><Users /></Layout>} />
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
       <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
