@@ -182,6 +182,40 @@ const ClientCall: React.FC = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                <Input
+                  id="propertyHectares"
+                  type="number"
+                  step="0.01"
+                  value={task.propertyHectares || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, propertyHectares: parseFloat(e.target.value) || 0 }))}
+                  min="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="familyProduct">Família de Produtos</Label>
+                <Input
+                  id="familyProduct"
+                  value={task.familyProduct || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, familyProduct: e.target.value }))}
+                  placeholder="Ex: Tratores, Colheitadeiras, etc."
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="equipmentQuantity">Quantidade de Equipamentos</Label>
+              <Input
+                id="equipmentQuantity"
+                type="number"
+                value={task.equipmentQuantity || ''}
+                onChange={(e) => setTask(prev => ({ ...prev, equipmentQuantity: parseInt(e.target.value) || 0 }))}
+                min="0"
+              />
+            </div>
+
             <div>
               <Label htmlFor="observations">Resumo da Conversa</Label>
               <Textarea
