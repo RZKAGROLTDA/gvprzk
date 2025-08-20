@@ -965,7 +965,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         {/* Seletor de Tipo de Tarefa */}
         <div className="mt-8 p-6 bg-card/50 border border-border/50 rounded-xl shadow-sm">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-foreground mb-2">Gestão de Visitas</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Gestão de Vendas de Peças</h2>
             <p className="text-muted-foreground text-sm sm:text-base">Selecione o tipo de tarefa que deseja criar:</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
