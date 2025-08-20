@@ -736,6 +736,7 @@ export const SalesFunnel: React.FC = () => {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>Valor da Oportunidade</TableHead>
+                  <TableHead>Valor da Venda Realizada</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Ações</TableHead>
@@ -786,6 +787,12 @@ export const SalesFunnel: React.FC = () => {
                       <TableCell>{task.responsible}</TableCell>
                       <TableCell>
                         {task.salesValue ? new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(task.salesValue) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {(task.salesConfirmed && task.salesValue) ? new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
                     currency: 'BRL'
                   }).format(task.salesValue) : '-'}
