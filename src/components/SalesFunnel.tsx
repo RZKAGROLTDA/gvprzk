@@ -792,10 +792,32 @@ export const SalesFunnel: React.FC = () => {
                   }).format(task.salesValue) : '-'}
                       </TableCell>
                       <TableCell>
-                        {(task.salesConfirmed && task.salesValue) ? new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(task.salesValue) : '-'}
+                        {(() => {
+                          // Se a venda foi confirmada (ganho), mostra o valor total
+                          if (task.salesConfirmed && task.salesValue) {
+                            return new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL'
+                            }).format(task.salesValue);
+                          }
+                          
+                          // Se é uma venda parcial, calcula o valor dos produtos selecionados
+                          const salesStatus = mapSalesStatus(task);
+                          if (salesStatus === 'parcial' && task.checklist) {
+                            const partialValue = task.checklist
+                              .filter(item => item.selected && item.quantity && item.price)
+                              .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+                            
+                            if (partialValue > 0) {
+                              return new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                              }).format(partialValue);
+                            }
+                          }
+                          
+                          return '-';
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' : status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' : ''}>
