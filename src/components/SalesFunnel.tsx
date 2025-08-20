@@ -124,9 +124,13 @@ export const SalesFunnel: React.FC = () => {
     const closedWonValue = filteredTasks.filter(task => task.salesConfirmed).reduce((sum, task) => sum + (task.salesValue || 0), 0);
 
     // Terceira barra: Vendas/Faturamento
-    const openSales = filteredTasks.filter(task => task.salesConfirmed && task.status === 'pending').length;
-    const faturado = filteredTasks.filter(task => task.salesConfirmed && task.status === 'completed').length;
-    const perdido = filteredTasks.filter(task => task.salesConfirmed && task.status === 'closed' && !task.salesValue).length;
+    const confirmadas = filteredTasks.filter(task => task.salesConfirmed).length;
+    const parciais = filteredTasks.filter(task => {
+      const salesStatus = mapSalesStatus(task);
+      return salesStatus === 'parcial';
+    }).length;
+    const totalSales = confirmadas + parciais;
+    
     return {
       contacts: {
         total: totalContacts,
@@ -144,9 +148,9 @@ export const SalesFunnel: React.FC = () => {
         closedWonValue: closedWonValue
       },
       sales: {
-        abertos: openSales,
-        faturado,
-        perdido
+        confirmadas,
+        parciais,
+        total: totalSales
       }
     };
   }, [filteredTasks]);
@@ -302,6 +306,31 @@ export const SalesFunnel: React.FC = () => {
           responsible: task.responsible,
           status: task.status,
           confirmed: task.salesConfirmed,
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
+      case 'sales-confirmed':
+        return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          status: task.status,
+          date: format(task.createdAt, 'dd/MM/yyyy', {
+            locale: ptBR
+          }),
+          filial: resolveFilialName(task.filial),
+          value: task.salesValue || 0
+        }));
+      case 'sales-partial':
+        return filteredTasks.filter(task => {
+          const salesStatus = mapSalesStatus(task);
+          return salesStatus === 'parcial';
+        }).map(task => ({
+          client: task.client,
+          responsible: task.responsible,
+          status: 'Parcial',
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
@@ -465,73 +494,143 @@ export const SalesFunnel: React.FC = () => {
               <CardTitle>Funil de Vendas</CardTitle>
               <CardDescription>Fluxo de conversão hierárquico</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-8">
               
-              {/* Primeira Barra: Contatos com Clientes */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Contatos com Clientes</h4>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}>
-                    <div className="font-bold text-xl">{funnelData.contacts.visitas}</div>
-                    <div className="text-sm opacity-90">Visitas</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.visitas / funnelData.contacts.total * 100) : 0}%
+              {/* Funil Visual em Formato de Pirâmide */}
+              <div className="flex flex-col items-center space-y-6">
+                
+                {/* Nível 1: Contatos (Base do Funil - Mais Largo) */}
+                <div className="w-full max-w-4xl">
+                  <h4 className="text-center text-sm font-medium text-muted-foreground mb-4">CONTATOS COM CLIENTES</h4>
+                  <div className="relative">
+                    {/* Linha conectora para baixo */}
+                    <div className="absolute left-1/2 top-full w-px h-6 bg-border transform -translate-x-1/2"></div>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div 
+                        className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}
+                      >
+                        <div className="font-bold text-3xl mb-2">{funnelData.contacts.visitas}</div>
+                        <div className="text-sm opacity-90 mb-1">Visitas</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-3 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.visitas / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
+                      <div 
+                        className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-6 rounded-xl text-center cursor-pointer hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}
+                      >
+                        <div className="font-bold text-3xl mb-2">{funnelData.contacts.checklists}</div>
+                        <div className="text-sm opacity-90 mb-1">Checklists</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-3 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.checklists / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
+                      <div 
+                        className="bg-gradient-to-br from-emerald-400 to-emerald-500 text-white p-6 rounded-xl text-center cursor-pointer hover:from-emerald-500 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}
+                      >
+                        <div className="font-bold text-3xl mb-2">{funnelData.contacts.ligacoes}</div>
+                        <div className="text-sm opacity-90 mb-1">Ligações</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-3 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.ligacoes / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}>
-                    <div className="font-bold text-xl">{funnelData.contacts.checklists}</div>
-                    <div className="text-sm opacity-90">Checklists</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.checklists / funnelData.contacts.total * 100) : 0}%
-                    </div>
-                  </div>
-                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}>
-                    <div className="font-bold text-xl">{funnelData.contacts.ligacoes}</div>
-                    <div className="text-sm opacity-90">Ligações</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.ligacoes / funnelData.contacts.total * 100) : 0}%
+                    <div className="text-center text-sm text-muted-foreground mt-3 font-semibold">
+                      Total: {funnelData.contacts.total} contatos
                     </div>
                   </div>
                 </div>
-                <div className="text-right text-sm text-muted-foreground">
-                  Total: {funnelData.contacts.total}
-                </div>
-              </div>
 
-              {/* Segunda Barra: Prospecções */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-muted-foreground">Prospecções</h4>
-                  <Button variant="outline" size="sm" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects' ? null : 'prospects')}>
-                    {selectedFunnelSection === 'prospects' ? 'Ocultar Detalhes' : 'Ver Detalhes'}
-                  </Button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-green-600 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-700 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}>
-                    <div className="font-bold text-xl">{funnelData.prospects.abertas}</div>
-                    <div className="text-sm opacity-90">Abertas</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.abertas / funnelData.contacts.total * 100) : 0}%
+                {/* Nível 2: Prospecções (Meio do Funil - Médio) */}
+                <div className="w-full max-w-3xl">
+                  <h4 className="text-center text-sm font-medium text-muted-foreground mb-4">PROSPECÇÕES</h4>
+                  <div className="relative">
+                    {/* Linha conectora para baixo */}
+                    <div className="absolute left-1/2 top-full w-px h-6 bg-border transform -translate-x-1/2"></div>
+                    
+                    <div className="grid grid-cols-3 gap-3">
+                      <div 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}
+                      >
+                        <div className="font-bold text-2xl mb-2">{funnelData.prospects.abertas}</div>
+                        <div className="text-sm opacity-90 mb-1">Abertas</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.abertas / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
+                      <div 
+                        className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}
+                      >
+                        <div className="font-bold text-2xl mb-2">{funnelData.prospects.fechadas}</div>
+                        <div className="text-sm opacity-90 mb-1">Fechadas</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.fechadas / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
+                      <div 
+                        className="bg-gradient-to-br from-blue-400 to-blue-500 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}
+                      >
+                        <div className="font-bold text-2xl mb-2">{funnelData.prospects.perdidas}</div>
+                        <div className="text-sm opacity-90 mb-1">Perdidas</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.perdidas / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-center text-sm text-muted-foreground mt-3 font-semibold">
+                      Total: {funnelData.prospects.total} prospecções
                     </div>
                   </div>
-                  <div className="bg-green-500 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-600 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}>
-                    <div className="font-bold text-xl">{funnelData.prospects.fechadas}</div>
-                    <div className="text-sm opacity-90">Fechadas</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.fechadas / funnelData.contacts.total * 100) : 0}%
+                </div>
+
+                {/* Nível 3: Vendas (Topo do Funil - Mais Estreito) */}
+                <div className="w-full max-w-2xl">
+                  <h4 className="text-center text-sm font-medium text-muted-foreground mb-4">VENDAS</h4>
+                  <div className="relative">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div 
+                        className="bg-gradient-to-br from-amber-600 to-amber-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-amber-700 hover:to-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-confirmed' ? null : 'sales-confirmed')}
+                      >
+                        <div className="font-bold text-2xl mb-2">{funnelData.sales.confirmadas}</div>
+                        <div className="text-sm opacity-90 mb-1">Confirmadas</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.confirmadas / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
+                      <div 
+                        className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-5 rounded-xl text-center cursor-pointer hover:from-amber-600 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-partial' ? null : 'sales-partial')}
+                      >
+                        <div className="font-bold text-2xl mb-2">{funnelData.sales.parciais}</div>
+                        <div className="text-sm opacity-90 mb-1">Parciais</div>
+                        <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
+                          {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.parciais / funnelData.contacts.total * 100) : 0}%
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-green-400 text-white p-4 rounded-lg text-center cursor-pointer hover:bg-green-500 transition-colors" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}>
-                    <div className="font-bold text-xl">{funnelData.prospects.perdidas}</div>
-                    <div className="text-sm opacity-90">Perdidas</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.perdidas / funnelData.contacts.total * 100) : 0}%
+                    <div className="text-center text-sm text-muted-foreground mt-3 font-semibold">
+                      Total: {funnelData.sales.total} vendas
                     </div>
                   </div>
                 </div>
-                <div className="text-right text-sm text-muted-foreground">
-                  Total: {funnelData.prospects.total}
+
+                {/* Taxa de Conversão Final */}
+                <div className="w-full max-w-sm">
+                  <div className="bg-gradient-to-br from-purple-600 to-purple-700 text-white p-6 rounded-xl text-center shadow-lg">
+                    <div className="font-bold text-xl mb-2">
+                      {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.total / funnelData.contacts.total * 100) : 0}%
+                    </div>
+                    <div className="text-sm opacity-90">Taxa de Conversão</div>
+                  </div>
                 </div>
+
               </div>
 
               {/* Detalhes das Seções Selecionadas */}
@@ -603,65 +702,6 @@ export const SalesFunnel: React.FC = () => {
                   </CardContent>
                 </Card>}
 
-              {/* Terceira Barra: Vendas */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Vendas</h4>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-green-600 text-white p-4 rounded-lg text-center">
-                    <div className="font-bold text-xl">
-                      {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                    maximumFractionDigits: 0
-                  }).format(funnelData.prospects.openValue)}
-                    </div>
-                    <div className="text-sm opacity-90">Abertos</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.prospects.fechadas > 0 ? Math.round(funnelData.sales.abertos / funnelData.prospects.fechadas * 100) : 0}%
-                    </div>
-                  </div>
-                  <div className="bg-green-500 text-white p-4 rounded-lg text-center">
-                    <div className="font-bold text-xl">
-                      {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                    maximumFractionDigits: 0
-                  }).format(funnelData.prospects.closedWonValue)}
-                    </div>
-                    <div className="text-sm opacity-90">Faturado</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.prospects.fechadas > 0 ? Math.round(funnelData.sales.faturado / funnelData.prospects.fechadas * 100) : 0}%
-                    </div>
-                  </div>
-                  <div className="bg-green-400 text-white p-4 rounded-lg text-center">
-                    <div className="font-bold text-xl">{funnelData.sales.perdido}</div>
-                    <div className="text-sm opacity-90">Perdido</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.prospects.fechadas > 0 ? Math.round(funnelData.sales.perdido / funnelData.prospects.fechadas * 100) : 0}%
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right text-sm text-muted-foreground">
-                  Valor Total: {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-              }).format(funnelData.prospects.totalValue)}
-                </div>
-              </div>
-
-              {/* Quarta Barra: Faturamento */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">Faturamento</h4>
-                <div className="w-2/3 mx-auto">
-                  <div className="bg-green-600 text-white p-6 rounded-lg text-center">
-                    <div className="font-bold text-2xl">{funnelData.sales.faturado}</div>
-                    <div className="text-sm opacity-90">Faturado</div>
-                    <div className="text-xs opacity-75">
-                      {funnelData.sales.abertos + funnelData.sales.faturado > 0 ? Math.round(funnelData.sales.faturado / (funnelData.sales.abertos + funnelData.sales.faturado) * 100) : 0}%
-                    </div>
-                  </div>
-                </div>
-              </div>
 
             </CardContent>
           </Card>
@@ -686,7 +726,7 @@ export const SalesFunnel: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.faturado / funnelData.contacts.total * 100) : 0}%
+                  {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.total / funnelData.contacts.total * 100) : 0}%
                 </div>
                 <p className="text-xs text-muted-foreground">De contatos para vendas</p>
               </CardContent>
