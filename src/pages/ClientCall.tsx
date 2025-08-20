@@ -79,6 +79,16 @@ const ClientCall: React.FC = () => {
     try {
       const taskData = {
         ...task,
+        prospectItems: task.salesConfirmed === null ? Object.entries(callQuestions)
+          .filter(([_, data]) => data.needsProduct)
+          .map(([key, data]) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            name: productLabels[key as keyof typeof productLabels],
+            category: 'other' as const,
+            selected: true,
+            quantity: data.quantity,
+            price: data.unitValue
+          })) : undefined,
         taskCategory: 'call' as const,
         callQuestions
       };
@@ -342,6 +352,18 @@ const ClientCall: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <input
                     type="radio"
+                    id="vendaParcial"
+                    name="salesStatus"
+                    value="vendaParcial"
+                    checked={task.salesConfirmed === null}
+                    onChange={() => setTask(prev => ({ ...prev, salesConfirmed: null, isProspect: true }))}
+                    className="rounded"
+                  />
+                  <Label htmlFor="vendaParcial">Venda Parcial</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
                     id="vendaRealizada"
                     name="salesStatus"
                     value="vendaRealizada"
@@ -366,6 +388,29 @@ const ClientCall: React.FC = () => {
               </div>
             </div>
 
+            {task.salesConfirmed === null && (
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Produtos da Venda Parcial</Label>
+                <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
+                  <p className="text-sm text-blue-700">Selecione os produtos específicos que fazem parte desta venda parcial:</p>
+                  {Object.entries(callQuestions).map(([key, data]) => (
+                    <div key={`partial-${key}`} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`partial-checkbox-${key}`}
+                        checked={data.needsProduct}
+                        onChange={(e) => updateCallQuestion(key as keyof typeof callQuestions, 'needsProduct', e.target.checked)}
+                        className="rounded"
+                      />
+                      <Label htmlFor={`partial-checkbox-${key}`} className="text-sm">
+                        {productLabels[key as keyof typeof productLabels]} - Qtd: {data.quantity || 0} - R$ {data.totalValue.toFixed(2)}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="salesValue">Valor da Oportunidade (R$)</Label>
@@ -379,11 +424,16 @@ const ClientCall: React.FC = () => {
                 />
               </div>
               <div>
-                <Label>Valor Total das Perguntas (R$)</Label>
+                <Label>
+                  {task.salesConfirmed === null ? "Valor da Venda Parcial (R$)" : "Valor Total das Perguntas (R$)"}
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
-                  value={Object.values(callQuestions).reduce((sum, item) => sum + item.totalValue, 0).toFixed(2)}
+                  value={task.salesConfirmed === null ? 
+                    Object.values(callQuestions).filter(item => item.needsProduct).reduce((sum, item) => sum + item.totalValue, 0).toFixed(2) :
+                    Object.values(callQuestions).reduce((sum, item) => sum + item.totalValue, 0).toFixed(2)
+                  }
                   readOnly
                   className="bg-muted"
                 />

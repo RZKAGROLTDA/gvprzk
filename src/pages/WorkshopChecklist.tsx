@@ -146,6 +146,7 @@ const WorkshopChecklist: React.FC = () => {
       const taskData = {
         ...task,
         checklist,
+        prospectItems: task.salesConfirmed === null ? checklist.filter(item => item.selected) : undefined,
         taskCategory: 'workshop-checklist' as const
       };
 
@@ -415,6 +416,18 @@ const WorkshopChecklist: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <input
                     type="radio"
+                    id="vendaParcial"
+                    name="salesStatus"
+                    value="vendaParcial"
+                    checked={task.salesConfirmed === null}
+                    onChange={() => setTask(prev => ({ ...prev, salesConfirmed: null, isProspect: true }))}
+                    className="rounded"
+                  />
+                  <Label htmlFor="vendaParcial">Venda Parcial</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
                     id="vendaRealizada"
                     name="salesStatus"
                     value="vendaRealizada"
@@ -439,6 +452,29 @@ const WorkshopChecklist: React.FC = () => {
               </div>
             </div>
 
+            {task.salesConfirmed === null && (
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Serviços da Venda Parcial</Label>
+                <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
+                  <p className="text-sm text-blue-700">Selecione os serviços específicos que fazem parte desta venda parcial:</p>
+                  {checklist.map((item) => (
+                    <div key={`partial-${item.id}`} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`partial-checkbox-${item.id}`}
+                        checked={item.selected}
+                        onChange={(e) => updateChecklist(item.id, 'selected', e.target.checked)}
+                        className="rounded"
+                      />
+                      <Label htmlFor={`partial-checkbox-${item.id}`} className="text-sm">
+                        {item.name} - R$ {(item.price || 0).toFixed(2)}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="salesValue">Valor da Oportunidade (R$)</Label>
@@ -452,7 +488,9 @@ const WorkshopChecklist: React.FC = () => {
                 />
               </div>
               <div>
-                <Label>Custo Total dos Serviços (R$)</Label>
+                <Label>
+                  {task.salesConfirmed === null ? "Valor da Venda Parcial (R$)" : "Custo Total dos Serviços (R$)"}
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
