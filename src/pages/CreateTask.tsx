@@ -1732,7 +1732,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 type="button" 
                 variant="outline" 
                 className="flex-1 order-4"
-                onClick={() => window.location.href = '/create-task'}
+                onClick={() => navigate('/create-task')}
               >
                 Sair
               </Button>

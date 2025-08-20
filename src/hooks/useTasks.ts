@@ -293,10 +293,10 @@ export const useTasks = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && tasks.length === 0) {
       loadTasks();
     }
-  }, [user, isOnline]); // Recarregar quando status offline mudar
+  }, [user]); // Evitar recarregamentos desnecessários
 
   return {
     tasks,
