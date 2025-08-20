@@ -325,7 +325,7 @@ export const LoginForm: React.FC = () => {
         {/* Login Form */}
         <Card className="w-full max-w-md mx-auto lg:mx-0">
           <CardHeader>
-            <CardTitle className="text-2xl text-center">Sistema de Tarefas</CardTitle>
+            <CardTitle className="text-2xl text-center">Cadastro GVP</CardTitle>
             {isAdminEmail && (
               <div className="flex justify-center">
                 <Button
