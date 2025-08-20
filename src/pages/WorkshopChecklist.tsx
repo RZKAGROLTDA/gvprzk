@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Wrench, Save, X } from 'lucide-react';
 import { Task, ProductType } from '@/types/task';
 import { PhotoUpload } from '@/components/PhotoUpload';
@@ -269,12 +270,24 @@ const WorkshopChecklist: React.FC = () => {
               </div>
               <div>
                 <Label htmlFor="familyProduct">Família de Produtos</Label>
-                <Input
-                  id="familyProduct"
-                  value={task.familyProduct || ''}
-                  onChange={(e) => setTask(prev => ({ ...prev, familyProduct: e.target.value }))}
-                  placeholder="Ex: Tratores, Colheitadeiras, etc."
-                />
+                <Select 
+                  value={task.familyProduct || ''} 
+                  onValueChange={(value) => setTask(prev => ({ ...prev, familyProduct: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a família" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TRATOR">TRATOR</SelectItem>
+                    <SelectItem value="PLATAFORMA">PLATAFORMA</SelectItem>
+                    <SelectItem value="COLHEITADEIRA">COLHEITADEIRA</SelectItem>
+                    <SelectItem value="PLANTADEIRA">PLANTADEIRA</SelectItem>
+                    <SelectItem value="PULVERIZADOR">PULVERIZADOR</SelectItem>
+                    <SelectItem value="COLHEDORA">COLHEDORA</SelectItem>
+                    <SelectItem value="FORRAGEIRA">FORRAGEIRA</SelectItem>
+                    <SelectItem value="OUTROS">OUTROS</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
