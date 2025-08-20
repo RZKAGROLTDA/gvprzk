@@ -485,20 +485,6 @@ const Reports: React.FC = () => {
               <ArrowRight className="h-5 w-5 text-muted-foreground" />
             </div>
             
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center p-3 bg-muted/30 rounded-lg">
-                <p className="text-xs text-muted-foreground">Vendedores</p>
-                <p className="text-lg font-bold text-accent">{collaborators.length}</p>
-              </div>
-              <div className="text-center p-3 bg-warning/10 rounded-lg">
-                <p className="text-xs text-muted-foreground">Top Performer</p>
-                <p className="text-lg font-bold text-warning">🏆</p>
-              </div>
-              <div className="text-center p-3 bg-primary/10 rounded-lg">
-                <p className="text-xs text-muted-foreground">Meta Atingida</p>
-                <p className="text-lg font-bold text-primary">85%</p>
-              </div>
-            </div>
             
             <div className="text-center">
               <Button variant="outline" size="sm" className="w-full">
