@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { 
@@ -58,6 +57,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
     
     setLoadingTasks(true);
     try {
+      // Buscar o user_id do perfil
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('user_id')
@@ -75,6 +75,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
         .eq('created_by', profile.user_id)
         .order('created_at', { ascending: false });
 
+      // Aplicar filtros de data se definidos
       if (dateFrom) {
         query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
       }
@@ -104,6 +105,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
     }
   };
 
+  // Calcular estatísticas detalhadas
   const visitas = userTasks.filter(task => task.task_type === 'prospection').length;
   const checklists = userTasks.filter(task => task.task_type === 'checklist').length;
   const ligacoes = userTasks.filter(task => task.task_type === 'ligacao').length;
@@ -112,6 +114,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
     .filter(task => task.sales_confirmed === true)
     .reduce((sum, task) => sum + (task.sales_value || 0), 0);
   
+  // Taxa de conversão correta: (Vendas Realizadas / Valor Total de Prospects) * 100
   const taxaConversao = totalOportunidades > 0 ? 
     (vendasConfirmadas / totalOportunidades) * 100 : 0;
 
@@ -290,7 +293,25 @@ const Reports: React.FC = () => {
   const totalProspects = filialStats.reduce((sum, f) => sum + f.prospects, 0);
   const totalProspectsValue = filialStats.reduce((sum, f) => sum + f.prospectsValue, 0);
   const totalSalesValue = filialStats.reduce((sum, f) => sum + f.salesValue, 0);
+  // Taxa de conversão geral corrigida: (Vendas Realizadas / Valor Total de Prospects) * 100
   const overallConversionRate = totalProspectsValue > 0 ? (totalSalesValue / totalProspectsValue) * 100 : 0;
+
+  // Calcular oportunidades por tipo de tarefa
+  const [taskTypeOpportunities, setTaskTypeOpportunities] = useState({
+    prospection: { count: 0, value: 0 },
+    checklist: { count: 0, value: 0 },
+    ligacao: { count: 0, value: 0 }
+  });
+
+  const stats: TaskStats = {
+    totalVisits: totalVisitas,
+    completedVisits: totalVisitas, // Assumindo que visitas registradas são completadas
+    prospects: totalProspects,
+    salesValue: totalSalesValue,
+    conversionRate: overallConversionRate
+  };
+
+  const detailedStats: any[] = [];
 
   const loadCollaborators = async () => {
     try {
@@ -300,6 +321,7 @@ const Reports: React.FC = () => {
         .order('name');
 
       if (error) throw error;
+      console.log('DEBUG: Colaboradores carregados:', profiles);
       setCollaborators(profiles || []);
     } catch (error) {
       console.error('Erro ao carregar colaboradores:', error);
@@ -307,24 +329,47 @@ const Reports: React.FC = () => {
   };
 
   const loadFilialStats = async (silent = false) => {
-    if (!user) return;
+    if (!user) {
+      console.log('DEBUG: Usuário não está logado, não carregando stats');
+      return;
+    }
     
+    console.log('DEBUG: Carregando estatísticas das filiais para usuário:', user);
+    
+    // Apenas mostrar loading na primeira carga
     if (!silent && filialStats.length === 0) setLoading(true);
     try {
+      // Testar acesso à tabela de tasks primeiro
+      const { data: testTasks, error: testError } = await supabase
+        .from('tasks')
+        .select('id, name, client, task_type, created_by, sales_value')
+        .limit(5);
+
+      console.log('DEBUG: Teste de acesso às tasks:', { testTasks, testError });
+
+      // Buscar todas as filiais
       const { data: filiais, error: filiaisError } = await supabase
         .from('filiais')
         .select('*')
         .order('nome');
 
-      if (filiaisError) throw filiaisError;
+      if (filiaisError) {
+        console.error('Erro ao buscar filiais:', filiaisError);
+        throw filiaisError;
+      }
 
+      console.log('DEBUG: Filiais encontradas:', filiais);
+
+      // Buscar estatísticas por filial
       const filialStatsPromises = filiais?.map(async (filial) => {
+        // Buscar usuários da filial primeiro
         const { data: profilesFromFilial, error: profilesError } = await supabase
           .from('profiles')
           .select('user_id')
           .eq('filial_id', filial.id);
 
         if (profilesError) {
+          console.error('Erro ao buscar perfis:', profilesError);
           return {
             id: filial.id,
             nome: filial.nome,
@@ -340,7 +385,10 @@ const Reports: React.FC = () => {
 
         const userIds = profilesFromFilial?.map(p => p.user_id) || [];
         
+        console.log('DEBUG: IDs dos usuários da filial', filial.nome, ':', userIds);
+        
         if (userIds.length === 0) {
+          console.log('DEBUG: Nenhum usuário encontrado para filial:', filial.nome);
           return {
             id: filial.id,
             nome: filial.nome,
@@ -354,11 +402,13 @@ const Reports: React.FC = () => {
           };
         }
         
+        // Buscar tarefas dos usuários desta filial
         let query = supabase
           .from('tasks')
           .select('*')
           .in('created_by', userIds);
 
+        // Aplicar filtros de data se definidos
         if (dateFrom) {
           query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
         }
@@ -368,7 +418,10 @@ const Reports: React.FC = () => {
 
         const { data: tasks, error: tasksError } = await query;
 
+        console.log('DEBUG: Tasks encontradas para filial', filial.nome, ':', { tasks, tasksError });
+
         if (tasksError) {
+          console.error('Erro ao buscar tarefas:', tasksError);
           return {
             id: filial.id,
             nome: filial.nome,
@@ -385,10 +438,12 @@ const Reports: React.FC = () => {
         const visitas = tasks?.filter(task => task.task_type === 'prospection').length || 0;
         const checklist = tasks?.filter(task => task.task_type === 'checklist').length || 0;
         const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
+        const totalTasks = tasks?.length || 0;
         const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
         const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
         
+        // Taxa de conversão corrigida para filial: (Vendas Realizadas / Valor Total de Prospects) * 100
         const conversionRate = prospectsValue > 0 ? (salesValue / prospectsValue) * 100 : 0;
 
         return {
@@ -398,457 +453,644 @@ const Reports: React.FC = () => {
           checklist,
           ligacoes,
           prospects,
-          prospectsValue,
-          salesValue,
-          conversionRate
+          prospectsValue: Number(prospectsValue),
+          salesValue: Number(salesValue),
+          conversionRate: Math.round(conversionRate * 10) / 10
         };
       }) || [];
 
-      const stats = await Promise.all(filialStatsPromises);
-      setFilialStats(stats.sort((a, b) => b.salesValue - a.salesValue));
+      const results = await Promise.all(filialStatsPromises);
+      setFilialStats(results);
     } catch (error) {
-      console.error('Erro ao carregar estatísticas das filiais:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados das filiais",
-        variant: "destructive"
-      });
+      console.error('Erro ao carregar estatísticas por filial:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadUserStats = async (silent = false) => {
-    if (!user) return;
+  const loadUserStats = async () => {
+    if (!user) {
+      console.log('DEBUG: Usuário não está logado, não carregando stats de usuários');
+      return;
+    }
     
-    if (!silent) setLoading(true);
+    console.log('DEBUG: Carregando estatísticas dos usuários');
+    
     try {
-      let profilesQuery = supabase
+      // Buscar perfis de todos os usuários ativos com mais detalhes
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, name, role, user_id')
+        .select('user_id, name, role, id')
+        .in('role', ['consultant', 'manager', 'admin'])
+        .eq('approval_status', 'approved')
         .order('name');
 
-      if (selectedUser !== 'all') {
-        profilesQuery = profilesQuery.eq('id', selectedUser);
+      if (profilesError) {
+        console.error('Erro ao buscar perfis:', profilesError);
+        throw profilesError;
       }
 
-      const { data: profiles, error: profilesError } = await profilesQuery;
+      console.log('DEBUG: Perfis encontrados para stats:', profiles);
 
-      if (profilesError) throw profilesError;
+      if (!profiles || profiles.length === 0) {
+        console.log('DEBUG: Nenhum perfil encontrado');
+        setUserStats([]);
+        return;
+      }
 
-      const userStatsPromises = profiles?.map(async (profile) => {
-        let tasksQuery = supabase
+      // Buscar estatísticas por usuário
+      const userStatsPromises = profiles.map(async (profile) => {
+        console.log('DEBUG: Carregando stats para usuário:', profile.name, profile.user_id);
+        
+        let query = supabase
           .from('tasks')
           .select('*')
           .eq('created_by', profile.user_id);
 
+        // Aplicar filtros de data se definidos
         if (dateFrom) {
-          tasksQuery = tasksQuery.gte('start_date', dateFrom.toISOString().split('T')[0]);
+          query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
         }
         if (dateTo) {
-          tasksQuery = tasksQuery.lte('end_date', dateTo.toISOString().split('T')[0]);
+          query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
         }
 
-        const { data: tasks, error: tasksError } = await tasksQuery;
+        const { data: tasks, error: tasksError } = await query;
 
         if (tasksError) {
-          console.error('Erro ao buscar tarefas:', tasksError);
-          return null;
+          console.error('Erro ao buscar tarefas do usuário:', profile.name, tasksError);
+          return {
+            name: profile.name,
+            role: profile.role,
+            user_id: profile.user_id,
+            visits: 0,
+            prospects: 0,
+            sales: 0,
+            conversionRate: 0,
+            totalActivities: 0,
+            visitas: 0,
+            checklist: 0,
+            ligacoes: 0
+          };
         }
 
+        console.log('DEBUG: Tasks encontradas para usuário', profile.name, ':', tasks?.length || 0);
+
         const visitas = tasks?.filter(task => task.task_type === 'prospection').length || 0;
-        const checklists = tasks?.filter(task => task.task_type === 'checklist').length || 0;
+        const checklist = tasks?.filter(task => task.task_type === 'checklist').length || 0;
         const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
-        const totalOportunidades = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-        const vendasConfirmadas = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+        const totalActivities = tasks?.length || 0;
+        const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
+        const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
+        const confirmedSales = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
+        
+        // Taxa de conversão corrigida para usuário: (Vendas Realizadas / Valor Total de Prospects) * 100
+        const conversionRate = prospectsValue > 0 ? (confirmedSales / prospectsValue) * 100 : 0;
 
-        return {
-          ...profile,
+        const userStat = {
+          name: profile.name,
+          role: profile.role,
+          user_id: profile.user_id,
+          visits: totalActivities,
+          prospects,
+          sales: Number(confirmedSales),
+          conversionRate: Math.round(conversionRate * 10) / 10,
+          totalActivities,
           visitas,
-          checklists,
+          checklist,
           ligacoes,
-          totalActivities: visitas + checklists + ligacoes,
-          totalOportunidades,
-          vendasConfirmadas,
-          taxaConversao: totalOportunidades > 0 ? (vendasConfirmadas / totalOportunidades) * 100 : 0
+          salesValue: Number(prospectsValue)
         };
-      }) || [];
 
-      const stats = await Promise.all(userStatsPromises);
-      const validStats = stats.filter(stat => stat !== null);
+        console.log('DEBUG: Stats calculadas para', profile.name, ':', userStat);
+        return userStat;
+      });
+
+      const results = await Promise.all(userStatsPromises);
       
-      setUserStats(validStats.sort((a, b) => b.vendasConfirmadas - a.vendasConfirmadas));
+      // Ordenar por valor de vendas confirmadas (maior para menor)
+      const sortedResults = results.sort((a, b) => b.sales - a.sales);
+      
+      console.log('DEBUG: Resultados finais dos usuários:', sortedResults);
+      setUserStats(sortedResults);
     } catch (error) {
       console.error('Erro ao carregar estatísticas dos usuários:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados dos vendedores",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+      setUserStats([]);
     }
   };
 
-  useEffect(() => {
-    loadCollaborators();
-  }, []);
+  const clearFilters = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setSelectedUser('all');
+    
+    toast({
+      title: "✨ Filtros limpos",
+      description: "Todos os filtros foram resetados com sucesso"
+    });
+  };
 
   useEffect(() => {
-    loadFilialStats();
-    loadUserStats();
+    if (user) {
+      console.log('DEBUG: Iniciando carregamento dos dados...');
+      loadFilialStats();
+      loadCollaborators();
+      loadUserStats();
+      
+      // Configurar atualização automática silenciosa a cada 30 segundos para melhorar performance
+      const interval = setInterval(() => {
+        loadFilialStats(true); // true = silent update
+        loadUserStats();
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    }
   }, [user, dateFrom, dateTo, selectedUser]);
 
-  // Calcular totais dos vendedores
-  const totalUserActivities = userStats.reduce((sum, user) => sum + user.totalActivities, 0);
-  const totalUserSales = userStats.reduce((sum, user) => sum + user.vendasConfirmadas, 0);
-  const totalUserOpportunities = userStats.reduce((sum, user) => sum + user.totalOportunidades, 0);
-  const averageConversion = totalUserOpportunities > 0 ? (totalUserSales / totalUserOpportunities) * 100 : 0;
+  // Set up realtime subscription for task updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('task-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks'
+        },
+        () => {
+          // Reload data when any task changes
+          loadFilialStats(true);
+        }
+      )
+      .subscribe();
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
-  }
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const exportReport = (type: 'filial' | 'cep') => {
+    console.log(`Exportando relatório por ${type}...`);
+    
+    // Dados dos filtros aplicados
+    const filtrosAplicados = {
+      dataInicial: dateFrom ? format(dateFrom, "dd/MM/yyyy") : 'Não definida',
+      dataFinal: dateTo ? format(dateTo, "dd/MM/yyyy") : 'Não definida',
+      cepSelecionado: selectedUser !== 'all' ? 
+        collaborators.find(c => c.id === selectedUser)?.name || 'CEP específico' : 
+        'Todos os CEPs'
+    };
+
+    if (type === 'filial') {
+      // Lógica para exportar relatório por filial
+      console.log('Dados das filiais:', filialStats);
+      console.log('Filtros aplicados:', filtrosAplicados);
+      
+      toast({
+        title: "📊 Relatório por Filial",
+        description: "Exportação em desenvolvimento - dados das filiais com filtros aplicados"
+      });
+    } else {
+      // Lógica para exportar relatório por CEP
+      console.log('Dados dos CEPs:', userStats);
+      console.log('Filtros aplicados:', filtrosAplicados);
+      
+      toast({
+        title: "📍 Relatório por CEP", 
+        description: "Exportação em desenvolvimento - dados dos CEPs com filtros aplicados"
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Relatórios de Desempenho</h1>
-        <p className="text-muted-foreground">Análise de performance e produtividade</p>
+      <div className="flex justify-between items-center">
+         <div>
+           <h1 className="text-3xl font-bold">Relatórios</h1>
+           <p className="text-muted-foreground">Análises e métricas de desempenho</p>
+         </div>
+         
+         {/* Botões de Exportação */}
+         <div className="flex gap-2">
+           <Button 
+             variant="gradient" 
+             onClick={() => exportReport('filial')} 
+             className="gap-2"
+           >
+             <Download className="h-4 w-4" />
+             Relatório por Filial
+           </Button>
+           
+           <Button 
+             variant="outline" 
+             onClick={() => exportReport('cep')} 
+             className="gap-2 border-green-600 text-green-600 hover:bg-green-50"
+           >
+             <Download className="h-4 w-4" />
+             Relatório por CEP
+           </Button>
+         </div>
       </div>
 
-      {/* Filtros de Data */}
+      {/* Filtros */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
-            Filtros de Período
+            <BarChart3 className="h-5 w-5" />
+            Filtros de Relatório
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">De:</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !dateFrom && "text-muted-foreground"
-                    )}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data Inicial</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateFrom && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFrom ? format(dateFrom, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateFrom}
+                      onSelect={setDateFrom}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data Final</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !dateTo && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateTo ? format(dateTo, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateTo}
+                      onSelect={setDateTo}
+                      initialFocus
+                      disabled={(date) => dateFrom ? date < dateFrom : false}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">CEP</label>
+                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os CEPs" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os CEPs</SelectItem>
+                    {collaborators.map((collaborator) => (
+                      <SelectItem key={collaborator.id} value={collaborator.id}>
+                        {collaborator.name} - {
+                          collaborator.role === 'consultant' ? 'Consultor' : 
+                          collaborator.role === 'manager' ? 'Gerente' : 
+                          collaborator.role === 'admin' ? 'Admin' : collaborator.role
+                        }
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium opacity-0">Ações</label>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => loadFilialStats(false)}
+                    disabled={loading}
+                    className="flex-1"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Selecionar data"}
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    {loading ? 'Atualizando...' : 'Atualizar'}
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="icon" className="shrink-0">
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Limpar filtros</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja limpar todos os filtros aplicados? Os dados serão atualizados para mostrar informações completas.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={clearFilters}>
+                          Sim, limpar filtros
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Até:</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !dateTo && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, "dd/MM/yyyy") : "Selecionar data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium">Vendedor:</label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os vendedores</SelectItem>
-                  {collaborators.map(collaborator => (
-                    <SelectItem key={collaborator.id} value={collaborator.id}>
-                      {collaborator.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button onClick={() => { loadFilialStats(); loadUserStats(); }} className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Atualizar
-            </Button>
+            {(dateFrom || dateTo || selectedUser !== 'all') && (
+              <div className="flex items-center gap-2 pt-2 border-t">
+                <p className="text-sm text-muted-foreground">Filtros ativos:</p>
+                {dateFrom && (
+                  <Badge variant="secondary" className="gap-1">
+                    De: {format(dateFrom, "dd/MM/yyyy")}
+                  </Badge>
+                )}
+                {dateTo && (
+                  <Badge variant="secondary" className="gap-1">
+                    Até: {format(dateTo, "dd/MM/yyyy")}
+                  </Badge>
+                )}
+                {selectedUser !== 'all' && (
+                  <Badge variant="secondary" className="gap-1">
+                    {collaborators.find(c => c.id === selectedUser)?.name || 'CEP específico'}
+                  </Badge>
+                )}
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2">
+                  Limpar todos
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs de Desempenho */}
-      <Tabs defaultValue="filial" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="filial" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
+      {/* Resumo Geral */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold text-primary">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.visitas + f.checklist + f.ligacoes, 0)}
+                </p>
+              </div>
+              <Activity className="h-8 w-8 text-primary/50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-accent/10 to-accent/5 border-accent/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Visitas</p>
+                <p className="text-2xl font-bold text-accent">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.visitas, 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  R$ {loading ? "..." : filialStats.filter(f => f.visitas > 0).reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <Target className="h-8 w-8 text-accent/50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-success/10 to-success/5 border-success/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Checklist</p>
+                <p className="text-2xl font-bold text-success">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.checklist, 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  R$ {loading ? "..." : filialStats.filter(f => f.checklist > 0).reduce((sum, f) => sum + f.prospectsValue * (f.checklist / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <CheckSquare className="h-8 w-8 text-success/50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-warning/10 to-warning/5 border-warning/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Ligações</p>
+                <p className="text-2xl font-bold text-warning">
+                  {loading ? '...' : filialStats.reduce((sum, f) => sum + f.ligacoes, 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  R$ {loading ? "..." : filialStats.filter(f => f.ligacoes > 0).reduce((sum, f) => sum + f.prospectsValue * (f.ligacoes / (f.visitas + f.checklist + f.ligacoes)), 0).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <Users className="h-8 w-8 text-warning/50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-secondary/30 to-secondary/10 border-secondary/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Oportunidades</p>
+                <p className="text-lg font-bold text-secondary-foreground">
+                  {loading ? '...' : `R$ ${filialStats.reduce((sum, f) => sum + f.prospectsValue, 0).toLocaleString('pt-BR')}`}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-secondary-foreground/50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-primary/15 to-primary/5 border-primary/30">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Vendas Realizadas</p>
+                <p className="text-lg font-bold text-primary">
+                  {loading ? '...' : `R$ ${totalSalesValue.toLocaleString('pt-BR')}`}
+                </p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-primary/50" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Dados por Filial */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
             Desempenho por Filial
-          </TabsTrigger>
-          <TabsTrigger value="seller" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Desempenho por Vendedor
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Tab Desempenho por Filial */}
-        <TabsContent value="filial" className="space-y-6">
-          {/* Estatísticas Resumo - Filiais */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Atividades</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalTasks}</div>
-                <div className="grid grid-cols-3 gap-1 mt-2 text-xs">
-                  <div>
-                    <span className="text-primary font-medium">{totalVisitas}</span>
-                    <p className="text-muted-foreground">Visitas</p>
-                  </div>
-                  <div>
-                    <span className="text-success font-medium">{totalChecklist}</span>
-                    <p className="text-muted-foreground">Checklist</p>
-                  </div>
-                  <div>
-                    <span className="text-warning font-medium">{totalLigacoes}</span>
-                    <p className="text-muted-foreground">Ligações</p>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading && filialStats.length === 0 ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="h-12 bg-muted rounded"></div>
+                    <div className="h-12 bg-muted rounded"></div>
+                    <div className="h-12 bg-muted rounded"></div>
+                    <div className="h-12 bg-muted rounded"></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Prospects</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalProspects}</div>
-                <p className="text-xs text-muted-foreground">
-                  Valor: R$ {totalProspectsValue.toLocaleString('pt-BR')}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Vendas Realizadas</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-success">
-                  R$ {totalSalesValue.toLocaleString('pt-BR')}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{overallConversionRate.toFixed(1)}%</div>
-                <p className="text-xs text-muted-foreground">
-                  Vendas / Prospects
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Lista de Filiais */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Performance por Filial
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {filialStats.map((filial, index) => (
-                  <Card key={filial.id} className={`transition-all duration-200 hover:shadow-md ${
-                    index < 3 ? 'ring-1 ring-primary/20 bg-primary/5' : ''
-                  }`}>
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${
-                              index === 0 ? 'bg-yellow-500 text-white' :
-                              index === 1 ? 'bg-gray-400 text-white' :
-                              index === 2 ? 'bg-amber-600 text-white' :
-                              'bg-muted text-muted-foreground'
-                            }`}>
-                              {index + 1}
-                            </div>
-                            
-                            <div>
-                              <h4 className="font-semibold text-base">{filial.nome}</h4>
-                              <Badge variant="outline" className="text-xs">
-                                Filial
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-3">
-                            <Badge 
-                              variant={filial.conversionRate > 15 ? "default" : "secondary"}
-                              className="text-xs"
-                            >
-                              {filial.conversionRate.toFixed(1)}% conversão
-                            </Badge>
-                            <div className="text-right">
-                              <p className="text-sm font-bold text-success">
-                                R$ {filial.salesValue.toLocaleString('pt-BR')}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-5 gap-3">
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Total</p>
-                            <p className="font-bold text-foreground">{filial.visitas + filial.checklist + filial.ligacoes}</p>
-                            <p className="text-xs text-muted-foreground">atividades</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Visitas</p>
-                            <p className="font-bold text-primary">{filial.visitas}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Checklist</p>
-                            <p className="font-bold text-success">{filial.checklist}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Ligações</p>
-                            <p className="font-bold text-warning">{filial.ligacoes}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Prospects</p>
-                            <p className="font-bold text-accent">{filial.prospects}</p>
-                            <p className="text-xs text-muted-foreground">
-                              R$ {filial.prospectsValue.toLocaleString('pt-BR')}
-                            </p>
-                          </div>
+              ))}
+            </div>
+          ) : filialStats.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Building2 className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <p className="text-lg mb-2">Nenhuma filial encontrada</p>
+              <p className="text-sm">Verifique os filtros ou aguarde o carregamento dos dados</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filialStats.map((filial) => (
+                <Card key={filial.id} className="border-l-4 border-l-primary/50 hover:shadow-lg transition-all duration-200">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+                      <div>
+                        <h3 className="text-xl font-bold text-foreground mb-1">{filial.nome}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {filial.visitas + filial.checklist + filial.ligacoes} atividades totais
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge 
+                          variant={filial.conversionRate > 15 ? "default" : "secondary"}
+                          className="text-sm px-3 py-1"
+                        >
+                          {filial.conversionRate}% conversão
+                        </Badge>
+                        <div className="text-right hidden md:block">
+                          <p className="text-lg font-bold text-success">
+                            R$ {filial.salesValue.toLocaleString('pt-BR')}
+                          </p>
+                          <p className="text-xs text-muted-foreground">em vendas</p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="bg-primary/5 rounded-lg p-4 text-center">
+                        <Target className="h-6 w-6 mx-auto mb-2 text-primary" />
+                        <p className="text-2xl font-bold text-primary">{filial.visitas}</p>
+                        <p className="text-xs text-muted-foreground">Visitas</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {(filial.prospectsValue * (filial.visitas / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="bg-success/5 rounded-lg p-4 text-center">
+                        <CheckSquare className="h-6 w-6 mx-auto mb-2 text-success" />
+                        <p className="text-2xl font-bold text-success">{filial.checklist}</p>
+                        <p className="text-xs text-muted-foreground">Checklist</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {(filial.prospectsValue * (filial.checklist / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="bg-warning/5 rounded-lg p-4 text-center">
+                        <Users className="h-6 w-6 mx-auto mb-2 text-warning" />
+                        <p className="text-2xl font-bold text-warning">{filial.ligacoes}</p>
+                        <p className="text-xs text-muted-foreground">Ligações</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {(filial.prospectsValue * (filial.ligacoes / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="bg-accent/5 rounded-lg p-4 text-center">
+                        <TrendingUp className="h-6 w-6 mx-auto mb-2 text-accent" />
+                        <p className="text-2xl font-bold text-accent">{filial.prospects}</p>
+                        <p className="text-xs text-muted-foreground">Prospects</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          R$ {filial.prospectsValue.toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+                      <div className="bg-secondary/5 rounded-lg p-4 text-center md:hidden">
+                        <DollarSign className="h-6 w-6 mx-auto mb-2 text-success" />
+                        <p className="text-lg font-bold text-success">R$ {filial.salesValue.toLocaleString('pt-BR')}</p>
+                        <p className="text-xs text-muted-foreground">Vendas</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Tab Desempenho por Vendedor */}
-        <TabsContent value="seller" className="space-y-6">
-          {/* Estatísticas Resumo - Vendedores */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Atividades</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalUserActivities}</div>
-                <p className="text-xs text-muted-foreground">
-                  {userStats.length} vendedores ativos
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total de Oportunidades</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">R$ {totalUserOpportunities.toLocaleString('pt-BR')}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Vendas Realizadas</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-success">
-                  R$ {totalUserSales.toLocaleString('pt-BR')}
+      {/* Performance por CEP */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Performance dos CEPs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="animate-pulse flex items-center gap-4 p-4">
+                  <div className="w-10 h-10 bg-muted rounded-full"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-muted rounded w-1/3"></div>
+                    <div className="h-3 bg-muted rounded w-1/4"></div>
+                  </div>
+                  <div className="text-right space-y-2">
+                    <div className="h-4 bg-muted rounded w-20"></div>
+                    <div className="h-3 bg-muted rounded w-16"></div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Taxa de Conversão Média</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{averageConversion.toFixed(1)}%</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Lista de Vendedores */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Ranking de Vendedores
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {userStats.map((userData, index) => (
-                  <UserPerformanceItem
-                    key={userData.id}
-                    user={userData}
-                    index={index}
-                    dateFrom={dateFrom}
-                    dateTo={dateTo}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              ))}
+            </div>
+          ) : userStats.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <p className="text-lg mb-2">Nenhum colaborador encontrado</p>
+              <p className="text-sm">Verifique os filtros ou aguarde o carregamento dos dados</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {userStats.map((user, index) => (
+                <UserPerformanceItem 
+                  key={`${user.name}-${user.user_id}`}
+                  user={user}
+                  index={index}
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
