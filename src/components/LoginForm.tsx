@@ -12,6 +12,7 @@ import { SessionRefresh } from '@/components/SessionRefresh';
 import { useInputValidation } from '@/hooks/useInputValidation';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 
 export const LoginForm: React.FC = () => {
   const { signIn, signUp } = useAuth();
@@ -488,6 +489,10 @@ export const LoginForm: React.FC = () => {
                       )}
                     </Button>
                   </div>
+                  <PasswordStrengthIndicator 
+                    password={formData.password} 
+                    className="mt-2"
+                  />
                   {hasErrors('password') && (
                     <div className="text-xs text-destructive space-y-1">
                       {getFieldErrors('password').map((error, index) => (
@@ -495,9 +500,6 @@ export const LoginForm: React.FC = () => {
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    Senha forte: 8+ caracteres, maiúscula, minúscula, número e símbolo
-                  </p>
                 </div>
 
                 <div className="space-y-2">

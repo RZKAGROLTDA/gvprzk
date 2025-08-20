@@ -1,9 +1,10 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, userData?: any) => Promise<{ error: any }>;
@@ -22,24 +23,40 @@ export const useAuth = () => {
 
 export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    // Verificar sessão atual primeiro
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('DEBUG: Auth state change:', { event, userId: session?.user?.id });
+        
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      }
+    );
+
+    // THEN check for existing session
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         console.log('DEBUG: Initial session check:', { session: session?.user?.id, error });
         
         if (mounted) {
+          setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
         }
       } catch (error) {
         console.error('DEBUG: Error getting initial session:', error);
         if (mounted) {
+          setSession(null);
           setUser(null);
           setLoading(false);
         }
@@ -47,18 +64,6 @@ export const useAuthProvider = () => {
     };
 
     getInitialSession();
-
-    // Escutar mudanças na autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('DEBUG: Auth state change:', { event, userId: session?.user?.id });
-        
-        if (mounted) {
-          setUser(session?.user ?? null);
-          setLoading(false);
-        }
-      }
-    );
 
     return () => {
       mounted = false;
@@ -89,6 +94,7 @@ export const useAuthProvider = () => {
 
   return {
     user,
+    session,
     loading,
     signIn,
     signUp,

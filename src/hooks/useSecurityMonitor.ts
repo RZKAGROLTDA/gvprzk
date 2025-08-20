@@ -35,12 +35,14 @@ export const useSecurityMonitor = () => {
       const userAgent = navigator.userAgent;
       const timestamp = new Date().toISOString();
       
-      // Log to our security audit table
+      // Use the new secure logging function
       if (event.riskLevel && event.riskLevel > 3) {
-        await supabase.rpc('log_high_risk_activity', {
-          activity_type: event.type,
-          risk_level: event.riskLevel,
-          additional_data: {
+        await supabase.rpc('secure_log_security_event', {
+          event_type: 'high_risk_activity',
+          target_user_id: user?.id || null,
+          risk_score: event.riskLevel,
+          metadata: {
+            activity_type: event.type,
             ...event.metadata,
             user_agent: userAgent,
             timestamp,
@@ -49,8 +51,10 @@ export const useSecurityMonitor = () => {
           }
         });
       } else {
-        await supabase.rpc('log_security_event', {
+        await supabase.rpc('secure_log_security_event', {
           event_type: event.type,
+          target_user_id: user?.id || null,
+          risk_score: event.riskLevel || 1,
           metadata: {
             ...event.metadata,
             user_agent: userAgent,
@@ -64,7 +68,7 @@ export const useSecurityMonitor = () => {
       // Silently fail - don't break functionality for logging
       console.error('Security logging failed:', error);
     }
-  }, []);
+  }, [user?.id]);
 
   const monitorLoginAttempt = useCallback((email: string, success: boolean) => {
     logSecurityEvent({
