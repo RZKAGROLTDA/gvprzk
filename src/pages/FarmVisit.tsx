@@ -140,7 +140,6 @@ const FarmVisit: React.FC = () => {
       const taskData = {
         ...task,
         checklist,
-        prospectItems: task.salesConfirmed === null ? checklist.filter(item => item.selected) : undefined,
         taskCategory: 'field-visit' as const
       };
 
@@ -242,52 +241,6 @@ const FarmVisit: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                <Input
-                  id="propertyHectares"
-                  type="number"
-                  step="0.01"
-                  value={task.propertyHectares || ''}
-                  onChange={(e) => setTask(prev => ({ ...prev, propertyHectares: parseFloat(e.target.value) || 0 }))}
-                  min="0"
-                />
-              </div>
-              <div>
-                <Label htmlFor="familyProduct">Família de Produtos</Label>
-                <Select 
-                  value={task.familyProduct || ''} 
-                  onValueChange={(value) => setTask(prev => ({ ...prev, familyProduct: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a família" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TRATOR">TRATOR</SelectItem>
-                    <SelectItem value="PLATAFORMA">PLATAFORMA</SelectItem>
-                    <SelectItem value="COLHEITADEIRA">COLHEITADEIRA</SelectItem>
-                    <SelectItem value="PLANTADEIRA">PLANTADEIRA</SelectItem>
-                    <SelectItem value="PULVERIZADOR">PULVERIZADOR</SelectItem>
-                    <SelectItem value="COLHEDORA">COLHEDORA</SelectItem>
-                    <SelectItem value="FORRAGEIRA">FORRAGEIRA</SelectItem>
-                    <SelectItem value="OUTROS">OUTROS</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="equipmentQuantity">Quantidade de Equipamentos</Label>
-              <Input
-                id="equipmentQuantity"
-                type="number"
-                value={task.equipmentQuantity || ''}
-                onChange={(e) => setTask(prev => ({ ...prev, equipmentQuantity: parseInt(e.target.value) || 0 }))}
-                min="0"
-              />
-            </div>
-
             <div>
               <Label htmlFor="observations">Observações</Label>
               <Textarea
@@ -331,7 +284,7 @@ const FarmVisit: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <Label>Preço Unitário (R$)</Label>
+                        <Label>Preço Unitário</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -351,128 +304,6 @@ const FarmVisit: React.FC = () => {
                   )}
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Status da Venda/Oportunidade */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Status da Oportunidade</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-          <div>
-            <Label>Status da Venda</Label>
-            <div className="flex gap-4 mt-2">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="prospect"
-                  name="salesStatus"
-                  value="prospect"
-                  checked={task.salesConfirmed === undefined}
-                  onChange={() => setTask(prev => ({ ...prev, salesConfirmed: undefined, isProspect: true }))}
-                  className="rounded"
-                />
-                <Label htmlFor="prospect">Prospect</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="vendaParcial"
-                  name="salesStatus"
-                  value="vendaParcial"
-                  checked={task.salesConfirmed === null}
-                  onChange={() => setTask(prev => ({ ...prev, salesConfirmed: null, isProspect: true }))}
-                  className="rounded"
-                />
-                <Label htmlFor="vendaParcial">Venda Parcial</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="vendaRealizada"
-                  name="salesStatus"
-                  value="vendaRealizada"
-                  checked={task.salesConfirmed === true}
-                  onChange={() => setTask(prev => ({ ...prev, salesConfirmed: true, isProspect: false }))}
-                  className="rounded"
-                />
-                <Label htmlFor="vendaRealizada">Venda Realizada</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="vendaPerdida"
-                  name="salesStatus"
-                  value="vendaPerdida"
-                  checked={task.salesConfirmed === false}
-                  onChange={() => setTask(prev => ({ ...prev, salesConfirmed: false, isProspect: false }))}
-                  className="rounded"
-                />
-                <Label htmlFor="vendaPerdida">Venda Perdida</Label>
-              </div>
-            </div>
-          </div>
-
-          {task.salesConfirmed === null && (
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Produtos da Venda Parcial</Label>
-              <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
-                <p className="text-sm text-blue-700">Selecione os produtos específicos que fazem parte desta venda parcial:</p>
-                {checklist.map((item) => (
-                  <div key={`partial-${item.id}`} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`partial-checkbox-${item.id}`}
-                      checked={item.selected}
-                      onChange={(e) => updateChecklist(item.id, 'selected', e.target.checked)}
-                      className="rounded"
-                    />
-                    <Label htmlFor={`partial-checkbox-${item.id}`} className="text-sm">
-                      {item.name} - Qtd: {item.quantity || 0} - R$ {((item.quantity || 0) * (item.price || 0)).toFixed(2)}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="salesValue">Valor da Oportunidade (R$)</Label>
-              <Input
-                id="salesValue"
-                type="number"
-                step="0.01"
-                value={task.salesValue || ''}
-                onChange={(e) => setTask(prev => ({ ...prev, salesValue: parseFloat(e.target.value) || 0 }))}
-                min="0"
-              />
-            </div>
-            <div>
-              <Label>
-                {task.salesConfirmed === null ? "Valor da Venda Parcial (R$)" : "Valor Total dos Produtos (R$)"}
-              </Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={checklist.filter(item => item.selected).reduce((sum, item) => sum + (item.quantity * item.price), 0).toFixed(2)}
-                readOnly
-                className="bg-muted"
-              />
-            </div>
-          </div>
-
-            <div>
-              <Label htmlFor="prospectNotes">Observações do Prospect</Label>
-              <Textarea
-                id="prospectNotes"
-                value={task.prospectNotes || ''}
-                onChange={(e) => setTask(prev => ({ ...prev, prospectNotes: e.target.value }))}
-                rows={3}
-                placeholder="Anotações específicas sobre a oportunidade de venda..."
-              />
             </div>
           </CardContent>
         </Card>
