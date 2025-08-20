@@ -500,15 +500,15 @@ export const SalesFunnel: React.FC = () => {
               <div className="flex flex-col items-center space-y-6">
                 
                 {/* Nível 1: Contatos (Base do Funil - Mais Largo) */}
-                <div className="w-full max-w-4xl">
+                <div className="w-full max-w-5xl">
                   <h4 className="text-center text-sm font-medium text-muted-foreground mb-4">CONTATOS COM CLIENTES</h4>
                   <div className="relative">
                     {/* Linha conectora para baixo */}
                     <div className="absolute left-1/2 top-full w-px h-6 bg-border transform -translate-x-1/2"></div>
                     
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 gap-6">
                       <div 
-                        className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}
                       >
                         <div className="font-bold text-3xl mb-2">{funnelData.contacts.visitas}</div>
@@ -518,7 +518,7 @@ export const SalesFunnel: React.FC = () => {
                         </div>
                       </div>
                       <div 
-                        className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-6 rounded-xl text-center cursor-pointer hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}
                       >
                         <div className="font-bold text-3xl mb-2">{funnelData.contacts.checklists}</div>
@@ -528,7 +528,7 @@ export const SalesFunnel: React.FC = () => {
                         </div>
                       </div>
                       <div 
-                        className="bg-gradient-to-br from-emerald-400 to-emerald-500 text-white p-6 rounded-xl text-center cursor-pointer hover:from-emerald-500 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}
                       >
                         <div className="font-bold text-3xl mb-2">{funnelData.contacts.ligacoes}</div>
@@ -544,14 +544,14 @@ export const SalesFunnel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Nível 2: Prospecções (Meio do Funil - Médio) */}
+                {/* Nível 2: Prospecções (Meio do Funil - Mais Estreito) */}
                 <div className="w-full max-w-3xl">
                   <h4 className="text-center text-sm font-medium text-muted-foreground mb-4">PROSPECÇÕES</h4>
                   <div className="relative">
                     {/* Linha conectora para baixo */}
                     <div className="absolute left-1/2 top-full w-px h-6 bg-border transform -translate-x-1/2"></div>
                     
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-4">
                       <div 
                         className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}
@@ -563,7 +563,7 @@ export const SalesFunnel: React.FC = () => {
                         </div>
                       </div>
                       <div 
-                        className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}
                       >
                         <div className="font-bold text-2xl mb-2">{funnelData.prospects.fechadas}</div>
@@ -573,7 +573,7 @@ export const SalesFunnel: React.FC = () => {
                         </div>
                       </div>
                       <div 
-                        className="bg-gradient-to-br from-blue-400 to-blue-500 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}
                       >
                         <div className="font-bold text-2xl mb-2">{funnelData.prospects.perdidas}</div>
@@ -589,26 +589,26 @@ export const SalesFunnel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Nível 3: Vendas (Topo do Funil - Mais Estreito) */}
-                <div className="w-full max-w-2xl">
+                {/* Nível 3: Vendas (Topo do Funil - Ainda Mais Estreito) */}
+                <div className="w-full max-w-lg">
                   <h4 className="text-center text-sm font-medium text-muted-foreground mb-4">VENDAS</h4>
                   <div className="relative">
                     <div className="grid grid-cols-2 gap-3">
                       <div 
-                        className="bg-gradient-to-br from-amber-600 to-amber-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-amber-700 hover:to-amber-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-confirmed' ? null : 'sales-confirmed')}
                       >
-                        <div className="font-bold text-2xl mb-2">{funnelData.sales.confirmadas}</div>
+                        <div className="font-bold text-xl mb-2">{funnelData.sales.confirmadas}</div>
                         <div className="text-sm opacity-90 mb-1">Confirmadas</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.confirmadas / funnelData.contacts.total * 100) : 0}%
                         </div>
                       </div>
                       <div 
-                        className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-5 rounded-xl text-center cursor-pointer hover:from-amber-600 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
                         onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-partial' ? null : 'sales-partial')}
                       >
-                        <div className="font-bold text-2xl mb-2">{funnelData.sales.parciais}</div>
+                        <div className="font-bold text-xl mb-2">{funnelData.sales.parciais}</div>
                         <div className="text-sm opacity-90 mb-1">Parciais</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.parciais / funnelData.contacts.total * 100) : 0}%
@@ -622,8 +622,8 @@ export const SalesFunnel: React.FC = () => {
                 </div>
 
                 {/* Taxa de Conversão Final */}
-                <div className="w-full max-w-sm">
-                  <div className="bg-gradient-to-br from-purple-600 to-purple-700 text-white p-6 rounded-xl text-center shadow-lg">
+                <div className="w-full max-w-xs">
+                  <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center shadow-lg">
                     <div className="font-bold text-xl mb-2">
                       {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.total / funnelData.contacts.total * 100) : 0}%
                     </div>
