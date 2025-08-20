@@ -318,6 +318,91 @@ const ClientCall: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Status da Venda/Oportunidade */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Status da Oportunidade</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Status da Venda</Label>
+              <div className="flex gap-4 mt-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="prospect"
+                    name="salesStatus"
+                    value="prospect"
+                    checked={task.salesConfirmed === undefined}
+                    onChange={() => setTask(prev => ({ ...prev, salesConfirmed: undefined, isProspect: true }))}
+                    className="rounded"
+                  />
+                  <Label htmlFor="prospect">Prospect</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="vendaRealizada"
+                    name="salesStatus"
+                    value="vendaRealizada"
+                    checked={task.salesConfirmed === true}
+                    onChange={() => setTask(prev => ({ ...prev, salesConfirmed: true, isProspect: false }))}
+                    className="rounded"
+                  />
+                  <Label htmlFor="vendaRealizada">Venda Realizada</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="vendaPerdida"
+                    name="salesStatus"
+                    value="vendaPerdida"
+                    checked={task.salesConfirmed === false}
+                    onChange={() => setTask(prev => ({ ...prev, salesConfirmed: false, isProspect: false }))}
+                    className="rounded"
+                  />
+                  <Label htmlFor="vendaPerdida">Venda Perdida</Label>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="salesValue">Valor da Oportunidade (R$)</Label>
+                <Input
+                  id="salesValue"
+                  type="number"
+                  step="0.01"
+                  value={task.salesValue || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, salesValue: parseFloat(e.target.value) || 0 }))}
+                  min="0"
+                />
+              </div>
+              <div>
+                <Label>Valor Total das Perguntas (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={Object.values(callQuestions).reduce((sum, item) => sum + item.totalValue, 0).toFixed(2)}
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="prospectNotes">Observações do Prospect</Label>
+              <Textarea
+                id="prospectNotes"
+                value={task.prospectNotes || ''}
+                onChange={(e) => setTask(prev => ({ ...prev, prospectNotes: e.target.value }))}
+                rows={3}
+                placeholder="Anotações específicas sobre a oportunidade de venda..."
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Botões de Ação */}
         <div className="flex justify-end gap-3">
           <Button 
