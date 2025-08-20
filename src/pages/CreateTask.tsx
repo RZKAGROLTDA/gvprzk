@@ -1728,8 +1728,13 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button type="button" variant="outline" className="flex-1 order-4">
-                Cancelar
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1 order-4"
+                onClick={() => window.location.href = '/create-task'}
+              >
+                Sair
               </Button>
             </div>
            
