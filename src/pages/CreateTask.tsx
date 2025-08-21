@@ -3313,71 +3313,79 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-2xl font-bold text-foreground mb-6 block flex items-center gap-3">
-                    <span className="text-3xl">🎯</span>
+                  <Label className="text-base font-medium text-foreground mb-3 block flex items-center gap-2">
                     Status da Oportunidade 
-                    <span className="text-destructive text-xl">*</span>
+                    <span className="text-destructive">*</span>
                   </Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
-                    {/* PROSPECT CARD */}
-                    <div className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${task.isProspect && task.salesConfirmed === undefined ? 'border-primary bg-gradient-to-br from-primary/10 via-primary/20 to-primary/10 shadow-2xl transform scale-110 ring-4 ring-primary/30' : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-primary hover:from-primary/5 hover:to-primary/15'}`} onClick={() => setTask(prev => ({
-                    ...prev,
-                    isProspect: true,
-                    salesConfirmed: undefined
-                  }))}>
-                      <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${task.isProspect && task.salesConfirmed === undefined ? 'bg-primary text-primary-foreground shadow-primary/30 animate-pulse' : 'bg-muted group-hover:bg-primary/20 text-muted-foreground group-hover:text-primary'}`}>
-                          <Search className="h-10 w-10" />
-                        </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* PROSPECT */}
+                    <button 
+                      type="button"
+                      className={`p-3 rounded-lg border text-left transition-colors ${
+                        task.isProspect && task.salesConfirmed === undefined 
+                          ? 'border-primary bg-primary/5 text-primary' 
+                          : 'border-border bg-background hover:border-primary/50'
+                      }`} 
+                      onClick={() => setTask(prev => ({
+                        ...prev,
+                        isProspect: true,
+                        salesConfirmed: undefined
+                      }))}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Search className="h-4 w-4" />
                         <div>
-                          <div className="font-bold text-xl mb-2">Prospect</div>
-                          <div className="text-sm text-muted-foreground">Cliente em análise</div>
+                          <div className="font-medium text-sm">Prospect</div>
+                          <div className="text-xs text-muted-foreground">Cliente em análise</div>
                         </div>
                       </div>
-                      {task.isProspect && task.salesConfirmed === undefined && <div className="absolute -top-3 -right-3 w-12 h-12 bg-primary rounded-full flex items-center justify-center shadow-xl animate-bounce">
-                          <Check className="h-6 w-6 text-primary-foreground" />
-                        </div>}
-                    </div>
+                    </button>
                     
-                    {/* VENDA REALIZADA CARD */}
-                    <div className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${task.salesConfirmed === true ? 'border-success bg-gradient-to-br from-success/10 via-success/20 to-success/10 shadow-2xl transform scale-110 ring-4 ring-success/30' : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-success hover:from-success/5 hover:to-success/15'}`} onClick={() => setTask(prev => ({
-                    ...prev,
-                    salesConfirmed: true,
-                    isProspect: true
-                  }))}>
-                      <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${task.salesConfirmed === true ? 'bg-success text-success-foreground shadow-success/30 animate-pulse' : 'bg-muted group-hover:bg-success/20 text-muted-foreground group-hover:text-success'}`}>
-                          <CheckCircle className="h-10 w-10" />
-                        </div>
+                    {/* VENDA REALIZADA */}
+                    <button 
+                      type="button"
+                      className={`p-3 rounded-lg border text-left transition-colors ${
+                        task.salesConfirmed === true 
+                          ? 'border-success bg-success/5 text-success' 
+                          : 'border-border bg-background hover:border-success/50'
+                      }`} 
+                      onClick={() => setTask(prev => ({
+                        ...prev,
+                        salesConfirmed: true,
+                        isProspect: true
+                      }))}
+                    >
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="h-4 w-4" />
                         <div>
-                          <div className="font-bold text-xl mb-2">Venda Realizada</div>
-                          <div className="text-sm text-muted-foreground">Negócio fechado</div>
+                          <div className="font-medium text-sm">Venda Realizada</div>
+                          <div className="text-xs text-muted-foreground">Negócio fechado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === true && <div className="absolute -top-3 -right-3 w-12 h-12 bg-success rounded-full flex items-center justify-center shadow-xl animate-bounce">
-                          <Check className="h-6 w-6 text-success-foreground" />
-                        </div>}
-                    </div>
+                    </button>
                     
-                    {/* VENDA PERDIDA CARD */}
-                    <div className={`group relative cursor-pointer p-8 rounded-2xl border-4 transition-all duration-500 hover:scale-110 hover:shadow-2xl animate-fade-in ${task.salesConfirmed === false ? 'border-destructive bg-gradient-to-br from-destructive/10 via-destructive/20 to-destructive/10 shadow-2xl transform scale-110 ring-4 ring-destructive/30' : 'border-border bg-gradient-to-br from-card to-muted/30 hover:border-destructive hover:from-destructive/5 hover:to-destructive/15'}`} onClick={() => setTask(prev => ({
-                    ...prev,
-                    salesConfirmed: false,
-                    isProspect: true
-                  }))}>
-                      <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg ${task.salesConfirmed === false ? 'bg-destructive text-destructive-foreground shadow-destructive/30 animate-pulse' : 'bg-muted group-hover:bg-destructive/20 text-muted-foreground group-hover:text-destructive'}`}>
-                          <XCircle className="h-10 w-10" />
-                        </div>
+                    {/* VENDA PERDIDA */}
+                    <button 
+                      type="button"
+                      className={`p-3 rounded-lg border text-left transition-colors ${
+                        task.salesConfirmed === false 
+                          ? 'border-destructive bg-destructive/5 text-destructive' 
+                          : 'border-border bg-background hover:border-destructive/50'
+                      }`} 
+                      onClick={() => setTask(prev => ({
+                        ...prev,
+                        salesConfirmed: false,
+                        isProspect: true
+                      }))}
+                    >
+                      <div className="flex items-center gap-3">
+                        <XCircle className="h-4 w-4" />
                         <div>
-                          <div className="font-bold text-xl mb-2">Venda Perdida</div>
-                          <div className="text-sm text-muted-foreground">Negócio não realizado</div>
+                          <div className="font-medium text-sm">Venda Perdida</div>
+                          <div className="text-xs text-muted-foreground">Negócio não realizado</div>
                         </div>
                       </div>
-                      {task.salesConfirmed === false && <div className="absolute -top-3 -right-3 w-12 h-12 bg-destructive rounded-full flex items-center justify-center shadow-xl animate-bounce">
-                          <Check className="h-6 w-6 text-destructive-foreground" />
-                        </div>}
-                    </div>
+                    </button>
                   </div>
                 </div>
 
