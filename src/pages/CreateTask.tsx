@@ -1953,8 +1953,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
     photos: [],
     documents: [],
     isProspect: true,
-    isParts: false,
-    isServices: false,
     salesConfirmed: undefined
   });
 
@@ -2176,6 +2174,24 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
     price: 0,
     observations: '',
     photos: []
+  }, {
+    id: '10',
+    name: 'Peças',
+    category: 'parts',
+    selected: false,
+    quantity: 0,
+    price: 0,
+    observations: '',
+    photos: []
+  }, {
+    id: '11',
+    name: 'Serviços',
+    category: 'services',
+    selected: false,
+    quantity: 0,
+    price: 0,
+    observations: '',
+    photos: []
   }];
   const workshopChecklistItems: ProductType[] = [{
     id: '1',
@@ -2367,8 +2383,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
       photos: [],
       documents: [],
       isProspect: true,
-      isParts: false,
-      isServices: false,
       salesConfirmed: undefined,
       salesValue: 0,
       prospectItems: [],
@@ -2611,10 +2625,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     setIsSubmitting(true);
 
     // Validação obrigatória do status da oportunidade
-    if (task.salesConfirmed === undefined && !task.isProspect && !task.isParts && !task.isServices) {
+    if (task.salesConfirmed === undefined && !task.isProspect) {
       toast({
         title: "Campo obrigatório",
-        description: "Selecione o status da oportunidade (Prospect, Venda Realizada, Venda Perdida, Peças ou Serviços)",
+        description: "Selecione o status da oportunidade (Prospect, Venda Realizada ou Venda Perdida)",
         variant: "destructive"
       });
       setIsSubmitting(false);
@@ -3321,21 +3335,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     Status da Oportunidade 
                     <span className="text-destructive">*</span>
                   </Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* PROSPECT */}
                     <button 
                       type="button"
                       className={`p-3 rounded-lg border text-left transition-colors ${
-                        task.isProspect && task.salesConfirmed === undefined && !task.isParts && !task.isServices
+                        task.isProspect && task.salesConfirmed === undefined 
                           ? 'border-primary bg-primary/5 text-primary' 
                           : 'border-border bg-background hover:border-primary/50'
                       }`} 
                       onClick={() => setTask(prev => ({
                         ...prev,
                         isProspect: true,
-                        salesConfirmed: undefined,
-                        isParts: false,
-                        isServices: false
+                        salesConfirmed: undefined
                       }))}
                     >
                       <div className="flex items-center gap-3">
@@ -3358,9 +3370,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       onClick={() => setTask(prev => ({
                         ...prev,
                         salesConfirmed: true,
-                        isProspect: true,
-                        isParts: false,
-                        isServices: false
+                        isProspect: true
                       }))}
                     >
                       <div className="flex items-center gap-3">
@@ -3383,9 +3393,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       onClick={() => setTask(prev => ({
                         ...prev,
                         salesConfirmed: false,
-                        isProspect: true,
-                        isParts: false,
-                        isServices: false
+                        isProspect: true
                       }))}
                     >
                       <div className="flex items-center gap-3">
@@ -3393,56 +3401,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                         <div>
                           <div className="font-medium text-sm">Venda Perdida</div>
                           <div className="text-xs text-muted-foreground">Negócio não realizado</div>
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* PEÇAS */}
-                    <button 
-                      type="button"
-                      className={`p-3 rounded-lg border text-left transition-colors ${
-                        task.isParts === true 
-                          ? 'border-warning bg-warning/5 text-warning' 
-                          : 'border-border bg-background hover:border-warning/50'
-                      }`} 
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        isParts: true,
-                        isServices: false,
-                        isProspect: false,
-                        salesConfirmed: undefined
-                      }))}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Settings className="h-4 w-4" />
-                        <div>
-                          <div className="font-medium text-sm">Peças</div>
-                          <div className="text-xs text-muted-foreground">Venda de peças</div>
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* SERVIÇOS */}
-                    <button 
-                      type="button"
-                      className={`p-3 rounded-lg border text-left transition-colors ${
-                        task.isServices === true 
-                          ? 'border-info bg-info/5 text-info' 
-                          : 'border-border bg-background hover:border-info/50'
-                      }`} 
-                      onClick={() => setTask(prev => ({
-                        ...prev,
-                        isServices: true,
-                        isParts: false,
-                        isProspect: false,
-                        salesConfirmed: undefined
-                      }))}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Wrench className="h-4 w-4" />
-                        <div>
-                          <div className="font-medium text-sm">Serviços</div>
-                          <div className="text-xs text-muted-foreground">Prestação de serviços</div>
                         </div>
                       </div>
                     </button>

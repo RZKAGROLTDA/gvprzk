@@ -38,15 +38,13 @@ export interface Task {
   familyProduct?: string;
   equipmentQuantity?: number;
   propertyHectares?: number;
-  isParts?: boolean;
-  isServices?: boolean;
   equipmentList?: {id: string, familyProduct: string, quantity: number}[];
 }
 
 export interface ProductType {
   id: string;
   name: string;
-  category: 'tires' | 'lubricants' | 'oils' | 'greases' | 'batteries' | 'other';
+  category: 'tires' | 'lubricants' | 'oils' | 'greases' | 'batteries' | 'parts' | 'services' | 'other';
   selected: boolean;
   quantity?: number;
   price?: number;
