@@ -38,6 +38,8 @@ export interface Task {
   familyProduct?: string;
   equipmentQuantity?: number;
   propertyHectares?: number;
+  isParts?: boolean;
+  isServices?: boolean;
   equipmentList?: {id: string, familyProduct: string, quantity: number}[];
 }
 
