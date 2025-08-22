@@ -278,6 +278,42 @@ export type Database = {
         }
         Relationships: []
       }
+      task_creation_log: {
+        Row: {
+          client: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          logged_at: string | null
+          property: string | null
+          responsible: string | null
+          start_date: string | null
+          task_id: string
+        }
+        Insert: {
+          client?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          logged_at?: string | null
+          property?: string | null
+          responsible?: string | null
+          start_date?: string | null
+          task_id: string
+        }
+        Update: {
+          client?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          logged_at?: string | null
+          property?: string | null
+          responsible?: string | null
+          start_date?: string | null
+          task_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           check_in_location: Json | null
