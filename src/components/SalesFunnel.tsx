@@ -40,9 +40,9 @@ interface ClientDetails {
 export const SalesFunnel: React.FC = () => {
   const {
     tasks,
-    loading
+    loading,
+    loadTasks
   } = useTasks();
-  // Remove loadTasks from destructuring to prevent excessive reloads
   const {
     user
   } = useAuth();
@@ -1025,9 +1025,13 @@ export const SalesFunnel: React.FC = () => {
     }} onTaskUpdated={updatedTask => {
       console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
 
-      // Update selected task with the received data (no need to force reload)
+      // Update selected task with the received data
       console.log('🔄 FUNNEL: Atualizando selectedTask com dados recebidos:', updatedTask);
       setSelectedTask(updatedTask);
+      
+      // CRITICAL: Reload tasks to reflect status changes in the table
+      console.log('🔄 FUNNEL: Recarregando tarefas para atualizar status na tabela');
+      loadTasks();
     }} />
     </div>;
 };
