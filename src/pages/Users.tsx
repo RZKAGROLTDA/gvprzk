@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Users as UsersIcon, Shield, Building, Trash2 } from 'lucide-react';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 interface Profile {
   id: string;
@@ -290,9 +291,14 @@ export const Users: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-2 mb-6">
-        <UsersIcon className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Gerenciar Usuários</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <UsersIcon className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Gerenciar Usuários</h1>
+        </div>
+        <div className="w-80">
+          <OfflineIndicator />
+        </div>
       </div>
 
       {/* Novos Usuários - Pendentes de Aprovação */}

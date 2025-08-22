@@ -3,13 +3,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SalesFunnel } from '@/components/SalesFunnel';
 import { FunnelClients } from '@/components/FunnelClients';
 import { FunnelTasks } from '@/components/FunnelTasks';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 const Dashboard: React.FC = () => {
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Funil de Vendas</h1>
-        <p className="text-muted-foreground">Análise completa das atividades comerciais</p>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold">Funil de Vendas</h1>
+          <p className="text-muted-foreground">Análise completa das atividades comerciais</p>
+        </div>
+        <div className="w-80">
+          <OfflineIndicator />
+        </div>
       </div>
 
       <Tabs defaultValue="funil" className="space-y-6">

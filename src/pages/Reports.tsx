@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { OfflineIndicator } from '@/components/OfflineIndicator';
 
 const Reports: React.FC = () => {
   const { user } = useAuth();
@@ -158,12 +159,18 @@ const Reports: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start gap-4">
          <div>
            <h1 className="text-3xl font-bold">Relatórios</h1>
            <p className="text-muted-foreground">Análises e métricas de desempenho</p>
          </div>
          
+         <div className="w-80">
+           <OfflineIndicator />
+         </div>
+      </div>
+      
+      <div className="flex justify-end items-center">{/* Linha para botões */}
          {/* Botões de Exportação */}
          <div className="flex gap-2">
            <Button 

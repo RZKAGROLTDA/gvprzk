@@ -50,13 +50,16 @@ export const useOffline = () => {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const data = JSON.parse(stored);
+        // Validar estrutura dos dados
         return {
-          ...data,
+          tasks: Array.isArray(data.tasks) ? data.tasks : [],
+          syncQueue: Array.isArray(data.syncQueue) ? data.syncQueue : [],
           lastSyncTime: data.lastSyncTime ? new Date(data.lastSyncTime) : null
         };
       }
     } catch (error) {
       console.error('Erro ao carregar dados offline:', error);
+      localStorage.removeItem(STORAGE_KEY);
     }
     
     return {
@@ -136,9 +139,14 @@ export const useOffline = () => {
 
   // Obter tarefas offline
   const getOfflineTasks = () => {
-    const data = loadOfflineData();
-    console.log('getOfflineTasks retornando:', data.tasks.length, 'tarefas');
-    return data.tasks;
+    try {
+      const data = loadOfflineData();
+      console.log('getOfflineTasks retornando:', data.tasks.length, 'tarefas');
+      return Array.isArray(data.tasks) ? data.tasks : [];
+    } catch (error) {
+      console.error('Erro ao carregar tarefas offline:', error);
+      return [];
+    }
   };
 
   // Sincronizar dados com o servidor
@@ -300,12 +308,21 @@ export const useOffline = () => {
 
   // Limpar dados offline
   const clearOfflineData = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setPendingSync(0);
-    toast({
-      title: "Dados Limpos",
-      description: "Cache offline removido",
-    });
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      setPendingSync(0);
+      toast({
+        title: "✅ Dados Limpos",
+        description: "Cache offline removido com sucesso",
+      });
+    } catch (error) {
+      console.error('Erro ao limpar dados offline:', error);
+      toast({
+        title: "❌ Erro",
+        description: "Erro ao limpar dados offline",
+        variant: "destructive",
+      });
+    }
   };
 
   // Verificar pendências na inicialização
