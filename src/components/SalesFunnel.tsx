@@ -844,8 +844,10 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         {(() => {
+                          const salesStatus = mapSalesStatus(task);
+                          
                           // Se a venda foi confirmada (ganho), mostra o valor total
-                          if (task.salesConfirmed && task.salesValue) {
+                          if (salesStatus === 'ganho' && task.salesValue) {
                             return new Intl.NumberFormat('pt-BR', {
                               style: 'currency',
                               currency: 'BRL'
@@ -853,7 +855,6 @@ export const SalesFunnel: React.FC = () => {
                           }
                           
                           // Se é uma venda parcial, calcula o valor dos produtos selecionados
-                          const salesStatus = mapSalesStatus(task);
                           if (salesStatus === 'parcial' && task.checklist) {
                             const partialValue = task.checklist
                               .filter(item => item.selected && item.quantity && item.price)
@@ -865,6 +866,14 @@ export const SalesFunnel: React.FC = () => {
                                 currency: 'BRL'
                               }).format(partialValue);
                             }
+                          }
+                          
+                          // Se é venda perdida, mostra R$ 0,00
+                          if (salesStatus === 'perdido') {
+                            return new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL'
+                            }).format(0);
                           }
                           
                           return '-';
