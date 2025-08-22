@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { Task } from '@/types/task';
+
 interface SalesFunnelData {
   name: string;
   value: number;
@@ -785,7 +786,7 @@ export const SalesFunnel: React.FC = () => {
                 <TableRow>
                   <TableHead>Nome da Atividade</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Responsável</TableHead>
+                  <TableHead>Vendedor</TableHead>
                   <TableHead>Valor da Oportunidade</TableHead>
                   <TableHead>Valor da Venda Realizada</TableHead>
                   <TableHead>Status</TableHead>
