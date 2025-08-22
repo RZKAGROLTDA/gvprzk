@@ -38,6 +38,10 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredClientCodes, setFilteredClientCodes] = useState<{code: string, name: string}[]>([]);
   
+  // Estado para autocomplete do nome do cliente
+  const [showClientNameDropdown, setShowClientNameDropdown] = useState(false);
+  const [filteredClientNames, setFilteredClientNames] = useState<{code: string, name: string}[]>([]);
+  
   // Função para carregar dados anteriores do cliente
   const loadPreviousClientData = async (clientCode: string) => {
     try {
@@ -3074,12 +3078,79 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <Label htmlFor="client">Nome do Cliente</Label>
-                <Input id="client" value={task.client} onChange={e => setTask(prev => ({
-                ...prev,
-                client: e.target.value
-              }))} placeholder="Nome do cliente" />
+                <Input 
+                  id="client" 
+                  value={task.client} 
+                  onChange={e => {
+                    const value = e.target.value;
+                    setTask(prev => ({
+                      ...prev,
+                      client: value
+                    }));
+                    // Filtrar clientes baseado no nome
+                    if (value) {
+                      const filtered = clientCodes.filter(code => 
+                        code.name.toLowerCase().includes(value.toLowerCase()) || code.code.includes(value)
+                      );
+                      setFilteredClientNames(filtered);
+                      setShowClientNameDropdown(true);
+                    } else {
+                      setShowClientNameDropdown(false);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (task.client) {
+                      const filtered = clientCodes.filter(code => 
+                        code.name.toLowerCase().includes(task.client.toLowerCase()) || code.code.includes(task.client)
+                      );
+                      setFilteredClientNames(filtered);
+                      setShowClientNameDropdown(true);
+                    }
+                  }}
+                  onBlur={async () => {
+                    // Delay para permitir clique no dropdown
+                    setTimeout(() => setShowClientNameDropdown(false), 200);
+                    
+                    // Se o nome foi digitado, verificar se existe e carregar dados
+                    if (task.client && task.client.length >= 3) {
+                      const foundClient = clientCodes.find(code => 
+                        code.name.toLowerCase() === task.client.toLowerCase()
+                      );
+                      if (foundClient) {
+                        setTask(prev => ({
+                          ...prev,
+                          clientCode: foundClient.code
+                        }));
+                        await loadPreviousClientData(foundClient.code);
+                      }
+                    }
+                  }}
+                  placeholder="Digite o nome do cliente" 
+                />
+                {showClientNameDropdown && filteredClientNames.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                    {filteredClientNames.map((clientItem) => (
+                      <div
+                        key={clientItem.code}
+                        className="px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center"
+                        onClick={async () => {
+                          setTask(prev => ({
+                            ...prev,
+                            client: clientItem.name,
+                            clientCode: clientItem.code
+                          }));
+                          setShowClientNameDropdown(false);
+                          await loadPreviousClientData(clientItem.code);
+                        }}
+                      >
+                        <span className="font-medium">{clientItem.name}</span>
+                        <span className="text-sm text-muted-foreground">{clientItem.code}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
