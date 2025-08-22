@@ -862,60 +862,68 @@ export const SalesFunnel: React.FC = () => {
                     currency: 'BRL'
                   }).format(task.salesValue) : '-'}
                       </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const salesStatus = mapSalesStatus(task);
-                          
-                          // Se a venda foi confirmada (ganho), mostra o valor total
-                          if (salesStatus === 'ganho' && task.salesValue) {
-                            return new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL'
-                            }).format(task.salesValue);
-                          }
-                          
-                          // Se é uma venda parcial, calcula o valor dos produtos selecionados
-                          if (salesStatus === 'parcial') {
-                            // Primeiro tenta calcular a partir dos prospectItems
-                            if (task.prospectItems) {
-                              const partialValue = task.prospectItems
-                                .filter(item => item.selected && item.quantity && item.price)
-                                .reduce((total, item) => total + (item.quantity! * item.price!), 0);
-                              
-                              if (partialValue > 0) {
-                                return new Intl.NumberFormat('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL'
-                                }).format(partialValue);
-                              }
-                            }
-                            
-                            // Fallback para checklist (compatibilidade)
-                            if (task.checklist) {
-                              const partialValue = task.checklist
-                                .filter(item => item.selected && item.quantity && item.price)
-                                .reduce((total, item) => total + (item.quantity! * item.price!), 0);
-                              
-                              if (partialValue > 0) {
-                                return new Intl.NumberFormat('pt-BR', {
-                                  style: 'currency',
-                                  currency: 'BRL'
-                                }).format(partialValue);
-                              }
-                            }
-                          }
-                          
-                          // Se é venda perdida, mostra R$ 0,00
-                          if (salesStatus === 'perdido') {
-                            return new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL'
-                            }).format(0);
-                          }
-                          
-                          return '-';
-                        })()}
-                      </TableCell>
+                       <TableCell>
+                         {(() => {
+                           const salesStatus = mapSalesStatus(task);
+                           
+                           // Se a venda foi confirmada (ganho), mostra o valor total
+                           if (salesStatus === 'ganho' && task.salesValue) {
+                             return new Intl.NumberFormat('pt-BR', {
+                               style: 'currency',
+                               currency: 'BRL'
+                             }).format(task.salesValue);
+                           }
+                           
+                           // Se é uma venda parcial, usa o valor salvo no sales_value
+                           if (salesStatus === 'parcial') {
+                             // Para vendas parciais, o valor correto já está salvo em task.salesValue
+                             if (task.salesValue && task.salesValue > 0) {
+                               return new Intl.NumberFormat('pt-BR', {
+                                 style: 'currency',
+                                 currency: 'BRL'
+                               }).format(task.salesValue);
+                             }
+                             
+                             // Fallback: calcular a partir dos produtos selecionados
+                             if (task.prospectItems) {
+                               const partialValue = task.prospectItems
+                                 .filter(item => item.selected && item.quantity && item.price)
+                                 .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+                               
+                               if (partialValue > 0) {
+                                 return new Intl.NumberFormat('pt-BR', {
+                                   style: 'currency',
+                                   currency: 'BRL'
+                                 }).format(partialValue);
+                               }
+                             }
+                             
+                             // Fallback para checklist (compatibilidade)
+                             if (task.checklist) {
+                               const partialValue = task.checklist
+                                 .filter(item => item.selected && item.quantity && item.price)
+                                 .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+                               
+                               if (partialValue > 0) {
+                                 return new Intl.NumberFormat('pt-BR', {
+                                   style: 'currency',
+                                   currency: 'BRL'
+                                 }).format(partialValue);
+                               }
+                             }
+                           }
+                           
+                           // Se é venda perdida, mostra R$ 0,00
+                           if (salesStatus === 'perdido') {
+                             return new Intl.NumberFormat('pt-BR', {
+                               style: 'currency',
+                               currency: 'BRL'
+                             }).format(0);
+                           }
+                           
+                           return '-';
+                         })()}
+                       </TableCell>
                       <TableCell>
                         <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' : status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' : ''}>
                           {status.label}
