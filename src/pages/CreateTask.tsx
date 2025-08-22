@@ -38,6 +38,44 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredClientCodes, setFilteredClientCodes] = useState<{code: string, name: string}[]>([]);
   
+  // Função para carregar dados anteriores do cliente
+  const loadPreviousClientData = async (clientCode: string) => {
+    try {
+      // Buscar a task mais recente para este código de cliente
+      const { data: previousTasks, error } = await supabase
+        .from('tasks')
+        .select('property, email, propertyHectares')
+        .eq('clientCode', clientCode)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Erro ao buscar dados anteriores:', error);
+        return;
+      }
+
+      if (previousTasks && previousTasks.length > 0) {
+        const previousTask = previousTasks[0];
+        
+        // Preencher automaticamente os campos com os dados anteriores
+        setTask(prev => ({
+          ...prev,
+          property: previousTask.property || prev.property,
+          email: previousTask.email || prev.email,
+          propertyHectares: previousTask.propertyHectares || prev.propertyHectares
+        }));
+
+        // Mostrar notificação sobre os dados preenchidos
+        toast({
+          title: "Dados preenchidos automaticamente",
+          description: "Informações de tasks anteriores foram carregadas para este cliente.",
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados anteriores:', error);
+    }
+  };
+  
   // Códigos de cliente reais
   const clientCodes = [
     { code: "50001", name: "PEDRO IRANI TONELLI" },
@@ -2935,9 +2973,37 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                         setShowDropdown(true);
                       }
                     }}
-                    onBlur={() => {
+                    onBlur={async () => {
                       // Delay para permitir clique no dropdown
                       setTimeout(() => setShowDropdown(false), 200);
+                      
+                      // Se o código foi digitado manualmente, verificar se existe e carregar dados
+                      if (task.clientCode && task.clientCode.length >= 5) {
+                        const foundClient = clientCodes.find(code => code.code === task.clientCode);
+                        if (foundClient) {
+                          // Atualizar nome do cliente se não foi preenchido
+                          if (!task.client || task.client !== foundClient.name) {
+                            setTask(prev => ({
+                              ...prev,
+                              client: foundClient.name
+                            }));
+                          }
+                          // Carregar dados anteriores
+                          await loadPreviousClientData(task.clientCode);
+                        }
+                      }
+                    }}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter' && task.clientCode) {
+                        const foundClient = clientCodes.find(code => code.code === task.clientCode);
+                        if (foundClient) {
+                          setTask(prev => ({
+                            ...prev,
+                            client: foundClient.name
+                          }));
+                          await loadPreviousClientData(task.clientCode);
+                        }
+                      }
                     }}
                     placeholder="Digite o código ou nome do cliente" 
                   />
@@ -2947,13 +3013,16 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                         <div
                           key={clientCodeItem.code}
                           className="px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center"
-                          onClick={() => {
+                         onClick={async () => {
                             setTask(prev => ({
                               ...prev,
                               clientCode: clientCodeItem.code,
                               client: clientCodeItem.name
                             }));
                             setShowDropdown(false);
+                            
+                            // Buscar dados anteriores do cliente
+                            await loadPreviousClientData(clientCodeItem.code);
                           }}
                         >
                           <span className="font-medium">{clientCodeItem.code}</span>
