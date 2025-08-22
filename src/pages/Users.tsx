@@ -182,43 +182,24 @@ export const Users: React.FC = () => {
     }
 
     try {
-      // Primeiro buscar o user_id do perfil
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('id', userId)
-        .single();
+      // Chamar a Edge Function segura para deletar usuário
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { profileId: userId }
+      });
 
-      if (profileError) {
-        console.error('Erro ao buscar perfil:', profileError);
-        toast.error('Erro ao buscar dados do usuário');
+      if (error) {
+        console.error('Erro ao deletar usuário:', error);
+        toast.error(error.message || 'Erro ao deletar usuário');
         return;
       }
 
-      // Deletar o perfil primeiro (devido às foreign keys)
-      const { error: profileDeleteError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
-      if (profileDeleteError) {
-        console.error('Erro ao deletar perfil:', profileDeleteError);
-        toast.error('Erro ao deletar perfil do usuário');
+      if (data?.error) {
+        console.error('Erro na resposta:', data.error);
+        toast.error(data.error);
         return;
       }
 
-      // Deletar o usuário da tabela auth.users usando o admin client
-      const { error: userDeleteError } = await supabase.auth.admin.deleteUser(
-        profileData.user_id
-      );
-
-      if (userDeleteError) {
-        console.error('Erro ao deletar usuário:', userDeleteError);
-        toast.error('Erro ao deletar usuário do sistema de autenticação');
-        return;
-      }
-
-      toast.success(`Usuário "${userName}" deletado com sucesso`);
+      toast.success(data?.message || `Usuário "${userName}" deletado com sucesso`);
       loadData();
     } catch (error) {
       console.error('Erro ao deletar usuário:', error);
