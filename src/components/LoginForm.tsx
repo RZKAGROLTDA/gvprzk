@@ -32,6 +32,8 @@ export const LoginForm: React.FC = () => {
     filial_id: ''
   });
   const [filiais, setFiliais] = useState<Array<{id: string, nome: string}>>([]);
+  const [filiaisLoading, setFiliaisLoading] = useState(true);
+  const [filiaisError, setFiliaisError] = useState('');
 
   const { validateField, getFieldErrors, hasErrors, validationRules } = useInputValidation();
   const { monitorLoginAttempt, monitorPasswordReset, checkRateLimit } = useSecurityMonitor();
@@ -42,16 +44,44 @@ export const LoginForm: React.FC = () => {
   }, []);
 
   const loadFiliais = async () => {
+    setFiliaisLoading(true);
+    setFiliaisError('');
+    
     try {
+      console.log('Carregando filiais...');
       const { data, error } = await supabase
         .from('filiais')
         .select('id, nome')
         .order('nome');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erro RLS ao carregar filiais:', error);
+        throw error;
+      }
+      
+      console.log('Filiais carregadas:', data?.length || 0);
       setFiliais(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar filiais:', error);
+      
+      if (!data || data.length === 0) {
+        setFiliaisError('Nenhuma filial encontrada');
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || 'Erro ao carregar filiais';
+      console.error('Erro ao carregar filiais:', errorMessage);
+      setFiliaisError(errorMessage);
+      
+      toast({
+        title: "Erro ao carregar filiais",
+        description: "Tentando novamente em 3 segundos...",
+        variant: "destructive",
+      });
+      
+      // Retry after 3 seconds
+      setTimeout(() => {
+        loadFiliais();
+      }, 3000);
+    } finally {
+      setFiliaisLoading(false);
     }
   };
 
@@ -520,22 +550,71 @@ export const LoginForm: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="signup-filial">Filial</Label>
-                  <Select value={formData.filial_id} onValueChange={(value) => handleInputChange('filial_id', value)}>
+                  <Select 
+                    value={formData.filial_id} 
+                    onValueChange={(value) => handleInputChange('filial_id', value)}
+                    disabled={filiaisLoading}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione sua filial" />
+                      <SelectValue 
+                        placeholder={
+                          filiaisLoading 
+                            ? "Carregando filiais..." 
+                            : filiaisError 
+                              ? "Erro ao carregar filiais" 
+                              : "Selecione sua filial"
+                        } 
+                      />
+                      {filiaisLoading && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Sem filial</SelectItem>
-                      {filiais.map((filial) => (
-                        <SelectItem key={filial.id} value={filial.id}>
+                      {filiaisLoading ? (
+                        <SelectItem value="loading" disabled>
                           <div className="flex items-center gap-2">
-                            <Building className="h-4 w-4" />
-                            {filial.nome}
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Carregando filiais...
                           </div>
                         </SelectItem>
-                      ))}
+                      ) : filiaisError ? (
+                        <SelectItem value="error" disabled>
+                          <div className="flex items-center gap-2 text-destructive">
+                            <Building className="h-4 w-4" />
+                            {filiaisError}
+                          </div>
+                        </SelectItem>
+                      ) : (
+                        <>
+                          <SelectItem value="none">Sem filial</SelectItem>
+                          {filiais.map((filial) => (
+                            <SelectItem key={filial.id} value={filial.id}>
+                              <div className="flex items-center gap-2">
+                                <Building className="h-4 w-4" />
+                                {filial.nome}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
+                  {filiaisError && (
+                    <div className="text-xs text-destructive flex items-center gap-1">
+                      <span>Erro ao carregar filiais.</span>
+                      <button
+                        type="button"
+                        onClick={loadFiliais}
+                        className="text-primary hover:underline"
+                        disabled={filiaisLoading}
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
+                  {!filiaisLoading && !filiaisError && filiais.length === 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Nenhuma filial disponível no momento.
+                    </div>
+                  )}
                 </div>
                 
                 <Button type="submit" className="w-full" disabled={loading}>
