@@ -2708,8 +2708,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         ...task,
         taskType: getTaskTypeFromCategory(taskCategory),
         // Garantir que taskType está correto
-        responsible: profile?.name || task.responsible, // Usar o nome do profile como vendedor
-        filial: profile?.filial_id || task.filial, // Garantir filial_id
+        responsible: profile?.name || 'Vendedor', // SEMPRE usar o nome do vendedor logado
+        filial: profile?.filial_nome || 'Filial', // Usar nome da filial do profile
         startDate: now,
         // Data atual exata
         endDate: now,
@@ -2725,12 +2725,12 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     try {
       const finalTaskData = {
         ...taskData,
-        responsible: profile?.name || taskData.responsible, // Nome do vendedor do profile
-        filial: profile?.filial_id || taskData.filial, // ID da filial do profile
+        responsible: profile?.name || 'Vendedor', // SEMPRE nome do vendedor logado
+        filial: profile?.filial_nome || 'Filial', // Nome da filial do profile
         createdAt: now,
         updatedAt: now,
         status: 'pending' as const,
-        createdBy: profile?.name || taskData.responsible || 'Usuário'
+        createdBy: profile?.name || 'Usuário'
       };
       
       // Use the useTasks hook which has built-in duplicate prevention
@@ -2931,10 +2931,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="responsible">Nome do Contato</Label>
-                <Input id="responsible" value={task.responsible} onChange={e => setTask(prev => ({
+                <Label htmlFor="contact">Nome do Contato</Label>
+                <Input id="contact" value={task.client} onChange={e => setTask(prev => ({
                 ...prev,
-                responsible: e.target.value
+                client: e.target.value
               }))} placeholder="Nome do Contato" />
               </div>
 
