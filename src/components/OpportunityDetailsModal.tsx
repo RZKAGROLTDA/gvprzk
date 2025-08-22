@@ -552,7 +552,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   onClick={handleStatusUpdate}
                   disabled={isUpdating || selectedStatus === currentStatus}
                 >
-                  {isUpdating ? 'Atualizando...' : 'Atualizar Status'}
+                  {isUpdating ? 'Salvando...' : 'Salvar'}
                 </Button>
               </div>
             </div>
