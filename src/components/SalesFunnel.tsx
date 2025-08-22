@@ -855,16 +855,33 @@ export const SalesFunnel: React.FC = () => {
                           }
                           
                           // Se é uma venda parcial, calcula o valor dos produtos selecionados
-                          if (salesStatus === 'parcial' && task.checklist) {
-                            const partialValue = task.checklist
-                              .filter(item => item.selected && item.quantity && item.price)
-                              .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+                          if (salesStatus === 'parcial') {
+                            // Primeiro tenta calcular a partir dos prospectItems
+                            if (task.prospectItems) {
+                              const partialValue = task.prospectItems
+                                .filter(item => item.selected && item.quantity && item.price)
+                                .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+                              
+                              if (partialValue > 0) {
+                                return new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL'
+                                }).format(partialValue);
+                              }
+                            }
                             
-                            if (partialValue > 0) {
-                              return new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL'
-                              }).format(partialValue);
+                            // Fallback para checklist (compatibilidade)
+                            if (task.checklist) {
+                              const partialValue = task.checklist
+                                .filter(item => item.selected && item.quantity && item.price)
+                                .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+                              
+                              if (partialValue > 0) {
+                                return new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL'
+                                }).format(partialValue);
+                              }
                             }
                           }
                           
