@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Shield, Building } from 'lucide-react';
+import { Users as UsersIcon, Shield, Building, Trash2 } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -172,6 +172,57 @@ export const Users: React.FC = () => {
     } catch (error) {
       console.error('Erro ao atualizar aprovação:', error);
       toast.error('Erro ao atualizar aprovação');
+    }
+  };
+
+  const deleteUser = async (userId: string, userName: string) => {
+    // Confirmação antes de deletar
+    if (!confirm(`Tem certeza que deseja deletar permanentemente o usuário "${userName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    try {
+      // Primeiro buscar o user_id do perfil
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Erro ao buscar perfil:', profileError);
+        toast.error('Erro ao buscar dados do usuário');
+        return;
+      }
+
+      // Deletar o perfil primeiro (devido às foreign keys)
+      const { error: profileDeleteError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileDeleteError) {
+        console.error('Erro ao deletar perfil:', profileDeleteError);
+        toast.error('Erro ao deletar perfil do usuário');
+        return;
+      }
+
+      // Deletar o usuário da tabela auth.users usando o admin client
+      const { error: userDeleteError } = await supabase.auth.admin.deleteUser(
+        profileData.user_id
+      );
+
+      if (userDeleteError) {
+        console.error('Erro ao deletar usuário:', userDeleteError);
+        toast.error('Erro ao deletar usuário do sistema de autenticação');
+        return;
+      }
+
+      toast.success(`Usuário "${userName}" deletado com sucesso`);
+      loadData();
+    } catch (error) {
+      console.error('Erro ao deletar usuário:', error);
+      toast.error('Erro ao deletar usuário');
     }
   };
 
@@ -344,6 +395,7 @@ export const Users: React.FC = () => {
                 <TableHead>Permissão</TableHead>
                 <TableHead>Filial</TableHead>
                 <TableHead>Cargo</TableHead>
+                {currentUserProfile?.role === 'manager' && <TableHead>Ações</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -422,9 +474,21 @@ export const Users: React.FC = () => {
                            )}
                          </div>
                        )}
-                     </div>
-                  </TableCell>
-                </TableRow>
+                      </div>
+                   </TableCell>
+                   {currentUserProfile?.role === 'manager' && (
+                     <TableCell>
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         onClick={() => deleteUser(profile.id, profile.name)}
+                         className="text-red-600 hover:text-red-700 hover:border-red-300"
+                       >
+                         <Trash2 className="h-4 w-4" />
+                       </Button>
+                     </TableCell>
+                   )}
+                 </TableRow>
               ))}
             </TableBody>
           </Table>
