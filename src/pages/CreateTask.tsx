@@ -2704,29 +2704,33 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     // Capturar data e hora atual exatos no momento da criação
     const now = new Date();
     const currentTime = format(now, 'HH:mm');
-    const taskData = {
-      ...task,
-      taskType: getTaskTypeFromCategory(taskCategory),
-      // Garantir que taskType está correto
-      startDate: now,
-      // Data atual exata
-      endDate: now,
-      // Data atual exata
-      startTime: currentTime,
-      // Horário atual exato
-      endTime: currentTime,
-      // Horário atual exato
-      checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
-      reminders,
-      equipmentList
-    };
+      const taskData = {
+        ...task,
+        taskType: getTaskTypeFromCategory(taskCategory),
+        // Garantir que taskType está correto
+        responsible: profile?.name || task.responsible, // Usar o nome do profile como vendedor
+        filial: profile?.filial_id || task.filial, // Garantir filial_id
+        startDate: now,
+        // Data atual exata
+        endDate: now,
+        // Data atual exata
+        startTime: currentTime,
+        // Horário atual exato
+        endTime: currentTime,
+        // Horário atual exato
+        checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
+        reminders,
+        equipmentList
+      };
     try {
       const finalTaskData = {
         ...taskData,
+        responsible: profile?.name || taskData.responsible, // Nome do vendedor do profile
+        filial: profile?.filial_id || taskData.filial, // ID da filial do profile
         createdAt: now,
         updatedAt: now,
         status: 'pending' as const,
-        createdBy: taskData.responsible || 'Usuário'
+        createdBy: profile?.name || taskData.responsible || 'Usuário'
       };
       
       // Use the useTasks hook which has built-in duplicate prevention
