@@ -2972,10 +2972,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="contact">Nome do Contato</Label>
-                <Input id="contact" value={task.client} onChange={e => setTask(prev => ({
-                ...prev,
-                client: e.target.value
-              }))} placeholder="Nome do Contato" />
+                <Input 
+                  id="contact" 
+                  value={task.responsible} 
+                  onChange={e => setTask(prev => ({
+                    ...prev,
+                    responsible: e.target.value
+                  }))} 
+                  placeholder="Nome do Contato" 
+                />
               </div>
 
               
