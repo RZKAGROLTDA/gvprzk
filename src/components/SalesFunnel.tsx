@@ -835,7 +835,14 @@ export const SalesFunnel: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>{task.client}</TableCell>
-                      <TableCell>{task.responsible}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {task.responsible || 'Não informado'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Vendedor
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {task.salesValue ? new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
