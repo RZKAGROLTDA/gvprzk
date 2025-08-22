@@ -79,7 +79,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     salesConfirmed: supabaseTask.sales_confirmed, // Preservar valor exato do banco
     familyProduct: supabaseTask.family_product || '',
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
-    propertyHectares: supabaseTask.propertyHectares || 0,
+    propertyHectares: supabaseTask.propertyhectares || 0,
     equipmentList: supabaseTask.equipment_list || [],
   };
 

@@ -8,6 +8,18 @@ import { toast } from '@/components/ui/use-toast';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
 
+// Função helper para gerar nome padrão da tarefa
+const getDefaultTaskName = (taskType: string): string => {
+  switch (taskType) {
+    case 'ligacao':
+      return 'Ligação para Cliente';
+    case 'checklist':
+      return 'Checklist da Oficina';
+    default:
+      return 'Visita à Fazenda';
+  }
+};
+
 export const useTasks = () => {
   const { user } = useAuth();
   const { isOnline, saveTaskOffline, getOfflineTasks } = useOffline();
@@ -183,17 +195,28 @@ export const useTasks = () => {
         // Criar dados padronizados com snapshot de filial
         const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
         
+        // Validação de campos obrigatórios
+        const requiredFields = {
+          name: standardizedTaskData.name || getDefaultTaskName(standardizedTaskData.taskType || 'prospection'),
+          responsible: standardizedTaskData.responsible || user.email || '',
+          client: standardizedTaskData.client
+        };
+
+        if (!requiredFields.client) {
+          throw new Error('Cliente é obrigatório');
+        }
+
         // Tentar salvar online
         const { data: task, error: taskError } = await supabase
           .from('tasks')
           .insert({
-            name: standardizedTaskData.name,
-            responsible: standardizedTaskData.responsible,
-            client: standardizedTaskData.client,
-            clientCode: taskData.clientCode,
+            name: requiredFields.name,
+            responsible: requiredFields.responsible,
+            client: requiredFields.client,
+            clientcode: taskData.clientCode || '',
             property: standardizedTaskData.property || '',
-            email: taskData.email,
-            propertyHectares: taskData.propertyHectares,
+            email: taskData.email || '',
+            propertyhectares: taskData.propertyHectares || 0,
             filial: standardizedTaskData.filial || '',
             task_type: standardizedTaskData.taskType || 'prospection',
             start_date: standardizedTaskData.startDate?.toISOString().split('T')[0],
@@ -266,7 +289,25 @@ export const useTasks = () => {
         
         return task;
       } catch (error: any) {
-        // Se falhar online, salvar offline
+        console.error('❌ createTask: Erro ao criar tarefa:', error);
+        
+        // Melhor tratamento de erro com detalhes específicos
+        let errorMessage = "Erro ao criar tarefa";
+        if (error.message.includes('violates row-level security')) {
+          errorMessage = "Erro de permissão. Verifique se está logado corretamente.";
+        } else if (error.message.includes('null value')) {
+          errorMessage = "Campos obrigatórios não preenchidos. Verifique os dados.";
+        } else if (error.message.includes('Cliente é obrigatório')) {
+          errorMessage = "Cliente é obrigatório para criar a tarefa";
+        }
+        
+        toast({
+          title: "❌ Erro",
+          description: errorMessage,
+          variant: "destructive",
+        });
+
+        // Se falhar online, salvar offline como fallback
         saveTaskOffline(tempTask);
         setTasks(prev => [tempTask, ...prev]);
         
