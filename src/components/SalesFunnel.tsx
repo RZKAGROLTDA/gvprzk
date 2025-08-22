@@ -39,9 +39,9 @@ interface ClientDetails {
 export const SalesFunnel: React.FC = () => {
   const {
     tasks,
-    loading,
-    loadTasks
+    loading
   } = useTasks();
+  // Remove loadTasks from destructuring to prevent excessive reloads
   const {
     user
   } = useAuth();
@@ -979,25 +979,9 @@ export const SalesFunnel: React.FC = () => {
     }} onTaskUpdated={updatedTask => {
       console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
 
-      // Force reload of all tasks to ensure data consistency
-      console.log('🔄 FUNNEL: Forçando reload completo de tasks...');
-      loadTasks().then(() => {
-        console.log('✅ FUNNEL: Tasks recarregadas com sucesso');
-
-        // Update selected task with latest data from database
-        const refreshedTask = tasks.find(t => t.id === updatedTask.id);
-        if (refreshedTask) {
-          console.log('🔄 FUNNEL: Atualizando selectedTask com dados refreshed:', refreshedTask);
-          setSelectedTask(refreshedTask);
-        } else {
-          console.log('⚠️ FUNNEL: Task refreshed não encontrada, mantendo dados atualizados');
-          setSelectedTask(updatedTask);
-        }
-      }).catch(error => {
-        console.error('❌ FUNNEL: Erro ao recarregar tasks:', error);
-        // Fallback to optimistic update
-        setSelectedTask(updatedTask);
-      });
+      // Update selected task with the received data (no need to force reload)
+      console.log('🔄 FUNNEL: Atualizando selectedTask com dados recebidos:', updatedTask);
+      setSelectedTask(updatedTask);
     }} />
     </div>;
 };
