@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
+import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { Task } from '@/types/task';
 
@@ -77,6 +77,9 @@ export const SalesFunnel: React.FC = () => {
         } = await supabase.from('filiais').select('*').order('nome');
         setConsultants(profilesData || []);
         setFiliais(filiaisData || []);
+        
+        // Carregar cache de filiais para resolução de UUIDs
+        await loadFiliaisCache();
       } catch (error) {
         console.error('Erro ao carregar filtros:', error);
       } finally {
@@ -849,7 +852,7 @@ export const SalesFunnel: React.FC = () => {
                               return filial?.nome || 'Filial não informada';
                             }
                             // Fallback: usar a filial da task se não encontrar do vendedor
-                            return task.filial || 'Filial não informada';
+                            return resolveFilialName(task.filial) || 'Filial não informada';
                           })()}
                         </div>
                       </TableCell>
