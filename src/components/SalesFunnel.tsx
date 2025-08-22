@@ -857,10 +857,38 @@ export const SalesFunnel: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {task.salesValue ? new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                  }).format(task.salesValue) : '-'}
+                        {(() => {
+                          // Calcular o valor total da oportunidade (potencial máximo)
+                          let totalOpportunityValue = 0;
+                          
+                          // Calcular a partir dos produtos prospect
+                          if (task.prospectItems && task.prospectItems.length > 0) {
+                            totalOpportunityValue = task.prospectItems.reduce((sum, item) => {
+                              const quantity = item.quantity || 0;
+                              const price = item.price || 0;
+                              return sum + (quantity * price);
+                            }, 0);
+                          }
+                          
+                          // Se não tem produtos prospect, calcular a partir do checklist
+                          if (totalOpportunityValue === 0 && task.checklist && task.checklist.length > 0) {
+                            totalOpportunityValue = task.checklist.reduce((sum, item) => {
+                              const quantity = item.quantity || 0;
+                              const price = item.price || 0;
+                              return sum + (quantity * price);
+                            }, 0);
+                          }
+                          
+                          // Se ainda não tem valor, usar salesValue como fallback
+                          if (totalOpportunityValue === 0 && task.salesValue) {
+                            totalOpportunityValue = task.salesValue;
+                          }
+                          
+                          return totalOpportunityValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                          }).format(totalOpportunityValue) : '-';
+                        })()}
                       </TableCell>
                        <TableCell>
                          {(() => {
