@@ -28,7 +28,7 @@ export const LoginForm: React.FC = () => {
     email: '',
     password: '',
     name: '',
-    role: 'consultant',
+    role: 'sales_consultant',
     filial_id: ''
   });
   const [filiais, setFiliais] = useState<Array<{id: string, nome: string}>>([]);
@@ -539,7 +539,6 @@ export const LoginForm: React.FC = () => {
                       <SelectValue placeholder="Selecione seu cargo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="consultant">Consultor</SelectItem>
                       <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                       <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
                       <SelectItem value="rac">RAC</SelectItem>
