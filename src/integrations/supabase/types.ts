@@ -318,6 +318,7 @@ export type Database = {
         Row: {
           check_in_location: Json | null
           client: string
+          clientcode: string | null
           created_at: string
           created_by: string
           documents: string[] | null
@@ -346,6 +347,7 @@ export type Database = {
         Insert: {
           check_in_location?: Json | null
           client: string
+          clientcode?: string | null
           created_at?: string
           created_by: string
           documents?: string[] | null
@@ -374,6 +376,7 @@ export type Database = {
         Update: {
           check_in_location?: Json | null
           client?: string
+          clientcode?: string | null
           created_at?: string
           created_by?: string
           documents?: string[] | null
