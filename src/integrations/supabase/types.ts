@@ -453,6 +453,16 @@ export type Database = {
         Args: { user_email: string }
         Returns: boolean
       }
+      clean_duplicate_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          action: string
+          client: string
+          created_at: string
+          responsible: string
+          task_id: string
+        }[]
+      }
       cleanup_invitation_tokens: {
         Args: Record<PropertyKey, never>
         Returns: undefined
