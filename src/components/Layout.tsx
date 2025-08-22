@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Settings, LogOut, Users, Building, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useSessionSecurity } from '@/hooks/useSessionSecurity';
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -19,6 +20,9 @@ export const Layout: React.FC<LayoutProps> = ({
   const {
     isAdmin
   } = useProfile();
+  
+  // Initialize session security monitoring
+  useSessionSecurity();
   const isActive = (path: string) => location.pathname === path;
   const handleLogout = async () => {
     await signOut();

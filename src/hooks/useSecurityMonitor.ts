@@ -70,12 +70,25 @@ export const useSecurityMonitor = () => {
     }
   }, [user?.id]);
 
-  const monitorLoginAttempt = useCallback((email: string, success: boolean) => {
+  const monitorLoginAttempt = useCallback(async (email: string, success: boolean, ipAddress?: string) => {
+    // Check for suspicious login patterns
+    if (ipAddress) {
+      try {
+        await supabase.rpc('check_suspicious_login_pattern', {
+          user_email: email.toLowerCase(),
+          ip_addr: ipAddress
+        });
+      } catch (error) {
+        console.error('Suspicious login pattern check failed:', error);
+      }
+    }
+    
     logSecurityEvent({
       type: success ? 'login_attempt' : 'failed_login',
       metadata: {
         email: email.toLowerCase(),
-        success
+        success,
+        ip_address: ipAddress
       }
     });
   }, [logSecurityEvent]);

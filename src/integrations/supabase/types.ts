@@ -501,6 +501,10 @@ export type Database = {
         Args: { user_email: string }
         Returns: boolean
       }
+      check_suspicious_login_pattern: {
+        Args: { ip_addr: unknown; user_email: string }
+        Returns: boolean
+      }
       clean_duplicate_tasks: {
         Args: Record<PropertyKey, never>
         Returns: {
