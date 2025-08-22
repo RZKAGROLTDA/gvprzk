@@ -8,24 +8,33 @@ import { Shield, AlertTriangle, ExternalLink } from 'lucide-react';
 interface SecurityConfigurationProps {
   onConfigureOTP?: () => void;
   onConfigurePasswordProtection?: () => void;
+  onCleanupAuditLogs?: () => void;
 }
 
 export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
   onConfigureOTP,
-  onConfigurePasswordProtection
+  onConfigurePasswordProtection,
+  onCleanupAuditLogs
 }) => {
   const securityChecks = [
+    {
+      id: 'email_privacy',
+      title: 'Email Privacy Protection',
+      status: 'secure',
+      description: 'Email addresses are now completely hidden from same-filial users for enhanced privacy.',
+    },
     {
       id: 'audit_logs',
       title: 'Audit Logs Protection',
       status: 'secure',
-      description: 'Audit logs are protected with RLS policies that prevent unauthorized access and modification.',
+      description: 'Audit logs are protected with RLS policies and automated cleanup with data retention.',
+      action: 'cleanup-logs'
     },
     {
       id: 'invitation_security',
       title: 'User Invitation Security',
       status: 'secure',
-      description: 'User invitations have been secured with restrictive RLS policies.',
+      description: 'Enhanced token validation and security logging implemented for invitations.',
     },
     {
       id: 'role_management',
@@ -104,6 +113,16 @@ export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
                 {check.description}
               </CardDescription>
               
+              {check.action === 'cleanup-logs' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCleanupAuditLogs}
+                  className="flex items-center gap-2"
+                >
+                  Run Cleanup
+                </Button>
+              )}
               {check.action && check.link && (
                 <Button
                   variant="outline"

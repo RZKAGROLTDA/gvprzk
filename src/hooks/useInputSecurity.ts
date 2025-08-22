@@ -82,10 +82,28 @@ export const useInputSecurity = () => {
     };
   }, [sanitizeText]);
 
+  const detectMaliciousInput = useMemo(() => {
+    return (input: string): boolean => {
+      const maliciousPatterns = [
+        /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
+        /javascript:/gi,
+        /vbscript:/gi,
+        /on\w+\s*=/gi,
+        /data:text\/html/gi,
+        /<iframe/gi,
+        /<embed/gi,
+        /<object/gi
+      ];
+
+      return maliciousPatterns.some(pattern => pattern.test(input));
+    };
+  }, []);
+
   return {
     sanitizeText,
     sanitizeFileName,
     validateEmail,
-    sanitizeTaskInput
+    sanitizeTaskInput,
+    detectMaliciousInput
   };
 };

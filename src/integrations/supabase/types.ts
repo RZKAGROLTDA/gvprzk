@@ -519,6 +519,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_security_audit_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       consume_invitation_token: {
         Args: { token_value: string }
         Returns: Json
