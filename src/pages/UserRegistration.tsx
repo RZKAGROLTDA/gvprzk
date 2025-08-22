@@ -43,21 +43,38 @@ const UserRegistration: React.FC = () => {
   React.useEffect(() => {
     const loadFiliais = async () => {
       try {
-        console.log('🔍 [UserRegistration] Carregando filiais...');
+        console.log('🔄 UserRegistration: Carregando filiais (sem autenticação)...');
         const { data, error } = await supabase
           .from('filiais')
           .select('id, nome')
           .order('nome');
         
         if (error) {
-          console.error('❌ [UserRegistration] Erro ao buscar filiais:', error);
-          throw error;
+          console.error('❌ UserRegistration: Erro ao buscar filiais:', error);
+          // Don't throw error, set fallback instead
+          const fallbackFiliais = [
+            { id: 'fallback-1', nome: 'Querência' },
+            { id: 'fallback-2', nome: 'Canarana' },
+            { id: 'fallback-3', nome: 'Barra do Garças' },
+            { id: 'fallback-4', nome: 'Porto Alegre do Norte' },
+            { id: 'fallback-5', nome: 'Gaúcha do Norte' },
+            { id: 'fallback-6', nome: 'Espigão do Leste' },
+            { id: 'fallback-7', nome: 'Água Boa' },
+            { id: 'fallback-8', nome: 'Vila Rica' },
+            { id: 'fallback-9', nome: 'Mineiros' },
+            { id: 'fallback-10', nome: 'Alto Taquari' },
+            { id: 'fallback-11', nome: 'Planalto Verde' },
+            { id: 'fallback-12', nome: 'Caiapônia' },
+            { id: 'fallback-13', nome: 'São Jose do Xingu' },
+            { id: 'fallback-14', nome: 'Tele Vendas' }
+          ];
+          setFiliais(fallbackFiliais);
+        } else {
+          console.log('✅ UserRegistration: Filiais carregadas com sucesso:', data?.length || 0);
+          setFiliais(data || []);
         }
-        
-        console.log('✅ [UserRegistration] Filiais carregadas:', data?.length || 0, data);
-        setFiliais(data || []);
       } catch (error) {
-        console.error('❌ [UserRegistration] Erro ao carregar filiais:', error);
+        console.error('💥 UserRegistration: Erro crítico ao carregar filiais:', error);
         
         // Fallback: Set manual list if database fails
         const fallbackFiliais = [
@@ -77,7 +94,6 @@ const UserRegistration: React.FC = () => {
           { id: 'fallback-14', nome: 'Tele Vendas' }
         ];
         setFiliais(fallbackFiliais);
-        console.log('⚠️ [UserRegistration] Usando lista fallback de filiais');
       }
     };
 

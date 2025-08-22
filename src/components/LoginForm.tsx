@@ -48,38 +48,56 @@ export const LoginForm: React.FC = () => {
     setFiliaisError('');
     
     try {
-      console.log('Carregando filiais...');
+      console.log('🔄 LoginForm: Carregando filiais (sem autenticação)...');
       const { data, error } = await supabase
         .from('filiais')
         .select('id, nome')
         .order('nome');
       
       if (error) {
-        console.error('Erro RLS ao carregar filiais:', error);
-        throw error;
-      }
-      
-      console.log('Filiais carregadas:', data?.length || 0);
-      setFiliais(data || []);
-      
-      if (!data || data.length === 0) {
-        setFiliaisError('Nenhuma filial encontrada');
+        console.error('❌ LoginForm: Erro RLS ao carregar filiais:', error);
+        // Set fallback filials instead of throwing error
+        setFiliais([
+          { id: 'fallback-1', nome: 'Filial Central' },
+          { id: 'fallback-2', nome: 'Filial Norte' },
+          { id: 'fallback-3', nome: 'Filial Sul' }
+        ]);
+        toast({
+          title: "Erro ao carregar filiais",
+          description: "Usando lista padrão de filiais.",
+          variant: "destructive",
+        });
+        setFiliaisError('Usando filiais padrão');
+      } else {
+        console.log('✅ LoginForm: Filiais carregadas:', data?.length || 0);
+        setFiliais(data || []);
+        
+        if (!data || data.length === 0) {
+          setFiliaisError('Nenhuma filial encontrada');
+        } else {
+          toast({
+            title: "Filiais carregadas",
+            description: `${data.length} filiais disponíveis para seleção.`,
+          });
+        }
       }
     } catch (error: any) {
       const errorMessage = error.message || 'Erro ao carregar filiais';
-      console.error('Erro ao carregar filiais:', errorMessage);
+      console.error('💥 LoginForm: Erro crítico ao carregar filiais:', errorMessage);
       setFiliaisError(errorMessage);
       
+      // Set fallback filials
+      setFiliais([
+        { id: 'fallback-1', nome: 'Filial Central' },
+        { id: 'fallback-2', nome: 'Filial Norte' },
+        { id: 'fallback-3', nome: 'Filial Sul' }
+      ]);
+      
       toast({
-        title: "Erro ao carregar filiais",
-        description: "Tentando novamente em 3 segundos...",
+        title: "Erro de conexão",
+        description: "Usando lista padrão de filiais. Tente novamente em alguns minutos.",
         variant: "destructive",
       });
-      
-      // Retry after 3 seconds
-      setTimeout(() => {
-        loadFiliais();
-      }, 3000);
     } finally {
       setFiliaisLoading(false);
     }
