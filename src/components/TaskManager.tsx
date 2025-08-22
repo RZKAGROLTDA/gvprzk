@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,20 +20,41 @@ import {
 export const TaskManager: React.FC = () => {
   const { getOfflineTasks, isOnline, isSyncing } = useOffline();
   const [tasks, setTasks] = useState<Task[]>([]);
+  
+  // Cache e debounce para otimização
+  const lastLoadTime = useRef<number>(0);
+  const loadCooldown = 8000; // 8 segundos entre carregamentos
+  const tasksCache = useRef<Task[]>([]);
+
+  const loadTasks = useCallback(() => {
+    const now = Date.now();
+    
+    // Implementar cooldown para evitar carregamentos excessivos
+    if (now - lastLoadTime.current < loadCooldown) {
+      return;
+    }
+    lastLoadTime.current = now;
+
+    const offlineTasks = getOfflineTasks();
+    
+    // Verificar se os dados realmente mudaram antes de atualizar o estado
+    const tasksString = JSON.stringify(offlineTasks);
+    const cacheString = JSON.stringify(tasksCache.current);
+    
+    if (tasksString !== cacheString) {
+      tasksCache.current = offlineTasks;
+      setTasks(offlineTasks);
+    }
+  }, [getOfflineTasks]);
 
   useEffect(() => {
-    // Carregar tarefas offline
-    const loadTasks = () => {
-      const offlineTasks = getOfflineTasks();
-      setTasks(offlineTasks);
-    };
-    
     loadTasks();
     
-    // Atualizar a cada 3 segundos para capturar novas tarefas
-    const interval = setInterval(loadTasks, 3000);
+    // Reduzir frequência de refresh para 15 segundos
+    const interval = setInterval(loadTasks, 15000);
+    
     return () => clearInterval(interval);
-  }, []);
+  }, [loadTasks]);
 
   const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
     switch (priority) {

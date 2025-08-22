@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOffline } from '@/hooks/useOffline';
@@ -25,9 +25,36 @@ export const useTasks = () => {
   const { isOnline, saveTaskOffline, getOfflineTasks } = useOffline();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Cache e debounce para reduzir chamadas desnecessárias
+  const lastLoadTime = useRef<number>(0);
+  const loadCooldown = 3000; // 3 segundos entre carregamentos
+  const lastErrorTime = useRef<Record<string, number>>({});
+  const errorCooldown = 10000; // 10 segundos entre toasts de erro similares
 
-  const loadTasks = async (forceRefresh = false) => {
+  // Função helper para mostrar toast de erro com debounce
+  const showDebouncedErrorToast = (key: string, message: string) => {
+    const now = Date.now();
+    if (!lastErrorTime.current[key] || now - lastErrorTime.current[key] > errorCooldown) {
+      lastErrorTime.current[key] = now;
+      toast({
+        title: "Erro de conexão",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadTasks = useCallback(async (forceRefresh = false) => {
     if (!user) return;
+    
+    // Implementar cooldown para evitar carregamentos excessivos
+    const now = Date.now();
+    if (!forceRefresh && now - lastLoadTime.current < loadCooldown) {
+      console.log('🚫 useTasks: Load cooldown active, skipping');
+      return;
+    }
+    lastLoadTime.current = now;
     
     console.log(`🔄 useTasks: Loading tasks... ${forceRefresh ? '(FORCE REFRESH)' : ''}`);
     setLoading(true);
@@ -36,45 +63,75 @@ export const useTasks = () => {
       await loadFiliaisCache();
       
       if (isOnline) {
-        // Carregar do Supabase quando online
+        // Carregar do Supabase quando online com query otimizada
         const { data: tasksData, error } = await supabase
           .from('tasks')
           .select(`
-            *,
-            products (*),
-            reminders (*)
+            id,
+            name,
+            responsible,
+            client,
+            property,
+            filial,
+            task_type,
+            start_date,
+            end_date,
+            start_time,
+            end_time,
+            observations,
+            priority,
+            status,
+            created_at,
+            updated_at,
+            created_by,
+            is_prospect,
+            sales_value,
+            sales_confirmed,
+            prospect_notes,
+            photos,
+            documents,
+            check_in_location,
+            initial_km,
+            final_km
           `)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(100); // Limitar resultados para melhor performance
 
         if (error) {
           console.error('❌ useTasks: Error loading tasks from Supabase:', error);
           // Fallback para dados offline
           const offlineTasks = getOfflineTasks();
           setTasks(offlineTasks);
-          toast({
-            title: "Erro de conexão",
-            description: "Carregando dados offline disponíveis",
-            variant: "destructive",
-          });
+          showDebouncedErrorToast('load_tasks', "Carregando dados offline disponíveis");
           return;
         }
 
+        // Carregar produtos e lembretes apenas se necessário
+        let tasksWithRelations = tasksData;
+        if (tasksData && tasksData.length > 0) {
+          const { data: productsData } = await supabase
+            .from('products')
+            .select('*')
+            .in('task_id', tasksData.map(t => t.id));
+
+          const { data: remindersData } = await supabase
+            .from('reminders')
+            .select('*')
+            .in('task_id', tasksData.map(t => t.id));
+
+          // Associar dados relacionados
+          tasksWithRelations = tasksData.map(task => ({
+            ...task,
+            products: productsData?.filter(p => p.task_id === task.id) || [],
+            reminders: remindersData?.filter(r => r.task_id === task.id) || []
+          }));
+        }
+
         // Converter dados do Supabase para o formato da aplicação
-        const formattedTasks: Task[] = tasksData?.map(mapSupabaseTaskToTask) || [];
+        const formattedTasks: Task[] = tasksWithRelations?.map(mapSupabaseTaskToTask) || [];
 
         console.log(`✅ useTasks: Loaded ${formattedTasks.length} tasks from Supabase`);
         setTasks(formattedTasks);
-        
-        // Log status distribution for debugging
-        const statusBreakdown = formattedTasks.reduce((acc, task) => {
-          const status = task.salesConfirmed === true ? 'ganho' : 
-                        task.salesConfirmed === false ? 'perdido' : 
-                        task.isProspect ? 'prospect' : 'atividade';
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        console.log('📊 useTasks: Status breakdown:', statusBreakdown);
       } else {
         // Carregar dados offline quando desconectado
         const offlineTasks = getOfflineTasks();
@@ -82,7 +139,7 @@ export const useTasks = () => {
         
         console.log(`📱 useTasks: Loaded ${offlineTasks.length} tasks from offline cache`);
         
-        if (offlineTasks.length > 0) {
+        if (offlineTasks.length > 0 && forceRefresh) {
           toast({
             title: "📱 Modo Offline",
             description: `${offlineTasks.length} tarefas carregadas do cache local`,
@@ -95,15 +152,11 @@ export const useTasks = () => {
       const offlineTasks = getOfflineTasks();
       setTasks(offlineTasks);
       
-      toast({
-        title: "Erro na conexão",
-        description: "Carregando dados offline disponíveis",
-        variant: "destructive",
-      });
+      showDebouncedErrorToast('load_error', "Carregando dados offline disponíveis");
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, isOnline, getOfflineTasks]); // Dependências do useCallback
 
   // Lock map to prevent duplicate submissions
   const createTaskLocks = new Map<string, boolean>();
@@ -285,7 +338,7 @@ export const useTasks = () => {
         });
 
         // Recarregar tarefas para atualizar a lista (reduced frequency)
-        setTimeout(() => loadTasks(), 500);
+        setTimeout(() => loadTasks(true), 1000);
         
         return task;
       } catch (error: any) {
@@ -374,8 +427,8 @@ export const useTasks = () => {
       // Recarregar dados do servidor para garantir sincronização (reduced frequency)
       setTimeout(() => {
         console.log('🔄 useTasks: Reloading tasks from server...');
-        loadTasks();
-      }, 1000);
+        loadTasks(true);
+      }, 2000);
 
       return true;
     } catch (error: any) {
@@ -386,13 +439,15 @@ export const useTasks = () => {
 
   // Add loading state to prevent multiple simultaneous loads
   const [isLoading, setIsLoading] = useState(false);
+  const hasInitialLoad = useRef(false);
 
   useEffect(() => {
-    if (user && tasks.length === 0 && !isLoading) {
+    if (user && !hasInitialLoad.current && !isLoading) {
+      hasInitialLoad.current = true;
       setIsLoading(true);
-      loadTasks().finally(() => setIsLoading(false));
+      loadTasks(true).finally(() => setIsLoading(false));
     }
-  }, [user]); // Evitar recarregamentos desnecessários
+  }, [user, loadTasks]); // Incluir loadTasks nas dependências
 
   return {
     tasks,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,12 +14,25 @@ export const useOffline = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [pendingSync, setPendingSync] = useState(0);
+  
+  // Debounce e cache para evitar toasts duplicados
+  const lastToastTime = useRef<Record<string, number>>({});
+  const toastCooldown = 5000; // 5 segundos entre toasts similares
+
+  // Função helper para mostrar toast com debounce
+  const showDebouncedToast = (key: string, toastConfig: any) => {
+    const now = Date.now();
+    if (!lastToastTime.current[key] || now - lastToastTime.current[key] > toastCooldown) {
+      lastToastTime.current[key] = now;
+      toast(toastConfig);
+    }
+  };
 
   // Detectar mudanças no status de conectividade
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      toast({
+      showDebouncedToast('online', {
         title: "✅ Conectado",
         description: "Sincronizando dados...",
       });
@@ -28,7 +41,7 @@ export const useOffline = () => {
 
     const handleOffline = () => {
       setIsOnline(false);
-      toast({
+      showDebouncedToast('offline', {
         title: "📱 Modo Offline",
         description: "Dados serão salvos localmente",
         variant: "destructive",

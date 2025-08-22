@@ -2688,6 +2688,43 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     setIsSubmitting(true);
     lastSubmissionRef.current = submissionHash;
 
+    // Validação completa de campos obrigatórios
+    const requiredFields = [
+      { field: task.client?.trim(), name: 'Cliente' },
+      { field: task.property?.trim(), name: 'Propriedade' },
+      { field: task.responsible?.trim(), name: 'Responsável' },
+      { field: task.filial?.trim(), name: 'Filial' }
+    ];
+
+    // Verificar campos obrigatórios baseados no tipo de tarefa
+    if (taskCategory === 'field-visit') {
+      requiredFields.push(
+        { field: task.email?.trim(), name: 'E-mail' },
+        { field: task.propertyHectares && task.propertyHectares > 0 ? task.propertyHectares.toString() : undefined, name: 'Hectares da Propriedade' }
+      );
+    } else if (taskCategory === 'call') {
+      requiredFields.push(
+        { field: task.observations?.trim(), name: 'Observações da Ligação' }
+      );
+    } else if (taskCategory === 'workshop-checklist') {
+      requiredFields.push(
+        { field: task.observations?.trim(), name: 'Observações do Checklist' }
+      );
+    }
+
+    // Verificar se algum campo obrigatório está vazio
+    const missingField = requiredFields.find(({ field }) => !field);
+    if (missingField) {
+      submissionLockRef.current = false;
+      setIsSubmitting(false);
+      toast({
+        title: "Campo obrigatório",
+        description: `O campo "${missingField.name}" é obrigatório`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Validação obrigatória do status da oportunidade
     if (task.salesConfirmed === undefined && !task.isProspect) {
       submissionLockRef.current = false;
@@ -2697,7 +2734,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         description: "Selecione o status da oportunidade (Prospect, Venda Realizada ou Venda Perdida)",
         variant: "destructive"
       });
-      setIsSubmitting(false);
       return;
     }
 
