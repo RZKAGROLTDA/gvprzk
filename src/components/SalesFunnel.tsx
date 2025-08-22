@@ -58,9 +58,15 @@ export const SalesFunnel: React.FC = () => {
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
 
-  // Carregar consultores e filiais
+  // Add state to prevent multiple simultaneous loads
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Carregar consultores e filiais (debounced)
   useEffect(() => {
     const loadFilters = async () => {
+      if (isLoading) return;
+      
+      setIsLoading(true);
       try {
         const {
           data: profilesData
@@ -72,9 +78,14 @@ export const SalesFunnel: React.FC = () => {
         setFiliais(filiaisData || []);
       } catch (error) {
         console.error('Erro ao carregar filtros:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
-    loadFilters();
+    
+    // Debounce filter loading
+    const timeoutId = setTimeout(loadFilters, 100);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Filtrar tarefas baseado nos filtros selecionados
