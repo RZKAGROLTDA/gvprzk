@@ -32,8 +32,6 @@ export const useAuthProvider = () => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('DEBUG: Auth state change:', { event, userId: session?.user?.id });
-        
         if (mounted) {
           setSession(session);
           setUser(session?.user ?? null);
@@ -45,8 +43,7 @@ export const useAuthProvider = () => {
     // THEN check for existing session
     const getInitialSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('DEBUG: Initial session check:', { session: session?.user?.id, error });
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (mounted) {
           setSession(session);
@@ -54,7 +51,6 @@ export const useAuthProvider = () => {
           setLoading(false);
         }
       } catch (error) {
-        console.error('DEBUG: Error getting initial session:', error);
         if (mounted) {
           setSession(null);
           setUser(null);

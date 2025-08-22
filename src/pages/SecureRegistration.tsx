@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthLayout } from '@/components/AuthLayout';
 import { Building2, User, Eye, EyeOff } from 'lucide-react';
+import { useInputSecurity } from '@/hooks/useInputSecurity';
+import { usePasswordValidation } from '@/hooks/usePasswordValidation';
 
 interface Filial {
   id: string;
@@ -16,6 +18,8 @@ interface Filial {
 
 const SecureRegistration: React.FC = () => {
   const { toast } = useToast();
+  const { sanitizeText, validateEmail } = useInputSecurity();
+  const { validatePassword: validatePasswordSecurity, getPasswordErrorMessage } = usePasswordValidation();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [filiais, setFiliais] = useState<Filial[]>([]);
@@ -101,28 +105,24 @@ const SecureRegistration: React.FC = () => {
     loadFiliais();
   }, [toast]);
 
-  const validatePassword = (password: string): boolean => {
-    return password.length >= 6 && 
-           /[A-Z]/.test(password) && 
-           /[0-9]/.test(password);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Validações
-      if (!formData.name.trim()) {
+      // Enhanced validation
+      if (!sanitizeText(formData.name).trim()) {
         throw new Error('Nome é obrigatório');
       }
       
-      if (!formData.email.trim()) {
-        throw new Error('Email é obrigatório');
+      if (!validateEmail(formData.email)) {
+        throw new Error('Por favor, insira um email válido');
       }
       
-      if (!validatePassword(formData.password)) {
-        throw new Error('Senha deve ter ao menos 6 caracteres, 1 letra maiúscula e 1 número');
+      const passwordValidation = validatePasswordSecurity(formData.password);
+      if (!passwordValidation.isValid) {
+        throw new Error(getPasswordErrorMessage(passwordValidation) || 'Senha inválida');
       }
       
       if (!formData.filial_id) {
@@ -250,11 +250,11 @@ const SecureRegistration: React.FC = () => {
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">
+                   <div className="text-xs text-muted-foreground mt-1">
                     {formData.password && (
                       <div className="flex gap-2 flex-wrap">
-                        <span className={validatePassword(formData.password) ? 'text-green-600' : 'text-red-500'}>
-                          {validatePassword(formData.password) ? '✓ Senha válida' : '✗ Senha inválida'}
+                        <span className={validatePasswordSecurity(formData.password).isValid ? 'text-green-600' : 'text-red-500'}>
+                          {validatePasswordSecurity(formData.password).isValid ? '✓ Senha válida' : '✗ Senha inválida'}
                         </span>
                       </div>
                     )}

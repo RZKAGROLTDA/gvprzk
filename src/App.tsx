@@ -47,14 +47,8 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
     return <LoginForm />;
   }
 
-  // Debug logging
-  console.log('DEBUG: User:', user?.id);
-  console.log('DEBUG: Profile:', profile);
-  console.log('DEBUG: Profile status:', profile?.approval_status);
-  
   // If user exists but no profile found, show profile setup
   if (!profile) {
-    console.log('DEBUG: Redirecionando para ProfileSetup - perfil não encontrado');
     return <ProfileSetup />;
   }
 
@@ -108,13 +102,6 @@ const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
-  console.log('DEBUG AppContent: loading auth:', loading, 'loading profile:', profileLoading, 'user:', !!user, 'profile:', !!profile);
-  console.log('DEBUG: User:', user?.id);
-  console.log('DEBUG: Profile:', profile?.id);
-  console.log('DEBUG: Profile status:', { 
-    _type: typeof profile?.approval_status, 
-    value: profile?.approval_status 
-  });
 
   // Wait for auth to load first
   if (loading) {

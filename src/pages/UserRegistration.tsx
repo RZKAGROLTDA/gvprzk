@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Building2, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from '@/components/AuthLayout';
+import { useInputSecurity } from '@/hooks/useInputSecurity';
+import { usePasswordValidation } from '@/hooks/usePasswordValidation';
 
 interface Filial {
   id: string;
@@ -20,6 +22,8 @@ const UserRegistration: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { sanitizeText, validateEmail } = useInputSecurity();
+  const { validatePassword: validatePasswordSecurity, getPasswordErrorMessage } = usePasswordValidation();
   const [loading, setLoading] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -110,13 +114,13 @@ const UserRegistration: React.FC = () => {
   }, [searchParams]);
 
   const validatePassword = (password: string) => {
-    const validation = {
-      hasUppercase: /[A-Z]/.test(password),
-      hasNumber: /[0-9]/.test(password),
-      minLength: password.length >= 8
-    };
-    setPasswordValidation(validation);
-    return validation.hasUppercase && validation.hasNumber && validation.minLength;
+    const validation = validatePasswordSecurity(password);
+    setPasswordValidation({
+      hasUppercase: validation.requirements.hasUppercase,
+      hasNumber: validation.requirements.hasNumber,
+      minLength: validation.requirements.minLength
+    });
+    return validation.isValid;
   };
 
   const handlePasswordChange = (password: string) => {
@@ -127,10 +131,11 @@ const UserRegistration: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validatePassword(formData.password)) {
+    const passwordValidation = validatePasswordSecurity(formData.password);
+    if (!passwordValidation.isValid) {
       toast({
         title: "Senha inválida",
-        description: "A senha deve conter pelo menos 8 caracteres, um número e uma letra maiúscula",
+        description: getPasswordErrorMessage(passwordValidation),
         variant: "destructive",
       });
       return;

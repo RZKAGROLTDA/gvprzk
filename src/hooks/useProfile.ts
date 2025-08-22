@@ -30,12 +30,10 @@ export const useProfile = () => {
   const loadProfile = async () => {
     // Prevent multiple simultaneous calls
     if (loadingRef.current) {
-      console.log('DEBUG: Carregamento já em andamento, ignorando...');
       return;
     }
 
     if (!user?.id) {
-      console.log('DEBUG: Sem user ID, não é possível carregar perfil');
       setLoading(false);
       return;
     }
@@ -43,11 +41,6 @@ export const useProfile = () => {
     try {
       loadingRef.current = true;
       setLoading(true);
-      console.log('DEBUG: Carregando perfil para user:', user.id);
-      
-      // First check if we can get current user from auth
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('DEBUG: Current session in profile load:', session?.user?.id);
       
       const { data, error } = await supabase
         .from('profiles')
@@ -60,19 +53,7 @@ export const useProfile = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      console.log('DEBUG: Dados do perfil:', data);
-      console.log('DEBUG: Erro:', error);
-
       if (error) {
-        console.error('Erro ao carregar perfil:', error);
-        // If error is related to RLS, try alternative approach
-        if (error.message?.includes('policy')) {
-          console.log('DEBUG: RLS policy error detected, checking auth state...');
-          
-          // Check if this is an auth issue
-          const { data: authTest } = await supabase.auth.getUser();
-          console.log('DEBUG: Auth test result:', authTest.user?.id);
-        }
         setProfile(null);
       } else {
         const profileData = data ? {
@@ -80,10 +61,8 @@ export const useProfile = () => {
           filial_nome: data.filiais?.nome
         } : null;
         setProfile(profileData);
-        console.log('DEBUG: Perfil carregado com sucesso:', profileData?.name);
       }
     } catch (error) {
-      console.error('Erro inesperado ao carregar perfil:', error);
       setProfile(null);
     } finally {
       setLoading(false);
