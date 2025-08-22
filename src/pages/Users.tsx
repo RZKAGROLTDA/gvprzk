@@ -77,10 +77,15 @@ export const Users: React.FC = () => {
 
       if (filiaisError) throw filiaisError;
 
-      setProfiles(profilesData?.map(p => ({
-        ...p,
-        filial_nome: (p.filiais as any)?.nome
-      })) || []);
+      // Sort profiles alphabetically by name
+      const sortedProfiles = profilesData
+        ?.map(p => ({
+          ...p,
+          filial_nome: (p.filiais as any)?.nome
+        }))
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())) || [];
+      
+      setProfiles(sortedProfiles);
       setFiliais(filiaisData || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
