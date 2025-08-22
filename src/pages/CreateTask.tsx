@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1909,6 +1909,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
   const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(selectedTaskType);
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionLockRef = useRef(false);
+  const lastSubmissionRef = useRef<string>('');
   const {
     isOnline,
     saveTaskOffline,
@@ -2540,7 +2542,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
   const addReminder = () => {
     if (newReminder.title.trim()) {
       const reminder: Reminder = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         title: newReminder.title,
         description: newReminder.description,
         date: newReminder.date,
@@ -2563,7 +2565,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
   // Funções para gerenciar lista de equipamentos
   const addEquipment = () => {
     const newEquipment = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       familyProduct: '',
       // Campo vazio para o usuário preencher
       quantity: 0 // Campo vazio para o usuário preencher
@@ -2622,10 +2624,36 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent double submissions with debounce protection
+    if (submissionLockRef.current || isSubmitting) {
+      console.log('Submission blocked - already in progress');
+      return;
+    }
+
+    // Generate unique submission fingerprint for duplicate detection
+    const submissionHash = `${task.client}_${task.property}_${task.startDate}_${task.startTime}_${Date.now()}`;
+    
+    // Check if this is a duplicate submission (within 5 seconds)
+    if (lastSubmissionRef.current === submissionHash) {
+      console.log('Duplicate submission blocked');
+      toast({
+        title: "Submissão duplicada",
+        description: "Esta tarefa já foi enviada recentemente",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Lock submission
+    submissionLockRef.current = true;
     setIsSubmitting(true);
+    lastSubmissionRef.current = submissionHash;
 
     // Validação obrigatória do status da oportunidade
     if (task.salesConfirmed === undefined && !task.isProspect) {
+      submissionLockRef.current = false;
+      setIsSubmitting(false);
       toast({
         title: "Campo obrigatório",
         description: "Selecione o status da oportunidade (Prospect, Venda Realizada ou Venda Perdida)",
@@ -2655,41 +2683,21 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       equipmentList
     };
     try {
-      // Gerar ID único para a tarefa
-      const taskId = Date.now().toString();
       const finalTaskData = {
         ...taskData,
-        id: taskId,
         createdAt: now,
         updatedAt: now,
         status: 'pending' as const,
         createdBy: taskData.responsible || 'Usuário'
       };
-      if (isOnline) {
-        // Modo online - salvar no Supabase
-        console.log('Salvando online:', finalTaskData);
-        const savedTask = await createTask(finalTaskData);
-        if (!savedTask) {
-          throw new Error('Falha ao salvar no banco de dados');
-        }
+      
+      // Use the useTasks hook which has built-in duplicate prevention
+      console.log('Creating task with data:', finalTaskData);
+      await createTask(finalTaskData);
 
-        // Enviar para WhatsApp se webhook configurado
-        if (whatsappWebhook) {
-          await sendToWhatsApp(finalTaskData);
-        }
-      } else {
-        // Modo offline - salvar localmente
-        console.log('Salvando offline:', finalTaskData);
-        saveTaskOffline(finalTaskData);
-
-        // Adicionar WhatsApp à fila de sincronização se configurado
-        if (whatsappWebhook) {
-          addToSyncQueue({
-            type: 'whatsapp',
-            webhook: whatsappWebhook,
-            taskData: finalTaskData
-          });
-        }
+      // Enviar para WhatsApp se webhook configurado
+      if (whatsappWebhook) {
+        await sendToWhatsApp(finalTaskData);
       }
 
       // Reset completo do formulário e voltar à seleção de tipo de tarefa
@@ -2716,6 +2724,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         variant: "destructive"
       });
     } finally {
+      submissionLockRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -2749,7 +2758,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
     // Salvar no localStorage como rascunho
     const existingDrafts = JSON.parse(localStorage.getItem('task_drafts') || '[]');
-    const draftId = `draft_${Date.now()}`;
+    const draftId = `draft_${crypto.randomUUID()}`;
     const newDraft = {
       id: draftId,
       ...draftData,
