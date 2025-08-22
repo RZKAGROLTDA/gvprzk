@@ -160,14 +160,17 @@ export const useOffline = () => {
             // Sincronizar tarefa criada offline
             const taskData = item.data;
             
-            // Criar tarefa no Supabase
+            // Criar tarefa no Supabase com campos alinhados
             const { data: insertedTask, error: taskError } = await supabase
               .from('tasks')
               .insert([{
                 name: taskData.name,
                 responsible: taskData.responsible,
                 client: taskData.client,
+                clientcode: taskData.clientCode || '',
                 property: taskData.property || '',
+                email: taskData.email || '',
+                propertyhectares: taskData.propertyHectares || 0,
                 filial: taskData.filial || '',
                 task_type: taskData.taskType || 'prospection',
                 start_date: taskData.startDate instanceof Date ? 
@@ -189,8 +192,8 @@ export const useOffline = () => {
                 created_by: taskData.createdBy,
                 is_prospect: taskData.isProspect || false,
                 prospect_notes: taskData.prospectNotes || '',
-                sales_value: taskData.salesValue || 0,
-                sales_confirmed: taskData.salesConfirmed || false
+                sales_value: taskData.salesValue || null,
+                sales_confirmed: taskData.salesConfirmed || null
               }])
               .select()
               .single();
