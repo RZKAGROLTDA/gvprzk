@@ -322,6 +322,7 @@ export type Database = {
           created_at: string
           created_by: string
           documents: string[] | null
+          email: string | null
           end_date: string
           end_time: string
           filial: string | null
@@ -334,6 +335,7 @@ export type Database = {
           photos: string[] | null
           priority: string
           property: string
+          propertyhectares: number | null
           prospect_notes: string | null
           responsible: string
           sales_confirmed: boolean | null
@@ -351,6 +353,7 @@ export type Database = {
           created_at?: string
           created_by: string
           documents?: string[] | null
+          email?: string | null
           end_date: string
           end_time: string
           filial?: string | null
@@ -363,6 +366,7 @@ export type Database = {
           photos?: string[] | null
           priority: string
           property: string
+          propertyhectares?: number | null
           prospect_notes?: string | null
           responsible: string
           sales_confirmed?: boolean | null
@@ -380,6 +384,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           documents?: string[] | null
+          email?: string | null
           end_date?: string
           end_time?: string
           filial?: string | null
@@ -392,6 +397,7 @@ export type Database = {
           photos?: string[] | null
           priority?: string
           property?: string
+          propertyhectares?: number | null
           prospect_notes?: string | null
           responsible?: string
           sales_confirmed?: boolean | null

@@ -37,6 +37,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     name: supabaseTask.name,
     responsible: supabaseTask.responsible,
     client: supabaseTask.client,
+    clientCode: supabaseTask.clientCode || '',
     property: supabaseTask.property || '',
     filial: supabaseTask.filial || '',
     cpf: supabaseTask.cpf || '',
@@ -78,7 +79,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     salesConfirmed: supabaseTask.sales_confirmed, // Preservar valor exato do banco
     familyProduct: supabaseTask.family_product || '',
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
-    propertyHectares: supabaseTask.property_hectares || 0,
+    propertyHectares: supabaseTask.propertyHectares || 0,
     equipmentList: supabaseTask.equipment_list || [],
   };
 
