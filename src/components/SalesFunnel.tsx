@@ -840,7 +840,16 @@ export const SalesFunnel: React.FC = () => {
                           {task.responsible || 'Não informado'}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          Vendedor
+                          {(() => {
+                            // Buscar a filial do vendedor responsável
+                            const vendor = consultants.find(c => c.name === task.responsible);
+                            if (vendor && vendor.filial_id) {
+                              const filial = filiais.find(f => f.id === vendor.filial_id);
+                              return filial?.nome || 'Filial não informada';
+                            }
+                            // Fallback: usar a filial da task se não encontrar do vendedor
+                            return task.filial || 'Filial não informada';
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell>
