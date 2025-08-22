@@ -159,38 +159,33 @@ const Reports: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start gap-4">
-         <div>
-           <h1 className="text-3xl font-bold">Relatórios</h1>
-           <p className="text-muted-foreground">Análises e métricas de desempenho</p>
-         </div>
-         
-         <div className="w-80">
-           <OfflineIndicator />
-         </div>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Relatórios</h1>
+          <p className="text-muted-foreground">Análises e métricas de desempenho</p>
+        </div>
+        <OfflineIndicator />
       </div>
-      
-      <div className="flex justify-end items-center">{/* Linha para botões */}
-         {/* Botões de Exportação */}
-         <div className="flex gap-2">
-           <Button 
-             variant="gradient" 
-             onClick={() => exportReport('filial')} 
-             className="gap-2"
-           >
-             <Download className="h-4 w-4" />
-             Relatório por Filial
-           </Button>
-           
-           <Button 
-             variant="outline" 
-             onClick={() => exportReport('cep')} 
-             className="gap-2 border-green-600 text-green-600 hover:bg-green-50"
-           >
-             <Download className="h-4 w-4" />
-             Relatório por CEP
-           </Button>
-         </div>
+
+      {/* Botões de Exportação */}
+      <div className="flex gap-2">
+        <Button 
+          variant="gradient" 
+          onClick={() => exportReport('filial')} 
+          className="gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Relatório por Filial
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          onClick={() => exportReport('cep')} 
+          className="gap-2 border-green-600 text-green-600 hover:bg-green-50"
+        >
+          <Download className="h-4 w-4" />
+          Relatório por CEP
+        </Button>
       </div>
 
       {/* Filtros */}
