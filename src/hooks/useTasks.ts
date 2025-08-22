@@ -93,6 +93,9 @@ export const useTasks = () => {
     }
   };
 
+  // Lock map to prevent duplicate submissions
+  const createTaskLocks = new Map<string, boolean>();
+
   const createTask = async (taskData: Partial<Task>) => {
     if (!user) {
       toast({
@@ -103,9 +106,48 @@ export const useTasks = () => {
       return null;
     }
 
-    // Criar task temporária para modo offline
-    const tempTask: Task = {
-      id: `temp_${Date.now()}`,
+    // Create a unique lock key based on task data to prevent duplicates
+    const lockKey = `${taskData.client || ''}-${taskData.responsible || ''}-${taskData.startDate?.getTime() || ''}-${taskData.salesValue || 0}`;
+    
+    // Check if this exact task is already being created
+    if (createTaskLocks.get(lockKey)) {
+      console.warn('🔒 createTask: Task creation already in progress for:', lockKey);
+      toast({
+        title: "Aguarde",
+        description: "Esta tarefa já está sendo criada, aguarde um momento...",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    // Set lock to prevent duplicate submissions
+    createTaskLocks.set(lockKey, true);
+
+    try {
+      // Check for recent duplicates in the database
+      if (isOnline) {
+        const { data: existingTasks } = await supabase
+          .from('tasks')
+          .select('id, created_at')
+          .eq('client', taskData.client || '')
+          .eq('responsible', taskData.responsible || '')
+          .eq('start_date', taskData.startDate?.toISOString().split('T')[0] || '')
+          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Last 5 minutes
+
+        if (existingTasks && existingTasks.length > 0) {
+          console.warn('🚫 createTask: Duplicate task found, preventing creation');
+          toast({
+            title: "Tarefa duplicada",
+            description: "Uma tarefa similar foi criada recentemente",
+            variant: "destructive",
+          });
+          return null;
+        }
+      }
+
+      // Create task with unique ID using crypto.randomUUID() if available
+      const tempTask: Task = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: taskData.name || '',
       responsible: taskData.responsible || '',
       client: taskData.client || '',
@@ -216,8 +258,8 @@ export const useTasks = () => {
           description: "Tarefa salva com sucesso no banco de dados!",
         });
 
-        // Recarregar tarefas para atualizar a lista
-        setTimeout(() => loadTasks(), 100);
+        // Recarregar tarefas para atualizar a lista (reduced frequency)
+        setTimeout(() => loadTasks(), 500);
         
         return task;
       } catch (error: any) {
@@ -233,6 +275,12 @@ export const useTasks = () => {
       setTasks(prev => [tempTask, ...prev]);
       
       return tempTask;
+    }
+    } finally {
+      // Always release the lock after 2 seconds
+      setTimeout(() => {
+        createTaskLocks.delete(lockKey);
+      }, 2000);
     }
   };
 
@@ -279,11 +327,11 @@ export const useTasks = () => {
 
       console.log('🔄 useTasks: Local state updated, scheduling reload...');
       
-      // Recarregar dados do servidor para garantir sincronização
+      // Recarregar dados do servidor para garantir sincronização (reduced frequency)
       setTimeout(() => {
         console.log('🔄 useTasks: Reloading tasks from server...');
         loadTasks();
-      }, 500);
+      }, 1000);
 
       return true;
     } catch (error: any) {
@@ -292,9 +340,13 @@ export const useTasks = () => {
     }
   };
 
+  // Add loading state to prevent multiple simultaneous loads
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
-    if (user && tasks.length === 0) {
-      loadTasks();
+    if (user && tasks.length === 0 && !isLoading) {
+      setIsLoading(true);
+      loadTasks().finally(() => setIsLoading(false));
     }
   }, [user]); // Evitar recarregamentos desnecessários
 
