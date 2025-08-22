@@ -29,25 +29,51 @@ const SecureRegistration: React.FC = () => {
   useEffect(() => {
     const loadFiliais = async () => {
       try {
+        console.log('🔍 Carregando filiais...');
         const { data, error } = await supabase
           .from('filiais')
           .select('id, nome')
           .order('nome');
         
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Erro ao buscar filiais:', error);
+          throw error;
+        }
+        
+        console.log('✅ Filiais carregadas:', data?.length || 0, data);
         setFiliais(data || []);
       } catch (error) {
-        console.error('Erro ao carregar filiais:', error);
+        console.error('❌ Erro ao carregar filiais:', error);
         toast({
           title: "Erro",
-          description: "Erro ao carregar filiais",
+          description: "Erro ao carregar filiais. Verifique sua conexão.",
           variant: "destructive",
         });
+        
+        // Fallback: Set manual list if database fails
+        const fallbackFiliais = [
+          { id: 'fallback-1', nome: 'Querência' },
+          { id: 'fallback-2', nome: 'Canarana' },
+          { id: 'fallback-3', nome: 'Barra do Garças' },
+          { id: 'fallback-4', nome: 'Porto Alegre do Norte' },
+          { id: 'fallback-5', nome: 'Gaúcha do Norte' },
+          { id: 'fallback-6', nome: 'Espigão do Leste' },
+          { id: 'fallback-7', nome: 'Água Boa' },
+          { id: 'fallback-8', nome: 'Vila Rica' },
+          { id: 'fallback-9', nome: 'Mineiros' },
+          { id: 'fallback-10', nome: 'Alto Taquari' },
+          { id: 'fallback-11', nome: 'Planalto Verde' },
+          { id: 'fallback-12', nome: 'Caiapônia' },
+          { id: 'fallback-13', nome: 'São Jose do Xingu' },
+          { id: 'fallback-14', nome: 'Tele Vendas' }
+        ];
+        setFiliais(fallbackFiliais);
+        console.log('⚠️ Usando lista fallback de filiais');
       }
     };
 
     loadFiliais();
-  }, []);
+  }, [toast]);
 
   const validatePassword = (password: string): boolean => {
     return password.length >= 6 && 
@@ -212,20 +238,34 @@ const SecureRegistration: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="filial" className="text-sm font-semibold">Filial *</Label>
                   <Select value={formData.filial_id} onValueChange={(value) => handleInputChange('filial_id', value)}>
-                    <SelectTrigger className="h-12 border-2 focus:border-primary transition-colors">
+                    <SelectTrigger className="h-12 border-2 focus:border-primary transition-colors bg-background">
                       <SelectValue placeholder="Selecione sua filial" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {filiais.map(filial => (
-                        <SelectItem key={filial.id} value={filial.id}>
+                    <SelectContent className="bg-background border shadow-lg z-[100]">
+                      {filiais.length === 0 ? (
+                        <SelectItem value="loading" disabled>
                           <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {filial.nome}
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                            Carregando filiais...
                           </div>
                         </SelectItem>
-                      ))}
+                      ) : (
+                        filiais.map(filial => (
+                          <SelectItem key={filial.id} value={filial.id}>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              {filial.nome}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
+                  {filiais.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {filiais.length} filiais disponíveis
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-4">
