@@ -169,8 +169,10 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         .from('tasks')
         .update({
           sales_confirmed: salesConfirmed,
+          sales_type: selectedStatus, // Save the selected sales type
           status: taskStatus,
           is_prospect: isProspect,
+          sales_value: selectedStatus === 'parcial' ? partialValue : task.salesValue,
           updated_at: new Date().toISOString()
         })
         .eq('id', task.id)
@@ -212,11 +214,22 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
             const newQuantity = itemQuantities[checklistItem.id] || checklistItem.quantity || 1;
             console.log(`🔄 MODAL: Atualizando produto: ${existingProduct.name} - selected: ${checklistItem.selected}, quantity: ${newQuantity}`);
             
+            // Para vendas parciais, manter apenas produtos selecionados
+            // Para vendas ganhas, marcar todos como selecionados  
+            // Para vendas perdidas, marcar todos como não selecionados
+            let shouldBeSelected = checklistItem.selected;
+            let shouldQuantity = newQuantity;
+            
+            if (selectedStatus === 'perdido' || selectedStatus === 'prospect') {
+              shouldBeSelected = false;
+              shouldQuantity = 0;
+            }
+            
             const { error: productError } = await supabase
               .from('products')
               .update({
-                selected: checklistItem.selected,
-                quantity: newQuantity,
+                selected: shouldBeSelected,
+                quantity: shouldQuantity,
                 updated_at: new Date().toISOString()
               })
               .eq('id', existingProduct.id);
@@ -226,7 +239,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
               throw productError;
             }
             
-            console.log(`✅ MODAL: Produto atualizado: ${existingProduct.name} com quantidade ${newQuantity}`);
+            console.log(`✅ MODAL: Produto atualizado: ${existingProduct.name} com selected=${shouldBeSelected}, quantity=${shouldQuantity}`);
           } else {
             console.warn(`⚠️ MODAL: Produto não encontrado na base de dados: ${checklistItem.name}`);
           }

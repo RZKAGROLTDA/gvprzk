@@ -339,6 +339,7 @@ export type Database = {
           prospect_notes: string | null
           responsible: string
           sales_confirmed: boolean | null
+          sales_type: string | null
           sales_value: number | null
           start_date: string
           start_time: string
@@ -370,6 +371,7 @@ export type Database = {
           prospect_notes?: string | null
           responsible: string
           sales_confirmed?: boolean | null
+          sales_type?: string | null
           sales_value?: number | null
           start_date: string
           start_time: string
@@ -401,6 +403,7 @@ export type Database = {
           prospect_notes?: string | null
           responsible?: string
           sales_confirmed?: boolean | null
+          sales_type?: string | null
           sales_value?: number | null
           start_date?: string
           start_time?: string

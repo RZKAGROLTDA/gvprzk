@@ -47,6 +47,7 @@ export const resolveFilialName = (filialId: string | null | undefined): string =
 export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | 'perdido' => {
   console.log('🔍 mapSalesStatus - Input task:', {
     id: task.id,
+    salesType: task.salesType,
     salesConfirmed: task.salesConfirmed,
     isProspect: task.isProspect,
     checklistLength: task.checklist?.length || 0,
@@ -55,6 +56,13 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | '
     selectedProspectItems: task.prospectItems?.filter(item => item.selected).length || 0
   });
 
+  // Se tem sales_type definido, usar esse valor diretamente
+  if (task.salesType) {
+    console.log('✅ Using sales_type:', task.salesType);
+    return task.salesType;
+  }
+
+  // Fallback para lógica antiga (compatibilidade)
   // Verificar venda confirmada primeiro (ganho)
   if (task.salesConfirmed === true) {
     console.log('✅ Sales confirmed = true, checking for partial sale...');

@@ -77,6 +77,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     prospectItems: supabaseTask.products || [], // Carregar TODOS os produtos, não apenas os selecionados
     salesValue: supabaseTask.sales_value || 0,
     salesConfirmed: supabaseTask.sales_confirmed, // Preservar valor exato do banco
+    salesType: supabaseTask.sales_type,
     familyProduct: supabaseTask.family_product || '',
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
     propertyHectares: supabaseTask.propertyhectares || 0,
