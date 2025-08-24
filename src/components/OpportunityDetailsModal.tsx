@@ -417,13 +417,13 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   <div key={index} className="border rounded-lg p-3">
                     <div className="flex justify-between items-start">
                       <div className="flex items-start space-x-3 flex-1">
-                        {selectedStatus === 'parcial' && (
-                          <Checkbox
-                            checked={selectedItems[item.id] || false}
-                            onCheckedChange={(checked) => handleItemSelection(item.id, checked as boolean)}
-                            className="mt-1"
-                          />
-                        )}
+                         {selectedStatus === 'parcial' && (
+                           <Checkbox
+                             checked={selectedItems[item.id] || false}
+                             onCheckedChange={(checked) => handleItemSelection(item.id, checked as boolean)}
+                             className="mt-1"
+                           />
+                         )}
                         <div className="flex-1">
                           <p className="font-medium">{item.name}</p>
                           <p className="text-sm text-muted-foreground">Categoria: {item.category}</p>
@@ -431,21 +431,22 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                           {/* Quantidade com opção de editar */}
                           <div className="flex items-center space-x-2 mt-1">
                             <span className="text-sm text-muted-foreground">Quantidade:</span>
-                            {selectedStatus === 'parcial' && selectedItems[item.id] ? (
-                              <div className="flex items-center space-x-1">
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={itemQuantities[item.id] || item.quantity || 1}
-                                  onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
-                                  className="w-20 h-7 text-sm"
-                                />
-                              </div>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">
-                                {itemQuantities[item.id] || item.quantity || 1}
-                              </span>
-                            )}
+                             {selectedStatus === 'parcial' ? (
+                               <div className="flex items-center space-x-1">
+                                 <Input
+                                   type="number"
+                                   min="1"
+                                   value={itemQuantities[item.id] || item.quantity || 1}
+                                   onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                                   className="w-20 h-7 text-sm"
+                                   disabled={!selectedItems[item.id]}
+                                 />
+                               </div>
+                             ) : (
+                               <span className="text-sm text-muted-foreground">
+                                 {itemQuantities[item.id] || item.quantity || 1}
+                               </span>
+                             )}
                           </div>
 
                           {item.price && (
