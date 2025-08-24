@@ -539,6 +539,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_filiais_for_registration: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
       get_secure_user_directory: {
         Args: Record<PropertyKey, never>
         Returns: {

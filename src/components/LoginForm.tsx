@@ -48,11 +48,8 @@ export const LoginForm: React.FC = () => {
     setFiliaisError('');
     
     try {
-      console.log('🔄 LoginForm: Carregando filiais (sem autenticação)...');
-      const { data, error } = await supabase
-        .from('filiais')
-        .select('id, nome')
-        .order('nome');
+      console.log('🔄 LoginForm: Carregando filiais via função segura...');
+      const { data, error } = await supabase.rpc('get_filiais_for_registration');
       
       if (error) {
         console.error('❌ LoginForm: Erro RLS ao carregar filiais:', error);
