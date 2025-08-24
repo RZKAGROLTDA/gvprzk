@@ -47,8 +47,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         task.checklist.forEach(item => {
           initialSelected[item.id] = item.selected || false;
           initialQuantities[item.id] = item.quantity || 1;
-          if (item.selected && item.price) {
-            calculatedPartialValue += item.price * (item.quantity || 1);
+          if (item.selected) {
+            calculatedPartialValue += (item.price || 0) * (item.quantity || 1);
           }
         });
         
@@ -72,8 +72,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     task.checklist?.forEach(item => {
       const isSelected = itemId === item.id ? selected : selectedItems[item.id];
       const quantity = itemQuantities[item.id] || item.quantity || 1;
-      if (isSelected && item.price) {
-        newPartialValue += item.price * quantity;
+      if (isSelected) {
+        newPartialValue += (item.price || 0) * quantity;
       }
     });
     
@@ -93,8 +93,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     task.checklist?.forEach(item => {
       const isSelected = selectedItems[item.id];
       const quantity = itemId === item.id ? newQuantity : (itemQuantities[item.id] || item.quantity || 1);
-      if (isSelected && item.price) {
-        newPartialValue += item.price * quantity;
+      if (isSelected) {
+        newPartialValue += (item.price || 0) * quantity;
       }
     });
     
@@ -472,16 +472,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                               )}
                             </div>
 
-                            {item.price && (
-                              <div className="text-sm text-muted-foreground mt-1">
-                                <p>Preço unitário: R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                {(itemQuantities[item.id] || item.quantity || 1) > 1 && (
-                                  <p className="font-medium text-primary">
-                                    Total: R$ {(item.price * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                            <div className="text-sm text-muted-foreground mt-1">
+                              <p>Preço unitário: R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                              {(itemQuantities[item.id] || item.quantity || 1) > 1 && (
+                                <p className="font-medium text-primary">
+                                  Total: R$ {((item.price || 0) * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                              )}
+                            </div>
 
                             {item.observations && (
                               <p className="text-sm text-muted-foreground mt-1">{item.observations}</p>
