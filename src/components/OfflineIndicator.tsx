@@ -46,53 +46,6 @@ export const OfflineIndicator: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pt-2">
-        {/* Informações do Usuário - Mais compacto */}
-        <div className="bg-secondary/20 rounded-lg p-2">
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <User className="h-3 w-3 text-primary" />
-              <span className="font-medium truncate">{profile?.name || 'Carregando...'}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Building className="h-3 w-3 text-primary" />
-              <span className="truncate">{profile?.filial_nome || 'Sem filial'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Compacto */}
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <Database className="h-3 w-3" />
-              <span className="font-medium">{pendingSync}</span>
-            </div>
-            <span className="text-muted-foreground">Pendentes</span>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <span className="font-medium">{offlineData.tasks.length}</span>
-            </div>
-            <span className="text-muted-foreground">Offline</span>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <span className="font-medium">{offlineData.syncQueue.length}</span>
-            </div>
-            <span className="text-muted-foreground">Fila</span>
-          </div>
-        </div>
-
-        {/* Última Sincronização - Mais compacto */}
-        {offlineData.lastSyncTime && (
-          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>
-              {format(offlineData.lastSyncTime, "dd/MM HH:mm", { locale: ptBR })}
-            </span>
-          </div>
-        )}
-
         {/* Ações */}
         <div className="flex gap-1">
           <Button 
