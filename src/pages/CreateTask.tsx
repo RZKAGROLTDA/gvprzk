@@ -2787,6 +2787,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       setSelectedTaskType(null);
       setTaskCategory('field-visit');
       
+      // Navegar para a página inicial de novas tarefas
+      navigate('/create-task');
+      
       // Scroll para o topo da página
       window.scrollTo({ top: 0, behavior: 'smooth' });
       
