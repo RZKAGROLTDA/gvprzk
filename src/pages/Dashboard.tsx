@@ -2,19 +2,17 @@
 import React, { Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { DashboardSkeleton, TableSkeleton } from '@/components/SkeletonLoader';
 
-// Lazy load heavy components to improve initial page load
-const SalesFunnel = React.lazy(() => import('@/components/SalesFunnel').then(module => ({ default: module.SalesFunnel })));
-const FunnelClients = React.lazy(() => import('@/components/FunnelClients').then(module => ({ default: module.FunnelClients })));
-const FunnelTasks = React.lazy(() => import('@/components/FunnelTasks').then(module => ({ default: module.FunnelTasks })));
+// Lazy load optimized components for better performance
+const SalesFunnel = React.lazy(() => import('@/components/SalesFunnelOptimized').then(module => ({ default: module.SalesFunnelOptimized })));
+const FunnelClients = React.lazy(() => import('@/components/FunnelClientsOptimized').then(module => ({ default: module.FunnelClientsOptimized })));
+const FunnelTasks = React.lazy(() => import('@/components/FunnelTasksOptimized').then(module => ({ default: module.FunnelTasksOptimized })));
 
-// Loading component for better UX
-const TabLoading = () => (
-  <div className="flex items-center justify-center h-64">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-    <span className="ml-2 text-muted-foreground">Carregando...</span>
-  </div>
-);
+// Enhanced loading components with skeleton UI
+const FunnelLoading = () => <DashboardSkeleton />;
+const ClientsLoading = () => <TableSkeleton />;
+const TasksLoading = () => <TableSkeleton />;
 
 const Dashboard: React.FC = () => {
   return (
@@ -37,19 +35,19 @@ const Dashboard: React.FC = () => {
         </TabsList>
 
         <TabsContent value="funil" className="space-y-6">
-          <Suspense fallback={<TabLoading />}>
+          <Suspense fallback={<FunnelLoading />}>
             <SalesFunnel />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="clientes" className="space-y-6">
-          <Suspense fallback={<TabLoading />}>
+          <Suspense fallback={<ClientsLoading />}>
             <FunnelClients />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="tarefas" className="space-y-6">
-          <Suspense fallback={<TabLoading />}>
+          <Suspense fallback={<TasksLoading />}>
             <FunnelTasks />
           </Suspense>
         </TabsContent>
