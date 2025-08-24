@@ -409,11 +409,31 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           <Separator />
 
           {/* Produtos/Itens da Oportunidade */}
-          {task.checklist && task.checklist.length > 0 && (
+          {(() => {
+            console.log('🔍 MODAL DEBUG - Task checklist:', {
+              taskId: task.id,
+              hasChecklist: !!task.checklist,
+              checklistLength: task.checklist?.length || 0,
+              checklistItems: task.checklist?.map(item => ({id: item.id, name: item.name, selected: item.selected})) || []
+            });
+            return null;
+          })()}
+          {(task.checklist && task.checklist.length > 0) || selectedStatus === 'parcial' ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Produtos/Serviços</h3>
+              {(!task.checklist || task.checklist.length === 0) && selectedStatus === 'parcial' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800 text-sm">
+                    ⚠️ Nenhum produto encontrado para esta tarefa. Para realizar uma venda parcial, 
+                    é necessário que a tarefa tenha produtos cadastrados.
+                  </p>
+                  <p className="text-yellow-700 text-xs mt-2">
+                    Verifique se os produtos foram cadastrados corretamente na criação da tarefa.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
-                {task.checklist.map((item, index) => (
+                {(task.checklist || []).map((item, index) => (
                   <div key={index} className="border rounded-lg p-3">
                     <div className="flex justify-between items-start">
                       <div className="flex items-start space-x-3 flex-1">
@@ -449,27 +469,37 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                              )}
                           </div>
 
-                          {item.price && (
-                            <div className="text-sm text-muted-foreground mt-1">
-                              <p>Preço unitário: R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                              {(itemQuantities[item.id] || item.quantity || 1) > 1 && (
-                                <p className="font-medium text-primary">
-                                  Total: R$ {(item.price * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                          {item.observations && (
-                            <p className="text-sm text-muted-foreground mt-1">{item.observations}</p>
-                          )}
-                        </div>
-                      </div>
-                      <Badge variant={item.selected ? 'default' : 'secondary'}>
-                        {item.selected ? 'Selecionado' : 'Não selecionado'}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                           {item.price && (
+                             <div className="text-sm text-muted-foreground mt-1">
+                               <p>Preço unitário: R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                               {(itemQuantities[item.id] || item.quantity || 1) > 1 && (
+                                 <p className="font-medium text-primary">
+                                   Total: R$ {(item.price * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                 </p>
+                               )}
+                             </div>
+                           )}
+
+                           {item.observations && (
+                             <p className="text-sm text-muted-foreground mt-1">{item.observations}</p>
+                           )}
+                         </div>
+                       </div>
+                       <Badge variant={item.selected ? 'default' : 'secondary'}>
+                         {item.selected ? 'Selecionado' : 'Não selecionado'}
+                       </Badge>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+          ) : (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Produtos/Serviços</h3>
+              <div className="bg-muted/50 border rounded-lg p-4 text-center">
+                <p className="text-muted-foreground text-sm">
+                  Nenhum produto/serviço cadastrado para esta oportunidade.
+                </p>
               </div>
             </div>
           )}

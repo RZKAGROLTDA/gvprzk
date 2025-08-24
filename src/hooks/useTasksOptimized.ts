@@ -77,14 +77,38 @@ export const useTasksOptimized = () => {
           remindersMap.get(reminder.task_id).push(reminder);
         });
 
-        // Mapear tasks com dados relacionados
-        const tasksWithRelations = tasksData.map(task => ({
-          ...task,
-          products: productsMap.get(task.id) || [],
-          reminders: remindersMap.get(task.id) || []
-        }));
+        // Log detalhado dos produtos carregados
+        console.log('🔍 DEBUG PRODUTOS - Produtos carregados:', {
+          totalProducts: productsResponse.data?.length || 0,
+          productsMap: Array.from(productsMap.entries()).map(([taskId, products]) => ({
+            taskId,
+            productCount: products.length,
+            productNames: products.map(p => p.name).slice(0, 3)
+          }))
+        });
 
-        return tasksWithRelations.map(mapSupabaseTaskToTask);
+        // Mapear tasks com dados relacionados
+        const tasksWithRelations = tasksData.map(task => {
+          const taskProducts = productsMap.get(task.id) || [];
+          const taskReminders = remindersMap.get(task.id) || [];
+          
+          console.log(`📋 Task ${task.id} - Produtos: ${taskProducts.length}`);
+          
+          return {
+            ...task,
+            products: taskProducts,
+            reminders: taskReminders
+          };
+        });
+
+        const mappedTasks = tasksWithRelations.map(mapSupabaseTaskToTask);
+        
+        console.log('✅ Tasks mapeadas com produtos:', {
+          totalTasks: mappedTasks.length,
+          tasksWithProducts: mappedTasks.filter(t => t.checklist && t.checklist.length > 0).length
+        });
+        
+        return mappedTasks;
       } catch (error) {
         console.error('❌ Error loading tasks:', error);
         // Fallback para dados offline
