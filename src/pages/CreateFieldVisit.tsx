@@ -10,7 +10,7 @@ const CreateFieldVisit: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
@@ -23,7 +23,9 @@ const CreateFieldVisit: React.FC = () => {
           </Button>
           <h1 className="text-2xl font-bold">Visita à Fazenda</h1>
         </div>
-        <OfflineIndicator />
+        <div className="w-80">
+          <OfflineIndicator />
+        </div>
       </div>
       
       <div className="min-h-0">

@@ -2955,8 +2955,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           </>}
       </div>
 
-        {/* Indicador de Status Offline - apenas quando tipo de tarefa selecionado */}
-        {(selectedTaskType || propTaskType) && <OfflineIndicator />}
 
       {(selectedTaskType || propTaskType) && <form onSubmit={handleSubmit}>
 
