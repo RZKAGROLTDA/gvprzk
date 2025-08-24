@@ -1,9 +1,20 @@
-import React from 'react';
+
+import React, { Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SalesFunnel } from '@/components/SalesFunnel';
-import { FunnelClients } from '@/components/FunnelClients';
-import { FunnelTasks } from '@/components/FunnelTasks';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+
+// Lazy load heavy components to improve initial page load
+const SalesFunnel = React.lazy(() => import('@/components/SalesFunnel').then(module => ({ default: module.SalesFunnel })));
+const FunnelClients = React.lazy(() => import('@/components/FunnelClients').then(module => ({ default: module.FunnelClients })));
+const FunnelTasks = React.lazy(() => import('@/components/FunnelTasks').then(module => ({ default: module.FunnelTasks })));
+
+// Loading component for better UX
+const TabLoading = () => (
+  <div className="flex items-center justify-center h-64">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <span className="ml-2 text-muted-foreground">Carregando...</span>
+  </div>
+);
 
 const Dashboard: React.FC = () => {
   return (
@@ -26,15 +37,21 @@ const Dashboard: React.FC = () => {
         </TabsList>
 
         <TabsContent value="funil" className="space-y-6">
-          <SalesFunnel />
+          <Suspense fallback={<TabLoading />}>
+            <SalesFunnel />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="clientes" className="space-y-6">
-          <FunnelClients />
+          <Suspense fallback={<TabLoading />}>
+            <FunnelClients />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="tarefas" className="space-y-6">
-          <FunnelTasks />
+          <Suspense fallback={<TabLoading />}>
+            <FunnelTasks />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>
