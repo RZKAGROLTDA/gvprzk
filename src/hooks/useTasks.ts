@@ -95,7 +95,7 @@ export const useTasks = () => {
             final_km
           `)
           .order('created_at', { ascending: false })
-          .limit(100); // Limitar resultados para melhor performance
+          .limit(50); // Reduzir para 50 para melhor performance
 
         if (error) {
           console.error('❌ useTasks: Error loading tasks from Supabase:', error);

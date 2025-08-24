@@ -102,26 +102,15 @@ const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
-
-  // Wait for auth to load first
-  if (loading) {
+  // Show combined loading when either auth or profile is loading
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Carregando autenticação...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If user is authenticated, wait for profile to load
-  if (user && profileLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Carregando perfil...</p>
+          <p className="mt-2 text-muted-foreground">
+            {loading ? "Carregando autenticação..." : "Carregando perfil..."}
+          </p>
         </div>
       </div>
     );

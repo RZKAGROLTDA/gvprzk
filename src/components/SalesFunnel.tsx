@@ -62,21 +62,21 @@ export const SalesFunnel: React.FC = () => {
   // Add state to prevent multiple simultaneous loads
   const [isLoading, setIsLoading] = useState(false);
 
-  // Carregar consultores e filiais (debounced)
+  // Carregar consultores e filiais com cache otimizado
   useEffect(() => {
     const loadFilters = async () => {
       if (isLoading) return;
       
       setIsLoading(true);
       try {
-        const {
-          data: profilesData
-        } = await supabase.from('profiles').select('*').eq('approval_status', 'approved');
-        const {
-          data: filiaisData
-        } = await supabase.from('filiais').select('*').order('nome');
-        setConsultants(profilesData || []);
-        setFiliais(filiaisData || []);
+        // Carregamento paralelo para melhor performance
+        const [profilesResponse, filiaisResponse] = await Promise.all([
+          supabase.from('profiles').select('id, name').eq('approval_status', 'approved'),
+          supabase.from('filiais').select('id, nome').order('nome')
+        ]);
+        
+        setConsultants(profilesResponse.data || []);
+        setFiliais(filiaisResponse.data || []);
         
         // Carregar cache de filiais para resolução de UUIDs
         await loadFiliaisCache();
@@ -87,9 +87,7 @@ export const SalesFunnel: React.FC = () => {
       }
     };
     
-    // Debounce filter loading
-    const timeoutId = setTimeout(loadFilters, 100);
-    return () => clearTimeout(timeoutId);
+    loadFilters();
   }, []);
 
   // Filtrar tarefas baseado nos filtros selecionados
