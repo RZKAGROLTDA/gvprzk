@@ -9,6 +9,8 @@ import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
+import { mapSalesStatus, getStatusLabel } from '@/lib/taskStandardization';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -29,6 +31,50 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const { user } = useAuth();
+
+  // Função para calcular valor correto da venda
+  const calculateSalesValue = (task: any) => {
+    const mappedTask = mapSupabaseTaskToTask(task);
+    const salesStatus = mapSalesStatus(mappedTask);
+    
+    // Para vendas ganhas, usar valor total
+    if (salesStatus === 'ganho' && mappedTask.salesValue) {
+      return mappedTask.salesValue;
+    }
+    
+    // Para vendas parciais, usar valor salvo ou calcular dos produtos
+    if (salesStatus === 'parcial') {
+      // Primeiro, tentar usar o valor salvo
+      if (mappedTask.salesValue && mappedTask.salesValue > 0) {
+        return mappedTask.salesValue;
+      }
+      
+      // Fallback: calcular a partir dos produtos selecionados
+      if (mappedTask.prospectItems) {
+        const partialValue = mappedTask.prospectItems
+          .filter(item => item.selected && item.quantity && item.price)
+          .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+        
+        if (partialValue > 0) {
+          return partialValue;
+        }
+      }
+      
+      // Fallback para checklist (compatibilidade)
+      if (mappedTask.checklist) {
+        const partialValue = mappedTask.checklist
+          .filter(item => item.selected && item.quantity && item.price)
+          .reduce((total, item) => total + (item.quantity! * item.price!), 0);
+        
+        if (partialValue > 0) {
+          return partialValue;
+        }
+      }
+    }
+    
+    // Para prospects e perdidos, retornar 0
+    return 0;
+  };
 
   const fetchVisitData = async () => {
     if (!user) {
@@ -78,21 +124,28 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       doc.text(`Total de visitas: ${visitData.length}`, 20, 40);
 
       // Preparar dados para a tabela
-      const tableData = visitData.map((visit) => [
-        visit.responsible || 'N/A',
-        visit.client || 'N/A',
-        visit.property || 'N/A',
-        visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
-        visit.sales_value ? `R$ ${Number(visit.sales_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00',
-        visit.status === 'completed' ? 'Concluída' : 
-        visit.status === 'in_progress' ? 'Em Andamento' : 
-        visit.status === 'pending' ? 'Pendente' : 'Fechada',
-        visit.observations || 'Sem observações'
-      ]);
+      const tableData = visitData.map((visit) => {
+        const mappedTask = mapSupabaseTaskToTask(visit);
+        const salesStatus = mapSalesStatus(mappedTask);
+        const salesValue = calculateSalesValue(visit);
+        
+        return [
+          visit.responsible || 'N/A',
+          visit.client || 'N/A',
+          visit.property || 'N/A',
+          visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
+          `R$ ${salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          getStatusLabel(salesStatus),
+          visit.status === 'completed' ? 'Concluída' : 
+          visit.status === 'in_progress' ? 'Em Andamento' : 
+          visit.status === 'pending' ? 'Pendente' : 'Fechada',
+          visit.observations || 'Sem observações'
+        ];
+      });
 
       // Adicionar tabela
       doc.autoTable({
-        head: [['Responsável', 'Cliente', 'Propriedade', 'Data', 'Valor Oportunidade', 'Status', 'Observações']],
+        head: [['Responsável', 'Cliente', 'Propriedade', 'Data', 'Valor Oportunidade', 'Status Venda', 'Status Tarefa', 'Observações']],
         body: tableData,
         startY: 50,
         styles: { fontSize: 8 },
@@ -100,18 +153,26 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
         margin: { top: 50 }
       });
 
-      // Adicionar resumo financeiro
-      const totalValue = visitData.reduce((sum, visit) => sum + (Number(visit.sales_value) || 0), 0);
+      // Adicionar resumo financeiro com valores corretos
+      const totalValue = visitData.reduce((sum, visit) => sum + calculateSalesValue(visit), 0);
       const completedVisits = visitData.filter(visit => visit.status === 'completed').length;
+      const salesData = visitData.map(visit => {
+        const mappedTask = mapSupabaseTaskToTask(visit);
+        return mapSalesStatus(mappedTask);
+      });
+      const partiaisCount = salesData.filter(status => status === 'parcial').length;
+      const ganhosCount = salesData.filter(status => status === 'ganho').length;
       
       const finalY = (doc as any).lastAutoTable.finalY + 20;
       
       doc.setFontSize(14);
-      doc.text('Resumo Financeiro:', 20, finalY);
+      doc.text('Resumo Financeiro e de Vendas:', 20, finalY);
       doc.setFontSize(12);
       doc.text(`Total de Oportunidades: R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, finalY + 10);
       doc.text(`Visitas Concluídas: ${completedVisits}`, 20, finalY + 20);
-      doc.text(`Taxa de Conclusão: ${((completedVisits / visitData.length) * 100).toFixed(1)}%`, 20, finalY + 30);
+      doc.text(`Vendas Parciais: ${partiaisCount}`, 20, finalY + 30);
+      doc.text(`Vendas Realizadas: ${ganhosCount}`, 20, finalY + 40);
+      doc.text(`Taxa de Conclusão: ${((completedVisits / visitData.length) * 100).toFixed(1)}%`, 20, finalY + 50);
 
       // Salvar o PDF
       doc.save(`relatorio-visitas-${format(new Date(), 'yyyy-MM-dd-HHmm')}.pdf`);
@@ -148,38 +209,57 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       }
 
       // Preparar dados para Excel
-      const excelData = visitData.map((visit) => ({
-        'Responsável': visit.responsible || 'N/A',
-        'Cliente': visit.client || 'N/A',
-        'Propriedade': visit.property || 'N/A',
-        'Data da Visita': visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
-        'Horário Início': visit.start_time || 'N/A',
-        'Horário Fim': visit.end_time || 'N/A',
-        'Valor da Oportunidade': Number(visit.sales_value) || 0,
-        'Status': visit.status === 'completed' ? 'Concluída' : 
-                 visit.status === 'in_progress' ? 'Em Andamento' : 
-                 visit.status === 'pending' ? 'Pendente' : 'Fechada',
-        'É Prospect': visit.is_prospect ? 'Sim' : 'Não',
-        'KM Inicial': visit.initial_km || 0,
-        'KM Final': visit.final_km || 0,
-        'Observações': visit.observations || 'Sem observações',
-        'Data de Criação': visit.created_at ? format(new Date(visit.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'
-      }));
+      const excelData = visitData.map((visit) => {
+        const mappedTask = mapSupabaseTaskToTask(visit);
+        const salesStatus = mapSalesStatus(mappedTask);
+        const salesValue = calculateSalesValue(visit);
+        
+        return {
+          'Responsável': visit.responsible || 'N/A',
+          'Cliente': visit.client || 'N/A',
+          'Propriedade': visit.property || 'N/A',
+          'Data da Visita': visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
+          'Horário Início': visit.start_time || 'N/A',
+          'Horário Fim': visit.end_time || 'N/A',
+          'Valor da Oportunidade': salesValue,
+          'Status da Venda': getStatusLabel(salesStatus),
+          'Status da Tarefa': visit.status === 'completed' ? 'Concluída' : 
+                   visit.status === 'in_progress' ? 'Em Andamento' : 
+                   visit.status === 'pending' ? 'Pendente' : 'Fechada',
+          'É Prospect': visit.is_prospect ? 'Sim' : 'Não',
+          'KM Inicial': visit.initial_km || 0,
+          'KM Final': visit.final_km || 0,
+          'Observações': visit.observations || 'Sem observações',
+          'Data de Criação': visit.created_at ? format(new Date(visit.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'
+        };
+      });
 
       // Criar planilha
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Visitas');
 
-      // Criar aba de resumo
-      const totalValue = visitData.reduce((sum, visit) => sum + (Number(visit.sales_value) || 0), 0);
+      // Criar aba de resumo com dados de vendas
+      const totalValue = visitData.reduce((sum, visit) => sum + calculateSalesValue(visit), 0);
       const completedVisits = visitData.filter(visit => visit.status === 'completed').length;
+      const salesData = visitData.map(visit => {
+        const mappedTask = mapSupabaseTaskToTask(visit);
+        return mapSalesStatus(mappedTask);
+      });
+      const partiaisCount = salesData.filter(status => status === 'parcial').length;
+      const ganhosCount = salesData.filter(status => status === 'ganho').length;
+      const prospectCount = salesData.filter(status => status === 'prospect').length;
+      const perdidosCount = salesData.filter(status => status === 'perdido').length;
       
       const summaryData = [
         { 'Métrica': 'Total de Visitas', 'Valor': visitData.length },
         { 'Métrica': 'Visitas Concluídas', 'Valor': completedVisits },
         { 'Métrica': 'Taxa de Conclusão (%)', 'Valor': ((completedVisits / visitData.length) * 100).toFixed(1) },
-        { 'Métrica': 'Total de Oportunidades (R$)', 'Valor': totalValue.toFixed(2) }
+        { 'Métrica': 'Total de Oportunidades (R$)', 'Valor': totalValue.toFixed(2) },
+        { 'Métrica': 'Prospects', 'Valor': prospectCount },
+        { 'Métrica': 'Vendas Parciais', 'Valor': partiaisCount },
+        { 'Métrica': 'Vendas Realizadas', 'Valor': ganhosCount },
+        { 'Métrica': 'Vendas Perdidas', 'Valor': perdidosCount }
       ];
 
       const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
