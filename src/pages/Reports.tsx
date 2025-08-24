@@ -176,22 +176,24 @@ const Reports: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Relatórios</h1>
-          <p className="text-muted-foreground">Análises e métricas de desempenho</p>
+          <h1 className="text-xl sm:text-3xl font-bold">Relatórios</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Análises e métricas de desempenho</p>
         </div>
-        <OfflineIndicator />
+        <div className="w-full sm:w-80">
+          <OfflineIndicator />
+        </div>
       </div>
 
       {/* Botões de Exportação */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
         <Button 
           variant="gradient" 
           onClick={() => exportReport('filial')} 
-          className="gap-2"
+          className="gap-2 text-sm"
         >
           <Download className="h-4 w-4" />
           Relatório por Filial
@@ -200,7 +202,7 @@ const Reports: React.FC = () => {
         <Button 
           variant="outline" 
           onClick={() => exportReport('cep')} 
-          className="gap-2 border-green-600 text-green-600 hover:bg-green-50"
+          className="gap-2 text-sm border-green-600 text-green-600 hover:bg-green-50"
         >
           <Download className="h-4 w-4" />
           Relatório por CEP

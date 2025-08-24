@@ -290,13 +290,13 @@ export const Users: React.FC = () => {
   const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <UsersIcon className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Gerenciar Usuários</h1>
+          <UsersIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+          <h1 className="text-xl sm:text-2xl font-bold">Gerenciar Usuários</h1>
         </div>
-        <div className="w-80">
+        <div className="w-full sm:w-80">
           <OfflineIndicator />
         </div>
       </div>
