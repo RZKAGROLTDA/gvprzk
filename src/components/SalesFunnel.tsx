@@ -58,6 +58,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   // Add state to prevent multiple simultaneous loads
   const [isLoading, setIsLoading] = useState(false);
@@ -403,7 +404,7 @@ export const SalesFunnel: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Período</label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -460,6 +461,22 @@ export const SalesFunnel: React.FC = () => {
                   <SelectItem value="prospection">Visitas</SelectItem>
                   <SelectItem value="ligacao">Ligações</SelectItem>
                   <SelectItem value="checklist">Checklists</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Exibir</label>
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 itens</SelectItem>
+                  <SelectItem value="20">20 itens</SelectItem>
+                  <SelectItem value="50">50 itens</SelectItem>
+                  <SelectItem value="100">100 itens</SelectItem>
+                  <SelectItem value={filteredTasks.length.toString()}>Todos ({filteredTasks.length})</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -796,7 +813,7 @@ export const SalesFunnel: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks.slice(0, 20).map(task => {
+                {filteredTasks.slice(0, itemsPerPage).map(task => {
               const getTaskStatus = () => {
                 const salesStatus = mapSalesStatus(task);
                 const statusLabel = getStatusLabel(salesStatus);
@@ -980,11 +997,14 @@ export const SalesFunnel: React.FC = () => {
               </TableBody>
             </Table>
             
-            {filteredTasks.length > 20 && <div className="mt-4 text-center">
+            {filteredTasks.length > itemsPerPage && (
+              <div className="mt-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Mostrando 20 de {filteredTasks.length} atividades. Use os filtros para refinar a busca.
+                  Mostrando {Math.min(itemsPerPage, filteredTasks.length)} de {filteredTasks.length} atividades.
+                  {itemsPerPage < filteredTasks.length && " Use o filtro 'Exibir' para ver mais registros."}
                 </p>
-              </div>}
+              </div>
+            )}
           </CardContent>
         </Card>}
 
