@@ -267,7 +267,7 @@ const Reports: React.FC = () => {
                         {collaborator.name} - {
                           collaborator.role === 'consultant' ? 'Consultor' : 
                           collaborator.role === 'manager' ? 'Gerente' : 
-                          collaborator.role === 'admin' ? 'Admin' : collaborator.role
+                          collaborator.role === 'admin' ? 'Administrador' : collaborator.role
                         }
                       </SelectItem>
                     ))}
