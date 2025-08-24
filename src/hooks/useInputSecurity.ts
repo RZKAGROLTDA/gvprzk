@@ -60,28 +60,6 @@ export const useInputSecurity = () => {
     };
   }, []);
 
-  const sanitizeTaskInput = useMemo(() => {
-    return (input: any): any => {
-      if (typeof input === 'string') {
-        return sanitizeText(input, { maxLength: 2000 });
-      }
-      
-      if (Array.isArray(input)) {
-        return input.map(item => sanitizeTaskInput(item));
-      }
-      
-      if (input && typeof input === 'object') {
-        const sanitized: any = {};
-        for (const [key, value] of Object.entries(input)) {
-          sanitized[key] = sanitizeTaskInput(value);
-        }
-        return sanitized;
-      }
-      
-      return input;
-    };
-  }, [sanitizeText]);
-
   const detectMaliciousInput = useMemo(() => {
     return (input: string): boolean => {
       const maliciousPatterns = [
@@ -92,12 +70,63 @@ export const useInputSecurity = () => {
         /data:text\/html/gi,
         /<iframe/gi,
         /<embed/gi,
-        /<object/gi
+        /<object/gi,
+        /expression\s*\(/gi,
+        /eval\s*\(/gi,
+        /setTimeout\s*\(/gi,
+        /setInterval\s*\(/gi,
+        /Function\s*\(/gi,
+        /\bxss\b/gi,
+        /\binjection\b/gi,
+        /\bdrop\s+table\b/gi,
+        /\bunion\s+select\b/gi,
+        /\bselect\s+.*\s+from\b/gi
       ];
+
+      // Check for suspicious input length (potential DoS)
+      if (input.length > 50000) {
+        return true;
+      }
+
+      // Check for repeated suspicious characters
+      if (/[<>'"(){}[\]]{10,}/.test(input)) {
+        return true;
+      }
 
       return maliciousPatterns.some(pattern => pattern.test(input));
     };
   }, []);
+
+  const sanitizeTaskInput = useMemo(() => {
+    return (input: any): any => {
+      if (typeof input === 'string') {
+        // Enhanced security - check for malicious patterns first
+        if (detectMaliciousInput(input)) {
+          console.warn('Malicious input detected and blocked:', input.substring(0, 50));
+          return ''; // Return empty string for malicious input
+        }
+        return sanitizeText(input, { maxLength: 2000 });
+      }
+      
+      if (Array.isArray(input)) {
+        return input.map(item => sanitizeTaskInput(item));
+      }
+      
+      if (input && typeof input === 'object') {
+        const sanitized: any = {};
+        for (const [key, value] of Object.entries(input)) {
+          // Skip potentially dangerous keys
+          if (['__proto__', 'constructor', 'prototype'].includes(key)) {
+            continue;
+          }
+          sanitized[key] = sanitizeTaskInput(value);
+        }
+        return sanitized;
+      }
+      
+      return input;
+    };
+  }, [sanitizeText, detectMaliciousInput]);
 
   return {
     sanitizeText,

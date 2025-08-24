@@ -617,6 +617,10 @@ export type Database = {
         Args: { target_user_id: string }
         Returns: boolean
       }
+      validate_task_input: {
+        Args: { input_data: Json }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

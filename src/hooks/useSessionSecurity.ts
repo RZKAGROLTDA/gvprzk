@@ -16,14 +16,42 @@ export const useSessionSecurity = () => {
       
       if (error || !session) {
         console.warn('Session check failed:', error);
+        monitorSuspiciousActivity('session_validation_failed', {
+          error: error?.message || 'No session found',
+          timestamp: new Date().toISOString()
+        }, 3);
         await signOut();
         return false;
       }
       
-      // Check if session is close to expiry
+      // Enhanced session validation
       const expiresAt = new Date(session.expires_at * 1000);
       const now = new Date();
       const timeToExpiry = expiresAt.getTime() - now.getTime();
+      
+      // Check for concurrent session detection
+      const sessionId = session.access_token.split('.')[2]; // Simple session fingerprint
+      const storedSessionId = localStorage.getItem('session_fingerprint');
+      
+      if (storedSessionId && storedSessionId !== sessionId) {
+        monitorSuspiciousActivity('concurrent_session_detected', {
+          current_session: sessionId.substring(0, 8),
+          stored_session: storedSessionId.substring(0, 8),
+          timestamp: new Date().toISOString()
+        }, 4);
+        
+        // Log the concurrent session activity
+        try {
+          await supabase.rpc('log_session_activity', {
+            activity_type: 'concurrent_session_detected',
+            details: { concurrent_detected: true }
+          });
+        } catch (logError) {
+          console.warn('Failed to log concurrent session:', logError);
+        }
+      } else {
+        localStorage.setItem('session_fingerprint', sessionId);
+      }
       
       if (timeToExpiry < WARNING_TIME) {
         // Attempt to refresh session
@@ -31,24 +59,55 @@ export const useSessionSecurity = () => {
         
         if (refreshError) {
           console.warn('Session refresh failed:', refreshError);
+          monitorSuspiciousActivity('session_refresh_failed', {
+            error: refreshError.message,
+            time_to_expiry: timeToExpiry
+          }, 3);
           await signOut();
           return false;
+        }
+        
+        // Log successful refresh
+        try {
+          await supabase.rpc('log_session_activity', {
+            activity_type: 'session_refreshed',
+            details: { time_to_expiry: timeToExpiry }
+          });
+        } catch (logError) {
+          console.warn('Failed to log session refresh:', logError);
         }
       }
       
       return true;
     } catch (error) {
       console.error('Session health check failed:', error);
+      monitorSuspiciousActivity('session_health_check_error', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }, 3);
       await signOut();
       return false;
     }
-  }, [signOut]);
+  }, [signOut, monitorSuspiciousActivity]);
 
   const handleInactivityTimeout = useCallback(async () => {
     monitorSuspiciousActivity('session_timeout', {
       reason: 'inactivity',
-      duration: SESSION_TIMEOUT
-    }, 2);
+      duration: SESSION_TIMEOUT,
+      forced_logout: true
+    }, 3);
+    
+    // Enhanced session invalidation logging
+    try {
+      await supabase.rpc('log_session_activity', {
+        activity_type: 'forced_logout_inactivity',
+        details: { 
+          session_duration: SESSION_TIMEOUT,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to log session activity:', error);
+    }
     
     await signOut();
   }, [signOut, monitorSuspiciousActivity]);
