@@ -79,6 +79,12 @@ export const SalesFunnel: React.FC = () => {
         setConsultants(profilesResponse.data || []);
         setFiliais(filiaisResponse.data || []);
         
+        console.log('📊 Dados carregados:', {
+          consultants: profilesResponse.data?.length || 0,
+          filiais: filiaisResponse.data?.length || 0,
+          consultantsList: profilesResponse.data?.map(c => ({ id: c.id, name: c.name }))
+        });
+        
         // Carregar cache de filiais para resolução de UUIDs
         await loadFiliaisCache();
       } catch (error) {
@@ -105,7 +111,24 @@ export const SalesFunnel: React.FC = () => {
       // Filtro de consultor
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
-        if (!consultant || task.responsible !== consultant.name) return false;
+        if (!consultant) {
+          console.warn('❌ Consultor não encontrado:', selectedConsultant);
+          return false;
+        }
+        
+        // Comparação normalizada para evitar problemas com espaços/maiúsculas
+        const consultantName = consultant.name?.trim().toLowerCase();
+        const taskResponsible = task.responsible?.trim().toLowerCase();
+        
+        if (consultantName !== taskResponsible) {
+          console.log('🔍 Filtro Consultor - Não match:', {
+            consultantName,
+            taskResponsible,
+            consultant: consultant.name,
+            task: task.responsible
+          });
+          return false;
+        }
       }
 
       // Filtro de filial
