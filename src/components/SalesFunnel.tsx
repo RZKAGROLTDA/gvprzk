@@ -831,7 +831,6 @@ export const SalesFunnel: React.FC = () => {
               const status = getTaskStatus();
               return <TableRow key={task.id}>
                       <TableCell className="font-medium">
-                        {task.name}
                         <div className="text-xs text-muted-foreground">
                           {task.taskType === 'prospection' ? 'Visita' : task.taskType === 'ligacao' ? 'Ligação' : task.taskType === 'checklist' ? 'Checklist' : task.taskType}
                         </div>
