@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { CheckInLocation } from '@/components/CheckInLocation';
 import { useOffline } from '@/hooks/useOffline';
-import { useTasks } from '@/hooks/useTasks';
+import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 import { ReportExporter } from '@/components/ReportExporter';
@@ -1958,9 +1958,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({ taskType: propTaskType }) => {
     saveTaskOffline,
     addToSyncQueue
   } = useOffline();
-  const {
-    createTask
-  } = useTasks();
+  const { createTask } = useTasksOptimized();
   // Mapear taskCategory para taskType
   const getTaskTypeFromCategory = (category: 'field-visit' | 'call' | 'workshop-checklist'): 'prospection' | 'ligacao' | 'checklist' => {
     switch (category) {
