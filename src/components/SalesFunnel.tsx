@@ -835,9 +835,9 @@ export const SalesFunnel: React.FC = () => {
                           {task.taskType === 'prospection' ? 'Visita' : task.taskType === 'ligacao' ? 'Ligação' : task.taskType === 'checklist' ? 'Checklist' : task.taskType}
                         </div>
                       </TableCell>
-                      <TableCell>{task.client}</TableCell>
+                      <TableCell className="text-sm">{task.client}</TableCell>
                       <TableCell>
-                        <div className="font-medium">
+                        <div className="text-sm font-medium">
                           {task.responsible || 'Não informado'}
                         </div>
                         <div className="text-xs text-muted-foreground">
