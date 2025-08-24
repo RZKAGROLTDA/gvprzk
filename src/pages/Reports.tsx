@@ -52,6 +52,25 @@ const Reports: React.FC = () => {
   // Taxa de conversão geral corrigida: (Vendas Realizadas / Valor Total de Prospects) * 100
   const overallConversionRate = totalProspectsValue > 0 ? (totalSalesValue / totalProspectsValue) * 100 : 0;
 
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'manager':
+        return 'Gerente';
+      case 'supervisor':
+        return 'Supervisor';
+      case 'rac':
+        return 'RAC';
+      case 'consultant':
+        return 'Consultor';
+      case 'sales_consultant':
+        return 'Consultor de Vendas';
+      case 'technical_consultant':
+        return 'Consultor Técnico';
+      default:
+        return role;
+    }
+  };
+
   const loadCollaborators = async () => {
     try {
       const { data: profiles, error } = await supabase
@@ -264,11 +283,7 @@ const Reports: React.FC = () => {
                     <SelectItem value="all">Todos os CEPs</SelectItem>
                     {collaborators.map((collaborator) => (
                       <SelectItem key={collaborator.id} value={collaborator.id}>
-                        {collaborator.name} - {
-                          collaborator.role === 'consultant' ? 'Consultor' : 
-                          collaborator.role === 'manager' ? 'Gerente' : 
-                          collaborator.role === 'admin' ? 'Administrador' : collaborator.role
-                        }
+                        {collaborator.name} - {getRoleLabel(collaborator.role)}
                       </SelectItem>
                     ))}
                   </SelectContent>
