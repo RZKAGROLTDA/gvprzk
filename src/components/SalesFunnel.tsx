@@ -97,6 +97,43 @@ export const SalesFunnel: React.FC = () => {
     loadFilters();
   }, []);
 
+  // Função de normalização de nomes para matching flexível
+  const normalizeName = (name: string) => {
+    if (!name) return '';
+    return name
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/\s+/g, ' ') // Remove espaços duplos
+      .replace(/[^\w\s]/g, ''); // Remove caracteres especiais
+  };
+
+  // Função de matching flexível para nomes
+  const isNameMatch = (consultantName: string, taskResponsible: string) => {
+    if (!consultantName || !taskResponsible) return false;
+    
+    const normalizedConsultant = normalizeName(consultantName);
+    const normalizedTask = normalizeName(taskResponsible);
+    
+    // Exact match após normalização
+    if (normalizedConsultant === normalizedTask) return true;
+    
+    // Busca parcial - verifica se um nome contém o outro
+    if (normalizedConsultant.includes(normalizedTask) || normalizedTask.includes(normalizedConsultant)) return true;
+    
+    // Busca por palavras individuais (para casos como "João Silva" vs "João P. Silva")
+    const consultantWords = normalizedConsultant.split(' ').filter(w => w.length > 2);
+    const taskWords = normalizedTask.split(' ').filter(w => w.length > 2);
+    
+    if (consultantWords.length > 0 && taskWords.length > 0) {
+      const commonWords = consultantWords.filter(word => taskWords.includes(word));
+      return commonWords.length >= Math.min(consultantWords.length, taskWords.length) * 0.6;
+    }
+    
+    return false;
+  };
+
   // Filtrar tarefas baseado nos filtros selecionados
   const filteredTasks = useMemo(() => {
     let filtered = tasks.filter(task => {
@@ -108,7 +145,7 @@ export const SalesFunnel: React.FC = () => {
       // Filtro de período
       if (taskDate < periodStart) return false;
 
-      // Filtro de consultor
+      // Filtro de consultor com matching aprimorado
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
         if (!consultant) {
@@ -116,19 +153,18 @@ export const SalesFunnel: React.FC = () => {
           return false;
         }
         
-        // Comparação normalizada para evitar problemas com espaços/maiúsculas
-        const consultantName = consultant.name?.trim().toLowerCase();
-        const taskResponsible = task.responsible?.trim().toLowerCase();
+        const isMatch = isNameMatch(consultant.name, task.responsible);
         
-        if (consultantName !== taskResponsible) {
-          console.log('🔍 Filtro Consultor - Não match:', {
-            consultantName,
-            taskResponsible,
-            consultant: consultant.name,
-            task: task.responsible
-          });
-          return false;
-        }
+        console.log('🔍 Filtro Consultor:', {
+          consultantOriginal: consultant.name,
+          taskOriginal: task.responsible,
+          consultantNormalized: normalizeName(consultant.name),
+          taskNormalized: normalizeName(task.responsible),
+          isMatch,
+          taskId: task.id
+        });
+        
+        if (!isMatch) return false;
       }
 
       // Filtro de filial
@@ -138,6 +174,16 @@ export const SalesFunnel: React.FC = () => {
       if (selectedActivity !== 'all' && task.taskType !== selectedActivity) return false;
       return true;
     });
+    
+    console.log('📊 Filtros aplicados:', {
+      totalTasks: tasks.length,
+      filteredTasks: filtered.length,
+      selectedConsultant,
+      selectedFilial,
+      selectedActivity,
+      selectedPeriod
+    });
+    
     return filtered;
   }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants]);
 
