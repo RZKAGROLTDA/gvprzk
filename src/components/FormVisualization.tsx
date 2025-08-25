@@ -874,46 +874,21 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Informações de Status e Controle */}
+          {/* Status da Oportunidade */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Informações Detalhadas do Status
+                Status da Oportunidade
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">ID da Tarefa</label>
-                  <p className="font-mono text-sm text-muted-foreground">{fullTask.id}</p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Status da Tarefa</label>
-                  <Badge variant="outline" className="text-sm">
-                    {fullTask.status === 'pending' ? 'Pendente' :
-                     fullTask.status === 'in_progress' ? 'Em Andamento' :
-                     fullTask.status === 'completed' ? 'Concluída' :
-                     fullTask.status === 'closed' ? 'Fechada' : fullTask.status}
+                  <label className="text-sm font-medium text-muted-foreground">Tipo de Resultado</label>
+                  <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} text-lg px-4 py-2 border-2`}>
+                    {getStatusLabel(fullTask.salesType || 'prospect')}
                   </Badge>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
-                  <Badge variant={fullTask.priority === 'high' ? 'destructive' : fullTask.priority === 'medium' ? 'default' : 'secondary'} className="text-sm">
-                    {fullTask.priority === 'high' ? 'Alta' :
-                     fullTask.priority === 'medium' ? 'Média' :
-                     fullTask.priority === 'low' ? 'Baixa' : fullTask.priority}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">É Prospect?</label>
-                  <Badge variant={fullTask.isProspect ? 'default' : 'secondary'} className="text-sm">
-                    {fullTask.isProspect ? 'Sim' : 'Não'}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Criado por</label>
-                  <p className="font-medium">{fullTask.createdBy}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Data de Criação</label>
@@ -937,7 +912,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 )}
                 {fullTask.salesConfirmed !== undefined && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Venda Confirmada</label>
+                    <label className="text-sm font-medium text-muted-foreground">Status da Venda</label>
                     <Badge variant={fullTask.salesConfirmed ? 'default' : 'destructive'} className="text-sm">
                       {fullTask.salesConfirmed ? 'Confirmada' : 'Não Confirmada'}
                     </Badge>
@@ -946,6 +921,63 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* Produtos Oferecidos */}
+          {fullTask.prospectItems && fullTask.prospectItems.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Produtos Oferecidos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {fullTask.prospectItems.map((item, index) => (
+                    <div key={index} className="border rounded-lg p-4 bg-muted/30">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-muted-foreground">Produto</label>
+                          <p className="font-medium text-primary">{item.name}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-muted-foreground">Categoria</label>
+                          <p className="font-medium">{item.category}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                          <p className="font-medium text-lg">{item.quantity || 1}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
+                          <p className="font-bold text-lg text-primary">
+                            R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        {item.observations && (
+                          <div className="md:col-span-4 space-y-1">
+                            <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                            <p className="text-sm bg-muted/50 p-2 rounded">{item.observations}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="mt-4 p-4 bg-gradient-card rounded-lg border">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-1">Valor Total dos Produtos Oferecidos</p>
+                      <p className="text-2xl font-bold text-primary">
+                        R$ {fullTask.prospectItems
+                          .reduce((total, item) => total + ((item.price || 0) * (item.quantity || 1)), 0)
+                          .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Notas de Prospect */}
           {fullTask.prospectNotes && (
