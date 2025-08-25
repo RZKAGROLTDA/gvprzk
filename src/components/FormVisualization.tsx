@@ -871,47 +871,74 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Status da Oportunidade */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Status da Oportunidade
+          <Card className="border-primary/20 shadow-lg bg-gradient-to-r from-primary/5 via-white to-primary/5">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <FileText className="w-6 h-6 text-primary" />
+                </div>
+                <span className="text-xl">Status da Oportunidade</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Status Tarefa</label>
-                  <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} text-lg px-4 py-2 border-2`}>
+              <div className="space-y-6">
+                {/* Status Principal */}
+                <div className="text-center p-6 bg-gradient-card rounded-xl border border-primary/20">
+                  <label className="text-sm font-medium text-muted-foreground block mb-3">Status Tarefa</label>
+                  <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} text-xl px-6 py-3 border-2 shadow-lg`}>
                     {getStatusLabel(fullTask.salesType || 'prospect')}
                   </Badge>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Data de Criação</label>
-                  <p className="font-medium">
-                    {format(new Date(fullTask.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Última Atualização</label>
-                  <p className="font-medium">
-                    {format(new Date(fullTask.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                  </p>
-                </div>
-                {fullTask.salesValue && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Valor de Venda Direto</label>
-                    <p className="font-bold text-lg text-success">
-                      R$ {fullTask.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+
+                {/* Informações em Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2">
+                      <Calendar className="w-4 h-4" />
+                      Data de Criação
+                    </label>
+                    <p className="font-semibold text-lg">
+                      {format(new Date(fullTask.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </p>
                   </div>
-                )}
-                {fullTask.salesConfirmed !== undefined && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Status da Venda</label>
-                    <Badge variant={fullTask.salesConfirmed ? 'default' : 'destructive'} className="text-sm">
-                      {fullTask.salesConfirmed ? 'Confirmada' : 'Não Confirmada'}
-                    </Badge>
+                  
+                  <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2">
+                      <FileText className="w-4 h-4" />
+                      Última Atualização
+                    </label>
+                    <p className="font-semibold text-lg">
+                      {format(new Date(fullTask.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Valores e Status de Venda */}
+                {(fullTask.salesValue || fullTask.salesConfirmed !== undefined) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {fullTask.salesValue && (
+                      <div className="p-4 bg-gradient-to-br from-success/10 to-success/5 rounded-lg border border-success/20">
+                        <label className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2">
+                          <Package className="w-4 h-4" />
+                          Valor de Venda Direto
+                        </label>
+                        <p className="font-bold text-2xl text-success">
+                          R$ {fullTask.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {fullTask.salesConfirmed !== undefined && (
+                      <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                        <label className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2">
+                          <FileText className="w-4 h-4" />
+                          Status da Venda
+                        </label>
+                        <Badge variant={fullTask.salesConfirmed ? 'default' : 'destructive'} className="text-base px-4 py-2">
+                          {fullTask.salesConfirmed ? '✓ Confirmada' : '✗ Não Confirmada'}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
