@@ -224,6 +224,19 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="edit-clientCode">Código do Cliente</Label>
+              <Input 
+                id="edit-clientCode" 
+                value={task?.clientCode || ''} 
+                disabled
+                placeholder="Código do cliente" 
+                className="bg-muted"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="edit-property">Nome da Propriedade</Label>
               <Input 
                 id="edit-property" 
@@ -233,20 +246,26 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 className="bg-muted"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-cpf">CPF</Label>
+              <Label htmlFor="edit-propertyHectares">Hectares da Propriedade</Label>
               <Input 
-                id="edit-cpf" 
-                value={task?.cpf || ''} 
+                id="edit-propertyHectares" 
+                value={task?.propertyHectares ? 
+                  new Intl.NumberFormat('pt-BR', { 
+                    minimumFractionDigits: 0, 
+                    maximumFractionDigits: 2 
+                  }).format(task.propertyHectares) + ' hectares' : 
+                  'Não informado'
+                } 
                 disabled
-                placeholder="CPF do cliente" 
+                placeholder="Hectares da propriedade" 
                 className="bg-muted"
               />
             </div>
+          </div>
 
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-email">Email do Cliente</Label>
               <Input 
