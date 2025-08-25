@@ -881,7 +881,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Tipo de Resultado</label>
+                  <label className="text-sm font-medium text-muted-foreground">Status Tarefa</label>
                   <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} text-lg px-4 py-2 border-2`}>
                     {getStatusLabel(fullTask.salesType || 'prospect')}
                   </Badge>
