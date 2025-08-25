@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1098,91 +1099,9 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                     )}
                   </div>
                 )}
-
-                {/* Produtos Oferecidos na Oportunidade */}
-                {fullTask.checklist && fullTask.checklist.length > 0 && (
-                  <div className="border-t pt-6">
-                    <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                      <Package className="w-5 h-5 text-primary" />
-                      Produtos Oferecidos nesta Oportunidade
-                    </h4>
-                    <div className="grid gap-3">
-                      {fullTask.checklist.filter(item => item.selected).map((item, index) => (
-                        <div key={index} className="p-4 bg-success/5 rounded-lg border border-success/20">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h5 className="font-semibold text-success">{item.name}</h5>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                Categoria: <span className="capitalize">{item.category}</span>
-                              </p>
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                  <span className="text-muted-foreground">Quantidade:</span>
-                                  <span className="font-medium ml-2">{item.quantity || 1}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Preço unitário:</span>
-                                  <span className="font-medium ml-2">
-                                    R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                  </span>
-                                </div>
-                              </div>
-                              {(item.quantity || 1) > 1 && (
-                                <div className="mt-2 p-2 bg-primary/10 rounded border border-primary/20">
-                                  <span className="text-sm font-semibold text-primary">
-                                    Valor Total: R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                  </span>
-                                </div>
-                              )}
-                              {item.observations && (
-                                <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
-                                  <span className="font-medium">Observações:</span> {item.observations}
-                                </div>
-                              )}
-                            </div>
-                            <Badge variant="default" className="bg-success text-white border-success">
-                              Oferecido
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Resumo dos Produtos Oferecidos */}
-                      <div className="mt-4 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Total de Produtos Oferecidos</p>
-                            <p className="text-2xl font-bold text-primary">
-                              {fullTask.checklist.filter(item => item.selected).length}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Quantidade Total</p>
-                            <p className="text-2xl font-bold text-primary">
-                              {fullTask.checklist
-                                .filter(item => item.selected)
-                                .reduce((sum, item) => sum + (item.quantity || 1), 0)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Valor Total dos Produtos</p>
-                            <p className="text-2xl font-bold text-success">
-                              R$ {fullTask.checklist
-                                .filter(item => item.selected)
-                                .reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0)
-                                .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
               </div>
             </CardContent>
           </Card>
-
 
           {/* Notas de Prospect */}
           {fullTask.prospectNotes && (
@@ -1200,7 +1119,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardContent>
             </Card>
           )}
-
 
           {/* Lembretes */}
           {fullTask.reminders && fullTask.reminders.length > 0 && (
