@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -38,18 +37,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   // Usar task completa (com detalhes carregados) ou task original
   const fullTask = taskDetails || task;
 
-  // Função para calcular valor total automático igual ao CreateTask
-  const calculateTotalSalesValue = () => {
-    let total = 0;
-
-    // Somar valores dos produtos prospectItems selecionados
+  // Função para calcular valor total dos produtos selecionados (apenas para exibição)
+  const calculateSelectedProductsValue = () => {
     if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
-      total = editedTask.prospectItems.reduce((sum, item) => {
+      return editedTask.prospectItems.reduce((sum, item) => {
         return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
       }, 0);
     }
-
-    return total;
+    return 0;
   };
 
   useEffect(() => {
@@ -66,7 +61,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         observations: fullTask.observations,
         priority: fullTask.priority,
         status: fullTask.status,
-        salesValue: fullTask.salesValue || 0,
+        salesValue: fullTask.salesValue || 0, // Sempre manter o valor original
         salesConfirmed: fullTask.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
@@ -85,19 +80,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     }
   }, [fullTask]);
 
-  // Atualizar valor total automaticamente quando prospectItems muda
-  useEffect(() => {
-    if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
-      const totalValue = calculateTotalSalesValue();
-      setEditedTask(prev => ({
-        ...prev,
-        salesValue: totalValue
-      }));
-    }
-  }, [editedTask.prospectItems]);
-
-  // Remover a atualização automática do valor da venda parcial
-  // O valor principal não deve ser alterado automaticamente
+  // Remover o useEffect que alterava automaticamente o salesValue
+  // O valor da venda deve sempre permanecer o valor original da oportunidade
 
   const handleSave = async () => {
     if (!task || !editedTask.id) return;
@@ -141,7 +125,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         observations: editedTask.observations,
         priority: editedTask.priority,
         status: finalStatus,
-        sales_value: editedTask.salesValue || 0,
+        sales_value: editedTask.salesValue || 0, // Sempre usar o valor original
         sales_confirmed: finalSalesConfirmed, // Preservar valor exato
         is_prospect: finalIsProspect,
         prospect_notes: editedTask.prospectNotes || '',
@@ -198,6 +182,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
+          
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-responsible">Vendedor/Responsável</Label>
@@ -290,7 +275,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               />
             </div>
           </div>
-
 
           <div className="space-y-2">
             <Label className="text-base font-medium">Status do Prospect</Label>
@@ -410,20 +394,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               <Input 
                 id="edit-salesValue" 
                 type="text" 
-                value={calculateTotalSalesValue() ? new Intl.NumberFormat('pt-BR', {
+                value={editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
-                }).format(calculateTotalSalesValue()) : (editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }).format(editedTask.salesValue) : '0,00')} 
+                }).format(editedTask.salesValue) : '0,00'} 
                 className="pl-8 bg-muted cursor-not-allowed" 
                 readOnly
               />
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {editedTask.prospectItems && editedTask.prospectItems.length > 0 ? "Valor calculado com base nos produtos selecionados" : "Valor original da tarefa"}
+              Valor total da oportunidade (não alterável)
             </p>
           </div>
 
@@ -573,18 +554,29 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     ))}
                   </div>
                   
-                  {/* Valor total calculado automaticamente */}
-                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                    <Label className="text-sm font-medium text-green-700">Valor Total da Venda Parcial:</Label>
-                    <div className="text-lg font-bold text-green-700">
+                  {/* Valor total dos produtos selecionados (apenas informativo) */}
+                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <Label className="text-sm font-medium text-blue-700">Valor dos Produtos Selecionados:</Label>
+                    <div className="text-lg font-bold text-blue-700">
                       R$ {new Intl.NumberFormat('pt-BR', { 
                         minimumFractionDigits: 2, 
                         maximumFractionDigits: 2 
-                      }).format(editedTask.prospectItems?.reduce((sum, item) => {
-                        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-                      }, 0) || 0)}
+                      }).format(calculateSelectedProductsValue())}
                     </div>
                   </div>
+                  
+                  {/* Mostrar diferença entre valor total da oportunidade e produtos selecionados */}
+                  {calculateSelectedProductsValue() !== (editedTask.salesValue || 0) && (
+                    <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <Label className="text-sm font-medium text-yellow-700">Diferença (Oportunidade - Produtos):</Label>
+                      <div className="text-lg font-bold text-yellow-700">
+                        R$ {new Intl.NumberFormat('pt-BR', { 
+                          minimumFractionDigits: 2, 
+                          maximumFractionDigits: 2 
+                        }).format((editedTask.salesValue || 0) - calculateSelectedProductsValue())}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>}
