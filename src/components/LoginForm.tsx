@@ -264,12 +264,31 @@ export const LoginForm: React.FC = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('📱 Mobile Signup Debug: Iniciando processo de cadastro');
+    console.log('📱 Form Data:', {
+      name: formData.name,
+      email: formData.email,
+      role: formData.role,
+      filial_id: formData.filial_id,
+      hasPassword: !!formData.password
+    });
+    
     // Validate all signup fields
     const isNameValid = validateField('name', formData.name, validationRules.name);
     const isEmailValid = validateField('email', formData.email, validationRules.email);
     const isPasswordValid = validateField('password', formData.password, validationRules.password);
     
+    console.log('📱 Validation Results:', {
+      isNameValid: isNameValid.isValid,
+      isEmailValid: isEmailValid.isValid,
+      isPasswordValid: isPasswordValid.isValid,
+      nameErrors: isNameValid.errors,
+      emailErrors: isEmailValid.errors,
+      passwordErrors: isPasswordValid.errors
+    });
+    
     if (!isNameValid.isValid || !isEmailValid.isValid || !isPasswordValid.isValid) {
+      console.log('❌ Mobile Signup: Validação falhou');
       toast({
         title: "Dados inválidos",
         description: "Verifique os campos em vermelho",
@@ -278,36 +297,82 @@ export const LoginForm: React.FC = () => {
       return;
     }
     
-    setLoading(true);
-
-    const { error } = await signUp(formData.email, formData.password, {
-      name: formData.name,
-      role: formData.role,
-      filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
-    });
-    
-    if (error) {
-      let errorMessage = "Erro no cadastro";
-      
-      if (error.message.includes('already_registered')) {
-        errorMessage = "Email já cadastrado. Tente fazer login.";
-      } else if (error.message.includes('weak_password')) {
-        errorMessage = "Senha muito fraca. Use uma senha mais forte.";
-      }
-      
+    // Check required fields manually for mobile debugging
+    if (!formData.name || !formData.email || !formData.password || !formData.role) {
+      console.log('❌ Mobile Signup: Campos obrigatórios faltando', {
+        name: !!formData.name,
+        email: !!formData.email,
+        password: !!formData.password,
+        role: !!formData.role
+      });
       toast({
-        title: "Erro no cadastro",
-        description: errorMessage,
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Cadastro realizado com sucesso!",
-        description: "Verifique seu email para confirmar a conta",
-      });
+      return;
     }
     
-    setLoading(false);
+    setLoading(true);
+    console.log('📱 Mobile Signup: Chamando função signUp...');
+
+    try {
+      const { error } = await signUp(formData.email, formData.password, {
+        name: formData.name,
+        role: formData.role,
+        filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
+      });
+      
+      console.log('📱 Mobile Signup Result:', { error: error?.message || 'success' });
+      
+      if (error) {
+        console.error('❌ Mobile Signup Error:', error);
+        let errorMessage = "Erro no cadastro";
+        
+        if (error.message.includes('already_registered')) {
+          errorMessage = "Email já cadastrado. Tente fazer login.";
+        } else if (error.message.includes('weak_password')) {
+          errorMessage = "Senha muito fraca. Use uma senha mais forte.";
+        } else if (error.message.includes('invalid_email')) {
+          errorMessage = "Email inválido. Verifique o formato do email.";
+        } else if (error.message.includes('signup_disabled')) {
+          errorMessage = "Cadastro temporariamente desabilitado. Tente novamente mais tarde.";
+        } else {
+          errorMessage = `Erro: ${error.message}`;
+        }
+        
+        toast({
+          title: "Erro no cadastro",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } else {
+        console.log('✅ Mobile Signup: Cadastro realizado com sucesso');
+        toast({
+          title: "Cadastro realizado com sucesso!",
+          description: "Verifique seu email para confirmar a conta",
+        });
+        
+        // Clear form on success
+        setFormData({
+          email: '',
+          password: '',
+          name: '',
+          role: 'sales_consultant',
+          filial_id: ''
+        });
+      }
+    } catch (error: any) {
+      console.error('💥 Mobile Signup: Erro crítico:', error);
+      toast({
+        title: "Erro crítico",
+        description: "Erro interno do sistema. Tente novamente em alguns minutos.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      console.log('📱 Mobile Signup: Processo finalizado');
+    }
   };
 
   const handleForgotPassword = async () => {
@@ -477,13 +542,15 @@ export const LoginForm: React.FC = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome</Label>
+                  <Label htmlFor="signup-name">Nome *</Label>
                   <Input
                     id="signup-name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
                     required
+                    placeholder="Digite seu nome completo"
                     className={hasErrors('name') ? 'border-destructive' : ''}
+                    autoComplete="name"
                   />
                   {hasErrors('name') && (
                     <p className="text-sm text-destructive">
@@ -493,14 +560,16 @@ export const LoginForm: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email">Email *</Label>
                   <Input
                     id="signup-email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     required
+                    placeholder="Digite seu email"
                     className={hasErrors('email') ? 'border-destructive' : ''}
+                    autoComplete="email"
                   />
                   {hasErrors('email') && (
                     <p className="text-sm text-destructive">
@@ -510,7 +579,7 @@ export const LoginForm: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
+                  <Label htmlFor="signup-password">Senha *</Label>
                   <div className="relative">
                     <Input
                       id="signup-password"
@@ -518,7 +587,9 @@ export const LoginForm: React.FC = () => {
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       required
+                      placeholder="Digite uma senha forte"
                       className={`pr-10 ${hasErrors('password') ? 'border-destructive' : ''}`}
+                      autoComplete="new-password"
                     />
                     <Button
                       type="button"
@@ -548,7 +619,7 @@ export const LoginForm: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-role">Cargo</Label>
+                  <Label htmlFor="signup-role">Cargo *</Label>
                   <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione seu cargo" />
@@ -631,10 +702,19 @@ export const LoginForm: React.FC = () => {
                   )}
                 </div>
                 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={loading || !formData.name || !formData.email || !formData.password}
+                >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Cadastrar
                 </Button>
+                
+                {/* Debug info for mobile */}
+                <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/20 rounded">
+                  Status: Nome({formData.name ? '✓' : '✗'}) Email({formData.email ? '✓' : '✗'}) Senha({formData.password ? '✓' : '✗'}) Cargo({formData.role ? '✓' : '✗'})
+                </div>
               </form>
             </TabsContent>
           </Tabs>
