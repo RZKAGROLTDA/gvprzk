@@ -501,13 +501,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">Horário</label>
                   <p className="font-medium">{fullTask.startTime} - {fullTask.endTime}</p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Hectares da Propriedade</label>
-                  <p className="font-medium flex items-center gap-2">
-                    <Crop className="w-4 h-4 text-success" />
-                    {fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'}
-                  </p>
-                </div>
               </div>
 
               <Separator className="my-6" />
@@ -547,10 +540,17 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                       <p className="font-medium">{fullTask.cpf}</p>
                     </div>
                   )}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
-                    <p className="font-medium">{fullTask.property}</p>
-                  </div>
+                   <div className="space-y-2">
+                     <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
+                     <p className="font-medium">{fullTask.property}</p>
+                   </div>
+                   <div className="space-y-2">
+                     <label className="text-sm font-medium text-muted-foreground">Hectares da Propriedade</label>
+                     <p className="font-medium flex items-center gap-2">
+                       <Crop className="w-4 h-4 text-success" />
+                       {fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'}
+                     </p>
+                   </div>
                 </div>
               </div>
             </CardContent>
