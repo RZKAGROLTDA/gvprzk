@@ -593,7 +593,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                     <div className="space-y-3">
                       {fullTask.equipmentList.map((equipment, index) => (
                         <div key={equipment.id || index} className="border rounded-lg p-4 bg-muted/30">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
                               <label className="text-sm font-medium text-muted-foreground">Família do Produto</label>
                               <p className="font-medium text-primary">{equipment.familyProduct}</p>
@@ -601,10 +601,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                             <div className="space-y-1">
                               <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
                               <p className="font-medium text-lg">{equipment.quantity}</p>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-muted-foreground">ID do Equipamento</label>
-                              <p className="font-mono text-sm text-muted-foreground">{equipment.id}</p>
                             </div>
                           </div>
                         </div>
