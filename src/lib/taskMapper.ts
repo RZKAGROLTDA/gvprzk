@@ -67,7 +67,10 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     // Usar o valor direto do banco para isProspect
     isProspect: Boolean(supabaseTask.is_prospect),
     prospectNotes: supabaseTask.prospect_notes || '',
-    prospectItems: supabaseTask.products || [], // Carregar TODOS os produtos, não apenas os selecionados
+    // prospectItems são os produtos selecionados quando há venda parcial
+    prospectItems: supabaseTask.sales_type === 'parcial' 
+      ? checklist.filter(product => product.selected)
+      : [],
     salesValue: supabaseTask.sales_value || 0,
     salesConfirmed: supabaseTask.sales_confirmed, // Preservar valor exato do banco
     salesType: supabaseTask.sales_type,
