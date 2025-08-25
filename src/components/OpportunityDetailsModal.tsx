@@ -351,9 +351,23 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                 </Badge>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Valor Total da Oportunidade</label>
-                <p className="text-sm bg-muted p-2 rounded font-semibold">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Valor Total da Oportunidade
+                  {selectedStatus === 'parcial' && (
+                    <span className="text-xs text-yellow-600 ml-2">(Calculado automaticamente)</span>
+                  )}
+                </label>
+                <p className={`text-sm p-2 rounded font-semibold ${
+                  selectedStatus === 'parcial' 
+                    ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' 
+                    : 'bg-muted'
+                }`}>
                   {totalOpportunityValue ? `R$ ${totalOpportunityValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'Não informado'}
+                  {selectedStatus === 'parcial' && (
+                    <span className="block text-xs mt-1 text-yellow-600">
+                      Valor fixado baseado nos itens selecionados
+                    </span>
+                  )}
                 </p>
               </div>
               <div>
