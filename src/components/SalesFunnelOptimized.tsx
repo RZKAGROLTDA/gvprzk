@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Calendar, TrendingUp, Users, DollarSign, Target, Filter } from 'lucide-react';
-import { useDashboardData } from '@/components/DashboardDataProvider';
+import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, resolveFilialName, calculateSalesValue } from '@/lib/taskStandardization';
@@ -36,8 +36,10 @@ interface ClientDetails {
   responsible: string;
 }
 
-const SalesFunnelOptimized: React.FC = () => {
-  const { tasks, consultants, filiais, loading } = useDashboardData();
+export const SalesFunnelOptimized: React.FC = () => {
+  const { tasks, loading } = useTasksOptimized();
+  const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
+  const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
 
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   
@@ -245,7 +247,7 @@ const SalesFunnelOptimized: React.FC = () => {
       .slice(0, 20); // Limitar para performance
   }, [filteredTasks, activeView]);
 
-  const isLoading = loading;
+  const isLoading = loading || consultantsLoading || filiaisLoading;
 
   if (isLoading) {
     return (
@@ -505,6 +507,3 @@ const SalesFunnelOptimized: React.FC = () => {
     </div>
   );
 };
-
-export { SalesFunnelOptimized };
-export default SalesFunnelOptimized;
