@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
+import { mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -50,25 +51,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     return types[type as keyof typeof types] || type;
   };
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      'pending': 'bg-secondary/10 text-secondary border-secondary/20',
-      'in_progress': 'bg-warning/10 text-warning border-warning/20',
-      'completed': 'bg-success/10 text-success border-success/20',
-      'closed': 'bg-muted/10 text-muted-foreground border-muted/20'
-    };
-    return colors[status as keyof typeof colors] || 'bg-muted text-muted-foreground';
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels = {
-      'pending': 'Pendente',
-      'in_progress': 'Em Andamento',
-      'completed': 'Concluída',
-      'closed': 'Fechada'
-    };
-    return labels[status as keyof typeof labels] || status;
-  };
+  // Calculate sales status for display
+  const salesStatus = mapSalesStatus(fullTask);
 
   const calculateTotalValue = () => {
     if (fullTask.salesValue) return fullTask.salesValue;
@@ -125,7 +109,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           ['Filial:', fullTask.filial || 'Não informado'],
           ['Data:', format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })],
           ['Horário:', `${fullTask.startTime} - ${fullTask.endTime}`],
-          ['Status:', getStatusLabel(fullTask.status)]
+          ['Status:', getStatusLabel(salesStatus)]
         ];
       
       (pdf as any).autoTable({
@@ -448,8 +432,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <Badge className={`${getStatusColor(fullTask.status)} text-lg px-4 py-2 border-2`}>
-                    {getStatusLabel(fullTask.status)}
+                  <Badge className={`${getStatusColor(salesStatus)} text-lg px-4 py-2 border-2`}>
+                    {getStatusLabel(salesStatus)}
                   </Badge>
                   <div className="mt-3">
                     <p className="text-sm text-muted-foreground">Valor da Oportunidade</p>
@@ -631,8 +615,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 </CardTitle>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-muted-foreground">Status atual:</span>
-                  <Badge className={`${getStatusColor(fullTask.status)} border text-xs`}>
-                    {getStatusLabel(fullTask.status)}
+                  <Badge className={`${getStatusColor(salesStatus)} border text-xs`}>
+                    {getStatusLabel(salesStatus)}
                   </Badge>
                 </div>
               </CardHeader>
@@ -885,8 +869,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 {/* Status Principal */}
                 <div className="text-center p-6 bg-gradient-card rounded-xl border border-primary/20">
                   <label className="text-sm font-medium text-muted-foreground block mb-3">Status Tarefa</label>
-                  <Badge className={`${getStatusColor(fullTask.status)} text-xl px-6 py-3 border-2 shadow-lg`}>
-                    {getStatusLabel(fullTask.status)}
+                  <Badge className={`${getStatusColor(salesStatus)} text-xl px-6 py-3 border-2 shadow-lg`}>
+                    {getStatusLabel(salesStatus)}
                   </Badge>
                 </div>
 
