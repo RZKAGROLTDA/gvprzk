@@ -934,127 +934,10 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   </div>
                 )}
 
-                {/* Produtos da Oportunidade */}
-                {((fullTask.checklist && fullTask.checklist.length > 0) || (fullTask.prospectItems && fullTask.prospectItems.length > 0)) && (
-                  <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
-                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-primary">
-                      <Package className="w-5 h-5" />
-                      Produtos da Oportunidade
-                    </h4>
-                    
-                    {/* Produtos do Checklist */}
-                    {fullTask.checklist && fullTask.checklist.length > 0 && (
-                      <div className="space-y-3 mb-4">
-                        <h5 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Produtos Selecionados:</h5>
-                        {fullTask.checklist.filter(item => item.selected).map((item, index) => (
-                          <div key={index} className="flex justify-between items-center p-3 bg-white/50 rounded-md border border-primary/10">
-                            <div className="flex-1">
-                              <p className="font-medium text-primary">{item.name}</p>
-                              <p className="text-sm text-muted-foreground">{item.category}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Qtd: {item.quantity || 1}</p>
-                              <p className="font-bold text-primary">
-                                R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Produtos Oferecidos */}
-                    {fullTask.prospectItems && fullTask.prospectItems.length > 0 && (
-                      <div className="space-y-3">
-                        <h5 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Produtos Oferecidos:</h5>
-                        {fullTask.prospectItems.map((item, index) => (
-                          <div key={index} className="flex justify-between items-center p-3 bg-white/50 rounded-md border border-primary/10">
-                            <div className="flex-1">
-                              <p className="font-medium text-primary">{item.name}</p>
-                              <p className="text-sm text-muted-foreground">{item.category}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-muted-foreground">Qtd: {item.quantity || 1}</p>
-                              <p className="font-bold text-primary">
-                                R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Total dos Produtos */}
-                    <div className="mt-4 pt-4 border-t border-primary/20">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-lg">Total dos Produtos:</span>
-                        <span className="font-bold text-xl text-primary">
-                          R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Produtos Oferecidos */}
-          {fullTask.prospectItems && fullTask.prospectItems.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Produtos Oferecidos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {fullTask.prospectItems.map((item, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-muted/30">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-muted-foreground">Produto</label>
-                          <p className="font-medium text-primary">{item.name}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-muted-foreground">Categoria</label>
-                          <p className="font-medium">{item.category}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                          <p className="font-medium text-lg">{item.quantity || 1}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
-                          <p className="font-bold text-lg text-primary">
-                            R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                        {item.observations && (
-                          <div className="md:col-span-4 space-y-1">
-                            <label className="text-sm font-medium text-muted-foreground">Observações</label>
-                            <p className="text-sm bg-muted/50 p-2 rounded">{item.observations}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <div className="mt-4 p-4 bg-gradient-card rounded-lg border">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Valor Total dos Produtos Oferecidos</p>
-                      <p className="text-2xl font-bold text-primary">
-                        R$ {fullTask.prospectItems
-                          .reduce((total, item) => total + ((item.price || 0) * (item.quantity || 1)), 0)
-                          .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Notas de Prospect */}
           {fullTask.prospectNotes && (
@@ -1073,51 +956,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Itens de Prospect */}
-          {fullTask.prospectItems && fullTask.prospectItems.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Itens de Prospecção
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {fullTask.prospectItems.map((item, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-blue-50/50">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Nome</label>
-                          <p className="font-medium">{item.name}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Categoria</label>
-                          <p className="font-medium">{item.category}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                          <p className="font-medium">{item.quantity || 1}</p>
-                        </div>
-                        {item.price && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Preço</label>
-                            <p className="font-medium">R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                          </div>
-                        )}
-                        {item.observations && (
-                          <div className="md:col-span-3">
-                            <label className="text-sm font-medium text-muted-foreground">Observações</label>
-                            <p className="text-sm">{item.observations}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Lembretes */}
           {fullTask.reminders && fullTask.reminders.length > 0 && (
