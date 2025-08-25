@@ -236,6 +236,79 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         yPosition += 15;
       }
       
+      // Lembretes configurados
+      if (fullTask.reminders && fullTask.reminders.length > 0) {
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('LEMBRETES CONFIGURADOS', 20, yPosition);
+        yPosition += 10;
+        
+        const remindersData = fullTask.reminders.map(reminder => [
+          reminder.title,
+          reminder.description || '',
+          format(new Date(reminder.date), 'dd/MM/yyyy', { locale: ptBR }),
+          reminder.time,
+          reminder.completed ? 'Concluído' : 'Pendente'
+        ]);
+        
+        (pdf as any).autoTable({
+          startY: yPosition,
+          head: [['Título', 'Descrição', 'Data', 'Horário', 'Status']],
+          body: remindersData,
+          margin: { left: 20, right: 20 },
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [51, 122, 183] }
+        });
+        
+        yPosition = (pdf as any).lastAutoTable.finalY + 15;
+      }
+      
+      // Documentos anexados
+      if (fullTask.documents && fullTask.documents.length > 0) {
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('DOCUMENTOS ANEXADOS', 20, yPosition);
+        yPosition += 10;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        
+        fullTask.documents.forEach((doc, index) => {
+          pdf.text(`${index + 1}. Documento anexado`, 20, yPosition);
+          yPosition += 5;
+        });
+        
+        yPosition += 10;
+      }
+      
+      // Fotos da visita
+      if (fullTask.photos && fullTask.photos.length > 0) {
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('FOTOS DA VISITA', 20, yPosition);
+        yPosition += 10;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Total de fotos anexadas: ${fullTask.photos.length}`, 20, yPosition);
+        yPosition += 10;
+      }
+      
       // Observações
       if (fullTask.observations) {
         pdf.setFontSize(14);
