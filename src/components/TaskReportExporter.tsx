@@ -61,6 +61,30 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
     }
   };
 
+  const calculateTotalValue = () => {
+    let total = 0;
+    
+    // Soma produtos selecionados do checklist
+    if (task.checklist) {
+      task.checklist.forEach(item => {
+        if (item.selected && item.price) {
+          total += item.price * (item.quantity || 1);
+        }
+      });
+    }
+    
+    // Soma produtos oferecidos (prospectItems)
+    if (task.prospectItems) {
+      task.prospectItems.forEach(item => {
+        if (item.price) {
+          total += item.price * (item.quantity || 1);
+        }
+      });
+    }
+    
+    return total;
+  };
+
   const exportTaskToPDF = async () => {
     try {
       setIsExporting(true);
@@ -163,6 +187,14 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
         yPosition += 8;
       }
 
+      if (task.propertyHectares) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Hectares:', 20, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${task.propertyHectares} ha`, 55, yPosition);
+        yPosition += 8;
+      }
+
       doc.setFont('helvetica', 'bold');
       doc.text('Vendedor:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
@@ -205,46 +237,100 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
         yPosition += splitText.length * 6 + 10;
       }
 
-      // Seção - Checklist de Produtos/Oportunidades
-      if (task.checklist && task.checklist.length > 0) {
+      // Seção - Produtos da Oportunidade
+      if ((task.checklist && task.checklist.length > 0) || (task.prospectItems && task.prospectItems.length > 0)) {
         // Verificar se cabe na página atual
-        if (yPosition > 250) {
+        if (yPosition > 200) {
           doc.addPage();
           yPosition = 20;
         }
 
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('PRODUTOS E OPORTUNIDADES', 20, yPosition);
+        doc.text('PRODUTOS DA OPORTUNIDADE', 20, yPosition);
         yPosition += 15;
 
-        // Criar tabela de produtos
-        const productTableData = task.checklist.map((product) => [
-          product.selected ? '✓' : '✗',
-          product.name,
-          product.category,
-          product.quantity || '-',
-          product.price ? `R$ ${product.price.toFixed(2)}` : '-',
-          product.observations || '-'
-        ]);
+        // Produtos Selecionados (do checklist)
+        if (task.checklist && task.checklist.filter(item => item.selected).length > 0) {
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text('PRODUTOS SELECIONADOS:', 20, yPosition);
+          yPosition += 10;
 
-        doc.autoTable({
-          head: [['Selecionado', 'Produto', 'Categoria', 'Qtd', 'Preço', 'Observações']],
-          body: productTableData,
-          startY: yPosition,
-          styles: { fontSize: 10 },
-          headStyles: { fillColor: [22, 160, 133] },
-          columnStyles: {
-            0: { cellWidth: 20 },
-            1: { cellWidth: 40 },
-            2: { cellWidth: 25 },
-            3: { cellWidth: 15 },
-            4: { cellWidth: 25 },
-            5: { cellWidth: 35 }
+          const selectedProducts = task.checklist.filter(item => item.selected);
+          const selectedTableData = selectedProducts.map((product) => [
+            product.name,
+            product.category,
+            product.quantity || '1',
+            product.price ? `R$ ${product.price.toFixed(2)}` : 'R$ 0,00',
+            product.price ? `R$ ${((product.price || 0) * (product.quantity || 1)).toFixed(2)}` : 'R$ 0,00'
+          ]);
+
+          doc.autoTable({
+            head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total']],
+            body: selectedTableData,
+            startY: yPosition,
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [22, 160, 133] },
+            columnStyles: {
+              0: { cellWidth: 45 },
+              1: { cellWidth: 35 },
+              2: { cellWidth: 20 },
+              3: { cellWidth: 30 },
+              4: { cellWidth: 30 }
+            }
+          });
+
+          yPosition = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        // Produtos Oferecidos (prospectItems)
+        if (task.prospectItems && task.prospectItems.length > 0) {
+          if (yPosition > 230) {
+            doc.addPage();
+            yPosition = 20;
           }
-        });
 
-        yPosition = (doc as any).lastAutoTable.finalY + 15;
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text('PRODUTOS OFERECIDOS:', 20, yPosition);
+          yPosition += 10;
+
+          const prospectTableData = task.prospectItems.map((product) => [
+            product.name,
+            product.category,
+            product.quantity || '1',
+            product.price ? `R$ ${product.price.toFixed(2)}` : 'R$ 0,00',
+            product.price ? `R$ ${((product.price || 0) * (product.quantity || 1)).toFixed(2)}` : 'R$ 0,00'
+          ]);
+
+          doc.autoTable({
+            head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total']],
+            body: prospectTableData,
+            startY: yPosition,
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [52, 152, 219] },
+            columnStyles: {
+              0: { cellWidth: 45 },
+              1: { cellWidth: 35 },
+              2: { cellWidth: 20 },
+              3: { cellWidth: 30 },
+              4: { cellWidth: 30 }
+            }
+          });
+
+          yPosition = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        // Total dos Produtos
+        const totalValue = calculateTotalValue();
+        if (totalValue > 0) {
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bold');
+          doc.text('TOTAL DOS PRODUTOS:', 20, yPosition);
+          doc.text(`R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 120, yPosition);
+          yPosition += 15;
+        }
       }
 
       // Seção - Informações de Venda
