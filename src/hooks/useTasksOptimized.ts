@@ -16,14 +16,14 @@ export const QUERY_KEYS = {
 };
 
 // Hook principal otimizado para carregar tasks com cache
-export const useTasksOptimized = () => {
+export const useTasksOptimized = (includeDetails = false) => {
   const { user } = useAuth();
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
 
     // Query super otimizada para máxima performance
     const tasksQuery = useQuery({
-      queryKey: QUERY_KEYS.tasks,
+      queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
       queryFn: async () => {
         if (!user) throw new Error('User not authenticated');
 
@@ -43,16 +43,57 @@ export const useTasksOptimized = () => {
               start_date, end_date, start_time, end_time, observations,
               priority, status, created_at, updated_at, created_by,
               is_prospect, sales_value, sales_confirmed, prospect_notes,
-              family_product, equipment_quantity, equipment_list
+              family_product, equipment_quantity, equipment_list, photos, documents,
+              cpf, email, clientcode, check_in_location, initial_km, final_km,
+              propertyhectares, sales_type
             `)
             .order('created_at', { ascending: false })
-            .limit(50); // Reduzido para 50 para carregamento ultra-rápido
+            .limit(includeDetails ? 100 : 50);
 
           if (error) throw error;
 
           if (!tasksData?.length) return [];
 
-          // Mapear tasks diretamente para máxima performance
+          // Se incluir detalhes, carregar products e reminders
+          if (includeDetails) {
+            const taskIds = tasksData.map(task => task.id);
+            
+            const [productsResult, remindersResult] = await Promise.all([
+              supabase
+                .from('products')
+                .select('*')
+                .in('task_id', taskIds),
+              supabase
+                .from('reminders')
+                .select('*')
+                .in('task_id', taskIds)
+            ]);
+
+            const productsByTask = productsResult.data?.reduce((acc, product) => {
+              if (!acc[product.task_id]) acc[product.task_id] = [];
+              acc[product.task_id].push(product);
+              return acc;
+            }, {} as Record<string, any[]>) || {};
+
+            const remindersByTask = remindersResult.data?.reduce((acc, reminder) => {
+              if (!acc[reminder.task_id]) acc[reminder.task_id] = [];
+              acc[reminder.task_id].push(reminder);
+              return acc;
+            }, {} as Record<string, any[]>) || {};
+
+            // Mapear tasks com dados completos
+            const mappedTasks = tasksData.map(task => {
+              return mapSupabaseTaskToTask({
+                ...task,
+                products: productsByTask[task.id] || [],
+                reminders: remindersByTask[task.id] || []
+              });
+            });
+            
+            return mappedTasks;
+          }
+
+          // Mapear tasks diretamente para máxima performance (sem details)
           const mappedTasks = tasksData.map(task => {
             return mapSupabaseTaskToTask({
               ...task,
@@ -262,6 +303,43 @@ export const useFiliais = () => {
       return data || [];
     },
     staleTime: 10 * 60 * 1000, // 10 minutos - dados relativamente estáticos
+    refetchOnWindowFocus: false,
+  });
+};
+
+// Hook para carregar detalhes completos de uma task específica
+export const useTaskDetails = (taskId: string | null) => {
+  return useQuery({
+    queryKey: taskId ? QUERY_KEYS.taskDetails(taskId) : ['task-details-empty'],
+    queryFn: async () => {
+      if (!taskId) return null;
+
+      const [taskResult, productsResult, remindersResult] = await Promise.all([
+        supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', taskId)
+          .single(),
+        supabase
+          .from('products')
+          .select('*')
+          .eq('task_id', taskId),
+        supabase
+          .from('reminders')
+          .select('*')
+          .eq('task_id', taskId)
+      ]);
+
+      if (taskResult.error) throw taskResult.error;
+
+      return mapSupabaseTaskToTask({
+        ...taskResult.data,
+        products: productsResult.data || [],
+        reminders: remindersResult.data || []
+      });
+    },
+    enabled: !!taskId,
+    staleTime: 5 * 60 * 1000, // 5 minutos para dados específicos
     refetchOnWindowFocus: false,
   });
 };
