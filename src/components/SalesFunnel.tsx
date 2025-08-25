@@ -934,7 +934,18 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                         <TableCell>
                           {(() => {
-                            const salesValue = calculateSalesValue(task);
+                            let salesValue = 0;
+                            
+                            // Para vendas parciais, calcular baseado nos produtos selecionados
+                            if (task.sales_type === 'parcial' && task.products && Array.isArray(task.products)) {
+                              salesValue = task.products
+                                .filter(product => product.selected)
+                                .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
+                            } else {
+                              // Para outros casos, usar a função padrão
+                              salesValue = calculateSalesValue(task);
+                            }
+                            
                             return salesValue > 0 ? new Intl.NumberFormat('pt-BR', {
                               style: 'currency',
                               currency: 'BRL'
