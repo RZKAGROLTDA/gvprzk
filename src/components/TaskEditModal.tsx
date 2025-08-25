@@ -422,6 +422,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   <SelectItem value="Falta de peça">Falta de peça</SelectItem>
                   <SelectItem value="Preço">Preço</SelectItem>
                   <SelectItem value="Prazo">Prazo</SelectItem>
+                  <SelectItem value="Duplo Domicilio">Duplo Domicilio</SelectItem>
                 </SelectContent>
               </Select>
             </div>}
