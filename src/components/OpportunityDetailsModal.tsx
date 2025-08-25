@@ -50,7 +50,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       });
       
       // Initialize selected items and quantities based on current checklist
-      if (task.checklist) {
+      if (task.checklist && task.checklist.length > 0) {
         const initialSelected: {[key: string]: boolean} = {};
         const initialQuantities: {[key: string]: number} = {};
         let calculatedPartialValue = 0;
@@ -80,6 +80,10 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           }))
         });
       } else {
+        // Reset states for tasks without products
+        setSelectedItems({});
+        setItemQuantities({});
+        setPartialValue(0);
         console.log('⚠️ No checklist found for task:', task.id);
       }
     }
@@ -474,21 +478,18 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
               
               {/* Debug info para vendas parciais sem produtos */}
               {selectedStatus === 'parcial' && (!task.checklist || task.checklist.length === 0) && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800 text-sm font-medium">
-                    ⚠️ VENDA PARCIAL SEM PRODUTOS DETECTADA
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-amber-800 text-sm font-medium">
+                    ⚠️ Produtos não encontrados para venda parcial
                   </p>
-                  <div className="text-yellow-700 text-xs mt-2 space-y-1">
-                    <p>• Task ID: {task.id}</p>
-                    <p>• Sales Type: {task.salesType}</p>
-                    <p>• Sales Confirmed: {task.salesConfirmed?.toString()}</p>
-                    <p>• Checklist Length: {task.checklist?.length || 0}</p>
-                    <p>• Status Mapeado: {selectedStatus}</p>
+                  <p className="text-amber-700 text-sm mt-2">
+                    Esta tarefa não possui produtos cadastrados. Para realizar uma venda parcial, 
+                    é necessário editar a tarefa e adicionar os produtos/serviços oferecidos.
+                  </p>
+                  <div className="mt-3 text-xs text-amber-600 space-y-1">
+                    <p>• Você pode alterar o status para "Venda Realizada" para registrar o valor total</p>
+                    <p>• Ou editar a tarefa para adicionar os produtos específicos</p>
                   </div>
-                  <p className="text-yellow-800 text-sm mt-3">
-                    Para realizar uma venda parcial, é necessário que a tarefa tenha produtos cadastrados.
-                    Este é um formulário antigo que precisa ter os produtos adicionados manualmente.
-                  </p>
                 </div>
               )}
               {task.checklist && task.checklist.length > 0 && (
