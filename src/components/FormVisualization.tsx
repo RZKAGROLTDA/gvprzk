@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2, ShoppingCart, Save } from 'lucide-react';
+import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useTaskDetails, useTasksOptimized } from '@/hooks/useTasksOptimized';
@@ -45,9 +43,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<{[key: string]: boolean}>({});
-  const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
   
   // Carregar detalhes completos da task se necessário
   const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
@@ -55,26 +50,11 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     needsDetailsLoading ? task.id : null
   );
   
-  const { updateTask } = useTasksOptimized();
+  
   
   // Usar task completa (com detalhes carregados) ou task original
   const fullTask = taskDetails || task;
 
-  // Initialize selection state based on current task
-  useEffect(() => {
-    if (fullTask?.checklist) {
-      const selected: {[key: string]: boolean} = {};
-      const quantities: {[key: string]: number} = {};
-      
-      fullTask.checklist.forEach(item => {
-        selected[item.id] = item.selected || false;
-        quantities[item.id] = item.quantity || 1;
-      });
-      
-      setSelectedItems(selected);
-      setItemQuantities(quantities);
-    }
-  }, [fullTask?.checklist]);
 
   const getTaskTypeLabel = (type: string) => {
     const types = {
@@ -94,67 +74,11 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     
     let total = 0;
     fullTask.checklist.forEach(item => {
-      if (selectedItems[item.id]) {
-        total += (item.price || 0) * (itemQuantities[item.id] || 1);
+      if (item.selected) {
+        total += (item.price || 0) * (item.quantity || 1);
       }
     });
     return total;
-  };
-
-  const handleItemSelection = (itemId: string, selected: boolean) => {
-    setSelectedItems(prev => ({
-      ...prev,
-      [itemId]: selected
-    }));
-  };
-
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
-    if (newQuantity > 0) {
-      setItemQuantities(prev => ({
-        ...prev,
-        [itemId]: newQuantity
-      }));
-    }
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      // Update checklist with new selections and quantities
-      const updatedChecklist = fullTask.checklist?.map(item => ({
-        ...item,
-        selected: selectedItems[item.id] || false,
-        quantity: itemQuantities[item.id] || 1
-      })) || [];
-
-      const totalValue = calculateTotalValue();
-
-      await updateTask(fullTask.id, {
-        checklist: updatedChecklist,
-        salesValue: totalValue,
-        salesConfirmed: totalValue > 0
-      });
-
-      toast({
-        title: "Sucesso!",
-        description: "Seleções de produtos atualizadas com sucesso.",
-      });
-
-      if (onTaskUpdated) {
-        onTaskUpdated();
-      }
-      
-      onClose();
-    } catch (error) {
-      console.error('Erro ao salvar:', error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao salvar as alterações.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const generatePDF = async () => {
@@ -761,78 +685,57 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Produtos/Serviços - Seleção Interativa */}
+          {/* Produtos/Serviços - Visualização */}
           {fullTask.checklist && fullTask.checklist.length > 0 && (
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
+                  <Package className="w-5 h-5" />
                   Produtos e Serviços
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Selecione os produtos e ajuste as quantidades para vendas parciais
+                  Lista de produtos e serviços da oportunidade
                 </p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {fullTask.checklist.map((item, index) => {
-                    const isSelected = selectedItems[item.id] || false;
-                    const quantity = itemQuantities[item.id] || 1;
-                    const itemTotal = (item.price || 0) * quantity;
+                    const itemTotal = (item.price || 0) * (item.quantity || 1);
                     
                     return (
                       <div 
                         key={item.id || index} 
-                        className={`border rounded-lg p-4 transition-all ${
-                          isSelected 
+                        className={`border rounded-lg p-4 ${
+                          item.selected 
                             ? 'bg-primary/5 border-primary/30 shadow-sm' 
                             : 'bg-muted/20 border-border'
                         }`}
                       >
                         <div className="flex items-start gap-4">
-                          <Checkbox
-                            id={`item-${item.id}`}
-                            checked={isSelected}
-                            onCheckedChange={(checked) => 
-                              handleItemSelection(item.id, checked as boolean)
-                            }
-                            className="mt-1"
-                          />
-                          
                           <div className="flex-1">
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex-1">
-                                <label 
-                                  htmlFor={`item-${item.id}`}
-                                  className="font-semibold text-lg cursor-pointer hover:text-primary transition-colors"
-                                >
+                                <h4 className="font-semibold text-lg">
                                   {item.name}
-                                </label>
+                                </h4>
                                 <p className="text-sm text-muted-foreground mb-2">
                                   Categoria: <span className="font-medium">{item.category}</span>
                                 </p>
                               </div>
-                              {isSelected && (
-                                <Badge 
-                                  variant="default" 
-                                  className="ml-4 bg-success text-success-foreground"
-                                >
-                                  ✓ Selecionado
-                                </Badge>
-                              )}
+                              <Badge 
+                                variant={item.selected ? "default" : "outline"}
+                                className={item.selected ? "bg-success text-success-foreground" : ""}
+                              >
+                                {item.selected ? '✓ Selecionado' : 'Não Selecionado'}
+                              </Badge>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
                                 <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={quantity}
-                                  onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
-                                  disabled={!isSelected}
-                                  className="mt-1"
-                                />
+                                <p className="font-medium text-lg mt-1">
+                                  {item.quantity || 1}
+                                </p>
                               </div>
                               <div>
                                 <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
@@ -842,14 +745,14 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                               </div>
                               <div>
                                 <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
-                                <p className={`font-bold text-xl mt-1 ${isSelected ? 'text-success' : 'text-muted-foreground'}`}>
+                                <p className={`font-bold text-xl mt-1 ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
                                   R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </p>
                               </div>
                               <div className="md:text-right">
                                 <label className="text-sm font-medium text-muted-foreground">Status</label>
-                                <p className={`font-medium text-sm mt-1 ${isSelected ? 'text-success' : 'text-muted-foreground'}`}>
-                                  {isSelected ? 'Incluído' : 'Não incluído'}
+                                <p className={`font-medium text-sm mt-1 ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
+                                  {item.selected ? 'Incluído' : 'Não incluído'}
                                 </p>
                               </div>
                             </div>
@@ -869,13 +772,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 
                 <Separator className="my-6" />
                 
-                {/* Resumo da Seleção */}
+                {/* Resumo dos Produtos */}
                 <div className="bg-gradient-card rounded-lg p-6 border">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground mb-1">Produtos Selecionados</p>
                       <p className="text-2xl font-bold text-primary">
-                        {Object.values(selectedItems).filter(Boolean).length}
+                        {fullTask.checklist.filter(item => item.selected).length}
                       </p>
                     </div>
                     <div className="text-center">
@@ -884,26 +787,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                         R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
-                  </div>
-                  
-                  <div className="mt-4 flex justify-center">
-                    <Button 
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="min-w-[200px]"
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Salvando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-2" />
-                          Salvar Seleções
-                        </>
-                      )}
-                    </Button>
                   </div>
                 </div>
               </CardContent>
