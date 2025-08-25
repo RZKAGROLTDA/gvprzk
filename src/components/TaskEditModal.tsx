@@ -29,7 +29,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const [loading, setLoading] = useState(false);
 
   // Carregar detalhes completos da task se necessário
-  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.prospectItems || task.prospectItems.length === 0);
+  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
   const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
     needsDetailsLoading ? task.id : null
   );
@@ -49,8 +49,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
   useEffect(() => {
     if (fullTask) {
-      console.log('Carregando task no modal:', fullTask);
-      console.log('prospectItems da task:', fullTask.prospectItems);
+      console.log('🔍 DEBUG TaskEditModal - Carregando task no modal:', fullTask);
+      console.log('🔍 DEBUG TaskEditModal - checklist da task:', fullTask.checklist);
+      console.log('🔍 DEBUG TaskEditModal - prospectItems da task:', fullTask.prospectItems);
       
       setEditedTask({
         id: fullTask.id,
@@ -65,8 +66,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesConfirmed: fullTask.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
-        // Carregar os prospectItems com os valores salvos exatos
-        prospectItems: fullTask.prospectItems?.map(item => ({
+        // Carregar os prospectItems com os valores salvos exatos  
+        prospectItems: fullTask.checklist?.map(item => ({
           id: item.id,
           name: item.name,
           category: item.category,
@@ -459,8 +460,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     
                     setEditedTask(prev => ({
                       ...prev,
-                       prospectItems: fullTask?.checklist && fullTask.checklist.length > 0 ? 
-                         fullTask.checklist.map(item => ({
+                      prospectItems: fullTask?.checklist && fullTask.checklist.length > 0 ? 
+                        fullTask.checklist.map(item => ({
                           ...item,
                           selected: false,
                           quantity: item.quantity || 1,
