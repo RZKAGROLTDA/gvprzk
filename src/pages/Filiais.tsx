@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Building, Plus, Pencil, Trash2, Users } from 'lucide-react';
+import { FilialUsersDialog } from '@/components/FilialUsersDialog';
 
 interface Filial {
   id: string;
@@ -22,6 +23,8 @@ export const Filiais: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFilial, setEditingFilial] = useState<Filial | null>(null);
   const [nomeFilial, setNomeFilial] = useState('');
+  const [usersDialogOpen, setUsersDialogOpen] = useState(false);
+  const [selectedFilial, setSelectedFilial] = useState<{ id: string; nome: string } | null>(null);
 
   useEffect(() => {
     loadFiliais();
@@ -132,6 +135,11 @@ export const Filiais: React.FC = () => {
     setIsDialogOpen(true);
   };
 
+  const handleShowUsers = (filial: Filial) => {
+    setSelectedFilial({ id: filial.id, nome: filial.nome });
+    setUsersDialogOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -223,11 +231,14 @@ export const Filiais: React.FC = () => {
                   <TableRow key={filial.id}>
                     <TableCell className="font-medium">{filial.nome}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleShowUsers(filial)}
+                        className="flex items-center gap-2 hover:bg-muted/50 p-2 rounded-md transition-colors cursor-pointer"
+                      >
                         <Users className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{filial.user_count || 0}</span>
                         <span className="text-sm text-muted-foreground">usuários</span>
-                      </div>
+                      </button>
                     </TableCell>
                     <TableCell>
                       {new Date(filial.created_at).toLocaleDateString('pt-BR')}
@@ -257,6 +268,13 @@ export const Filiais: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      <FilialUsersDialog
+        isOpen={usersDialogOpen}
+        onOpenChange={setUsersDialogOpen}
+        filialId={selectedFilial?.id || ''}
+        filialName={selectedFilial?.nome || ''}
+      />
     </div>
   );
 };
