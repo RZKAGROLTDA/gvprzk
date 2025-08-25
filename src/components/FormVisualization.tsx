@@ -391,46 +391,73 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="pb-4">
+      <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
+        <DialogHeader className="pb-6 border-b">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold text-primary">
-              Visualização Completa do Formulário
-            </DialogTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={generatePDF} disabled={isGeneratingPDF}>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-primary rounded-lg shadow-lg">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  Relatório Completo de Oportunidade
+                </DialogTitle>
+                <p className="text-lg text-muted-foreground mt-1">
+                  Visualização detalhada de todas as informações
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="gradient" size="sm" onClick={generatePDF} disabled={isGeneratingPDF}>
                 <Download className="w-4 h-4 mr-2" />
-                {isGeneratingPDF ? 'Gerando...' : 'PDF'}
+                {isGeneratingPDF ? 'Gerando...' : 'Gerar PDF'}
               </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="border-primary text-primary hover:bg-primary hover:text-white">
                 <Printer className="w-4 h-4 mr-2" />
                 Imprimir
               </Button>
-              <Button variant="outline" size="sm" onClick={handleEmail}>
+              <Button variant="outline" size="sm" onClick={handleEmail} className="border-primary text-primary hover:bg-primary hover:text-white">
                 <Mail className="w-4 h-4 mr-2" />
-                Email
+                Enviar Email
               </Button>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Cabeçalho da Oportunidade */}
-          <Card className="border-primary">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
+        <div className="space-y-8 pt-6">
+          {/* Cabeçalho da Oportunidade com Dados Principais */}
+          <Card className="border-primary shadow-lg bg-gradient-to-r from-primary/5 via-white to-primary/5">
+            <CardHeader className="pb-6">
               <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <FileText className="w-6 h-6 text-primary" />
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
+                    <User className="w-8 h-8 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">{fullTask.client}</h3>
-                    <p className="text-sm text-muted-foreground">{fullTask.property}</p>
+                    <h2 className="text-2xl font-bold text-primary">{fullTask.client}</h2>
+                    <p className="text-lg text-muted-foreground">{fullTask.property}</p>
+                    <div className="flex items-center gap-4 mt-2">
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {fullTask.startTime} - {fullTask.endTime}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} text-sm px-3 py-1 border`}>
-                  {getStatusLabel(fullTask.salesType || 'prospect')}
-                </Badge>
+                <div className="text-right">
+                  <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} text-lg px-4 py-2 border-2`}>
+                    {getStatusLabel(fullTask.salesType || 'prospect')}
+                  </Badge>
+                  <div className="mt-3">
+                    <p className="text-sm text-muted-foreground">Valor da Oportunidade</p>
+                    <p className="text-2xl font-bold text-primary">
+                      R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
               </CardTitle>
             </CardHeader>
           </Card>
