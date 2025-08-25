@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2, ShoppingCart } from 'lucide-react';
+import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2, ShoppingCart, Save } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
-import { useTaskDetails } from '@/hooks/useTasksOptimized';
+import { useTaskDetails, useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -31,15 +33,20 @@ interface FormVisualizationProps {
   task: Task;
   isOpen: boolean;
   onClose: () => void;
+  onTaskUpdated?: () => void;
 }
 
 export const FormVisualization: React.FC<FormVisualizationProps> = ({
   task,
   isOpen,
-  onClose
+  onClose,
+  onTaskUpdated
 }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<{[key: string]: boolean}>({});
+  const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
   
   // Carregar detalhes completos da task se necessário
   // Força carregamento se produtos não estão presentes (checklist vazio ou undefined)
@@ -48,8 +55,26 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     needsDetailsLoading ? task.id : null
   );
   
+  const { updateTask } = useTasksOptimized();
+  
   // Usar task completa (com detalhes carregados) ou task original
   const fullTask = taskDetails || task;
+
+  // Initialize selection state based on current task
+  useEffect(() => {
+    if (fullTask?.checklist) {
+      const selected: {[key: string]: boolean} = {};
+      const quantities: {[key: string]: number} = {};
+      
+      fullTask.checklist.forEach(item => {
+        selected[item.id] = item.selected || false;
+        quantities[item.id] = item.quantity || 1;
+      });
+      
+      setSelectedItems(selected);
+      setItemQuantities(quantities);
+    }
+  }, [fullTask?.checklist]);
 
   const getTaskTypeLabel = (type: string) => {
     const types = {
@@ -65,20 +90,71 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const salesStatus = mapSalesStatus(fullTask);
 
   const calculateTotalValue = () => {
-    if (fullTask.salesValue) return fullTask.salesValue;
+    if (!fullTask?.checklist) return 0;
     
     let total = 0;
-    if (fullTask.checklist) {
-      total += fullTask.checklist
-        .filter(item => item.selected)
-        .reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
-    }
-    if (fullTask.prospectItems) {
-      total += fullTask.prospectItems
-        .filter(item => item.selected)
-        .reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
-    }
+    fullTask.checklist.forEach(item => {
+      if (selectedItems[item.id]) {
+        total += (item.price || 0) * (itemQuantities[item.id] || 1);
+      }
+    });
     return total;
+  };
+
+  const handleItemSelection = (itemId: string, selected: boolean) => {
+    setSelectedItems(prev => ({
+      ...prev,
+      [itemId]: selected
+    }));
+  };
+
+  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    if (newQuantity > 0) {
+      setItemQuantities(prev => ({
+        ...prev,
+        [itemId]: newQuantity
+      }));
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Update checklist with new selections and quantities
+      const updatedChecklist = fullTask.checklist?.map(item => ({
+        ...item,
+        selected: selectedItems[item.id] || false,
+        quantity: itemQuantities[item.id] || 1
+      })) || [];
+
+      const totalValue = calculateTotalValue();
+
+      await updateTask(fullTask.id, {
+        checklist: updatedChecklist,
+        salesValue: totalValue,
+        salesConfirmed: totalValue > 0
+      });
+
+      toast({
+        title: "Sucesso!",
+        description: "Seleções de produtos atualizadas com sucesso.",
+      });
+
+      if (onTaskUpdated) {
+        onTaskUpdated();
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao salvar as alterações.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const generatePDF = async () => {
@@ -687,114 +763,149 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Produtos Oferecidos */}
-          {fullTask.checklist && fullTask.checklist.filter(item => item.selected).length > 0 && (
+          {/* Produtos/Serviços - Seleção Interativa */}
+          {fullTask.checklist && fullTask.checklist.length > 0 && (
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5" />
-                  Produtos Oferecidos
+                  Produtos e Serviços
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Produtos selecionados e oferecidos ao cliente
+                  Selecione os produtos e ajuste as quantidades para vendas parciais
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {fullTask.checklist
-                    .filter(item => item.selected)
-                    .map((item, index) => {
-                      const itemTotal = (item.price || 0) * (item.quantity || 1);
-                      
-                      return (
-                        <div 
-                          key={index} 
-                          className="border rounded-lg p-4 bg-primary/5 border-primary/30 shadow-sm"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-lg text-primary">
-                                {item.name}
-                              </h4>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                Categoria: <span className="font-medium">{item.category}</span>
-                              </p>
-                            </div>
-                            <Badge 
-                              variant="default" 
-                              className="ml-4 bg-success text-success-foreground"
-                            >
-                              ✓ Oferecido
-                            </Badge>
-                          </div>
+                <div className="space-y-4">
+                  {fullTask.checklist.map((item, index) => {
+                    const isSelected = selectedItems[item.id] || false;
+                    const quantity = itemQuantities[item.id] || 1;
+                    const itemTotal = (item.price || 0) * quantity;
+                    
+                    return (
+                      <div 
+                        key={item.id || index} 
+                        className={`border rounded-lg p-4 transition-all ${
+                          isSelected 
+                            ? 'bg-primary/5 border-primary/30 shadow-sm' 
+                            : 'bg-muted/20 border-border'
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <Checkbox
+                            id={`item-${item.id}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => 
+                              handleItemSelection(item.id, checked as boolean)
+                            }
+                            className="mt-1"
+                          />
                           
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                              <p className="font-medium text-lg">{item.quantity || 1}</p>
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <label 
+                                  htmlFor={`item-${item.id}`}
+                                  className="font-semibold text-lg cursor-pointer hover:text-primary transition-colors"
+                                >
+                                  {item.name}
+                                </label>
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  Categoria: <span className="font-medium">{item.category}</span>
+                                </p>
+                              </div>
+                              {isSelected && (
+                                <Badge 
+                                  variant="default" 
+                                  className="ml-4 bg-success text-success-foreground"
+                                >
+                                  ✓ Selecionado
+                                </Badge>
+                              )}
                             </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
-                              <p className="font-medium text-lg">
-                                R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
-                              <p className="font-bold text-xl text-success">
-                                R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {item.observations && (
-                            <div className="mt-4 p-3 bg-muted/50 rounded-md">
-                              <label className="text-sm font-medium text-muted-foreground">Observações</label>
-                              <p className="text-sm mt-1 text-foreground">{item.observations}</p>
-                            </div>
-                          )}
-                          
-                          {item.photos && item.photos.length > 0 && (
-                            <div className="mt-4">
-                              <label className="text-sm font-medium text-muted-foreground mb-2 block">Fotos</label>
-                              <div className="flex gap-2">
-                                {item.photos.map((photo, photoIndex) => (
-                                  <img 
-                                    key={photoIndex}
-                                    src={photo} 
-                                    alt={`Foto ${photoIndex + 1} - ${item.name}`}
-                                    className="w-16 h-16 object-cover rounded border cursor-pointer hover:scale-105 transition-transform"
-                                    onClick={() => window.open(photo, '_blank')}
-                                  />
-                                ))}
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={quantity}
+                                  onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                                  disabled={!isSelected}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
+                                <p className="font-medium text-lg mt-1">
+                                  R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
+                                <p className={`font-bold text-xl mt-1 ${isSelected ? 'text-success' : 'text-muted-foreground'}`}>
+                                  R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div className="md:text-right">
+                                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                                <p className={`font-medium text-sm mt-1 ${isSelected ? 'text-success' : 'text-muted-foreground'}`}>
+                                  {isSelected ? 'Incluído' : 'Não incluído'}
+                                </p>
                               </div>
                             </div>
-                          )}
+                            
+                            {item.observations && (
+                              <div className="mt-4 p-3 bg-muted/50 rounded-md">
+                                <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                                <p className="text-sm mt-1 text-foreground">{item.observations}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
                 </div>
                 
                 <Separator className="my-6" />
                 
-                {/* Resumo dos Produtos Oferecidos */}
+                {/* Resumo da Seleção */}
                 <div className="bg-gradient-card rounded-lg p-6 border">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Total de Produtos Oferecidos</p>
+                      <p className="text-sm text-muted-foreground mb-1">Produtos Selecionados</p>
                       <p className="text-2xl font-bold text-primary">
-                        {fullTask.checklist.filter(item => item.selected).length}
+                        {Object.values(selectedItems).filter(Boolean).length}
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Valor Total Oferecido</p>
+                      <p className="text-sm text-muted-foreground mb-1">Valor Total</p>
                       <p className="text-3xl font-bold text-success">
-                        R$ {fullTask.checklist
-                          .filter(item => item.selected)
-                          .reduce((total, item) => total + ((item.price || 0) * (item.quantity || 1)), 0)
-                          .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
+                  </div>
+                  
+                  <div className="mt-4 flex justify-center">
+                    <Button 
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="min-w-[200px]"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Salvar Seleções
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               </CardContent>

@@ -1072,14 +1072,17 @@ export const SalesFunnel: React.FC = () => {
     }} />
     
     {selectedTask && (
-      <FormVisualization
-        task={selectedTask}
-        isOpen={isVisualizationModalOpen}
-        onClose={() => {
-          setIsVisualizationModalOpen(false);
-          setSelectedTask(null);
-        }}
-      />
+        <FormVisualization
+          task={selectedTask}
+          isOpen={isVisualizationModalOpen}
+          onClose={() => {
+            setIsVisualizationModalOpen(false);
+            setSelectedTask(null);
+          }}
+          onTaskUpdated={() => {
+            refetch();
+          }}
+        />
     )}
     </div>;
 };
