@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, FunnelChart, Funnel, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Calendar, TrendingUp, Users, DollarSign, Target, Filter } from 'lucide-react';
+import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, Eye } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +14,7 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache, calculateSalesValue } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
+import { FormVisualization } from '@/components/FormVisualization';
 import { Task } from '@/types/task';
 interface SalesFunnelData {
   name: string;
@@ -51,6 +52,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedFunnelSection, setSelectedFunnelSection] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
 
   // Filtros
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -952,9 +954,10 @@ export const SalesFunnel: React.FC = () => {
                       <TableCell>
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => {
-                      // TODO: Implementar visualização do formulário
-                      console.log('Visualizar tarefa:', task.id);
-                    }}>
+                            setSelectedTask(task);
+                            setIsVisualizationModalOpen(true);
+                          }}>
+                            <Eye className="w-4 h-4 mr-1" />
                             Ver
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => {
@@ -1057,5 +1060,16 @@ export const SalesFunnel: React.FC = () => {
       console.log('🔄 FUNNEL: Recarregando tarefas para atualizar status na tabela');
       loadTasks();
     }} />
+    
+    {selectedTask && (
+      <FormVisualization
+        task={selectedTask}
+        isOpen={isVisualizationModalOpen}
+        onClose={() => {
+          setIsVisualizationModalOpen(false);
+          setSelectedTask(null);
+        }}
+      />
+    )}
     </div>;
 };
