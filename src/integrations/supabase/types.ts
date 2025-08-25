@@ -584,6 +584,10 @@ export type Database = {
         Args: { check_email: string }
         Returns: boolean
       }
+      is_high_value_task: {
+        Args: { task_sales_value: number }
+        Returns: boolean
+      }
       log_high_risk_activity: {
         Args: {
           activity_type: string
@@ -594,6 +598,14 @@ export type Database = {
       }
       log_security_event: {
         Args: { event_type: string; metadata?: Json; target_user_id?: string }
+        Returns: undefined
+      }
+      log_sensitive_data_access: {
+        Args: {
+          access_type?: string
+          resource_id?: string
+          resource_type: string
+        }
         Returns: undefined
       }
       refresh_user_directory_cache: {
