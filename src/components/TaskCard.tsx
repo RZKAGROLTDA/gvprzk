@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PhotoGallery } from '@/components/PhotoGallery';
 import { TaskLocationInfo } from '@/components/TaskLocationInfo';
+import { FormVisualization } from '@/components/FormVisualization';
 
 interface TaskCardProps {
   task: Task;
@@ -28,6 +29,7 @@ interface TaskCardProps {
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'destructive';
@@ -193,11 +195,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => onView?.(task.id)}
+            onClick={() => setIsReportModalOpen(true)}
             className="flex-1"
           >
             <Eye className="h-4 w-4 mr-2" />
-            Visualizar
+            Relatório
           </Button>
           <Button 
             variant="outline" 
@@ -210,6 +212,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
           </Button>
         </div>
       </CardContent>
+
+      {/* Modal de Relatório */}
+      <FormVisualization
+        task={task}
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onTaskUpdated={() => {}}
+      />
     </Card>
   );
 };

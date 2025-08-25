@@ -15,12 +15,17 @@ import {
   CheckCircle2, 
   Circle,
   WifiOff,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  Edit
 } from 'lucide-react';
+import { FormVisualization } from '@/components/FormVisualization';
 
 export const TaskManager: React.FC = () => {
   const { getOfflineTasks, isOnline, isSyncing } = useOffline();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   
   // Cache e debounce para otimização
   const lastLoadTime = useRef<number>(0);
@@ -189,11 +194,20 @@ export const TaskManager: React.FC = () => {
                     Criado em: {task.createdAt ? format(new Date(task.createdAt), "PPpp", { locale: ptBR }) : 'Data não disponível'}
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline">
-                      Editar
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsReportModalOpen(true);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Relatório
                     </Button>
                     <Button size="sm" variant="outline">
-                      Visualizar
+                      <Edit className="h-4 w-4 mr-2" />
+                      Editar
                     </Button>
                   </div>
                 </div>
@@ -201,6 +215,19 @@ export const TaskManager: React.FC = () => {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Modal de Relatório */}
+      {selectedTask && (
+        <FormVisualization
+          task={selectedTask}
+          isOpen={isReportModalOpen}
+          onClose={() => {
+            setIsReportModalOpen(false);
+            setSelectedTask(null);
+          }}
+          onTaskUpdated={() => {}}
+        />
       )}
     </div>
   );
