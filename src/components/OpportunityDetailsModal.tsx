@@ -176,6 +176,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       }
 
       // Update task in database with comprehensive status update
+      // IMPORTANTE: sales_value sempre mantém o valor total da oportunidade
       const { data: taskUpdateResult, error: taskError } = await supabase
         .from('tasks')
         .update({
@@ -183,7 +184,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           sales_type: selectedStatus, // Save the selected sales type
           status: taskStatus,
           is_prospect: isProspect,
-          sales_value: selectedStatus === 'parcial' ? partialValue : task.salesValue,
+          // sales_value nunca muda - sempre mantém o valor total da oportunidade
           updated_at: new Date().toISOString()
         })
         .eq('id', task.id)
