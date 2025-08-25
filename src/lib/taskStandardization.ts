@@ -1,4 +1,5 @@
 import { Task } from '@/types/task';
+import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getSalesValueAsNumber } from './securityUtils';
 

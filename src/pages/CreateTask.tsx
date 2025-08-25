@@ -25,6 +25,7 @@ import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { getSalesValueAsNumber } from '@/lib/securityUtils';
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
@@ -7209,7 +7210,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                           <Input id="totalSaleValue" type="text" value={task.salesValue ? new Intl.NumberFormat('pt-BR', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2
-                    }).format(task.salesValue) : ''} onChange={e => {
+                    }).format(getSalesValueAsNumber(task.salesValue)) : ''} onChange={e => {
                       const value = e.target.value.replace(/\D/g, '');
                       const numericValue = parseFloat(value) / 100;
                       setTask(prev => ({

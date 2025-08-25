@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { mapTaskToStandardFields, mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
+import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -341,7 +342,7 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       }
 
       // Seção - Informações de Venda
-      if (task.salesValue && task.salesValue > 0) {
+      if (getSalesValueAsNumber(task.salesValue) > 0) {
         if (yPosition > 250) {
           doc.addPage();
           yPosition = 20;

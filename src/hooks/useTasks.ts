@@ -7,6 +7,7 @@ import { Task, ProductType, Reminder } from '@/types/task';
 import { toast } from '@/components/ui/use-toast';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
+import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
 // Função helper para gerar nome padrão da tarefa
 const getDefaultTaskName = (taskType: string): string => {

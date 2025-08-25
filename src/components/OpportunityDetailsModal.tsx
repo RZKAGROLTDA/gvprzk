@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTasksOptimized, useTaskDetails } from '@/hooks/useTasksOptimized';
+import { getSalesValueAsNumber } from '@/lib/securityUtils';
 interface OpportunityDetailsModalProps {
   task: Task | null;
   isOpen: boolean;
@@ -279,7 +280,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const currentTask = taskWithProducts || task;
   const currentStatus = mapSalesStatus(currentTask);
   const filialName = resolveFilialName(currentTask.filial);
-  const totalOpportunityValue = currentTask.salesValue || 0;
+  const totalOpportunityValue = getSalesValueAsNumber(currentTask.salesValue);
   const conversionRate = totalOpportunityValue > 0 ? partialValue / totalOpportunityValue * 100 : 0;
 
   // Mostrar loading se ainda estamos carregando produtos necessários
