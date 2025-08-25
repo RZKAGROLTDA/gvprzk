@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail } from 'lucide-react';
+import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -43,12 +43,22 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 
   const getStatusColor = (status: string) => {
     const colors = {
-      'prospect': 'bg-blue-100 text-blue-800',
-      'ganho': 'bg-green-100 text-green-800',
-      'perdido': 'bg-red-100 text-red-800',
-      'parcial': 'bg-yellow-100 text-yellow-800'
+      'prospect': 'bg-primary/10 text-primary border-primary/20',
+      'ganho': 'bg-success/10 text-success border-success/20',
+      'perdido': 'bg-destructive/10 text-destructive border-destructive/20',
+      'parcial': 'bg-warning/10 text-warning border-warning/20'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[status as keyof typeof colors] || 'bg-muted text-muted-foreground';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      'prospect': 'Prospecção',
+      'ganho': 'Venda Confirmada',
+      'perdido': 'Oportunidade Perdida',
+      'parcial': 'Venda Parcial'
+    };
+    return labels[status as keyof typeof labels] || status;
   };
 
   const calculateTotalValue = () => {
@@ -97,13 +107,16 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       const basicInfo = [
         ['Tipo de Tarefa:', getTaskTypeLabel(task.taskType || 'prospection')],
         ['Cliente:', task.client],
+        ['Código do Cliente:', task.clientCode || 'Não informado'],
+        ['Email:', task.email || 'Não informado'],
+        ['CPF:', task.cpf || 'Não informado'],
         ['Propriedade:', task.property],
+        ['Hectares:', task.propertyHectares ? `${task.propertyHectares} ha` : 'Não informado'],
         ['Responsável:', task.responsible],
         ['Filial:', task.filial || 'Não informado'],
         ['Data:', format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR })],
         ['Horário:', `${task.startTime} - ${task.endTime}`],
-        ['Hectares:', task.propertyHectares ? `${task.propertyHectares} ha` : 'Não informado'],
-        ['Status:', task.salesType || 'Prospect']
+        ['Status:', getStatusLabel(task.salesType || 'prospect')]
       ];
       
       (pdf as any).autoTable({
@@ -133,16 +146,21 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           item.quantity || 1,
           `R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           `R$ ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-          item.selected ? 'Sim' : 'Não'
+          item.selected ? 'SELECIONADO' : 'NÃO SELECIONADO',
+          item.observations || '-'
         ]);
         
         (pdf as any).autoTable({
           startY: yPosition,
-          head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total', 'Selecionado']],
+          head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total', 'Status', 'Observações']],
           body: products,
           margin: { left: 20, right: 20 },
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [51, 122, 183] }
+          styles: { fontSize: 7 },
+          headStyles: { fillColor: [51, 122, 183] },
+          columnStyles: { 
+            5: { fontStyle: 'bold' },
+            6: { cellWidth: 30 }
+          }
         });
         
         yPosition = (pdf as any).lastAutoTable.finalY + 15;
@@ -263,8 +281,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                     <p className="text-sm text-muted-foreground">{task.property}</p>
                   </div>
                 </div>
-                <Badge className={`${getStatusColor(task.salesType || 'prospect')} text-sm px-3 py-1`}>
-                  {task.salesType || 'Prospect'}
+                <Badge className={`${getStatusColor(task.salesType || 'prospect')} text-sm px-3 py-1 border`}>
+                  {getStatusLabel(task.salesType || 'prospect')}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -279,23 +297,29 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Tipo de Tarefa</label>
                   <p className="font-medium">{getTaskTypeLabel(task.taskType || 'prospection')}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Responsável</label>
-                  <p className="font-medium">{task.responsible}</p>
+                  <p className="font-medium flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    {task.responsible}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Filial</label>
-                  <p className="font-medium">{task.filial || 'Não informado'}</p>
+                  <p className="font-medium flex items-center gap-2">
+                    <Building className="w-4 h-4 text-primary" />
+                    {task.filial || 'Não informado'}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Data</label>
                   <p className="font-medium flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4 text-primary" />
                     {format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR })}
                   </p>
                 </div>
@@ -304,11 +328,55 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <p className="font-medium">{task.startTime} - {task.endTime}</p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Hectares</label>
+                  <label className="text-sm font-medium text-muted-foreground">Hectares da Propriedade</label>
                   <p className="font-medium flex items-center gap-2">
-                    <Crop className="w-4 h-4" />
+                    <Crop className="w-4 h-4 text-success" />
                     {task.propertyHectares ? `${task.propertyHectares} ha` : 'Não informado'}
                   </p>
+                </div>
+              </div>
+
+              <Separator className="my-6" />
+
+              {/* Informações do Cliente */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-lg flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  Dados do Cliente
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Nome do Cliente</label>
+                    <p className="font-medium">{task.client}</p>
+                  </div>
+                  {task.clientCode && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Código do Cliente</label>
+                      <p className="font-medium flex items-center gap-2">
+                        <Hash className="w-4 h-4 text-muted-foreground" />
+                        {task.clientCode}
+                      </p>
+                    </div>
+                  )}
+                  {task.email && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Email</label>
+                      <p className="font-medium flex items-center gap-2">
+                        <AtSign className="w-4 h-4 text-muted-foreground" />
+                        {task.email}
+                      </p>
+                    </div>
+                  )}
+                  {task.cpf && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">CPF</label>
+                      <p className="font-medium">{task.cpf}</p>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
+                    <p className="font-medium">{task.property}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -317,61 +385,128 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           {/* Produtos/Serviços */}
           {task.checklist && task.checklist.length > 0 && (
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="w-5 h-5" />
                   Família de Produtos e Oportunidades
                 </CardTitle>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-muted-foreground">Status atual:</span>
+                  <Badge className={`${getStatusColor(task.salesType || 'prospect')} border text-xs`}>
+                    {getStatusLabel(task.salesType || 'prospect')}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {task.checklist.map((item, index) => (
-                    <div key={index} className="border rounded-lg p-4 bg-muted/20">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-lg">{item.name}</h4>
-                          <p className="text-sm text-muted-foreground mb-2">Categoria: {item.category}</p>
+                <div className="space-y-3">
+                  {task.checklist.map((item, index) => {
+                    const isSelected = item.selected;
+                    const itemTotal = (item.price || 0) * (item.quantity || 1);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`border rounded-lg p-4 transition-all ${
+                          isSelected 
+                            ? 'bg-primary/5 border-primary/30 shadow-sm' 
+                            : 'bg-muted/30 border-border'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className={`font-semibold text-lg ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                              {item.name}
+                            </h4>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Categoria: <span className="font-medium">{item.category}</span>
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={isSelected ? 'default' : 'secondary'} 
+                            className={`ml-4 ${
+                              isSelected 
+                                ? 'bg-success text-success-foreground' 
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {isSelected ? '✓ Selecionado' : '○ Disponível'}
+                          </Badge>
                         </div>
-                        <Badge variant={item.selected ? 'default' : 'secondary'} className="ml-4">
-                          {item.selected ? 'Selecionado' : 'Não selecionado'}
-                        </Badge>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                            <p className="font-medium text-lg">{item.quantity || 1}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
+                            <p className="font-medium text-lg">
+                              R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">
+                              {isSelected ? 'Valor Confirmado' : 'Valor Potencial'}
+                            </label>
+                            <p className={`font-bold text-xl ${
+                              isSelected ? 'text-success' : 'text-muted-foreground'
+                            }`}>
+                              R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {item.observations && (
+                          <div className="mt-4 p-3 bg-muted/50 rounded-md">
+                            <label className="text-sm font-medium text-muted-foreground">Observações do Produto</label>
+                            <p className="text-sm mt-1 text-foreground">{item.observations}</p>
+                          </div>
+                        )}
+                        
+                        {item.photos && item.photos.length > 0 && (
+                          <div className="mt-4">
+                            <label className="text-sm font-medium text-muted-foreground mb-2 block">Fotos do Produto</label>
+                            <div className="flex gap-2">
+                              {item.photos.map((photo, photoIndex) => (
+                                <img 
+                                  key={photoIndex}
+                                  src={photo} 
+                                  alt={`Foto ${photoIndex + 1} - ${item.name}`}
+                                  className="w-16 h-16 object-cover rounded border cursor-pointer hover:scale-105 transition-transform"
+                                  onClick={() => window.open(photo, '_blank')}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                          <p className="font-medium">{item.quantity || 1}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
-                          <p className="font-medium">R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Total</label>
-                          <p className="font-semibold text-primary">
-                            R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {item.observations && (
-                        <div className="mt-3">
-                          <label className="text-sm font-medium text-muted-foreground">Observações</label>
-                          <p className="text-sm mt-1">{item.observations}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
-                <Separator className="my-4" />
+                <Separator className="my-6" />
                 
-                <div className="flex justify-end">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Valor Total da Oportunidade</p>
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
+                {/* Resumo de Valores */}
+                <div className="bg-gradient-card rounded-lg p-6 border">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-1">Produtos Totais</p>
+                      <p className="text-2xl font-bold text-foreground">{task.checklist.length}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-1">Produtos Selecionados</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {task.checklist.filter(item => item.selected).length}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {task.salesType === 'prospect' ? 'Valor Potencial Total' : 'Valor da Oportunidade'}
+                      </p>
+                      <p className="text-3xl font-bold text-primary">
+                        R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -450,36 +585,45 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           {task.observations && (
             <Card>
               <CardHeader>
-                <CardTitle>Observações Adicionais</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Observações Adicionais
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="whitespace-pre-wrap">{task.observations}</p>
+                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-primary">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{task.observations}</p>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Informações de Quilometragem */}
+          {/* Informações de Deslocamento */}
           {(task.initialKm || task.finalKm) && (
             <Card>
               <CardHeader>
-                <CardTitle>Informações de Deslocamento</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Car className="w-5 h-5" />
+                  Informações de Deslocamento
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+                  <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">KM Inicial</label>
-                    <p className="font-medium">{task.initialKm || 0} km</p>
+                    <p className="font-medium text-lg">{task.initialKm || 'Não informado'} km</p>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">KM Final</label>
-                    <p className="font-medium">{task.finalKm || 0} km</p>
+                    <p className="font-medium text-lg">{task.finalKm || 'Não informado'} km</p>
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">Total Percorrido</label>
-                    <p className="font-medium text-primary">
-                      {((task.finalKm || 0) - (task.initialKm || 0))} km
+                    <p className="font-bold text-lg text-primary">
+                      {task.initialKm && task.finalKm 
+                        ? `${task.finalKm - task.initialKm} km` 
+                        : 'Não calculado'
+                      }
                     </p>
                   </div>
                 </div>
