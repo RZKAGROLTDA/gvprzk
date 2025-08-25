@@ -436,27 +436,44 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
           {/* Produtos/Itens da Oportunidade - SEMPRE mostrar quando 'parcial' for selecionado */}
           {(() => {
-            console.log('🔍 MODAL DEBUG - Task checklist:', {
-              taskId: task.id,
-              hasChecklist: !!task.checklist,
-              checklistLength: task.checklist?.length || 0,
-              checklistItems: task.checklist?.map(item => ({id: item.id, name: item.name, selected: item.selected})) || [],
+            console.log('🔍 MODAL RENDER DEBUG - Current State:', {
+              taskId: task?.id,
               selectedStatus: selectedStatus,
-              shouldShowSection: selectedStatus === 'parcial' || (task.checklist && task.checklist.length > 0)
+              hasChecklist: !!task?.checklist,
+              checklistLength: task?.checklist?.length || 0,
+              checklistItems: task?.checklist?.map(item => ({
+                id: item.id, 
+                name: item.name, 
+                selected: item.selected,
+                price: item.price,
+                quantity: item.quantity
+              })) || [],
+              shouldShowProducts: selectedStatus === 'parcial' || (task?.checklist && task?.checklist.length > 0),
+              taskSalesType: task?.salesType,
+              taskSalesConfirmed: task?.salesConfirmed
             });
             return null;
           })()}
           {selectedStatus === 'parcial' || (task.checklist && task.checklist.length > 0) ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Produtos/Serviços</h3>
+              
+              {/* Debug info para vendas parciais sem produtos */}
               {selectedStatus === 'parcial' && (!task.checklist || task.checklist.length === 0) && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-yellow-800 text-sm">
-                    ⚠️ Nenhum produto encontrado para esta tarefa. Para realizar uma venda parcial, 
-                    é necessário que a tarefa tenha produtos cadastrados.
+                  <p className="text-yellow-800 text-sm font-medium">
+                    ⚠️ VENDA PARCIAL SEM PRODUTOS DETECTADA
                   </p>
-                  <p className="text-yellow-700 text-xs mt-2">
-                    Verifique se os produtos foram cadastrados corretamente na criação da tarefa.
+                  <div className="text-yellow-700 text-xs mt-2 space-y-1">
+                    <p>• Task ID: {task.id}</p>
+                    <p>• Sales Type: {task.salesType}</p>
+                    <p>• Sales Confirmed: {task.salesConfirmed?.toString()}</p>
+                    <p>• Checklist Length: {task.checklist?.length || 0}</p>
+                    <p>• Status Mapeado: {selectedStatus}</p>
+                  </div>
+                  <p className="text-yellow-800 text-sm mt-3">
+                    Para realizar uma venda parcial, é necessário que a tarefa tenha produtos cadastrados.
+                    Este é um formulário antigo que precisa ter os produtos adicionados manualmente.
                   </p>
                 </div>
               )}
