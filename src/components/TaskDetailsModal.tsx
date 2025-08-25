@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, MapPin, User, Building, Flag, CheckSquare, DollarSign, Camera, FileText } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, Building, Flag, CheckSquare, DollarSign, Camera, FileText, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
@@ -11,6 +11,7 @@ import { TaskLocationInfo } from './TaskLocationInfo';
 import { TaskReportExporter } from './TaskReportExporter';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialName } from '@/lib/taskStandardization';
+import { useTaskDetails } from '@/hooks/useTasksOptimized';
 interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
@@ -23,10 +24,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 }) => {
   const [currentTask, setCurrentTask] = useState<Task | null>(task);
 
+  // Carregar detalhes completos da task se necessário (produtos, lembretes)
+  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
+    needsDetailsLoading ? task.id : null
+  );
+
+  // Usar task completa (com detalhes carregados) ou task original
+  const fullTask = taskDetails || task;
+
   // Atualizar estado local quando a prop task mudar
   useEffect(() => {
-    setCurrentTask(task);
-  }, [task]);
+    setCurrentTask(fullTask);
+  }, [fullTask]);
 
   // Configurar realtime listener para atualizar a tarefa específica
   useEffect(() => {
@@ -58,6 +68,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       supabase.removeChannel(channel);
     };
   }, [task?.id, open]);
+  if (loadingDetails) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="ml-2">Carregando detalhes...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   if (!currentTask) return null;
   const getPriorityColor = (priority: string) => {
     switch (priority) {

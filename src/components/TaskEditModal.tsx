@@ -11,6 +11,7 @@ import { Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import toast from 'react-hot-toast';
 import { createTaskWithFilialSnapshot, resolveFilialName } from '@/lib/taskStandardization';
+import { useTaskDetails } from '@/hooks/useTasksOptimized';
 
 interface TaskEditModalProps {
   task: Task | null;
@@ -28,6 +29,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [loading, setLoading] = useState(false);
 
+  // Carregar detalhes completos da task se necessário
+  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.prospectItems || task.prospectItems.length === 0);
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
+    needsDetailsLoading ? task.id : null
+  );
+
+  // Usar task completa (com detalhes carregados) ou task original
+  const fullTask = taskDetails || task;
+
   // Função para calcular valor total automático igual ao CreateTask
   const calculateTotalSalesValue = () => {
     let total = 0;
@@ -43,25 +53,25 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   };
 
   useEffect(() => {
-    if (task) {
-      console.log('Carregando task no modal:', task);
-      console.log('prospectItems da task:', task.prospectItems);
+    if (fullTask) {
+      console.log('Carregando task no modal:', fullTask);
+      console.log('prospectItems da task:', fullTask.prospectItems);
       
       setEditedTask({
-        id: task.id,
-        name: task.name,
-        responsible: task.responsible,
-        client: task.client,
-        property: task.property,
-        observations: task.observations,
-        priority: task.priority,
-        status: task.status,
-        salesValue: task.salesValue || 0,
-        salesConfirmed: task.salesConfirmed,
+        id: fullTask.id,
+        name: fullTask.name,
+        responsible: fullTask.responsible,
+        client: fullTask.client,
+        property: fullTask.property,
+        observations: fullTask.observations,
+        priority: fullTask.priority,
+        status: fullTask.status,
+        salesValue: fullTask.salesValue || 0,
+        salesConfirmed: fullTask.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
         // Carregar os prospectItems com os valores salvos exatos
-        prospectItems: task.prospectItems?.map(item => ({
+        prospectItems: fullTask.prospectItems?.map(item => ({
           id: item.id,
           name: item.name,
           category: item.category,
@@ -73,7 +83,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         })) || []
       });
     }
-  }, [task]);
+  }, [fullTask]);
 
   // Atualizar valor total automaticamente quando prospectItems muda
   useEffect(() => {
@@ -165,6 +175,18 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       setLoading(false);
     }
   };
+
+  if (loadingDetails) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <div className="flex items-center justify-center p-8">
+            <span className="ml-2">Carregando detalhes...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (!task) return null;
 
@@ -436,8 +458,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     
                     setEditedTask(prev => ({
                       ...prev,
-                      prospectItems: task?.checklist && task.checklist.length > 0 ? 
-                        task.checklist.map(item => ({
+                       prospectItems: fullTask?.checklist && fullTask.checklist.length > 0 ? 
+                         fullTask.checklist.map(item => ({
                           ...item,
                           selected: false,
                           quantity: item.quantity || 1,
