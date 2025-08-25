@@ -972,7 +972,7 @@ export const SalesFunnel: React.FC = () => {
                           </Button>
                           <Button variant="outline" size="icon" onClick={() => {
                       setSelectedTask(task);
-                      setIsModalOpen(true);
+                      setIsVisualizationModalOpen(true);
                     }}>
                             <Edit className="w-4 h-4" />
                           </Button>
