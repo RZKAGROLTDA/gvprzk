@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, FunnelChart, Funnel, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, Eye } from 'lucide-react';
+import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, Eye, Edit } from 'lucide-react';
 import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -970,11 +970,11 @@ export const SalesFunnel: React.FC = () => {
                           }}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => {
+                          <Button variant="outline" size="icon" onClick={() => {
                       setSelectedTask(task);
                       setIsModalOpen(true);
                     }}>
-                            Editar
+                            <Edit className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
