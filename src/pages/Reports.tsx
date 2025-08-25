@@ -110,7 +110,17 @@ const Reports: React.FC = () => {
       const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
       const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
       const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-      const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
+      const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => {
+        // Para vendas parciais, calcular o valor baseado nos produtos selecionados
+        if (task.sales_type === 'parcial' && task.products && Array.isArray(task.products)) {
+          const partialValue = task.products
+            .filter(product => product.selected)
+            .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
+          return sum + partialValue;
+        }
+        // Para vendas completas, usar o valor total da oportunidade
+        return sum + (task.sales_value || 0);
+      }, 0) || 0;
 
       setTotalTasks(visitas + checklist + ligacoes);
       setTotalVisitas(visitas);
