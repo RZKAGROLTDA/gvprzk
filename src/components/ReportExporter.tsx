@@ -10,7 +10,8 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
-import { mapSalesStatus, getStatusLabel, calculateSalesValue } from '@/lib/taskStandardization';
+import { mapSalesStatus, getStatusLabel } from '@/lib/taskStandardization';
+import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -84,7 +85,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       const tableData = visitData.map((visit) => {
         const mappedTask = mapSupabaseTaskToTask(visit);
         const salesStatus = mapSalesStatus(mappedTask);
-        const salesValue = calculateSalesValue(mappedTask);
+        const salesValue = getSalesValueAsNumber(mappedTask.salesValue);
         
         return [
           visit.responsible || 'N/A',
@@ -113,7 +114,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       // Adicionar resumo financeiro com valores corretos
       const totalValue = visitData.reduce((sum, visit) => {
         const mappedTask = mapSupabaseTaskToTask(visit);
-        return sum + calculateSalesValue(mappedTask);
+        return sum + getSalesValueAsNumber(mappedTask.salesValue);
       }, 0);
       const completedVisits = visitData.filter(visit => visit.status === 'completed').length;
       const salesData = visitData.map(visit => {
@@ -172,7 +173,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       const excelData = visitData.map((visit) => {
         const mappedTask = mapSupabaseTaskToTask(visit);
         const salesStatus = mapSalesStatus(mappedTask);
-        const salesValue = calculateSalesValue(mappedTask);
+        const salesValue = getSalesValueAsNumber(mappedTask.salesValue);
         
         return {
           'Responsável': visit.responsible || 'N/A',
@@ -202,7 +203,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       // Criar aba de resumo com dados de vendas
       const totalValue = visitData.reduce((sum, visit) => {
         const mappedTask = mapSupabaseTaskToTask(visit);
-        return sum + calculateSalesValue(mappedTask);
+        return sum + getSalesValueAsNumber(mappedTask.salesValue);
       }, 0);
       const completedVisits = visitData.filter(visit => visit.status === 'completed').length;
       const salesData = visitData.map(visit => {

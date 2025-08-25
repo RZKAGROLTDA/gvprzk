@@ -110,6 +110,13 @@ export const mapTaskToStandardFields = (task: Task) => {
   return standardized;
 };
 
+// Function to calculate sales value (backward compatibility)
+export const calculateSalesValue = (tasks: Task[]): number => {
+  return tasks.reduce((sum, task) => {
+    return sum + getSalesValueAsNumber(task.salesValue);
+  }, 0);
+};
+
 // Função para calcular estatísticas agregadas
 export const calculateTaskStats = (tasks: Task[]) => {
   const prospects = tasks.filter(t => t.isProspect);

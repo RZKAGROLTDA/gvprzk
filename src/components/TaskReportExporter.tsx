@@ -162,38 +162,36 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       doc.setFont('helvetica', 'bold');
       doc.text('Nome do Contato:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(standardData.nome_contato, 70, yPosition);
+      doc.text(task.client, 70, yPosition);
       yPosition += 8;
 
-      if (standardData.cpf) {
+      if (task.cpf) {
         doc.setFont('helvetica', 'bold');
         doc.text('CPF:', 20, yPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(standardData.cpf, 45, yPosition);
+        doc.text(task.cpf, 45, yPosition);
         yPosition += 8;
       }
 
       doc.setFont('helvetica', 'bold');
       doc.text('Cliente:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(standardData.cliente_nome, 50, yPosition);
+      doc.text(task.client, 50, yPosition);
       yPosition += 8;
 
-      if (standardData.cliente_email) {
+      if (task.email) {
         doc.setFont('helvetica', 'bold');
         doc.text('Email:', 20, yPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(standardData.cliente_email, 45, yPosition);
+        doc.text(task.email, 45, yPosition);
         yPosition += 8;
       }
 
-      if (standardData.propriedade_nome) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Propriedade:', 20, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(standardData.propriedade_nome, 60, yPosition);
-        yPosition += 8;
-      }
+      doc.setFont('helvetica', 'bold');
+      doc.text('Propriedade:', 20, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(task.property, 60, yPosition);
+      yPosition += 8;
 
       if (task.propertyHectares) {
         doc.setFont('helvetica', 'bold');
@@ -206,13 +204,13 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       doc.setFont('helvetica', 'bold');
       doc.text('Vendedor:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(standardData.vendedor_nome, 55, yPosition);
+      doc.text(task.responsible, 55, yPosition);
       yPosition += 8;
 
       doc.setFont('helvetica', 'bold');
       doc.text('Filial:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(standardData.filial_nome, 45, yPosition);
+      doc.text(task.filial || 'Não informado', 45, yPosition);
       yPosition += 8;
 
       doc.setFont('helvetica', 'bold');
@@ -369,7 +367,7 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
         doc.setFont('helvetica', 'bold');
         doc.text('Valor Confirmado:', 20, yPosition);
         doc.setFont('helvetica', 'normal');
-        doc.text(standardData.oportunidades.confirmada ? 'Sim' : 'Não', 75, yPosition);
+        doc.text(task.salesConfirmed ? 'Sim' : 'Não', 75, yPosition);
         yPosition += 8;
 
         if (task.prospectNotes) {
