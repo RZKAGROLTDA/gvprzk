@@ -15,7 +15,6 @@ import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { Task } from '@/types/task';
-
 interface SalesFunnelData {
   name: string;
   value: number;
@@ -67,24 +66,21 @@ export const SalesFunnel: React.FC = () => {
   useEffect(() => {
     const loadFilters = async () => {
       if (isLoading) return;
-      
       setIsLoading(true);
       try {
         // Carregamento paralelo para melhor performance
-        const [profilesResponse, filiaisResponse] = await Promise.all([
-          supabase.from('profiles').select('id, name').eq('approval_status', 'approved'),
-          supabase.from('filiais').select('id, nome').order('nome')
-        ]);
-        
+        const [profilesResponse, filiaisResponse] = await Promise.all([supabase.from('profiles').select('id, name').eq('approval_status', 'approved'), supabase.from('filiais').select('id, nome').order('nome')]);
         setConsultants(profilesResponse.data || []);
         setFiliais(filiaisResponse.data || []);
-        
         console.log('📊 Dados carregados:', {
           consultants: profilesResponse.data?.length || 0,
           filiais: filiaisResponse.data?.length || 0,
-          consultantsList: profilesResponse.data?.map(c => ({ id: c.id, name: c.name }))
+          consultantsList: profilesResponse.data?.map(c => ({
+            id: c.id,
+            name: c.name
+          }))
         });
-        
+
         // Carregar cache de filiais para resolução de UUIDs
         await loadFiliaisCache();
       } catch (error) {
@@ -93,44 +89,36 @@ export const SalesFunnel: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
     loadFilters();
   }, []);
 
   // Função de normalização de nomes para matching flexível
   const normalizeName = (name: string) => {
     if (!name) return '';
-    return name
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/\s+/g, ' ') // Remove espaços duplos
-      .replace(/[^\w\s]/g, ''); // Remove caracteres especiais
+    return name.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/\s+/g, ' ') // Remove espaços duplos
+    .replace(/[^\w\s]/g, ''); // Remove caracteres especiais
   };
 
   // Função de matching flexível para nomes
   const isNameMatch = (consultantName: string, taskResponsible: string) => {
     if (!consultantName || !taskResponsible) return false;
-    
     const normalizedConsultant = normalizeName(consultantName);
     const normalizedTask = normalizeName(taskResponsible);
-    
+
     // Exact match após normalização
     if (normalizedConsultant === normalizedTask) return true;
-    
+
     // Busca parcial - verifica se um nome contém o outro
     if (normalizedConsultant.includes(normalizedTask) || normalizedTask.includes(normalizedConsultant)) return true;
-    
+
     // Busca por palavras individuais (para casos como "João Silva" vs "João P. Silva")
     const consultantWords = normalizedConsultant.split(' ').filter(w => w.length > 2);
     const taskWords = normalizedTask.split(' ').filter(w => w.length > 2);
-    
     if (consultantWords.length > 0 && taskWords.length > 0) {
       const commonWords = consultantWords.filter(word => taskWords.includes(word));
       return commonWords.length >= Math.min(consultantWords.length, taskWords.length) * 0.6;
     }
-    
     return false;
   };
 
@@ -152,9 +140,7 @@ export const SalesFunnel: React.FC = () => {
           console.warn('❌ Consultor não encontrado:', selectedConsultant);
           return false;
         }
-        
         const isMatch = isNameMatch(consultant.name, task.responsible);
-        
         console.log('🔍 Filtro Consultor:', {
           consultantOriginal: consultant.name,
           taskOriginal: task.responsible,
@@ -163,7 +149,6 @@ export const SalesFunnel: React.FC = () => {
           isMatch,
           taskId: task.id
         });
-        
         if (!isMatch) return false;
       }
 
@@ -174,7 +159,6 @@ export const SalesFunnel: React.FC = () => {
       if (selectedActivity !== 'all' && task.taskType !== selectedActivity) return false;
       return true;
     });
-    
     console.log('📊 Filtros aplicados:', {
       totalTasks: tasks.length,
       filteredTasks: filtered.length,
@@ -183,7 +167,6 @@ export const SalesFunnel: React.FC = () => {
       selectedActivity,
       selectedPeriod
     });
-    
     return filtered;
   }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants]);
 
@@ -213,7 +196,6 @@ export const SalesFunnel: React.FC = () => {
       return salesStatus === 'parcial';
     }).length;
     const totalSales = confirmadas + parciais;
-    
     return {
       contacts: {
         total: totalContacts,
@@ -536,7 +518,7 @@ export const SalesFunnel: React.FC = () => {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Exibir</label>
-              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
+              <Select value={itemsPerPage.toString()} onValueChange={value => setItemsPerPage(parseInt(value))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -606,30 +588,21 @@ export const SalesFunnel: React.FC = () => {
                     <div className="absolute left-1/2 top-full w-px h-6 bg-border transform -translate-x-1/2"></div>
                     
                     <div className="grid grid-cols-3 gap-6">
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-visitas' ? null : 'contacts-visitas')}>
                         <div className="font-bold text-3xl mb-2">{funnelData.contacts.visitas}</div>
                         <div className="text-sm opacity-90 mb-1">Visitas</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-3 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.visitas / funnelData.contacts.total * 100) : 0}%
                         </div>
                       </div>
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-checklists' ? null : 'contacts-checklists')}>
                         <div className="font-bold text-3xl mb-2">{funnelData.contacts.checklists}</div>
                         <div className="text-sm opacity-90 mb-1">Checklists</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-3 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.contacts.checklists / funnelData.contacts.total * 100) : 0}%
                         </div>
                       </div>
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'contacts-ligacoes' ? null : 'contacts-ligacoes')}>
                         <div className="font-bold text-3xl mb-2">{funnelData.contacts.ligacoes}</div>
                         <div className="text-sm opacity-90 mb-1">Ligações</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-3 py-1">
@@ -651,30 +624,21 @@ export const SalesFunnel: React.FC = () => {
                     <div className="absolute left-1/2 top-full w-px h-6 bg-border transform -translate-x-1/2"></div>
                     
                     <div className="grid grid-cols-3 gap-4">
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-abertas' ? null : 'prospects-abertas')}>
                         <div className="font-bold text-2xl mb-2">{funnelData.prospects.abertas}</div>
                         <div className="text-sm opacity-90 mb-1">Abertas</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.abertas / funnelData.contacts.total * 100) : 0}%
                         </div>
                       </div>
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-fechadas' ? null : 'prospects-fechadas')}>
                         <div className="font-bold text-2xl mb-2">{funnelData.prospects.fechadas}</div>
                         <div className="text-sm opacity-90 mb-1">Fechadas</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.prospects.fechadas / funnelData.contacts.total * 100) : 0}%
                         </div>
                       </div>
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-5 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'prospects-perdidas' ? null : 'prospects-perdidas')}>
                         <div className="font-bold text-2xl mb-2">{funnelData.prospects.perdidas}</div>
                         <div className="text-sm opacity-90 mb-1">Perdidas</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
@@ -693,20 +657,14 @@ export const SalesFunnel: React.FC = () => {
                   <h4 className="text-center text-sm font-medium text-muted-foreground mb-4">VENDAS</h4>
                   <div className="relative">
                     <div className="grid grid-cols-2 gap-3">
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-confirmed' ? null : 'sales-confirmed')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-confirmed' ? null : 'sales-confirmed')}>
                         <div className="font-bold text-xl mb-2">{funnelData.sales.confirmadas}</div>
                         <div className="text-sm opacity-90 mb-1">Confirmadas</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.confirmadas / funnelData.contacts.total * 100) : 0}%
                         </div>
                       </div>
-                      <div 
-                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" 
-                        onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-partial' ? null : 'sales-partial')}
-                      >
+                      <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-partial' ? null : 'sales-partial')}>
                         <div className="font-bold text-xl mb-2">{funnelData.sales.parciais}</div>
                         <div className="text-sm opacity-90 mb-1">Parciais</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
@@ -874,8 +832,8 @@ export const SalesFunnel: React.FC = () => {
                   <TableHead>Nome da Atividade</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Vendedor</TableHead>
-                  <TableHead>Valor da Oportunidade</TableHead>
-                  <TableHead>Valor da Venda Realizada</TableHead>
+                  <TableHead> Oportunidade</TableHead>
+                  <TableHead>Venda Realizada</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Ações</TableHead>
@@ -928,112 +886,104 @@ export const SalesFunnel: React.FC = () => {
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {(() => {
-                            // Buscar a filial do vendedor responsável
-                            const vendor = consultants.find(c => c.name === task.responsible);
-                            if (vendor && vendor.filial_id) {
-                              const filial = filiais.find(f => f.id === vendor.filial_id);
-                              return filial?.nome || 'Filial não informada';
-                            }
-                            // Fallback: usar a filial da task se não encontrar do vendedor
-                            return resolveFilialName(task.filial) || 'Filial não informada';
-                          })()}
+                      // Buscar a filial do vendedor responsável
+                      const vendor = consultants.find(c => c.name === task.responsible);
+                      if (vendor && vendor.filial_id) {
+                        const filial = filiais.find(f => f.id === vendor.filial_id);
+                        return filial?.nome || 'Filial não informada';
+                      }
+                      // Fallback: usar a filial da task se não encontrar do vendedor
+                      return resolveFilialName(task.filial) || 'Filial não informada';
+                    })()}
                         </div>
                       </TableCell>
                       <TableCell>
                         {(() => {
-                          // Calcular o valor total da oportunidade (potencial máximo)
-                          let totalOpportunityValue = 0;
-                          
-                          // Calcular a partir dos produtos prospect
-                          if (task.prospectItems && task.prospectItems.length > 0) {
-                            totalOpportunityValue = task.prospectItems.reduce((sum, item) => {
-                              const quantity = item.quantity || 0;
-                              const price = item.price || 0;
-                              return sum + (quantity * price);
-                            }, 0);
-                          }
-                          
-                          // Se não tem produtos prospect, calcular a partir do checklist
-                          if (totalOpportunityValue === 0 && task.checklist && task.checklist.length > 0) {
-                            totalOpportunityValue = task.checklist.reduce((sum, item) => {
-                              const quantity = item.quantity || 0;
-                              const price = item.price || 0;
-                              return sum + (quantity * price);
-                            }, 0);
-                          }
-                          
-                          // Se ainda não tem valor, usar salesValue como fallback
-                          if (totalOpportunityValue === 0 && task.salesValue) {
-                            totalOpportunityValue = task.salesValue;
-                          }
-                          
-                          return totalOpportunityValue > 0 ? new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL'
-                          }).format(totalOpportunityValue) : '-';
-                        })()}
+                    // Calcular o valor total da oportunidade (potencial máximo)
+                    let totalOpportunityValue = 0;
+
+                    // Calcular a partir dos produtos prospect
+                    if (task.prospectItems && task.prospectItems.length > 0) {
+                      totalOpportunityValue = task.prospectItems.reduce((sum, item) => {
+                        const quantity = item.quantity || 0;
+                        const price = item.price || 0;
+                        return sum + quantity * price;
+                      }, 0);
+                    }
+
+                    // Se não tem produtos prospect, calcular a partir do checklist
+                    if (totalOpportunityValue === 0 && task.checklist && task.checklist.length > 0) {
+                      totalOpportunityValue = task.checklist.reduce((sum, item) => {
+                        const quantity = item.quantity || 0;
+                        const price = item.price || 0;
+                        return sum + quantity * price;
+                      }, 0);
+                    }
+
+                    // Se ainda não tem valor, usar salesValue como fallback
+                    if (totalOpportunityValue === 0 && task.salesValue) {
+                      totalOpportunityValue = task.salesValue;
+                    }
+                    return totalOpportunityValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL'
+                    }).format(totalOpportunityValue) : '-';
+                  })()}
                       </TableCell>
                        <TableCell>
                          {(() => {
-                           const salesStatus = mapSalesStatus(task);
-                           
-                           // Se a venda foi confirmada (ganho), mostra o valor total
-                           if (salesStatus === 'ganho' && task.salesValue) {
-                             return new Intl.NumberFormat('pt-BR', {
-                               style: 'currency',
-                               currency: 'BRL'
-                             }).format(task.salesValue);
-                           }
-                           
-                           // Se é uma venda parcial, usa o valor salvo no sales_value
-                           if (salesStatus === 'parcial') {
-                             // Para vendas parciais, o valor correto já está salvo em task.salesValue
-                             if (task.salesValue && task.salesValue > 0) {
-                               return new Intl.NumberFormat('pt-BR', {
-                                 style: 'currency',
-                                 currency: 'BRL'
-                               }).format(task.salesValue);
-                             }
-                             
-                             // Fallback: calcular a partir dos produtos selecionados
-                             if (task.prospectItems) {
-                               const partialValue = task.prospectItems
-                                 .filter(item => item.selected && item.quantity && item.price)
-                                 .reduce((total, item) => total + (item.quantity! * item.price!), 0);
-                               
-                               if (partialValue > 0) {
-                                 return new Intl.NumberFormat('pt-BR', {
-                                   style: 'currency',
-                                   currency: 'BRL'
-                                 }).format(partialValue);
-                               }
-                             }
-                             
-                             // Fallback para checklist (compatibilidade)
-                             if (task.checklist) {
-                               const partialValue = task.checklist
-                                 .filter(item => item.selected && item.quantity && item.price)
-                                 .reduce((total, item) => total + (item.quantity! * item.price!), 0);
-                               
-                               if (partialValue > 0) {
-                                 return new Intl.NumberFormat('pt-BR', {
-                                   style: 'currency',
-                                   currency: 'BRL'
-                                 }).format(partialValue);
-                               }
-                             }
-                           }
-                           
-                           // Se é venda perdida, mostra R$ 0,00
-                           if (salesStatus === 'perdido') {
-                             return new Intl.NumberFormat('pt-BR', {
-                               style: 'currency',
-                               currency: 'BRL'
-                             }).format(0);
-                           }
-                           
-                           return '-';
-                         })()}
+                    const salesStatus = mapSalesStatus(task);
+
+                    // Se a venda foi confirmada (ganho), mostra o valor total
+                    if (salesStatus === 'ganho' && task.salesValue) {
+                      return new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      }).format(task.salesValue);
+                    }
+
+                    // Se é uma venda parcial, usa o valor salvo no sales_value
+                    if (salesStatus === 'parcial') {
+                      // Para vendas parciais, o valor correto já está salvo em task.salesValue
+                      if (task.salesValue && task.salesValue > 0) {
+                        return new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL'
+                        }).format(task.salesValue);
+                      }
+
+                      // Fallback: calcular a partir dos produtos selecionados
+                      if (task.prospectItems) {
+                        const partialValue = task.prospectItems.filter(item => item.selected && item.quantity && item.price).reduce((total, item) => total + item.quantity! * item.price!, 0);
+                        if (partialValue > 0) {
+                          return new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                          }).format(partialValue);
+                        }
+                      }
+
+                      // Fallback para checklist (compatibilidade)
+                      if (task.checklist) {
+                        const partialValue = task.checklist.filter(item => item.selected && item.quantity && item.price).reduce((total, item) => total + item.quantity! * item.price!, 0);
+                        if (partialValue > 0) {
+                          return new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL'
+                          }).format(partialValue);
+                        }
+                      }
+                    }
+
+                    // Se é venda perdida, mostra R$ 0,00
+                    if (salesStatus === 'perdido') {
+                      return new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      }).format(0);
+                    }
+                    return '-';
+                  })()}
                        </TableCell>
                       <TableCell>
                         <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' : status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' : ''}>
@@ -1066,14 +1016,12 @@ export const SalesFunnel: React.FC = () => {
               </TableBody>
             </Table>
             
-            {filteredTasks.length > itemsPerPage && (
-              <div className="mt-4 text-center">
+            {filteredTasks.length > itemsPerPage && <div className="mt-4 text-center">
                 <p className="text-sm text-muted-foreground">
                   Mostrando {Math.min(itemsPerPage, filteredTasks.length)} de {filteredTasks.length} atividades.
                   {itemsPerPage < filteredTasks.length && " Use o filtro 'Exibir' para ver mais registros."}
                 </p>
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>}
 
@@ -1150,7 +1098,7 @@ export const SalesFunnel: React.FC = () => {
       // Update selected task with the received data
       console.log('🔄 FUNNEL: Atualizando selectedTask com dados recebidos:', updatedTask);
       setSelectedTask(updatedTask);
-      
+
       // CRITICAL: Reload tasks to reflect status changes in the table
       console.log('🔄 FUNNEL: Recarregando tarefas para atualizar status na tabela');
       loadTasks();
