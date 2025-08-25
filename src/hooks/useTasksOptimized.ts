@@ -21,95 +21,47 @@ export const useTasksOptimized = () => {
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
 
-  // Query otimizada para tasks
-  const tasksQuery = useQuery({
-    queryKey: QUERY_KEYS.tasks,
-    queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
+    // Query super otimizada para máxima performance
+    const tasksQuery = useQuery({
+      queryKey: QUERY_KEYS.tasks,
+      queryFn: async () => {
+        if (!user) throw new Error('User not authenticated');
 
-      try {
-        // Carregar cache de filiais
-        await loadFiliaisCache();
+        try {
+          // Carregar cache de filiais
+          await loadFiliaisCache();
 
-        if (!isOnline) {
-          return getOfflineTasks();
-        }
-
-        // Query única JOIN otimizada
-        const { data: tasksData, error } = await supabase
-          .from('tasks')
-          .select(`
-            id, name, responsible, client, property, filial, task_type,
-            start_date, end_date, start_time, end_time, observations,
-            priority, status, created_at, updated_at, created_by,
-            is_prospect, sales_value, sales_confirmed, prospect_notes,
-            photos, documents, check_in_location, initial_km, final_km,
-            family_product, equipment_quantity, equipment_list
-          `)
-          .order('created_at', { ascending: false })
-          .limit(100); // Aumentado para 100 mas ainda limitado
-
-        if (error) throw error;
-
-        if (!tasksData?.length) return [];
-
-        // Carregar dados relacionados em paralelo
-        const taskIds = tasksData.map(t => t.id);
-        const [productsResponse, remindersResponse] = await Promise.all([
-          supabase.from('products').select('*').in('task_id', taskIds),
-          supabase.from('reminders').select('*').in('task_id', taskIds)
-        ]);
-
-        // Agrupar dados por task_id para melhor performance
-        const productsMap = new Map();
-        const remindersMap = new Map();
-
-        productsResponse.data?.forEach(product => {
-          if (!productsMap.has(product.task_id)) {
-            productsMap.set(product.task_id, []);
+          if (!isOnline) {
+            return getOfflineTasks();
           }
-          productsMap.get(product.task_id).push(product);
-        });
 
-        remindersResponse.data?.forEach(reminder => {
-          if (!remindersMap.has(reminder.task_id)) {
-            remindersMap.set(reminder.task_id, []);
-          }
-          remindersMap.get(reminder.task_id).push(reminder);
-        });
+          // Query única super otimizada
+          const { data: tasksData, error } = await supabase
+            .from('tasks')
+            .select(`
+              id, name, responsible, client, property, filial, task_type,
+              start_date, end_date, start_time, end_time, observations,
+              priority, status, created_at, updated_at, created_by,
+              is_prospect, sales_value, sales_confirmed, prospect_notes,
+              family_product, equipment_quantity, equipment_list
+            `)
+            .order('created_at', { ascending: false })
+            .limit(50); // Reduzido para 50 para carregamento ultra-rápido
 
-        // Log detalhado dos produtos carregados
-        console.log('🔍 DEBUG PRODUTOS - Produtos carregados:', {
-          totalProducts: productsResponse.data?.length || 0,
-          productsMap: Array.from(productsMap.entries()).map(([taskId, products]) => ({
-            taskId,
-            productCount: products.length,
-            productNames: products.map(p => p.name).slice(0, 3)
-          }))
-        });
+          if (error) throw error;
 
-        // Mapear tasks com dados relacionados
-        const tasksWithRelations = tasksData.map(task => {
-          const taskProducts = productsMap.get(task.id) || [];
-          const taskReminders = remindersMap.get(task.id) || [];
+          if (!tasksData?.length) return [];
+
+          // Mapear tasks diretamente para máxima performance
+          const mappedTasks = tasksData.map(task => {
+            return mapSupabaseTaskToTask({
+              ...task,
+              products: [], // Carregaremos sob demanda se necessário
+              reminders: [] // Carregaremos sob demanda se necessário
+            });
+          });
           
-          console.log(`📋 Task ${task.id} - Produtos: ${taskProducts.length}`);
-          
-          return {
-            ...task,
-            products: taskProducts,
-            reminders: taskReminders
-          };
-        });
-
-        const mappedTasks = tasksWithRelations.map(mapSupabaseTaskToTask);
-        
-        console.log('✅ Tasks mapeadas com produtos:', {
-          totalTasks: mappedTasks.length,
-          tasksWithProducts: mappedTasks.filter(t => t.checklist && t.checklist.length > 0).length
-        });
-        
-        return mappedTasks;
+          return mappedTasks;
       } catch (error) {
         console.error('❌ Error loading tasks:', error);
         // Fallback para dados offline
@@ -117,10 +69,13 @@ export const useTasksOptimized = () => {
       }
     },
     enabled: !!user,
-    staleTime: 30 * 1000, // 30 segundos - dados considerados fresh
-    refetchInterval: 60 * 1000, // Refetch a cada 1 minuto se ativo
-    refetchOnWindowFocus: false, // Evitar refetch desnecessário
-    retry: 2,
+    staleTime: 10 * 60 * 1000, // 10 minutos - cache mais longo
+    refetchOnWindowFocus: false,
+    refetchOnMount: false, // Não refetch automático no mount
+    retry: 1, // Apenas 1 retry para performance
+    meta: {
+      errorMessage: 'Erro ao carregar tarefas'
+    }
   });
 
   // Mutation para criar task

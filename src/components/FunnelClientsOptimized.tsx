@@ -39,31 +39,29 @@ export const FunnelClientsOptimized: React.FC = () => {
     const clientMap = new Map<string, ClientData>();
     const now = new Date();
     const periodStart = subDays(now, parseInt(selectedPeriod));
+    const searchLower = searchTerm.toLowerCase();
 
-    // Filter tasks first
-    const filteredTasks = tasks.filter(task => {
+    // Super otimizado: processamento em um único loop
+    for (const task of tasks) {
       const taskDate = new Date(task.createdAt);
-      if (taskDate < periodStart) return false;
-
+      
+      // Early exits
+      if (taskDate < periodStart) continue;
+      
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
-        if (!consultant || task.responsible !== consultant.name) return false;
+        if (!consultant || task.responsible !== consultant.name) continue;
       }
 
-      if (selectedFilial !== 'all' && task.filial !== selectedFilial) return false;
+      if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
 
-      return true;
-    });
-
-    // Build client map efficiently
-    filteredTasks.forEach(task => {
       const clientKey = task.client;
       
       if (!clientMap.has(clientKey)) {
         clientMap.set(clientKey, {
           name: task.client,
-          classification: 'A', // Classificação padrão - pode ser implementada posteriormente
-          city: task.property, // Usando property como cidade por enquanto
+          classification: 'A',
+          city: task.property,
           filial: task.filial || '',
           responsible: task.responsible,
           lastVisit: null,
@@ -75,32 +73,27 @@ export const FunnelClientsOptimized: React.FC = () => {
       const client = clientMap.get(clientKey)!;
       client.hasActivity = true;
 
-      if (task.taskType === 'prospection') {
-        const taskDate = new Date(task.createdAt);
-        if (!client.lastVisit || taskDate > client.lastVisit) {
-          client.lastVisit = taskDate;
-        }
+      // Atualizar datas de forma otimizada
+      if (task.taskType === 'prospection' && (!client.lastVisit || taskDate > client.lastVisit)) {
+        client.lastVisit = taskDate;
       }
 
-      if (task.isProspect) {
-        const taskDate = new Date(task.createdAt);
-        if (!client.lastOpportunity || taskDate > client.lastOpportunity) {
-          client.lastOpportunity = taskDate;
-        }
+      if (task.isProspect && (!client.lastOpportunity || taskDate > client.lastOpportunity)) {
+        client.lastOpportunity = taskDate;
       }
-    });
+    }
 
+    // Converter para array e aplicar filtros
     let clientsArray = Array.from(clientMap.values());
 
-    // Apply search filter
+    // Filtro de busca
     if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
       clientsArray = clientsArray.filter(client =>
         client.name.toLowerCase().includes(searchLower)
       );
     }
 
-    // Apply sorting
+    // Ordenação otimizada
     clientsArray.sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
@@ -114,7 +107,7 @@ export const FunnelClientsOptimized: React.FC = () => {
       return 0;
     });
 
-    return clientsArray;
+    return clientsArray.slice(0, 50); // Limitar para performance
   }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortField, sortDirection, consultants]);
 
   const handleSort = (field: keyof ClientData) => {

@@ -4,15 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { DashboardSkeleton, TableSkeleton } from '@/components/SkeletonLoader';
 
-// Lazy load optimized components for better performance
-const SalesFunnel = React.lazy(() => import('@/components/SalesFunnelOptimized').then(module => ({ default: module.SalesFunnelOptimized })));
-const FunnelClients = React.lazy(() => import('@/components/FunnelClientsOptimized').then(module => ({ default: module.FunnelClientsOptimized })));
-const FunnelTasks = React.lazy(() => import('@/components/FunnelTasksOptimized').then(module => ({ default: module.FunnelTasksOptimized })));
+// Componentes otimizados importados diretamente para melhor performance inicial
+import { SalesFunnelOptimized } from '@/components/SalesFunnelOptimized';
+import { FunnelClientsOptimized } from '@/components/FunnelClientsOptimized';
+import { FunnelTasksOptimized } from '@/components/FunnelTasksOptimized';
 
-// Enhanced loading components with skeleton UI
-const FunnelLoading = () => <DashboardSkeleton />;
-const ClientsLoading = () => <TableSkeleton />;
-const TasksLoading = () => <TableSkeleton />;
+// Loading optimizado
+const DashboardLoading = () => <DashboardSkeleton />;
 
 const Dashboard: React.FC = () => {
   return (
@@ -35,20 +33,20 @@ const Dashboard: React.FC = () => {
         </TabsList>
 
         <TabsContent value="funil" className="space-y-6">
-          <Suspense fallback={<FunnelLoading />}>
-            <SalesFunnel />
+          <Suspense fallback={<DashboardLoading />}>
+            <SalesFunnelOptimized />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="clientes" className="space-y-6">
-          <Suspense fallback={<ClientsLoading />}>
-            <FunnelClients />
+          <Suspense fallback={<DashboardLoading />}>
+            <FunnelClientsOptimized />
           </Suspense>
         </TabsContent>
 
         <TabsContent value="tarefas" className="space-y-6">
-          <Suspense fallback={<TasksLoading />}>
-            <FunnelTasks />
+          <Suspense fallback={<DashboardLoading />}>
+            <FunnelTasksOptimized />
           </Suspense>
         </TabsContent>
       </Tabs>

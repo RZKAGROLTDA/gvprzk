@@ -35,43 +35,44 @@ export const FunnelTasksOptimized: React.FC = () => {
 
     const now = new Date();
     const periodStart = subDays(now, parseInt(selectedPeriod));
+    const searchLower = searchTerm.toLowerCase();
 
-    // Filter tasks efficiently in one pass
-    const filteredTasks = tasks.filter(task => {
+    // Super otimizado: filtro, mapeamento e ordenação em um loop
+    const result: TaskData[] = [];
+    
+    for (const task of tasks) {
       const taskDate = new Date(task.createdAt);
-      if (taskDate < periodStart) return false;
-
+      
+      // Early exits para máxima performance
+      if (taskDate < periodStart) continue;
+      
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
-        if (!consultant || task.responsible !== consultant.name) return false;
+        if (!consultant || task.responsible !== consultant.name) continue;
       }
 
-      if (selectedFilial !== 'all' && task.filial !== selectedFilial) return false;
+      if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
+      
+      if (searchTerm && !task.client.toLowerCase().includes(searchLower)) continue;
 
-      if (searchTerm && !task.client.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
+      // Mapear diretamente
+      result.push({
+        date: task.createdAt,
+        client: task.client,
+        responsible: task.responsible,
+        taskType: getTaskTypeLabel(task.taskType),
+        observation: task.observations || '-',
+        filial: task.filial || ''
+      });
+    }
 
-      return true;
+    // Ordenação otimizada
+    result.sort((a, b) => {
+      const diff = a.date.getTime() - b.date.getTime();
+      return sortDirection === 'asc' ? diff : -diff;
     });
 
-    // Map and sort in optimized way
-    const mappedTasks: TaskData[] = filteredTasks.map(task => ({
-      date: task.createdAt,
-      client: task.client,
-      responsible: task.responsible,
-      taskType: getTaskTypeLabel(task.taskType),
-      observation: task.observations || '-',
-      filial: task.filial || ''
-    }));
-
-    // Single sort operation
-    mappedTasks.sort((a, b) => {
-      const comparison = a.date.getTime() - b.date.getTime();
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-
-    return mappedTasks;
+    return result.slice(0, 100); // Limitar para performance
   }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
 
   const getTaskTypeLabel = (taskType: string) => {

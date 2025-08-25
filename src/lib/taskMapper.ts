@@ -4,13 +4,7 @@ import { resolveFilialName, loadFiliaisCache } from './taskStandardization';
 
 // Utility function to map Supabase task data to application Task format
 export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
-  console.log('🔄 MAPPER: Mapping Supabase task:', {
-    id: supabaseTask.id,
-    salesConfirmed: supabaseTask.sales_confirmed,
-    isProspect: supabaseTask.is_prospect,
-    status: supabaseTask.status,
-    productsCount: supabaseTask.products?.length || 0
-  });
+  // Logs removidos para performance
 
   // Resolver nome da filial automaticamente
   const filialResolved = resolveFilialName(supabaseTask.filial);
@@ -28,7 +22,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
       photos: product.photos || [],
     };
     
-    console.log(`🔄 MAPPER: Product mapped - ${product.name}: selected=${mappedProduct.selected}`);
+    // Log removido para performance
     return mappedProduct;
   }) || [];
 
@@ -84,14 +78,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     equipmentList: supabaseTask.equipment_list || [],
   };
 
-  console.log('✅ MAPPER: Task mapped successfully:', {
-    id: mappedTask.id,
-    salesConfirmed: mappedTask.salesConfirmed,
-    isProspect: mappedTask.isProspect,
-    status: mappedTask.status,
-    checklistLength: mappedTask.checklist.length,
-    selectedItems: mappedTask.checklist.filter(item => item.selected).length
-  });
+  // Log removido para performance
 
   return mappedTask;
 };

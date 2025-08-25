@@ -45,16 +45,7 @@ export const resolveFilialName = (filialId: string | null | undefined): string =
  * Mapeia status de vendas para padrão unificado
  */
 export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | 'perdido' => {
-  console.log('🔍 mapSalesStatus - Input task:', {
-    id: task.id,
-    salesType: task.salesType,
-    salesConfirmed: task.salesConfirmed,
-    isProspect: task.isProspect,
-    checklistLength: task.checklist?.length || 0,
-    selectedChecklistItems: task.checklist?.filter(item => item.selected).length || 0,
-    prospectItemsLength: task.prospectItems?.length || 0,
-    selectedProspectItems: task.prospectItems?.filter(item => item.selected).length || 0
-  });
+  // Logs removidos para performance
 
   // Se tem sales_type definido, usar esse valor diretamente
   // PRIORIDADE MÁXIMA para corrigir formulários antigos
