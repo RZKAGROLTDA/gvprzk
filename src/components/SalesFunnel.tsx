@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache } from '@/lib/taskStandardization';
+import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache, calculateSalesValue } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { Task } from '@/types/task';
 interface SalesFunnelData {
@@ -185,9 +185,9 @@ export const SalesFunnel: React.FC = () => {
     const closedLost = filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).length;
 
     // Valores das prospecções
-    const totalProspectValue = filteredTasks.filter(task => task.isProspect).reduce((sum, task) => sum + (task.salesValue || 0), 0);
-    const openProspectValue = filteredTasks.filter(task => task.isProspect && task.status === 'pending').reduce((sum, task) => sum + (task.salesValue || 0), 0);
-    const closedWonValue = filteredTasks.filter(task => task.salesConfirmed).reduce((sum, task) => sum + (task.salesValue || 0), 0);
+    const totalProspectValue = filteredTasks.filter(task => task.isProspect).reduce((sum, task) => sum + calculateSalesValue(task), 0);
+    const openProspectValue = filteredTasks.filter(task => task.isProspect && task.status === 'pending').reduce((sum, task) => sum + calculateSalesValue(task), 0);
+    const closedWonValue = filteredTasks.filter(task => task.salesConfirmed).reduce((sum, task) => sum + calculateSalesValue(task), 0);
 
     // Terceira barra: Vendas/Faturamento
     const confirmadas = filteredTasks.filter(task => task.salesConfirmed).length;
@@ -268,7 +268,7 @@ export const SalesFunnel: React.FC = () => {
       if (task.taskType === 'ligacao') client.totalCalls++;
       if (task.taskType === 'checklist') client.totalChecklists++;
       if (task.isProspect) client.prospects++;
-      client.salesValue += task.salesValue || 0;
+      client.salesValue += calculateSalesValue(task);
       if (task.createdAt > client.lastActivity) {
         client.lastActivity = task.createdAt;
       }
@@ -290,7 +290,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'contacts-checklists':
         return filteredTasks.filter(task => task.taskType === 'checklist').map(task => ({
@@ -301,7 +301,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'contacts-ligacoes':
         return filteredTasks.filter(task => task.taskType === 'ligacao').map(task => ({
@@ -312,7 +312,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
 
       // Filtros para Prospecções específicas
@@ -326,7 +326,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'prospects-fechadas':
         return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
@@ -338,7 +338,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'prospects-perdidas':
         return filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).map(task => ({
@@ -350,7 +350,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
 
       // Filtros gerais
@@ -363,7 +363,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'prospects':
         return filteredTasks.filter(task => task.isProspect).map(task => ({
@@ -375,7 +375,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'sales-confirmed':
         return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
@@ -386,7 +386,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'sales-partial':
         return filteredTasks.filter(task => {
@@ -400,7 +400,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       case 'sales':
         return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
@@ -411,13 +411,13 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: task.salesValue || 0
+          value: calculateSalesValue(task)
         }));
       default:
         return [];
     }
   }, [selectedFunnelSection, filteredTasks, filiais]);
-  const totalSalesValue = filteredTasks.reduce((sum, task) => sum + (task.salesValue || 0), 0);
+  const totalSalesValue = filteredTasks.reduce((sum, task) => sum + calculateSalesValue(task), 0);
   const chartConfig = {
     value: {
       label: "Quantidade",
@@ -930,61 +930,15 @@ export const SalesFunnel: React.FC = () => {
                     }).format(totalOpportunityValue) : '-';
                   })()}
                       </TableCell>
-                       <TableCell>
-                         {(() => {
-                    const salesStatus = mapSalesStatus(task);
-
-                    // Se a venda foi confirmada (ganho), mostra o valor total
-                    if (salesStatus === 'ganho' && task.salesValue) {
-                      return new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(task.salesValue);
-                    }
-
-                    // Se é uma venda parcial, usa o valor salvo no sales_value
-                    if (salesStatus === 'parcial') {
-                      // Para vendas parciais, o valor correto já está salvo em task.salesValue
-                      if (task.salesValue && task.salesValue > 0) {
-                        return new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(task.salesValue);
-                      }
-
-                      // Fallback: calcular a partir dos produtos selecionados
-                      if (task.prospectItems) {
-                        const partialValue = task.prospectItems.filter(item => item.selected && item.quantity && item.price).reduce((total, item) => total + item.quantity! * item.price!, 0);
-                        if (partialValue > 0) {
-                          return new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL'
-                          }).format(partialValue);
-                        }
-                      }
-
-                      // Fallback para checklist (compatibilidade)
-                      if (task.checklist) {
-                        const partialValue = task.checklist.filter(item => item.selected && item.quantity && item.price).reduce((total, item) => total + item.quantity! * item.price!, 0);
-                        if (partialValue > 0) {
-                          return new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL'
-                          }).format(partialValue);
-                        }
-                      }
-                    }
-
-                    // Se é venda perdida, mostra R$ 0,00
-                    if (salesStatus === 'perdido') {
-                      return new Intl.NumberFormat('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                      }).format(0);
-                    }
-                    return '-';
-                  })()}
-                       </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const salesValue = calculateSalesValue(task);
+                            return salesValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL'
+                            }).format(salesValue) : '-';
+                          })()}
+                        </TableCell>
                       <TableCell>
                         <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' : status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' : ''}>
                           {status.label}

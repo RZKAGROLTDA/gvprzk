@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
-import { mapSalesStatus, getStatusLabel } from '@/lib/taskStandardization';
+import { mapSalesStatus, getStatusLabel, calculateSalesValue } from '@/lib/taskStandardization';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -32,49 +32,6 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const { user } = useAuth();
 
-  // Função para calcular valor correto da venda
-  const calculateSalesValue = (task: any) => {
-    const mappedTask = mapSupabaseTaskToTask(task);
-    const salesStatus = mapSalesStatus(mappedTask);
-    
-    // Para vendas ganhas, usar valor total
-    if (salesStatus === 'ganho' && mappedTask.salesValue) {
-      return mappedTask.salesValue;
-    }
-    
-    // Para vendas parciais, usar valor salvo ou calcular dos produtos
-    if (salesStatus === 'parcial') {
-      // Primeiro, tentar usar o valor salvo
-      if (mappedTask.salesValue && mappedTask.salesValue > 0) {
-        return mappedTask.salesValue;
-      }
-      
-      // Fallback: calcular a partir dos produtos selecionados
-      if (mappedTask.prospectItems) {
-        const partialValue = mappedTask.prospectItems
-          .filter(item => item.selected && item.quantity && item.price)
-          .reduce((total, item) => total + (item.quantity! * item.price!), 0);
-        
-        if (partialValue > 0) {
-          return partialValue;
-        }
-      }
-      
-      // Fallback para checklist (compatibilidade)
-      if (mappedTask.checklist) {
-        const partialValue = mappedTask.checklist
-          .filter(item => item.selected && item.quantity && item.price)
-          .reduce((total, item) => total + (item.quantity! * item.price!), 0);
-        
-        if (partialValue > 0) {
-          return partialValue;
-        }
-      }
-    }
-    
-    // Para prospects e perdidos, retornar 0
-    return 0;
-  };
 
   const fetchVisitData = async () => {
     if (!user) {
@@ -127,7 +84,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       const tableData = visitData.map((visit) => {
         const mappedTask = mapSupabaseTaskToTask(visit);
         const salesStatus = mapSalesStatus(mappedTask);
-        const salesValue = calculateSalesValue(visit);
+        const salesValue = calculateSalesValue(mappedTask);
         
         return [
           visit.responsible || 'N/A',
@@ -154,7 +111,10 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       });
 
       // Adicionar resumo financeiro com valores corretos
-      const totalValue = visitData.reduce((sum, visit) => sum + calculateSalesValue(visit), 0);
+      const totalValue = visitData.reduce((sum, visit) => {
+        const mappedTask = mapSupabaseTaskToTask(visit);
+        return sum + calculateSalesValue(mappedTask);
+      }, 0);
       const completedVisits = visitData.filter(visit => visit.status === 'completed').length;
       const salesData = visitData.map(visit => {
         const mappedTask = mapSupabaseTaskToTask(visit);
@@ -212,7 +172,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       const excelData = visitData.map((visit) => {
         const mappedTask = mapSupabaseTaskToTask(visit);
         const salesStatus = mapSalesStatus(mappedTask);
-        const salesValue = calculateSalesValue(visit);
+        const salesValue = calculateSalesValue(mappedTask);
         
         return {
           'Responsável': visit.responsible || 'N/A',
@@ -240,7 +200,10 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Visitas');
 
       // Criar aba de resumo com dados de vendas
-      const totalValue = visitData.reduce((sum, visit) => sum + calculateSalesValue(visit), 0);
+      const totalValue = visitData.reduce((sum, visit) => {
+        const mappedTask = mapSupabaseTaskToTask(visit);
+        return sum + calculateSalesValue(mappedTask);
+      }, 0);
       const completedVisits = visitData.filter(visit => visit.status === 'completed').length;
       const salesData = visitData.map(visit => {
         const mappedTask = mapSupabaseTaskToTask(visit);

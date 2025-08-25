@@ -254,6 +254,53 @@ export const getStatusColor = (status: 'prospect' | 'parcial' | 'ganho' | 'perdi
 };
 
 /**
+ * Calcula o valor correto de vendas baseado no status
+ */
+export const calculateSalesValue = (task: Task): number => {
+  const salesStatus = mapSalesStatus(task);
+  
+  // Para vendas perdidas, valor é sempre 0
+  if (salesStatus === 'perdido') {
+    return 0;
+  }
+  
+  // Para vendas parciais, calcular baseado nos produtos selecionados
+  if (salesStatus === 'parcial') {
+    // Primeiro, verificar se há valor salvo
+    if (task.salesValue && task.salesValue > 0) {
+      return task.salesValue;
+    }
+    
+    // Calcular baseado nos produtos selecionados do checklist
+    if (task.checklist && task.checklist.length > 0) {
+      const selectedItems = task.checklist.filter(item => item.selected);
+      const totalValue = selectedItems.reduce((sum, item) => {
+        return sum + ((item.price || 0) * (item.quantity || 1));
+      }, 0);
+      
+      if (totalValue > 0) {
+        return totalValue;
+      }
+    }
+    
+    // Fallback para prospectItems
+    if (task.prospectItems && task.prospectItems.length > 0) {
+      const selectedProspectItems = task.prospectItems.filter(item => item.selected);
+      const totalValue = selectedProspectItems.reduce((sum, item) => {
+        return sum + ((item.price || 0) * (item.quantity || 1));
+      }, 0);
+      
+      if (totalValue > 0) {
+        return totalValue;
+      }
+    }
+  }
+  
+  // Para outros casos (ganho, prospect), usar o valor salvo
+  return task.salesValue || 0;
+};
+
+/**
  * Valida se todos os campos obrigatórios estão preenchidos
  */
 export const validateStandardFields = (data: any): { valid: boolean; errors: string[] } => {

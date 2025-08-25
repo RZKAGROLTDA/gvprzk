@@ -10,7 +10,7 @@ import { Calendar, TrendingUp, Users, DollarSign, Target, Filter } from 'lucide-
 import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { mapSalesStatus, resolveFilialName } from '@/lib/taskStandardization';
+import { mapSalesStatus, resolveFilialName, calculateSalesValue } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { Task } from '@/types/task';
 
@@ -111,11 +111,11 @@ export const SalesFunnelOptimized: React.FC = () => {
       // Prospecções
       if (task.isProspect) {
         prospects++;
-        totalProspectValue += task.salesValue || 0;
+        totalProspectValue += calculateSalesValue(task);
         
         if (task.status === 'pending') {
           openProspects++;
-          openProspectValue += task.salesValue || 0;
+          openProspectValue += calculateSalesValue(task);
         }
       }
 
@@ -123,7 +123,7 @@ export const SalesFunnelOptimized: React.FC = () => {
       if (task.salesConfirmed) {
         closedWon++;
         confirmadas++;
-        closedWonValue += task.salesValue || 0;
+        closedWonValue += calculateSalesValue(task);
       } else if (task.isProspect && task.status === 'closed') {
         closedLost++;
       }
@@ -242,7 +242,7 @@ export const SalesFunnelOptimized: React.FC = () => {
       }
       
       if (task.isProspect) client.prospects++;
-      client.salesValue += task.salesValue || 0;
+      client.salesValue += calculateSalesValue(task);
       
       if (task.createdAt > client.lastActivity) {
         client.lastActivity = task.createdAt;
@@ -265,7 +265,7 @@ export const SalesFunnelOptimized: React.FC = () => {
       confirmed: task.salesConfirmed,
       date: format(task.createdAt, 'dd/MM/yyyy', { locale: ptBR }),
       filial: resolveFilialName(task.filial),
-      value: task.salesValue || 0
+      value: calculateSalesValue(task)
     });
 
     switch (section) {
