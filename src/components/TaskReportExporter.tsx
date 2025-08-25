@@ -8,6 +8,7 @@ import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
+import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { mapTaskToStandardFields, mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
 
 declare module 'jspdf' {
@@ -32,6 +33,12 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
   className = '' 
 }) => {
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Garante que produtos sejam carregados se necessário
+  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
+  const { data: taskDetails } = useTaskDetails(needsDetailsLoading ? task.id : null);
+  
+  const fullTask = taskDetails || task;
 
   const getTaskTypeLabel = (taskType: string) => {
     switch (taskType) {
@@ -65,8 +72,8 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
     let total = 0;
     
     // Soma produtos selecionados do checklist
-    if (task.checklist) {
-      task.checklist.forEach(item => {
+    if (fullTask.checklist) {
+      fullTask.checklist.forEach(item => {
         if (item.selected && item.price) {
           total += item.price * (item.quantity || 1);
         }
@@ -74,8 +81,8 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
     }
     
     // Soma produtos oferecidos (prospectItems)
-    if (task.prospectItems) {
-      task.prospectItems.forEach(item => {
+    if (fullTask.prospectItems) {
+      fullTask.prospectItems.forEach(item => {
         if (item.price) {
           total += item.price * (item.quantity || 1);
         }
@@ -90,8 +97,8 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       setIsExporting(true);
       
       // Mapear dados para formato padronizado
-      const standardData = await mapTaskToStandardFields(task);
-      const salesStatus = mapSalesStatus(task);
+      const standardData = await mapTaskToStandardFields(fullTask);
+      const salesStatus = mapSalesStatus(fullTask);
       
       const doc = new jsPDF();
       let yPosition = 20;
@@ -119,29 +126,29 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       doc.setFont('helvetica', 'bold');
       doc.text('VENDEDOR:', 120, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(task.responsible, 150, yPosition);
+      doc.text(fullTask.responsible, 150, yPosition);
       yPosition += 10;
 
       doc.setFont('helvetica', 'bold');
       doc.text('TIPO DE TAREFA:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(getTaskTypeLabel(task.taskType), 70, yPosition);
+      doc.text(getTaskTypeLabel(fullTask.taskType), 70, yPosition);
       
       doc.setFont('helvetica', 'bold');
       doc.text('STATUS:', 120, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(getStatusLabel(task.status), 145, yPosition);
+      doc.text(getStatusLabel(fullTask.status), 145, yPosition);
       yPosition += 10;
 
       doc.setFont('helvetica', 'bold');
       doc.text('DATA:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(format(task.startDate, 'dd/MM/yyyy', { locale: ptBR }), 45, yPosition);
+      doc.text(format(fullTask.startDate, 'dd/MM/yyyy', { locale: ptBR }), 45, yPosition);
       
       doc.setFont('helvetica', 'bold');
       doc.text('HORÁRIO:', 120, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(`${task.startTime} - ${task.endTime}`, 150, yPosition);
+      doc.text(`${fullTask.startTime} - ${fullTask.endTime}`, 150, yPosition);
       yPosition += 15;
 
       // Seção - Dados Padronizados do Cliente

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useOffline } from '@/hooks/useOffline';
+import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -181,19 +182,7 @@ export const TaskManager: React.FC = () => {
                   </div>
                 )}
 
-                {task.checklist && task.checklist.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Itens Selecionados:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {task.checklist.filter(item => item.selected).map((item) => (
-                        <Badge key={item.id} variant="outline" className="text-xs">
-                          {item.name}
-                          {item.quantity && item.quantity > 0 && ` (${item.quantity})`}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <TaskItemsDisplay task={task} />
 
                 <div className="flex items-center justify-between pt-2">
                   <div className="text-xs text-muted-foreground">
@@ -213,6 +202,32 @@ export const TaskManager: React.FC = () => {
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+// Componente separado para exibir produtos com carregamento automático
+const TaskItemsDisplay: React.FC<{ task: Task }> = ({ task }) => {
+  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0);
+  const { data: taskDetails } = useTaskDetails(needsDetailsLoading ? task.id : null);
+  
+  const currentTask = taskDetails || task;
+  
+  if (!currentTask.checklist || currentTask.checklist.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      <h4 className="text-sm font-medium mb-2">Itens Selecionados:</h4>
+      <div className="flex flex-wrap gap-1">
+        {currentTask.checklist.filter(item => item.selected).map((item) => (
+          <Badge key={item.id} variant="outline" className="text-xs">
+            {item.name}
+            {item.quantity && item.quantity > 0 && ` (${item.quantity})`}
+          </Badge>
+        ))}
+      </div>
     </div>
   );
 };
