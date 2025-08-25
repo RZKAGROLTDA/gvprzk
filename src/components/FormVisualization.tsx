@@ -613,130 +613,71 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Produtos/Serviços */}
-          {fullTask.checklist && fullTask.checklist.length > 0 && (
+          {/* Lista de Equipamentos */}
+          {fullTask.equipmentList && fullTask.equipmentList.length > 0 && (
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="w-5 h-5" />
-                  Família de Produtos e Oportunidades
+                  Lista de Equipamentos
                 </CardTitle>
                 <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">Status atual:</span>
-                  <Badge className={`${getStatusColor(salesStatus)} border text-xs`}>
-                    {getStatusLabel(salesStatus)}
+                  <span className="text-muted-foreground">Total de famílias de equipamentos:</span>
+                  <Badge variant="outline" className="border text-xs">
+                    {fullTask.equipmentList.length} famílias
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {fullTask.checklist.map((item, index) => {
-                    const isSelected = item.selected;
-                    const itemTotal = (item.price || 0) * (item.quantity || 1);
-                    
-                    return (
-                      <div 
-                        key={index} 
-                        className={`border rounded-lg p-4 transition-all ${
-                          isSelected 
-                            ? 'bg-primary/5 border-primary/30 shadow-sm' 
-                            : 'bg-muted/30 border-border'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h4 className={`font-semibold text-lg ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                              {item.name}
-                            </h4>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Categoria: <span className="font-medium">{item.category}</span>
-                            </p>
-                          </div>
-                          <Badge 
-                            variant={isSelected ? 'default' : 'secondary'} 
-                            className={`ml-4 ${
-                              isSelected 
-                                ? 'bg-success text-success-foreground' 
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {isSelected ? '✓ Selecionado' : '○ Disponível'}
-                          </Badge>
+                <div className="space-y-4">
+                  {fullTask.equipmentList.map((equipment, index) => (
+                    <div 
+                      key={index} 
+                      className="border rounded-lg p-4 bg-gradient-to-r from-primary/5 to-primary/2 border-primary/20"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg text-primary">
+                            {equipment.familyProduct}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Família de equipamentos identificada
+                          </p>
                         </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                            <p className="font-medium text-lg">{item.quantity || 1}</p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
-                            <p className="font-medium text-lg">
-                              R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">
-                              {isSelected ? 'Valor Confirmado' : 'Valor Potencial'}
-                            </label>
-                            <p className={`font-bold text-xl ${
-                              isSelected ? 'text-success' : 'text-muted-foreground'
-                            }`}>
-                              R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {item.observations && (
-                          <div className="mt-4 p-3 bg-muted/50 rounded-md">
-                            <label className="text-sm font-medium text-muted-foreground">Observações do Produto</label>
-                            <p className="text-sm mt-1 text-foreground">{item.observations}</p>
-                          </div>
-                        )}
-                        
-                        {item.photos && item.photos.length > 0 && (
-                          <div className="mt-4">
-                            <label className="text-sm font-medium text-muted-foreground mb-2 block">Fotos do Produto</label>
-                            <div className="flex gap-2">
-                              {item.photos.map((photo, photoIndex) => (
-                                <img 
-                                  key={photoIndex}
-                                  src={photo} 
-                                  alt={`Foto ${photoIndex + 1} - ${item.name}`}
-                                  className="w-16 h-16 object-cover rounded border cursor-pointer hover:scale-105 transition-transform"
-                                  onClick={() => window.open(photo, '_blank')}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <Badge variant="default" className="bg-primary text-primary-foreground">
+                          {equipment.quantity} {equipment.quantity === 1 ? 'unidade' : 'unidades'}
+                        </Badge>
                       </div>
-                    );
-                  })}
-                </div>
-                
-                <Separator className="my-6" />
-                
-                {/* Resumo de Valores */}
-                <div className="bg-gradient-card rounded-lg p-6 border">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Produtos Totais</p>
-                      <p className="text-2xl font-bold text-foreground">{fullTask.checklist.length}</p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3 bg-muted/30 rounded-lg">
+                          <label className="text-sm font-medium text-muted-foreground">Família do Produto</label>
+                          <p className="font-medium text-lg capitalize">{equipment.familyProduct.toLowerCase()}</p>
+                        </div>
+                        <div className="p-3 bg-muted/30 rounded-lg">
+                          <label className="text-sm font-medium text-muted-foreground">Quantidade Identificada</label>
+                          <p className="font-bold text-xl text-primary">{equipment.quantity}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Produtos Selecionados</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {fullTask.checklist.filter(item => item.selected).length}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">
-                        {fullTask.salesType === 'prospect' ? 'Valor Potencial Total' : 'Valor da Oportunidade'}
-                      </p>
-                      <p className="text-3xl font-bold text-primary">
-                        R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
+                  ))}
+                  
+                  {/* Resumo Total dos Equipamentos */}
+                  <div className="mt-6 p-4 bg-gradient-to-r from-secondary/10 to-secondary/5 rounded-lg border border-secondary/20">
+                    <h4 className="font-semibold mb-3 text-secondary">Resumo dos Equipamentos</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total de Famílias</p>
+                        <p className="text-2xl font-bold text-secondary">
+                          {fullTask.equipmentList.length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total de Equipamentos</p>
+                        <p className="text-2xl font-bold text-secondary">
+                          {fullTask.equipmentList.reduce((sum, equipment) => sum + equipment.quantity, 0)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
