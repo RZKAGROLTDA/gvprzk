@@ -309,8 +309,16 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                 <p className="text-sm bg-muted p-2 rounded">{currentTask.client}</p>
               </div>
               <div>
+                <label className="text-sm font-medium text-muted-foreground">Código do Cliente</label>
+                <p className="text-sm bg-muted p-2 rounded">{currentTask.clientCode || 'Não informado'}</p>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
                 <p className="text-sm bg-muted p-2 rounded">{currentTask.property || 'Não informado'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">CPF</label>
+                <p className="text-sm bg-muted p-2 rounded">{currentTask.cpf || 'Não informado'}</p>
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
