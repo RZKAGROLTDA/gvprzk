@@ -49,7 +49,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
   
   // Carregar detalhes completos da task se necessário
-  // Força carregamento se produtos não estão presentes (checklist vazio ou undefined)
   const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
   const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
     needsDetailsLoading ? task.id : null
@@ -160,6 +159,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
+      console.log('🔄 Iniciando geração de PDF...');
       const pdf = new jsPDF();
       const pageWidth = pdf.internal.pageSize.width;
       
@@ -174,7 +174,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       
       let yPosition = 35;
       
-      // Informações básicas
+      // Informações básicas - usando dados seguros
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       pdf.text('INFORMAÇÕES GERAIS', 20, yPosition);
@@ -183,46 +183,58 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       
-        const basicInfo = [
-          ['Tipo de Tarefa:', getTaskTypeLabel(fullTask.taskType || 'prospection')],
-          ['Cliente:', fullTask.client],
-          ['Código do Cliente:', fullTask.clientCode || 'Não informado'],
-          ['Email:', fullTask.email || 'Não informado'],
-          ['CPF:', fullTask.cpf || 'Não informado'],
-          ['Propriedade:', fullTask.property],
-          ['Hectares:', fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'],
-          ['Responsável:', fullTask.responsible],
-          ['Filial:', fullTask.filial || 'Não informado'],
-          ['Data:', format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })],
-          ['Horário:', `${fullTask.startTime} - ${fullTask.endTime}`],
-          ['Status:', getStatusLabel(salesStatus)]
-        ];
+      const basicInfo = [
+        ['Tipo de Tarefa:', getTaskTypeLabel(fullTask?.taskType || 'prospection')],
+        ['Cliente:', fullTask?.client || 'Não informado'],
+        ['Código do Cliente:', fullTask?.clientCode || 'Não informado'],
+        ['Email:', fullTask?.email || 'Não informado'],
+        ['Propriedade:', fullTask?.property || 'Não informado'],
+        ['Hectares:', fullTask?.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'],
+        ['Responsável:', fullTask?.responsible || 'Não informado'],
+        ['Filial:', fullTask?.filial || 'Não informado'],
+        ['Data:', fullTask?.startDate ? format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'Não informado'],
+        ['Horário:', `${fullTask?.startTime || ''} - ${fullTask?.endTime || ''}`],
+        ['Status:', getStatusLabel(salesStatus)]
+      ];
       
-      pdf.autoTable({
-        startY: yPosition,
-        body: basicInfo,
-        columns: [
-          { header: 'Campo', dataKey: 0 },
-          { header: 'Valor', dataKey: 1 }
-        ],
-        margin: { left: 20, right: 20 },
-        styles: { fontSize: 9 },
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } }
-      });
+      try {
+        pdf.autoTable({
+          startY: yPosition,
+          body: basicInfo,
+          columns: [
+            { header: 'Campo', dataKey: 0 },
+            { header: 'Valor', dataKey: 1 }
+          ],
+          margin: { left: 20, right: 20 },
+          styles: { fontSize: 9, cellPadding: 3 },
+          columnStyles: { 
+            0: { fontStyle: 'bold', cellWidth: 40 },
+            1: { cellWidth: 'auto' }
+          },
+          theme: 'grid'
+        });
+        
+        yPosition = pdf.lastAutoTable.finalY + 15;
+      } catch (error) {
+        console.error('Erro na tabela de informações básicas:', error);
+        yPosition += 100; // Fallback position
+      }
       
-      yPosition = pdf.lastAutoTable.finalY + 15;
-      
-      // Informações de Equipamentos
-      if (fullTask.familyProduct || fullTask.equipmentQuantity || (fullTask.equipmentList && fullTask.equipmentList.length > 0)) {
+      // Informações de Equipamentos (se existirem)
+      if (fullTask?.familyProduct || fullTask?.equipmentQuantity || (fullTask?.equipmentList && fullTask.equipmentList.length > 0)) {
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('INFORMAÇÕES DE EQUIPAMENTOS', 20, yPosition);
         yPosition += 10;
         
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        
         if (fullTask.familyProduct) {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
           pdf.text(`Família Principal do Produto: ${fullTask.familyProduct}`, 20, yPosition);
           yPosition += 5;
         }
@@ -234,81 +246,95 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         
         if (fullTask.equipmentList && fullTask.equipmentList.length > 0) {
           yPosition += 5;
-          pdf.setFont('helvetica', 'bold');
-          pdf.text('Lista Detalhada de Equipamentos:', 20, yPosition);
-          yPosition += 5;
           
           const equipmentData = fullTask.equipmentList.map(eq => [
-            eq.familyProduct,
-            eq.quantity.toString(),
-            eq.id
+            eq.familyProduct || 'N/A',
+            (eq.quantity || 0).toString(),
+            eq.id || 'N/A'
           ]);
           
-          pdf.autoTable({
-            startY: yPosition,
-            head: [['Família do Produto', 'Quantidade', 'ID']],
-            body: equipmentData,
-            margin: { left: 20, right: 20 },
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [51, 122, 183] }
-          });
-          
-          yPosition = pdf.lastAutoTable.finalY + 10;
-          
-          const totalEquipment = fullTask.equipmentList.reduce((total, eq) => total + eq.quantity, 0);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(`Total de Equipamentos Listados: ${totalEquipment}`, 20, yPosition);
-          yPosition += 15;
-        } else {
-          yPosition += 10;
+          try {
+            pdf.autoTable({
+              startY: yPosition,
+              head: [['Família do Produto', 'Quantidade', 'ID']],
+              body: equipmentData,
+              margin: { left: 20, right: 20 },
+              styles: { fontSize: 9, cellPadding: 3 },
+              headStyles: { fillColor: [51, 122, 183] },
+              theme: 'grid'
+            });
+            
+            yPosition = pdf.lastAutoTable.finalY + 10;
+          } catch (error) {
+            console.error('Erro na tabela de equipamentos:', error);
+            yPosition += 50;
+          }
         }
+        
+        yPosition += 10;
       }
       
       // Produtos/Serviços
-      if (fullTask.checklist && fullTask.checklist.length > 0) {
+      if (fullTask?.checklist && fullTask.checklist.length > 0) {
+        if (yPosition > 200) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('PRODUTOS/SERVIÇOS', 20, yPosition);
         yPosition += 10;
         
         const products = fullTask.checklist.map(item => [
-          item.name,
-          item.category,
-          item.quantity || 1,
+          item.name || 'N/A',
+          item.category || 'N/A',
+          (item.quantity || 1).toString(),
           `R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           `R$ ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           item.selected ? 'SELECIONADO' : 'NÃO SELECIONADO',
           item.observations || '-'
         ]);
         
-        pdf.autoTable({
-          startY: yPosition,
-          head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total', 'Status', 'Observações']],
-          body: products,
-          margin: { left: 20, right: 20 },
-          styles: { fontSize: 7 },
-          headStyles: { fillColor: [51, 122, 183] },
-          columnStyles: { 
-            5: { fontStyle: 'bold' },
-            6: { cellWidth: 30 }
-          }
-        });
-        
-        yPosition = pdf.lastAutoTable.finalY + 15;
+        try {
+          pdf.autoTable({
+            startY: yPosition,
+            head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total', 'Status', 'Observações']],
+            body: products,
+            margin: { left: 20, right: 20 },
+            styles: { fontSize: 7, cellPadding: 2 },
+            headStyles: { fillColor: [51, 122, 183] },
+            columnStyles: { 
+              5: { fontStyle: 'bold' },
+              6: { cellWidth: 30 }
+            },
+            theme: 'grid'
+          });
+          
+          yPosition = pdf.lastAutoTable.finalY + 15;
+        } catch (error) {
+          console.error('Erro na tabela de produtos:', error);
+          yPosition += 100;
+        }
       }
       
       // Valor total
       const totalValue = calculateTotalValue();
       if (totalValue > 0) {
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
         pdf.setFontSize(12);
         pdf.setFont('helvetica', 'bold');
         pdf.text(`VALOR TOTAL: R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, yPosition);
         yPosition += 15;
       }
       
-      // Lembretes configurados
-      if (fullTask.reminders && fullTask.reminders.length > 0) {
-        if (yPosition > 250) {
+      // Lembretes (se existirem)
+      if (fullTask?.reminders && fullTask.reminders.length > 0) {
+        if (yPosition > 200) {
           pdf.addPage();
           yPosition = 20;
         }
@@ -319,68 +345,38 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         yPosition += 10;
         
         const remindersData = fullTask.reminders.map(reminder => [
-          reminder.title,
+          reminder.title || 'N/A',
           reminder.description || '',
-          format(new Date(reminder.date), 'dd/MM/yyyy', { locale: ptBR }),
-          reminder.time,
+          reminder.date ? format(new Date(reminder.date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
+          reminder.time || 'N/A',
           reminder.completed ? 'Concluído' : 'Pendente'
         ]);
         
-        pdf.autoTable({
-          startY: yPosition,
-          head: [['Título', 'Descrição', 'Data', 'Horário', 'Status']],
-          body: remindersData,
-          margin: { left: 20, right: 20 },
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [51, 122, 183] }
-        });
-        
-        yPosition = pdf.lastAutoTable.finalY + 15;
+        try {
+          pdf.autoTable({
+            startY: yPosition,
+            head: [['Título', 'Descrição', 'Data', 'Horário', 'Status']],
+            body: remindersData,
+            margin: { left: 20, right: 20 },
+            styles: { fontSize: 8, cellPadding: 3 },
+            headStyles: { fillColor: [51, 122, 183] },
+            theme: 'grid'
+          });
+          
+          yPosition = pdf.lastAutoTable.finalY + 15;
+        } catch (error) {
+          console.error('Erro na tabela de lembretes:', error);
+          yPosition += 50;
+        }
       }
       
-      // Documentos anexados
-      if (fullTask.documents && fullTask.documents.length > 0) {
-        if (yPosition > 250) {
+      // Observações (se existirem)
+      if (fullTask?.observations) {
+        if (yPosition > 240) {
           pdf.addPage();
           yPosition = 20;
         }
         
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('DOCUMENTOS ANEXADOS', 20, yPosition);
-        yPosition += 10;
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        
-        fullTask.documents.forEach((doc, index) => {
-          pdf.text(`${index + 1}. Documento anexado`, 20, yPosition);
-          yPosition += 5;
-        });
-        
-        yPosition += 10;
-      }
-      
-      // Fotos da visita
-      if (fullTask.photos && fullTask.photos.length > 0) {
-        if (yPosition > 250) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('FOTOS DA VISITA', 20, yPosition);
-        yPosition += 10;
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Total de fotos anexadas: ${fullTask.photos.length}`, 20, yPosition);
-        yPosition += 10;
-      }
-      
-      // Observações
-      if (fullTask.observations) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('OBSERVAÇÕES', 20, yPosition);
@@ -393,8 +389,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         yPosition += splitText.length * 5 + 10;
       }
       
-      // Localização
-      if (fullTask.checkInLocation) {
+      // Localização (se existir)
+      if (fullTask?.checkInLocation) {
+        if (yPosition > 240) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('LOCALIZAÇÃO', 20, yPosition);
@@ -406,7 +407,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         yPosition += 5;
         pdf.text(`Longitude: ${fullTask.checkInLocation.lng}`, 20, yPosition);
         yPosition += 5;
-        // Note: address property may not exist in this location type
         pdf.text(`Data/Hora: ${format(new Date(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, yPosition);
       }
       
@@ -416,17 +416,20 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       pdf.text(`Relatório gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, pdf.internal.pageSize.height - 20);
       
       // Salvar PDF
-      pdf.save(`oportunidade-${fullTask.client.replace(/\s+/g, '-').toLowerCase()}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+      const clientName = fullTask?.client?.replace(/\s+/g, '-').toLowerCase() || 'cliente';
+      pdf.save(`oportunidade-${clientName}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+      
+      console.log('✅ PDF gerado com sucesso!');
       
       toast({
         title: "PDF gerado com sucesso!",
         description: "O arquivo foi baixado automaticamente.",
       });
     } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
+      console.error('❌ Erro ao gerar PDF:', error);
       toast({
         title: "Erro ao gerar PDF",
-        description: "Ocorreu um erro ao gerar o arquivo.",
+        description: "Ocorreu um erro ao gerar o arquivo. Verifique os dados e tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -439,8 +442,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   };
 
   const handleEmail = () => {
-    const subject = `Relatório de Oportunidade - ${fullTask.client}`;
-    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask.client}.\n\nDetalhes:\n- Propriedade: ${fullTask.property}\n- Responsável: ${fullTask.responsible}\n- Data: ${format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}\n\nAtenciosamente,\n${fullTask.responsible}`;
+    const subject = `Relatório de Oportunidade - ${fullTask?.client || 'Cliente'}`;
+    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável: ${fullTask?.responsible || 'N/A'}\n- Data: ${fullTask?.startDate ? format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
     
     const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoLink);
@@ -602,12 +605,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                         <AtSign className="w-4 h-4 text-muted-foreground" />
                         {fullTask.email}
                       </p>
-                    </div>
-                  )}
-                  {fullTask.cpf && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">CPF</label>
-                      <p className="font-medium">{fullTask.cpf}</p>
                     </div>
                   )}
                    <div className="space-y-2">
