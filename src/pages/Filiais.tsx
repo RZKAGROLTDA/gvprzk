@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Building, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Building, Plus, Pencil, Trash2, Users } from 'lucide-react';
 
 interface Filial {
   id: string;
   nome: string;
   created_at: string;
+  user_count?: number;
 }
 
 export const Filiais: React.FC = () => {
@@ -28,13 +29,35 @@ export const Filiais: React.FC = () => {
 
   const loadFiliais = async () => {
     try {
-      const { data, error } = await supabase
+      // Load filiais with user count
+      const { data: filiaisData, error: filiaisError } = await supabase
         .from('filiais')
         .select('*')
         .order('nome');
 
-      if (error) throw error;
-      setFiliais(data || []);
+      if (filiaisError) throw filiaisError;
+
+      // Load user counts for each filial
+      if (filiaisData) {
+        const filiaisWithCounts = await Promise.all(
+          filiaisData.map(async (filial) => {
+            const { count, error: countError } = await supabase
+              .from('profiles')
+              .select('*', { count: 'exact', head: true })
+              .eq('filial_id', filial.id)
+              .eq('approval_status', 'approved');
+
+            if (countError) {
+              console.error('Erro ao contar usuários da filial:', countError);
+              return { ...filial, user_count: 0 };
+            }
+
+            return { ...filial, user_count: count || 0 };
+          })
+        );
+
+        setFiliais(filiaisWithCounts);
+      }
     } catch (error) {
       console.error('Erro ao carregar filiais:', error);
       toast.error('Erro ao carregar filiais');
@@ -173,7 +196,7 @@ export const Filiais: React.FC = () => {
         <CardHeader>
           <CardTitle>Filiais Cadastradas</CardTitle>
           <CardDescription>
-            Gerencie as filiais do sistema
+            Gerencie as filiais do sistema e veja a quantidade de usuários cadastrados
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -190,6 +213,7 @@ export const Filiais: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Usuários Cadastrados</TableHead>
                   <TableHead>Data de Criação</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -198,6 +222,13 @@ export const Filiais: React.FC = () => {
                 {filiais.map((filial) => (
                   <TableRow key={filial.id}>
                     <TableCell className="font-medium">{filial.nome}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{filial.user_count || 0}</span>
+                        <span className="text-sm text-muted-foreground">usuários</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {new Date(filial.created_at).toLocaleDateString('pt-BR')}
                     </TableCell>
