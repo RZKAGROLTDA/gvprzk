@@ -337,11 +337,13 @@ export const useTaskDetails = (taskId: string | null) => {
       const taskData = taskResult.data;
       if (!taskData) return null;
       
-      return mapSupabaseTaskToTask({
+      const mappedTask = mapSupabaseTaskToTask({
         ...taskData,
         products: productsResult.data || [],
         reminders: remindersResult.data || []
       });
+      
+      return mappedTask;
     },
     enabled: !!taskId,
     staleTime: 5 * 60 * 1000, // 5 minutos para dados específicos
