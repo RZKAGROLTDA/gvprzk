@@ -44,7 +44,7 @@ export const useTasksOptimized = (includeDetails = false) => {
               priority, status, created_at, updated_at, created_by,
               is_prospect, sales_value, sales_confirmed, prospect_notes,
               family_product, equipment_quantity, equipment_list, photos, documents,
-              cpf, email, clientcode, check_in_location, initial_km, final_km,
+              email, clientcode, check_in_location, initial_km, final_km,
               propertyhectares, sales_type
             `)
             .order('created_at', { ascending: false })
