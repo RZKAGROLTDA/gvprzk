@@ -42,8 +42,10 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
   // Carregar detalhes completos da task se necessário
+  // Força carregamento se produtos não estão presentes (checklist vazio ou undefined)
+  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
   const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
-    task && (!task.checklist?.length || !task.reminders?.length) ? task.id : null
+    needsDetailsLoading ? task.id : null
   );
   
   // Usar task completa (com detalhes carregados) ou task original

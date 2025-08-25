@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useTasksOptimized } from '@/hooks/useTasksOptimized';
+import { useTasksOptimized, useTaskDetails } from '@/hooks/useTasksOptimized';
 
 interface OpportunityDetailsModalProps {
   task: Task | null;
@@ -33,29 +33,37 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
   const [partialValue, setPartialValue] = useState<number>(0);
   const { refetch } = useTasksOptimized();
+  
+  // Carregar produtos se não estão presentes
+  const needsProductsLoading = task && (!task.checklist || task.checklist.length === 0);
+  const { data: taskWithProducts, isLoading: loadingProducts } = useTaskDetails(
+    needsProductsLoading ? task.id : null
+  );
 
   React.useEffect(() => {
-    if (task) {
-      const currentStatus = mapSalesStatus(task);
+    const currentTask = taskWithProducts || task;
+    if (currentTask) {
+      const currentStatus = mapSalesStatus(currentTask);
       setSelectedStatus(currentStatus);
       
       console.log('🔧 MODAL INIT DEBUG:', {
-        taskId: task.id,
-        originalSalesType: task.salesType,
+        taskId: currentTask.id,
+        originalSalesType: currentTask.salesType,
         mappedStatus: currentStatus,
-        hasChecklist: !!task.checklist,
-        checklistLength: task.checklist?.length || 0,
-        salesValue: task.salesValue,
-        salesConfirmed: task.salesConfirmed
+        hasChecklist: !!currentTask.checklist,
+        checklistLength: currentTask.checklist?.length || 0,
+        salesValue: currentTask.salesValue,
+        salesConfirmed: currentTask.salesConfirmed,
+        loadingProducts
       });
       
       // Initialize selected items and quantities based on current checklist
-      if (task.checklist && task.checklist.length > 0) {
+      if (currentTask.checklist && currentTask.checklist.length > 0) {
         const initialSelected: {[key: string]: boolean} = {};
         const initialQuantities: {[key: string]: number} = {};
         let calculatedPartialValue = 0;
         
-        task.checklist.forEach(item => {
+        currentTask.checklist.forEach(item => {
           initialSelected[item.id] = item.selected || false;
           initialQuantities[item.id] = item.quantity || 1;
           if (item.selected) {
@@ -71,7 +79,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           initialSelected,
           initialQuantities,
           calculatedPartialValue,
-          checklistItems: task.checklist.map(item => ({
+          checklistItems: currentTask.checklist.map(item => ({
             id: item.id,
             name: item.name,
             selected: item.selected,
@@ -84,13 +92,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         setSelectedItems({});
         setItemQuantities({});
         setPartialValue(0);
-        console.log('⚠️ No checklist found for task:', task.id);
+        console.log('⚠️ No checklist found for task:', currentTask.id);
       }
     }
-  }, [task]);
+  }, [task, taskWithProducts, loadingProducts]);
 
   const handleItemSelection = (itemId: string, selected: boolean) => {
-    if (!task) return;
+    const currentTask = taskWithProducts || task;
+    if (!currentTask) return;
     
     setSelectedItems(prev => ({
       ...prev,
@@ -99,7 +108,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
     // Recalculate partial value
     let newPartialValue = 0;
-    task.checklist?.forEach(item => {
+    currentTask.checklist?.forEach(item => {
       const isSelected = itemId === item.id ? selected : selectedItems[item.id];
       const quantity = itemQuantities[item.id] || item.quantity || 1;
       if (isSelected) {
@@ -111,7 +120,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   };
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
-    if (!task || newQuantity < 1) return;
+    const currentTask = taskWithProducts || task;
+    if (!currentTask || newQuantity < 1) return;
     
     setItemQuantities(prev => ({
       ...prev,
@@ -120,7 +130,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
     // Recalculate partial value
     let newPartialValue = 0;
-    task.checklist?.forEach(item => {
+    currentTask.checklist?.forEach(item => {
       const isSelected = selectedItems[item.id];
       const quantity = itemId === item.id ? newQuantity : (itemQuantities[item.id] || item.quantity || 1);
       if (isSelected) {
@@ -276,10 +286,25 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
   if (!task) return null;
 
-  const currentStatus = mapSalesStatus(task);
-  const filialName = resolveFilialName(task.filial);
-  const totalOpportunityValue = task.salesValue || 0;
+  const currentTask = taskWithProducts || task;
+  const currentStatus = mapSalesStatus(currentTask);
+  const filialName = resolveFilialName(currentTask.filial);
+  const totalOpportunityValue = currentTask.salesValue || 0;
   const conversionRate = totalOpportunityValue > 0 ? (partialValue / totalOpportunityValue) * 100 : 0;
+
+  // Mostrar loading se ainda estamos carregando produtos necessários
+  if (loadingProducts && needsProductsLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            <span className="ml-2">Carregando produtos...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -295,15 +320,15 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Cliente</label>
-                <p className="text-sm bg-muted p-2 rounded">{task.client}</p>
+                <p className="text-sm bg-muted p-2 rounded">{currentTask.client}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
-                <p className="text-sm bg-muted p-2 rounded">{task.property || 'Não informado'}</p>
+                <p className="text-sm bg-muted p-2 rounded">{currentTask.property || 'Não informado'}</p>
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-muted-foreground">Email</label>
-                <p className="text-sm bg-muted p-2 rounded">{task.email || 'Não informado'}</p>
+                <p className="text-sm bg-muted p-2 rounded">{currentTask.email || 'Não informado'}</p>
               </div>
             </div>
           </div>
@@ -320,7 +345,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Vendedor Responsável</label>
-                <p className="text-sm bg-muted p-2 rounded">{task.responsible}</p>
+                <p className="text-sm bg-muted p-2 rounded">{currentTask.responsible}</p>
               </div>
             </div>
           </div>
@@ -456,29 +481,29 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           {/* Produtos/Itens da Oportunidade - SEMPRE mostrar quando 'parcial' for selecionado */}
           {(() => {
             console.log('🔍 MODAL RENDER DEBUG - Current State:', {
-              taskId: task?.id,
+              taskId: currentTask?.id,
               selectedStatus: selectedStatus,
-              hasChecklist: !!task?.checklist,
-              checklistLength: task?.checklist?.length || 0,
-              checklistItems: task?.checklist?.map(item => ({
+              hasChecklist: !!currentTask?.checklist,
+              checklistLength: currentTask?.checklist?.length || 0,
+              checklistItems: currentTask?.checklist?.map(item => ({
                 id: item.id, 
                 name: item.name, 
                 selected: item.selected,
                 price: item.price,
                 quantity: item.quantity
               })) || [],
-              shouldShowProducts: selectedStatus === 'parcial' || (task?.checklist && task?.checklist.length > 0),
-              taskSalesType: task?.salesType,
-              taskSalesConfirmed: task?.salesConfirmed
+              shouldShowProducts: selectedStatus === 'parcial' || (currentTask?.checklist && currentTask?.checklist.length > 0),
+              taskSalesType: currentTask?.salesType,
+              taskSalesConfirmed: currentTask?.salesConfirmed
             });
             return null;
           })()}
-          {selectedStatus === 'parcial' || (task.checklist && task.checklist.length > 0) ? (
+          {selectedStatus === 'parcial' || (currentTask.checklist && currentTask.checklist.length > 0) ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Produtos/Serviços</h3>
               
               {/* Debug info para vendas parciais sem produtos */}
-              {selectedStatus === 'parcial' && (!task.checklist || task.checklist.length === 0) && (
+              {selectedStatus === 'parcial' && (!currentTask.checklist || currentTask.checklist.length === 0) && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <p className="text-amber-800 text-sm font-medium">
                     ⚠️ Produtos não encontrados para venda parcial
@@ -493,9 +518,9 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   </div>
                 </div>
               )}
-              {task.checklist && task.checklist.length > 0 && (
+              {currentTask.checklist && currentTask.checklist.length > 0 && (
                 <div className="space-y-2">
-                  {task.checklist.map((item, index) => (
+                  {currentTask.checklist.map((item, index) => (
                     <div key={index} className="border rounded-lg p-3">
                       <div className="flex justify-between items-start">
                         <div className="flex items-start space-x-3 flex-1">
