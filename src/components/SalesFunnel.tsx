@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache, calculateSalesValue } from '@/lib/taskStandardization';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { FormVisualization } from '@/components/FormVisualization';
+import { TaskEditModal } from '@/components/TaskEditModal';
 import { Task } from '@/types/task';
 interface SalesFunnelData {
   name: string;
@@ -53,6 +54,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Filtros
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -972,7 +974,7 @@ export const SalesFunnel: React.FC = () => {
                           </Button>
                           <Button variant="outline" size="icon" onClick={() => {
                       setSelectedTask(task);
-                      setIsVisualizationModalOpen(true);
+                      setIsEditModalOpen(true);
                     }}>
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -1080,6 +1082,20 @@ export const SalesFunnel: React.FC = () => {
             setSelectedTask(null);
           }}
           onTaskUpdated={() => {
+            refetch();
+          }}
+        />
+    )}
+    
+    {selectedTask && (
+        <TaskEditModal
+          task={selectedTask}
+          open={isEditModalOpen}
+          onOpenChange={(open) => {
+            setIsEditModalOpen(open);
+            if (!open) setSelectedTask(null);
+          }}
+          onTaskUpdate={() => {
             refetch();
           }}
         />
