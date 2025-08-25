@@ -399,7 +399,7 @@ export const useTasks = () => {
       }
 
       // Garantir que isProspect seja sempre verdadeiro quando há informações de prospect
-      if (updates.salesConfirmed !== undefined || (updates.salesValue && updates.salesValue > 0)) {
+      if (updates.salesConfirmed !== undefined || (updates.salesValue && getSalesValueAsNumber(updates.salesValue) > 0)) {
         finalUpdates.isProspect = true;
         console.log('🔄 useTasks: Setting isProspect to true');
       }

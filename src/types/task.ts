@@ -33,13 +33,15 @@ export interface Task {
   isProspect: boolean;
   prospectNotes?: string;
   prospectItems?: ProductType[];
-  salesValue?: number;
+  salesValue?: number | string; // Allow string for masked values like ">10k"
   salesConfirmed?: boolean;
   salesType?: 'prospect' | 'parcial' | 'ganho' | 'perdido';
   familyProduct?: string;
   equipmentQuantity?: number;
   propertyHectares?: number;
   equipmentList?: {id: string, familyProduct: string, quantity: number}[];
+  // Security metadata
+  isMasked?: boolean; // Indicates if customer data is masked for security
 }
 
 export interface ProductType {

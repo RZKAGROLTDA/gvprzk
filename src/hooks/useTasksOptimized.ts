@@ -6,6 +6,7 @@ import { Task, ProductType, Reminder } from '@/types/task';
 import { toast } from '@/components/ui/use-toast';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
+import { getSalesValueAsNumber, canPerformNumericOperation } from '@/lib/securityUtils';
 
 // Query Keys para cache
 export const QUERY_KEYS = {
@@ -35,18 +36,9 @@ export const useTasksOptimized = (includeDetails = false) => {
             return getOfflineTasks();
           }
 
-          // Query única super otimizada
+          // Use secure function for customer data protection
           const { data: tasksData, error } = await supabase
-            .from('tasks')
-            .select(`
-              id, name, responsible, client, property, filial, task_type,
-              start_date, end_date, start_time, end_time, observations,
-              priority, status, created_at, updated_at, created_by,
-              is_prospect, sales_value, sales_confirmed, prospect_notes,
-              family_product, equipment_quantity, equipment_list, photos, documents,
-              email, clientcode, check_in_location, initial_km, final_km,
-              propertyhectares, sales_type
-            `)
+            .rpc('get_secure_task_data')
             .order('created_at', { ascending: false })
             .limit(includeDetails ? 100 : 50);
 
@@ -238,7 +230,7 @@ export const useTasksOptimized = (includeDetails = false) => {
         finalUpdates.status = 'completed';
       }
 
-      if (updates.salesConfirmed !== undefined || (updates.salesValue && updates.salesValue > 0)) {
+      if (updates.salesConfirmed !== undefined || (updates.salesValue && getSalesValueAsNumber(updates.salesValue) > 0)) {
         finalUpdates.isProspect = true;
       }
 
@@ -328,9 +320,7 @@ export const useTaskDetails = (taskId: string | null) => {
 
       const [taskResult, productsResult, remindersResult] = await Promise.all([
         supabase
-          .from('tasks')
-          .select('*')
-          .eq('id', taskId)
+          .rpc('get_secure_task_data', { task_ids: [taskId] })
           .single(),
         supabase
           .from('products')
@@ -344,8 +334,11 @@ export const useTaskDetails = (taskId: string | null) => {
 
       if (taskResult.error) throw taskResult.error;
 
+      const taskData = taskResult.data;
+      if (!taskData) return null;
+      
       return mapSupabaseTaskToTask({
-        ...taskResult.data,
+        ...taskData,
         products: productsResult.data || [],
         reminders: remindersResult.data || []
       });

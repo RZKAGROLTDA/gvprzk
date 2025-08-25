@@ -6,6 +6,10 @@ import { resolveFilialName, loadFiliaisCache } from './taskStandardization';
 export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
   // Logs removidos para performance
 
+  // Handle secure customer data from the secure view
+  const customerData = supabaseTask.customer_data;
+  const isMasked = customerData?.is_masked || false;
+
   // Resolver nome da filial automaticamente
   const filialResolved = resolveFilialName(supabaseTask.filial);
 
@@ -30,11 +34,12 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     id: supabaseTask.id,
     name: supabaseTask.name,
     responsible: supabaseTask.responsible,
-    client: supabaseTask.client,
+    // Use secure customer data if available, fallback to direct access for backwards compatibility
+    client: customerData?.client || supabaseTask.client,
     clientCode: supabaseTask.clientcode || '',
-    property: supabaseTask.property || '',
+    property: customerData?.property || supabaseTask.property || '',
     filial: supabaseTask.filial || '',
-    email: supabaseTask.email || '',
+    email: customerData?.email || supabaseTask.email || '',
     taskType: supabaseTask.task_type || 'prospection',
     checklist: checklist,
     startDate: new Date(supabaseTask.start_date),
@@ -71,13 +76,16 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     prospectItems: supabaseTask.sales_type === 'parcial' 
       ? checklist.filter(product => product.selected)
       : [],
-    salesValue: supabaseTask.sales_value || 0,
+    // Use secure sales value if available
+    salesValue: customerData?.sales_value || supabaseTask.sales_value || 0,
     salesConfirmed: supabaseTask.sales_confirmed, // Preservar valor exato do banco
     salesType: supabaseTask.sales_type,
     familyProduct: supabaseTask.family_product || '',
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
     propertyHectares: supabaseTask.propertyhectares || 0,
     equipmentList: supabaseTask.equipment_list || [],
+    // Add security metadata
+    isMasked
   };
 
   // Log removido para performance

@@ -1,5 +1,6 @@
 import { Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
+import { getSalesValueAsNumber } from './securityUtils';
 
 // Cache para filiais para otimizar performance
 let filiaisCache: { [key: string]: string } = {};
@@ -66,7 +67,7 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | '
     
     // NOVA LÓGICA: Verificar se task tem sales_value mas não é venda total
     // Isso ajuda a identificar vendas parciais antigas
-    if (task.salesValue && task.salesValue > 0) {
+    if (task.salesValue && getSalesValueAsNumber(task.salesValue) > 0) {
       // Se há valor de venda definido mas produtos específicos selecionados, é parcial
       if (task.checklist && task.checklist.length > 0) {
         const selectedItems = task.checklist.filter(item => item.selected);
@@ -103,8 +104,8 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | '
             isPossiblePartialSale: task.salesValue < totalPossibleValue
           });
           
-          // Se o valor de venda é menor que o valor total possível, é parcial
-          if (task.salesValue < totalPossibleValue) {
+           // Se o valor de venda é menor que o valor total possível, é parcial
+          if (getSalesValueAsNumber(task.salesValue) < totalPossibleValue) {
             console.log('🟡 Result: parcial (based on sales_value vs total value)');
             return 'parcial';
           }
@@ -312,8 +313,9 @@ export const calculateSalesValue = (task: Task): number => {
   // Para vendas parciais, calcular baseado nos produtos selecionados
   if (salesStatus === 'parcial') {
     // Primeiro, verificar se há valor salvo
-    if (task.salesValue && task.salesValue > 0) {
-      return task.salesValue;
+    const salesValueNum = getSalesValueAsNumber(task.salesValue);
+    if (task.salesValue && salesValueNum > 0) {
+      return salesValueNum;
     }
     
     // Calcular baseado nos produtos selecionados do checklist
@@ -342,7 +344,7 @@ export const calculateSalesValue = (task: Task): number => {
   }
   
   // Para outros casos (ganho, prospect), usar o valor salvo
-  return task.salesValue || 0;
+  return getSalesValueAsNumber(task.salesValue);
 };
 
 /**

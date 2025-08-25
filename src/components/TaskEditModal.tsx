@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import toast from 'react-hot-toast';
 import { createTaskWithFilialSnapshot, resolveFilialName } from '@/lib/taskStandardization';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
+import { getSalesValueAsNumber, formatSalesValue } from '@/lib/securityUtils';
 
 interface TaskEditModalProps {
   task: Task | null;
@@ -395,10 +396,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               <Input 
                 id="edit-salesValue" 
                 type="text" 
-                value={editedTask.salesValue ? new Intl.NumberFormat('pt-BR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                }).format(editedTask.salesValue) : '0,00'} 
+                value={formatSalesValue(editedTask.salesValue)} 
                 className="pl-8 bg-muted cursor-not-allowed" 
                 readOnly
               />
@@ -568,14 +566,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   </div>
                   
                   {/* Mostrar diferença entre valor total da oportunidade e produtos selecionados */}
-                  {calculateSelectedProductsValue() !== (editedTask.salesValue || 0) && (
+                  {calculateSelectedProductsValue() !== getSalesValueAsNumber(editedTask.salesValue) && (
                     <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                       <Label className="text-sm font-medium text-yellow-700">Diferença (Oportunidade - Produtos):</Label>
                       <div className="text-lg font-bold text-yellow-700">
-                        R$ {new Intl.NumberFormat('pt-BR', { 
-                          minimumFractionDigits: 2, 
-                          maximumFractionDigits: 2 
-                        }).format((editedTask.salesValue || 0) - calculateSelectedProductsValue())}
+                        {formatSalesValue(getSalesValueAsNumber(editedTask.salesValue) - calculateSelectedProductsValue())}
                       </div>
                     </div>
                   )}

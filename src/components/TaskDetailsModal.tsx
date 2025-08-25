@@ -12,6 +12,7 @@ import { TaskReportExporter } from './TaskReportExporter';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialName } from '@/lib/taskStandardization';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
+import { getSalesValueAsNumber, formatSalesValue } from '@/lib/securityUtils';
 interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
@@ -514,7 +515,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             </Card>}
 
           {/* Vendas */}
-          {currentTask.salesValue && currentTask.salesValue > 0 && <Card>
+          {currentTask.salesValue && getSalesValueAsNumber(currentTask.salesValue) > 0 && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5" />
