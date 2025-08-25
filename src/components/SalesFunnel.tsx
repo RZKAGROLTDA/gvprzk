@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, FunnelChart, Funnel, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, Eye } from 'lucide-react';
-import { useTasks } from '@/hooks/useTasks';
+import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
@@ -41,8 +41,8 @@ export const SalesFunnel: React.FC = () => {
   const {
     tasks,
     loading,
-    loadTasks
-  } = useTasks();
+    refetch
+  } = useTasksOptimized(true);
   const {
     user
   } = useAuth();
@@ -1058,7 +1058,7 @@ export const SalesFunnel: React.FC = () => {
 
       // CRITICAL: Reload tasks to reflect status changes in the table
       console.log('🔄 FUNNEL: Recarregando tarefas para atualizar status na tabela');
-      loadTasks();
+      refetch();
     }} />
     
     {selectedTask && (

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car } from 'lucide-react';
+import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
+import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -30,6 +31,14 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  
+  // Carregar detalhes completos da task se necessário
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
+    task && (!task.checklist?.length || !task.reminders?.length) ? task.id : null
+  );
+  
+  // Usar task completa (com detalhes carregados) ou task original
+  const fullTask = taskDetails || task;
 
   const getTaskTypeLabel = (type: string) => {
     const types = {
@@ -62,16 +71,16 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   };
 
   const calculateTotalValue = () => {
-    if (task.salesValue) return task.salesValue;
+    if (fullTask.salesValue) return fullTask.salesValue;
     
     let total = 0;
-    if (task.checklist) {
-      total += task.checklist
+    if (fullTask.checklist) {
+      total += fullTask.checklist
         .filter(item => item.selected)
         .reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
     }
-    if (task.prospectItems) {
-      total += task.prospectItems
+    if (fullTask.prospectItems) {
+      total += fullTask.prospectItems
         .filter(item => item.selected)
         .reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 1)), 0);
     }
@@ -104,20 +113,20 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       
-      const basicInfo = [
-        ['Tipo de Tarefa:', getTaskTypeLabel(task.taskType || 'prospection')],
-        ['Cliente:', task.client],
-        ['Código do Cliente:', task.clientCode || 'Não informado'],
-        ['Email:', task.email || 'Não informado'],
-        ['CPF:', task.cpf || 'Não informado'],
-        ['Propriedade:', task.property],
-        ['Hectares:', task.propertyHectares ? `${task.propertyHectares} ha` : 'Não informado'],
-        ['Responsável:', task.responsible],
-        ['Filial:', task.filial || 'Não informado'],
-        ['Data:', format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR })],
-        ['Horário:', `${task.startTime} - ${task.endTime}`],
-        ['Status:', getStatusLabel(task.salesType || 'prospect')]
-      ];
+        const basicInfo = [
+          ['Tipo de Tarefa:', getTaskTypeLabel(fullTask.taskType || 'prospection')],
+          ['Cliente:', fullTask.client],
+          ['Código do Cliente:', fullTask.clientCode || 'Não informado'],
+          ['Email:', fullTask.email || 'Não informado'],
+          ['CPF:', fullTask.cpf || 'Não informado'],
+          ['Propriedade:', fullTask.property],
+          ['Hectares:', fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'],
+          ['Responsável:', fullTask.responsible],
+          ['Filial:', fullTask.filial || 'Não informado'],
+          ['Data:', format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })],
+          ['Horário:', `${fullTask.startTime} - ${fullTask.endTime}`],
+          ['Status:', getStatusLabel(fullTask.salesType || 'prospect')]
+        ];
       
       (pdf as any).autoTable({
         startY: yPosition,
@@ -134,7 +143,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       yPosition = (pdf as any).lastAutoTable.finalY + 15;
       
       // Informações de Equipamentos
-      if (task.familyProduct || task.equipmentQuantity || (task.equipmentList && task.equipmentList.length > 0)) {
+      if (fullTask.familyProduct || fullTask.equipmentQuantity || (fullTask.equipmentList && fullTask.equipmentList.length > 0)) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('INFORMAÇÕES DE EQUIPAMENTOS', 20, yPosition);
@@ -143,23 +152,23 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
         
-        if (task.familyProduct) {
-          pdf.text(`Família Principal do Produto: ${task.familyProduct}`, 20, yPosition);
+        if (fullTask.familyProduct) {
+          pdf.text(`Família Principal do Produto: ${fullTask.familyProduct}`, 20, yPosition);
           yPosition += 5;
         }
         
-        if (task.equipmentQuantity) {
-          pdf.text(`Quantidade Total de Equipamentos: ${task.equipmentQuantity}`, 20, yPosition);
+        if (fullTask.equipmentQuantity) {
+          pdf.text(`Quantidade Total de Equipamentos: ${fullTask.equipmentQuantity}`, 20, yPosition);
           yPosition += 5;
         }
         
-        if (task.equipmentList && task.equipmentList.length > 0) {
+        if (fullTask.equipmentList && fullTask.equipmentList.length > 0) {
           yPosition += 5;
           pdf.setFont('helvetica', 'bold');
           pdf.text('Lista Detalhada de Equipamentos:', 20, yPosition);
           yPosition += 5;
           
-          const equipmentData = task.equipmentList.map(eq => [
+          const equipmentData = fullTask.equipmentList.map(eq => [
             eq.familyProduct,
             eq.quantity.toString(),
             eq.id
@@ -176,7 +185,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           
           yPosition = (pdf as any).lastAutoTable.finalY + 10;
           
-          const totalEquipment = task.equipmentList.reduce((total, eq) => total + eq.quantity, 0);
+          const totalEquipment = fullTask.equipmentList.reduce((total, eq) => total + eq.quantity, 0);
           pdf.setFont('helvetica', 'bold');
           pdf.text(`Total de Equipamentos Listados: ${totalEquipment}`, 20, yPosition);
           yPosition += 15;
@@ -186,13 +195,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       }
       
       // Produtos/Serviços
-      if (task.checklist && task.checklist.length > 0) {
+      if (fullTask.checklist && fullTask.checklist.length > 0) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('PRODUTOS/SERVIÇOS', 20, yPosition);
         yPosition += 10;
         
-        const products = task.checklist.map(item => [
+        const products = fullTask.checklist.map(item => [
           item.name,
           item.category,
           item.quantity || 1,
@@ -228,7 +237,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       }
       
       // Observações
-      if (task.observations) {
+      if (fullTask.observations) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('OBSERVAÇÕES', 20, yPosition);
@@ -236,13 +245,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
-        const splitText = pdf.splitTextToSize(task.observations, pageWidth - 40);
+        const splitText = pdf.splitTextToSize(fullTask.observations, pageWidth - 40);
         pdf.text(splitText, 20, yPosition);
         yPosition += splitText.length * 5 + 10;
       }
       
       // Localização
-      if (task.checkInLocation) {
+      if (fullTask.checkInLocation) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         pdf.text('LOCALIZAÇÃO', 20, yPosition);
@@ -250,12 +259,12 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(`Latitude: ${task.checkInLocation.lat}`, 20, yPosition);
+        pdf.text(`Latitude: ${fullTask.checkInLocation.lat}`, 20, yPosition);
         yPosition += 5;
-        pdf.text(`Longitude: ${task.checkInLocation.lng}`, 20, yPosition);
+        pdf.text(`Longitude: ${fullTask.checkInLocation.lng}`, 20, yPosition);
         yPosition += 5;
         // Note: address property may not exist in this location type
-        pdf.text(`Data/Hora: ${format(new Date(task.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, yPosition);
+        pdf.text(`Data/Hora: ${format(new Date(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, yPosition);
       }
       
       // Rodapé
@@ -264,7 +273,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       pdf.text(`Relatório gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, pdf.internal.pageSize.height - 20);
       
       // Salvar PDF
-      pdf.save(`oportunidade-${task.client.replace(/\s+/g, '-').toLowerCase()}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+      pdf.save(`oportunidade-${fullTask.client.replace(/\s+/g, '-').toLowerCase()}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
       
       toast({
         title: "PDF gerado com sucesso!",
@@ -287,12 +296,25 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   };
 
   const handleEmail = () => {
-    const subject = `Relatório de Oportunidade - ${task.client}`;
-    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${task.client}.\n\nDetalhes:\n- Propriedade: ${task.property}\n- Responsável: ${task.responsible}\n- Data: ${format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR })}\n\nAtenciosamente,\n${task.responsible}`;
+    const subject = `Relatório de Oportunidade - ${fullTask.client}`;
+    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask.client}.\n\nDetalhes:\n- Propriedade: ${fullTask.property}\n- Responsável: ${fullTask.responsible}\n- Data: ${format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}\n\nAtenciosamente,\n${fullTask.responsible}`;
     
     const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoLink);
   };
+
+  if (loadingDetails) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="ml-2">Carregando detalhes...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -329,12 +351,12 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                     <FileText className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">{task.client}</h3>
-                    <p className="text-sm text-muted-foreground">{task.property}</p>
+                    <h3 className="text-xl font-bold">{fullTask.client}</h3>
+                    <p className="text-sm text-muted-foreground">{fullTask.property}</p>
                   </div>
                 </div>
-                <Badge className={`${getStatusColor(task.salesType || 'prospect')} text-sm px-3 py-1 border`}>
-                  {getStatusLabel(task.salesType || 'prospect')}
+                <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} text-sm px-3 py-1 border`}>
+                  {getStatusLabel(fullTask.salesType || 'prospect')}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -352,38 +374,38 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Tipo de Tarefa</label>
-                  <p className="font-medium">{getTaskTypeLabel(task.taskType || 'prospection')}</p>
+                  <p className="font-medium">{getTaskTypeLabel(fullTask.taskType || 'prospection')}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Responsável</label>
                   <p className="font-medium flex items-center gap-2">
                     <User className="w-4 h-4 text-primary" />
-                    {task.responsible}
+                    {fullTask.responsible}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Filial</label>
                   <p className="font-medium flex items-center gap-2">
                     <Building className="w-4 h-4 text-primary" />
-                    {task.filial || 'Não informado'}
+                    {fullTask.filial || 'Não informado'}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Data</label>
                   <p className="font-medium flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
-                    {format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR })}
+                    {format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Horário</label>
-                  <p className="font-medium">{task.startTime} - {task.endTime}</p>
+                  <p className="font-medium">{fullTask.startTime} - {fullTask.endTime}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Hectares da Propriedade</label>
                   <p className="font-medium flex items-center gap-2">
                     <Crop className="w-4 h-4 text-success" />
-                    {task.propertyHectares ? `${task.propertyHectares} ha` : 'Não informado'}
+                    {fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'}
                   </p>
                 </div>
               </div>
@@ -399,35 +421,35 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">Nome do Cliente</label>
-                    <p className="font-medium">{task.client}</p>
+                    <p className="font-medium">{fullTask.client}</p>
                   </div>
-                  {task.clientCode && (
+                  {fullTask.clientCode && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Código do Cliente</label>
                       <p className="font-medium flex items-center gap-2">
                         <Hash className="w-4 h-4 text-muted-foreground" />
-                        {task.clientCode}
+                        {fullTask.clientCode}
                       </p>
                     </div>
                   )}
-                  {task.email && (
+                  {fullTask.email && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Email</label>
                       <p className="font-medium flex items-center gap-2">
                         <AtSign className="w-4 h-4 text-muted-foreground" />
-                        {task.email}
+                        {fullTask.email}
                       </p>
                     </div>
                   )}
-                  {task.cpf && (
+                  {fullTask.cpf && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">CPF</label>
-                      <p className="font-medium">{task.cpf}</p>
+                      <p className="font-medium">{fullTask.cpf}</p>
                     </div>
                   )}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
-                    <p className="font-medium">{task.property}</p>
+                    <p className="font-medium">{fullTask.property}</p>
                   </div>
                 </div>
               </div>
@@ -435,7 +457,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           </Card>
 
           {/* Informações de Equipamentos */}
-          {(task.familyProduct || task.equipmentQuantity || (task.equipmentList && task.equipmentList.length > 0)) && (
+          {(fullTask.familyProduct || fullTask.equipmentQuantity || (fullTask.equipmentList && fullTask.equipmentList.length > 0)) && (
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
@@ -445,31 +467,31 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {task.familyProduct && (
+                  {fullTask.familyProduct && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Família Principal do Produto</label>
                       <p className="font-medium flex items-center gap-2">
                         <Package className="w-4 h-4 text-primary" />
-                        {task.familyProduct}
+                        {fullTask.familyProduct}
                       </p>
                     </div>
                   )}
-                  {task.equipmentQuantity && (
+                  {fullTask.equipmentQuantity && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Quantidade Total de Equipamentos</label>
                       <p className="font-medium text-lg text-primary">
-                        {task.equipmentQuantity} equipamentos
+                        {fullTask.equipmentQuantity} equipamentos
                       </p>
                     </div>
                   )}
                 </div>
 
-                {task.equipmentList && task.equipmentList.length > 0 && (
+                {fullTask.equipmentList && fullTask.equipmentList.length > 0 && (
                   <div className="mt-6">
                     <Separator className="mb-4" />
                     <h4 className="font-semibold text-lg mb-4">Lista Detalhada de Equipamentos</h4>
                     <div className="space-y-3">
-                      {task.equipmentList.map((equipment, index) => (
+                      {fullTask.equipmentList.map((equipment, index) => (
                         <div key={equipment.id || index} className="border rounded-lg p-4 bg-muted/30">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-1">
@@ -493,7 +515,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground mb-1">Total de Equipamentos Listados</p>
                         <p className="text-xl font-bold text-primary">
-                          {task.equipmentList.reduce((total, eq) => total + eq.quantity, 0)} equipamentos
+                          {fullTask.equipmentList.reduce((total, eq) => total + eq.quantity, 0)} equipamentos
                         </p>
                       </div>
                     </div>
@@ -504,7 +526,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Produtos/Serviços */}
-          {task.checklist && task.checklist.length > 0 && (
+          {fullTask.checklist && fullTask.checklist.length > 0 && (
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
@@ -513,14 +535,14 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 </CardTitle>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-muted-foreground">Status atual:</span>
-                  <Badge className={`${getStatusColor(task.salesType || 'prospect')} border text-xs`}>
-                    {getStatusLabel(task.salesType || 'prospect')}
+                  <Badge className={`${getStatusColor(fullTask.salesType || 'prospect')} border text-xs`}>
+                    {getStatusLabel(fullTask.salesType || 'prospect')}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {task.checklist.map((item, index) => {
+                  {fullTask.checklist.map((item, index) => {
                     const isSelected = item.selected;
                     const itemTotal = (item.price || 0) * (item.quantity || 1);
                     
@@ -612,17 +634,17 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground mb-1">Produtos Totais</p>
-                      <p className="text-2xl font-bold text-foreground">{task.checklist.length}</p>
+                      <p className="text-2xl font-bold text-foreground">{fullTask.checklist.length}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground mb-1">Produtos Selecionados</p>
                       <p className="text-2xl font-bold text-primary">
-                        {task.checklist.filter(item => item.selected).length}
+                        {fullTask.checklist.filter(item => item.selected).length}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground mb-1">
-                        {task.salesType === 'prospect' ? 'Valor Potencial Total' : 'Valor da Oportunidade'}
+                        {fullTask.salesType === 'prospect' ? 'Valor Potencial Total' : 'Valor da Oportunidade'}
                       </p>
                       <p className="text-3xl font-bold text-primary">
                         R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -635,7 +657,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Fotos */}
-          {task.photos && task.photos.length > 0 && (
+          {fullTask.photos && fullTask.photos.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -645,7 +667,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {task.photos.map((photo, index) => (
+                  {fullTask.photos.map((photo, index) => (
                     <div key={index} className="aspect-square rounded-lg overflow-hidden border">
                       <img 
                         src={photo} 
@@ -661,7 +683,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Localização */}
-          {task.checkInLocation && (
+          {fullTask.checkInLocation && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -674,13 +696,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Coordenadas</label>
                     <p className="font-medium">
-                      {task.checkInLocation.lat}, {task.checkInLocation.lng}
+                      {fullTask.checkInLocation.lat}, {fullTask.checkInLocation.lng}
                     </p>
                   </div>
                   <div className="md:col-span-2">
                     <label className="text-sm font-medium text-muted-foreground">Data/Hora do Check-in</label>
                     <p className="font-medium">
-                      {format(new Date(task.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      {format(new Date(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </p>
                   </div>
                 </div>
@@ -689,7 +711,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 <div className="mt-4">
                   <Button variant="outline" size="sm" asChild>
                     <a 
-                      href={`https://www.google.com/maps?q=${task.checkInLocation.lat},${task.checkInLocation.lng}`}
+                      href={`https://www.google.com/maps?q=${fullTask.checkInLocation.lat},${fullTask.checkInLocation.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -703,7 +725,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Observações */}
-          {task.observations && (
+          {fullTask.observations && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -713,14 +735,14 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-primary">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{task.observations}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{fullTask.observations}</p>
                 </div>
               </CardContent>
             </Card>
           )}
 
           {/* Informações de Deslocamento */}
-          {(task.initialKm || task.finalKm) && (
+          {(fullTask.initialKm || fullTask.finalKm) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -732,17 +754,17 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">KM Inicial</label>
-                    <p className="font-medium text-lg">{task.initialKm || 'Não informado'} km</p>
+                    <p className="font-medium text-lg">{fullTask.initialKm || 'Não informado'} km</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">KM Final</label>
-                    <p className="font-medium text-lg">{task.finalKm || 'Não informado'} km</p>
+                    <p className="font-medium text-lg">{fullTask.finalKm || 'Não informado'} km</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">Total Percorrido</label>
                     <p className="font-bold text-lg text-primary">
-                      {task.initialKm && task.finalKm 
-                        ? `${task.finalKm - task.initialKm} km` 
+                      {fullTask.initialKm && fullTask.finalKm 
+                        ? `${fullTask.finalKm - fullTask.initialKm} km` 
                         : 'Não calculado'
                       }
                     </p>
@@ -764,60 +786,60 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">ID da Tarefa</label>
-                  <p className="font-mono text-sm text-muted-foreground">{task.id}</p>
+                  <p className="font-mono text-sm text-muted-foreground">{fullTask.id}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Status da Tarefa</label>
                   <Badge variant="outline" className="text-sm">
-                    {task.status === 'pending' ? 'Pendente' :
-                     task.status === 'in_progress' ? 'Em Andamento' :
-                     task.status === 'completed' ? 'Concluída' :
-                     task.status === 'closed' ? 'Fechada' : task.status}
+                    {fullTask.status === 'pending' ? 'Pendente' :
+                     fullTask.status === 'in_progress' ? 'Em Andamento' :
+                     fullTask.status === 'completed' ? 'Concluída' :
+                     fullTask.status === 'closed' ? 'Fechada' : fullTask.status}
                   </Badge>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
-                  <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-sm">
-                    {task.priority === 'high' ? 'Alta' :
-                     task.priority === 'medium' ? 'Média' :
-                     task.priority === 'low' ? 'Baixa' : task.priority}
+                  <Badge variant={fullTask.priority === 'high' ? 'destructive' : fullTask.priority === 'medium' ? 'default' : 'secondary'} className="text-sm">
+                    {fullTask.priority === 'high' ? 'Alta' :
+                     fullTask.priority === 'medium' ? 'Média' :
+                     fullTask.priority === 'low' ? 'Baixa' : fullTask.priority}
                   </Badge>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">É Prospect?</label>
-                  <Badge variant={task.isProspect ? 'default' : 'secondary'} className="text-sm">
-                    {task.isProspect ? 'Sim' : 'Não'}
+                  <Badge variant={fullTask.isProspect ? 'default' : 'secondary'} className="text-sm">
+                    {fullTask.isProspect ? 'Sim' : 'Não'}
                   </Badge>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Criado por</label>
-                  <p className="font-medium">{task.createdBy}</p>
+                  <p className="font-medium">{fullTask.createdBy}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Data de Criação</label>
                   <p className="font-medium">
-                    {format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                    {format(new Date(fullTask.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Última Atualização</label>
                   <p className="font-medium">
-                    {format(new Date(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                    {format(new Date(fullTask.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                   </p>
                 </div>
-                {task.salesValue && (
+                {fullTask.salesValue && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">Valor de Venda Direto</label>
                     <p className="font-bold text-lg text-success">
-                      R$ {task.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {fullTask.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                 )}
-                {task.salesConfirmed !== undefined && (
+                {fullTask.salesConfirmed !== undefined && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">Venda Confirmada</label>
-                    <Badge variant={task.salesConfirmed ? 'default' : 'destructive'} className="text-sm">
-                      {task.salesConfirmed ? 'Confirmada' : 'Não Confirmada'}
+                    <Badge variant={fullTask.salesConfirmed ? 'default' : 'destructive'} className="text-sm">
+                      {fullTask.salesConfirmed ? 'Confirmada' : 'Não Confirmada'}
                     </Badge>
                   </div>
                 )}
@@ -826,7 +848,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           </Card>
 
           {/* Notas de Prospect */}
-          {task.prospectNotes && (
+          {fullTask.prospectNotes && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -836,14 +858,14 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-blue-500">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{task.prospectNotes}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotes}</p>
                 </div>
               </CardContent>
             </Card>
           )}
 
           {/* Itens de Prospect */}
-          {task.prospectItems && task.prospectItems.length > 0 && (
+          {fullTask.prospectItems && fullTask.prospectItems.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -853,7 +875,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {task.prospectItems.map((item, index) => (
+                  {fullTask.prospectItems.map((item, index) => (
                     <div key={index} className="border rounded-lg p-4 bg-blue-50/50">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -889,7 +911,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Lembretes */}
-          {task.reminders && task.reminders.length > 0 && (
+          {fullTask.reminders && fullTask.reminders.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -899,7 +921,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {task.reminders.map((reminder, index) => (
+                  {fullTask.reminders.map((reminder, index) => (
                     <div key={reminder.id || index} className="border rounded-lg p-4 bg-muted/30">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -927,7 +949,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Documentos */}
-          {task.documents && task.documents.length > 0 && (
+          {fullTask.documents && fullTask.documents.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -937,7 +959,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {task.documents.map((doc, index) => (
+                  {fullTask.documents.map((doc, index) => (
                     <div key={index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                       <FileText className="w-5 h-5 text-primary" />
                       <span className="flex-1 font-medium">Documento {index + 1}</span>
