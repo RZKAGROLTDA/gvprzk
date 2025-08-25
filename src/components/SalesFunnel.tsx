@@ -953,12 +953,11 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => {
+                          <Button variant="outline" size="icon" onClick={() => {
                             setSelectedTask(task);
                             setIsVisualizationModalOpen(true);
                           }}>
-                            <Eye className="w-4 h-4 mr-1" />
-                            Ver
+                            <Eye className="w-4 h-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => {
                       setSelectedTask(task);
