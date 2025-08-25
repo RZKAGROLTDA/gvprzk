@@ -751,6 +751,207 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </CardContent>
             </Card>
           )}
+
+          {/* Informações de Status e Controle */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Informações Detalhadas do Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">ID da Tarefa</label>
+                  <p className="font-mono text-sm text-muted-foreground">{task.id}</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Status da Tarefa</label>
+                  <Badge variant="outline" className="text-sm">
+                    {task.status === 'pending' ? 'Pendente' :
+                     task.status === 'in_progress' ? 'Em Andamento' :
+                     task.status === 'completed' ? 'Concluída' :
+                     task.status === 'closed' ? 'Fechada' : task.status}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
+                  <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'} className="text-sm">
+                    {task.priority === 'high' ? 'Alta' :
+                     task.priority === 'medium' ? 'Média' :
+                     task.priority === 'low' ? 'Baixa' : task.priority}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">É Prospect?</label>
+                  <Badge variant={task.isProspect ? 'default' : 'secondary'} className="text-sm">
+                    {task.isProspect ? 'Sim' : 'Não'}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Criado por</label>
+                  <p className="font-medium">{task.createdBy}</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Data de Criação</label>
+                  <p className="font-medium">
+                    {format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Última Atualização</label>
+                  <p className="font-medium">
+                    {format(new Date(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                  </p>
+                </div>
+                {task.salesValue && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Valor de Venda Direto</label>
+                    <p className="font-bold text-lg text-success">
+                      R$ {task.salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                )}
+                {task.salesConfirmed !== undefined && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Venda Confirmada</label>
+                    <Badge variant={task.salesConfirmed ? 'default' : 'destructive'} className="text-sm">
+                      {task.salesConfirmed ? 'Confirmada' : 'Não Confirmada'}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notas de Prospect */}
+          {task.prospectNotes && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Notas de Prospecção
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-blue-500">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{task.prospectNotes}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Itens de Prospect */}
+          {task.prospectItems && task.prospectItems.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Itens de Prospecção
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {task.prospectItems.map((item, index) => (
+                    <div key={index} className="border rounded-lg p-4 bg-blue-50/50">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Nome</label>
+                          <p className="font-medium">{item.name}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Categoria</label>
+                          <p className="font-medium">{item.category}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                          <p className="font-medium">{item.quantity || 1}</p>
+                        </div>
+                        {item.price && (
+                          <div>
+                            <label className="text-sm font-medium text-muted-foreground">Preço</label>
+                            <p className="font-medium">R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                          </div>
+                        )}
+                        {item.observations && (
+                          <div className="md:col-span-3">
+                            <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                            <p className="text-sm">{item.observations}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Lembretes */}
+          {task.reminders && task.reminders.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Lembretes Configurados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {task.reminders.map((reminder, index) => (
+                    <div key={reminder.id || index} className="border rounded-lg p-4 bg-muted/30">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{reminder.title}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">{reminder.description}</p>
+                          <div className="flex items-center gap-4 mt-3 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              <span>{format(new Date(reminder.date), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span>{reminder.time}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant={reminder.completed ? 'default' : 'secondary'} className="ml-4">
+                          {reminder.completed ? 'Concluído' : 'Pendente'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Documentos */}
+          {task.documents && task.documents.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Documentos Anexados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {task.documents.map((doc, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <FileText className="w-5 h-5 text-primary" />
+                      <span className="flex-1 font-medium">Documento {index + 1}</span>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={doc} target="_blank" rel="noopener noreferrer">
+                          Visualizar
+                        </a>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>
