@@ -137,6 +137,13 @@ export type Database = {
             foreignKeyName: "products_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "secure_tasks_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -227,6 +234,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reminders_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "secure_tasks_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reminders_task_id_fkey"
             columns: ["task_id"]
@@ -499,7 +513,120 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      secure_tasks_view: {
+        Row: {
+          access_level: string | null
+          check_in_location: Json | null
+          client: string | null
+          clientcode: string | null
+          created_at: string | null
+          created_by: string | null
+          documents: string[] | null
+          email: string | null
+          end_date: string | null
+          end_time: string | null
+          equipment_list: Json | null
+          equipment_quantity: number | null
+          family_product: string | null
+          filial: string | null
+          final_km: number | null
+          id: string | null
+          initial_km: number | null
+          is_masked: boolean | null
+          is_prospect: boolean | null
+          name: string | null
+          observations: string | null
+          photos: string[] | null
+          priority: string | null
+          property: string | null
+          propertyhectares: number | null
+          prospect_notes: string | null
+          responsible: string | null
+          sales_confirmed: boolean | null
+          sales_type: string | null
+          sales_value: number | null
+          start_date: string | null
+          start_time: string | null
+          status: string | null
+          task_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_level?: never
+          check_in_location?: Json | null
+          client?: never
+          clientcode?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: string[] | null
+          email?: never
+          end_date?: string | null
+          end_time?: string | null
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
+          filial?: string | null
+          final_km?: number | null
+          id?: string | null
+          initial_km?: number | null
+          is_masked?: never
+          is_prospect?: boolean | null
+          name?: string | null
+          observations?: string | null
+          photos?: string[] | null
+          priority?: string | null
+          property?: never
+          propertyhectares?: number | null
+          prospect_notes?: string | null
+          responsible?: string | null
+          sales_confirmed?: boolean | null
+          sales_type?: string | null
+          sales_value?: never
+          start_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_level?: never
+          check_in_location?: Json | null
+          client?: never
+          clientcode?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: string[] | null
+          email?: never
+          end_date?: string | null
+          end_time?: string | null
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
+          filial?: string | null
+          final_km?: number | null
+          id?: string | null
+          initial_km?: number | null
+          is_masked?: never
+          is_prospect?: boolean | null
+          name?: string | null
+          observations?: string | null
+          photos?: string[] | null
+          priority?: string | null
+          property?: never
+          propertyhectares?: number | null
+          prospect_notes?: string | null
+          responsible?: string | null
+          sales_confirmed?: boolean | null
+          sales_type?: string | null
+          sales_value?: never
+          start_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_modify_user_role: {
@@ -509,6 +636,16 @@ export type Database = {
       check_login_rate_limit: {
         Args: { user_email: string }
         Returns: boolean
+      }
+      check_security_configuration: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          check_name: string
+          description: string
+          recommendation: string
+          risk_level: number
+          status: string
+        }[]
       }
       check_suspicious_login_pattern: {
         Args: { ip_addr: unknown; user_email: string }
@@ -555,6 +692,20 @@ export type Database = {
           nome: string
         }[]
       }
+      get_secure_task_data: {
+        Args: { task_id_param: string }
+        Returns: {
+          client: string
+          email: string
+          filial: string
+          id: string
+          is_masked: boolean
+          name: string
+          property: string
+          responsible: string
+          sales_value: number
+        }[]
+      }
       get_secure_user_directory: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -567,6 +718,10 @@ export type Database = {
           role: string
           user_id: string
         }[]
+      }
+      get_task_data_access_level: {
+        Args: { task_id_param: string }
+        Returns: string
       }
       get_user_directory: {
         Args: Record<PropertyKey, never>
