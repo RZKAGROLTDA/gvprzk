@@ -18,10 +18,16 @@ export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
 }) => {
   const securityChecks = [
     {
+      id: 'database_functions',
+      title: 'Database Function Security',
+      status: 'secure',
+      description: 'All database functions now have secure search_path settings to prevent manipulation attacks.',
+    },
+    {
       id: 'email_privacy',
       title: 'Email Privacy Protection',
       status: 'secure',
-      description: 'Email addresses are now completely hidden from same-filial users for enhanced privacy.',
+      description: 'Email addresses are completely hidden from same-filial users for enhanced privacy.',
     },
     {
       id: 'audit_logs',
@@ -55,10 +61,22 @@ export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
       description: 'Authentication sessions are properly managed with secure token refresh.',
     },
     {
+      id: 'input_validation',
+      title: 'Input Validation & Sanitization',
+      status: 'secure',
+      description: 'Comprehensive input validation prevents XSS and injection attacks.',
+    },
+    {
+      id: 'rate_limiting',
+      title: 'Rate Limiting & Monitoring',
+      status: 'secure',
+      description: 'Login rate limiting and suspicious activity monitoring are active.',
+    },
+    {
       id: 'otp_expiry',
       title: 'OTP Expiry Configuration',
       status: 'warning',
-      description: 'OTP expiry time needs to be configured in Supabase dashboard.',
+      description: 'OTP expiry time should be set to 10 minutes in Supabase dashboard.',
       action: 'Configure in Supabase Dashboard',
       link: 'https://supabase.com/docs/guides/platform/going-into-prod#security'
     },
