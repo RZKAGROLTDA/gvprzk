@@ -43,7 +43,8 @@ export const useTasksOptimized = () => {
             start_date, end_date, start_time, end_time, observations,
             priority, status, created_at, updated_at, created_by,
             is_prospect, sales_value, sales_confirmed, prospect_notes,
-            photos, documents, check_in_location, initial_km, final_km
+            photos, documents, check_in_location, initial_km, final_km,
+            family_product, equipment_quantity, equipment_list
           `)
           .order('created_at', { ascending: false })
           .limit(100); // Aumentado para 100 mas ainda limitado
@@ -157,7 +158,10 @@ export const useTasksOptimized = () => {
           is_prospect: standardizedTaskData.isProspect || false,
           prospect_notes: standardizedTaskData.prospectNotes || '',
           sales_value: standardizedTaskData.salesValue || 0,
-          sales_confirmed: standardizedTaskData.salesConfirmed
+          sales_confirmed: standardizedTaskData.salesConfirmed,
+          family_product: standardizedTaskData.familyProduct || null,
+          equipment_quantity: standardizedTaskData.equipmentQuantity || null,
+          equipment_list: standardizedTaskData.equipmentList || null
         })
         .select()
         .single();
@@ -234,7 +238,10 @@ export const useTasksOptimized = () => {
         .from('tasks')
         .update({
           ...finalUpdates,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          family_product: finalUpdates.familyProduct || null,
+          equipment_quantity: finalUpdates.equipmentQuantity || null,
+          equipment_list: finalUpdates.equipmentList || null
         })
         .eq('id', taskId);
 

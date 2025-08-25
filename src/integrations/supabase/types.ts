@@ -325,6 +325,9 @@ export type Database = {
           email: string | null
           end_date: string
           end_time: string
+          equipment_list: Json | null
+          equipment_quantity: number | null
+          family_product: string | null
           filial: string | null
           final_km: number | null
           id: string
@@ -357,6 +360,9 @@ export type Database = {
           email?: string | null
           end_date: string
           end_time: string
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
           filial?: string | null
           final_km?: number | null
           id?: string
@@ -389,6 +395,9 @@ export type Database = {
           email?: string | null
           end_date?: string
           end_time?: string
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
           filial?: string | null
           final_km?: number | null
           id?: string
