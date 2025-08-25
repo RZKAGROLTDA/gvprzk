@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +30,33 @@ const FunnelTasksOptimized: React.FC = () => {
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Helper functions - moved before useMemo
+  const getTaskTypeLabel = (taskType: string) => {
+    switch (taskType) {
+      case 'prospection':
+        return 'Visita';
+      case 'ligacao':
+        return 'Ligação';
+      case 'checklist':
+        return 'Checklist Oficina';
+      default:
+        return taskType;
+    }
+  };
+
+  const getTaskTypeBadgeVariant = (taskType: string): "default" | "secondary" | "outline" => {
+    switch (taskType) {
+      case 'Visita':
+        return 'default';
+      case 'Ligação':
+        return 'secondary';
+      case 'Checklist Oficina':
+        return 'outline';
+      default:
+        return 'secondary';
+    }
+  };
 
   const tasksData = useMemo(() => {
     if (!tasks.length) return [];
@@ -73,33 +101,7 @@ const FunnelTasksOptimized: React.FC = () => {
     });
 
     return result.slice(0, 100); // Limitar para performance
-  }, [tasks, debouncedSearchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
-
-  const getTaskTypeLabel = (taskType: string) => {
-    switch (taskType) {
-      case 'prospection':
-        return 'Visita';
-      case 'ligacao':
-        return 'Ligação';
-      case 'checklist':
-        return 'Checklist Oficina';
-      default:
-        return taskType;
-    }
-  };
-
-  const getTaskTypeBadgeVariant = (taskType: string): "default" | "secondary" | "outline" => {
-    switch (taskType) {
-      case 'Visita':
-        return 'default';
-      case 'Ligação':
-        return 'secondary';
-      case 'Checklist Oficina':
-        return 'outline';
-      default:
-        return 'secondary';
-    }
-  };
+  }, [tasks, debouncedSearchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants, getTaskTypeLabel]);
 
   const isLoading = loading;
 
