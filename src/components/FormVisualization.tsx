@@ -133,6 +133,58 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       
       yPosition = (pdf as any).lastAutoTable.finalY + 15;
       
+      // Informações de Equipamentos
+      if (task.familyProduct || task.equipmentQuantity || (task.equipmentList && task.equipmentList.length > 0)) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('INFORMAÇÕES DE EQUIPAMENTOS', 20, yPosition);
+        yPosition += 10;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        
+        if (task.familyProduct) {
+          pdf.text(`Família Principal do Produto: ${task.familyProduct}`, 20, yPosition);
+          yPosition += 5;
+        }
+        
+        if (task.equipmentQuantity) {
+          pdf.text(`Quantidade Total de Equipamentos: ${task.equipmentQuantity}`, 20, yPosition);
+          yPosition += 5;
+        }
+        
+        if (task.equipmentList && task.equipmentList.length > 0) {
+          yPosition += 5;
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Lista Detalhada de Equipamentos:', 20, yPosition);
+          yPosition += 5;
+          
+          const equipmentData = task.equipmentList.map(eq => [
+            eq.familyProduct,
+            eq.quantity.toString(),
+            eq.id
+          ]);
+          
+          (pdf as any).autoTable({
+            startY: yPosition,
+            head: [['Família do Produto', 'Quantidade', 'ID']],
+            body: equipmentData,
+            margin: { left: 20, right: 20 },
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [51, 122, 183] }
+          });
+          
+          yPosition = (pdf as any).lastAutoTable.finalY + 10;
+          
+          const totalEquipment = task.equipmentList.reduce((total, eq) => total + eq.quantity, 0);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`Total de Equipamentos Listados: ${totalEquipment}`, 20, yPosition);
+          yPosition += 15;
+        } else {
+          yPosition += 10;
+        }
+      }
+      
       // Produtos/Serviços
       if (task.checklist && task.checklist.length > 0) {
         pdf.setFontSize(14);
@@ -381,6 +433,75 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* Informações de Equipamentos */}
+          {(task.familyProduct || task.equipmentQuantity || (task.equipmentList && task.equipmentList.length > 0)) && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Car className="w-5 h-5" />
+                  Informações de Equipamentos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {task.familyProduct && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Família Principal do Produto</label>
+                      <p className="font-medium flex items-center gap-2">
+                        <Package className="w-4 h-4 text-primary" />
+                        {task.familyProduct}
+                      </p>
+                    </div>
+                  )}
+                  {task.equipmentQuantity && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Quantidade Total de Equipamentos</label>
+                      <p className="font-medium text-lg text-primary">
+                        {task.equipmentQuantity} equipamentos
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {task.equipmentList && task.equipmentList.length > 0 && (
+                  <div className="mt-6">
+                    <Separator className="mb-4" />
+                    <h4 className="font-semibold text-lg mb-4">Lista Detalhada de Equipamentos</h4>
+                    <div className="space-y-3">
+                      {task.equipmentList.map((equipment, index) => (
+                        <div key={equipment.id || index} className="border rounded-lg p-4 bg-muted/30">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-muted-foreground">Família do Produto</label>
+                              <p className="font-medium text-primary">{equipment.familyProduct}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                              <p className="font-medium text-lg">{equipment.quantity}</p>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-muted-foreground">ID do Equipamento</label>
+                              <p className="font-mono text-sm text-muted-foreground">{equipment.id}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-gradient-card rounded-lg border">
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">Total de Equipamentos Listados</p>
+                        <p className="text-xl font-bold text-primary">
+                          {task.equipmentList.reduce((total, eq) => total + eq.quantity, 0)} equipamentos
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Produtos/Serviços */}
           {task.checklist && task.checklist.length > 0 && (
