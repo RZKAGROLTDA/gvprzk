@@ -19,6 +19,14 @@ import { mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStanda
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+// TypeScript module declaration for jsPDF autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+    lastAutoTable: { finalY: number };
+  }
+}
+
 interface FormVisualizationProps {
   task: Task;
   isOpen: boolean;
@@ -112,7 +120,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           ['Status:', getStatusLabel(salesStatus)]
         ];
       
-      (pdf as any).autoTable({
+      pdf.autoTable({
         startY: yPosition,
         body: basicInfo,
         columns: [
@@ -124,7 +132,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } }
       });
       
-      yPosition = (pdf as any).lastAutoTable.finalY + 15;
+      yPosition = pdf.lastAutoTable.finalY + 15;
       
       // Informações de Equipamentos
       if (fullTask.familyProduct || fullTask.equipmentQuantity || (fullTask.equipmentList && fullTask.equipmentList.length > 0)) {
@@ -158,7 +166,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             eq.id
           ]);
           
-          (pdf as any).autoTable({
+          pdf.autoTable({
             startY: yPosition,
             head: [['Família do Produto', 'Quantidade', 'ID']],
             body: equipmentData,
@@ -167,7 +175,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             headStyles: { fillColor: [51, 122, 183] }
           });
           
-          yPosition = (pdf as any).lastAutoTable.finalY + 10;
+          yPosition = pdf.lastAutoTable.finalY + 10;
           
           const totalEquipment = fullTask.equipmentList.reduce((total, eq) => total + eq.quantity, 0);
           pdf.setFont('helvetica', 'bold');
@@ -195,7 +203,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           item.observations || '-'
         ]);
         
-        (pdf as any).autoTable({
+        pdf.autoTable({
           startY: yPosition,
           head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total', 'Status', 'Observações']],
           body: products,
@@ -208,7 +216,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           }
         });
         
-        yPosition = (pdf as any).lastAutoTable.finalY + 15;
+        yPosition = pdf.lastAutoTable.finalY + 15;
       }
       
       // Valor total
@@ -240,7 +248,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           reminder.completed ? 'Concluído' : 'Pendente'
         ]);
         
-        (pdf as any).autoTable({
+        pdf.autoTable({
           startY: yPosition,
           head: [['Título', 'Descrição', 'Data', 'Horário', 'Status']],
           body: remindersData,
@@ -249,7 +257,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           headStyles: { fillColor: [51, 122, 183] }
         });
         
-        yPosition = (pdf as any).lastAutoTable.finalY + 15;
+        yPosition = pdf.lastAutoTable.finalY + 15;
       }
       
       // Documentos anexados
