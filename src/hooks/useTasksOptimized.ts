@@ -126,6 +126,19 @@ export const useTasksOptimized = (includeDetails = false) => {
 
       const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
       
+      // Process equipment data from equipmentList
+      const equipmentData = taskData.equipmentList && taskData.equipmentList.length > 0 
+        ? {
+            family_product: taskData.equipmentList[0]?.familyProduct || null,
+            equipment_quantity: taskData.equipmentList.reduce((sum: number, eq: any) => sum + (eq.quantity || 0), 0),
+            equipment_list: taskData.equipmentList
+          }
+        : {
+            family_product: taskData.familyProduct || null,
+            equipment_quantity: taskData.equipmentQuantity || 0,
+            equipment_list: []
+          };
+
       // Criar task no Supabase
       const { data: task, error: taskError } = await supabase
         .from('tasks')
@@ -155,9 +168,8 @@ export const useTasksOptimized = (includeDetails = false) => {
           prospect_notes: standardizedTaskData.prospectNotes || '',
           sales_value: standardizedTaskData.salesValue || 0,
           sales_confirmed: standardizedTaskData.salesConfirmed,
-          family_product: standardizedTaskData.familyProduct || null,
-          equipment_quantity: standardizedTaskData.equipmentQuantity || null,
-          equipment_list: standardizedTaskData.equipmentList || null
+          sales_type: taskData.salesType || null,
+          ...equipmentData
         })
         .select()
         .single();

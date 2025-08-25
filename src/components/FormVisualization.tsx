@@ -55,6 +55,18 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   // Usar task completa (com detalhes carregados) ou task original
   const fullTask = taskDetails || task;
 
+  // Enhanced debug logging for equipment and products
+  console.log('FormVisualization - Dados recebidos:', {
+    taskId: task.id,
+    checklist: fullTask?.checklist?.length || 0,
+    hasEquipmentData: !!fullTask?.equipmentList,
+    equipmentCount: fullTask?.equipmentList?.length || 0,
+    familyProduct: fullTask?.familyProduct,
+    equipmentQuantity: fullTask?.equipmentQuantity,
+    equipmentList: fullTask?.equipmentList,
+    propertyHectares: fullTask?.propertyHectares
+  });
+
 
   const getTaskTypeLabel = (type: string) => {
     const types = {
