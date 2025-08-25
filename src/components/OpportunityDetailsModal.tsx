@@ -36,7 +36,18 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
   React.useEffect(() => {
     if (task) {
-      setSelectedStatus(mapSalesStatus(task));
+      const currentStatus = mapSalesStatus(task);
+      setSelectedStatus(currentStatus);
+      
+      console.log('🔧 MODAL INIT DEBUG:', {
+        taskId: task.id,
+        originalSalesType: task.salesType,
+        mappedStatus: currentStatus,
+        hasChecklist: !!task.checklist,
+        checklistLength: task.checklist?.length || 0,
+        salesValue: task.salesValue,
+        salesConfirmed: task.salesConfirmed
+      });
       
       // Initialize selected items and quantities based on current checklist
       if (task.checklist) {
@@ -55,6 +66,21 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         setSelectedItems(initialSelected);
         setItemQuantities(initialQuantities);
         setPartialValue(calculatedPartialValue);
+        
+        console.log('📋 CHECKLIST INIT:', {
+          initialSelected,
+          initialQuantities,
+          calculatedPartialValue,
+          checklistItems: task.checklist.map(item => ({
+            id: item.id,
+            name: item.name,
+            selected: item.selected,
+            price: item.price,
+            quantity: item.quantity
+          }))
+        });
+      } else {
+        console.log('⚠️ No checklist found for task:', task.id);
       }
     }
   }, [task]);

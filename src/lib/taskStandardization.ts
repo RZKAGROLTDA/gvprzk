@@ -57,8 +57,14 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | '
   });
 
   // Se tem sales_type definido, usar esse valor diretamente
+  // PRIORIDADE MÁXIMA para corrigir formulários antigos
   if (task.salesType) {
-    console.log('✅ Using sales_type:', task.salesType);
+    console.log('✅ Using sales_type (priority):', task.salesType);
+    // Para vendas parciais antigas, sempre retornar 'parcial' mesmo que todos itens estejam selecionados
+    if (task.salesType === 'parcial') {
+      console.log('🟡 Forcing parcial status for old forms');
+      return 'parcial';
+    }
     return task.salesType;
   }
 
@@ -67,12 +73,60 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'parcial' | 'ganho' | '
   if (task.salesConfirmed === true) {
     console.log('✅ Sales confirmed = true, checking for partial sale...');
     
+    // NOVA LÓGICA: Verificar se task tem sales_value mas não é venda total
+    // Isso ajuda a identificar vendas parciais antigas
+    if (task.salesValue && task.salesValue > 0) {
+      // Se há valor de venda definido mas produtos específicos selecionados, é parcial
+      if (task.checklist && task.checklist.length > 0) {
+        const selectedItems = task.checklist.filter(item => item.selected);
+        const totalItems = task.checklist.length;
+        
+        console.log('📋 Checklist analysis with sales_value:', {
+          totalItems,
+          selectedItems: selectedItems.length,
+          salesValue: task.salesValue,
+          hasPartialSelection: selectedItems.length > 0 && selectedItems.length < totalItems
+        });
+        
+        // Se há itens selecionados mas não todos, é venda parcial
+        if (selectedItems.length > 0 && selectedItems.length < totalItems) {
+          console.log('🟡 Result: parcial (based on checklist + sales_value)');
+          return 'parcial';
+        }
+        
+        // CORREÇÃO CRÍTICA: Se TODOS os itens estão selecionados mas há sales_value específico,
+        // pode ser uma venda parcial antiga onde apenas os itens vendidos foram mantidos
+        if (selectedItems.length === totalItems && selectedItems.length > 0) {
+          // Calcular valor total teórico vs valor de venda real
+          const totalPossibleValue = task.checklist.reduce((sum, item) => 
+            sum + ((item.price || 0) * (item.quantity || 1)), 0
+          );
+          const selectedValue = selectedItems.reduce((sum, item) => 
+            sum + ((item.price || 0) * (item.quantity || 1)), 0
+          );
+          
+          console.log('💰 Value analysis:', {
+            totalPossibleValue,
+            selectedValue,
+            salesValue: task.salesValue,
+            isPossiblePartialSale: task.salesValue < totalPossibleValue
+          });
+          
+          // Se o valor de venda é menor que o valor total possível, é parcial
+          if (task.salesValue < totalPossibleValue) {
+            console.log('🟡 Result: parcial (based on sales_value vs total value)');
+            return 'parcial';
+          }
+        }
+      }
+    }
+    
     // Verificar se é venda parcial (tem produtos específicos selecionados no checklist)
     if (task.checklist && task.checklist.length > 0) {
       const selectedItems = task.checklist.filter(item => item.selected);
       const totalItems = task.checklist.length;
       
-      console.log('📋 Checklist analysis:', {
+      console.log('📋 Standard checklist analysis:', {
         totalItems,
         selectedItems: selectedItems.length,
         isPartial: selectedItems.length > 0 && selectedItems.length < totalItems
