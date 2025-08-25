@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Download, Search, Filter } from 'lucide-react';
-import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
+import { useDashboardData } from '@/components/DashboardDataProvider';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -21,12 +22,11 @@ interface ClientData {
   hasActivity: boolean;
 }
 
-export const FunnelClientsOptimized: React.FC = () => {
-  const { tasks, loading } = useTasksOptimized();
-  const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
-  const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
+const FunnelClientsOptimized: React.FC = () => {
+  const { tasks, consultants, filiais, loading } = useDashboardData();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
@@ -39,7 +39,7 @@ export const FunnelClientsOptimized: React.FC = () => {
     const clientMap = new Map<string, ClientData>();
     const now = new Date();
     const periodStart = subDays(now, parseInt(selectedPeriod));
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = debouncedSearchTerm.toLowerCase();
 
     // Super otimizado: processamento em um único loop
     for (const task of tasks) {
@@ -87,7 +87,7 @@ export const FunnelClientsOptimized: React.FC = () => {
     let clientsArray = Array.from(clientMap.values());
 
     // Filtro de busca
-    if (searchTerm) {
+    if (debouncedSearchTerm) {
       clientsArray = clientsArray.filter(client =>
         client.name.toLowerCase().includes(searchLower)
       );
@@ -108,7 +108,7 @@ export const FunnelClientsOptimized: React.FC = () => {
     });
 
     return clientsArray.slice(0, 50); // Limitar para performance
-  }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortField, sortDirection, consultants]);
+  }, [tasks, debouncedSearchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortField, sortDirection, consultants]);
 
   const handleSort = (field: keyof ClientData) => {
     if (sortField === field) {
@@ -123,7 +123,7 @@ export const FunnelClientsOptimized: React.FC = () => {
   const clientsWithActivity = clientsData.filter(c => c.hasActivity).length;
   const coveragePercentage = totalClients > 0 ? Math.round((clientsWithActivity / totalClients) * 100) : 0;
 
-  const isLoading = loading || consultantsLoading || filiaisLoading;
+  const isLoading = loading;
 
   if (isLoading) {
     return (
@@ -321,3 +321,6 @@ export const FunnelClientsOptimized: React.FC = () => {
     </div>
   );
 };
+
+export { FunnelClientsOptimized };
+export default FunnelClientsOptimized;

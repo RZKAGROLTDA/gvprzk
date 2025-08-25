@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckSquare, Download, Search, Filter } from 'lucide-react';
-import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
+import { useDashboardData } from '@/components/DashboardDataProvider';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -19,12 +20,11 @@ interface TaskData {
   filial: string;
 }
 
-export const FunnelTasksOptimized: React.FC = () => {
-  const { tasks, loading } = useTasksOptimized();
-  const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
-  const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
+const FunnelTasksOptimized: React.FC = () => {
+  const { tasks, consultants, filiais, loading } = useDashboardData();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
@@ -35,7 +35,7 @@ export const FunnelTasksOptimized: React.FC = () => {
 
     const now = new Date();
     const periodStart = subDays(now, parseInt(selectedPeriod));
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = debouncedSearchTerm.toLowerCase();
 
     // Super otimizado: filtro, mapeamento e ordenação em um loop
     const result: TaskData[] = [];
@@ -53,7 +53,7 @@ export const FunnelTasksOptimized: React.FC = () => {
 
       if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
       
-      if (searchTerm && !task.client.toLowerCase().includes(searchLower)) continue;
+      if (debouncedSearchTerm && !task.client.toLowerCase().includes(searchLower)) continue;
 
       // Mapear diretamente
       result.push({
@@ -73,7 +73,7 @@ export const FunnelTasksOptimized: React.FC = () => {
     });
 
     return result.slice(0, 100); // Limitar para performance
-  }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
+  }, [tasks, debouncedSearchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
 
   const getTaskTypeLabel = (taskType: string) => {
     switch (taskType) {
@@ -101,7 +101,7 @@ export const FunnelTasksOptimized: React.FC = () => {
     }
   };
 
-  const isLoading = loading || consultantsLoading || filiaisLoading;
+  const isLoading = loading;
 
   if (isLoading) {
     return (
@@ -264,3 +264,6 @@ export const FunnelTasksOptimized: React.FC = () => {
     </div>
   );
 };
+
+export { FunnelTasksOptimized };
+export default FunnelTasksOptimized;
