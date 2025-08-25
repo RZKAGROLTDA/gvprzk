@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2, ShoppingCart } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -736,6 +736,120 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                       </p>
                       <p className="text-3xl font-bold text-primary">
                         R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Produtos Oferecidos */}
+          {fullTask.checklist && fullTask.checklist.filter(item => item.selected).length > 0 && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  Produtos Oferecidos
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Produtos selecionados e oferecidos ao cliente
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {fullTask.checklist
+                    .filter(item => item.selected)
+                    .map((item, index) => {
+                      const itemTotal = (item.price || 0) * (item.quantity || 1);
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className="border rounded-lg p-4 bg-primary/5 border-primary/30 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-lg text-primary">
+                                {item.name}
+                              </h4>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                Categoria: <span className="font-medium">{item.category}</span>
+                              </p>
+                            </div>
+                            <Badge 
+                              variant="default" 
+                              className="ml-4 bg-success text-success-foreground"
+                            >
+                              ✓ Oferecido
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                              <p className="font-medium text-lg">{item.quantity || 1}</p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
+                              <p className="font-medium text-lg">
+                                R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
+                              <p className="font-bold text-xl text-success">
+                                R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {item.observations && (
+                            <div className="mt-4 p-3 bg-muted/50 rounded-md">
+                              <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                              <p className="text-sm mt-1 text-foreground">{item.observations}</p>
+                            </div>
+                          )}
+                          
+                          {item.photos && item.photos.length > 0 && (
+                            <div className="mt-4">
+                              <label className="text-sm font-medium text-muted-foreground mb-2 block">Fotos</label>
+                              <div className="flex gap-2">
+                                {item.photos.map((photo, photoIndex) => (
+                                  <img 
+                                    key={photoIndex}
+                                    src={photo} 
+                                    alt={`Foto ${photoIndex + 1} - ${item.name}`}
+                                    className="w-16 h-16 object-cover rounded border cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={() => window.open(photo, '_blank')}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+                
+                <Separator className="my-6" />
+                
+                {/* Resumo dos Produtos Oferecidos */}
+                <div className="bg-gradient-card rounded-lg p-6 border">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-1">Total de Produtos Oferecidos</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {fullTask.checklist.filter(item => item.selected).length}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-1">Valor Total Oferecido</p>
+                      <p className="text-3xl font-bold text-success">
+                        R$ {fullTask.checklist
+                          .filter(item => item.selected)
+                          .reduce((total, item) => total + ((item.price || 0) * (item.quantity || 1)), 0)
+                          .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
