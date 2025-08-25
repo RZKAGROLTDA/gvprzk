@@ -941,6 +941,68 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                     )}
                   </div>
                 )}
+
+                {/* Produtos da Oportunidade */}
+                {((fullTask.checklist && fullTask.checklist.length > 0) || (fullTask.prospectItems && fullTask.prospectItems.length > 0)) && (
+                  <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
+                    <h4 className="font-semibold text-lg mb-4 flex items-center gap-2 text-primary">
+                      <Package className="w-5 h-5" />
+                      Produtos da Oportunidade
+                    </h4>
+                    
+                    {/* Produtos do Checklist */}
+                    {fullTask.checklist && fullTask.checklist.length > 0 && (
+                      <div className="space-y-3 mb-4">
+                        <h5 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Produtos Selecionados:</h5>
+                        {fullTask.checklist.filter(item => item.selected).map((item, index) => (
+                          <div key={index} className="flex justify-between items-center p-3 bg-white/50 rounded-md border border-primary/10">
+                            <div className="flex-1">
+                              <p className="font-medium text-primary">{item.name}</p>
+                              <p className="text-sm text-muted-foreground">{item.category}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Qtd: {item.quantity || 1}</p>
+                              <p className="font-bold text-primary">
+                                R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Produtos Oferecidos */}
+                    {fullTask.prospectItems && fullTask.prospectItems.length > 0 && (
+                      <div className="space-y-3">
+                        <h5 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Produtos Oferecidos:</h5>
+                        {fullTask.prospectItems.map((item, index) => (
+                          <div key={index} className="flex justify-between items-center p-3 bg-white/50 rounded-md border border-primary/10">
+                            <div className="flex-1">
+                              <p className="font-medium text-primary">{item.name}</p>
+                              <p className="text-sm text-muted-foreground">{item.category}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Qtd: {item.quantity || 1}</p>
+                              <p className="font-bold text-primary">
+                                R$ {((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Total dos Produtos */}
+                    <div className="mt-4 pt-4 border-t border-primary/20">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-lg">Total dos Produtos:</span>
+                        <span className="font-bold text-xl text-primary">
+                          R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
