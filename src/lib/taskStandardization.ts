@@ -46,9 +46,22 @@ export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> 
 };
 
 export const mapSalesStatus = (task: Task): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
-  if (task.salesType === 'ganho') return 'ganho';
-  if (task.salesType === 'perdido') return 'perdido';
-  if (task.salesType === 'parcial') return 'parcial';
+  // Se não é um prospect, retorna prospect
+  if (!task.isProspect) return 'prospect';
+  
+  // Se salesConfirmed é undefined ou null, é um prospect em andamento
+  if (task.salesConfirmed === undefined || task.salesConfirmed === null) return 'prospect';
+  
+  // Se salesConfirmed é true, verifica se é venda parcial
+  if (task.salesConfirmed === true) {
+    // Se tem sales_type definido como parcial, usa ele
+    if (task.salesType === 'parcial') return 'parcial';
+    return 'ganho';
+  }
+  
+  // Se salesConfirmed é false, é perdido
+  if (task.salesConfirmed === false) return 'perdido';
+  
   return 'prospect';
 };
 
