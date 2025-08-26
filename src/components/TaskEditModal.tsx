@@ -560,7 +560,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                           </div>
                         </div>
                         
-                        <div className="flex items-center space-x-2 min-w-[200px]">
+                        <div className="flex items-center space-x-2 min-w-[300px]">
                           <div className="flex flex-col space-y-1">
                             <Label className="text-xs">Qtd</Label>
                             <Input
@@ -596,6 +596,18 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                                 className="w-20 h-8 text-xs pl-4"
                               />
                               <span className="absolute left-1 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col space-y-1">
+                            <Label className="text-xs">Total</Label>
+                            <div className="w-24 h-8 px-2 rounded-md bg-primary/10 border flex items-center justify-end">
+                              <span className="text-xs font-medium text-primary">
+                                {new Intl.NumberFormat('pt-BR', { 
+                                  style: 'currency', 
+                                  currency: 'BRL' 
+                                }).format((item.quantity || 1) * (item.price || 0))}
+                              </span>
                             </div>
                           </div>
                           
