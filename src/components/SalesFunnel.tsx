@@ -17,7 +17,6 @@ import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { FormVisualization } from '@/components/FormVisualization';
 import { TaskEditModal } from '@/components/TaskEditModal';
-import { ReportExporter } from '@/components/ReportExporter';
 import { Task } from '@/types/task';
 interface SalesFunnelData {
   name: string;
@@ -51,7 +50,7 @@ export const SalesFunnel: React.FC = () => {
   } = useAuth();
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
-  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'reports'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   const [selectedFunnelSection, setSelectedFunnelSection] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -551,7 +550,7 @@ export const SalesFunnel: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50" onClick={() => setActiveView('reports')}>
+          <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50" onClick={() => setActiveView('coverage')}>
             <CardContent className="p-6">
               <div className="text-center">
                 <h3 className="text-lg font-semibold">Relatórios</h3>
@@ -826,33 +825,174 @@ export const SalesFunnel: React.FC = () => {
         </div>}
 
       {/* Conteúdo dos Relatórios */}
-      {activeView === 'reports' && <Card>
+      {activeView === 'coverage' && <Card>
           <CardHeader>
-            <CardTitle>Exportar Relatórios</CardTitle>
-            <CardDescription>
-              Gere relatórios detalhados em PDF ou Excel com base nos filtros aplicados
-            </CardDescription>
+            <CardTitle>Relatório de Atividades</CardTitle>
+            <CardDescription>Resumo das atividades realizadas com status e oportunidades</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              <p>Os relatórios incluirão:</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Dados de visitas, ligações e checklists</li>
-                <li>Informações dos clientes e responsáveis</li>
-                <li>Valores de vendas e prospecções</li>
-                <li>Resumo financeiro por período</li>
-              </ul>
-            </div>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome da Atividade</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Vendedor</TableHead>
+                  <TableHead> Oportunidade</TableHead>
+                  <TableHead>Venda Realizada</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTasks.slice(0, itemsPerPage).map(task => {
+              const getTaskStatus = () => {
+                // Priorizar o sales_type direto da task sobre o mapSalesStatus
+                if (task.sales_type === 'parcial') {
+                  return {
+                    label: 'Parcial',
+                    variant: 'secondary' as const
+                  };
+                }
+                
+                if (task.sales_type === 'ganho' || task.salesConfirmed) {
+                  return {
+                    label: 'Ganho',
+                    variant: 'default' as const
+                  };
+                }
+                
+                if (task.sales_type === 'perdido') {
+                  return {
+                    label: 'Perdido',
+                    variant: 'destructive' as const
+                  };
+                }
+                
+                // Se é prospect ou não tem sales_type definido
+                if (task.isProspect) {
+                  return {
+                    label: 'Prospect',
+                    variant: 'outline' as const
+                  };
+                }
+                
+                // Atividade sem prospect
+                return {
+                  label: 'Atividade',
+                  variant: 'secondary' as const
+                };
+              };
+              const status = getTaskStatus();
+              return <TableRow key={task.id}>
+                      <TableCell className="font-medium">
+                        <div className="text-xs text-muted-foreground">
+                          {task.taskType === 'prospection' ? 'Visita' : task.taskType === 'ligacao' ? 'Ligação' : task.taskType === 'checklist' ? 'Checklist' : task.taskType}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">{task.client}</TableCell>
+                      <TableCell>
+                        <div className="text-sm font-medium">
+                          {task.responsible || 'Não informado'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {(() => {
+                      // Buscar a filial do vendedor responsável
+                      const vendor = consultants.find(c => c.name === task.responsible);
+                      if (vendor && vendor.filial_id) {
+                        const filial = filiais.find(f => f.id === vendor.filial_id);
+                        return filial?.nome || 'Filial não informada';
+                      }
+                      // Fallback: usar a filial da task se não encontrar do vendedor
+                      return resolveFilialName(task.filial) || 'Filial não informada';
+                    })()}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                    // Usar diretamente o valor do formulário (salesValue)
+                    const opportunityValue = getSalesValueAsNumber(task.salesValue);
+                    
+                    return opportunityValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL'
+                    }).format(opportunityValue) : '-';
+                  })()}
+                      </TableCell>
+                        <TableCell>
+                          {(() => {
+                            // Verificar se a venda foi confirmada
+                            if (task.salesConfirmed) {
+                              // Venda finalizada - mostrar valor total
+                              return new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                              }).format(getSalesValueAsNumber(task.salesValue));
+                            }
+                            
+                            // Verificar se é venda parcial através do sales_type ou status
+                            const salesStatus = mapSalesStatus(task);
+                            if (salesStatus === 'parcial') {
+                              // Venda parcial - calcular valor dos produtos selecionados
+                              let parcialValue = 0;
+                              
+                              if (task.products && Array.isArray(task.products)) {
+                                parcialValue = task.products
+                                  .filter(product => product.selected)
+                                  .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
+                              } else if (task.prospectItems && Array.isArray(task.prospectItems)) {
+                                parcialValue = task.prospectItems
+                                  .filter(item => item.selected)
+                                  .reduce((acc, item) => acc + ((item.quantity || 0) * (item.price || 0)), 0);
+                              }
+                              
+                              return parcialValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                              }).format(parcialValue) : '-';
+                            }
+                            
+                            // Para prospects ou vendas perdidas, não há valor realizado
+                            return '-';
+                          })()}
+                        </TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant} className={status.variant === 'default' ? 'bg-green-500 hover:bg-green-600 text-white' : status.variant === 'secondary' ? 'bg-blue-500 hover:bg-blue-600 text-white' : status.variant === 'destructive' ? 'bg-red-500 hover:bg-red-600 text-white' : status.variant === 'outline' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' : ''}>
+                          {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {format(task.createdAt, 'dd/MM/yyyy', {
+                    locale: ptBR
+                  })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="icon" onClick={() => {
+                            setSelectedTask(task);
+                            setIsVisualizationModalOpen(true);
+                          }}>
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="outline" size="icon" onClick={() => {
+                      setSelectedTask(task);
+                      setIsEditModalOpen(true);
+                    }}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>;
+            })}
+              </TableBody>
+            </Table>
             
-            <div className="border-t pt-4">
-              <ReportExporter />
-            </div>
-            
-            <div className="text-xs text-muted-foreground">
-              <p>
-                <strong>Nota:</strong> Os relatórios respeitam os filtros de período, vendedor, filial e tipo de atividade selecionados acima.
-              </p>
-            </div>
+            {filteredTasks.length > itemsPerPage && <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando {Math.min(itemsPerPage, filteredTasks.length)} de {filteredTasks.length} atividades.
+                  {itemsPerPage < filteredTasks.length && " Use o filtro 'Exibir' para ver mais registros."}
+                </p>
+              </div>}
           </CardContent>
         </Card>}
 
