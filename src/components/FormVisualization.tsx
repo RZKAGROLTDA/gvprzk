@@ -82,14 +82,26 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const salesStatus = mapSalesStatus(fullTask);
 
   const calculateTotalValue = () => {
-    if (!fullTask?.checklist) return 0;
-    
     let total = 0;
-    fullTask.checklist.forEach(item => {
-      if (item.selected) {
-        total += (item.price || 0) * (item.quantity || 1);
-      }
-    });
+    
+    // Somar valores do checklist (visitas e checklists)
+    if (fullTask?.checklist) {
+      fullTask.checklist.forEach(item => {
+        if (item.selected) {
+          total += (item.price || 0) * (item.quantity || 1);
+        }
+      });
+    }
+    
+    // Somar valores dos prospectItems (ligações)
+    if (fullTask?.prospectItems) {
+      fullTask.prospectItems.forEach(item => {
+        if (item.selected) {
+          total += (item.price || 0) * (item.quantity || 1);
+        }
+      });
+    }
+    
     return total;
   };
 
@@ -212,7 +224,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       }
       
       // Produtos/Serviços
-      if (fullTask?.checklist && fullTask.checklist.length > 0) {
+      if ((fullTask?.checklist && fullTask.checklist.length > 0) || (fullTask?.prospectItems && fullTask.prospectItems.length > 0)) {
         if (yPosition > 200) {
           pdf.addPage();
           yPosition = 20;
@@ -220,18 +232,40 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
         
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('PRODUTOS/SERVIÇOS', 20, yPosition);
+        pdf.text(fullTask?.taskType === 'ligacao' ? 'PRODUTOS PARA OFERTAR' : 'PRODUTOS/SERVIÇOS', 20, yPosition);
         yPosition += 10;
         
-        const products = fullTask.checklist.map(item => [
-          item.name || 'N/A',
-          item.category || 'N/A',
-          (item.quantity || 1).toString(),
-          `R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-          `R$ ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-          item.selected ? 'SELECIONADO' : 'NÃO SELECIONADO',
-          item.observations || '-'
-        ]);
+        const products = [];
+        
+        // Adicionar produtos do checklist
+        if (fullTask?.checklist) {
+          fullTask.checklist.forEach(item => {
+            products.push([
+              item.name || 'N/A',
+              item.category || 'N/A',
+              (item.quantity || 1).toString(),
+              `R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+              `R$ ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+              item.selected ? 'SELECIONADO' : 'NÃO SELECIONADO',
+              item.observations || '-'
+            ]);
+          });
+        }
+        
+        // Adicionar produtos prospect
+        if (fullTask?.prospectItems) {
+          fullTask.prospectItems.forEach(item => {
+            products.push([
+              item.name || 'N/A',
+              item.category || 'N/A',
+              (item.quantity || 1).toString(),
+              `R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+              `R$ ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+              item.selected ? 'OFERTADO' : 'NÃO OFERTADO',
+              item.observations || '-'
+            ]);
+          });
+        }
         
         try {
           pdf.autoTable({
@@ -698,20 +732,24 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           )}
 
           {/* Produtos/Serviços - Visualização */}
-          {fullTask.checklist && fullTask.checklist.length > 0 && (
+          {((fullTask.checklist && fullTask.checklist.length > 0) || (fullTask.prospectItems && fullTask.prospectItems.length > 0)) && (
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="w-5 h-5" />
-                  Produtos e Serviços
+                  {fullTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos e Serviços'}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Lista de produtos e serviços da oportunidade
+                  {fullTask.taskType === 'ligacao' 
+                    ? 'Lista de produtos ofertados durante a ligação'
+                    : 'Lista de produtos e serviços da oportunidade'
+                  }
                 </p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {fullTask.checklist.map((item, index) => {
+                  {/* Renderizar produtos do checklist (para visitas e checklists) */}
+                  {fullTask.checklist && fullTask.checklist.map((item, index) => {
                     const itemTotal = (item.price || 0) * (item.quantity || 1);
                     
                     return (
@@ -780,6 +818,77 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                       </div>
                     );
                   })}
+
+                  {/* Renderizar produtos prospect (para ligações) */}
+                  {fullTask.prospectItems && fullTask.prospectItems.map((item, index) => {
+                    const itemTotal = (item.price || 0) * (item.quantity || 1);
+                    
+                    return (
+                      <div 
+                        key={item.id || `prospect-${index}`} 
+                        className={`border rounded-lg p-4 ${
+                          item.selected 
+                            ? 'bg-primary/5 border-primary/30 shadow-sm' 
+                            : 'bg-muted/20 border-border'
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg">
+                                  {item.name}
+                                </h4>
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  Categoria: <span className="font-medium">{item.category}</span>
+                                </p>
+                              </div>
+                              <Badge 
+                                variant={item.selected ? "default" : "outline"}
+                                className={item.selected ? "bg-success text-success-foreground" : ""}
+                              >
+                                {item.selected ? '✓ Ofertado' : 'Não Ofertado'}
+                              </Badge>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
+                                <p className="font-medium text-lg mt-1">
+                                  {item.quantity || 1}
+                                </p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
+                                <p className="font-medium text-lg mt-1">
+                                  R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
+                                <p className={`font-bold text-xl mt-1 ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
+                                  R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                              </div>
+                              <div className="md:text-right">
+                                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                                <p className={`font-medium text-sm mt-1 ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
+                                  {item.selected ? 'Incluído na Oferta' : 'Não incluído'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {item.observations && (
+                              <div className="mt-4 p-3 bg-muted/50 rounded-md">
+                                <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                                <p className="text-sm mt-1 text-foreground">{item.observations}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 
                 <Separator className="my-6" />
@@ -788,9 +897,12 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 <div className="bg-gradient-card rounded-lg p-6 border">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Produtos Selecionados</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {fullTask.taskType === 'ligacao' ? 'Produtos Ofertados' : 'Produtos Selecionados'}
+                      </p>
                       <p className="text-2xl font-bold text-primary">
-                        {fullTask.checklist.filter(item => item.selected).length}
+                        {(fullTask.checklist?.filter(item => item.selected).length || 0) + 
+                         (fullTask.prospectItems?.filter(item => item.selected).length || 0)}
                       </p>
                     </div>
                     <div className="text-center">
