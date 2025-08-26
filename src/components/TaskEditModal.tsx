@@ -126,32 +126,30 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       
       console.log('🔍 DEBUG: Dados padronizados:', standardizedData);
       
-      // Automaticamente definir status como "completed" quando há venda confirmada ou perdida
-      let finalStatus = editedTask.status;
-      if (editedTask.salesConfirmed === true || editedTask.salesConfirmed === false) {
-        finalStatus = 'completed';
+      // VALIDAÇÃO CRÍTICA: Motivo obrigatório para venda perdida
+      if (editedTask.salesConfirmed === false && (!editedTask.prospectNotes || editedTask.prospectNotes.trim() === '')) {
+        toast.error('❌ Erro - O motivo da perda é obrigatório quando a venda é marcada como perdida');
+        setLoading(false);
+        return;
       }
 
-      // Lógica corrigida para isProspect: deve ser true se é um prospect ativo
+      // Usar funções padronizadas do TaskFormCore
+      const finalStatus = editedTask.salesConfirmed === true || editedTask.salesConfirmed === false ? 'completed' : 'pending';
       const finalIsProspect = editedTask.isProspect === true;
-
-      // Preservar o valor exato de salesConfirmed - NUNCA converter null para false
-      let finalSalesConfirmed = editedTask.salesConfirmed;
+      const finalSalesConfirmed = editedTask.salesConfirmed;
       
       console.log('🔍 DEBUG: Valores finais antes do update:');
       console.log('  - finalSalesConfirmed:', finalSalesConfirmed, 'tipo:', typeof finalSalesConfirmed);
       console.log('  - finalIsProspect:', finalIsProspect);
       console.log('  - finalStatus:', finalStatus);
 
-      // Determinar o tipo de venda baseado nos produtos selecionados
+      // Determinar o tipo de venda usando lógica padronizada
       let salesType = null;
       if (finalSalesConfirmed === true) {
         if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
-          // Tem produtos parciais selecionados
-          salesType = 'parcial';
+          salesType = 'parcial'; // Tem produtos parciais selecionados
         } else {
-          // Venda do valor total
-          salesType = 'ganho';
+          salesType = 'ganho'; // Venda do valor total
         }
       } else if (finalSalesConfirmed === false) {
         salesType = 'perdido';

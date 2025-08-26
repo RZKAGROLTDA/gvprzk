@@ -214,6 +214,11 @@ export const validateTaskData = (
     errors.push('Alguns campos obrigatórios não foram preenchidos corretamente');
   }
   
+  // VALIDAÇÃO CRÍTICA: Motivo obrigatório para venda perdida
+  if (taskData.salesConfirmed === false && (!taskData.prospectNotes || taskData.prospectNotes.trim() === '')) {
+    errors.push('O motivo da perda é obrigatório quando a venda é marcada como perdida');
+  }
+  
   // Validação de datas
   if (!taskData.startDate || !taskData.endDate) {
     errors.push('Data de início e fim são obrigatórias');
@@ -268,6 +273,40 @@ export const validateTaskData = (
 };
 
 // Hook personalizado para gerenciar formulário de tarefa
+// Opções padronizadas para motivo de perda
+export const LOSS_REASONS = [
+  'Falta de peça',
+  'Preço',
+  'Prazo',
+  'Duplo Domicilio'
+] as const;
+
+// Função para determinar status da tarefa baseado na venda
+export const determineTaskStatus = (salesConfirmed?: boolean | null): 'pending' | 'completed' => {
+  // Automaticamente marca como completed quando há venda confirmada ou perdida
+  if (salesConfirmed === true || salesConfirmed === false) {
+    return 'completed';
+  }
+  return 'pending';
+};
+
+// Função para determinar tipo de venda
+export const determineSalesType = (
+  salesConfirmed?: boolean | null, 
+  prospectItems?: ProductType[]
+): 'prospect' | 'parcial' | 'ganho' | 'perdido' | null => {
+  if (salesConfirmed === true) {
+    if (prospectItems && prospectItems.length > 0) {
+      return 'parcial'; // Tem produtos parciais selecionados
+    } else {
+      return 'ganho'; // Venda do valor total
+    }
+  } else if (salesConfirmed === false) {
+    return 'perdido';
+  }
+  return 'prospect'; // Em andamento
+};
+
 export const useTaskForm = (taskType: string, initialData?: Partial<Task>) => {
   const { validateForm, clearErrors, getFieldErrors, hasErrors } = useInputValidation();
   const { sanitizeText } = useInputSanitization();
@@ -314,15 +353,16 @@ export const useTaskForm = (taskType: string, initialData?: Partial<Task>) => {
   const sanitizeAndPrepareData = (): Partial<Task> => {
     const sanitizedData = sanitizeTaskData(formData, sanitizeText, sanitizeTaskInput);
     
-    // Calcular valores derivados
-    const salesStatus = mapSalesStatus(sanitizedData as Task);
+    // Determinar status e tipo de venda usando funções padronizadas
+    const finalStatus = determineTaskStatus(sanitizedData.salesConfirmed);
+    const salesType = determineSalesType(sanitizedData.salesConfirmed, sanitizedData.prospectItems);
     const totalValue = calculateTaskTotalValue(sanitizedData);
     
     return {
       ...sanitizedData,
+      status: finalStatus,
       salesValue: totalValue > 0 ? totalValue : undefined,
-      salesType: salesStatus as any,
-      status: 'pending',
+      salesType: salesType as any,
       createdAt: new Date(),
       updatedAt: new Date()
     } as Partial<Task>;
