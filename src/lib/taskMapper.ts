@@ -14,7 +14,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
   const filialResolved = resolveFilialName(supabaseTask.filial);
 
   // Map products with detailed logging
-  const checklist = supabaseTask.products?.map((product: any) => {
+  const products = supabaseTask.products?.map((product: any) => {
     const mappedProduct = {
       id: product.id,
       name: product.name,
@@ -29,6 +29,11 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     // Log removido para performance
     return mappedProduct;
   }) || [];
+
+  // Separate checklist and prospectItems based on task type
+  const taskType = supabaseTask.task_type || 'prospection';
+  const checklist = taskType === 'ligacao' ? [] : products;
+  const prospectItems = taskType === 'ligacao' ? products : [];
 
   const mappedTask: Task = {
     id: supabaseTask.id,
@@ -72,8 +77,8 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     // Usar o valor direto do banco para isProspect
     isProspect: Boolean(supabaseTask.is_prospect),
     prospectNotes: supabaseTask.prospect_notes || '',
-    // prospectItems são sempre carregados dos produtos salvos no banco
-    prospectItems: checklist || [],
+    // prospectItems são carregados baseado no tipo de tarefa
+    prospectItems: prospectItems,
     // Use secure sales value if available
     salesValue: customerData?.sales_value || supabaseTask.sales_value || 0,
     salesConfirmed: supabaseTask.sales_confirmed, // Preservar valor exato do banco

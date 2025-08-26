@@ -815,11 +815,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                                   </span>
                                 </div>
                               </div>
-                              <div className="md:text-right">
-                                <label className="text-sm font-medium text-muted-foreground">Status</label>
-                                <p className={`font-medium text-sm mt-1 ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
-                                  {item.selected ? 'Incluído' : 'Não incluído'}
-                                </p>
+                              <div className="flex flex-col space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Status</label>
+                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
+                                  <span className={`text-sm font-medium ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
+                                    {item.selected ? 'Incluído' : 'Não incluído'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             
@@ -867,30 +869,40 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                               </Badge>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                                <p className="font-medium text-lg mt-1">
-                                  {item.quantity || 1}
-                                </p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="flex flex-col space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Quantidade</label>
+                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
+                                  <span className="text-sm font-medium">
+                                    {item.quantity || 1}
+                                  </span>
+                                </div>
                               </div>
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Preço Unitário</label>
-                                <p className="font-medium text-lg mt-1">
-                                  R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
+                              <div className="flex flex-col space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Preço Unitário</label>
+                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
+                                  <span className="text-sm font-medium">
+                                    {new Intl.NumberFormat('pt-BR', { 
+                                      style: 'currency', 
+                                      currency: 'BRL' 
+                                    }).format(item.price || 0)}
+                                  </span>
+                                </div>
                               </div>
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Valor Total</label>
-                                <p className={`font-bold text-xl mt-1 ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
-                                  R$ {itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </p>
-                              </div>
-                              <div className="md:text-right">
-                                <label className="text-sm font-medium text-muted-foreground">Status</label>
-                                <p className={`font-medium text-sm mt-1 ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
-                                  {item.selected ? 'Incluído na Oferta' : 'Não incluído'}
-                                </p>
+                              <div className="flex flex-col space-y-1">
+                                <label className="text-xs font-medium text-muted-foreground">Total</label>
+                                <div className={`h-8 px-2 rounded-md border flex items-center justify-end ${
+                                  item.selected 
+                                    ? 'bg-green-100 border-green-300 text-green-700 font-bold' 
+                                    : 'bg-gray-50 border-gray-200 text-gray-500'
+                                }`}>
+                                  <span className="text-sm font-medium">
+                                    {new Intl.NumberFormat('pt-BR', { 
+                                      style: 'currency', 
+                                      currency: 'BRL' 
+                                    }).format(itemTotal)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             
