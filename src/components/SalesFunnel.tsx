@@ -847,35 +847,41 @@ export const SalesFunnel: React.FC = () => {
               <TableBody>
                 {filteredTasks.slice(0, itemsPerPage).map(task => {
               const getTaskStatus = () => {
-                const salesStatus = mapSalesStatus(task);
-                const statusLabel = getStatusLabel(salesStatus);
-                switch (salesStatus) {
-                  case 'ganho':
-                    return {
-                      label: statusLabel,
-                      variant: 'default' as const
-                    };
-                  case 'parcial':
-                    return {
-                      label: statusLabel,
-                      variant: 'secondary' as const
-                    };
-                  case 'perdido':
-                    return {
-                      label: statusLabel,
-                      variant: 'destructive' as const
-                    };
-                  case 'prospect':
-                    return {
-                      label: statusLabel,
-                      variant: 'outline' as const
-                    };
-                  default:
-                    return {
-                      label: 'Atividade',
-                      variant: 'secondary' as const
-                    };
+                // Priorizar o sales_type direto da task sobre o mapSalesStatus
+                if (task.sales_type === 'parcial') {
+                  return {
+                    label: 'Parcial',
+                    variant: 'secondary' as const
+                  };
                 }
+                
+                if (task.sales_type === 'ganho' || task.salesConfirmed) {
+                  return {
+                    label: 'Ganho',
+                    variant: 'default' as const
+                  };
+                }
+                
+                if (task.sales_type === 'perdido') {
+                  return {
+                    label: 'Perdido',
+                    variant: 'destructive' as const
+                  };
+                }
+                
+                // Se é prospect ou não tem sales_type definido
+                if (task.isProspect) {
+                  return {
+                    label: 'Prospect',
+                    variant: 'outline' as const
+                  };
+                }
+                
+                // Atividade sem prospect
+                return {
+                  label: 'Atividade',
+                  variant: 'secondary' as const
+                };
               };
               const status = getTaskStatus();
               return <TableRow key={task.id}>
