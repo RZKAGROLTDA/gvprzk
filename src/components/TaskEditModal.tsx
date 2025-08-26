@@ -568,7 +568,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   {/* Mostrar diferença entre valor total da oportunidade e produtos selecionados */}
                   {calculateSelectedProductsValue() !== getSalesValueAsNumber(editedTask.salesValue) && (
                     <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <Label className="text-sm font-medium text-yellow-700">Diferença (Oportunidade - Produtos):</Label>
+                      <div className="flex flex-col">
+                        <Label className="text-sm font-medium text-yellow-700">Diferença (Oportunidade - Produtos):</Label>
+                        <Label className="text-xs text-yellow-600">
+                          Percentual de Conversão: {getSalesValueAsNumber(editedTask.salesValue) > 0 
+                            ? Math.round((calculateSelectedProductsValue() / getSalesValueAsNumber(editedTask.salesValue)) * 100)
+                            : 0}%
+                        </Label>
+                      </div>
                       <div className="text-lg font-bold text-yellow-700">
                         {formatSalesValue(getSalesValueAsNumber(editedTask.salesValue) - calculateSelectedProductsValue())}
                       </div>
