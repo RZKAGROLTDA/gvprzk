@@ -601,23 +601,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                           
                           <div className="flex flex-col space-y-1">
                             <Label className="text-xs">Total</Label>
-                            <div className="w-24 h-8 px-2 rounded-md bg-primary/10 border flex items-center justify-end">
-                              <span className="text-xs font-medium text-primary">
+                            <div className={`w-24 h-8 px-2 rounded-md border flex items-center justify-end ${
+                              item.selected 
+                                ? 'bg-green-100 border-green-300 text-green-700 font-bold' 
+                                : 'bg-gray-50 border-gray-200 text-gray-500'
+                            }`}>
+                              <span className="text-xs font-medium">
                                 {new Intl.NumberFormat('pt-BR', { 
                                   style: 'currency', 
                                   currency: 'BRL' 
                                 }).format((item.quantity || 1) * (item.price || 0))}
                               </span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col space-y-1">
-                            <Label className="text-xs">Total</Label>
-                            <div className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
-                              R$ {new Intl.NumberFormat('pt-BR', { 
-                                minimumFractionDigits: 2, 
-                                maximumFractionDigits: 2 
-                              }).format((item.price || 0) * (item.quantity || 1))}
                             </div>
                           </div>
                         </div>
