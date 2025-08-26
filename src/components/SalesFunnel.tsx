@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache, calculateSalesValue } from '@/lib/taskStandardization';
+import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { FormVisualization } from '@/components/FormVisualization';
 import { TaskEditModal } from '@/components/TaskEditModal';
@@ -189,9 +190,9 @@ export const SalesFunnel: React.FC = () => {
     const closedLost = filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).length;
 
     // Valores das prospecções
-    const totalProspectValue = filteredTasks.filter(task => task.isProspect).reduce((sum, task) => sum + calculateSalesValue(task), 0);
-    const openProspectValue = filteredTasks.filter(task => task.isProspect && task.status === 'pending').reduce((sum, task) => sum + calculateSalesValue(task), 0);
-    const closedWonValue = filteredTasks.filter(task => task.salesConfirmed).reduce((sum, task) => sum + calculateSalesValue(task), 0);
+    const totalProspectValue = filteredTasks.filter(task => task.isProspect).reduce((sum, task) => sum + getSalesValueAsNumber(task.salesValue), 0);
+    const openProspectValue = filteredTasks.filter(task => task.isProspect && task.status === 'pending').reduce((sum, task) => sum + getSalesValueAsNumber(task.salesValue), 0);
+    const closedWonValue = filteredTasks.filter(task => task.salesConfirmed).reduce((sum, task) => sum + getSalesValueAsNumber(task.salesValue), 0);
 
     // Terceira barra: Vendas/Faturamento
     const confirmadas = filteredTasks.filter(task => task.salesConfirmed).length;
@@ -272,7 +273,7 @@ export const SalesFunnel: React.FC = () => {
       if (task.taskType === 'ligacao') client.totalCalls++;
       if (task.taskType === 'checklist') client.totalChecklists++;
       if (task.isProspect) client.prospects++;
-      client.salesValue += calculateSalesValue(task);
+      client.salesValue += getSalesValueAsNumber(task.salesValue);
       if (task.createdAt > client.lastActivity) {
         client.lastActivity = task.createdAt;
       }
@@ -294,7 +295,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'contacts-checklists':
         return filteredTasks.filter(task => task.taskType === 'checklist').map(task => ({
@@ -305,7 +306,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'contacts-ligacoes':
         return filteredTasks.filter(task => task.taskType === 'ligacao').map(task => ({
@@ -316,7 +317,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
 
       // Filtros para Prospecções específicas
@@ -330,7 +331,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'prospects-fechadas':
         return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
@@ -342,7 +343,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'prospects-perdidas':
         return filteredTasks.filter(task => task.isProspect && task.status === 'closed' && !task.salesConfirmed).map(task => ({
@@ -354,7 +355,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
 
       // Filtros gerais
@@ -367,7 +368,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'prospects':
         return filteredTasks.filter(task => task.isProspect).map(task => ({
@@ -379,7 +380,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'sales-confirmed':
         return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
@@ -390,7 +391,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'sales-partial':
         return filteredTasks.filter(task => {
@@ -404,7 +405,7 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'sales':
         return filteredTasks.filter(task => task.salesConfirmed).map(task => ({
@@ -415,13 +416,13 @@ export const SalesFunnel: React.FC = () => {
             locale: ptBR
           }),
           filial: resolveFilialName(task.filial),
-          value: calculateSalesValue(task)
+          value: getSalesValueAsNumber(task.salesValue)
         }));
       default:
         return [];
     }
   }, [selectedFunnelSection, filteredTasks, filiais]);
-  const totalSalesValue = filteredTasks.reduce((sum, task) => sum + calculateSalesValue(task), 0);
+  const totalSalesValue = filteredTasks.reduce((sum, task) => sum + getSalesValueAsNumber(task.salesValue), 0);
   const chartConfig = {
     value: {
       label: "Quantidade",
@@ -945,7 +946,7 @@ export const SalesFunnel: React.FC = () => {
                                 .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
                             } else {
                               // Para outros casos, usar a função padrão
-                              salesValue = calculateSalesValue(task);
+                              salesValue = getSalesValueAsNumber(task.salesValue);
                             }
                             
                             return salesValue > 0 ? new Intl.NumberFormat('pt-BR', {
