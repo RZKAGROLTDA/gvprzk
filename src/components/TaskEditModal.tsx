@@ -67,17 +67,26 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesConfirmed: fullTask.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
-        // Carregar os prospectItems com os valores salvos exatos  
-        prospectItems: fullTask.checklist?.map(item => ({
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          quantity: item.quantity || 0,
-          price: item.price || 0,
-          selected: item.selected || false,
-          observations: item.observations || '',
-          photos: item.photos || []
-        })) || []
+        // Carregar os prospectItems salvos ou criar defaults se não existirem
+        prospectItems: fullTask.checklist && fullTask.checklist.length > 0 
+          ? fullTask.checklist.map(item => ({
+              id: item.id,
+              name: item.name,
+              category: item.category,
+              quantity: item.quantity || 0,
+              price: item.price || 0,
+              selected: item.selected || false,
+              observations: item.observations || '',
+              photos: item.photos || []
+            }))
+          : fullTask.salesType === 'parcial' || (fullTask.salesConfirmed === true && fullTask.prospectItems && fullTask.prospectItems.length > 0)
+            ? [
+                { id: '1', name: 'Pneus', category: 'tires' as const, selected: false, quantity: 1, price: 0 },
+                { id: '2', name: 'Lubrificantes', category: 'lubricants' as const, selected: false, quantity: 1, price: 0 },
+                { id: '3', name: 'Peças', category: 'parts' as const, selected: false, quantity: 1, price: 0 },
+                { id: '4', name: 'Serviços', category: 'services' as const, selected: false, quantity: 1, price: 0 }
+              ]
+            : []
       });
     }
   }, [fullTask]);
@@ -119,6 +128,20 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       console.log('  - finalIsProspect:', finalIsProspect);
       console.log('  - finalStatus:', finalStatus);
 
+      // Determinar o tipo de venda baseado nos produtos selecionados
+      let salesType = null;
+      if (finalSalesConfirmed === true) {
+        if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
+          // Tem produtos parciais selecionados
+          salesType = 'parcial';
+        } else {
+          // Venda do valor total
+          salesType = 'ganho';
+        }
+      } else if (finalSalesConfirmed === false) {
+        salesType = 'perdido';
+      }
+
       const updateData = {
         name: editedTask.name,
         responsible: editedTask.responsible,
@@ -129,6 +152,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         status: finalStatus,
         sales_value: editedTask.salesValue || 0, // Sempre usar o valor original
         sales_confirmed: finalSalesConfirmed, // Preservar valor exato
+        sales_type: salesType, // Definir tipo de venda
         is_prospect: finalIsProspect,
         prospect_notes: editedTask.prospectNotes || '',
         updated_at: new Date().toISOString()
@@ -145,6 +169,36 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       if (error) {
         console.error('Erro no Supabase:', error);
         throw error;
+      }
+
+      // Salvar produtos da venda parcial se existirem
+      if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
+        // Primeiro, deletar produtos existentes para esta task
+        await supabase
+          .from('products')
+          .delete()
+          .eq('task_id', editedTask.id);
+
+        // Inserir os novos produtos
+        const productsToInsert = editedTask.prospectItems.map(item => ({
+          task_id: editedTask.id,
+          name: item.name,
+          category: item.category,
+          selected: item.selected,
+          quantity: item.quantity || 1,
+          price: item.price || 0,
+          observations: item.observations || '',
+          photos: item.photos || []
+        }));
+
+        const { error: productsError } = await supabase
+          .from('products')
+          .insert(productsToInsert);
+
+        if (productsError) {
+          console.error('Erro ao salvar produtos:', productsError);
+          throw productsError;
+        }
       }
 
       console.log('Tarefa atualizada com sucesso no banco de dados');
