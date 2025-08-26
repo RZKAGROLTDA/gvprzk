@@ -46,18 +46,19 @@ export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> 
 };
 
 export const mapSalesStatus = (task: Task): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
+  // PRIORIZAR o campo sales_type se existir (correção crítica)
+  if (task.salesType === 'parcial') return 'parcial';
+  if (task.salesType === 'ganho') return 'ganho';
+  if (task.salesType === 'perdido') return 'perdido';
+  
   // Se não é um prospect, retorna prospect
   if (!task.isProspect) return 'prospect';
   
   // Se salesConfirmed é undefined ou null, é um prospect em andamento
   if (task.salesConfirmed === undefined || task.salesConfirmed === null) return 'prospect';
   
-  // Se salesConfirmed é true, verifica se é venda parcial
+  // Se salesConfirmed é true mas não tem sales_type, considera ganho
   if (task.salesConfirmed === true) {
-    // PRIORITIZAR o campo sales_type se existir
-    if (task.salesType === 'parcial') return 'parcial';
-    if (task.salesType === 'ganho') return 'ganho';
-    // Fallback: se não tem sales_type definido, considera ganho
     return 'ganho';
   }
   
@@ -125,14 +126,15 @@ export const mapTaskToStandardFields = (task: Task) => {
   return standardized;
 };
 
-// Function to calculate sales value - overloaded for single task
+// Function to calculate sales value - CORRIGIDO para usar calculadora unificada
 export const calculateSalesValue = (taskOrTasks: Task | Task[]): number => {
+  // Import dinâmico para evitar dependência circular
+  const { calculateTaskSalesValue, calculateTotalSalesValue } = require('./salesValueCalculator');
+  
   if (Array.isArray(taskOrTasks)) {
-    return taskOrTasks.reduce((sum, task) => {
-      return sum + getSalesValueAsNumber(task.salesValue);
-    }, 0);
+    return calculateTotalSalesValue(taskOrTasks);
   } else {
-    return getSalesValueAsNumber(taskOrTasks.salesValue);
+    return calculateTaskSalesValue(taskOrTasks);
   }
 };
 

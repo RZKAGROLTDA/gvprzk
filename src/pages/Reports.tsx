@@ -110,8 +110,10 @@ const Reports: React.FC = () => {
       const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
       const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
       const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-      const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => {
-        // Para vendas parciais, calcular o valor baseado nos produtos selecionados
+      const salesValue = tasks?.filter(task => 
+        task.sales_confirmed === true || task.sales_type === 'parcial'
+      ).reduce((sum, task) => {
+        // USAR a calculadora unificada para vendas parciais
         if (task.sales_type === 'parcial' && task.products && Array.isArray(task.products)) {
           const partialValue = task.products
             .filter(product => product.selected)
