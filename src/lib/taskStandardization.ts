@@ -54,8 +54,10 @@ export const mapSalesStatus = (task: Task): 'prospect' | 'ganho' | 'perdido' | '
   
   // Se salesConfirmed é true, verifica se é venda parcial
   if (task.salesConfirmed === true) {
-    // Se tem sales_type definido como parcial, usa ele
+    // PRIORITIZAR o campo sales_type se existir
     if (task.salesType === 'parcial') return 'parcial';
+    if (task.salesType === 'ganho') return 'ganho';
+    // Fallback: se não tem sales_type definido, considera ganho
     return 'ganho';
   }
   
@@ -123,11 +125,15 @@ export const mapTaskToStandardFields = (task: Task) => {
   return standardized;
 };
 
-// Function to calculate sales value (backward compatibility)
-export const calculateSalesValue = (tasks: Task[]): number => {
-  return tasks.reduce((sum, task) => {
-    return sum + getSalesValueAsNumber(task.salesValue);
-  }, 0);
+// Function to calculate sales value - overloaded for single task
+export const calculateSalesValue = (taskOrTasks: Task | Task[]): number => {
+  if (Array.isArray(taskOrTasks)) {
+    return taskOrTasks.reduce((sum, task) => {
+      return sum + getSalesValueAsNumber(task.salesValue);
+    }, 0);
+  } else {
+    return getSalesValueAsNumber(taskOrTasks.salesValue);
+  }
 };
 
 // Função para calcular estatísticas agregadas

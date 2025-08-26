@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { createTaskWithFilialSnapshot, resolveFilialName } from '@/lib/taskStandardization';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getSalesValueAsNumber, formatSalesValue } from '@/lib/securityUtils';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface TaskEditModalProps {
   task: Task | null;
@@ -28,6 +29,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 }) => {
   const [editedTask, setEditedTask] = useState<Partial<Task>>({});
   const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   // Carregar detalhes completos da task se necessário
   const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
@@ -203,6 +205,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       console.log('Tarefa atualizada com sucesso no banco de dados');
 
+      // Invalidar cache globalmente para garantir atualização em todas as páginas
+      await queryClient.invalidateQueries();
+      
       toast.success("✅ Tarefa Atualizada - As alterações foram salvas com sucesso!");
 
       // Recarregar os dados para garantir sincronização
