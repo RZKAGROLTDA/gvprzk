@@ -74,7 +74,7 @@ export const SalesFunnel: React.FC = () => {
       setIsLoading(true);
       try {
         // Carregamento paralelo para melhor performance
-        const [profilesResponse, filiaisResponse] = await Promise.all([supabase.from('profiles').select('id, name').eq('approval_status', 'approved'), supabase.from('filiais').select('id, nome').order('nome')]);
+        const [profilesResponse, filiaisResponse] = await Promise.all([supabase.from('profiles').select('id, name, filial_id').eq('approval_status', 'approved'), supabase.from('filiais').select('id, nome').order('nome')]);
         setConsultants(profilesResponse.data || []);
         setFiliais(filiaisResponse.data || []);
         console.log('📊 Dados carregados:', {
