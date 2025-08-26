@@ -14,10 +14,12 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache, calculateSalesValue } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { FormVisualization } from '@/components/FormVisualization';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { Task } from '@/types/task';
+import { useSecurityCache } from '@/hooks/useSecurityCache';
 interface SalesFunnelData {
   name: string;
   value: number;
@@ -48,6 +50,7 @@ export const SalesFunnel: React.FC = () => {
   const {
     user
   } = useAuth();
+  const { invalidateAll } = useSecurityCache();
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
@@ -921,39 +924,20 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                         <TableCell>
                           {(() => {
-                            // Verificar se a venda foi confirmada
-                            if (task.salesConfirmed) {
-                              // Venda finalizada - mostrar valor total
-                              return new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL'
-                              }).format(getSalesValueAsNumber(task.salesValue));
-                            }
-                            
-                            // Verificar se é venda parcial através do sales_type ou status
+                            // Usar a função padronizada de cálculo de vendas
+                            const finalSalesValue = calculateTaskSalesValue(task);
                             const salesStatus = mapSalesStatus(task);
-                            if (salesStatus === 'parcial') {
-                              // Venda parcial - calcular valor dos produtos selecionados
-                              let parcialValue = 0;
-                              
-                              if (task.products && Array.isArray(task.products)) {
-                                parcialValue = task.products
-                                  .filter(product => product.selected)
-                                  .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
-                              } else if (task.prospectItems && Array.isArray(task.prospectItems)) {
-                                parcialValue = task.prospectItems
-                                  .filter(item => item.selected)
-                                  .reduce((acc, item) => acc + ((item.quantity || 0) * (item.price || 0)), 0);
-                              }
-                              
-                              return parcialValue > 0 ? new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL'
-                              }).format(parcialValue) : '-';
+                            
+                            // Se não há venda realizada (prospect ou perdido), não mostrar valor
+                            if (salesStatus === 'prospect' || salesStatus === 'perdido') {
+                              return '-';
                             }
                             
-                            // Para prospects ou vendas perdidas, não há valor realizado
-                            return '-';
+                            // Para vendas realizadas (ganho ou parcial), mostrar o valor calculado
+                            return finalSalesValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL'
+                            }).format(finalSalesValue) : '-';
                           })()}
                         </TableCell>
                       <TableCell>
@@ -1083,7 +1067,9 @@ export const SalesFunnel: React.FC = () => {
             setIsVisualizationModalOpen(false);
             setSelectedTask(null);
           }}
-          onTaskUpdated={() => {
+          onTaskUpdated={async () => {
+            // Invalidar cache globalmente para garantir sincronização
+            await invalidateAll();
             refetch();
           }}
         />
@@ -1097,7 +1083,10 @@ export const SalesFunnel: React.FC = () => {
             setIsEditModalOpen(open);
             if (!open) setSelectedTask(null);
           }}
-          onTaskUpdate={() => {
+          onTaskUpdate={async () => {
+            // Invalidar cache globalmente para garantir sincronização
+            await invalidateAll();
+            // Recarregar dados localmente
             refetch();
           }}
         />
