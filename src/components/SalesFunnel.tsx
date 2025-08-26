@@ -1097,8 +1097,10 @@ export const SalesFunnel: React.FC = () => {
             setIsEditModalOpen(open);
             if (!open) setSelectedTask(null);
           }}
-          onTaskUpdate={() => {
-            refetch();
+          onTaskUpdate={async () => {
+            await refetch();
+            // Limpar a task selecionada para forçar re-render
+            setSelectedTask(null);
           }}
         />
     )}
