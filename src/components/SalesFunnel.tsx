@@ -1098,9 +1098,15 @@ export const SalesFunnel: React.FC = () => {
             if (!open) setSelectedTask(null);
           }}
           onTaskUpdate={async () => {
-            await refetch();
-            // Limpar a task selecionada para forçar re-render
+            console.log('🔄 SalesFunnel - Iniciando onTaskUpdate');
+            
+            // Refetch para obter dados atualizados
+            const result = await refetch();
+            console.log('🔄 SalesFunnel - Refetch concluído:', result.data?.length, 'tasks');
+            
+            // Limpar a task selecionada para forçar re-render com dados atualizados
             setSelectedTask(null);
+            console.log('🔄 SalesFunnel - SelectedTask limpa, UI será atualizada');
           }}
         />
     )}

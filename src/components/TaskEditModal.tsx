@@ -186,6 +186,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         throw error;
       }
 
+      console.log('✅ Task atualizada no banco de dados com sucesso');
+
       // Salvar produtos da venda parcial se existirem
       if (editedTask.prospectItems && editedTask.prospectItems.length > 0) {
         // Primeiro, deletar produtos existentes para esta task
@@ -216,15 +218,21 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         }
       }
 
-      console.log('Tarefa atualizada com sucesso no banco de dados');
+      console.log('✅ Produtos salvos com sucesso');
 
-      // Invalidar cache globalmente para garantir atualização em todas as páginas
+      // Invalidar cache globalmente PRIMEIRO
       await invalidateAll();
+      
+      console.log('✅ Cache invalidado com sucesso');
       
       toast.success("✅ Tarefa Atualizada - As alterações foram salvas com sucesso!");
 
-      // Recarregar os dados para garantir sincronização
-      onTaskUpdate();
+      // Chamar onTaskUpdate e aguardar para garantir que a UI seja atualizada
+      await onTaskUpdate();
+      
+      console.log('✅ onTaskUpdate executado com sucesso');
+      
+      // Fechar modal após garantir que tudo foi atualizado
       onOpenChange(false);
     } catch (error: any) {
       console.error('Erro ao atualizar tarefa:', error);
