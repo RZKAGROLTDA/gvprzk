@@ -17,6 +17,7 @@ import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { FormVisualization } from '@/components/FormVisualization';
 import { TaskEditModal } from '@/components/TaskEditModal';
+import { ReportExporter } from '@/components/ReportExporter';
 import { Task } from '@/types/task';
 interface SalesFunnelData {
   name: string;
@@ -50,7 +51,7 @@ export const SalesFunnel: React.FC = () => {
   } = useAuth();
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
-  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'reports'>('overview');
   const [selectedFunnelSection, setSelectedFunnelSection] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -550,6 +551,13 @@ export const SalesFunnel: React.FC = () => {
             </CardContent>
           </Card>
 
+          <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50" onClick={() => setActiveView('reports')}>
+            <CardContent className="p-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold">Relatórios</h3>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/50" onClick={() => setActiveView('details')}>
             <CardContent className="p-6">
@@ -817,6 +825,36 @@ export const SalesFunnel: React.FC = () => {
 
         </div>}
 
+      {/* Conteúdo dos Relatórios */}
+      {activeView === 'reports' && <Card>
+          <CardHeader>
+            <CardTitle>Exportar Relatórios</CardTitle>
+            <CardDescription>
+              Gere relatórios detalhados em PDF ou Excel com base nos filtros aplicados
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              <p>Os relatórios incluirão:</p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Dados de visitas, ligações e checklists</li>
+                <li>Informações dos clientes e responsáveis</li>
+                <li>Valores de vendas e prospecções</li>
+                <li>Resumo financeiro por período</li>
+              </ul>
+            </div>
+            
+            <div className="border-t pt-4">
+              <ReportExporter />
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              <p>
+                <strong>Nota:</strong> Os relatórios respeitam os filtros de período, vendedor, filial e tipo de atividade selecionados acima.
+              </p>
+            </div>
+          </CardContent>
+        </Card>}
 
       {/* Conteúdo dos Detalhes */}
       {activeView === 'details' && <Card>
