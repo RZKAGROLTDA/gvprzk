@@ -915,29 +915,39 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                         <TableCell>
                           {(() => {
-                            const salesType = task.sales_type;
-                            let realizedValue = 0;
-                            
-                            if (salesType === 'ganho') {
-                              // Para vendas ganhas, mostrar o valor total
-                              realizedValue = getSalesValueAsNumber(task.salesValue);
-                            } else if (salesType === 'parcial' && task.products && Array.isArray(task.products)) {
-                              // Para vendas parciais, calcular baseado nos produtos selecionados
-                              realizedValue = task.products
-                                .filter(product => product.selected)
-                                .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
-                            } else if (salesType === 'parcial' && task.prospectItems && Array.isArray(task.prospectItems)) {
-                              // Alternativa: usar prospectItems se não houver products
-                              realizedValue = task.prospectItems
-                                .filter(item => item.selected)
-                                .reduce((acc, item) => acc + ((item.quantity || 0) * (item.price || 0)), 0);
+                            // Verificar se a venda foi confirmada
+                            if (task.salesConfirmed) {
+                              // Venda finalizada - mostrar valor total
+                              return new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                              }).format(getSalesValueAsNumber(task.salesValue));
                             }
-                            // Para 'perdido' e 'prospect', realizedValue permanece 0
                             
-                            return realizedValue > 0 ? new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL'
-                            }).format(realizedValue) : '-';
+                            // Verificar se é venda parcial através do sales_type ou status
+                            const salesStatus = mapSalesStatus(task);
+                            if (salesStatus === 'parcial') {
+                              // Venda parcial - calcular valor dos produtos selecionados
+                              let parcialValue = 0;
+                              
+                              if (task.products && Array.isArray(task.products)) {
+                                parcialValue = task.products
+                                  .filter(product => product.selected)
+                                  .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
+                              } else if (task.prospectItems && Array.isArray(task.prospectItems)) {
+                                parcialValue = task.prospectItems
+                                  .filter(item => item.selected)
+                                  .reduce((acc, item) => acc + ((item.quantity || 0) * (item.price || 0)), 0);
+                              }
+                              
+                              return parcialValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                              }).format(parcialValue) : '-';
+                            }
+                            
+                            // Para prospects ou vendas perdidas, não há valor realizado
+                            return '-';
                           })()}
                         </TableCell>
                       <TableCell>
