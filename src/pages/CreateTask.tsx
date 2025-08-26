@@ -6916,8 +6916,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Perguntas da Ligação
+                    <ShoppingCart className="h-5 w-5" />
+                    Produtos para Ofertar
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
