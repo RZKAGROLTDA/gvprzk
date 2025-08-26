@@ -13,6 +13,8 @@ import { createTaskWithFilialSnapshot, resolveFilialName } from '@/lib/taskStand
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getSalesValueAsNumber, formatSalesValue } from '@/lib/securityUtils';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { StatusSelectionComponent } from './StatusSelectionComponent';
+import { ProductListComponent } from './ProductListComponent';
 
 interface TaskEditModalProps {
   task: Task | null;
@@ -348,117 +350,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-base font-medium">Status do Prospect</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
-              <div 
-                className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                  editedTask.salesConfirmed === undefined && editedTask.isProspect
-                    ? 'border-blue-500 bg-blue-50 shadow-lg' 
-                    : 'border-gray-200 bg-white hover:border-blue-300'
-                }`} 
-                 onClick={() => {
-                  console.log('Selecionando: Prospect Em Andamento');
-                  setEditedTask(prev => ({
-                    ...prev,
-                    salesConfirmed: undefined,
-                    isProspect: true,
-                    prospectNotes: ''
-                  }));
-                }}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    editedTask.salesConfirmed === undefined && editedTask.isProspect
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    ⏳
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Prospect Em Andamento</div>
-                    <div className="text-xs text-muted-foreground">Negociação em curso</div>
-                  </div>
-                </div>
-                {editedTask.salesConfirmed === undefined && editedTask.isProspect && (
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                )}
-              </div>
-              
-              <div 
-                className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                  editedTask.salesConfirmed === true 
-                    ? 'border-green-500 bg-green-50 shadow-lg' 
-                    : 'border-gray-200 bg-white hover:border-green-300'
-                }`} 
-                onClick={() => {
-                  console.log('Selecionando: Venda Realizada');
-                  setEditedTask(prev => ({
-                    ...prev,
-                    salesConfirmed: true,
-                    isProspect: true,
-                    prospectItems: [] // Sempre selecionar "Valor Total" quando escolher "Venda Realizada"
-                  }));
-                }}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    editedTask.salesConfirmed === true 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    💰
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Venda Realizada</div>
-                    <div className="text-xs text-muted-foreground">Prospect convertido</div>
-                  </div>
-                </div>
-                {editedTask.salesConfirmed === true && (
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                )}
-              </div>
-              
-              <div 
-                className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-                  editedTask.salesConfirmed === false 
-                    ? 'border-red-500 bg-red-50 shadow-lg' 
-                    : 'border-gray-200 bg-white hover:border-red-300'
-                }`} 
-                onClick={() => {
-                  console.log('Selecionando: Venda Perdida');
-                  setEditedTask(prev => ({
-                    ...prev,
-                    salesConfirmed: false,
-                    isProspect: true
-                  }));
-                }}
-              >
-                <div className="flex flex-col items-center text-center space-y-2">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    editedTask.salesConfirmed === false 
-                      ? 'bg-red-500 text-white' 
-                      : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    ❌
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">Venda Perdida</div>
-                    <div className="text-xs text-muted-foreground">Negócio não realizado</div>
-                  </div>
-                </div>
-                {editedTask.salesConfirmed === false && (
-                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <StatusSelectionComponent
+            salesConfirmed={editedTask.salesConfirmed}
+            prospectNotes={editedTask.prospectNotes}
+            isProspect={editedTask.isProspect}
+            onStatusChange={(status) => {
+              setEditedTask(prev => ({
+                ...prev,
+                ...status
+              }));
+            }}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="edit-salesValue">Valor de Venda/Oportunidade (R$)</Label>
@@ -477,27 +379,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </p>
           </div>
 
-          {/* Campo de observação para venda perdida */}
-          {editedTask.salesConfirmed === false && <div className="space-y-2">
-              <Label htmlFor="edit-lossReason">Motivo da Perda</Label>
-              <Select value={editedTask.prospectNotes || ''} onValueChange={value => setEditedTask(prev => ({
-            ...prev,
-            prospectNotes: value
-          }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o motivo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Falta de peça">Falta de peça</SelectItem>
-                  <SelectItem value="Preço">Preço</SelectItem>
-                  <SelectItem value="Prazo">Prazo</SelectItem>
-                  <SelectItem value="Duplo Domicilio">Duplo Domicilio</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>}
 
           {/* Opções para venda realizada */}
-          {editedTask.salesConfirmed === true && <div className="space-y-4">
+          {editedTask.salesConfirmed === true && (
+            <div className="space-y-4">
               <div>
                 <Label className="text-sm font-medium">Tipo de Venda</Label>
                 <div className="grid grid-cols-2 gap-3 mt-2">
@@ -547,119 +432,20 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 </div>
               </div>
 
-              {/* Lista de produtos para venda parcial */}
+              {/* Lista de produtos para venda parcial usando componente padronizado */}
               {editedTask.prospectItems && editedTask.prospectItems.length > 0 && (
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Produtos Vendidos</Label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                    {editedTask.prospectItems.map((item, index) => (
-                      <div key={item.id} className="flex items-center justify-between space-x-3 p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            checked={item.selected}
-                            onCheckedChange={(checked) => {
-                              const updatedItems = [...(editedTask.prospectItems || [])];
-                              updatedItems[index] = { ...updatedItems[index], selected: checked as boolean };
-                              setEditedTask(prev => ({ ...prev, prospectItems: updatedItems }));
-                            }}
-                          />
-                          <div className="flex-1">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">{item.name}</span>
-                              <span className="text-xs text-muted-foreground">({item.category})</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2 min-w-[300px]">
-                          <div className="flex flex-col space-y-1">
-                            <Label className="text-xs">Qtd</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={item.quantity || 1}
-                              onChange={(e) => {
-                                const quantity = parseInt(e.target.value) || 1;
-                                const updatedItems = [...(editedTask.prospectItems || [])];
-                                updatedItems[index] = { ...updatedItems[index], quantity };
-                                setEditedTask(prev => ({ ...prev, prospectItems: updatedItems }));
-                              }}
-                              className="w-16 h-8 text-xs"
-                            />
-                          </div>
-                          
-                          <div className="flex flex-col space-y-1">
-                            <Label className="text-xs">Preço Unit.</Label>
-                            <div className="relative">
-                              <Input
-                                type="text"
-                                value={item.price ? new Intl.NumberFormat('pt-BR', { 
-                                  minimumFractionDigits: 2, 
-                                  maximumFractionDigits: 2 
-                                }).format(item.price) : '0,00'}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, '');
-                                  const price = parseFloat(value) / 100;
-                                  const updatedItems = [...(editedTask.prospectItems || [])];
-                                  updatedItems[index] = { ...updatedItems[index], price: isNaN(price) ? 0 : price };
-                                  setEditedTask(prev => ({ ...prev, prospectItems: updatedItems }));
-                                }}
-                                className="w-20 h-8 text-xs pl-4"
-                              />
-                              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col space-y-1">
-                            <Label className="text-xs">Total</Label>
-                            <div className={`w-24 h-8 px-2 rounded-md border flex items-center justify-end ${
-                              item.selected 
-                                ? 'bg-green-100 border-green-300 text-green-700 font-bold' 
-                                : 'bg-gray-50 border-gray-200 text-gray-500'
-                            }`}>
-                              <span className="text-xs font-medium">
-                                {new Intl.NumberFormat('pt-BR', { 
-                                  style: 'currency', 
-                                  currency: 'BRL' 
-                                }).format((item.quantity || 1) * (item.price || 0))}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Valor total dos produtos selecionados (apenas informativo) */}
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <Label className="text-sm font-medium text-blue-700">Valor dos Produtos Selecionados:</Label>
-                    <div className="text-lg font-bold text-blue-700">
-                      R$ {new Intl.NumberFormat('pt-BR', { 
-                        minimumFractionDigits: 2, 
-                        maximumFractionDigits: 2 
-                      }).format(calculateSelectedProductsValue())}
-                    </div>
-                  </div>
-                  
-                  {/* Mostrar diferença entre valor total da oportunidade e produtos selecionados */}
-                  {calculateSelectedProductsValue() !== getSalesValueAsNumber(editedTask.salesValue) && (
-                    <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="flex flex-col">
-                        <Label className="text-sm font-medium text-yellow-700">Diferença (Oportunidade - Produtos):</Label>
-                        <Label className="text-xs text-yellow-600">
-                          Percentual de Conversão: {getSalesValueAsNumber(editedTask.salesValue) > 0 
-                            ? Math.round((calculateSelectedProductsValue() / getSalesValueAsNumber(editedTask.salesValue)) * 100)
-                            : 0}%
-                        </Label>
-                      </div>
-                      <div className="text-lg font-bold text-yellow-700">
-                        {formatSalesValue(getSalesValueAsNumber(editedTask.salesValue) - calculateSelectedProductsValue())}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <ProductListComponent
+                  products={editedTask.prospectItems || []}
+                  onProductChange={(products) => {
+                    setEditedTask(prev => ({ ...prev, prospectItems: products }));
+                  }}
+                  readOnly={false}
+                  showSelectedOnly={false}
+                  title="Selecionar Produtos para Venda Parcial"
+                />
               )}
-            </div>}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="edit-observations">Observações</Label>
