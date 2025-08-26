@@ -566,17 +566,43 @@ export type Database = {
         }[]
       }
       get_secure_task_data: {
-        Args: { task_id_param: string }
+        Args: { task_id_param: string } | { task_ids?: string[] }
         Returns: {
+          access_level: string
+          check_in_location: Json
           client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
           email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
           filial: string
+          final_km: number
           id: string
+          initial_km: number
           is_masked: boolean
+          is_prospect: boolean
           name: string
+          observations: string
+          photos: string[]
+          priority: string
           property: string
+          propertyhectares: number
+          prospect_notes: string
           responsible: string
+          sales_confirmed: boolean
+          sales_type: string
           sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
         }[]
       }
       get_secure_tasks_view: {
