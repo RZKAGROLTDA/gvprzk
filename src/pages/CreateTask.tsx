@@ -7049,59 +7049,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </Card>
 
               {/* Produtos para Ofertar */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Produtos para Ofertar
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Produtos Recomendados para o Cliente:</Label>
-                      <Textarea placeholder="Liste os produtos que podem ser oferecidos para este cliente..." className="min-h-[80px]" />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Prioridade da Oferta:</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a prioridade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="alta">Alta</SelectItem>
-                            <SelectItem value="media">Média</SelectItem>
-                            <SelectItem value="baixa">Baixa</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Categoria Principal:</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a categoria" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="lubricantes">Lubrificantes</SelectItem>
-                            <SelectItem value="pneus">Pneus</SelectItem>
-                            <SelectItem value="pecas">Peças</SelectItem>
-                            <SelectItem value="servicos">Serviços</SelectItem>
-                            <SelectItem value="outros">Outros</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Observações sobre a Oferta:</Label>
-                      <Textarea placeholder="Observações específicas sobre os produtos a serem oferecidos..." className="min-h-[60px]" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              
             </>}
         </div>
 
