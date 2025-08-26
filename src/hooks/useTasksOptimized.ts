@@ -102,9 +102,9 @@ export const useTasksOptimized = (includeDetails = false) => {
       }
     },
     enabled: !!user,
-    staleTime: 1 * 60 * 1000, // Reduzido para 1 minuto para dados mais frescos
-    refetchOnWindowFocus: true, // Refetch quando a janela receber foco
-    refetchOnMount: 'always', // Sempre buscar dados frescos no mount
+    staleTime: 2 * 60 * 1000, // 2 minutos - cache mais responsivo
+    refetchOnWindowFocus: false,
+    refetchOnMount: true, // Permitir refetch no mount para dados atuais
     retry: 1, // Apenas 1 retry para performance
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
