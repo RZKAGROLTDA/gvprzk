@@ -69,26 +69,39 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesConfirmed: fullTask.salesConfirmed,
         isProspect: task.isProspect || false,
         prospectNotes: task.prospectNotes || '',
-        // Carregar os prospectItems salvos ou criar defaults se não existirem
-        prospectItems: fullTask.checklist && fullTask.checklist.length > 0 
-          ? fullTask.checklist.map(item => ({
-              id: item.id,
-              name: item.name,
-              category: item.category,
-              quantity: item.quantity || 0,
-              price: item.price || 0,
-              selected: item.selected || false,
-              observations: item.observations || '',
-              photos: item.photos || []
-            }))
-          : fullTask.salesType === 'parcial' || (fullTask.salesConfirmed === true && fullTask.prospectItems && fullTask.prospectItems.length > 0)
-            ? [
-                { id: '1', name: 'Pneus', category: 'tires' as const, selected: false, quantity: 1, price: 0 },
-                { id: '2', name: 'Lubrificantes', category: 'lubricants' as const, selected: false, quantity: 1, price: 0 },
-                { id: '3', name: 'Peças', category: 'parts' as const, selected: false, quantity: 1, price: 0 },
-                { id: '4', name: 'Serviços', category: 'services' as const, selected: false, quantity: 1, price: 0 }
-              ]
-            : []
+        // Carregar os prospectItems salvos baseado no tipo de tarefa
+        prospectItems: fullTask.taskType === 'ligacao' 
+          ? (fullTask.prospectItems && fullTask.prospectItems.length > 0 
+              ? fullTask.prospectItems.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  category: item.category,
+                  quantity: item.quantity || 0,
+                  price: item.price || 0,
+                  selected: item.selected || false,
+                  observations: item.observations || '',
+                  photos: item.photos || []
+                }))
+              : [])
+          : (fullTask.checklist && fullTask.checklist.length > 0 
+              ? fullTask.checklist.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  category: item.category,
+                  quantity: item.quantity || 0,
+                  price: item.price || 0,
+                  selected: item.selected || false,
+                  observations: item.observations || '',
+                  photos: item.photos || []
+                }))
+              : fullTask.salesType === 'parcial' || (fullTask.salesConfirmed === true && fullTask.prospectItems && fullTask.prospectItems.length > 0)
+                ? [
+                    { id: '1', name: 'Pneus', category: 'tires' as const, selected: false, quantity: 1, price: 0 },
+                    { id: '2', name: 'Lubrificantes', category: 'lubricants' as const, selected: false, quantity: 1, price: 0 },
+                    { id: '3', name: 'Peças', category: 'parts' as const, selected: false, quantity: 1, price: 0 },
+                    { id: '4', name: 'Serviços', category: 'services' as const, selected: false, quantity: 1, price: 0 }
+                  ]
+                : [])
       });
     }
   }, [fullTask]);
