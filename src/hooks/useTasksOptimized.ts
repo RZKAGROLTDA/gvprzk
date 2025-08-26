@@ -119,7 +119,7 @@ export const useTasksOptimized = (includeDetails = false) => {
       const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
       
       // Process equipment data from equipmentList
-      const equipmentData = taskData.equipmentList && taskData.equipmentList.length > 0 
+      const equipmentData = Array.isArray(taskData.equipmentList) && taskData.equipmentList.length > 0 
         ? {
             family_product: taskData.equipmentList[0]?.familyProduct || null,
             equipment_quantity: taskData.equipmentList.reduce((sum: number, eq: any) => sum + (eq.quantity || 0), 0),

@@ -48,16 +48,16 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     endTime: supabaseTask.end_time,
     observations: supabaseTask.observations || '',
     priority: supabaseTask.priority,
-    reminders: supabaseTask.reminders?.map((reminder: any) => ({
+    reminders: Array.isArray(supabaseTask.reminders) ? supabaseTask.reminders.map((reminder: any) => ({
       id: reminder.id,
       title: reminder.title,
       description: reminder.description || '',
       date: new Date(reminder.date),
       time: reminder.time,
       completed: reminder.completed || false,
-    })) || [],
-    photos: supabaseTask.photos || [],
-    documents: supabaseTask.documents || [],
+    })) : [],
+    photos: Array.isArray(supabaseTask.photos) ? supabaseTask.photos : [],
+    documents: Array.isArray(supabaseTask.documents) ? supabaseTask.documents : [],
     checkInLocation: supabaseTask.check_in_location ? {
       lat: supabaseTask.check_in_location.lat,
       lng: supabaseTask.check_in_location.lng,
@@ -83,7 +83,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     familyProduct: supabaseTask.family_product || '',
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
     propertyHectares: supabaseTask.propertyhectares || 0,
-    equipmentList: supabaseTask.equipment_list || [],
+    equipmentList: Array.isArray(supabaseTask.equipment_list) ? supabaseTask.equipment_list : [],
     // Add security metadata
     isMasked
   };
