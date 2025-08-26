@@ -17,8 +17,8 @@ import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useTaskDetails, useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
+import { generateTaskPDF } from './TaskPDFGenerator';
 
 // TypeScript module declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -68,329 +68,17 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   });
 
 
-  const getTaskTypeLabel = (type: string) => {
-    const types = {
-      'prospection': 'Prospecção',
-      'field_visit': 'Visita de Campo',
-      'workshop_checklist': 'Checklist de Oficina',
-      'call': 'Ligação'
-    };
-    return types[type as keyof typeof types] || type;
-  };
+  // Usar função padronizada do TaskFormCore
 
   // Calculate sales status for display
   const salesStatus = mapSalesStatus(fullTask);
 
-  const calculateTotalValue = () => {
-    let total = 0;
-    
-    // Somar valores do checklist (visitas e checklists)
-    if (fullTask?.checklist) {
-      fullTask.checklist.forEach(item => {
-        if (item.selected) {
-          total += (item.price || 0) * (item.quantity || 1);
-        }
-      });
-    }
-    
-    // Somar valores dos prospectItems (ligações)
-    if (fullTask?.prospectItems) {
-      fullTask.prospectItems.forEach(item => {
-        if (item.selected) {
-          total += (item.price || 0) * (item.quantity || 1);
-        }
-      });
-    }
-    
-    return total;
-  };
+  // Usar função padronizada do TaskFormCore
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      console.log('🔄 Iniciando geração de PDF...');
-      const pdf = new jsPDF();
-      const pageWidth = pdf.internal.pageSize.width;
-      
-      // Cabeçalho
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('RELATÓRIO DE OPORTUNIDADE', pageWidth / 2, 20, { align: 'center' });
-      
-      // Linha separadora
-      pdf.setLineWidth(0.5);
-      pdf.line(20, 25, pageWidth - 20, 25);
-      
-      let yPosition = 35;
-      
-      // Informações básicas - usando dados seguros
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('INFORMAÇÕES GERAIS', 20, yPosition);
-      yPosition += 10;
-      
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      
-      const basicInfo = [
-        ['Tipo de Tarefa:', getTaskTypeLabel(fullTask?.taskType || 'prospection')],
-        ['Cliente:', fullTask?.client || 'Não informado'],
-        ['Código do Cliente:', fullTask?.clientCode || 'Não informado'],
-        ['Email:', fullTask?.email || 'Não informado'],
-        ['Propriedade:', fullTask?.property || 'Não informado'],
-        ['Hectares:', fullTask?.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'],
-        ['Responsável:', fullTask?.responsible || 'Não informado'],
-        ['Filial:', fullTask?.filial || 'Não informado'],
-        ['Data:', fullTask?.startDate ? format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'Não informado'],
-        ['Horário:', `${fullTask?.startTime || ''} - ${fullTask?.endTime || ''}`],
-        ['Status:', getStatusLabel(salesStatus)]
-      ];
-      
-      try {
-        pdf.autoTable({
-          startY: yPosition,
-          body: basicInfo,
-          columns: [
-            { header: 'Campo', dataKey: 0 },
-            { header: 'Valor', dataKey: 1 }
-          ],
-          margin: { left: 20, right: 20 },
-          styles: { fontSize: 9, cellPadding: 3 },
-          columnStyles: { 
-            0: { fontStyle: 'bold', cellWidth: 40 },
-            1: { cellWidth: 'auto' }
-          },
-          theme: 'grid'
-        });
-        
-        yPosition = pdf.lastAutoTable.finalY + 15;
-      } catch (error) {
-        console.error('Erro na tabela de informações básicas:', error);
-        yPosition += 100; // Fallback position
-      }
-      
-      // Informações de Equipamentos (se existirem)
-      if (fullTask?.familyProduct || fullTask?.equipmentQuantity || (fullTask?.equipmentList && fullTask.equipmentList.length > 0)) {
-        if (yPosition > 250) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('INFORMAÇÕES DE EQUIPAMENTOS', 20, yPosition);
-        yPosition += 10;
-        
-        if (fullTask.familyProduct) {
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(`Família Principal do Produto: ${fullTask.familyProduct}`, 20, yPosition);
-          yPosition += 5;
-        }
-        
-        if (fullTask.equipmentQuantity) {
-          pdf.text(`Quantidade Total de Equipamentos: ${fullTask.equipmentQuantity}`, 20, yPosition);
-          yPosition += 5;
-        }
-        
-        if (fullTask.equipmentList && fullTask.equipmentList.length > 0) {
-          yPosition += 5;
-          
-          const equipmentData = fullTask.equipmentList.map(eq => [
-            eq.familyProduct || 'N/A',
-            (eq.quantity || 0).toString(),
-            eq.id || 'N/A'
-          ]);
-          
-          try {
-            pdf.autoTable({
-              startY: yPosition,
-              head: [['Família do Produto', 'Quantidade', 'ID']],
-              body: equipmentData,
-              margin: { left: 20, right: 20 },
-              styles: { fontSize: 9, cellPadding: 3 },
-              headStyles: { fillColor: [51, 122, 183] },
-              theme: 'grid'
-            });
-            
-            yPosition = pdf.lastAutoTable.finalY + 10;
-          } catch (error) {
-            console.error('Erro na tabela de equipamentos:', error);
-            yPosition += 50;
-          }
-        }
-        
-        yPosition += 10;
-      }
-      
-      // Produtos/Serviços
-      if ((fullTask?.checklist && fullTask.checklist.length > 0) || (fullTask?.prospectItems && fullTask.prospectItems.length > 0)) {
-        if (yPosition > 200) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(fullTask?.taskType === 'ligacao' ? 'PRODUTOS PARA OFERTAR' : 'PRODUTOS/SERVIÇOS', 20, yPosition);
-        yPosition += 10;
-        
-        const products = [];
-        
-        // Adicionar produtos do checklist
-        if (fullTask?.checklist) {
-          fullTask.checklist.forEach(item => {
-            products.push([
-              item.name || 'N/A',
-              item.category || 'N/A',
-              (item.quantity || 1).toString(),
-              `R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-              `R$ ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-              item.selected ? 'SELECIONADO' : 'NÃO SELECIONADO',
-              item.observations || '-'
-            ]);
-          });
-        }
-        
-        // Adicionar produtos prospect
-        if (fullTask?.prospectItems) {
-          fullTask.prospectItems.forEach(item => {
-            products.push([
-              item.name || 'N/A',
-              item.category || 'N/A',
-              (item.quantity || 1).toString(),
-              `R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-              `R$ ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-              item.selected ? 'OFERTADO' : 'NÃO OFERTADO',
-              item.observations || '-'
-            ]);
-          });
-        }
-        
-        try {
-          pdf.autoTable({
-            startY: yPosition,
-            head: [['Produto', 'Categoria', 'Qtd', 'Preço Unit.', 'Total', 'Status', 'Observações']],
-            body: products,
-            margin: { left: 20, right: 20 },
-            styles: { fontSize: 7, cellPadding: 2 },
-            headStyles: { fillColor: [51, 122, 183] },
-            columnStyles: { 
-              5: { fontStyle: 'bold' },
-              6: { cellWidth: 30 }
-            },
-            theme: 'grid'
-          });
-          
-          yPosition = pdf.lastAutoTable.finalY + 15;
-        } catch (error) {
-          console.error('Erro na tabela de produtos:', error);
-          yPosition += 100;
-        }
-      }
-      
-      // Valor total
-      const totalValue = calculateTotalValue();
-      if (totalValue > 0) {
-        if (yPosition > 250) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`VALOR TOTAL: R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, yPosition);
-        yPosition += 15;
-      }
-      
-      // Lembretes (se existirem)
-      if (fullTask?.reminders && fullTask.reminders.length > 0) {
-        if (yPosition > 200) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('LEMBRETES CONFIGURADOS', 20, yPosition);
-        yPosition += 10;
-        
-        const remindersData = fullTask.reminders.map(reminder => [
-          reminder.title || 'N/A',
-          reminder.description || '',
-          reminder.date ? format(new Date(reminder.date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
-          reminder.time || 'N/A',
-          reminder.completed ? 'Concluído' : 'Pendente'
-        ]);
-        
-        try {
-          pdf.autoTable({
-            startY: yPosition,
-            head: [['Título', 'Descrição', 'Data', 'Horário', 'Status']],
-            body: remindersData,
-            margin: { left: 20, right: 20 },
-            styles: { fontSize: 8, cellPadding: 3 },
-            headStyles: { fillColor: [51, 122, 183] },
-            theme: 'grid'
-          });
-          
-          yPosition = pdf.lastAutoTable.finalY + 15;
-        } catch (error) {
-          console.error('Erro na tabela de lembretes:', error);
-          yPosition += 50;
-        }
-      }
-      
-      // Observações (se existirem)
-      if (fullTask?.observations) {
-        if (yPosition > 240) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('OBSERVAÇÕES', 20, yPosition);
-        yPosition += 10;
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        const splitText = pdf.splitTextToSize(fullTask.observations, pageWidth - 40);
-        pdf.text(splitText, 20, yPosition);
-        yPosition += splitText.length * 5 + 10;
-      }
-      
-      // Localização (se existir)
-      if (fullTask?.checkInLocation) {
-        if (yPosition > 240) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('LOCALIZAÇÃO', 20, yPosition);
-        yPosition += 10;
-        
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Latitude: ${fullTask.checkInLocation.lat}`, 20, yPosition);
-        yPosition += 5;
-        pdf.text(`Longitude: ${fullTask.checkInLocation.lng}`, 20, yPosition);
-        yPosition += 5;
-        pdf.text(`Data/Hora: ${format(new Date(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, yPosition);
-      }
-      
-      // Rodapé
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'italic');
-      pdf.text(`Relatório gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, pdf.internal.pageSize.height - 20);
-      
-      // Salvar PDF
-      const clientName = fullTask?.client?.replace(/\s+/g, '-').toLowerCase() || 'cliente';
-      pdf.save(`oportunidade-${clientName}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
-      
-      console.log('✅ PDF gerado com sucesso!');
+      await generateTaskPDF(fullTask, calculateTaskTotalValue, getTaskTypeLabel);
       
       toast({
         title: "PDF gerado com sucesso!",
@@ -498,7 +186,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <div className="mt-3">
                     <p className="text-sm text-muted-foreground">Valor da Oportunidade</p>
                     <p className="text-2xl font-bold text-primary">
-                      R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {calculateTaskTotalValue(fullTask as any).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
@@ -936,7 +624,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground mb-1">Valor Total</p>
                       <p className="text-3xl font-bold text-success">
-                        R$ {calculateTotalValue().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {calculateTaskTotalValue(fullTask as any).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
