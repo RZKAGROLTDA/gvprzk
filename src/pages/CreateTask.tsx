@@ -5633,7 +5633,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     return [];
   };
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [showReminderForm, setShowReminderForm] = useState(false);
   const [equipmentList, setEquipmentList] = useState<{
     id: string;
     familyProduct: string;
@@ -6842,173 +6841,12 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardContent>
             </Card>}
 
-          {/* Seção de Agendamento e Localização - Para TODOS os tipos de tarefa */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
-                Agendamento e Localização
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Data Inicial */}
-                <div>
-                  <Label htmlFor="startDate">Data Inicial</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !task.startDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {task.startDate ? format(task.startDate, "PPP", { locale: ptBR }) : "Selecione a data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={task.startDate}
-                        onSelect={(date) => setTask(prev => ({ ...prev, startDate: date || new Date() }))}
-                        initialFocus
-                        locale={ptBR}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Data Final */}
-                <div>
-                  <Label htmlFor="endDate">Data Final</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !task.endDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {task.endDate ? format(task.endDate, "PPP", { locale: ptBR }) : "Selecione a data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={task.endDate}
-                        onSelect={(date) => setTask(prev => ({ ...prev, endDate: date || new Date() }))}
-                        initialFocus
-                        locale={ptBR}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Horário Inicial */}
-                <div>
-                  <Label htmlFor="startTime">Horário Inicial</Label>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="startTime"
-                      type="time"
-                      value={task.startTime}
-                      onChange={(e) => setTask(prev => ({ ...prev, startTime: e.target.value }))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Horário Final */}
-                <div>
-                  <Label htmlFor="endTime">Horário Final</Label>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="endTime"
-                      type="time"
-                      value={task.endTime}
-                      onChange={(e) => setTask(prev => ({ ...prev, endTime: e.target.value }))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Prioridade */}
-                <div>
-                  <Label htmlFor="priority">Prioridade</Label>
-                  <Select value={task.priority} onValueChange={(value: 'low' | 'medium' | 'high') => setTask(prev => ({ ...prev, priority: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a prioridade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Baixa</SelectItem>
-                      <SelectItem value="medium">Média</SelectItem>
-                      <SelectItem value="high">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Seção de Lembretes - Para TODOS os tipos de tarefa */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Lembretes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {reminders.map((reminder, index) => (
-                <div key={reminder.id} className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium">{reminder.title}</p>
-                    <p className="text-sm text-muted-foreground">{reminder.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(reminder.date, "dd/MM/yyyy", { locale: ptBR })} às {reminder.time}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeReminder(reminder.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                onClick={() => setShowReminderForm(true)}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Lembrete
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Produtos / Checklist - Para TODOS os tipos de tarefa */}
-          <Card>
+          {/* Produtos / Checklist - apenas para visita a campo e workshop */}
+          {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {taskCategory === 'workshop-checklist' ? (
-                    <>
-                      <CheckSquare className="h-5 w-5" />
-                      Checklist da Oficina
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="h-5 w-5" />
-                      Produtos para Ofertar
-                    </>
-                  )}
+                  <Building className="h-5 w-5" />
+                  {taskCategory === 'field-visit' ? 'Produtos para Ofertar' : 'Checklist da Oficina'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -7070,7 +6908,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </Card>)}
                 </div>
               </CardContent>
-            </Card>
+            </Card>}
 
           {/* Campos específicos para Ligação */}
           {taskCategory === 'call' && <>
@@ -7478,138 +7316,13 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             
           </CardContent>
         </Card>
-        {/* Seção de Upload de Fotos - Para TODOS os tipos de tarefa */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Upload de Fotos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PhotoUpload 
-              photos={task.photos || []} 
-              onPhotosChange={photos => setTask(prev => ({ ...prev, photos }))} 
-              maxPhotos={10} 
-            />
-          </CardContent>
-        </Card>
-
-        {/* Seção de Observações - Para TODOS os tipos de tarefa */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Observações
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={task.observations}
-              onChange={(e) => setTask(prev => ({ ...prev, observations: e.target.value }))}
-              placeholder={`Digite suas observações sobre ${taskCategory === 'call' ? 'a ligação' : taskCategory === 'workshop-checklist' ? 'o checklist' : 'a visita'}...`}
-              className="min-h-[100px] resize-none"
-            />
-          </CardContent>
-        </Card>
+        {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <PhotoUpload photos={task.photos || []} onPhotosChange={photos => setTask(prev => ({
+        ...prev,
+        photos
+      }))} maxPhotos={10} />}
 
         {/* Check-in de Localização - apenas para visita a campo */}
-        {taskCategory === 'field-visit' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Check-in de Localização
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CheckInLocation 
-                checkInLocation={task.checkInLocation} 
-                onCheckIn={handleCheckIn} 
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Modal para adicionar lembretes */}
-        {showReminderForm && (
-          <Card className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg">
-              <div className="flex flex-col space-y-2 text-center sm:text-left">
-                <h2 className="text-lg font-semibold">Adicionar Lembrete</h2>
-                <p className="text-sm text-muted-foreground">Defina um lembrete para esta tarefa</p>
-              </div>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reminderTitle">Título</Label>
-                  <Input
-                    id="reminderTitle"
-                    value={newReminder.title}
-                    onChange={(e) => setNewReminder(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Digite o título do lembrete"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reminderDescription">Descrição</Label>
-                  <Textarea
-                    id="reminderDescription"
-                    value={newReminder.description}
-                    onChange={(e) => setNewReminder(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Digite a descrição do lembrete"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="reminderDate">Data</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !newReminder.date && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {newReminder.date ? format(newReminder.date, "PPP", { locale: ptBR }) : "Selecione a data"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={newReminder.date}
-                          onSelect={(date) => setNewReminder(prev => ({ ...prev, date: date || new Date() }))}
-                          initialFocus
-                          locale={ptBR}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reminderTime">Horário</Label>
-                    <Input
-                      id="reminderTime"
-                      type="time"
-                      value={newReminder.time}
-                      onChange={(e) => setNewReminder(prev => ({ ...prev, time: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-                <Button variant="outline" onClick={() => setShowReminderForm(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={() => {
-                  addReminder();
-                  setShowReminderForm(false);
-                }}>
-                  Adicionar Lembrete
-                </Button>
-              </div>
-            </div>
-          </Card>
-        )}
+        {taskCategory === 'field-visit' && <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />}
 
          <div className="flex flex-col gap-4 mt-6">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">

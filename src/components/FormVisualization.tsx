@@ -534,29 +534,20 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                         {fullTask.clientCode}
                       </p>
                     </div>
-                   )}
-                   {fullTask.email && (
-                     <div className="space-y-2">
-                       <label className="text-sm font-medium text-muted-foreground">Email</label>
-                       <p className="font-medium flex items-center gap-2">
-                         <AtSign className="w-4 h-4 text-muted-foreground" />
-                         {fullTask.email}
-                       </p>
-                     </div>
-                   )}
-                   {fullTask.taskType === 'ligacao' && fullTask.cpf && (
-                     <div className="space-y-2">
-                       <label className="text-sm font-medium text-muted-foreground">Telefone</label>
-                       <p className="font-medium flex items-center gap-2">
-                         <Phone className="w-4 h-4 text-muted-foreground" />
-                         {fullTask.cpf}
-                       </p>
-                     </div>
-                   )}
+                  )}
+                  {fullTask.email && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
-                      <p className="font-medium">{fullTask.property}</p>
+                      <label className="text-sm font-medium text-muted-foreground">Email</label>
+                      <p className="font-medium flex items-center gap-2">
+                        <AtSign className="w-4 h-4 text-muted-foreground" />
+                        {fullTask.email}
+                      </p>
                     </div>
+                  )}
+                   <div className="space-y-2">
+                     <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
+                     <p className="font-medium">{fullTask.property}</p>
+                   </div>
                    <div className="space-y-2">
                      <label className="text-sm font-medium text-muted-foreground">Hectares da Propriedade</label>
                      <p className="font-medium flex items-center gap-2">
@@ -634,8 +625,79 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
+          {/* Lista de Equipamentos */}
+          {fullTask.equipmentList && fullTask.equipmentList.length > 0 && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Lista de Equipamentos
+                </CardTitle>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="text-muted-foreground">Total de famílias de equipamentos:</span>
+                  <Badge variant="outline" className="border text-xs">
+                    {fullTask.equipmentList.length} famílias
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {fullTask.equipmentList.map((equipment, index) => (
+                    <div 
+                      key={index} 
+                      className="border rounded-lg p-4 bg-gradient-to-r from-primary/5 to-primary/2 border-primary/20"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-lg text-primary">
+                            {equipment.familyProduct}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Família de equipamentos identificada
+                          </p>
+                        </div>
+                        <Badge variant="default" className="bg-primary text-primary-foreground">
+                          {equipment.quantity} {equipment.quantity === 1 ? 'unidade' : 'unidades'}
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-3 bg-muted/30 rounded-lg">
+                          <label className="text-sm font-medium text-muted-foreground">Família do Produto</label>
+                          <p className="font-medium text-lg capitalize">{equipment.familyProduct.toLowerCase()}</p>
+                        </div>
+                        <div className="p-3 bg-muted/30 rounded-lg">
+                          <label className="text-sm font-medium text-muted-foreground">Quantidade Identificada</label>
+                          <p className="font-bold text-xl text-primary">{equipment.quantity}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Resumo Total dos Equipamentos */}
+                  <div className="mt-6 p-4 bg-gradient-to-r from-secondary/10 to-secondary/5 rounded-lg border border-secondary/20">
+                    <h4 className="font-semibold mb-3 text-secondary">Resumo dos Equipamentos</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total de Famílias</p>
+                        <p className="text-2xl font-bold text-secondary">
+                          {fullTask.equipmentList.length}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total de Equipamentos</p>
+                        <p className="text-2xl font-bold text-secondary">
+                          {fullTask.equipmentList.reduce((sum, equipment) => sum + equipment.quantity, 0)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Produtos/Serviços - Visualização para TODOS os tipos de tarefa */}
+          {/* Produtos/Serviços - Visualização */}
           {fullTask.checklist && fullTask.checklist.length > 0 && (
             <Card>
               <CardHeader className="pb-4">
@@ -743,7 +805,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Fotos - Mostrar para TODOS os tipos de tarefa */}
+          {/* Fotos */}
           {fullTask.photos && fullTask.photos.length > 0 && (
             <Card>
               <CardHeader>
@@ -811,7 +873,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Observações - Mostrar para TODOS os tipos de tarefa */}
+          {/* Observações */}
           {fullTask.observations && (
             <Card>
               <CardHeader>
