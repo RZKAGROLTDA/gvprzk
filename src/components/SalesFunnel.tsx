@@ -937,13 +937,29 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                         <TableCell>
                           {(() => {
-                            // Sempre mostrar o valor total da oportunidade, independente do tipo de venda
-                            const salesValue = getSalesValueAsNumber(task.salesValue);
+                            const salesType = task.sales_type;
+                            let realizedValue = 0;
                             
-                            return salesValue > 0 ? new Intl.NumberFormat('pt-BR', {
+                            if (salesType === 'ganho') {
+                              // Para vendas ganhas, mostrar o valor total
+                              realizedValue = getSalesValueAsNumber(task.salesValue);
+                            } else if (salesType === 'parcial' && task.products && Array.isArray(task.products)) {
+                              // Para vendas parciais, calcular baseado nos produtos selecionados
+                              realizedValue = task.products
+                                .filter(product => product.selected)
+                                .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
+                            } else if (salesType === 'parcial' && task.prospectItems && Array.isArray(task.prospectItems)) {
+                              // Alternativa: usar prospectItems se não houver products
+                              realizedValue = task.prospectItems
+                                .filter(item => item.selected)
+                                .reduce((acc, item) => acc + ((item.quantity || 0) * (item.price || 0)), 0);
+                            }
+                            // Para 'perdido' e 'prospect', realizedValue permanece 0
+                            
+                            return realizedValue > 0 ? new Intl.NumberFormat('pt-BR', {
                               style: 'currency',
                               currency: 'BRL'
-                            }).format(salesValue) : '-';
+                            }).format(realizedValue) : '-';
                           })()}
                         </TableCell>
                       <TableCell>
