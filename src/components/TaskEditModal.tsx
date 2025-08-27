@@ -34,6 +34,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     salesConfirmed: task.salesConfirmed,
     salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
     prospectNotes: task.prospectNotes || '',
+    prospectNotesJustification: task.prospectNotesJustification || '',
     isProspect: task.isProspect || false,
     products: task.checklist || [],
     prospectItems: task.prospectItems || [],
@@ -62,6 +63,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       salesConfirmed: task.salesConfirmed,
       salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
       prospectNotes: task.prospectNotes || '',
+      prospectNotesJustification: task.prospectNotesJustification || '',
       isProspect: task.isProspect || false,
       products: allProducts,
       prospectItems: task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [],
@@ -74,6 +76,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     salesType?: 'ganho' | 'parcial' | 'perdido'; 
     isProspect?: boolean; 
     prospectNotes?: string; 
+    prospectNotesJustification?: string;
     prospectItems?: any[];
     partialSalesValue?: number;
   }) => {
@@ -256,6 +259,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             salesConfirmed={formData.salesConfirmed}
             salesType={formData.salesType}
             prospectNotes={formData.prospectNotes}
+            prospectNotesJustification={formData.prospectNotesJustification}
             isProspect={formData.isProspect}
             prospectItems={formData.prospectItems}
             availableProducts={formData.products}

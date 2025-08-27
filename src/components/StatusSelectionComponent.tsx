@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { ProductType } from '@/types/task';
 import { LOSS_REASONS } from './TaskFormCore';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +13,7 @@ export interface StatusSelectionProps {
   salesConfirmed?: boolean | null;
   salesType?: 'ganho' | 'parcial' | 'perdido';
   prospectNotes?: string;
+  prospectNotesJustification?: string; // For "Outros" option justification
   isProspect?: boolean;
   prospectItems?: ProductType[];
   availableProducts?: ProductType[];
@@ -20,6 +22,7 @@ export interface StatusSelectionProps {
     salesType?: 'ganho' | 'parcial' | 'perdido';
     isProspect?: boolean; 
     prospectNotes?: string;
+    prospectNotesJustification?: string; // For "Outros" option justification
     prospectItems?: ProductType[];
     partialSalesValue?: number; // Add calculated value
   }) => void;
@@ -32,6 +35,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
   salesConfirmed,
   salesType,
   prospectNotes,
+  prospectNotesJustification,
   isProspect,
   prospectItems,
   availableProducts,
@@ -302,6 +306,28 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
             <p className="text-sm text-red-500">
               {errorMessage || 'O motivo da perda é obrigatório'}
             </p>
+          )}
+          
+          {/* Campo de justificativa para "Outros" */}
+          {prospectNotes === 'Outros' && (
+            <div className="space-y-2">
+              <Label htmlFor="otherJustification">Justificativa</Label>
+              <Textarea
+                id="otherJustification"
+                value={prospectNotesJustification || ''}
+                onChange={(e) => {
+                  onStatusChange({
+                    salesConfirmed: false,
+                    salesType: 'perdido',
+                    isProspect: true,
+                    prospectNotes,
+                    prospectNotesJustification: e.target.value
+                  });
+                }}
+                placeholder="Descreva o motivo..."
+                className="min-h-[80px] z-10 bg-background"
+              />
+            </div>
           )}
         </div>
       )}

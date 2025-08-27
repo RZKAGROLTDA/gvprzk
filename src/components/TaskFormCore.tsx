@@ -278,7 +278,8 @@ export const LOSS_REASONS = [
   'Falta de peça',
   'Preço',
   'Prazo',
-  'Duplo Domicilio'
+  'Dlupo Domicilio',
+  'Outros'
 ] as const;
 
 // Função para determinar status da tarefa baseado na venda
