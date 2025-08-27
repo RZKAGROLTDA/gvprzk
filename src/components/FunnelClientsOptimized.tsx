@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Download, Search, Filter } from 'lucide-react';
 import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
+import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -22,9 +23,10 @@ interface ClientData {
 }
 
 export const FunnelClientsOptimized: React.FC = () => {
-  const { tasks, loading } = useTasksOptimized();
+  const { tasks, loading, refetch } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
+  const { invalidateAll } = useSecurityCache();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -122,6 +124,18 @@ export const FunnelClientsOptimized: React.FC = () => {
   const totalClients = clientsData.length;
   const clientsWithActivity = clientsData.filter(c => c.hasActivity).length;
   const coveragePercentage = totalClients > 0 ? Math.round((clientsWithActivity / totalClients) * 100) : 0;
+
+  // Auto-refresh when window gains focus to sync changes
+  useEffect(() => {
+    const handleFocus = () => {
+      if (document.hasFocus()) {
+        refetch();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refetch]);
 
   const isLoading = loading || consultantsLoading || filiaisLoading;
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -7,9 +7,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Calendar, TrendingUp, Users, DollarSign, Target, Filter } from 'lucide-react';
 import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
+import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { mapSalesStatus, resolveFilialName, calculateSalesValue } from '@/lib/taskStandardization';
+import { mapSalesStatus, resolveFilialName } from '@/lib/taskStandardization';
+import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { Task } from '@/types/task';
 
 interface SalesFunnelData {
@@ -37,9 +39,10 @@ interface ClientDetails {
 }
 
 export const SalesFunnelOptimized: React.FC = () => {
-  const { tasks, loading } = useTasksOptimized();
+  const { tasks, loading, refetch } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
+  const { invalidateAll } = useSecurityCache();
 
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   
@@ -108,7 +111,7 @@ export const SalesFunnelOptimized: React.FC = () => {
       // Prospecções
       if (task.isProspect) {
         prospects++;
-        totalProspectValue += calculateSalesValue(task);
+        totalProspectValue += calculateTaskSalesValue(task);
         
         if (task.status === 'pending') {
           openProspects++;
@@ -234,7 +237,7 @@ export const SalesFunnelOptimized: React.FC = () => {
       }
       
       if (task.isProspect) client.prospects++;
-      client.salesValue += calculateSalesValue(task);
+      client.salesValue += calculateTaskSalesValue(task);
       
       if (task.createdAt > client.lastActivity) {
         client.lastActivity = task.createdAt;
@@ -245,6 +248,18 @@ export const SalesFunnelOptimized: React.FC = () => {
       .sort((a, b) => b.salesValue - a.salesValue)
       .slice(0, 20); // Limitar para performance
   }, [filteredTasks, activeView]);
+
+  // Auto-refresh when window gains focus to sync changes
+  useEffect(() => {
+    const handleFocus = () => {
+      if (document.hasFocus()) {
+        refetch();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refetch]);
 
   const isLoading = loading || consultantsLoading || filiaisLoading;
 
