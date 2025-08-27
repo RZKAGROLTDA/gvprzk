@@ -93,7 +93,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
               </div>
               <div>
                 <div className="font-medium text-sm">Vendas Total</div>
-                <div className="text-xs text-muted-foreground">Negócio 100% fechado</div>
+                <div className="text-xs text-muted-foreground">Valor total dos produtos oferecidos</div>
               </div>
             </div>
             {salesConfirmed === true && salesType === 'ganho' && (
