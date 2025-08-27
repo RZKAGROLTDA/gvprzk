@@ -13,8 +13,8 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
   // Resolver nome da filial automaticamente
   const filialResolved = resolveFilialName(supabaseTask.filial);
 
-  // Map products with detailed logging
-  const products = supabaseTask.products?.map((product: any) => {
+  // Map products with detailed logging - usando task_products do Supabase
+  const products = (supabaseTask.task_products || supabaseTask.products)?.map((product: any) => {
     const mappedProduct = {
       id: product.id,
       name: product.name,
@@ -33,7 +33,8 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
   // Separate checklist and prospectItems based on task type
   const taskType = supabaseTask.task_type || 'prospection';
   const checklist = taskType === 'ligacao' ? [] : products;
-  const prospectItems = taskType === 'ligacao' ? products : [];
+  // prospectItems devem estar disponíveis para todos os tipos de tarefa
+  const prospectItems = products;
 
   const mappedTask: Task = {
     id: supabaseTask.id,
