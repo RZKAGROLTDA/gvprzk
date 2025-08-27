@@ -16,7 +16,7 @@ import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, load
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
-import { FormVisualization } from '@/components/FormVisualization';
+import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { Task } from '@/types/task';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
@@ -1167,17 +1167,12 @@ export const SalesFunnel: React.FC = () => {
     }} />
     
     {selectedTask && (
-        <FormVisualization
+        <OpportunityReport
           task={selectedTask}
           isOpen={isVisualizationModalOpen}
           onClose={() => {
             setIsVisualizationModalOpen(false);
             setSelectedTask(null);
-          }}
-          onTaskUpdated={async () => {
-            // Invalidar cache globalmente para garantir sincronização
-            await invalidateAll();
-            refetch();
           }}
         />
     )}
