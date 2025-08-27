@@ -103,6 +103,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 : 'border-gray-200 bg-white hover:border-red-300'
             }`} 
             onClick={() => {
+              console.log('🔍 StatusSelection - Venda perdida selecionada');
               onStatusChange({
                 salesConfirmed: false,
                 isProspect: true,
@@ -140,11 +141,14 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
           </Label>
           <Select 
             value={prospectNotes || ''} 
-            onValueChange={(value) => onStatusChange({
-              salesConfirmed: false,
-              isProspect: true,
-              prospectNotes: value
-            })}
+            onValueChange={(value) => {
+              console.log('🔍 StatusSelection - Motivo da perda selecionado:', value);
+              onStatusChange({
+                salesConfirmed: false,
+                isProspect: true,
+                prospectNotes: value
+              });
+            }}
           >
             <SelectTrigger className={showError && (!prospectNotes || prospectNotes.trim() === '') ? 'border-red-500' : ''}>
               <SelectValue placeholder="Selecione o motivo da perda" />

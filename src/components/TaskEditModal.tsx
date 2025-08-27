@@ -218,8 +218,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       console.log('Tarefa atualizada com sucesso no banco de dados');
 
+      console.log('🔄 TaskEditModal - Invalidando cache após atualização');
+      
       // Invalidar cache globalmente para garantir atualização em todas as páginas
       await invalidateAll();
+      
+      console.log('🔄 TaskEditModal - Cache invalidado, chamando onTaskUpdate');
       
       toast.success("✅ Tarefa Atualizada - As alterações foram salvas com sucesso!");
 
@@ -355,10 +359,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             prospectNotes={editedTask.prospectNotes}
             isProspect={editedTask.isProspect}
             onStatusChange={(status) => {
-              setEditedTask(prev => ({
-                ...prev,
-                ...status
-              }));
+              console.log('🔍 TaskEditModal - Status alterado:', status);
+              setEditedTask(prev => {
+                const newTask = {
+                  ...prev,
+                  ...status
+                };
+                console.log('🔍 TaskEditModal - Estado atualizado:', newTask);
+                return newTask;
+              });
             }}
           />
 
