@@ -149,14 +149,6 @@ export const SalesFunnel: React.FC = () => {
           return false;
         }
         const isMatch = isNameMatch(consultant.name, task.responsible);
-        console.log('🔍 Filtro Consultor:', {
-          consultantOriginal: consultant.name,
-          taskOriginal: task.responsible,
-          consultantNormalized: normalizeName(consultant.name),
-          taskNormalized: normalizeName(task.responsible),
-          isMatch,
-          taskId: task.id
-        });
         if (!isMatch) return false;
       }
 
@@ -167,7 +159,8 @@ export const SalesFunnel: React.FC = () => {
       if (selectedActivity !== 'all' && task.taskType !== selectedActivity) return false;
       return true;
     });
-    console.log('📊 Filtros aplicados:', {
+    
+    console.log('📊 SalesFunnel - Filtros aplicados:', {
       totalTasks: tasks.length,
       filteredTasks: filtered.length,
       selectedConsultant,
@@ -175,6 +168,7 @@ export const SalesFunnel: React.FC = () => {
       selectedActivity,
       selectedPeriod
     });
+    
     return filtered;
   }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants]);
 
@@ -840,7 +834,7 @@ export const SalesFunnel: React.FC = () => {
                   <TableHead>Nome da Atividade</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Vendedor</TableHead>
-                  <TableHead> Oportunidade</TableHead>
+                  <TableHead> Oportunidade</TableHead>
                   <TableHead>Venda Realizada</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data</TableHead>
@@ -850,25 +844,38 @@ export const SalesFunnel: React.FC = () => {
               <TableBody>
                 {filteredTasks.slice(0, itemsPerPage).map(task => {
               const getTaskStatus = () => {
+                console.log('🔍 SalesFunnel - Calculando status para tarefa:', {
+                  id: task.id,
+                  client: task.client,
+                  salesConfirmed: task.salesConfirmed,
+                  salesType: task.salesType,
+                  isProspect: task.isProspect,
+                  prospectNotes: task.prospectNotes
+                });
+                
+                // Usar a função padronizada de mapeamento de status
+                const mappedStatus = mapSalesStatus(task);
+                console.log('🔍 SalesFunnel - Status mapeado:', mappedStatus, 'para tarefa:', task.id);
+                
                 // Priorizar o sales_type direto da task sobre o mapSalesStatus
-                if (task.sales_type === 'parcial') {
+                if (task.salesType === 'perdido' || (task.salesConfirmed === false && task.isProspect)) {
+                  return {
+                    label: 'Perdido',
+                    variant: 'destructive' as const
+                  };
+                }
+                
+                if (task.salesType === 'parcial') {
                   return {
                     label: 'Parcial',
                     variant: 'secondary' as const
                   };
                 }
                 
-                if (task.sales_type === 'ganho' || task.salesConfirmed) {
+                if (task.salesType === 'ganho' || task.salesConfirmed === true) {
                   return {
                     label: 'Ganho',
                     variant: 'default' as const
-                  };
-                }
-                
-                if (task.sales_type === 'perdido') {
-                  return {
-                    label: 'Perdido',
-                    variant: 'destructive' as const
                   };
                 }
                 
@@ -1084,10 +1091,14 @@ export const SalesFunnel: React.FC = () => {
             if (!open) setSelectedTask(null);
           }}
           onTaskUpdate={async () => {
+            console.log('🔄 SalesFunnel - Callback onTaskUpdate chamado, forçando atualização');
             // Invalidar cache globalmente para garantir sincronização
             await invalidateAll();
-            // Recarregar dados localmente
-            refetch();
+            // Recarregar dados localmente com força
+            console.log('🔄 SalesFunnel - Refetchando dados após update');
+            await refetch();
+            // Forçar re-render do componente
+            console.log('🔄 SalesFunnel - Update concluído');
           }}
         />
     )}
