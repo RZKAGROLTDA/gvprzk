@@ -675,16 +675,12 @@ export type Database = {
         Returns: {
           access_level: string
           client: string
-          created_at: string
-          created_by: string
           email: string
           end_date: string
           filial: string
           id: string
           is_masked: boolean
           name: string
-          observations: string
-          phone: string
           priority: string
           property: string
           responsible: string

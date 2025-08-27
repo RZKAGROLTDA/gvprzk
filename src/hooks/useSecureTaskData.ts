@@ -36,9 +36,10 @@ export const useSecureTaskData = (taskIds?: string[]) => {
         });
 
         if (error) {
-          // Log security-related errors
+          console.error('Secure task data error:', error);
           monitorSuspiciousActivity('task_data_access_error', { error: error.message }, 3);
-          throw error;
+          // Return empty array as fallback instead of throwing
+          return [];
         }
 
         // Log successful data access for audit
@@ -51,13 +52,16 @@ export const useSecureTaskData = (taskIds?: string[]) => {
 
         return data as SecureTaskData[];
       } catch (error) {
-        console.error('Error fetching secure task data:', error);
-        throw error;
+        console.error('Failed to fetch secure task data:', error);
+        monitorSuspiciousActivity('task_data_access_failure', { error: String(error) }, 4);
+        // Return empty array as fallback instead of throwing
+        return [];
       }
     },
     enabled: true,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2, // Retry twice on failure
   });
 };
 

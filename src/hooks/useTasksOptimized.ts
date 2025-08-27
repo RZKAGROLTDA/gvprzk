@@ -22,7 +22,7 @@ export const useTasksOptimized = (includeDetails = false) => {
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
 
-    // Query super otimizada para máxima performance
+    // Query super otimizada com fallback robusto
     const tasksQuery = useQuery({
       queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
       queryFn: async () => {
@@ -36,11 +36,38 @@ export const useTasksOptimized = (includeDetails = false) => {
             return getOfflineTasks();
           }
 
-          // For managers and supervisors, get all tasks without restrictions
+          // Primeiro tentar a nova função segura
+          try {
+            const { data: secureData, error: secureError } = await supabase
+              .rpc('get_secure_task_data_enhanced')
+              .order('created_at', { ascending: false })
+              .limit(1000);
+
+            if (!secureError && secureData) {
+              console.log(`✅ ${secureData.length} tasks loaded via enhanced secure function`);
+              
+              // Mapear dados da função segura
+              const mappedTasks = secureData.map(task => {
+                return mapSupabaseTaskToTask({
+                  ...task,
+                  products: [],
+                  reminders: []
+                });
+              });
+              
+              return mappedTasks;
+            }
+            
+            console.warn('⚠️ Enhanced secure function failed, falling back...', secureError);
+          } catch (secureErr) {
+            console.warn('⚠️ Error with enhanced secure function:', secureErr);
+          }
+
+          // Fallback para função original
           const { data: tasksData, error } = await supabase
             .rpc('get_secure_task_data')
             .order('created_at', { ascending: false })
-            .limit(1000); // Increased limit to ensure all records are shown
+            .limit(1000);
 
           if (error) throw error;
 
@@ -97,6 +124,11 @@ export const useTasksOptimized = (includeDetails = false) => {
           return mappedTasks;
       } catch (error) {
         console.error('❌ Error loading tasks:', error);
+        
+        // Último fallback: dados offline
+        if (!isOnline) {
+          return getOfflineTasks();
+        }
         // Fallback para dados offline
         return getOfflineTasks();
       }
