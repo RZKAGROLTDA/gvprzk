@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, RefreshCw } from 'lucide-react';
+import { Calendar, TrendingUp, Users, DollarSign, Target, Filter } from 'lucide-react';
 import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { format, subDays } from 'date-fns';
@@ -39,15 +39,15 @@ interface ClientDetails {
 }
 
 export const SalesFunnelOptimized: React.FC = () => {
-  const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
+  const { tasks, loading, refetch } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   const { invalidateAll } = useSecurityCache();
 
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   
-  // Filtros otimizados - período expandido para mostrar todos os dados
-  const [selectedPeriod, setSelectedPeriod] = useState('365');
+  // Filtros otimizados
+  const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
@@ -58,14 +58,14 @@ export const SalesFunnelOptimized: React.FC = () => {
 
     const now = new Date();
     const daysAgo = parseInt(selectedPeriod);
-    const periodStart = daysAgo >= 9999 ? new Date(0) : subDays(now, daysAgo);
+    const periodStart = subDays(now, daysAgo);
 
     // Um único loop de filtro para máxima performance
     return tasks.filter(task => {
       const taskDate = new Date(task.createdAt);
       
       // Filtros aplicados sequencialmente para sair cedo
-      if (daysAgo < 9999 && taskDate < periodStart) return false;
+      if (taskDate < periodStart) return false;
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
         if (!consultant || task.responsible !== consultant.name) return false;
@@ -285,7 +285,7 @@ export const SalesFunnelOptimized: React.FC = () => {
       {/* Filtros compactos */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
               <SelectTrigger>
                 <SelectValue placeholder="Período" />
@@ -294,8 +294,6 @@ export const SalesFunnelOptimized: React.FC = () => {
                 <SelectItem value="7">7 dias</SelectItem>
                 <SelectItem value="30">30 dias</SelectItem>
                 <SelectItem value="90">90 dias</SelectItem>
-                <SelectItem value="365">1 ano</SelectItem>
-                <SelectItem value="9999">Todos os registros</SelectItem>
               </SelectContent>
             </Select>
 
@@ -338,17 +336,6 @@ export const SalesFunnelOptimized: React.FC = () => {
                 <SelectItem value="checklist">Checklists</SelectItem>
               </SelectContent>
             </Select>
-            
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => forceRefresh()}
-                className="flex items-center gap-2 px-3 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-                title="Recarregar todos os dados"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Atualizar
-              </button>
-            </div>
           </div>
         </CardContent>
       </Card>

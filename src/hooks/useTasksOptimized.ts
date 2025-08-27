@@ -36,11 +36,11 @@ export const useTasksOptimized = (includeDetails = false) => {
             return getOfflineTasks();
           }
 
-          // For managers and supervisors, get all tasks without restrictions
+          // Use secure function for customer data protection
           const { data: tasksData, error } = await supabase
             .rpc('get_secure_task_data')
             .order('created_at', { ascending: false })
-            .limit(1000); // Increased limit to ensure all records are shown
+            .limit(includeDetails ? 100 : 50);
 
           if (error) throw error;
 
@@ -102,11 +102,10 @@ export const useTasksOptimized = (includeDetails = false) => {
       }
     },
     enabled: !!user,
-    staleTime: 0, // Force fresh data fetch every time
+    staleTime: 30 * 1000, // 30 segundos - cache mais responsivo para sincronização
     refetchOnWindowFocus: true, // Permitir refetch quando voltar à aba
     refetchOnMount: true, // Permitir refetch no mount para dados atuais
     retry: 1, // Apenas 1 retry para performance
-    refetchInterval: 60000, // Auto-refetch every minute to ensure fresh data
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
     }
@@ -272,12 +271,6 @@ export const useTasksOptimized = (includeDetails = false) => {
     refetch: tasksQuery.refetch,
     isCreating: createTaskMutation.isPending,
     isUpdating: updateTaskMutation.isPending,
-    // Add force refresh function that clears cache completely
-    forceRefresh: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
-      queryClient.removeQueries({ queryKey: QUERY_KEYS.tasks });
-      return tasksQuery.refetch();
-    }
   };
 };
 

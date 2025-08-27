@@ -23,13 +23,13 @@ interface ClientData {
 }
 
 export const FunnelClientsOptimized: React.FC = () => {
-  const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
+  const { tasks, loading, refetch } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   const { invalidateAll } = useSecurityCache();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState('365');
+  const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [sortField, setSortField] = useState<keyof ClientData>('name');
@@ -40,8 +40,7 @@ export const FunnelClientsOptimized: React.FC = () => {
 
     const clientMap = new Map<string, ClientData>();
     const now = new Date();
-    const daysAgo = parseInt(selectedPeriod);
-    const periodStart = daysAgo >= 9999 ? new Date(0) : subDays(now, daysAgo);
+    const periodStart = subDays(now, parseInt(selectedPeriod));
     const searchLower = searchTerm.toLowerCase();
 
     // Super otimizado: processamento em um único loop
@@ -49,7 +48,7 @@ export const FunnelClientsOptimized: React.FC = () => {
       const taskDate = new Date(task.createdAt);
       
       // Early exits
-      if (daysAgo < 9999 && taskDate < periodStart) continue;
+      if (taskDate < periodStart) continue;
       
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
@@ -221,7 +220,6 @@ export const FunnelClientsOptimized: React.FC = () => {
                   <SelectItem value="30">Últimos 30 dias</SelectItem>
                   <SelectItem value="90">Últimos 90 dias</SelectItem>
                   <SelectItem value="365">Último ano</SelectItem>
-                  <SelectItem value="9999">Todos os registros</SelectItem>
                 </SelectContent>
               </Select>
             </div>
