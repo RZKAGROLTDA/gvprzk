@@ -505,14 +505,7 @@ export type Database = {
       }
     }
     Views: {
-      security_dashboard: {
-        Row: {
-          count: number | null
-          metric_name: string | null
-          time_period: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       can_modify_user_role: {
@@ -728,6 +721,14 @@ export type Database = {
           name: string
           role: string
           user_id: string
+        }[]
+      }
+      get_security_dashboard: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          count: number
+          metric_name: string
+          time_period: string
         }[]
       }
       get_task_data_access_level: {
