@@ -32,6 +32,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     customerEmail: task.email || '',
     salesValue: task.salesValue || '',
     salesConfirmed: task.salesConfirmed,
+    salesType: (task.salesType as 'total' | 'parcial') || 'total',
     prospectNotes: task.prospectNotes || '',
     isProspect: task.isProspect || false,
     products: task.checklist || []
@@ -53,13 +54,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       customerEmail: task.email || '',
       salesValue: task.salesValue || '',
       salesConfirmed: task.salesConfirmed,
+      salesType: (task.salesType as 'total' | 'parcial') || 'total',
       prospectNotes: task.prospectNotes || '',
       isProspect: task.isProspect || false,
       products: task.checklist || []
     });
   }, [task]);
 
-  const handleStatusChange = (status: { salesConfirmed?: boolean | null; isProspect?: boolean; prospectNotes?: string }) => {
+  const handleStatusChange = (status: { salesConfirmed?: boolean | null; salesType?: 'total' | 'parcial'; isProspect?: boolean; prospectNotes?: string }) => {
     console.log('🔍 TaskEditModal - Status alterado:', status);
     setFormData(prev => ({
       ...prev,
@@ -89,6 +91,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         email: formData.customerEmail,
         sales_value: formData.salesValue,
         sales_confirmed: formData.salesConfirmed,
+        sales_type: formData.salesType,
         prospect_notes: formData.prospectNotes,
         is_prospect: formData.isProspect,
         checklist: formData.products
@@ -167,6 +170,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
           <StatusSelectionComponent
             salesConfirmed={formData.salesConfirmed}
+            salesType={formData.salesType}
             prospectNotes={formData.prospectNotes}
             isProspect={formData.isProspect}
             onStatusChange={handleStatusChange}

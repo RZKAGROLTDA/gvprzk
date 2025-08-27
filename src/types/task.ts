@@ -35,7 +35,7 @@ export interface Task {
   prospectItems?: ProductType[];
   salesValue?: number | string; // Allow string for masked values like ">10k"
   salesConfirmed?: boolean;
-  salesType?: 'prospect' | 'parcial' | 'ganho' | 'perdido';
+  salesType?: 'total' | 'parcial';
   familyProduct?: string;
   equipmentQuantity?: number;
   propertyHectares?: number;
