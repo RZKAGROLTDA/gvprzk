@@ -35,7 +35,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
     prospectNotes: task.prospectNotes || '',
     isProspect: task.isProspect || false,
-    products: task.checklist || []
+    products: task.checklist || [],
+    prospectItems: task.prospectItems || []
   });
 
   const { invalidateAll } = useSecurityCache();
@@ -57,16 +58,34 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
       prospectNotes: task.prospectNotes || '',
       isProspect: task.isProspect || false,
-      products: task.checklist || []
+      products: task.checklist || [],
+      prospectItems: task.prospectItems || []
     });
   }, [task]);
 
-  const handleStatusChange = (status: { salesConfirmed?: boolean | null; salesType?: 'ganho' | 'parcial' | 'perdido'; isProspect?: boolean; prospectNotes?: string }) => {
+  const handleStatusChange = (status: { salesConfirmed?: boolean | null; salesType?: 'ganho' | 'parcial' | 'perdido'; isProspect?: boolean; prospectNotes?: string; prospectItems?: any[] }) => {
     console.log('🔍 TaskEditModal - Status alterado:', status);
-    setFormData(prev => ({
-      ...prev,
-      ...status
-    }));
+    
+    // Se está selecionando "Vendas Parcial", carregar produtos automaticamente
+    if (status.salesConfirmed === true && status.salesType === 'parcial') {
+      const selectedProducts = task.checklist?.filter(item => item.selected).map(item => ({
+        ...item,
+        selected: true,
+        quantity: item.quantity || 1,
+        price: item.price || 0
+      })) || [];
+      
+      setFormData(prev => ({
+        ...prev,
+        ...status,
+        prospectItems: selectedProducts.length > 0 ? selectedProducts : status.prospectItems || prev.prospectItems
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        ...status
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,6 +191,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             salesType={formData.salesType}
             prospectNotes={formData.prospectNotes}
             isProspect={formData.isProspect}
+            prospectItems={formData.prospectItems}
+            availableProducts={formData.products}
             onStatusChange={handleStatusChange}
             showError={formData.salesConfirmed === false && (!formData.prospectNotes || formData.prospectNotes.trim() === '')}
           />
