@@ -26,8 +26,14 @@ export const calculatePartialSalesValue = (task: Task): number => {
  * Considera vendas parciais e completas corretamente
  */
 export const calculateTaskSalesValue = (task: Task): number => {
-  // Se é venda parcial, calcular baseado nos produtos
-  if (task.salesType === 'parcial') {
+  // Para vendas parciais confirmadas, usar o valor calculado do banco se disponível
+  if (task.salesType === 'parcial' && task.salesConfirmed) {
+    // Priorizar o valor calculado do banco de dados
+    if (task.partialSalesValue !== undefined && task.partialSalesValue !== null) {
+      return task.partialSalesValue;
+    }
+    
+    // Fallback para cálculo dinâmico baseado nos produtos
     return calculatePartialSalesValue(task);
   }
 

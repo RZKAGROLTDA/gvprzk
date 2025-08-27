@@ -36,6 +36,7 @@ export interface Task {
   salesValue?: number | string; // Allow string for masked values like ">10k"
   salesConfirmed?: boolean;
   salesType?: 'ganho' | 'parcial' | 'perdido';
+  partialSalesValue?: number; // Calculated partial sales value from database
   familyProduct?: string;
   equipmentQuantity?: number;
   propertyHectares?: number;

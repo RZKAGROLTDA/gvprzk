@@ -32,6 +32,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { DataMigrationButton } from '@/components/DataMigrationButton';
 
 const Reports: React.FC = () => {
   const { user } = useAuth();
@@ -326,12 +327,13 @@ const Reports: React.FC = () => {
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Atualizando...' : 'Atualizar'}
         </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="icon" className="shrink-0">
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
+                   <DataMigrationButton />
+                   <AlertDialog>
+                     <AlertDialogTrigger asChild>
+                       <Button variant="outline" size="icon" className="shrink-0">
+                         <RotateCcw className="h-4 w-4" />
+                       </Button>
+                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Limpar filtros</AlertDialogTitle>
