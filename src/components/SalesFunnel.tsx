@@ -14,12 +14,13 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache, calculateSalesValue } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
-import { calculateTaskSalesValue, calculatePartialSalesValue } from '@/lib/salesValueCalculator';
+import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { FormVisualization } from '@/components/FormVisualization';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { Task } from '@/types/task';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
+
 interface SalesFunnelData {
   name: string;
   value: number;
@@ -41,6 +42,7 @@ interface ClientDetails {
   lastActivity: Date;
   responsible: string;
 }
+
 export const SalesFunnel: React.FC = () => {
   const {
     tasks,
@@ -419,6 +421,7 @@ export const SalesFunnel: React.FC = () => {
         return [];
     }
   }, [selectedFunnelSection, filteredTasks, filiais]);
+
   const totalSalesValue = filteredTasks.reduce((sum, task) => sum + getSalesValueAsNumber(task.salesValue), 0);
   const chartConfig = {
     value: {
@@ -942,13 +945,9 @@ export const SalesFunnel: React.FC = () => {
                             let finalSalesValue = 0;
                             
                             if (task.salesType === 'parcial' && task.salesConfirmed === true) {
-                              // Para venda parcial: tentar calcular valor dos produtos selecionados
-                              finalSalesValue = calculatePartialSalesValue(task);
-                              
-                              // Se não conseguiu calcular pelos produtos (zero), usar valor total como fallback
-                              if (finalSalesValue === 0) {
-                                finalSalesValue = getSalesValueAsNumber(task.salesValue);
-                              }
+                              // Para venda parcial: usar o valor específico do campo "Valor da Venda Parcial"
+                              // Buscar na task pelo campo específico de venda parcial ou usar salesValue como fallback
+                              finalSalesValue = getSalesValueAsNumber(task.salesValue);
                             } else if (task.salesConfirmed === true) {
                               // Para venda total: usar valor total do formulário
                               finalSalesValue = getSalesValueAsNumber(task.salesValue);
@@ -959,9 +958,6 @@ export const SalesFunnel: React.FC = () => {
                               salesType: task.salesType,
                               salesConfirmed: task.salesConfirmed,
                               salesValue: task.salesValue,
-                              prospectItemsCount: task.prospectItems?.length || 0,
-                              prospectItems: task.prospectItems,
-                              checklistCount: task.checklist?.length || 0,
                               finalValue: finalSalesValue
                             });
                             
