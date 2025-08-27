@@ -35,6 +35,7 @@ import { formatSalesValue } from '@/lib/securityUtils';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { getTaskTypeLabel } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
+import { resolveFilialName } from '@/lib/taskStandardization';
 
 interface OpportunityReportProps {
   task: Task;
@@ -216,7 +217,7 @@ ${task.responsible}`;
                   <div className="flex items-center gap-2">
                     <Building className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Filial:</span>
-                    <span className="font-medium">{task.filial || 'N/A'}</span>
+                    <span className="font-medium">{resolveFilialName(task.filial) || 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Crop className="w-4 h-4 text-muted-foreground" />
