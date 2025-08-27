@@ -10,6 +10,7 @@ import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksO
 import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { resolveFilialName } from '@/lib/taskStandardization';
 
 interface TaskData {
   date: Date;
@@ -260,7 +261,7 @@ export const FunnelTasksOptimized: React.FC = () => {
                         {task.taskType}
                       </Badge>
                     </TableCell>
-                    <TableCell>{task.filial}</TableCell>
+                    <TableCell>{resolveFilialName(task.filial)}</TableCell>
                     <TableCell className="max-w-xs truncate" title={task.observation}>
                       {task.observation}
                     </TableCell>

@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
-import { mapTaskToStandardFields, mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
+import { mapTaskToStandardFields, mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
 declare module 'jspdf' {
@@ -210,7 +210,7 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       doc.setFont('helvetica', 'bold');
       doc.text('Filial:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(task.filial || 'Não informado', 45, yPosition);
+      doc.text(resolveFilialName(task.filial) || 'Não informado', 45, yPosition);
       yPosition += 8;
 
       doc.setFont('helvetica', 'bold');

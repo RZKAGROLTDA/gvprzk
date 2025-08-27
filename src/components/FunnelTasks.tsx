@@ -10,6 +10,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { resolveFilialName } from '@/lib/taskStandardization';
 
 interface TaskData {
   date: Date;
@@ -251,7 +252,7 @@ export const FunnelTasks: React.FC = () => {
                         {task.taskType}
                       </Badge>
                     </TableCell>
-                    <TableCell>{task.filial}</TableCell>
+                    <TableCell>{resolveFilialName(task.filial)}</TableCell>
                     <TableCell className="max-w-xs truncate" title={task.observation}>
                       {task.observation}
                     </TableCell>

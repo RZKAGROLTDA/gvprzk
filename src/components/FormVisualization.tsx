@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useTaskDetails, useTasksOptimized } from '@/hooks/useTasksOptimized';
-import { mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
+import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { SalesStatusDisplay } from './SalesStatusDisplay';
@@ -221,7 +221,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">Filial</label>
                   <p className="font-medium flex items-center gap-2">
                     <Building className="w-4 h-4 text-primary" />
-                    {fullTask.filial || 'Não informado'}
+                    {resolveFilialName(fullTask.filial) || 'Não informado'}
                   </p>
                 </div>
                 <div className="space-y-2">
