@@ -74,7 +74,325 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      await generateTaskPDF(task, calculateTaskSalesValue, getTaskTypeLabel);
+      const jsPDF = (await import('jspdf')).default;
+      await import('jspdf-autotable');
+      
+      const doc = new jsPDF();
+      let yPosition = 20;
+
+      // Cabeçalho
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RELATÓRIO DE OPORTUNIDADE', 20, yPosition);
+      yPosition += 15;
+
+      // Linha separadora
+      doc.setLineWidth(0.5);
+      doc.line(20, yPosition, 190, yPosition);
+      yPosition += 15;
+
+      // Resumo da Oportunidade
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RESUMO DA OPORTUNIDADE', 20, yPosition);
+      yPosition += 15;
+
+      // Três colunas do resumo
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Cliente:', 20, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(task.client, 20, yPosition + 8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Valor da Oportunidade:', 70, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(formatSalesValue(opportunityValue), 70, yPosition + 8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Status:', 140, yPosition);
+      doc.setFont('helvetica', 'normal');
+      doc.text(statusInfo.label, 140, yPosition + 8);
+      yPosition += 25;
+
+      // Informações Gerais
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('INFORMAÇÕES GERAIS', 20, yPosition);
+      yPosition += 15;
+
+      doc.setFontSize(10);
+      const infoData = [
+        ['Cliente:', task.client, 'Vendedor:', task.responsible],
+        ['Código:', task.clientCode || 'N/A', 'Filial:', resolveFilialName(task.filial) || 'N/A'],
+        ['E-mail:', task.email || 'N/A', 'Hectares:', task.propertyHectares || 'N/A'],
+        ['Telefone:', task.phone || 'N/A', 'Família de Produtos:', task.familyProduct || 'N/A'],
+        ['Propriedade:', task.property, '', '']
+      ];
+
+      (doc as any).autoTable({
+        body: infoData,
+        startY: yPosition,
+        styles: { fontSize: 10, cellPadding: 3 },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 25 },
+          1: { cellWidth: 65 },
+          2: { fontStyle: 'bold', cellWidth: 25 },
+          3: { cellWidth: 65 }
+        },
+        theme: 'plain'
+      });
+
+      yPosition = (doc as any).lastAutoTable.finalY + 15;
+
+      // Lista de Equipamentos
+      if (task.equipmentList && task.equipmentList.length > 0) {
+        if (yPosition > 230) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LISTA DE EQUIPAMENTOS', 20, yPosition);
+        yPosition += 10;
+
+        const equipmentData = task.equipmentList.map(equipment => [
+          equipment.familyProduct,
+          `${equipment.quantity} unidades`
+        ]);
+
+        (doc as any).autoTable({
+          head: [['Equipamento', 'Quantidade']],
+          body: equipmentData,
+          startY: yPosition,
+          styles: { fontSize: 10 },
+          headStyles: { fillColor: [22, 160, 133] }
+        });
+
+        yPosition = (doc as any).lastAutoTable.finalY + 15;
+      }
+
+      // Produtos e Oportunidades
+      if (yPosition > 200) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PRODUTOS E OPORTUNIDADES', 20, yPosition);
+      yPosition += 15;
+
+      // Produtos do Checklist
+      if (task.checklist && task.checklist.filter(item => item.selected).length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Produtos Oferecidos (Checklist):', 20, yPosition);
+        yPosition += 10;
+
+        const checklistData = task.checklist
+          .filter(item => item.selected)
+          .map(item => [
+            item.name,
+            item.category.replace('_', ' '),
+            item.quantity || '1',
+            item.price ? formatSalesValue(item.price) : 'R$ 0,00',
+            item.observations || ''
+          ]);
+
+        (doc as any).autoTable({
+          head: [['Produto', 'Categoria', 'Qtd', 'Preço', 'Observações']],
+          body: checklistData,
+          startY: yPosition,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [22, 160, 133] },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 45 }
+          }
+        });
+
+        yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+        // Total dos produtos do checklist
+        const checklistTotal = task.checklist
+          .filter(item => item.selected && item.price && item.quantity)
+          .reduce((sum, item) => sum + (item.price! * item.quantity!), 0);
+
+        if (checklistTotal > 0) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Total dos Produtos (Checklist):', 20, yPosition);
+          doc.text(formatSalesValue(checklistTotal), 120, yPosition);
+          yPosition += 15;
+        }
+      }
+
+      // Itens de Prospect
+      if (task.prospectItems && task.prospectItems.filter(item => item.selected).length > 0) {
+        if (yPosition > 200) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Itens de Prospect:', 20, yPosition);
+        yPosition += 10;
+
+        const prospectData = task.prospectItems
+          .filter(item => item.selected)
+          .map(item => [
+            item.name,
+            item.category.replace('_', ' '),
+            item.quantity || '1',
+            item.price ? formatSalesValue(item.price) : 'R$ 0,00',
+            item.observations || ''
+          ]);
+
+        (doc as any).autoTable({
+          head: [['Produto', 'Categoria', 'Qtd', 'Preço', 'Observações']],
+          body: prospectData,
+          startY: yPosition,
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [52, 152, 219] },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 45 }
+          }
+        });
+
+        yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+        // Total dos itens de prospect
+        const prospectTotal = task.prospectItems
+          .filter(item => item.selected && item.price && item.quantity)
+          .reduce((sum, item) => sum + (item.price! * item.quantity!), 0);
+
+        if (prospectTotal > 0) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Total dos Itens (Prospect):', 20, yPosition);
+          doc.text(formatSalesValue(prospectTotal), 120, yPosition);
+          yPosition += 15;
+        }
+      }
+
+      // Fotos da Visita
+      if (task.photos && task.photos.length > 0) {
+        if (yPosition > 240) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('FOTOS DA VISITA', 20, yPosition);
+        yPosition += 10;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Total de fotos anexadas: ${task.photos.length}`, 20, yPosition);
+        yPosition += 15;
+      }
+
+      // Observações Gerais
+      if (task.observations) {
+        if (yPosition > 240) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('OBSERVAÇÕES GERAIS', 20, yPosition);
+        yPosition += 10;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        const splitObservations = doc.splitTextToSize(task.observations, 170);
+        doc.text(splitObservations, 20, yPosition);
+        yPosition += splitObservations.length * 6 + 15;
+      }
+
+      // Notas de Prospect
+      if (task.prospectNotes) {
+        if (yPosition > 240) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('NOTAS DE PROSPECT', 20, yPosition);
+        yPosition += 10;
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        const splitNotes = doc.splitTextToSize(task.prospectNotes, 170);
+        doc.text(splitNotes, 20, yPosition);
+        yPosition += splitNotes.length * 6 + 8;
+
+        if (task.prospectNotesJustification) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Justificativa:', 20, yPosition);
+          yPosition += 8;
+          doc.setFont('helvetica', 'normal');
+          const splitJustification = doc.splitTextToSize(task.prospectNotesJustification, 170);
+          doc.text(splitJustification, 20, yPosition);
+          yPosition += splitJustification.length * 6 + 15;
+        }
+      }
+
+      // Histórico e Status
+      if (yPosition > 200) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('HISTÓRICO E STATUS', 20, yPosition);
+      yPosition += 15;
+
+      const historyData = [
+        ['Data de Criação:', format(task.createdAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })],
+        ['Última Atualização:', format(task.updatedAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })],
+        ['Valor da Oportunidade:', formatSalesValue(opportunityValue)],
+        ['Valor de Venda Realizada:', formatSalesValue(salesValue)],
+        ['Status da Venda:', statusInfo.label]
+      ];
+
+      (doc as any).autoTable({
+        body: historyData,
+        startY: yPosition,
+        styles: { fontSize: 10, cellPadding: 3 },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 60 },
+          1: { cellWidth: 120 }
+        },
+        theme: 'plain'
+      });
+
+      // Rodapé
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`, 20, 285);
+        doc.text(`Página ${i} de ${pageCount}`, 170, 285);
+      }
+
+      // Salvar o PDF
+      const fileName = `relatorio-oportunidade-${task.client.replace(/[^a-zA-Z0-9]/g, '')}-${format(new Date(), 'yyyy-MM-dd-HHmm')}.pdf`;
+      doc.save(fileName);
+
       toast({
         title: "PDF gerado com sucesso!",
         description: "O relatório foi baixado automaticamente.",
