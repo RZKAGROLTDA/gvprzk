@@ -27,8 +27,19 @@ export const DataValidationMigration: React.FC = () => {
     setResult(null);
 
     try {
-      // 1. Buscar tasks com vendas perdidas sem motivo
-      setProgress(20);
+      // 1. Verificar se a coluna partial_sales_value existe
+      setProgress(10);
+      const { data: tableInfo, error: tableError } = await supabase
+        .rpc('check_column_exists', { 
+          table_name: 'tasks', 
+          column_name: 'partial_sales_value' 
+        })
+        .single();
+
+      const hasPartialSalesColumn = !tableError && tableInfo;
+
+      // 2. Buscar tasks com vendas perdidas sem motivo
+      setProgress(25);
       const { data: lostSalesWithoutReason, error: lostSalesError } = await supabase
         .from('tasks')
         .select('*')
@@ -38,16 +49,24 @@ export const DataValidationMigration: React.FC = () => {
 
       if (lostSalesError) throw lostSalesError;
 
-      // 2. Buscar tasks com vendas parciais sem valor calculado
-      setProgress(40);
-      const { data: partialSalesWithoutValue, error: partialSalesError } = await supabase
+      // 3. Buscar tasks com vendas parciais
+      setProgress(45);
+      let partialSalesQuery = supabase
         .from('tasks')
-        .select('*, products(*)')
+        .select('*, task_products(*)')
         .eq('sales_confirmed', true)
-        .eq('sales_type', 'parcial')
-        .or('partial_sales_value.is.null,partial_sales_value.eq.0');
+        .eq('sales_type', 'parcial');
 
-      if (partialSalesError) throw partialSalesError;
+      // Se a coluna existe, filtar por valor nulo/zero
+      if (hasPartialSalesColumn) {
+        partialSalesQuery = partialSalesQuery.or('partial_sales_value.is.null,partial_sales_value.eq.0');
+      }
+
+      const { data: partialSalesWithoutValue, error: partialSalesError } = await partialSalesQuery;
+
+      if (partialSalesError && !partialSalesError.message.includes('column "partial_sales_value" does not exist')) {
+        throw partialSalesError;
+      }
 
       const result: MigrationResult = {
         totalTasks: (lostSalesWithoutReason?.length || 0) + (partialSalesWithoutValue?.length || 0),
@@ -80,30 +99,43 @@ export const DataValidationMigration: React.FC = () => {
       setProgress(80);
       if (partialSalesWithoutValue && partialSalesWithoutValue.length > 0) {
         for (const task of partialSalesWithoutValue) {
-          if (!task.products || task.products.length === 0) {
-            result.issues.push(`Task ${task.id} - Venda parcial sem produtos para calcular valor`);
+          if (!task.task_products || task.task_products.length === 0) {
+            result.details.push(`Task ${task.id} - Venda parcial sem produtos, valor mantido como informado pelo usuário`);
             continue;
           }
 
           // Calcular valor parcial baseado nos produtos selecionados
-          const partialValue = task.products
-            .filter((product: any) => product.selected)
+          const partialValue = task.task_products
+            .filter((product: any) => {
+              const productData = typeof product.product_data === 'string' 
+                ? JSON.parse(product.product_data) 
+                : product.product_data;
+              return productData?.selected === true;
+            })
             .reduce((sum: number, product: any) => {
-              const quantity = product.quantity || 0;
-              const price = product.price || 0;
+              const productData = typeof product.product_data === 'string' 
+                ? JSON.parse(product.product_data) 
+                : product.product_data;
+              const quantity = productData?.quantity || 0;
+              const price = productData?.price || 0;
               return sum + (quantity * price);
             }, 0);
 
-          const { error: updateError } = await supabase
-            .from('tasks')
-            .update({ partial_sales_value: partialValue })
-            .eq('id', task.id);
+          // Só tentar atualizar se a coluna existe
+          if (hasPartialSalesColumn) {
+            const { error: updateError } = await supabase
+              .from('tasks')
+              .update({ partial_sales_value: partialValue })
+              .eq('id', task.id);
 
-          if (updateError) {
-            result.issues.push(`Erro ao calcular valor parcial para task ${task.id}: ${updateError.message}`);
+            if (updateError) {
+              result.issues.push(`Erro ao calcular valor parcial para task ${task.id}: ${updateError.message}`);
+            } else {
+              result.tasksFixed++;
+              result.details.push(`Task ${task.id} - Calculado valor parcial: R$ ${partialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+            }
           } else {
-            result.tasksFixed++;
-            result.details.push(`Task ${task.id} - Calculado valor parcial: R$ ${partialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+            result.details.push(`Task ${task.id} - Valor parcial calculado (R$ ${partialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}), mas coluna não existe no banco`);
           }
         }
       }
@@ -117,13 +149,26 @@ export const DataValidationMigration: React.FC = () => {
         toast.info('Nenhum registro precisava de correção.');
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro durante a migração:', error);
-      toast.error('Erro durante a migração de dados');
+      
+      let errorMessage = 'Erro desconhecido durante a migração';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.details) {
+        errorMessage = error.details;
+      }
+      
+      toast.error(`Erro durante a migração: ${errorMessage}`);
       setResult({
         totalTasks: 0,
         tasksFixed: 0,
-        issues: [`Erro geral: ${error}`],
+        issues: [
+          `Erro durante execução: ${errorMessage}`,
+          'Sugestão: Execute o script SQL migrate_partial_sales.sql no Supabase SQL Editor antes de executar a migração.'
+        ],
         details: []
       });
     } finally {
@@ -147,6 +192,7 @@ export const DataValidationMigration: React.FC = () => {
             <ul className="list-disc list-inside mt-2 space-y-1">
               <li>Adicionar motivo padrão para vendas perdidas sem justificativa</li>
               <li>Calcular valores de vendas parciais baseado nos produtos selecionados</li>
+              <li><strong>Nota:</strong> Para funcionalidade completa, execute primeiro o script SQL migrate_partial_sales.sql no Supabase</li>
             </ul>
           </AlertDescription>
         </Alert>
