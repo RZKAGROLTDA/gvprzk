@@ -506,6 +506,10 @@ export type Database = {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
       }
+      check_enhanced_rate_limit: {
+        Args: { action_type?: string; user_email: string }
+        Returns: boolean
+      }
       check_login_rate_limit: {
         Args: { user_email: string }
         Returns: boolean
@@ -709,6 +713,10 @@ export type Database = {
           resource_id?: string
           resource_type: string
         }
+        Returns: undefined
+      }
+      monitor_high_risk_activity: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       refresh_user_directory_cache: {
