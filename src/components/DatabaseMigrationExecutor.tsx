@@ -1,25 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { AlertTriangle, Database, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Database, CheckCircle, ExternalLink, Copy } from 'lucide-react';
 
 export const DatabaseMigrationExecutor: React.FC = () => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [structureStatus, setStructureStatus] = useState<{
+    hasPartialSalesColumn: boolean;
+    hasFunctions: boolean;
+    checked: boolean;
+  }>({ hasPartialSalesColumn: false, hasFunctions: false, checked: false });
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
     details?: string[];
   } | null>(null);
 
-  const migrationSteps = [
-    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS partial_sales_value DECIMAL(10,2);",
-    
-    `CREATE OR REPLACE FUNCTION calculate_task_partial_sales_value(task_id UUID)
+  const sqlScript = `-- Migração: Adição de coluna partial_sales_value e funções relacionadas
+-- Execute este script completo no Supabase SQL Editor
+
+-- 1. Adicionar coluna partial_sales_value à tabela tasks
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS partial_sales_value DECIMAL(10,2);
+
+-- 2. Função para calcular valor de vendas parciais
+CREATE OR REPLACE FUNCTION calculate_task_partial_sales_value(task_id UUID)
 RETURNS DECIMAL(10,2)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -49,9 +58,10 @@ BEGIN
   
   RETURN calculated_value;
 END;
-$$;`,
+$$;
 
-    `CREATE OR REPLACE FUNCTION migrate_partial_sales_values()
+-- 3. Função para migrar dados históricos
+CREATE OR REPLACE FUNCTION migrate_partial_sales_values()
 RETURNS TABLE(updated_count INTEGER, total_processed INTEGER)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -79,9 +89,10 @@ BEGIN
   
   RETURN QUERY SELECT update_count, process_count;
 END;
-$$;`,
+$$;
 
-    `CREATE OR REPLACE FUNCTION update_partial_sales_value_trigger()
+-- 4. Trigger para atualização automática
+CREATE OR REPLACE FUNCTION update_partial_sales_value_trigger()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
@@ -97,17 +108,50 @@ BEGIN
   
   RETURN NEW;
 END;
-$$;`,
+$$;
 
-    `DROP TRIGGER IF EXISTS trigger_update_partial_sales_value ON tasks;
+-- 5. Criar trigger
+DROP TRIGGER IF EXISTS trigger_update_partial_sales_value ON tasks;
 CREATE TRIGGER trigger_update_partial_sales_value
   BEFORE UPDATE ON tasks
   FOR EACH ROW
-  EXECUTE FUNCTION update_partial_sales_value_trigger();`,
+  EXECUTE FUNCTION update_partial_sales_value_trigger();
 
-    `GRANT EXECUTE ON FUNCTION migrate_partial_sales_values() TO authenticated;
-GRANT EXECUTE ON FUNCTION calculate_task_partial_sales_value(UUID) TO authenticated;`
-  ];
+-- 6. Permissões
+GRANT EXECUTE ON FUNCTION migrate_partial_sales_values() TO authenticated;
+GRANT EXECUTE ON FUNCTION calculate_task_partial_sales_value(UUID) TO authenticated;
+
+-- 7. Executar migração de dados (opcional - pode ser executado pelo botão da interface)
+-- SELECT * FROM migrate_partial_sales_values();`;
+
+  const checkDatabaseStructure = async () => {
+    try {
+      // Verificar se a coluna partial_sales_value existe
+      const { data: columns, error: columnError } = await supabase
+        .from('information_schema.columns')
+        .select('column_name')
+        .eq('table_name', 'tasks')
+        .eq('column_name', 'partial_sales_value');
+
+      // Verificar se a função existe
+      const { data: functions, error: functionError } = await supabase
+        .rpc('migrate_partial_sales_values')
+        .select();
+
+      setStructureStatus({
+        hasPartialSalesColumn: !columnError && columns && columns.length > 0,
+        hasFunctions: !functionError,
+        checked: true
+      });
+    } catch (error) {
+      console.log('Estruturas não encontradas - execução manual necessária');
+      setStructureStatus({
+        hasPartialSalesColumn: false,
+        hasFunctions: false,
+        checked: true
+      });
+    }
+  };
 
   const executeMigration = async () => {
     setIsExecuting(true);
@@ -115,52 +159,30 @@ GRANT EXECUTE ON FUNCTION calculate_task_partial_sales_value(UUID) TO authentica
     setResult(null);
 
     try {
-      const stepCount = migrationSteps.length;
       const details: string[] = [];
+      setProgress(50);
 
-      for (let i = 0; i < stepCount; i++) {
-        const step = migrationSteps[i];
-        details.push(`Executando step ${i + 1}/${stepCount}...`);
-        
-        const { error } = await supabase.rpc('exec_sql', { sql_text: step });
-        
-        if (error) {
-          // Tentar executar diretamente se RPC falhar
-          const { error: directError } = await supabase
-            .from('tasks')
-            .select('id')
-            .limit(1);
-          
-          if (directError && step.includes('ALTER TABLE')) {
-            details.push(`✅ Step ${i + 1}: Coluna já existe ou criada com sucesso`);
-          } else if (error.message.includes('already exists')) {
-            details.push(`✅ Step ${i + 1}: Função/trigger já existe`);
-          } else {
-            throw error;
-          }
-        } else {
-          details.push(`✅ Step ${i + 1}: Executado com sucesso`);
-        }
-
-        setProgress(((i + 1) / stepCount) * 100);
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      // Executar a migração dos dados
+      // Tentar executar apenas a migração de dados se as funções existirem
       details.push('Executando migração de dados históricos...');
       const { data: migrationResult, error: migrationError } = await supabase
         .rpc('migrate_partial_sales_values');
 
+      setProgress(100);
+
       if (migrationError) {
-        details.push(`⚠ Aviso: ${migrationError.message}`);
-      } else if (migrationResult && migrationResult.length > 0) {
+        throw new Error(`Função migrate_partial_sales_values não encontrada. ${migrationError.message}`);
+      }
+
+      if (migrationResult && migrationResult.length > 0) {
         const result = migrationResult[0];
         details.push(`✅ Migração concluída: ${result.updated_count} registros atualizados de ${result.total_processed} processados`);
+      } else {
+        details.push('✅ Nenhum registro necessitava atualização');
       }
 
       setResult({
         success: true,
-        message: 'Migração do banco de dados executada com sucesso!',
+        message: 'Migração de dados executada com sucesso!',
         details
       });
 
@@ -170,8 +192,8 @@ GRANT EXECUTE ON FUNCTION calculate_task_partial_sales_value(UUID) TO authentica
       const errorMessage = error?.message || 'Erro desconhecido';
       setResult({
         success: false,
-        message: `Erro durante a migração: ${errorMessage}`,
-        details: [`❌ ${errorMessage}`]
+        message: `Erro durante execução: ${errorMessage}`,
+        details: [`❌ ${errorMessage}`, `⚠ Sugestão: Execute o script SQL migrate_partial_sales.sql no Supabase SQL Editor antes de executar a migração.`]
       });
 
       toast.error('Erro durante a migração');
@@ -180,44 +202,107 @@ GRANT EXECUTE ON FUNCTION calculate_task_partial_sales_value(UUID) TO authentica
     }
   };
 
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(sqlScript);
+      toast.success('Script SQL copiado para a área de transferência!');
+    } catch (error) {
+      toast.error('Erro ao copiar script');
+    }
+  };
+
+  useEffect(() => {
+    checkDatabaseStructure();
+  }, []);
+
   return (
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Database className="h-5 w-5" />
-          Executor de Migração do Banco de Dados
+          Migração do Banco de Dados
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Este processo executará automaticamente o script SQL de migração para:
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Adicionar coluna partial_sales_value à tabela tasks</li>
-              <li>Criar funções de cálculo automático</li>
-              <li>Criar triggers para atualização automática</li>
-              <li>Migrar dados históricos existentes</li>
-            </ul>
-          </AlertDescription>
-        </Alert>
+        {structureStatus.checked && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Status das Estruturas do Banco:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li className={structureStatus.hasPartialSalesColumn ? "text-green-600" : "text-orange-600"}>
+                  {structureStatus.hasPartialSalesColumn ? "✅" : "❌"} Coluna partial_sales_value
+                </li>
+                <li className={structureStatus.hasFunctions ? "text-green-600" : "text-orange-600"}>
+                  {structureStatus.hasFunctions ? "✅" : "❌"} Funções de migração
+                </li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {(!structureStatus.hasPartialSalesColumn || !structureStatus.hasFunctions) && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Ação Necessária:</strong> Execute o script SQL completo no Supabase SQL Editor primeiro:
+              <div className="mt-3 space-y-2">
+                <div className="flex gap-2">
+                  <Button
+                    onClick={copyToClipboard}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copiar Script SQL
+                  </Button>
+                  <Button
+                    onClick={() => window.open('https://supabase.com/dashboard/project/wuvbrkbhunifudaewhng/sql', '_blank')}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir SQL Editor
+                  </Button>
+                </div>
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-medium">Ver Script SQL Completo</summary>
+                  <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto">
+                    {sqlScript}
+                  </pre>
+                </details>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex gap-2">
           <Button
             onClick={executeMigration}
-            disabled={isExecuting}
+            disabled={isExecuting || (!structureStatus.hasFunctions)}
             variant="default"
             className="flex items-center gap-2"
           >
             <Database className="h-4 w-4" />
-            {isExecuting ? 'Executando Migração...' : 'Executar Migração do BD'}
+            {isExecuting ? 'Executando Migração...' : 'Migrar Dados Históricos'}
+          </Button>
+          <Button
+            onClick={checkDatabaseStructure}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <CheckCircle className="h-4 w-4" />
+            Verificar Status
           </Button>
         </div>
 
         {isExecuting && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span>Progresso da migração</span>
+              <span>Migração de dados em progresso</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="w-full" />
