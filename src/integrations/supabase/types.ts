@@ -520,6 +520,16 @@ export type Database = {
         Args: { user_email: string }
         Returns: boolean
       }
+      check_security_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          alert_type: string
+          count: number
+          description: string
+          recommendation: string
+          severity: string
+        }[]
+      }
       check_security_configuration: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -582,6 +592,20 @@ export type Database = {
           client_name: string
           email: string
           phone: string
+          task_id: string
+        }[]
+      }
+      get_secure_customer_data: {
+        Args: { task_ids?: string[] }
+        Returns: {
+          access_level: string
+          client_code: string
+          client_name: string
+          email: string
+          is_masked: boolean
+          phone: string
+          property: string
+          sales_value: number
           task_id: string
         }[]
       }
@@ -737,6 +761,15 @@ export type Database = {
       log_sensitive_data_access: {
         Args: {
           access_type?: string
+          resource_id?: string
+          resource_type: string
+        }
+        Returns: undefined
+      }
+      log_sensitive_data_operation: {
+        Args: {
+          additional_metadata?: Json
+          operation_type: string
           resource_id?: string
           resource_type: string
         }
