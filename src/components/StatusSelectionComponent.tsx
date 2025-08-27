@@ -272,40 +272,48 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
           </div>
           
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Produtos Vendidos</Label>
-            <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Produtos Vendidos</Label>
+              <span className="text-xs text-muted-foreground bg-blue-50 px-2 py-1 rounded">
+                ✏️ Clique para editar quantidade e preço
+              </span>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto border-2 border-dashed border-blue-200 rounded-lg p-4 bg-blue-50/30">
               {prospectItems.map((item, index) => (
-                <div key={item.id} className="flex items-center justify-between space-x-3 p-3 bg-muted/50 rounded-lg">
+                <div key={item.id} className="flex items-center justify-between space-x-3 p-4 bg-white rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center space-x-3">
                     <Checkbox 
                       checked={item.selected} 
                       onCheckedChange={(checked) => {
                         handleProspectItemChange(index, 'selected', checked as boolean);
                       }} 
+                      className="border-2 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                     />
                     <div className="flex-1">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium">{item.name}</span>
-                        <span className="text-xs text-muted-foreground">({item.category})</span>
+                        <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                        <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full inline-block w-fit">
+                          {item.category}
+                        </span>
                       </div>
                     </div>
                   </div>
                   
                   {item.selected && (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3 bg-gray-50 p-2 rounded-lg">
                       <div className="flex flex-col space-y-1">
-                        <Label className="text-xs">Qtd</Label>
+                        <Label className="text-xs font-medium text-blue-700">Quantidade</Label>
                         <Input
                           type="number"
                           min="1"
                           value={item.quantity || 1}
                           onChange={(e) => handleProspectItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                          className="w-16 h-8 text-xs"
+                          className="w-20 h-9 text-sm border-blue-200 focus:border-blue-500 focus:ring-blue-500"
                         />
                       </div>
                       
                       <div className="flex flex-col space-y-1">
-                        <Label className="text-xs">Preço</Label>
+                        <Label className="text-xs font-medium text-blue-700">Preço Unit. (R$)</Label>
                         <div className="relative">
                           <Input
                             type="text"
@@ -319,15 +327,15 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                               handleProspectItemChange(index, 'price', isNaN(numericValue) ? 0 : numericValue);
                             }}
                             placeholder="0,00"
-                            className="pl-6 w-20 h-8 text-xs"
+                            className="pl-7 w-24 h-9 text-sm border-blue-200 focus:border-blue-500 focus:ring-blue-500"
                           />
-                          <span className="absolute left-1 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-blue-600 font-medium">R$</span>
                         </div>
                       </div>
                       
                       <div className="flex flex-col space-y-1">
-                        <Label className="text-xs">Total</Label>
-                        <div className="text-xs font-medium text-green-600 px-2 py-1 bg-green-50 rounded">
+                        <Label className="text-xs font-medium text-green-700">Subtotal</Label>
+                        <div className="text-sm font-bold text-green-600 px-3 py-2 bg-green-100 rounded-lg border border-green-200">
                           R$ {new Intl.NumberFormat('pt-BR', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2
@@ -338,6 +346,13 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                   )}
                 </div>
               ))}
+              
+              {prospectItems.filter(item => item.selected).length === 0 && (
+                <div className="text-center py-6 text-gray-500">
+                  <div className="text-sm">Nenhum produto selecionado</div>
+                  <div className="text-xs mt-1">Marque os produtos que foram vendidos</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
