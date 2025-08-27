@@ -3,15 +3,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster as HotToaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryProvider } from "@/components/QueryProvider";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { AuthProvider } from '@/components/AuthProvider';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginForm } from '@/components/LoginForm';
 import { SecurityHeaders } from '@/components/SecurityHeaders';
-import Dashboard from "./pages/Dashboard";
-import { SalesFunnel } from "./components/SalesFunnel";
+import { LazyDashboard } from '@/components/LazyDashboard';
 import CreateTask from "./pages/CreateTask";
 import CreateFieldVisit from "./pages/CreateFieldVisit";
 import CreateCall from "./pages/CreateCall";
@@ -34,7 +33,7 @@ import ResetPassword from "./pages/ResetPassword";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 
-const queryClient = new QueryClient();
+
 
 interface ProtectedRoutesProps {
   user: any;
@@ -80,8 +79,8 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   // If everything is approved, show main app routes
   return (
     <Routes>
-      <Route path="/" element={<Layout><CreateTask /></Layout>} />
-      <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
+      <Route path="/" element={<Layout><LazyDashboard /></Layout>} />
+      <Route path="/dashboard" element={<Layout><LazyDashboard /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
       <Route path="/create-field-visit" element={<Layout><CreateFieldVisit /></Layout>} />
       <Route path="/create-call" element={<Layout><CreateCall /></Layout>} />
@@ -134,7 +133,7 @@ const AppContent: React.FC = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <QueryProvider>
     <TooltipProvider>
       <SecurityHeaders />
       <Toaster />
@@ -144,7 +143,7 @@ const App = () => (
         <AppContent />
       </AuthProvider>
     </TooltipProvider>
-  </QueryClientProvider>
+  </QueryProvider>
 );
 
 export default App;
