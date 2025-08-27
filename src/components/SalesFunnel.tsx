@@ -182,12 +182,23 @@ export const SalesFunnel: React.FC = () => {
       const taskDate = new Date(task.createdAt);
       const now = new Date();
       const daysAgo = parseInt(selectedPeriod);
-      const periodStart = subDays(now, daysAgo);
 
-      // Filtro de período - mais flexível
-      if (taskDate < periodStart) {
-        console.log('📅 Task fora do período:', task.id, { taskDate, periodStart });
-        return false;
+      // Filtro de período - tratamento especial para "hoje"
+      if (daysAgo === 1) {
+        // Para "hoje", verificar se a task é do dia atual
+        const taskDateOnly = taskDate.toDateString();
+        const todayOnly = now.toDateString();
+        if (taskDateOnly !== todayOnly) {
+          console.log('📅 Task não é de hoje:', task.id, { taskDate: taskDateOnly, today: todayOnly });
+          return false;
+        }
+      } else {
+        // Para outros períodos, usar a lógica original
+        const periodStart = subDays(now, daysAgo);
+        if (taskDate < periodStart) {
+          console.log('📅 Task fora do período:', task.id, { taskDate, periodStart });
+          return false;
+        }
       }
 
       // Filtro de consultor com matching aprimorado
