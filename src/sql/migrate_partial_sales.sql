@@ -26,14 +26,14 @@ BEGIN
     -- Calculate sum of selected products
     SELECT COALESCE(SUM(
       CASE 
-        WHEN (product_data->>'selected')::boolean = true 
-        THEN (COALESCE((product_data->>'quantity')::decimal, 0) * COALESCE((product_data->>'price')::decimal, 0))
+        WHEN selected = true 
+        THEN (COALESCE(quantity, 0) * COALESCE(price, 0))
         ELSE 0 
       END
     ), 0)
     INTO calculated_value
-    FROM task_products tp
-    WHERE tp.task_id = calculate_task_partial_sales_value.task_id;
+    FROM products p
+    WHERE p.task_id = calculate_task_partial_sales_value.task_id;
   END IF;
   
   RETURN calculated_value;
@@ -102,7 +102,7 @@ CREATE TRIGGER trigger_update_partial_sales_value
   FOR EACH ROW
   EXECUTE FUNCTION update_partial_sales_value_trigger();
 
--- Step 6: Create trigger function for task_products changes
+-- Step 6: Create trigger function for products changes
 CREATE OR REPLACE FUNCTION update_task_partial_sales_on_products_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -132,10 +132,10 @@ BEGIN
 END;
 $$;
 
--- Step 7: Create trigger on task_products table
-DROP TRIGGER IF EXISTS trigger_update_task_partial_sales_on_products ON task_products;
+-- Step 7: Create trigger on products table
+DROP TRIGGER IF EXISTS trigger_update_task_partial_sales_on_products ON products;
 CREATE TRIGGER trigger_update_task_partial_sales_on_products
-  AFTER INSERT OR UPDATE OR DELETE ON task_products
+  AFTER INSERT OR UPDATE OR DELETE ON products
   FOR EACH ROW
   EXECUTE FUNCTION update_task_partial_sales_on_products_change();
 

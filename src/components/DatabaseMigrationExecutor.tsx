@@ -46,14 +46,14 @@ BEGIN
   IF task_sales_type = 'parcial' AND task_sales_confirmed = true THEN
     SELECT COALESCE(SUM(
       CASE 
-        WHEN (product_data->>'selected')::boolean = true 
-        THEN (COALESCE((product_data->>'quantity')::decimal, 0) * COALESCE((product_data->>'price')::decimal, 0))
+        WHEN selected = true 
+        THEN (COALESCE(quantity, 0) * COALESCE(price, 0))
         ELSE 0 
       END
     ), 0)
     INTO calculated_value
-    FROM task_products tp
-    WHERE tp.task_id = calculate_task_partial_sales_value.task_id;
+    FROM products p
+    WHERE p.task_id = calculate_task_partial_sales_value.task_id;
   END IF;
   
   RETURN calculated_value;
