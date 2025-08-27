@@ -93,8 +93,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: formData.salesConfirmed,
         sales_type: formData.salesType,
         prospect_notes: formData.prospectNotes,
-        is_prospect: formData.isProspect,
-        checklist: formData.products
+        is_prospect: formData.isProspect
       };
 
       console.log('🔍 TaskEditModal - Dados para Supabase:', updateData);
