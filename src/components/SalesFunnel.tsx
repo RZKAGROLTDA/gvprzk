@@ -941,29 +941,8 @@ export const SalesFunnel: React.FC = () => {
                               return '-';
                             }
                             
-                            // Calcular valor baseado no tipo de venda
-                            let finalSalesValue = 0;
-                            
-                            if (task.salesType === 'parcial' && task.salesConfirmed === true) {
-                              // Para venda parcial: calcular valor dos produtos selecionados
-                              if (task.prospectItems && task.prospectItems.length > 0) {
-                                finalSalesValue = task.prospectItems
-                                  .filter(item => item.selected)
-                                  .reduce((sum, item) => {
-                                    const quantity = item.quantity || 0;
-                                    const price = item.price || 0;
-                                    return sum + (quantity * price);
-                                  }, 0);
-                              }
-                              
-                              // Se não há produtos ou valor é 0, usar salesValue como fallback
-                              if (finalSalesValue === 0) {
-                                finalSalesValue = getSalesValueAsNumber(task.salesValue);
-                              }
-                            } else if (task.salesConfirmed === true) {
-                              // Para venda total: usar valor total do formulário
-                              finalSalesValue = getSalesValueAsNumber(task.salesValue);
-                            }
+                            // Para vendas realizadas, usar o calculador correto
+                            const finalSalesValue = calculateTaskSalesValue(task);
                             
                             console.log('🔍 SalesFunnel - Calculando valor final:', {
                               taskId: task.id,
@@ -971,6 +950,7 @@ export const SalesFunnel: React.FC = () => {
                               salesConfirmed: task.salesConfirmed,
                               salesValue: task.salesValue,
                               prospectItems: task.prospectItems?.length || 0,
+                              selectedItems: task.prospectItems?.filter(item => item.selected).length || 0,
                               finalValue: finalSalesValue
                             });
                             
