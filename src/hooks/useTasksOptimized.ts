@@ -102,12 +102,11 @@ export const useTasksOptimized = (includeDetails = false) => {
       }
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutos para tasks - cache inteligente
-    gcTime: 15 * 60 * 1000, // 15 minutos no garbage collection
-    refetchOnWindowFocus: false, // Desabilitar auto-refetch desnecessário
-    refetchOnMount: false, // Não refetch automático no mount
+    staleTime: 0, // Force fresh data fetch every time
+    refetchOnWindowFocus: true, // Permitir refetch quando voltar à aba
+    refetchOnMount: true, // Permitir refetch no mount para dados atuais
     retry: 1, // Apenas 1 retry para performance
-    refetchInterval: false, // Desabilitar polling automático
+    refetchInterval: 60000, // Auto-refetch every minute to ensure fresh data
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
     }
@@ -296,10 +295,8 @@ export const useConsultants = () => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 30 * 60 * 1000, // 30 minutos - dados estáticos (consultores)
-    gcTime: 60 * 60 * 1000, // 1 hora no cache
+    staleTime: 10 * 60 * 1000, // 10 minutos - dados relativamente estáticos
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
   });
 };
 
@@ -316,10 +313,8 @@ export const useFiliais = () => {
       if (error) throw error;
       return data || [];
     },
-    staleTime: 30 * 60 * 1000, // 30 minutos - dados estáticos (filiais)
-    gcTime: 60 * 60 * 1000, // 1 hora no cache
+    staleTime: 10 * 60 * 1000, // 10 minutos - dados relativamente estáticos
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
   });
 };
 

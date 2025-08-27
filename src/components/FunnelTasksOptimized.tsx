@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckSquare, Download, Search, Filter } from 'lucide-react';
-import { useOptimizedTasks, useOptimizedConsultants, useOptimizedFiliais } from '@/hooks/useOptimizedQueries';
-import { usePerformanceOptimized } from '@/hooks/usePerformanceOptimized';
+import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
+import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -21,10 +21,10 @@ interface TaskData {
 }
 
 export const FunnelTasksOptimized: React.FC = () => {
-  const { data: tasks = [], isLoading: tasksLoading } = useOptimizedTasks();
-  const { data: consultants = [], isLoading: consultantsLoading } = useOptimizedConsultants();
-  const { data: filiais = [], isLoading: filiaisLoading } = useOptimizedFiliais();
-  const { debounce, smartInvalidate } = usePerformanceOptimized();
+  const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
+  const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
+  const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
+  const { invalidateAll } = useSecurityCache();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('365');
@@ -44,7 +44,7 @@ export const FunnelTasksOptimized: React.FC = () => {
     const result: TaskData[] = [];
     
     for (const task of tasks) {
-      const taskDate = new Date(task.created_at);
+      const taskDate = new Date(task.createdAt);
       
       // Early exits para máxima performance
       if (daysAgo < 9999 && taskDate < periodStart) continue;
@@ -60,10 +60,10 @@ export const FunnelTasksOptimized: React.FC = () => {
 
       // Mapear diretamente
       result.push({
-        date: new Date(task.created_at),
+        date: task.createdAt,
         client: task.client,
         responsible: task.responsible,
-        taskType: getTaskTypeLabel(task.task_type),
+        taskType: getTaskTypeLabel(task.taskType),
         observation: task.observations || '-',
         filial: task.filial || ''
       });
@@ -104,19 +104,19 @@ export const FunnelTasksOptimized: React.FC = () => {
     }
   };
 
-  // Smart refresh apenas quando necessário
+  // Auto-refresh when window gains focus to sync changes
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        smartInvalidate(['tasks-dynamic']);
+    const handleFocus = () => {
+      if (document.hasFocus()) {
+        refetch();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [smartInvalidate]);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refetch]);
 
-  const isLoading = tasksLoading || consultantsLoading || filiaisLoading;
+  const isLoading = loading || consultantsLoading || filiaisLoading;
 
   if (isLoading) {
     return (
@@ -146,10 +146,7 @@ export const FunnelTasksOptimized: React.FC = () => {
                 <Input
                   placeholder="Nome do cliente..."
                   value={searchTerm}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    debounce(() => setSearchTerm(value), 300);
-                  }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
