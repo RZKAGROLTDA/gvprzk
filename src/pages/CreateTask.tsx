@@ -6631,6 +6631,39 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="position">Posição</Label>
+                <Select value={task.position || ''} onValueChange={(value) => setTask(prev => ({
+                  ...prev,
+                  position: value,
+                  positionOther: value !== 'Outros' ? '' : prev.positionOther // Clear positionOther if not "Outros"
+                }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a posição do contato" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border z-50">
+                    <SelectItem value="Proprietário">Proprietário</SelectItem>
+                    <SelectItem value="Administrador">Administrador</SelectItem>
+                    <SelectItem value="Supervisor">Supervisor</SelectItem>
+                    <SelectItem value="Operador">Operador</SelectItem>
+                    <SelectItem value="Técnico">Técnico</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+                {task.position === 'Outros' && (
+                  <div className="mt-2">
+                    <Input 
+                      placeholder="Especifique a posição" 
+                      value={task.positionOther || ''} 
+                      onChange={e => setTask(prev => ({
+                        ...prev,
+                        positionOther: e.target.value
+                      }))} 
+                    />
+                  </div>
+                )}
+              </div>
+
+               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
                 <Input id="phone" type="tel" value={task.phone || ''} onChange={e => setTask(prev => ({
                 ...prev,
@@ -6642,8 +6675,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 <Label htmlFor="reportDate">Data do Relatório</Label>
                 <Input id="reportDate" value={new Date().toLocaleDateString('pt-BR')} readOnly className="bg-muted cursor-not-allowed" />
               </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="clientCode">Código do Cliente</Label>
                 <div className="relative">
                   <Input id="clientCode" value={task.clientCode || ''} onChange={e => {
