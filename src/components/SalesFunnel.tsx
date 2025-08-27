@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, FunnelChart, Funnel, LabelList } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, Eye, Edit } from 'lucide-react';
+import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, Eye, Edit, RefreshCw } from 'lucide-react';
 import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +20,7 @@ import { FormVisualization } from '@/components/FormVisualization';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { Task } from '@/types/task';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { toast } from '@/components/ui/use-toast';
 
 interface SalesFunnelData {
   name: string;
@@ -63,14 +64,15 @@ export const SalesFunnel: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Filtros
-  const [selectedPeriod, setSelectedPeriod] = useState('30');
+  const [selectedPeriod, setSelectedPeriod] = useState('365'); // Aumentar período padrão para 1 ano
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(50); // Aumentar itens por página
 
   // Add state to prevent multiple simultaneous loads
   const [isLoading, setIsLoading] = useState(false);
+  const [allTasksLoaded, setAllTasksLoaded] = useState(false);
 
   // Carregar consultores e filiais com cache otimizado
   useEffect(() => {
@@ -79,7 +81,10 @@ export const SalesFunnel: React.FC = () => {
       setIsLoading(true);
       try {
         // Carregamento paralelo para melhor performance
-        const [profilesResponse, filiaisResponse] = await Promise.all([supabase.from('profiles').select('id, name, filial_id').eq('approval_status', 'approved'), supabase.from('filiais').select('id, nome').order('nome')]);
+        const [profilesResponse, filiaisResponse] = await Promise.all([
+          supabase.from('profiles').select('id, name, filial_id').eq('approval_status', 'approved'),
+          supabase.from('filiais').select('id, nome').order('nome')
+        ]);
         setConsultants(profilesResponse.data || []);
         setFiliais(filiaisResponse.data || []);
         console.log('📊 Dados carregados:', {
@@ -93,14 +98,42 @@ export const SalesFunnel: React.FC = () => {
 
         // Carregar cache de filiais para resolução de UUIDs
         await loadFiliaisCache();
+        setAllTasksLoaded(true);
       } catch (error) {
         console.error('Erro ao carregar filtros:', error);
+        toast({
+          title: "❌ Erro",
+          description: "Erro ao carregar dados. Tente recarregar a página.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     loadFilters();
   }, []);
+
+  // Função para forçar recarregamento completo dos dados
+  const forceRefresh = async () => {
+    setIsLoading(true);
+    try {
+      await invalidateAll();
+      await refetch();
+      toast({
+        title: "✅ Dados Atualizados",
+        description: "Todos os dados foram recarregados com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao recarregar dados:', error);
+      toast({
+        title: "❌ Erro",
+        description: "Erro ao recarregar dados.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Função de normalização de nomes para matching flexível
   const normalizeName = (name: string) => {
@@ -132,33 +165,71 @@ export const SalesFunnel: React.FC = () => {
     return false;
   };
 
-  // Filtrar tarefas baseado nos filtros selecionados
+  // Filtrar tarefas baseado nos filtros selecionados - com lógica mais inclusiva
   const filteredTasks = useMemo(() => {
+    if (!allTasksLoaded || !tasks.length) {
+      console.log('⏳ Aguardando carregamento completo dos dados...');
+      return [];
+    }
+
     let filtered = tasks.filter(task => {
+      // Verificar se task tem dados básicos necessários
+      if (!task.client || !task.responsible) {
+        console.log('⚠️ Task sem dados básicos:', task.id, { client: task.client, responsible: task.responsible });
+        return true; // Incluir mesmo assim para não perder dados
+      }
+
       const taskDate = new Date(task.createdAt);
       const now = new Date();
       const daysAgo = parseInt(selectedPeriod);
       const periodStart = subDays(now, daysAgo);
 
-      // Filtro de período
-      if (taskDate < periodStart) return false;
+      // Filtro de período - mais flexível
+      if (taskDate < periodStart) {
+        console.log('📅 Task fora do período:', task.id, { taskDate, periodStart });
+        return false;
+      }
 
       // Filtro de consultor com matching aprimorado
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
-        if (!consultant) {
+        if (consultant) {
+          const isMatch = isNameMatch(consultant.name, task.responsible);
+          if (!isMatch) {
+            console.log('👤 Task não corresponde ao consultor:', task.id, { 
+              consultantName: consultant.name, 
+              taskResponsible: task.responsible 
+            });
+            return false;
+          }
+        } else {
           console.warn('❌ Consultor não encontrado:', selectedConsultant);
           return false;
         }
-        const isMatch = isNameMatch(consultant.name, task.responsible);
-        if (!isMatch) return false;
       }
 
-      // Filtro de filial
-      if (selectedFilial !== 'all' && task.filial !== selectedFilial) return false;
+      // Filtro de filial - mais flexível
+      if (selectedFilial !== 'all') {
+        const filialResolved = resolveFilialName(task.filial);
+        if (task.filial !== selectedFilial && filialResolved !== selectedFilial) {
+          console.log('🏢 Task não corresponde à filial:', task.id, { 
+            taskFilial: task.filial, 
+            filialResolved, 
+            selectedFilial 
+          });
+          return false;
+        }
+      }
 
       // Filtro de tipo de atividade
-      if (selectedActivity !== 'all' && task.taskType !== selectedActivity) return false;
+      if (selectedActivity !== 'all' && task.taskType !== selectedActivity) {
+        console.log('📋 Task não corresponde ao tipo:', task.id, { 
+          taskType: task.taskType, 
+          selectedActivity 
+        });
+        return false;
+      }
+
       return true;
     });
     
@@ -168,11 +239,12 @@ export const SalesFunnel: React.FC = () => {
       selectedConsultant,
       selectedFilial,
       selectedActivity,
-      selectedPeriod
+      selectedPeriod,
+      allTasksLoaded
     });
     
     return filtered;
-  }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants]);
+  }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, allTasksLoaded]);
 
   // Dados do funil de vendas
   const funnelData = useMemo(() => {
@@ -430,22 +502,35 @@ export const SalesFunnel: React.FC = () => {
     }
   };
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
-  if (loading) {
+  
+  if (loading || isLoading) {
     return <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <span className="ml-2">Carregando todos os dados...</span>
       </div>;
   }
+  
   return <div className="space-y-6">
-      {/* Header */}
+      {/* Header com botão de refresh */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold">Análise Gerencial
-
-        </h1>
+          <h1 className="text-3xl font-bold">Análise Gerencial</h1>
           <p className="text-muted-foreground">Análise de performance comercial e cobertura de carteira</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Total de registros carregados: {tasks.length} | Filtrados: {filteredTasks.length}
+          </p>
         </div>
         
         <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={forceRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Recarregar Dados
+          </Button>
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Filtros aplicados</span>
         </div>
@@ -472,6 +557,7 @@ export const SalesFunnel: React.FC = () => {
                   <SelectItem value="30">Últimos 30 dias</SelectItem>
                   <SelectItem value="90">Últimos 90 dias</SelectItem>
                   <SelectItem value="365">Último ano</SelectItem>
+                  <SelectItem value="999999">Todos os registros</SelectItem>
                 </SelectContent>
               </Select>
             </div>
