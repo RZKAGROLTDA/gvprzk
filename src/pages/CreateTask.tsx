@@ -7124,12 +7124,32 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </button>
                     
                     {/* VENDAS PARCIAL */}
-                    <button type="button" className={`p-3 rounded-lg border text-left transition-colors ${task.salesConfirmed === true && task.salesType === 'parcial' ? 'border-warning bg-warning/5 text-warning' : 'border-border bg-background hover:border-warning/50'}`} onClick={() => setTask(prev => ({
-                    ...prev,
-                    salesConfirmed: true,
-                    salesType: 'parcial',
-                    isProspect: true
-                  }))}>
+                    <button type="button" className={`p-3 rounded-lg border text-left transition-colors ${task.salesConfirmed === true && task.salesType === 'parcial' ? 'border-warning bg-warning/5 text-warning' : 'border-border bg-background hover:border-warning/50'}`} onClick={() => {
+                      // Configurar produtos automaticamente para venda parcial
+                      const selectedProducts = taskCategory === 'call' 
+                        ? Object.entries(callQuestions).filter(([key, value]) => value.needsProduct).map(([key, value]) => ({
+                            id: key,
+                            name: key.charAt(0).toUpperCase() + key.slice(1),
+                            category: 'other' as const,
+                            selected: true,
+                            quantity: value.quantity || 1,
+                            price: value.unitValue || 0
+                          }))
+                        : checklist.filter(item => item.selected).map(item => ({
+                            ...item,
+                            selected: true,
+                            quantity: item.quantity || 1,
+                            price: item.price || 0
+                          }));
+                      
+                      setTask(prev => ({
+                        ...prev,
+                        salesConfirmed: true,
+                        salesType: 'parcial',
+                        isProspect: true,
+                        prospectItems: selectedProducts.length > 0 ? selectedProducts : prev.prospectItems
+                      }));
+                    }}>
                       <div className="flex items-center gap-3">
                         <ShoppingCart className="h-4 w-4" />
                         <div>
@@ -7172,37 +7192,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
                 {/* Opções para vendas parciais apenas */}
                 {task.salesConfirmed === true && task.salesType === 'parcial' && <div className="space-y-4">
-                    {/* Automaticamente configurar produtos para venda parcial */}
-                    {(() => {
-                      // Se não há prospectItems, criar baseado nos produtos selecionados
-                      if (!task.prospectItems || task.prospectItems.length === 0) {
-                        const selectedProducts = taskCategory === 'call' 
-                          ? Object.entries(callQuestions).filter(([key, value]) => value.needsProduct).map(([key, value]) => ({
-                              id: key,
-                              name: key.charAt(0).toUpperCase() + key.slice(1),
-                              category: 'other' as const,
-                              selected: true,
-                              quantity: value.quantity || 1,
-                              price: value.unitValue || 0
-                            }))
-                          : checklist.filter(item => item.selected).map(item => ({
-                              ...item,
-                              selected: true,
-                              quantity: item.quantity || 1,
-                              price: item.price || 0
-                            }));
-                        
-                        if (selectedProducts.length > 0) {
-                          setTimeout(() => {
-                            setTask(prev => ({
-                              ...prev,
-                              prospectItems: selectedProducts
-                            }));
-                          }, 0);
-                        }
-                      }
-                      return null;
-                    })()}
 
                      {/* Campo de valor para venda parcial */}
                      {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-4">
