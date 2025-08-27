@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { DataValidationMigration } from '@/components/DataValidationMigration';
+import { DatabaseMigrationExecutor } from '@/components/DatabaseMigrationExecutor';
 interface Goal {
   id: string;
   title: string;
@@ -135,7 +136,8 @@ const Management: React.FC = () => {
       </div>
 
       {/* Migração de Dados */}
-      <DataValidationMigration />
+        <DatabaseMigrationExecutor />
+        <DataValidationMigration />
 
       {/* Metas */}
       <Card>
