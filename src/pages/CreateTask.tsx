@@ -7172,78 +7172,37 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
                 {/* Opções para vendas parciais apenas */}
                 {task.salesConfirmed === true && task.salesType === 'parcial' && <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium">Tipo de Venda</Label>
-                      <div className="space-y-2 mt-2">
-                        <div className="flex items-center space-x-2">
-                          <input type="radio" id="totalSale" name="saleType" value="total" checked={!task.prospectItems || task.prospectItems.length === 0} onChange={() => {
-                        // Calcular valor total automaticamente baseado no tipo de tarefa
-                        const totalValue = taskCategory === 'call' ? Object.values(callQuestions).reduce((sum, item) => sum + (item.needsProduct ? item.totalValue : 0), 0) : checklist.reduce((sum, item) => sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0), 0);
-                        setTask(prev => ({
-                          ...prev,
-                          prospectItems: [],
-                          salesValue: totalValue > 0 ? totalValue : prev.salesValue
-                        }));
-                      }} className="h-4 w-4" />
-                          <Label htmlFor="totalSale">Valor Total</Label>
-                        </div>
+                    {/* Automaticamente configurar produtos para venda parcial */}
+                    {(() => {
+                      // Se não há prospectItems, criar baseado nos produtos selecionados
+                      if (!task.prospectItems || task.prospectItems.length === 0) {
+                        const selectedProducts = taskCategory === 'call' 
+                          ? Object.entries(callQuestions).filter(([key, value]) => value.needsProduct).map(([key, value]) => ({
+                              id: key,
+                              name: key.charAt(0).toUpperCase() + key.slice(1),
+                              category: 'other' as const,
+                              selected: true,
+                              quantity: value.quantity || 1,
+                              price: value.unitValue || 0
+                            }))
+                          : checklist.filter(item => item.selected).map(item => ({
+                              ...item,
+                              selected: true,
+                              quantity: item.quantity || 1,
+                              price: item.price || 0
+                            }));
                         
-                        <div className="flex items-center space-x-2">
-                           <input type="radio" id="partialSale" name="saleType" value="partial" checked={task.prospectItems && task.prospectItems.length > 0} onChange={() => {
-                        if (taskCategory === 'call') {
-                          // Para ligações, usar produtos que precisam de fornecimento
-                          const selectedProducts = Object.entries(callQuestions).filter(([key, value]) => value.needsProduct).map(([key, value]) => ({
-                            id: key,
-                            name: key.charAt(0).toUpperCase() + key.slice(1),
-                            category: 'other' as const,
-                            selected: true,
-                            quantity: value.quantity || 1,
-                            price: value.unitValue || 0
-                          }));
-                          setTask(prev => ({
-                            ...prev,
-                            prospectItems: selectedProducts
-                          }));
-                        } else {
-                          // Para visitas/checklist, usar produtos selecionados
-                          const selectedProducts = checklist.filter(item => item.selected).map(item => ({
-                            ...item,
-                            selected: true,
-                            quantity: item.quantity || 1,
-                            price: item.price || 0
-                          }));
-                          setTask(prev => ({
-                            ...prev,
-                            prospectItems: selectedProducts
-                          }));
+                        if (selectedProducts.length > 0) {
+                          setTimeout(() => {
+                            setTask(prev => ({
+                              ...prev,
+                              prospectItems: selectedProducts
+                            }));
+                          }, 0);
                         }
-                      }} className="h-4 w-4" />
-                           <Label htmlFor="partialSale">Valor Parcial</Label>
-                         </div>
-                      </div>
-                    </div>
-
-                    {/* Campo de valor total editável quando não há produtos selecionados */}
-                    {(!task.prospectItems || task.prospectItems.length === 0) && <div className="space-y-2">
-                        <Label htmlFor="totalSaleValue">Valor Total da Venda (R$)</Label>
-                        <div className="relative">
-                          <Input id="totalSaleValue" type="text" value={task.salesValue ? new Intl.NumberFormat('pt-BR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }).format(getSalesValueAsNumber(task.salesValue)) : ''} onChange={e => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      const numericValue = parseFloat(value) / 100;
-                      setTask(prev => ({
-                        ...prev,
-                        salesValue: isNaN(numericValue) ? undefined : numericValue
-                      }));
-                    }} placeholder="0,00" className="pl-8" />
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {taskCategory === 'call' ? "Valor calculado com base nas perguntas da ligação. Você pode editá-lo se necessário." : checklist.some(item => item.selected) ? "Valor calculado automaticamente com base nos produtos selecionados. Você pode editá-lo se necessário." : "Digite o valor total da venda realizada."}
-                        </p>
-                      </div>}
+                      }
+                      return null;
+                    })()}
 
                      {/* Campo de valor para venda parcial */}
                      {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-4">
