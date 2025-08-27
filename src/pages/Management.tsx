@@ -9,6 +9,7 @@ import { Settings, FileText, Target, TrendingUp, Users, Building2, Plus, Edit, T
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { DataValidationMigration } from '@/components/DataValidationMigration';
 interface Goal {
   id: string;
   title: string;
@@ -132,6 +133,9 @@ const Management: React.FC = () => {
           <h1 className="text-xl sm:text-2xl font-bold">Gestão</h1>
         </div>
       </div>
+
+      {/* Migração de Dados */}
+      <DataValidationMigration />
 
       {/* Metas */}
       <Card>
