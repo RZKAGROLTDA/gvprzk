@@ -23,7 +23,7 @@ interface ClientData {
 }
 
 export const FunnelClientsOptimized: React.FC = () => {
-  const { tasks, loading, refetch } = useTasksOptimized();
+  const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   const { invalidateAll } = useSecurityCache();
