@@ -8,6 +8,7 @@ import { DashboardSkeleton, TableSkeleton } from '@/components/SkeletonLoader';
 import { SalesFunnelOptimized } from '@/components/SalesFunnelOptimized';
 import { FunnelClientsOptimized } from '@/components/FunnelClientsOptimized';
 import { FunnelTasksOptimized } from '@/components/FunnelTasksOptimized';
+import Reports from '@/pages/Reports';
 
 // Loading optimizado
 const DashboardLoading = () => <DashboardSkeleton />;
@@ -26,10 +27,11 @@ const Dashboard: React.FC = () => {
       </div>
 
       <Tabs defaultValue="funil" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="funil">Funil</TabsTrigger>
           <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="funil" className="space-y-6">
@@ -47,6 +49,12 @@ const Dashboard: React.FC = () => {
         <TabsContent value="tarefas" className="space-y-6">
           <Suspense fallback={<DashboardLoading />}>
             <FunnelTasksOptimized />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="relatorios" className="space-y-6">
+          <Suspense fallback={<DashboardLoading />}>
+            <Reports />
           </Suspense>
         </TabsContent>
       </Tabs>
