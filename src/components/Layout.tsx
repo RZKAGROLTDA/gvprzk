@@ -30,11 +30,6 @@ const useNavigationItems = () => {
         path: '/reports',
         icon: BarChart3,
         label: 'Relatórios'
-      },
-      {
-        path: '/management',
-        icon: Settings,
-        label: 'Gestão'
       }
     ],
     adminItems: [
