@@ -505,7 +505,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      security_dashboard: {
+        Row: {
+          count: number | null
+          metric_name: string | null
+          time_period: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_modify_user_role: {
@@ -569,6 +576,16 @@ export type Database = {
       current_user_is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      detect_security_violations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          details: Json
+          occurred_at: string
+          risk_score: number
+          user_id: string
+          violation_type: string
+        }[]
       }
       diagnostic_query: {
         Args: { query_text: string }
@@ -746,6 +763,14 @@ export type Database = {
         Args: { task_sales_value: number }
         Returns: boolean
       }
+      log_data_export: {
+        Args: {
+          export_type: string
+          filters_applied?: Json
+          record_count: number
+        }
+        Returns: undefined
+      }
       log_high_risk_activity: {
         Args: {
           activity_type: string
@@ -808,6 +833,10 @@ export type Database = {
       user_same_filial: {
         Args: { target_user_id: string }
         Returns: boolean
+      }
+      validate_password_strength: {
+        Args: { password: string }
+        Returns: Json
       }
       validate_task_input: {
         Args: { input_data: Json }
