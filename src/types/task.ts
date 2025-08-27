@@ -9,6 +9,7 @@ export interface Task {
   email?: string;
   phone?: string;
   function?: string;
+  functionOther?: string;
   filial?: string;
   taskType: 'prospection' | 'ligacao' | 'checklist';
   checklist: ProductType[];

@@ -6602,7 +6602,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 <Label htmlFor="function">Função</Label>
                 <Select value={task.function || ''} onValueChange={(value) => setTask(prev => ({
                   ...prev,
-                  function: value
+                  function: value,
+                  functionOther: value !== 'Outros' ? '' : prev.functionOther // Clear functionOther if not "Outros"
                 }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a função do contato" />
@@ -6615,6 +6616,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     <SelectItem value="Outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
+                {task.function === 'Outros' && (
+                  <div className="mt-2">
+                    <Input 
+                      placeholder="Especifique a função" 
+                      value={task.functionOther || ''} 
+                      onChange={e => setTask(prev => ({
+                        ...prev,
+                        functionOther: e.target.value
+                      }))} 
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
