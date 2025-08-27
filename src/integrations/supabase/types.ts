@@ -341,6 +341,7 @@ export type Database = {
           property: string
           propertyhectares: number | null
           prospect_notes: string | null
+          prospect_notes_justification: string | null
           responsible: string
           sales_confirmed: boolean | null
           sales_type: string | null
@@ -377,6 +378,7 @@ export type Database = {
           property: string
           propertyhectares?: number | null
           prospect_notes?: string | null
+          prospect_notes_justification?: string | null
           responsible: string
           sales_confirmed?: boolean | null
           sales_type?: string | null
@@ -413,6 +415,7 @@ export type Database = {
           property?: string
           propertyhectares?: number | null
           prospect_notes?: string | null
+          prospect_notes_justification?: string | null
           responsible?: string
           sales_confirmed?: boolean | null
           sales_type?: string | null
