@@ -46,8 +46,8 @@ export const SalesFunnelOptimized: React.FC = () => {
 
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   
-  // Filtros otimizados
-  const [selectedPeriod, setSelectedPeriod] = useState('30');
+  // Filtros otimizados - período expandido para mostrar todos os dados
+  const [selectedPeriod, setSelectedPeriod] = useState('365');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
@@ -58,14 +58,14 @@ export const SalesFunnelOptimized: React.FC = () => {
 
     const now = new Date();
     const daysAgo = parseInt(selectedPeriod);
-    const periodStart = subDays(now, daysAgo);
+    const periodStart = daysAgo >= 9999 ? new Date(0) : subDays(now, daysAgo);
 
     // Um único loop de filtro para máxima performance
     return tasks.filter(task => {
       const taskDate = new Date(task.createdAt);
       
       // Filtros aplicados sequencialmente para sair cedo
-      if (taskDate < periodStart) return false;
+      if (daysAgo < 9999 && taskDate < periodStart) return false;
       if (selectedConsultant !== 'all') {
         const consultant = consultants.find(c => c.id === selectedConsultant);
         if (!consultant || task.responsible !== consultant.name) return false;
@@ -294,6 +294,8 @@ export const SalesFunnelOptimized: React.FC = () => {
                 <SelectItem value="7">7 dias</SelectItem>
                 <SelectItem value="30">30 dias</SelectItem>
                 <SelectItem value="90">90 dias</SelectItem>
+                <SelectItem value="365">1 ano</SelectItem>
+                <SelectItem value="9999">Todos os registros</SelectItem>
               </SelectContent>
             </Select>
 
