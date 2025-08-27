@@ -1085,10 +1085,10 @@ export const SalesFunnel: React.FC = () => {
     {selectedTask && (
         <TaskEditModal
           task={selectedTask}
-          open={isEditModalOpen}
-          onOpenChange={(open) => {
-            setIsEditModalOpen(open);
-            if (!open) setSelectedTask(null);
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedTask(null);
           }}
           onTaskUpdate={async () => {
             console.log('🔄 SalesFunnel - Callback onTaskUpdate chamado, forçando atualização');

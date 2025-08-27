@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -28,15 +27,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    customerName: task.customerName || '',
-    customerPhone: task.customerPhone || '',
-    customerEmail: task.customerEmail || '',
+    customerName: task.client || '',
+    customerPhone: '',
+    customerEmail: task.email || '',
     salesValue: task.salesValue || '',
-    partialSalesValue: task.partialSalesValue || '',
     salesConfirmed: task.salesConfirmed,
     prospectNotes: task.prospectNotes || '',
     isProspect: task.isProspect || false,
-    products: task.products || []
+    products: task.checklist || []
   });
 
   const { invalidateAll } = useSecurityCache();
@@ -50,15 +48,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     });
 
     setFormData({
-      customerName: task.customerName || '',
-      customerPhone: task.customerPhone || '',
-      customerEmail: task.customerEmail || '',
+      customerName: task.client || '',
+      customerPhone: '',
+      customerEmail: task.email || '',
       salesValue: task.salesValue || '',
-      partialSalesValue: task.partialSalesValue || '',
       salesConfirmed: task.salesConfirmed,
       prospectNotes: task.prospectNotes || '',
       isProspect: task.isProspect || false,
-      products: task.products || []
+      products: task.checklist || []
     });
   }, [task]);
 
@@ -88,15 +85,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       }
 
       const updateData = {
-        customer_name: formData.customerName,
-        customer_phone: formData.customerPhone,
-        customer_email: formData.customerEmail,
+        client: formData.customerName,
+        email: formData.customerEmail,
         sales_value: formData.salesValue,
-        partial_sales_value: formData.partialSalesValue,
         sales_confirmed: formData.salesConfirmed,
         prospect_notes: formData.prospectNotes,
         is_prospect: formData.isProspect,
-        products: formData.products
+        checklist: formData.products
       };
 
       console.log('🔍 TaskEditModal - Dados para Supabase:', updateData);
@@ -131,12 +126,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Task</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customerName">Nome do Cliente</Label>
@@ -145,16 +140,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 value={formData.customerName}
                 onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
                 placeholder="Nome do cliente"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="customerPhone">Telefone</Label>
-              <Input
-                id="customerPhone"
-                value={formData.customerPhone}
-                onChange={(e) => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
-                placeholder="Telefone do cliente"
               />
             </div>
             
@@ -169,7 +154,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               />
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="salesValue">Valor da Venda (R$)</Label>
               <Input
                 id="salesValue"
@@ -180,18 +165,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
           </div>
 
-          {formData.salesConfirmed === 'partial' && (
-            <div className="space-y-2">
-              <Label htmlFor="partialSalesValue">Valor da Venda Parcial (R$)</Label>
-              <Input
-                id="partialSalesValue"
-                value={formData.partialSalesValue}
-                onChange={(e) => setFormData(prev => ({ ...prev, partialSalesValue: e.target.value }))}
-                placeholder="0,00"
-              />
-            </div>
-          )}
-
           <StatusSelectionComponent
             salesConfirmed={formData.salesConfirmed}
             prospectNotes={formData.prospectNotes}
@@ -199,14 +172,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             onStatusChange={handleStatusChange}
             showError={formData.salesConfirmed === false && (!formData.prospectNotes || formData.prospectNotes.trim() === '')}
           />
-
-          {formData.products && formData.products.length > 0 && (
-            <ProductListComponent
-              products={formData.products}
-              onProductChange={(products) => setFormData(prev => ({ ...prev, products }))}
-              title="Produtos/Serviços da Oportunidade"
-            />
-          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
