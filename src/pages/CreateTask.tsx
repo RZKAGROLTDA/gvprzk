@@ -7215,13 +7215,33 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     <Label htmlFor="lossReason">Motivo da Perda</Label>
                     <select id="lossReason" value={task.prospectNotes || ''} onChange={e => setTask(prev => ({
                   ...prev,
-                  prospectNotes: e.target.value
+                  prospectNotes: e.target.value,
+                  prospectNotesJustification: e.target.value === 'Outros' ? prev.prospectNotesJustification : undefined
                 }))} className="w-full px-3 py-2 border border-input rounded-md bg-background">
                       <option value="">Selecione o motivo</option>
                       <option value="Falta de peça">Falta de peça</option>
                       <option value="Preço">Preço</option>
                       <option value="Prazo">Prazo</option>
+                      <option value="Dlupo Domicilio">Dlupo Domicilio</option>
+                      <option value="Outros">Outros</option>
                     </select>
+                    
+                    {/* Campo de justificativa para "Outros" */}
+                    {task.prospectNotes === 'Outros' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="otherJustification">Justificativa</Label>
+                        <Textarea
+                          id="otherJustification"
+                          value={task.prospectNotesJustification || ''}
+                          onChange={e => setTask(prev => ({
+                            ...prev,
+                            prospectNotesJustification: e.target.value
+                          }))}
+                          placeholder="Descreva o motivo..."
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                    )}
                   </div>}
 
                 {/* Opções para vendas parciais apenas */}

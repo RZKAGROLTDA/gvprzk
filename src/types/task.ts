@@ -35,6 +35,7 @@ export interface Task {
   updatedAt: Date;
   isProspect: boolean;
   prospectNotes?: string;
+  prospectNotesJustification?: string; // For "Outros" option justification
   prospectItems?: ProductType[];
   salesValue?: number | string; // Allow string for masked values like ">10k"
   salesConfirmed?: boolean;
