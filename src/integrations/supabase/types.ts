@@ -335,6 +335,7 @@ export type Database = {
           is_prospect: boolean | null
           name: string
           observations: string | null
+          phone: string | null
           photos: string[] | null
           priority: string
           property: string
@@ -370,6 +371,7 @@ export type Database = {
           is_prospect?: boolean | null
           name: string
           observations?: string | null
+          phone?: string | null
           photos?: string[] | null
           priority: string
           property: string
@@ -405,6 +407,7 @@ export type Database = {
           is_prospect?: boolean | null
           name?: string
           observations?: string | null
+          phone?: string | null
           photos?: string[] | null
           priority?: string
           property?: string
@@ -569,6 +572,27 @@ export type Database = {
           nome: string
         }[]
       }
+      get_secure_customer_contacts: {
+        Args: { task_ids?: string[] }
+        Returns: {
+          access_level: string
+          client_name: string
+          email: string
+          phone: string
+          task_id: string
+        }[]
+      }
+      get_secure_sales_data: {
+        Args: { include_high_value?: boolean }
+        Returns: {
+          access_granted: boolean
+          is_high_value: boolean
+          masked_value: string
+          sales_type: string
+          sales_value: number
+          task_id: string
+        }[]
+      }
       get_secure_task_data: {
         Args: { task_id_param: string } | { task_ids?: string[] }
         Returns: {
@@ -710,6 +734,15 @@ export type Database = {
       log_sensitive_data_access: {
         Args: {
           access_type?: string
+          resource_id?: string
+          resource_type: string
+        }
+        Returns: undefined
+      }
+      log_sensitive_operation: {
+        Args: {
+          additional_metadata?: Json
+          operation_type: string
           resource_id?: string
           resource_type: string
         }
