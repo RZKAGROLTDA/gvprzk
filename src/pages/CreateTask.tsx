@@ -6600,10 +6600,21 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
               <div className="space-y-2">
                 <Label htmlFor="function">Função</Label>
-                <Input id="function" value={task.function || ''} onChange={e => setTask(prev => ({
-                ...prev,
-                function: e.target.value
-              }))} placeholder="Função do contato" />
+                <Select value={task.function || ''} onValueChange={(value) => setTask(prev => ({
+                  ...prev,
+                  function: value
+                }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a função do contato" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border">
+                    <SelectItem value="Comprador">Comprador</SelectItem>
+                    <SelectItem value="Socio">Sócio</SelectItem>
+                    <SelectItem value="Esposa">Esposa</SelectItem>
+                    <SelectItem value="Gerente">Gerente</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
