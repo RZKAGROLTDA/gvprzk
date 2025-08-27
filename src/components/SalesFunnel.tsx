@@ -945,9 +945,21 @@ export const SalesFunnel: React.FC = () => {
                             let finalSalesValue = 0;
                             
                             if (task.salesType === 'parcial' && task.salesConfirmed === true) {
-                              // Para venda parcial: usar o valor específico do campo "Valor da Venda Parcial"
-                              // Buscar na task pelo campo específico de venda parcial ou usar salesValue como fallback
-                              finalSalesValue = getSalesValueAsNumber(task.salesValue);
+                              // Para venda parcial: calcular valor dos produtos selecionados
+                              if (task.prospectItems && task.prospectItems.length > 0) {
+                                finalSalesValue = task.prospectItems
+                                  .filter(item => item.selected)
+                                  .reduce((sum, item) => {
+                                    const quantity = item.quantity || 0;
+                                    const price = item.price || 0;
+                                    return sum + (quantity * price);
+                                  }, 0);
+                              }
+                              
+                              // Se não há produtos ou valor é 0, usar salesValue como fallback
+                              if (finalSalesValue === 0) {
+                                finalSalesValue = getSalesValueAsNumber(task.salesValue);
+                              }
                             } else if (task.salesConfirmed === true) {
                               // Para venda total: usar valor total do formulário
                               finalSalesValue = getSalesValueAsNumber(task.salesValue);
@@ -958,6 +970,7 @@ export const SalesFunnel: React.FC = () => {
                               salesType: task.salesType,
                               salesConfirmed: task.salesConfirmed,
                               salesValue: task.salesValue,
+                              prospectItems: task.prospectItems?.length || 0,
                               finalValue: finalSalesValue
                             });
                             
