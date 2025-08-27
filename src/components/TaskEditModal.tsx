@@ -42,13 +42,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const { invalidateAll } = useSecurityCache();
 
   useEffect(() => {
-    console.log('🔍 TaskEditModal - Iniciando com task:', {
+    console.log('🔍 TaskEditModal - Carregando task:', {
       id: task.id,
       salesConfirmed: task.salesConfirmed,
-      isProspect: task.isProspect,
-      prospectNotes: task.prospectNotes
+      salesType: task.salesType,
+      checklistCount: task.checklist?.length,
+      prospectItemsCount: task.prospectItems?.length
     });
 
+    // Usar checklist como fonte principal de produtos
+    const allProducts = task.checklist || [];
+    
     setFormData({
       customerName: task.client || '',
       customerPhone: '',
@@ -58,34 +62,20 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
       prospectNotes: task.prospectNotes || '',
       isProspect: task.isProspect || false,
-      products: task.checklist || [],
-      prospectItems: task.prospectItems || []
+      products: allProducts,
+      prospectItems: task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : []
     });
   }, [task]);
 
   const handleStatusChange = (status: { salesConfirmed?: boolean | null; salesType?: 'ganho' | 'parcial' | 'perdido'; isProspect?: boolean; prospectNotes?: string; prospectItems?: any[] }) => {
     console.log('🔍 TaskEditModal - Status alterado:', status);
     
-    // Se está selecionando "Vendas Parcial", carregar produtos automaticamente
-    if (status.salesConfirmed === true && status.salesType === 'parcial') {
-      const selectedProducts = task.checklist?.filter(item => item.selected).map(item => ({
-        ...item,
-        selected: true,
-        quantity: item.quantity || 1,
-        price: item.price || 0
-      })) || [];
-      
-      setFormData(prev => ({
-        ...prev,
-        ...status,
-        prospectItems: selectedProducts.length > 0 ? selectedProducts : status.prospectItems || prev.prospectItems
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        ...status
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      ...status,
+      // Garantir que prospectItems seja sempre atualizado quando vier no status
+      ...(status.prospectItems && { prospectItems: status.prospectItems })
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,73 +117,75 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         throw error;
       }
 
-      // Atualizar produtos se houver alterações nos prospectItems
-      if (formData.prospectItems && formData.prospectItems.length > 0) {
-        console.log('🔍 TaskEditModal - Atualizando produtos:', formData.prospectItems);
-        
-        // Buscar os produtos existentes no banco para confirmar os IDs
-        const { data: existingProducts, error: fetchError } = await supabase
-          .from('products')
-          .select('id, name, category')
-          .eq('task_id', task.id);
+  // Atualizar produtos - corrigir tanto checklist quanto prospectItems
+  const productsToUpdate = formData.salesType === 'parcial' && formData.prospectItems?.length > 0 
+    ? formData.prospectItems 
+    : formData.products || [];
 
-        if (fetchError) {
-          console.error('🔍 TaskEditModal - Erro ao buscar produtos existentes:', fetchError);
-          throw fetchError;
-        }
+  if (productsToUpdate.length > 0) {
+    console.log('🔍 TaskEditModal - Produtos para atualizar:', productsToUpdate);
+    
+    // Buscar todos os produtos existentes da task
+    const { data: existingProducts, error: fetchError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('task_id', task.id);
 
-        console.log('🔍 TaskEditModal - Produtos existentes no banco:', existingProducts);
+    if (fetchError) {
+      console.error('🔍 TaskEditModal - Erro ao buscar produtos:', fetchError);
+      throw fetchError;
+    }
 
-        for (const product of formData.prospectItems) {
-          // Tentar encontrar o produto pelo ID primeiro, depois por nome e categoria
-          let productId = product.id;
-          
-          if (!existingProducts?.find(p => p.id === product.id)) {
-            // Se não encontrar por ID, tentar por nome e categoria
-            const matchingProduct = existingProducts?.find(p => 
-              p.name === product.name && p.category === product.category
-            );
-            
-            if (matchingProduct) {
-              productId = matchingProduct.id;
-              console.log(`🔍 TaskEditModal - Produto ${product.name} encontrado pelo nome, ID: ${productId}`);
-            } else {
-              console.warn(`🔍 TaskEditModal - Produto ${product.name} não encontrado no banco, pulando atualização`);
-              continue;
-            }
-          }
+    console.log('🔍 TaskEditModal - Produtos no banco:', existingProducts);
 
-          console.log(`🔍 TaskEditModal - Atualizando produto ${product.name} (ID: ${productId}):`, {
-            selected: product.selected,
-            quantity: product.quantity || 0,
-            price: product.price || 0
-          });
+    // Atualizar cada produto
+    for (const product of productsToUpdate) {
+      // Encontrar produto existente pelo ID ou por nome/categoria
+      const existingProduct = existingProducts?.find(p => 
+        p.id === product.id || (p.name === product.name && p.category === product.category)
+      );
 
-          const { error: productError } = await supabase
-            .from('products')
-            .update({
-              selected: product.selected,
-              quantity: product.quantity || 0,
-              price: product.price || 0,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', productId);
-
-          if (productError) {
-            console.error('🔍 TaskEditModal - Erro na atualização do produto:', productId, productError);
-            throw productError;
-          } else {
-            console.log(`🔍 TaskEditModal - Produto ${product.name} atualizado com sucesso`);
-          }
-        }
+      if (!existingProduct) {
+        console.warn(`🔍 TaskEditModal - Produto ${product.name} não encontrado, pulando`);
+        continue;
       }
+
+      console.log(`🔍 TaskEditModal - Atualizando produto ${product.name}:`, {
+        id: existingProduct.id,
+        selected: product.selected,
+        quantity: product.quantity || 0,
+        price: product.price || 0
+      });
+
+      const { error: productError } = await supabase
+        .from('products')
+        .update({
+          selected: product.selected,
+          quantity: product.quantity || 0,
+          price: product.price || 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingProduct.id);
+
+      if (productError) {
+        console.error('🔍 TaskEditModal - Erro ao atualizar produto:', existingProduct.id, productError);
+        throw productError;
+      }
+
+      console.log(`🔍 TaskEditModal - Produto ${product.name} atualizado com sucesso`);
+    }
+  }
 
       console.log('🔍 TaskEditModal - Atualização realizada com sucesso');
 
-      // Invalidar cache para forçar atualização
+      // Invalidar cache e aguardar
+      console.log('🔍 TaskEditModal - Invalidando cache...');
       await invalidateAll();
-      console.log('🔍 TaskEditModal - Cache invalidado, chamando onTaskUpdate');
       
+      // Aguardar um momento para garantir sincronização
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('🔍 TaskEditModal - Atualização concluída, fechando modal');
       onTaskUpdate();
       onClose();
       
