@@ -942,8 +942,13 @@ export const SalesFunnel: React.FC = () => {
                             let finalSalesValue = 0;
                             
                             if (task.salesType === 'parcial' && task.salesConfirmed === true) {
-                              // Para venda parcial: calcular valor dos produtos selecionados
+                              // Para venda parcial: tentar calcular valor dos produtos selecionados
                               finalSalesValue = calculatePartialSalesValue(task);
+                              
+                              // Se não conseguiu calcular pelos produtos (zero), usar valor total como fallback
+                              if (finalSalesValue === 0) {
+                                finalSalesValue = getSalesValueAsNumber(task.salesValue);
+                              }
                             } else if (task.salesConfirmed === true) {
                               // Para venda total: usar valor total do formulário
                               finalSalesValue = getSalesValueAsNumber(task.salesValue);
@@ -954,6 +959,9 @@ export const SalesFunnel: React.FC = () => {
                               salesType: task.salesType,
                               salesConfirmed: task.salesConfirmed,
                               salesValue: task.salesValue,
+                              prospectItemsCount: task.prospectItems?.length || 0,
+                              prospectItems: task.prospectItems,
+                              checklistCount: task.checklist?.length || 0,
                               finalValue: finalSalesValue
                             });
                             
