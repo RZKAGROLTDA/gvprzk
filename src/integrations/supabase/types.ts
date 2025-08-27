@@ -670,6 +670,30 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_secure_task_data_enhanced: {
+        Args: { task_ids?: string[] }
+        Returns: {
+          access_level: string
+          client: string
+          created_at: string
+          created_by: string
+          email: string
+          end_date: string
+          filial: string
+          id: string
+          is_masked: boolean
+          name: string
+          observations: string
+          phone: string
+          priority: string
+          property: string
+          responsible: string
+          sales_value: number
+          start_date: string
+          status: string
+          task_type: string
+        }[]
+      }
       get_secure_tasks_view: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -810,6 +834,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      mask_customer_email: {
+        Args: {
+          email: string
+          is_owner: boolean
+          is_same_filial: boolean
+          user_role: string
+        }
+        Returns: string
+      }
+      mask_customer_name: {
+        Args: {
+          is_owner: boolean
+          is_same_filial: boolean
+          name: string
+          user_role: string
+        }
+        Returns: string
+      }
+      mask_phone_number: {
+        Args: { is_owner: boolean; phone: string; user_role: string }
+        Returns: string
+      }
       monitor_high_risk_activity: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -834,6 +880,10 @@ export type Database = {
       user_same_filial: {
         Args: { target_user_id: string }
         Returns: boolean
+      }
+      validate_and_sanitize_task_input: {
+        Args: { input_data: Json }
+        Returns: Json
       }
       validate_password_strength: {
         Args: { password: string }

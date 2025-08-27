@@ -103,9 +103,9 @@ export const useInputSecurity = () => {
         // Enhanced security - check for malicious patterns first
         if (detectMaliciousInput(input)) {
           console.warn('Malicious input detected and blocked:', input.substring(0, 50));
-          return ''; // Return empty string for malicious input
+          return '[CONTENT BLOCKED - SECURITY VIOLATION]'; // Clear indication of blocked content
         }
-        return sanitizeText(input, { maxLength: 2000 });
+        return sanitizeText(input, { maxLength: 5000 }); // Increased limit to match server-side
       }
       
       if (Array.isArray(input)) {

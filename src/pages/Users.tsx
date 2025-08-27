@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Shield, Building, Trash2 } from 'lucide-react';
+import { Users as UsersIcon, Shield, Building, Trash2, AlertTriangle } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 
 interface Profile {
   id: string;
@@ -27,10 +28,12 @@ interface Filial {
 
 export const Users: React.FC = () => {
   const { user } = useAuth();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Use secure user directory with data masking
+  const { data: secureUserData, isLoading: isLoadingUsers, error: userError } = useSecureUserDirectory();
 
   useEffect(() => {
     loadData();
@@ -38,22 +41,7 @@ export const Users: React.FC = () => {
 
   const loadData = async () => {
     try {
-      // Carregar usuários
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          name,
-          email,
-          role,
-          filial_id,
-          approval_status,
-          filiais:filial_id (
-            nome
-          )
-        `);
-
-      if (profilesError) throw profilesError;
+      // Note: User data is now loaded via useSecureUserDirectory hook
 
       // Carregar perfil do usuário atual
       if (user) {
@@ -78,15 +66,7 @@ export const Users: React.FC = () => {
 
       if (filiaisError) throw filiaisError;
 
-      // Sort profiles alphabetically by name
-      const sortedProfiles = profilesData
-        ?.map(p => ({
-          ...p,
-          filial_nome: (p.filiais as any)?.nome
-        }))
-        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())) || [];
-      
-      setProfiles(sortedProfiles);
+      // User profiles are now handled by the secure hook
       setFiliais(filiaisData || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -136,7 +116,8 @@ export const Users: React.FC = () => {
 
       if (data && data.success) {
         toast.success(data.message || 'Permissão atualizada com sucesso');
-        await loadData(); // Recarregar dados após sucesso
+        // Trigger refetch of secure user data
+        window.location.reload(); // Simple refresh to ensure data consistency
       } else {
         toast.error('Erro inesperado ao atualizar permissão');
       }
@@ -277,7 +258,7 @@ export const Users: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoadingUsers) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -285,6 +266,25 @@ export const Users: React.FC = () => {
     );
   }
 
+  if (userError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Erro de Acesso
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Não foi possível carregar os dados dos usuários. Verifique suas permissões.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const profiles = secureUserData || [];
   const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
   const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
   const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
@@ -321,7 +321,14 @@ export const Users: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <h3 className="font-semibold text-lg">{profile.name}</h3>
-                      <p className="text-muted-foreground">{profile.email}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-muted-foreground">{profile.email}</p>
+                        {profile.email === '***@***.***' && (
+                          <Badge variant="secondary" className="text-xs">
+                            Email Protegido
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <div>
@@ -394,7 +401,18 @@ export const Users: React.FC = () => {
               {approvedUsers.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.name}</TableCell>
-                  <TableCell>{profile.email}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className={profile.email === '***@***.***' ? 'italic text-muted-foreground' : ''}>
+                        {profile.email}
+                      </span>
+                      {profile.email === '***@***.***' && (
+                        <Badge variant="secondary" className="text-xs">
+                          Protegido
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getRoleBadgeVariant(profile.role)}>
                       {getRoleLabel(profile.role)}
