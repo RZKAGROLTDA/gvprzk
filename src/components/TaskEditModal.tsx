@@ -127,6 +127,29 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         throw error;
       }
 
+      // Atualizar produtos se houver alterações nos prospectItems
+      if (formData.prospectItems && formData.prospectItems.length > 0) {
+        console.log('🔍 TaskEditModal - Atualizando produtos:', formData.prospectItems);
+        
+        for (const product of formData.prospectItems) {
+          const { error: productError } = await supabase
+            .from('products')
+            .update({
+              selected: product.selected,
+              quantity: product.quantity || 0,
+              price: product.price || 0,
+              updated_at: new Date().toISOString()
+            })
+            .eq('task_id', task.id)
+            .eq('id', product.id);
+
+          if (productError) {
+            console.error('🔍 TaskEditModal - Erro na atualização do produto:', product.id, productError);
+            throw productError;
+          }
+        }
+      }
+
       console.log('🔍 TaskEditModal - Atualização realizada com sucesso');
 
       // Invalidar cache para forçar atualização
