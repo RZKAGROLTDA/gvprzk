@@ -32,7 +32,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     customerEmail: task.email || '',
     salesValue: task.salesValue || '',
     salesConfirmed: task.salesConfirmed,
-    salesType: (task.salesType as 'total' | 'parcial') || 'total',
+    salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
     prospectNotes: task.prospectNotes || '',
     isProspect: task.isProspect || false,
     products: task.checklist || []
@@ -54,14 +54,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       customerEmail: task.email || '',
       salesValue: task.salesValue || '',
       salesConfirmed: task.salesConfirmed,
-      salesType: (task.salesType as 'total' | 'parcial') || 'total',
+      salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
       prospectNotes: task.prospectNotes || '',
       isProspect: task.isProspect || false,
       products: task.checklist || []
     });
   }, [task]);
 
-  const handleStatusChange = (status: { salesConfirmed?: boolean | null; salesType?: 'total' | 'parcial'; isProspect?: boolean; prospectNotes?: string }) => {
+  const handleStatusChange = (status: { salesConfirmed?: boolean | null; salesType?: 'ganho' | 'parcial' | 'perdido'; isProspect?: boolean; prospectNotes?: string }) => {
     console.log('🔍 TaskEditModal - Status alterado:', status);
     setFormData(prev => ({
       ...prev,

@@ -46,19 +46,16 @@ export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> 
 };
 
 export const mapSalesStatus = (task: Task): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
-  // PRIORIZAR o campo sales_type se existir (correção crítica)
-  if (task.salesType === 'parcial') return 'parcial';
-  
   // Se não é um prospect, retorna prospect
   if (!task.isProspect) return 'prospect';
   
   // Se salesConfirmed é undefined ou null, é um prospect em andamento
   if (task.salesConfirmed === undefined || task.salesConfirmed === null) return 'prospect';
   
-  // Se salesConfirmed é true, verificar se é total ou parcial
+  // Se salesConfirmed é true, verificar se é ganho ou parcial
   if (task.salesConfirmed === true) {
-    if (task.salesType === 'total') return 'ganho';
     if (task.salesType === 'parcial') return 'parcial';
+    if (task.salesType === 'ganho') return 'ganho';
     return 'ganho'; // default para compatibilidade
   }
   
@@ -142,7 +139,7 @@ export const calculateSalesValue = (taskOrTasks: Task | Task[]): number => {
 export const calculateTaskStats = (tasks: Task[]) => {
   const prospects = tasks.filter(t => t.isProspect);
   const completed = tasks.filter(t => t.status === 'completed');
-  const won = tasks.filter(t => t.salesConfirmed === true && t.salesType === 'total');
+  const won = tasks.filter(t => t.salesConfirmed === true && t.salesType === 'ganho');
   
   const totalSalesValue = prospects.reduce((sum, task) => {
     return sum + getSalesValueAsNumber(task.salesValue);

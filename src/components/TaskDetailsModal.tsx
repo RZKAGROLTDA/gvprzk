@@ -168,7 +168,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           {/* Status do Formulário */}
           <div className="flex items-center gap-4">
           {currentTask.isProspect && <>
-                {currentTask.salesConfirmed === true && currentTask.salesType === 'total' && <Badge variant="success" className="text-sm">
+                {currentTask.salesConfirmed === true && currentTask.salesType === 'ganho' && <Badge variant="success" className="text-sm">
                     Vendas Total
                   </Badge>}
                 {currentTask.salesConfirmed === true && currentTask.salesType === 'parcial' && <Badge variant="warning" className="text-sm">

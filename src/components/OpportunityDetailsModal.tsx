@@ -195,7 +195,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         error: taskError
       } = await supabase.from('tasks').update({
         sales_confirmed: salesConfirmed,
-        sales_type: selectedStatus === 'ganho' ? 'total' : selectedStatus === 'parcial' ? 'parcial' : null,
+        sales_type: selectedStatus === 'ganho' ? 'ganho' : selectedStatus === 'parcial' ? 'parcial' : selectedStatus === 'perdido' ? 'perdido' : null,
         status: taskStatus,
         is_prospect: isProspect,
         // sales_value nunca muda - sempre mantém o valor total da oportunidade
@@ -549,7 +549,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   <SelectContent>
                     <SelectItem value="prospect">Prospect</SelectItem>
                     <SelectItem value="parcial">Venda Parcial</SelectItem>
-                    <SelectItem value="ganho">Venda Realizada</SelectItem>
+                    <SelectItem value="ganho">Vendas Total</SelectItem>
                     <SelectItem value="perdido">Venda Perdida</SelectItem>
                   </SelectContent>
                 </Select>

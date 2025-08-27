@@ -5,12 +5,12 @@ import { LOSS_REASONS } from './TaskFormCore';
 
 export interface StatusSelectionProps {
   salesConfirmed?: boolean | null;
-  salesType?: 'total' | 'parcial';
+  salesType?: 'ganho' | 'parcial' | 'perdido';
   prospectNotes?: string;
   isProspect?: boolean;
   onStatusChange: (status: { 
     salesConfirmed?: boolean | null; 
-    salesType?: 'total' | 'parcial';
+    salesType?: 'ganho' | 'parcial' | 'perdido';
     isProspect?: boolean; 
     prospectNotes?: string 
   }) => void;
@@ -70,14 +70,14 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
           {/* Vendas Total */}
           <div 
             className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-              salesConfirmed === true && salesType === 'total'
+              salesConfirmed === true && salesType === 'ganho'
                 ? 'border-green-500 bg-green-50 shadow-lg' 
                 : 'border-gray-200 bg-white hover:border-green-300'
             }`} 
             onClick={() => {
               onStatusChange({
                 salesConfirmed: true,
-                salesType: 'total',
+                salesType: 'ganho',
                 isProspect: true,
                 prospectNotes: ''
               });
@@ -85,7 +85,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
           >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                salesConfirmed === true && salesType === 'total'
+                salesConfirmed === true && salesType === 'ganho'
                   ? 'bg-green-500 text-white' 
                   : 'bg-gray-100 text-gray-400'
               }`}>
@@ -96,7 +96,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 <div className="text-xs text-muted-foreground">Negócio 100% fechado</div>
               </div>
             </div>
-            {salesConfirmed === true && salesType === 'total' && (
+            {salesConfirmed === true && salesType === 'ganho' && (
               <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs">✓</span>
               </div>
@@ -150,7 +150,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
               console.log('🔍 StatusSelection - Venda perdida selecionada');
               onStatusChange({
                 salesConfirmed: false,
-                salesType: undefined,
+                salesType: 'perdido',
                 isProspect: true,
                 prospectNotes: prospectNotes || ''
               });
@@ -190,7 +190,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
               console.log('🔍 StatusSelection - Motivo da perda selecionado:', value);
               onStatusChange({
                 salesConfirmed: false,
-                salesType: undefined,
+                salesType: 'perdido',
                 isProspect: true,
                 prospectNotes: value
               });

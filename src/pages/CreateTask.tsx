@@ -57,7 +57,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       const {
         data: previousTasks,
         error
-      } = await supabase.from('tasks').select('property, email, propertyHectares').eq('clientCode', clientCode).order('created_at', {
+      } = await supabase.from('tasks').select('property, email, propertyhectares').eq('clientCode', clientCode).order('created_at', {
         ascending: false
       }).limit(1);
       if (error) {
@@ -72,7 +72,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
           ...prev,
           property: previousTask.property || prev.property,
           email: previousTask.email || prev.email,
-          propertyHectares: previousTask.propertyHectares || prev.propertyHectares
+          propertyHectares: previousTask.propertyhectares || prev.propertyHectares
         }));
 
         // Mostrar notificação sobre os dados preenchidos
@@ -7108,10 +7108,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </button>
                     
                     {/* VENDAS TOTAL */}
-                    <button type="button" className={`p-3 rounded-lg border text-left transition-colors ${task.salesConfirmed === true && task.salesType === 'total' ? 'border-success bg-success/5 text-success' : 'border-border bg-background hover:border-success/50'}`} onClick={() => setTask(prev => ({
+                    <button type="button" className={`p-3 rounded-lg border text-left transition-colors ${task.salesConfirmed === true && task.salesType === 'ganho' ? 'border-success bg-success/5 text-success' : 'border-border bg-background hover:border-success/50'}`} onClick={() => setTask(prev => ({
                     ...prev,
                     salesConfirmed: true,
-                    salesType: 'total',
+                    salesType: 'ganho',
                     isProspect: true
                   }))}>
                       <div className="flex items-center gap-3">
