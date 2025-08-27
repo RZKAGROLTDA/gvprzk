@@ -7,6 +7,8 @@ export interface Task {
   property: string;
   cpf?: string;
   email?: string;
+  phone?: string;
+  function?: string;
   filial?: string;
   taskType: 'prospection' | 'ligacao' | 'checklist';
   checklist: ProductType[];

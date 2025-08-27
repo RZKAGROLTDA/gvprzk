@@ -6741,6 +6741,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input id="phone" type="tel" value={task.phone || ''} onChange={e => setTask(prev => ({
+                ...prev,
+                phone: e.target.value
+              }))} placeholder="(00) 00000-0000" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="function">Função</Label>
+                <Input id="function" value={task.function || ''} onChange={e => setTask(prev => ({
+                ...prev,
+                function: e.target.value
+              }))} placeholder="Função do contato" />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="property">Nome da Propriedade</Label>
                 <Input id="property" value={task.property} onChange={e => setTask(prev => ({
                 ...prev,
