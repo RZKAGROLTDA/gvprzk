@@ -64,11 +64,11 @@ export const SalesFunnel: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Filtros
-  const [selectedPeriod, setSelectedPeriod] = useState('9999'); // Mostrar todos os registros por padrão
+  const [selectedPeriod, setSelectedPeriod] = useState('365'); // Aumentar período padrão para 1 ano
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
-  const [itemsPerPage, setItemsPerPage] = useState(0); // 0 significa "todos" por padrão
+  const [itemsPerPage, setItemsPerPage] = useState(50); // Aumentar itens por página
 
   // Add state to prevent multiple simultaneous loads
   const [isLoading, setIsLoading] = useState(false);
@@ -245,11 +245,6 @@ export const SalesFunnel: React.FC = () => {
     
     return filtered;
   }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, allTasksLoaded]);
-
-  // Reset itemsPerPage para mostrar todos quando filtros mudarem
-  useEffect(() => {
-    setItemsPerPage(0); // 0 = mostrar todos
-  }, [selectedPeriod, selectedConsultant, selectedFilial, selectedActivity]);
 
   // Dados do funil de vendas
   const funnelData = useMemo(() => {
@@ -619,11 +614,11 @@ export const SalesFunnel: React.FC = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">Todos os formulários ({filteredTasks.length})</SelectItem>
                   <SelectItem value="10">10 itens</SelectItem>
                   <SelectItem value="20">20 itens</SelectItem>
                   <SelectItem value="50">50 itens</SelectItem>
                   <SelectItem value="100">100 itens</SelectItem>
+                  <SelectItem value={filteredTasks.length.toString()}>Todos ({filteredTasks.length})</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -936,7 +931,7 @@ export const SalesFunnel: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 0 ? filteredTasks : filteredTasks.slice(0, itemsPerPage)).map(task => {
+                {filteredTasks.slice(0, itemsPerPage).map(task => {
               const getTaskStatus = () => {
                 console.log('🔍 SalesFunnel - Calculando status para tarefa:', {
                   id: task.id,

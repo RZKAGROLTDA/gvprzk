@@ -47,7 +47,7 @@ export const SalesFunnelOptimized: React.FC = () => {
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   
   // Filtros otimizados - período expandido para mostrar todos os dados
-  const [selectedPeriod, setSelectedPeriod] = useState('9999');
+  const [selectedPeriod, setSelectedPeriod] = useState('365');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [selectedActivity, setSelectedActivity] = useState('all');
