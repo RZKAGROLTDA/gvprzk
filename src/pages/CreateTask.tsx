@@ -7246,22 +7246,45 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </div>}
 
                      {/* Campo de valor para venda parcial */}
-                     {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-2">
-                         <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
-                         <div className="relative">
-                           <Input id="partialSaleValue" type="text" value={task.prospectItems ? task.prospectItems.reduce((sum, item) => {
-                      return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-                    }, 0) : 0 ? new Intl.NumberFormat('pt-BR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }).format(task.prospectItems.reduce((sum, item) => {
-                      return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-                    }, 0)) : '0,00'} className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium" readOnly />
-                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-green-600">R$</span>
+                     {task.prospectItems && task.prospectItems.length > 0 && <div className="space-y-4">
+                         <div className="space-y-2">
+                           <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
+                           <div className="relative">
+                             <Input id="partialSaleValue" type="text" value={task.prospectItems ? task.prospectItems.reduce((sum, item) => {
+                        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                      }, 0) : 0 ? new Intl.NumberFormat('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      }).format(task.prospectItems.reduce((sum, item) => {
+                        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+                      }, 0)) : '0,00'} className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium" readOnly />
+                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-green-600">R$</span>
+                           </div>
+                           <p className="text-xs text-green-600 font-medium">
+                             ⚡ Valor calculado automaticamente com base nos produtos selecionados
+                           </p>
                          </div>
-                         <p className="text-xs text-green-600 font-medium">
-                           ⚡ Valor calculado automaticamente com base nos produtos selecionados para venda parcial
-                         </p>
+                         
+                         <div className="space-y-2">
+                           <Label htmlFor="totalOpportunityValue">Valor Total da Oportunidade (R$)</Label>
+                           <div className="relative">
+                             <Input id="totalOpportunityValue" type="text" value={task.salesValue ? new Intl.NumberFormat('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      }).format(getSalesValueAsNumber(task.salesValue)) : ''} onChange={e => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        const numericValue = parseFloat(value) / 100;
+                        setTask(prev => ({
+                          ...prev,
+                          salesValue: isNaN(numericValue) ? undefined : numericValue
+                        }));
+                      }} placeholder="0,00" className="pl-8" />
+                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                           </div>
+                           <p className="text-xs text-muted-foreground">
+                             Valor total da oportunidade (não alterado pela venda parcial)
+                           </p>
+                         </div>
                        </div>}
 
                      {/* Lista de produtos para venda parcial */}
