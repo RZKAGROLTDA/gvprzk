@@ -131,7 +131,44 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       if (formData.prospectItems && formData.prospectItems.length > 0) {
         console.log('🔍 TaskEditModal - Atualizando produtos:', formData.prospectItems);
         
+        // Buscar os produtos existentes no banco para confirmar os IDs
+        const { data: existingProducts, error: fetchError } = await supabase
+          .from('products')
+          .select('id, name, category')
+          .eq('task_id', task.id);
+
+        if (fetchError) {
+          console.error('🔍 TaskEditModal - Erro ao buscar produtos existentes:', fetchError);
+          throw fetchError;
+        }
+
+        console.log('🔍 TaskEditModal - Produtos existentes no banco:', existingProducts);
+
         for (const product of formData.prospectItems) {
+          // Tentar encontrar o produto pelo ID primeiro, depois por nome e categoria
+          let productId = product.id;
+          
+          if (!existingProducts?.find(p => p.id === product.id)) {
+            // Se não encontrar por ID, tentar por nome e categoria
+            const matchingProduct = existingProducts?.find(p => 
+              p.name === product.name && p.category === product.category
+            );
+            
+            if (matchingProduct) {
+              productId = matchingProduct.id;
+              console.log(`🔍 TaskEditModal - Produto ${product.name} encontrado pelo nome, ID: ${productId}`);
+            } else {
+              console.warn(`🔍 TaskEditModal - Produto ${product.name} não encontrado no banco, pulando atualização`);
+              continue;
+            }
+          }
+
+          console.log(`🔍 TaskEditModal - Atualizando produto ${product.name} (ID: ${productId}):`, {
+            selected: product.selected,
+            quantity: product.quantity || 0,
+            price: product.price || 0
+          });
+
           const { error: productError } = await supabase
             .from('products')
             .update({
@@ -140,12 +177,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               price: product.price || 0,
               updated_at: new Date().toISOString()
             })
-            .eq('task_id', task.id)
-            .eq('id', product.id);
+            .eq('id', productId);
 
           if (productError) {
-            console.error('🔍 TaskEditModal - Erro na atualização do produto:', product.id, productError);
+            console.error('🔍 TaskEditModal - Erro na atualização do produto:', productId, productError);
             throw productError;
+          } else {
+            console.log(`🔍 TaskEditModal - Produto ${product.name} atualizado com sucesso`);
           }
         }
       }

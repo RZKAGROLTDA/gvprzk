@@ -41,6 +41,12 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
     const updatedItems = [...prospectItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     
+    console.log(`🔍 StatusSelection - Produto ${updatedItems[index].name} alterado:`, {
+      field,
+      newValue: value,
+      product: updatedItems[index]
+    });
+    
     onStatusChange({
       salesConfirmed,
       salesType,
