@@ -56,6 +56,7 @@ export const SalesFunnel: React.FC = () => {
   const { invalidateAll } = useSecurityCache();
   const [consultants, setConsultants] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
+  const [filiaisMap, setFiliaisMap] = useState<Map<string, string>>(new Map());
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   const [selectedFunnelSection, setSelectedFunnelSection] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -74,6 +75,27 @@ export const SalesFunnel: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [allTasksLoaded, setAllTasksLoaded] = useState(false);
 
+  // Função melhorada para resolver nome da filial
+  const getFilialName = (filialValue: string | null | undefined): string => {
+    if (!filialValue) return 'Não informado';
+    
+    // Se já é um nome válido (não é UUID)
+    if (!filialValue.includes('-') && filialValue.length > 10) {
+      return filialValue;
+    }
+    
+    // Buscar no mapa de filiais
+    const mappedName = filiaisMap.get(filialValue);
+    if (mappedName) return mappedName;
+    
+    // Buscar na lista de filiais
+    const filial = filiais.find(f => f.id === filialValue || f.nome === filialValue);
+    if (filial) return filial.nome;
+    
+    // Fallback
+    return filialValue || 'Não informado';
+  };
+
   // Carregar consultores e filiais com cache otimizado
   useEffect(() => {
     const loadFilters = async () => {
@@ -85,11 +107,24 @@ export const SalesFunnel: React.FC = () => {
           supabase.from('profiles').select('id, name, filial_id').eq('approval_status', 'approved'),
           supabase.from('filiais').select('id, nome').order('nome')
         ]);
+        
+        if (filiaisResponse.data) {
+          setFiliais(filiaisResponse.data);
+          // Criar mapa para busca rápida
+          const newFiliaisMap = new Map();
+          filiaisResponse.data.forEach(filial => {
+            newFiliaisMap.set(filial.id, filial.nome);
+            newFiliaisMap.set(filial.nome, filial.nome);
+          });
+          setFiliaisMap(newFiliaisMap);
+        }
+        
         setConsultants(profilesResponse.data || []);
-        setFiliais(filiaisResponse.data || []);
+        
         console.log('📊 Dados carregados:', {
           consultants: profilesResponse.data?.length || 0,
           filiais: filiaisResponse.data?.length || 0,
+          filiaisMap: filiaisResponse.data?.map(f => ({ id: f.id, nome: f.nome })),
           consultantsList: profilesResponse.data?.map(c => ({
             id: c.id,
             name: c.name
@@ -208,13 +243,13 @@ export const SalesFunnel: React.FC = () => {
         }
       }
 
-      // Filtro de filial - mais flexível
+      // Filtro de filial - melhorado
       if (selectedFilial !== 'all') {
-        const filialResolved = resolveFilialName(task.filial);
-        if (task.filial !== selectedFilial && filialResolved !== selectedFilial) {
+        const taskFilialName = getFilialName(task.filial);
+        if (taskFilialName !== selectedFilial && task.filial !== selectedFilial) {
           console.log('🏢 Task não corresponde à filial:', task.id, { 
             taskFilial: task.filial, 
-            filialResolved, 
+            taskFilialName, 
             selectedFilial 
           });
           return false;
@@ -240,11 +275,12 @@ export const SalesFunnel: React.FC = () => {
       selectedFilial,
       selectedActivity,
       selectedPeriod,
-      allTasksLoaded
+      allTasksLoaded,
+      filiaisCount: filiais.length
     });
     
     return filtered;
-  }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, allTasksLoaded]);
+  }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, allTasksLoaded, filiais, filiaisMap]);
 
   // Dados do funil de vendas
   const funnelData = useMemo(() => {
@@ -325,8 +361,8 @@ export const SalesFunnel: React.FC = () => {
     filteredTasks.forEach(task => {
       const key = `${task.client}-${task.filial}`;
       if (!clientMap.has(key)) {
-        // Usar função padronizada para resolver nome da filial
-        const filialName = resolveFilialName(task.filial);
+        // Usar função melhorada para resolver nome da filial
+        const filialName = getFilialName(task.filial);
         clientMap.set(key, {
           client: task.client,
           filial: filialName,
@@ -350,7 +386,7 @@ export const SalesFunnel: React.FC = () => {
       }
     });
     return Array.from(clientMap.values()).sort((a, b) => b.salesValue - a.salesValue);
-  }, [filteredTasks, filiais]);
+  }, [filteredTasks, filiais, filiaisMap]);
 
   // Dados detalhados para a seção selecionada
   const getDetailedData = useMemo(() => {
@@ -365,7 +401,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'contacts-checklists':
@@ -376,7 +412,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'contacts-ligacoes':
@@ -387,7 +423,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
 
@@ -401,7 +437,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'prospects-fechadas':
@@ -413,7 +449,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'prospects-perdidas':
@@ -425,7 +461,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
 
@@ -438,7 +474,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'prospects':
@@ -450,7 +486,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'sales-confirmed':
@@ -461,7 +497,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'sales-partial':
@@ -475,7 +511,7 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       case 'sales':
@@ -486,13 +522,13 @@ export const SalesFunnel: React.FC = () => {
           date: format(task.createdAt, 'dd/MM/yyyy', {
             locale: ptBR
           }),
-          filial: resolveFilialName(task.filial),
+          filial: getFilialName(task.filial),
           value: getSalesValueAsNumber(task.salesValue)
         }));
       default:
         return [];
     }
-  }, [selectedFunnelSection, filteredTasks, filiais]);
+  }, [selectedFunnelSection, filteredTasks, filiais, filiaisMap]);
 
   const totalSalesValue = filteredTasks.reduce((sum, task) => sum + getSalesValueAsNumber(task.salesValue), 0);
   const chartConfig = {
@@ -517,7 +553,7 @@ export const SalesFunnel: React.FC = () => {
           <h1 className="text-3xl font-bold">Análise Gerencial</h1>
           <p className="text-muted-foreground">Análise de performance comercial e cobertura de carteira</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Total de registros carregados: {tasks.length} | Filtrados: {filteredTasks.length}
+            Total de registros carregados: {tasks.length} | Filtrados: {filteredTasks.length} | Filiais: {filiais.length}
           </p>
         </div>
         
@@ -1004,7 +1040,7 @@ export const SalesFunnel: React.FC = () => {
                         return filial?.nome || 'Filial não informada';
                       }
                       // Fallback: usar a filial da task se não encontrar do vendedor
-                      return resolveFilialName(task.filial) || 'Filial não informada';
+                      return getFilialName(task.filial) || 'Filial não informada';
                     })()}
                         </div>
                       </TableCell>
