@@ -14,7 +14,7 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName, loadFiliaisCache, calculateSalesValue } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
-import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
+import { calculateTaskSalesValue, calculatePartialSalesValue } from '@/lib/salesValueCalculator';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { FormVisualization } from '@/components/FormVisualization';
 import { TaskEditModal } from '@/components/TaskEditModal';
@@ -931,8 +931,6 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                         <TableCell>
                           {(() => {
-                            // Usar a função padronizada de cálculo de vendas
-                            const finalSalesValue = calculateTaskSalesValue(task);
                             const salesStatus = mapSalesStatus(task);
                             
                             // Se não há venda realizada (prospect ou perdido), não mostrar valor
@@ -940,7 +938,25 @@ export const SalesFunnel: React.FC = () => {
                               return '-';
                             }
                             
-                            // Para vendas realizadas (ganho ou parcial), mostrar o valor calculado
+                            // Calcular valor baseado no tipo de venda
+                            let finalSalesValue = 0;
+                            
+                            if (task.salesType === 'parcial' && task.salesConfirmed === true) {
+                              // Para venda parcial: calcular valor dos produtos selecionados
+                              finalSalesValue = calculatePartialSalesValue(task);
+                            } else if (task.salesConfirmed === true) {
+                              // Para venda total: usar valor total do formulário
+                              finalSalesValue = getSalesValueAsNumber(task.salesValue);
+                            }
+                            
+                            console.log('🔍 SalesFunnel - Calculando valor final:', {
+                              taskId: task.id,
+                              salesType: task.salesType,
+                              salesConfirmed: task.salesConfirmed,
+                              salesValue: task.salesValue,
+                              finalValue: finalSalesValue
+                            });
+                            
                             return finalSalesValue > 0 ? new Intl.NumberFormat('pt-BR', {
                               style: 'currency',
                               currency: 'BRL'
