@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProductType } from '@/types/task';
 import { LOSS_REASONS } from './TaskFormCore';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface StatusSelectionProps {
+  taskId?: string; // Add taskId for automatic value calculation
   salesConfirmed?: boolean | null;
   salesType?: 'ganho' | 'parcial' | 'perdido';
   prospectNotes?: string;
@@ -19,12 +21,14 @@ export interface StatusSelectionProps {
     isProspect?: boolean; 
     prospectNotes?: string;
     prospectItems?: ProductType[];
+    partialSalesValue?: number; // Add calculated value
   }) => void;
   showError?: boolean;
   errorMessage?: string;
 }
 
 export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
+  taskId,
   salesConfirmed,
   salesType,
   prospectNotes,
@@ -35,16 +39,57 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
   showError = false,
   errorMessage
 }) => {
+  // Calculate partial sales value automatically
+  const calculatePartialSalesValue = (items: ProductType[] = []): number => {
+    return items
+      .filter(item => item.selected)
+      .reduce((sum, item) => {
+        const quantity = item.quantity || 0;
+        const price = item.price || 0;
+        return sum + (quantity * price);
+      }, 0);
+  };
+
+  // Auto-recalculate partial sales value when products change
+  useEffect(() => {
+    if (salesConfirmed === true && salesType === 'parcial' && prospectItems) {
+      const partialValue = calculatePartialSalesValue(prospectItems);
+      
+      console.log('🔍 StatusSelection - Auto-calculando valor parcial:', {
+        taskId,
+        salesType,
+        salesConfirmed,
+        itemsCount: prospectItems.length,
+        selectedItems: prospectItems.filter(item => item.selected).length,
+        calculatedValue: partialValue
+      });
+
+      // Trigger the parent with the calculated value
+      onStatusChange({
+        salesConfirmed,
+        salesType,
+        isProspect,
+        prospectNotes,
+        prospectItems,
+        partialSalesValue: partialValue
+      });
+    }
+  }, [prospectItems, salesConfirmed, salesType]);
+
   const handleProspectItemChange = (index: number, field: keyof ProductType, value: any) => {
     if (!prospectItems) return;
     
     const updatedItems = [...prospectItems];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     
+    // Calculate new partial sales value
+    const partialValue = calculatePartialSalesValue(updatedItems);
+    
     console.log(`🔍 StatusSelection - Produto ${updatedItems[index].name} alterado:`, {
       field,
       newValue: value,
-      product: updatedItems[index]
+      product: updatedItems[index],
+      newPartialValue: partialValue
     });
     
     onStatusChange({
@@ -52,7 +97,8 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
       salesType,
       isProspect,
       prospectNotes,
-      prospectItems: updatedItems
+      prospectItems: updatedItems,
+      partialSalesValue: partialValue
     });
   };
   return (
@@ -138,23 +184,31 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 ? 'border-yellow-500 bg-yellow-50 shadow-lg' 
                 : 'border-gray-200 bg-white hover:border-yellow-300'
             }`} 
-            onClick={() => {
-              // Configurar produtos automaticamente para venda parcial
-              const selectedProducts = availableProducts?.filter(item => item.selected).map(item => ({
-                ...item,
-                selected: true,
-                quantity: item.quantity || 1,
-                price: item.price || 0
-              })) || [];
-              
-              onStatusChange({
-                salesConfirmed: true,
-                salesType: 'parcial',
-                isProspect: true,
-                prospectNotes: '',
-                prospectItems: selectedProducts
-              });
-            }}
+             onClick={() => {
+               // Configurar produtos automaticamente para venda parcial
+               const selectedProducts = availableProducts?.filter(item => item.selected).map(item => ({
+                 ...item,
+                 selected: true,
+                 quantity: item.quantity || 1,
+                 price: item.price || 0
+               })) || [];
+               
+               const partialValue = calculatePartialSalesValue(selectedProducts);
+               
+               console.log('🔍 StatusSelection - Venda parcial selecionada:', {
+                 selectedProducts: selectedProducts.length,
+                 partialValue
+               });
+               
+               onStatusChange({
+                 salesConfirmed: true,
+                 salesType: 'parcial',
+                 isProspect: true,
+                 prospectNotes: '',
+                 prospectItems: selectedProducts,
+                 partialSalesValue: partialValue
+               });
+             }}
           >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -264,26 +318,24 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 value={new Intl.NumberFormat('pt-BR', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
-                }).format(prospectItems.reduce((sum, item) => {
-                  return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
-                }, 0))} 
-                className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium" 
-                readOnly 
-              />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-green-600">R$</span>
-            </div>
-            <p className="text-xs text-green-600 font-medium">
-              ⚡ Valor calculado automaticamente com base nos produtos selecionados
-            </p>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Produtos Vendidos</Label>
-              <span className="text-xs text-muted-foreground bg-blue-50 px-2 py-1 rounded">
-                ✏️ Clique para editar quantidade e preço
-              </span>
-            </div>
+                 }).format(calculatePartialSalesValue(prospectItems))} 
+                 className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium" 
+                 readOnly 
+               />
+               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-green-600">R$</span>
+             </div>
+             <p className="text-xs text-green-600 font-medium">
+               ⚡ Valor calculado automaticamente com base nos produtos selecionados
+             </p>
+           </div>
+           
+           <div className="space-y-3">
+             <div className="flex items-center justify-between">
+               <Label className="text-sm font-medium">Produtos Vendidos</Label>
+               <span className="text-xs text-muted-foreground bg-blue-50 px-2 py-1 rounded">
+                 ✏️ Clique para editar quantidade e preço
+               </span>
+             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto border-2 border-dashed border-blue-200 rounded-lg p-4 bg-blue-50/30">
               {prospectItems.map((item, index) => (
                 <div key={item.id} className="flex items-center justify-between space-x-3 p-4 bg-white rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow">

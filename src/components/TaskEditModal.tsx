@@ -36,7 +36,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     prospectNotes: task.prospectNotes || '',
     isProspect: task.isProspect || false,
     products: task.checklist || [],
-    prospectItems: task.prospectItems || []
+    prospectItems: task.prospectItems || [],
+    partialSalesValue: task.partialSalesValue || 0
   });
 
   const { invalidateAll } = useSecurityCache();
@@ -63,18 +64,28 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       prospectNotes: task.prospectNotes || '',
       isProspect: task.isProspect || false,
       products: allProducts,
-      prospectItems: task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : []
+      prospectItems: task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [],
+      partialSalesValue: task.partialSalesValue || 0
     });
   }, [task]);
 
-  const handleStatusChange = (status: { salesConfirmed?: boolean | null; salesType?: 'ganho' | 'parcial' | 'perdido'; isProspect?: boolean; prospectNotes?: string; prospectItems?: any[] }) => {
+  const handleStatusChange = (status: { 
+    salesConfirmed?: boolean | null; 
+    salesType?: 'ganho' | 'parcial' | 'perdido'; 
+    isProspect?: boolean; 
+    prospectNotes?: string; 
+    prospectItems?: any[];
+    partialSalesValue?: number;
+  }) => {
     console.log('🔍 TaskEditModal - Status alterado:', status);
     
     setFormData(prev => ({
       ...prev,
       ...status,
       // Garantir que prospectItems seja sempre atualizado quando vier no status
-      ...(status.prospectItems && { prospectItems: status.prospectItems })
+      ...(status.prospectItems && { prospectItems: status.prospectItems }),
+      // Atualizar o valor parcial calculado
+      ...(status.partialSalesValue !== undefined && { partialSalesValue: status.partialSalesValue })
     }));
   };
 
@@ -102,7 +113,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: formData.salesConfirmed,
         sales_type: formData.salesType,
         prospect_notes: formData.prospectNotes,
-        is_prospect: formData.isProspect
+        is_prospect: formData.isProspect,
+        partial_sales_value: formData.salesType === 'parcial' && formData.salesConfirmed ? formData.partialSalesValue : null
       };
 
       console.log('🔍 TaskEditModal - Dados para Supabase:', updateData);
@@ -240,6 +252,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           </div>
 
           <StatusSelectionComponent
+            taskId={task.id}
             salesConfirmed={formData.salesConfirmed}
             salesType={formData.salesType}
             prospectNotes={formData.prospectNotes}
