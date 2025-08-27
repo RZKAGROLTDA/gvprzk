@@ -7170,8 +7170,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </select>
                   </div>}
 
-                {/* Opções para venda realizada */}
-                {task.salesConfirmed === true && <div className="space-y-4">
+                {/* Opções para vendas parciais apenas */}
+                {task.salesConfirmed === true && task.salesType === 'parcial' && <div className="space-y-4">
                     <div>
                       <Label className="text-sm font-medium">Tipo de Venda</Label>
                       <div className="space-y-2 mt-2">
