@@ -6367,7 +6367,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       setIsSubmitting(false);
       toast({
         title: "Campo obrigatório",
-        description: "Selecione o status da oportunidade (Prospect, Venda Realizada ou Venda Perdida)",
+        description: "Selecione o status da oportunidade (Prospect, Vendas Total, Vendas Parcial ou Venda Perdida)",
         variant: "destructive"
       });
       return;
@@ -7107,17 +7107,34 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </div>
                     </button>
                     
-                    {/* VENDA REALIZADA */}
-                    <button type="button" className={`p-3 rounded-lg border text-left transition-colors ${task.salesConfirmed === true ? 'border-success bg-success/5 text-success' : 'border-border bg-background hover:border-success/50'}`} onClick={() => setTask(prev => ({
+                    {/* VENDAS TOTAL */}
+                    <button type="button" className={`p-3 rounded-lg border text-left transition-colors ${task.salesConfirmed === true && task.salesType === 'total' ? 'border-success bg-success/5 text-success' : 'border-border bg-background hover:border-success/50'}`} onClick={() => setTask(prev => ({
                     ...prev,
                     salesConfirmed: true,
+                    salesType: 'total',
                     isProspect: true
                   }))}>
                       <div className="flex items-center gap-3">
                         <CheckCircle className="h-4 w-4" />
                         <div>
-                          <div className="font-medium text-sm">Venda Realizada</div>
-                          <div className="text-xs text-muted-foreground">Negócio fechado</div>
+                          <div className="font-medium text-sm">Vendas Total</div>
+                          <div className="text-xs text-muted-foreground">Negócio fechado integralmente</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    {/* VENDAS PARCIAL */}
+                    <button type="button" className={`p-3 rounded-lg border text-left transition-colors ${task.salesConfirmed === true && task.salesType === 'parcial' ? 'border-warning bg-warning/5 text-warning' : 'border-border bg-background hover:border-warning/50'}`} onClick={() => setTask(prev => ({
+                    ...prev,
+                    salesConfirmed: true,
+                    salesType: 'parcial',
+                    isProspect: true
+                  }))}>
+                      <div className="flex items-center gap-3">
+                        <ShoppingCart className="h-4 w-4" />
+                        <div>
+                          <div className="font-medium text-sm">Vendas Parcial</div>
+                          <div className="text-xs text-muted-foreground">Negócio fechado parcialmente</div>
                         </div>
                       </div>
                     </button>

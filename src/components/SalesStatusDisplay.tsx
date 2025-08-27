@@ -34,9 +34,9 @@ export const SalesStatusDisplay: React.FC<SalesStatusDisplayProps> = ({
 
   const getStatusDescription = (status: string) => {
     switch (status) {
-      case 'ganho': return 'Venda realizada com sucesso';
+      case 'ganho': return 'Vendas Total realizada com sucesso';
       case 'perdido': return 'Oportunidade não convertida';
-      case 'parcial': return 'Venda parcial realizada';
+      case 'parcial': return 'Vendas Parcial realizada';
       default: return 'Negociação em andamento';
     }
   };

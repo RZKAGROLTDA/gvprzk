@@ -661,14 +661,14 @@ export const SalesFunnel: React.FC = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-confirmed' ? null : 'sales-confirmed')}>
                         <div className="font-bold text-xl mb-2">{funnelData.sales.confirmadas}</div>
-                        <div className="text-sm opacity-90 mb-1">Confirmadas</div>
+                        <div className="text-sm opacity-90 mb-1">Total</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.confirmadas / funnelData.contacts.total * 100) : 0}%
                         </div>
                       </div>
                       <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4 rounded-xl text-center cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" onClick={() => setSelectedFunnelSection(selectedFunnelSection === 'sales-partial' ? null : 'sales-partial')}>
                         <div className="font-bold text-xl mb-2">{funnelData.sales.parciais}</div>
-                        <div className="text-sm opacity-90 mb-1">Parciais</div>
+                        <div className="text-sm opacity-90 mb-1">Parcial</div>
                         <div className="text-xs opacity-75 bg-white/20 rounded-full px-2 py-1">
                           {funnelData.contacts.total > 0 ? Math.round(funnelData.sales.parciais / funnelData.contacts.total * 100) : 0}%
                         </div>
