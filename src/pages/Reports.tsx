@@ -26,6 +26,8 @@ import {
 import { TaskStats } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { calculateTaskSalesValue, calculateProspectValue } from '@/lib/salesValueCalculator';
+import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -90,7 +92,11 @@ const Reports: React.FC = () => {
     
     setLoading(true);
     try {
-      let query = supabase.from('tasks').select('*');
+      let query = supabase.from('tasks').select(`
+        *,
+        task_products (*),
+        task_reminders (*)
+      `);
 
       // Aplicar filtros de data se definidos
       if (dateFrom) {
@@ -100,29 +106,33 @@ const Reports: React.FC = () => {
         query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
       }
 
-      const { data: tasks, error } = await query;
+      // Aplicar filtro de usuário se definido
+      if (selectedUser !== 'all') {
+        query = query.eq('created_by', selectedUser);
+      }
+
+      const { data: supabaseTasks, error } = await query;
 
       if (error) throw error;
 
-      // Calcular estatísticas agregadas
-      const visitas = tasks?.filter(task => task.task_type === 'prospection').length || 0;
-      const checklist = tasks?.filter(task => task.task_type === 'checklist').length || 0;
-      const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
-      const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-      const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-      const salesValue = tasks?.filter(task => 
-        task.sales_confirmed === true || task.sales_type === 'parcial'
-      ).reduce((sum, task) => {
-        // USAR a calculadora unificada para vendas parciais
-        if (task.sales_type === 'parcial' && task.products && Array.isArray(task.products)) {
-          const partialValue = task.products
-            .filter(product => product.selected)
-            .reduce((acc, product) => acc + ((product.quantity || 0) * (product.price || 0)), 0);
-          return sum + partialValue;
-        }
-        // Para vendas completas, usar o valor total da oportunidade
-        return sum + (task.sales_value || 0);
-      }, 0) || 0;
+      // Mapear tasks do Supabase para o formato da aplicação
+      const tasks = supabaseTasks?.map(mapSupabaseTaskToTask) || [];
+
+      // Calcular estatísticas agregadas usando as funções unificadas
+      const visitas = tasks.filter(task => task.taskType === 'prospection').length;
+      const checklist = tasks.filter(task => task.taskType === 'checklist').length;
+      const ligacoes = tasks.filter(task => task.taskType === 'ligacao').length;
+      const prospects = tasks.filter(task => task.isProspect === true).length;
+      
+      // Usar função unificada para calcular valor de prospects
+      const prospectsValue = tasks
+        .filter(task => task.isProspect === true)
+        .reduce((sum, task) => sum + calculateProspectValue(task), 0);
+      
+      // Usar função unificada para calcular valor de vendas
+      const salesValue = tasks
+        .filter(task => task.salesConfirmed === true || task.salesType === 'parcial')
+        .reduce((sum, task) => sum + calculateTaskSalesValue(task), 0);
 
       setTotalTasks(visitas + checklist + ligacoes);
       setTotalVisitas(visitas);
