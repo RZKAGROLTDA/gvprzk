@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useOffline } from '@/hooks/useOffline';
@@ -26,6 +27,7 @@ export const TaskManager: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const { invalidateAll } = useSecurityCache();
   
   // Cache e debounce para otimização
   const lastLoadTime = useRef<number>(0);
@@ -226,7 +228,10 @@ export const TaskManager: React.FC = () => {
             setIsReportModalOpen(false);
             setSelectedTask(null);
           }}
-          onTaskUpdated={() => {}}
+          onTaskUpdated={async () => {
+            // Invalidar cache para garantir sincronização
+            await invalidateAll();
+          }}
         />
       )}
     </div>

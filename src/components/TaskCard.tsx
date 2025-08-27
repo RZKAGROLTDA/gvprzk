@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -30,6 +31,7 @@ interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const { invalidateAll } = useSecurityCache();
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'destructive';
@@ -218,7 +220,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
         task={task}
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
-        onTaskUpdated={() => {}}
+        onTaskUpdated={async () => {
+          // Invalidar cache para garantir sincronização
+          await invalidateAll();
+        }}
       />
     </Card>
   );
