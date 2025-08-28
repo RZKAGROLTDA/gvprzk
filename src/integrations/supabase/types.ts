@@ -143,6 +143,106 @@ export type Database = {
         }
         Relationships: []
       }
+      opportunities: {
+        Row: {
+          cliente_nome: string
+          created_at: string
+          data_criacao: string
+          data_fechamento: string | null
+          filial: string
+          id: string
+          status: string
+          task_id: string
+          updated_at: string
+          valor_total_oportunidade: number
+          valor_venda_fechada: number
+        }
+        Insert: {
+          cliente_nome: string
+          created_at?: string
+          data_criacao?: string
+          data_fechamento?: string | null
+          filial: string
+          id?: string
+          status?: string
+          task_id: string
+          updated_at?: string
+          valor_total_oportunidade?: number
+          valor_venda_fechada?: number
+        }
+        Update: {
+          cliente_nome?: string
+          created_at?: string
+          data_criacao?: string
+          data_fechamento?: string | null
+          filial?: string
+          id?: string
+          status?: string
+          task_id?: string
+          updated_at?: string
+          valor_total_oportunidade?: number
+          valor_venda_fechada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_new"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunity_items: {
+        Row: {
+          created_at: string
+          id: string
+          opportunity_id: string
+          preco_unit: number
+          produto: string
+          qtd_ofertada: number
+          qtd_vendida: number
+          sku: string | null
+          subtotal_ofertado: number | null
+          subtotal_vendido: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          opportunity_id: string
+          preco_unit: number
+          produto: string
+          qtd_ofertada: number
+          qtd_vendida?: number
+          sku?: string | null
+          subtotal_ofertado?: number | null
+          subtotal_vendido?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          opportunity_id?: string
+          preco_unit?: number
+          produto?: string
+          qtd_ofertada?: number
+          qtd_vendida?: number
+          sku?: string | null
+          subtotal_ofertado?: number | null
+          subtotal_vendido?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_items_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string
@@ -476,6 +576,45 @@ export type Database = {
           status?: string
           task_type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks_new: {
+        Row: {
+          cliente_email: string | null
+          cliente_nome: string
+          created_at: string
+          data: string
+          filial: string
+          id: string
+          notas: string | null
+          tipo: string
+          updated_at: string
+          vendedor_id: string
+        }
+        Insert: {
+          cliente_email?: string | null
+          cliente_nome: string
+          created_at?: string
+          data: string
+          filial: string
+          id?: string
+          notas?: string | null
+          tipo: string
+          updated_at?: string
+          vendedor_id: string
+        }
+        Update: {
+          cliente_email?: string | null
+          cliente_nome?: string
+          created_at?: string
+          data?: string
+          filial?: string
+          id?: string
+          notas?: string | null
+          tipo?: string
+          updated_at?: string
+          vendedor_id?: string
         }
         Relationships: []
       }
