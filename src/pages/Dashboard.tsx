@@ -6,7 +6,6 @@ import { DashboardSkeleton, TableSkeleton } from '@/components/SkeletonLoader';
 import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthCheck';
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
-import { AuthenticationDebug } from '@/components/AuthenticationDebug';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { OpportunitiesDashboard } from '@/components/OpportunitiesDashboard';
@@ -78,7 +77,6 @@ const Dashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="emergencia" className="space-y-6">
-          <AuthenticationDebug />
           <EmergencyDataAccess />
         </TabsContent>
       </Tabs>

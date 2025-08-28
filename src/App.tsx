@@ -82,7 +82,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   return (
     <Routes>
       <Route path="/" element={<Layout><CreateTask /></Layout>} />
-      <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+      <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
       <Route path="/create-field-visit" element={<Layout><CreateFieldVisit /></Layout>} />
       <Route path="/create-call" element={<Layout><CreateCall /></Layout>} />

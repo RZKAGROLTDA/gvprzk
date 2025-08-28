@@ -79,28 +79,17 @@ export const useTasksOptimized = (includeDetails = false) => {
   const tasksQuery = useQuery({
     queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
     queryFn: async () => {
-      if (!user) {
-        console.error('❌ Usuário não autenticado');
-        throw new Error('User not authenticated');
-      }
-
-      // Verificar se há sessão válida
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        console.error('❌ Sessão inválida:', sessionError);
-        throw new Error('Invalid session - please login again');
-      }
+      if (!user) throw new Error('User not authenticated');
 
       // Verificar perfil primeiro
       const hasValidProfile = await ensureUserProfile();
       if (!hasValidProfile) {
-        console.error('❌ Perfil inválido ou não aprovado');
         throw new Error('Profile required - redirecting to setup');
       }
 
-        // Timeout de 30 segundos para melhor estabilidade
+        // Timeout de 15 segundos
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
+        const timeout = setTimeout(() => controller.abort(), 15000);
 
         try {
           // Carregar cache de filiais
@@ -234,16 +223,10 @@ export const useTasksOptimized = (includeDetails = false) => {
     refetchOnMount: true, 
     retry: (failureCount, error) => {
       // Retry mais inteligente
-      if (error?.message?.includes('JWT') || 
-          error?.message?.includes('unauthorized') ||
-          error?.message?.includes('Invalid session') ||
-          error?.message?.includes('User not authenticated')) {
-        console.log('🔄 Erro de autenticação detectado - redirecionando para login');
-        // Forçar logout em caso de erro de auth
-        supabase.auth.signOut();
+      if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
         return false; // Não retry em erros de auth
       }
-      return failureCount < 2; // Reduzir tentativas para evitar loops
+      return failureCount < 3; // Até 3 tentativas para outros erros
     },
     refetchInterval: false,
     meta: {
