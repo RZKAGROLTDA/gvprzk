@@ -241,6 +241,13 @@ export type Database = {
             referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "opportunity_items_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "vw_oportunidades_kpis"
+            referencedColumns: ["id"]
+          },
         ]
       }
       products: {
@@ -695,7 +702,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vw_oportunidades_kpis: {
+        Row: {
+          cliente_nome: string | null
+          conversao_pct: number | null
+          data_criacao: string | null
+          data_fechamento: string | null
+          filial: string | null
+          id: string | null
+          status: string | null
+          tipo_task: string | null
+          valor_total_oportunidade: number | null
+          valor_venda_fechada: number | null
+          vendedor_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_access_customer_data: {
