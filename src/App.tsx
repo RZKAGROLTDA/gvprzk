@@ -98,27 +98,8 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   );
 };
 
-// This component now lives inside AuthProvider
+// This component now lives inside AuthProvider and handles all routing
 const AppContent: React.FC = () => {
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes - accessible without authentication */}
-        <Route path="/register" element={<UserRegistration />} />
-        <Route path="/cadastro" element={<SecureRegistration />} />
-        <Route path="/registration-success" element={<RegistrationSuccess />} />
-        <Route path="/invite" element={<InviteAccept />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        
-        {/* Protected routes - AuthProvider handles all auth logic now */}
-        <Route path="/*" element={<AuthenticatedApp />} />
-      </Routes>
-    </BrowserRouter>
-  );
-};
-
-// New component to handle authenticated routes  
-const AuthenticatedApp: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
@@ -136,7 +117,21 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
-  return <ProtectedRoutes user={user} profile={profile} />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes - accessible without authentication */}
+        <Route path="/register" element={<UserRegistration />} />
+        <Route path="/cadastro" element={<SecureRegistration />} />
+        <Route path="/registration-success" element={<RegistrationSuccess />} />
+        <Route path="/invite" element={<InviteAccept />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        
+        {/* Protected routes */}
+        <Route path="/*" element={<ProtectedRoutes user={user} profile={profile} />} />
+      </Routes>
+    </BrowserRouter>
+  );
 };
 
 const App = () => (
