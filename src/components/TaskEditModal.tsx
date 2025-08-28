@@ -39,6 +39,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     customerName: task.client || '',
     customerEmail: task.email || '',
     status: getInitialStatus(),
+    valor_venda_parcial: Number(task.partialSalesValue) || 0,
+    valor_venda_realizada: Number(task.salesValue) || 0,
     prospectNotes: task.prospectNotes || '',
     itens_oportunidade: [] as any[]
   });
@@ -54,73 +56,55 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       customerName: task.client || '',
       customerEmail: task.email || '',
       status: getInitialStatus(),
+      valor_venda_parcial: Number(task.partialSalesValue) || 0,
+      valor_venda_realizada: Number(task.salesValue) || 0,
       prospectNotes: task.prospectNotes || '',
       itens_oportunidade: allProducts.map(product => ({
         produto: product.name || '—',
         quantidade: product.quantity || 0,
         preco_unitario: product.price || 0,
-        incluir_na_venda_parcial: Boolean(product.selected) || false,
+        subtotal: (product.quantity || 0) * (product.price || 0),
         ...product
       }))
     }));
   }, [task]);
 
-  // Valor Total da Oportunidade (soma de quantidade * preço_unitário de todos os itens)
+  // Valor Total da Oportunidade (soma de quantidade * preço_unitário)
   const valor_total_oportunidade = useMemo(() => {
     return formData.itens_oportunidade.reduce((sum, item) => {
       return sum + ((item.quantidade || 0) * (item.preco_unitario || 0));
     }, 0);
   }, [formData.itens_oportunidade]);
 
-  // Valor da Venda Parcial (soma dos itens marcados para venda parcial)
-  const valor_venda_parcial = useMemo(() => {
-    return formData.itens_oportunidade
-      .filter(item => item.incluir_na_venda_parcial)
-      .reduce((sum, item) => {
-        return sum + ((item.quantidade || 0) * (item.preco_unitario || 0));
-      }, 0);
-  }, [formData.itens_oportunidade]);
-
-  // Valor da Venda (calculado baseado no status)
-  const valor_venda_realizada = useMemo(() => {
+  // Cálculo automático do Valor da Venda Realizada baseado no status
+  const valorVendaCalculado = useMemo(() => {
     switch (formData.status) {
       case 'Venda Total':
         return valor_total_oportunidade;
       case 'Venda Parcial':
-        return valor_venda_parcial;
+        return formData.valor_venda_parcial || 0;
       case 'Prospect':
       case 'Venda Perdida':
       default:
         return 0;
     }
-  }, [formData.status, valor_total_oportunidade, valor_venda_parcial]);
+  }, [formData.status, valor_total_oportunidade, formData.valor_venda_parcial]);
+
+  // Atualizar valor_venda_realizada quando mudar o cálculo
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      valor_venda_realizada: valorVendaCalculado
+    }));
+  }, [valorVendaCalculado]);
 
   const handleStatusChange = (newStatus: string) => {
     setFormData(prev => ({
       ...prev,
       status: newStatus,
       // Reset de campos específicos ao mudar status
+      ...(newStatus !== 'Venda Parcial' && { valor_venda_parcial: 0 }),
       ...(newStatus !== 'Venda Perdida' && { prospectNotes: '' })
-    }));
-  };
-
-  const handleSelectAllProducts = () => {
-    setFormData(prev => ({
-      ...prev,
-      itens_oportunidade: prev.itens_oportunidade.map(item => ({
-        ...item,
-        incluir_na_venda_parcial: true
-      }))
-    }));
-  };
-
-  const handleClearAllProducts = () => {
-    setFormData(prev => ({
-      ...prev,
-      itens_oportunidade: prev.itens_oportunidade.map(item => ({
-        ...item,
-        incluir_na_venda_parcial: false
-      }))
     }));
   };
 
@@ -158,8 +142,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       }
 
       // Validação para venda parcial
-      if (formData.status === 'Venda Parcial' && valor_venda_parcial <= 0) {
-        toast.error('Selecione ao menos um item para a venda parcial');
+      if (formData.status === 'Venda Parcial' && (!formData.valor_venda_parcial || formData.valor_venda_parcial <= 0)) {
+        toast.error('O valor da venda parcial é obrigatório');
         return;
       }
 
@@ -177,12 +161,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       const updateData = {
         client: formData.customerName || null,
         email: formData.customerEmail || null,
-        sales_value: valor_venda_realizada,
+        sales_value: formData.valor_venda_realizada,
         sales_confirmed: statusData.salesConfirmed,
         sales_type: statusData.salesType,
         prospect_notes: formData.prospectNotes || null,
         is_prospect: statusData.isProspect,
-        partial_sales_value: formData.status === 'Venda Parcial' ? valor_venda_parcial : null,
+        partial_sales_value: formData.status === 'Venda Parcial' ? formData.valor_venda_parcial : null,
         updated_at: new Date().toISOString()
       };
 
@@ -313,8 +297,25 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </RadioGroup>
           </div>
 
-          {/* Valores Calculados (ReadOnly) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Campo Valor da Venda Parcial - Condicional */}
+          {formData.status === 'Venda Parcial' && (
+            <div className="space-y-2">
+              <Label htmlFor="valor_venda_parcial">Valor da Venda Parcial (R$) *</Label>
+              <Input
+                id="valor_venda_parcial"
+                type="number"
+                value={formData.valor_venda_parcial || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, valor_venda_parcial: Number(e.target.value) }))}
+                placeholder="Informe o valor fechado nesta etapa"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+          )}
+
+          {/* Valores Calculados */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="valor_total_oportunidade">Valor Total da Oportunidade (R$)</Label>
               <Input
@@ -324,35 +325,20 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">
-                Soma de todos os produtos
+                Soma dos produtos (quantidade × preço unitário)
               </p>
             </div>
-
-            {formData.status === 'Venda Parcial' && (
-              <div className="space-y-2">
-                <Label htmlFor="valor_venda_parcial">Valor da Venda Parcial (R$)</Label>
-                <Input
-                  id="valor_venda_parcial"
-                  value={valor_venda_parcial.toFixed(2)}
-                  readOnly
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Soma dos itens selecionados
-                </p>
-              </div>
-            )}
             
             <div className="space-y-2">
               <Label htmlFor="valor_venda_realizada">Valor da Venda (R$)</Label>
               <Input
                 id="valor_venda_realizada"
-                value={valor_venda_realizada.toFixed(2)}
+                value={formData.valor_venda_realizada.toFixed(2)}
                 readOnly
                 className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">
-                Calculado pelo status
+                Calculado automaticamente baseado no status
               </p>
             </div>
           </div>
@@ -377,46 +363,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
           {/* Produtos da Oportunidade */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Produtos da Oportunidade</Label>
-              <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleSelectAllProducts}
-                  disabled={formData.itens_oportunidade.length === 0}
-                >
-                  Selecionar Todos
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleClearAllProducts}
-                  disabled={formData.itens_oportunidade.length === 0}
-                >
-                  Limpar Seleção
-                </Button>
-              </div>
-            </div>
+            <Label className="text-base font-medium">Produtos da Oportunidade</Label>
             
             <div className="space-y-3 max-h-60 overflow-y-auto">
               {formData.itens_oportunidade.map((item, index) => (
                 <div key={item.id || index} className="border rounded-lg p-4">
-                  <div className="grid grid-cols-5 gap-3 items-center">
-                    <div className="flex items-center justify-center">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-center block">✓ Incluir na venda parcial</Label>
-                        <Checkbox
-                          checked={Boolean(item.incluir_na_venda_parcial)}
-                          onCheckedChange={(checked) => 
-                            handleProductChange(index, 'incluir_na_venda_parcial', Boolean(checked))
-                          }
-                        />
-                      </div>
-                    </div>
-                    
+                  <div className="grid grid-cols-4 gap-3 items-center">
                     <div>
                       <Label className="text-xs">Produto</Label>
                       <p className="font-medium">{item.produto || '—'}</p>
