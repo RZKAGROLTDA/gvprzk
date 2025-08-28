@@ -3,6 +3,8 @@ import React, { Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { DashboardSkeleton, TableSkeleton } from '@/components/SkeletonLoader';
+import { SessionRefreshButton } from '@/components/SessionRefreshButton';
+import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthCheck';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnelOptimized } from '@/components/SalesFunnelOptimized';
@@ -21,8 +23,12 @@ const Dashboard: React.FC = () => {
           <h1 className="text-3xl font-bold">Funil de Vendas</h1>
           <p className="text-muted-foreground">Análise completa das atividades comerciais</p>
         </div>
-        <div className="w-80">
-          <OfflineIndicator />
+        <div className="flex items-center gap-4">
+          <AuthenticationHealthCheck />
+          <SessionRefreshButton />
+          <div className="w-80">
+            <OfflineIndicator />
+          </div>
         </div>
       </div>
 
