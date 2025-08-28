@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { AuthProvider } from '@/components/AuthProvider';
+import { ProfileAutoCreator } from '@/components/ProfileAutoCreator';
 import { LoginForm } from '@/components/LoginForm';
 import { SecurityHeaders } from '@/components/SecurityHeaders';
 import { useAuth } from '@/hooks/useAuth';
@@ -102,6 +103,30 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
+  const [showProfileCreator, setShowProfileCreator] = React.useState(false);
+
+  // Check if we need to show profile creator
+  React.useEffect(() => {
+    if (user && !loading && !profileLoading) {
+      if (!profile) {
+        setShowProfileCreator(true);
+      } else {
+        setShowProfileCreator(false);
+      }
+    } else {
+      setShowProfileCreator(false);
+    }
+  }, [user, loading, profile, profileLoading]);
+
+  const handleProfileCreated = () => {
+    setShowProfileCreator(false);
+    window.location.reload();
+  };
+
+  // Show profile creator if needed
+  if (showProfileCreator) {
+    return <ProfileAutoCreator onProfileCreated={handleProfileCreated} />;
+  }
 
   // Show combined loading when either auth or profile is loading
   if (loading || (user && profileLoading)) {
