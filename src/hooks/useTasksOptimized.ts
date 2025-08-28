@@ -22,40 +22,65 @@ export const useTasksOptimized = (includeDetails = false) => {
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
 
-    // Query com timeout e circuit breaker
+    // Query com retry automático e fallback
     const tasksQuery = useQuery({
       queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
       queryFn: async () => {
         if (!user) throw new Error('User not authenticated');
 
-        // Timeout de 10 segundos para evitar travamentos
+        // Timeout de 15 segundos
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), 15000);
 
         try {
-          // Carregar cache de filiais com timeout
-          await Promise.race([
-            loadFiliaisCache(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Filiais timeout')), 3000))
-          ]);
+          // Carregar cache de filiais
+          await loadFiliaisCache().catch(() => console.log('⚠️ Cache de filiais não carregado'));
 
           if (!isOnline) {
             console.log('📴 App offline - usando dados locais');
             return getOfflineTasks();
           }
 
-          // TEMPORARIAMENTE usar apenas a função original que está funcionando
-          console.log('🔄 Carregando tasks via função original...');
-          const { data: tasksData, error } = await supabase
-            .rpc('get_secure_task_data')
-            .order('created_at', { ascending: false })
-            .limit(500) // Reduzido para melhor performance
-            .abortSignal(controller.signal);
+          console.log('🔄 Carregando tasks via função segura...');
+          
+          // Tentar função RPC primeiro
+          let tasksData, error;
+          try {
+            const result = await supabase
+              .rpc('get_secure_task_data')
+              .order('created_at', { ascending: false })
+              .limit(500)
+              .abortSignal(controller.signal);
+              
+            tasksData = result.data;
+            error = result.error;
+          } catch (rpcError: any) {
+            console.log('⚠️ RPC falhou, tentando query direta...');
+            
+            // Fallback: query direta na tabela tasks
+            const result = await supabase
+              .from('tasks')
+              .select(`
+                id, name, responsible, client, property, filial, email, 
+                sales_value, start_date, end_date, task_type, status, 
+                priority, created_by, created_at, updated_at, is_prospect,
+                sales_confirmed, equipment_quantity, equipment_list,
+                propertyhectares, initial_km, final_km, check_in_location,
+                clientcode, sales_type, start_time, end_time, observations,
+                prospect_notes, family_product, photos, documents
+              `)
+              .order('created_at', { ascending: false })
+              .limit(500)
+              .abortSignal(controller.signal);
+              
+            tasksData = result.data;
+            error = result.error;
+          }
 
           clearTimeout(timeout);
           
           if (error) {
-            console.error('❌ Erro na função de dados:', error);
+            console.error('❌ Erro ao carregar dados:', error);
             throw error;
           }
 

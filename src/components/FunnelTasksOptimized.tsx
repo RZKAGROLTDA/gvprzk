@@ -12,6 +12,7 @@ import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { resolveFilialName } from '@/lib/taskStandardization';
 import { toast } from 'react-hot-toast';
+import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 
 interface TaskData {
   date: Date;
@@ -350,9 +351,17 @@ export const FunnelTasksOptimized: React.FC = () => {
                   <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
                   <div>
                     <h3 className="text-lg font-medium text-destructive">Erro ao carregar dados</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Não foi possível carregar as atividades. Verifique sua conexão.
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {error?.message || 'Não foi possível carregar as atividades. Verifique sua conexão.'}
                     </p>
+                    {error?.message?.includes('Sessão expirada') && (
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                          Sua sessão expirou. Renove sua sessão ou faça login novamente.
+                        </p>
+                        <SessionRefreshButton />
+                      </div>
+                    )}
                     <div className="mt-4 flex justify-center gap-2">
                       <Button variant="outline" onClick={handleForceRefresh} disabled={isForceRefreshing}>
                         <RefreshCw className={`h-4 w-4 mr-2 ${isForceRefreshing ? 'animate-spin' : ''}`} />

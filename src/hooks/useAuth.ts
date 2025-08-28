@@ -68,7 +68,20 @@ export const useAuthProvider = () => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    return await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const result = await supabase.auth.signInWithPassword({ email, password });
+      
+      // Se login bem-sucedido, forçar renovação da sessão
+      if (!result.error && result.data.session) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }
+      
+      return result;
+    } catch (error) {
+      return { error };
+    }
   };
 
   const signUp = async (email: string, password: string, userData?: any) => {
@@ -85,7 +98,16 @@ export const useAuthProvider = () => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+      // Limpar cache local e recarregar
+      localStorage.clear();
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+    } catch (error) {
+      console.error('Erro no logout:', error);
+    }
   };
 
   return {
