@@ -22,11 +22,70 @@ export const useTasksOptimized = (includeDetails = false) => {
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
 
-    // Query com retry automático e fallback
-    const tasksQuery = useQuery({
-      queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
-      queryFn: async () => {
-        if (!user) throw new Error('User not authenticated');
+  // Função para verificar e criar perfil se necessário
+  const ensureUserProfile = async () => {
+    if (!user) return false;
+
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, approval_status')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && !error.message.includes('No rows')) {
+        console.error('❌ Erro ao verificar perfil:', error);
+        return false;
+      }
+
+      if (!profile) {
+        console.log('🔄 Criando perfil ausente...');
+        // Buscar filial padrão
+        const { data: defaultFilial } = await supabase
+          .from('filiais')
+          .select('id')
+          .order('nome')
+          .limit(1)
+          .single();
+
+        const { error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+            email: user.email || '',
+            role: 'consultant',
+            filial_id: defaultFilial?.id || null,
+            approval_status: 'approved'
+          });
+
+        if (createError) {
+          console.error('❌ Erro ao criar perfil:', createError);
+          return false;
+        }
+        
+        console.log('✅ Perfil criado automaticamente');
+        return true;
+      }
+
+      return profile.approval_status === 'approved';
+    } catch (error) {
+      console.error('❌ Erro crítico na verificação do perfil:', error);
+      return false;
+    }
+  };
+
+  // Query com retry automático e fallback
+  const tasksQuery = useQuery({
+    queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
+    queryFn: async () => {
+      if (!user) throw new Error('User not authenticated');
+
+      // Verificar perfil primeiro
+      const hasValidProfile = await ensureUserProfile();
+      if (!hasValidProfile) {
+        throw new Error('Profile required - redirecting to setup');
+      }
 
         // Timeout de 15 segundos
         const controller = new AbortController();

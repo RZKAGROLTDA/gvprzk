@@ -5,6 +5,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { DashboardSkeleton, TableSkeleton } from '@/components/SkeletonLoader';
 import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthCheck';
+import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnelOptimized } from '@/components/SalesFunnelOptimized';
@@ -33,11 +34,12 @@ const Dashboard: React.FC = () => {
       </div>
 
       <Tabs defaultValue="funil" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="funil">Funil</TabsTrigger>
           <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="emergencia">🔧 Correção</TabsTrigger>
         </TabsList>
 
         <TabsContent value="funil" className="space-y-6">
@@ -62,6 +64,10 @@ const Dashboard: React.FC = () => {
           <Suspense fallback={<DashboardLoading />}>
             <Reports />
           </Suspense>
+        </TabsContent>
+
+        <TabsContent value="emergencia" className="space-y-6">
+          <EmergencyDataAccess />
         </TabsContent>
       </Tabs>
     </div>

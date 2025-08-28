@@ -26,6 +26,58 @@ export const useAuthProvider = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Função para criar perfil automaticamente
+  const createUserProfile = async (authUser: User) => {
+    try {
+      console.log('🔄 Criando perfil automático para usuário...');
+      
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (checkError && !checkError.message.includes('No rows')) {
+        console.error('❌ Erro ao verificar perfil:', checkError);
+        return;
+      }
+
+      if (existingProfile) {
+        console.log('✅ Perfil já existe');
+        return;
+      }
+
+      // Buscar filial padrão
+      const { data: defaultFilial } = await supabase
+        .from('filiais')
+        .select('id, nome')
+        .order('nome')
+        .limit(1)
+        .single();
+
+      const profileData = {
+        user_id: authUser.id,
+        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Usuário',
+        email: authUser.email || '',
+        role: 'consultant', // Role padrão seguro
+        filial_id: defaultFilial?.id || null,
+        approval_status: 'approved' // Auto-aprovar para resolver acesso imediato
+      };
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert(profileData);
+
+      if (insertError) {
+        console.error('❌ Erro ao criar perfil:', insertError);
+      } else {
+        console.log('✅ Perfil criado automaticamente:', profileData);
+      }
+    } catch (error) {
+      console.error('❌ Erro crítico na criação do perfil:', error);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -36,6 +88,13 @@ export const useAuthProvider = () => {
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
+
+          // Criar perfil automaticamente quando usuário faz login
+          if (session?.user && event === 'SIGNED_IN') {
+            setTimeout(() => {
+              createUserProfile(session.user);
+            }, 0);
+          }
         }
       }
     );
