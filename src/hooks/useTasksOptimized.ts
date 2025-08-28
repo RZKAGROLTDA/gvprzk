@@ -22,54 +22,42 @@ export const useTasksOptimized = (includeDetails = false) => {
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
 
-    // Query super otimizada com fallback robusto
+    // Query com timeout e circuit breaker
     const tasksQuery = useQuery({
       queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
       queryFn: async () => {
         if (!user) throw new Error('User not authenticated');
 
+        // Timeout de 10 segundos para evitar travamentos
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
         try {
-          // Carregar cache de filiais
-          await loadFiliaisCache();
+          // Carregar cache de filiais com timeout
+          await Promise.race([
+            loadFiliaisCache(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Filiais timeout')), 3000))
+          ]);
 
           if (!isOnline) {
+            console.log('📴 App offline - usando dados locais');
             return getOfflineTasks();
           }
 
-          // Primeiro tentar a nova função segura
-          try {
-            const { data: secureData, error: secureError } = await supabase
-              .rpc('get_secure_task_data_enhanced')
-              .order('created_at', { ascending: false })
-              .limit(1000);
-
-            if (!secureError && secureData) {
-              console.log(`✅ ${secureData.length} tasks loaded via enhanced secure function`);
-              
-              // Mapear dados da função segura
-              const mappedTasks = secureData.map(task => {
-                return mapSupabaseTaskToTask({
-                  ...task,
-                  products: [],
-                  reminders: []
-                });
-              });
-              
-              return mappedTasks;
-            }
-            
-            console.warn('⚠️ Enhanced secure function failed, falling back...', secureError);
-          } catch (secureErr) {
-            console.warn('⚠️ Error with enhanced secure function:', secureErr);
-          }
-
-          // Fallback para função original
+          // TEMPORARIAMENTE usar apenas a função original que está funcionando
+          console.log('🔄 Carregando tasks via função original...');
           const { data: tasksData, error } = await supabase
             .rpc('get_secure_task_data')
             .order('created_at', { ascending: false })
-            .limit(1000);
+            .limit(500) // Reduzido para melhor performance
+            .abortSignal(controller.signal);
 
-          if (error) throw error;
+          clearTimeout(timeout);
+          
+          if (error) {
+            console.error('❌ Erro na função de dados:', error);
+            throw error;
+          }
 
           if (!tasksData?.length) return [];
 
@@ -123,22 +111,20 @@ export const useTasksOptimized = (includeDetails = false) => {
           
           return mappedTasks;
       } catch (error) {
-        console.error('❌ Error loading tasks:', error);
+        clearTimeout(timeout);
+        console.error('❌ Erro crítico ao carregar tasks:', error);
         
-        // Último fallback: dados offline
-        if (!isOnline) {
-          return getOfflineTasks();
-        }
-        // Fallback para dados offline
-        return getOfflineTasks();
+        // Circuit breaker - retornar dados vazios ao invés de falhar
+        console.log('🔄 Aplicando circuit breaker - retornando dados vazios');
+        return [];
       }
     },
     enabled: !!user,
-    staleTime: 0, // Force fresh data fetch every time
-    refetchOnWindowFocus: true, // Permitir refetch quando voltar à aba
-    refetchOnMount: true, // Permitir refetch no mount para dados atuais
-    retry: 1, // Apenas 1 retry para performance
-    refetchInterval: 60000, // Auto-refetch every minute to ensure fresh data
+    staleTime: 2 * 60 * 1000, // 2 minutos para reduzir chamadas
+    refetchOnWindowFocus: false, // Desabilitar para reduzir carga
+    refetchOnMount: true, 
+    retry: 2, // Máximo 2 tentativas
+    refetchInterval: false, // Remover auto-refetch automático
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
     }

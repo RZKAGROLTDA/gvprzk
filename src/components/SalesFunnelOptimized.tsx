@@ -42,6 +42,13 @@ export const SalesFunnelOptimized: React.FC = () => {
   const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
+  
+  console.log('🔍 SalesFunnelOptimized - Estado atual:', { 
+    tasksCount: tasks.length, 
+    loading, 
+    consultantsCount: consultants.length,
+    filiaisCount: filiais.length 
+  });
   const { invalidateAll } = useSecurityCache();
 
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');

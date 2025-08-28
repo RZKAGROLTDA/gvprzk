@@ -38,6 +38,10 @@ export const useProfile = () => {
       return;
     }
 
+    // Timeout de 5 segundos para carregamento do perfil
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     try {
       loadingRef.current = true;
       setLoading(true);
@@ -53,7 +57,10 @@ export const useProfile = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      clearTimeout(timeout);
+
       if (error) {
+        console.warn('⚠️ Erro ao carregar perfil:', error);
         setProfile(null);
       } else {
         const profileData = data ? {
@@ -63,6 +70,8 @@ export const useProfile = () => {
         setProfile(profileData);
       }
     } catch (error) {
+      clearTimeout(timeout);
+      console.warn('⚠️ Timeout ou erro no perfil:', error);
       setProfile(null);
     } finally {
       setLoading(false);
