@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)"
+    PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
@@ -68,6 +68,57 @@ export type Database = {
           operation?: string
           table_name?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          archive_reason: string | null
+          archived: boolean
+          archived_at: string | null
+          attachments: string[] | null
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          session_date: string | null
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          archive_reason?: string | null
+          archived?: boolean
+          archived_at?: string | null
+          attachments?: string[] | null
+          created_at?: string
+          created_by: string
+          email: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          session_date?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          archive_reason?: string | null
+          archived?: boolean
+          archived_at?: string | null
+          attachments?: string[] | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          session_date?: string | null
+          stage?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -508,8 +559,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_customer_data: {
+        Args: { task_owner_id: string }
+        Returns: boolean
+      }
       can_modify_user_role: {
         Args: { new_role: string; target_user_id: string }
+        Returns: boolean
+      }
+      check_client_operation_rate_limit: {
+        Args: { operation_type?: string }
         Returns: boolean
       }
       check_enhanced_rate_limit: {
@@ -633,41 +692,15 @@ export type Database = {
       get_secure_task_data: {
         Args: { task_id_param: string } | { task_ids?: string[] }
         Returns: {
-          access_level: string
-          check_in_location: Json
           client: string
-          clientcode: string
-          created_at: string
-          created_by: string
-          documents: string[]
           email: string
-          end_date: string
-          end_time: string
-          equipment_list: Json
-          equipment_quantity: number
-          family_product: string
           filial: string
-          final_km: number
           id: string
-          initial_km: number
           is_masked: boolean
-          is_prospect: boolean
           name: string
-          observations: string
-          photos: string[]
-          priority: string
           property: string
-          propertyhectares: number
-          prospect_notes: string
           responsible: string
-          sales_confirmed: boolean
-          sales_type: string
           sales_value: number
-          start_date: string
-          start_time: string
-          status: string
-          task_type: string
-          updated_at: string
         }[]
       }
       get_secure_task_data_enhanced: {
@@ -781,7 +814,7 @@ export type Database = {
         Returns: boolean
       }
       is_high_value_task: {
-        Args: { task_sales_value: number }
+        Args: { sales_value: number }
         Returns: boolean
       }
       log_data_export: {
@@ -856,6 +889,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      monitor_security_events: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       refresh_user_directory_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -880,6 +917,10 @@ export type Database = {
       validate_and_sanitize_task_input: {
         Args: { input_data: Json }
         Returns: Json
+      }
+      validate_client_input: {
+        Args: { input_data: Json }
+        Returns: boolean
       }
       validate_password_strength: {
         Args: { password: string }
