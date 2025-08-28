@@ -7,9 +7,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { AuthProvider } from '@/components/AuthProvider';
-import { useAuth } from '@/hooks/useAuth';
 import { LoginForm } from '@/components/LoginForm';
 import { SecurityHeaders } from '@/components/SecurityHeaders';
+import { useAuth } from '@/hooks/useAuth';
 import Dashboard from "./pages/Dashboard";
 import { SalesFunnel } from "./components/SalesFunnel";
 import CreateTask from "./pages/CreateTask";
@@ -98,7 +98,27 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   );
 };
 
+// This component now lives inside AuthProvider
 const AppContent: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public routes - accessible without authentication */}
+        <Route path="/register" element={<UserRegistration />} />
+        <Route path="/cadastro" element={<SecureRegistration />} />
+        <Route path="/registration-success" element={<RegistrationSuccess />} />
+        <Route path="/invite" element={<InviteAccept />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        
+        {/* Protected routes - AuthProvider handles all auth logic now */}
+        <Route path="/*" element={<AuthenticatedApp />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+// New component to handle authenticated routes  
+const AuthenticatedApp: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
 
@@ -116,21 +136,7 @@ const AppContent: React.FC = () => {
     );
   }
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes - accessible without authentication */}
-        <Route path="/register" element={<UserRegistration />} />
-        <Route path="/cadastro" element={<SecureRegistration />} />
-        <Route path="/registration-success" element={<RegistrationSuccess />} />
-        <Route path="/invite" element={<InviteAccept />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        
-        {/* Protected routes */}
-        <Route path="/*" element={<ProtectedRoutes user={user} profile={profile} />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  return <ProtectedRoutes user={user} profile={profile} />;
 };
 
 const App = () => (
