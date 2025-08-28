@@ -97,10 +97,18 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      console.log('🔍 TaskEditModal - Enviando dados:', {
+      console.log('🔍 TaskEditModal - Iniciando submit:', {
         taskId: task.id,
         formData
       });
+
+      // Adicionar validação básica
+      if (!task.id) {
+        console.error('🚨 TaskEditModal - Task ID não encontrado');
+        toast.error('Erro: Task ID não encontrado');
+        setIsSubmitting(false);
+        return;
+      }
 
       // Validação para venda perdida
       if (formData.salesConfirmed === false && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
