@@ -61,8 +61,10 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         loadingProducts
       });
 
-      // Initialize selected items and quantities based on current checklist
-      if (currentTask.checklist && currentTask.checklist.length > 0) {
+      // Initialize selected items and quantities based on current products/checklist
+      const products = currentTask.taskType === 'ligacao' ? currentTask.prospectItems : currentTask.checklist;
+      
+      if (products && products.length > 0) {
         const initialSelected: {
           [key: string]: boolean;
         } = {};
@@ -70,7 +72,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           [key: string]: number;
         } = {};
         let calculatedPartialValue = 0;
-        currentTask.checklist.forEach(item => {
+        products.forEach(item => {
           initialSelected[item.id] = item.selected || false;
           initialQuantities[item.id] = item.quantity || 1;
           if (item.selected) {
@@ -80,11 +82,12 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         setSelectedItems(initialSelected);
         setItemQuantities(initialQuantities);
         setPartialValue(calculatedPartialValue);
-        console.log('📋 CHECKLIST INIT:', {
+        console.log('📋 PRODUCTS INIT:', {
+          taskType: currentTask.taskType,
           initialSelected,
           initialQuantities,
           calculatedPartialValue,
-          checklistItems: currentTask.checklist.map(item => ({
+          products: products.map(item => ({
             id: item.id,
             name: item.name,
             selected: item.selected,
@@ -97,7 +100,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         setSelectedItems({});
         setItemQuantities({});
         setPartialValue(0);
-        console.log('⚠️ No checklist found for task:', currentTask.id);
+        console.log('⚠️ No products found for task:', currentTask.id, 'type:', currentTask.taskType);
       }
     }
   }, [task, taskWithProducts, loadingProducts]);
@@ -110,8 +113,9 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     }));
 
     // Recalculate partial value
+    const products = currentTask.taskType === 'ligacao' ? currentTask.prospectItems : currentTask.checklist;
     let newPartialValue = 0;
-    currentTask.checklist?.forEach(item => {
+    products?.forEach(item => {
       const isSelected = itemId === item.id ? selected : selectedItems[item.id];
       const quantity = itemQuantities[item.id] || item.quantity || 1;
       if (isSelected) {
@@ -129,8 +133,9 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     }));
 
     // Recalculate partial value
+    const products = currentTask.taskType === 'ligacao' ? currentTask.prospectItems : currentTask.checklist;
     let newPartialValue = 0;
-    currentTask.checklist?.forEach(item => {
+    products?.forEach(item => {
       const isSelected = selectedItems[item.id];
       const quantity = itemId === item.id ? newQuantity : itemQuantities[item.id] || item.quantity || 1;
       if (isSelected) {
@@ -144,7 +149,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     setIsUpdating(true);
     try {
       let salesConfirmed: boolean | null = null;
-      let updatedChecklist = [...(task.checklist || [])];
+      const products = task.taskType === 'ligacao' ? task.prospectItems : task.checklist;
+      let updatedProducts = [...(products || [])];
       let taskStatus = task.status;
       let isProspect = task.isProspect;
 
@@ -155,7 +161,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           taskStatus = 'completed';
           isProspect = true;
           // Mark all items as selected for full sale
-          updatedChecklist = updatedChecklist.map(item => ({
+          updatedProducts = updatedProducts.map(item => ({
             ...item,
             selected: true
           }));
@@ -164,8 +170,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           salesConfirmed = true;
           taskStatus = 'completed';
           isProspect = true;
-          // Update checklist with selected items for partial sale
-          updatedChecklist = updatedChecklist.map(item => ({
+          // Update products with selected items for partial sale
+          updatedProducts = updatedProducts.map(item => ({
             ...item,
             selected: selectedItems[item.id] || false
           }));
@@ -175,7 +181,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           taskStatus = 'completed';
           isProspect = false;
           // Mark all items as not selected for lost sale
-          updatedChecklist = updatedChecklist.map(item => ({
+          updatedProducts = updatedProducts.map(item => ({
             ...item,
             selected: false
           }));
@@ -206,7 +212,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       }
 
       // Update products in database - usar uma abordagem mais robusta
-      if (task.checklist && task.checklist.length > 0) {
+      if (updatedProducts && updatedProducts.length > 0) {
         // Buscar produtos existentes na base de dados
         const {
           data: existingProducts,
@@ -216,17 +222,17 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           throw fetchError;
         }
 
-        // Atualizar cada produto baseado no checklist
-        for (const checklistItem of updatedChecklist) {
+        // Atualizar cada produto baseado na lista de produtos
+        for (const productItem of updatedProducts) {
           // Encontrar o produto correspondente na base de dados
-          const existingProduct = existingProducts?.find(p => p.name === checklistItem.name || p.id === checklistItem.id);
+          const existingProduct = existingProducts?.find(p => p.name === productItem.name || p.id === productItem.id);
           if (existingProduct) {
-            const newQuantity = itemQuantities[checklistItem.id] || checklistItem.quantity || 1;
+            const newQuantity = itemQuantities[productItem.id] || productItem.quantity || 1;
 
             // Para vendas parciais, manter apenas produtos selecionados
             // Para vendas ganhas, marcar todos como selecionados  
             // Para vendas perdidas, marcar todos como não selecionados
-            let shouldBeSelected = checklistItem.selected;
+            let shouldBeSelected = productItem.selected;
             let shouldQuantity = newQuantity;
             if (selectedStatus === 'perdido' || selectedStatus === 'prospect') {
               shouldBeSelected = false;
@@ -252,7 +258,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         salesConfirmed: salesConfirmed,
         status: taskStatus,
         isProspect: isProspect,
-        checklist: updatedChecklist,
+        ...(task.taskType === 'ligacao' ? { prospectItems: updatedProducts } : { checklist: updatedProducts }),
         updatedAt: new Date() // Add current timestamp
       };
 
@@ -469,11 +475,19 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           });
           return null;
         })()}
-          {selectedStatus === 'parcial' || currentTask.checklist && currentTask.checklist.length > 0 ? <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Produtos/Serviços</h3>
+          {(() => {
+            const products = currentTask.taskType === 'ligacao' ? currentTask.prospectItems : currentTask.checklist;
+            return selectedStatus === 'parcial' || (products && products.length > 0);
+          })() ? <div className="space-y-4">
+              <h3 className="text-lg font-semibold">
+                {currentTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos/Serviços'}
+              </h3>
               
               {/* Debug info para vendas parciais sem produtos */}
-              {selectedStatus === 'parcial' && (!currentTask.checklist || currentTask.checklist.length === 0) && <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              {(() => {
+                const products = currentTask.taskType === 'ligacao' ? currentTask.prospectItems : currentTask.checklist;
+                return selectedStatus === 'parcial' && (!products || products.length === 0);
+              })() && <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <p className="text-amber-800 text-sm font-medium">
                     ⚠️ Produtos não encontrados para venda parcial
                   </p>
@@ -486,8 +500,13 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                     <p>• Ou editar a tarefa para adicionar os produtos específicos</p>
                   </div>
                 </div>}
-              {currentTask.checklist && currentTask.checklist.length > 0 && <div className="space-y-2">
-                  {currentTask.checklist.map((item, index) => <div key={index} className="border rounded-lg p-3">
+              {(() => {
+                const products = currentTask.taskType === 'ligacao' ? currentTask.prospectItems : currentTask.checklist;
+                return products && products.length > 0;
+              })() && <div className="space-y-2">
+                  {(() => {
+                    const products = currentTask.taskType === 'ligacao' ? currentTask.prospectItems : currentTask.checklist;
+                    return products?.map((item, index) => <div key={index} className="border rounded-lg p-3">
                       <div className="flex justify-between items-start">
                         <div className="flex items-start space-x-3 flex-1">
                           {selectedStatus === 'parcial' && <Checkbox checked={selectedItems[item.id] || false} onCheckedChange={checked => handleItemSelection(item.id, checked as boolean)} className="mt-1" />}
@@ -523,10 +542,13 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                           {item.selected ? 'Selecionado' : 'Não selecionado'}
                         </Badge>
                       </div>
-                    </div>)}
+                    </div>);
+                  })() || []}
                 </div>}
             </div> : <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Produtos/Serviços</h3>
+              <h3 className="text-lg font-semibold">
+                {currentTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos/Serviços'}
+              </h3>
               <div className="bg-muted/50 border rounded-lg p-4 text-center">
                 <p className="text-muted-foreground text-sm">
                   Nenhum produto/serviço cadastrado para esta oportunidade.
