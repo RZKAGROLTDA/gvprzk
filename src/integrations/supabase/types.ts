@@ -815,6 +815,43 @@ export type Database = {
           nome: string
         }[]
       }
+      get_opportunities_with_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          cliente_email: string
+          cliente_nome: string
+          conversao_pct: number
+          created_at: string
+          data: string
+          data_criacao: string
+          data_fechamento: string
+          filial: string
+          notas: string
+          opportunity_id: string
+          status: string
+          task_id: string
+          tipo: string
+          updated_at: string
+          valor_total_oportunidade: number
+          valor_venda_fechada: number
+          vendedor_id: string
+        }[]
+      }
+      get_opportunity_items: {
+        Args: { opportunity_id_param: string }
+        Returns: {
+          created_at: string
+          id: string
+          preco_unit: number
+          produto: string
+          qtd_ofertada: number
+          qtd_vendida: number
+          sku: string
+          subtotal_ofertado: number
+          subtotal_vendido: number
+          updated_at: string
+        }[]
+      }
       get_secure_customer_contacts: {
         Args: { task_ids?: string[] }
         Returns: {
