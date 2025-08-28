@@ -26,28 +26,28 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Status padronizado: prospect | venda_total | venda_parcial | venda_perdida
+  // Status padronizado conforme especificação
   const getInitialStatus = () => {
-    if (task.isProspect && (!task.salesConfirmed && !task.salesType)) return 'prospect';
-    if (task.salesConfirmed && task.salesType === 'ganho') return 'venda_total';
-    if (task.salesConfirmed && task.salesType === 'parcial') return 'venda_parcial';
-    if (task.salesConfirmed === false) return 'venda_perdida';
-    return 'prospect';
+    if (task.isProspect && (!task.salesConfirmed && !task.salesType)) return 'Prospect';
+    if (task.salesConfirmed && task.salesType === 'ganho') return 'Venda Total';
+    if (task.salesConfirmed && task.salesType === 'parcial') return 'Venda Parcial';
+    if (task.salesConfirmed === false) return 'Venda Perdida';
+    return 'Prospect';
   };
 
   const [formData, setFormData] = useState({
     customerName: task.client || '',
     customerEmail: task.email || '',
     status: getInitialStatus(),
-    valorVendaParcial: Number(task.partialSalesValue) || 0,
-    valorVenda: Number(task.salesValue) || 0,
+    valor_venda_parcial: Number(task.partialSalesValue) || 0,
+    valor_venda_realizada: Number(task.salesValue) || 0,
     prospectNotes: task.prospectNotes || '',
-    products: [] as any[]
+    itens_oportunidade: [] as any[]
   });
 
   const { invalidateAll } = useSecurityCache();
 
-  // Carregar produtos da task
+  // Carregar produtos da task (itens_oportunidade)
   useEffect(() => {
     const allProducts = (task.prospectItems?.length > 0) ? task.prospectItems : (task.checklist || []);
     
@@ -56,44 +56,45 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       customerName: task.client || '',
       customerEmail: task.email || '',
       status: getInitialStatus(),
-      valorVendaParcial: Number(task.partialSalesValue) || 0,
-      valorVenda: Number(task.salesValue) || 0,
+      valor_venda_parcial: Number(task.partialSalesValue) || 0,
+      valor_venda_realizada: Number(task.salesValue) || 0,
       prospectNotes: task.prospectNotes || '',
-      products: allProducts.map(product => ({
-        ...product,
-        selected: task.salesType === 'parcial' ? (product.selected || false) : false,
-        quantity: product.quantity || 1,
-        price: product.price || 0
+      itens_oportunidade: allProducts.map(product => ({
+        produto: product.name || '—',
+        quantidade: product.quantity || 0,
+        preco_unitario: product.price || 0,
+        subtotal: (product.quantity || 0) * (product.price || 0),
+        ...product
       }))
     }));
   }, [task]);
 
-  // Cálculo automático do Valor Total da Oportunidade
-  const valorTotalOportunidade = useMemo(() => {
-    return formData.products.reduce((sum, product) => {
-      return sum + ((product.quantity || 0) * (product.price || 0));
+  // Valor Total da Oportunidade (soma de quantidade * preço_unitário)
+  const valor_total_oportunidade = useMemo(() => {
+    return formData.itens_oportunidade.reduce((sum, item) => {
+      return sum + ((item.quantidade || 0) * (item.preco_unitario || 0));
     }, 0);
-  }, [formData.products]);
+  }, [formData.itens_oportunidade]);
 
-  // Cálculo automático do Valor da Venda baseado no status
+  // Cálculo automático do Valor da Venda Realizada baseado no status
   const valorVendaCalculado = useMemo(() => {
     switch (formData.status) {
-      case 'venda_total':
-        return valorTotalOportunidade;
-      case 'venda_parcial':
-        return formData.valorVendaParcial;
-      case 'prospect':
-      case 'venda_perdida':
+      case 'Venda Total':
+        return valor_total_oportunidade;
+      case 'Venda Parcial':
+        return formData.valor_venda_parcial || 0;
+      case 'Prospect':
+      case 'Venda Perdida':
       default:
         return 0;
     }
-  }, [formData.status, valorTotalOportunidade, formData.valorVendaParcial]);
+  }, [formData.status, valor_total_oportunidade, formData.valor_venda_parcial]);
 
-  // Atualizar valor da venda quando mudar o cálculo
+  // Atualizar valor_venda_realizada quando mudar o cálculo
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      valorVenda: valorVendaCalculado
+      valor_venda_realizada: valorVendaCalculado
     }));
   }, [valorVendaCalculado]);
 
@@ -102,16 +103,23 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       ...prev,
       status: newStatus,
       // Reset de campos específicos ao mudar status
-      ...(newStatus !== 'venda_parcial' && { valorVendaParcial: 0 }),
-      ...(newStatus !== 'venda_perdida' && { prospectNotes: '' })
+      ...(newStatus !== 'Venda Parcial' && { valor_venda_parcial: 0 }),
+      ...(newStatus !== 'Venda Perdida' && { prospectNotes: '' })
     }));
   };
 
-  const handleProductChange = (productIndex: number, field: string, value: any) => {
+  const handleProductChange = (itemIndex: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      products: prev.products.map((product, index) => 
-        index === productIndex ? { ...product, [field]: value } : product
+      itens_oportunidade: prev.itens_oportunidade.map((item, index) => 
+        index === itemIndex ? { 
+          ...item, 
+          [field]: value,
+          // Recalcular subtotal quando quantidade ou preço mudarem
+          ...(field === 'quantidade' || field === 'preco_unitario' 
+            ? { subtotal: (field === 'quantidade' ? value : item.quantidade || 0) * (field === 'preco_unitario' ? value : item.preco_unitario || 0) }
+            : {})
+        } : item
       )
     }));
   };
@@ -128,17 +136,23 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       }
 
       // Validação para venda perdida
-      if (formData.status === 'venda_perdida' && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
+      if (formData.status === 'Venda Perdida' && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
         toast.error('O motivo da perda é obrigatório');
+        return;
+      }
+
+      // Validação para venda parcial
+      if (formData.status === 'Venda Parcial' && (!formData.valor_venda_parcial || formData.valor_venda_parcial <= 0)) {
+        toast.error('O valor da venda parcial é obrigatório');
         return;
       }
 
       // Mapear status para campos do banco
       const statusMapping = {
-        prospect: { isProspect: true, salesConfirmed: null, salesType: null },
-        venda_total: { isProspect: false, salesConfirmed: true, salesType: 'ganho' },
-        venda_parcial: { isProspect: false, salesConfirmed: true, salesType: 'parcial' },
-        venda_perdida: { isProspect: false, salesConfirmed: false, salesType: 'perdido' }
+        'Prospect': { isProspect: true, salesConfirmed: null, salesType: null },
+        'Venda Total': { isProspect: false, salesConfirmed: true, salesType: 'ganho' },
+        'Venda Parcial': { isProspect: false, salesConfirmed: true, salesType: 'parcial' },
+        'Venda Perdida': { isProspect: false, salesConfirmed: false, salesType: 'perdido' }
       };
 
       const statusData = statusMapping[formData.status as keyof typeof statusMapping];
@@ -147,12 +161,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       const updateData = {
         client: formData.customerName || null,
         email: formData.customerEmail || null,
-        sales_value: formData.valorVenda,
+        sales_value: formData.valor_venda_realizada,
         sales_confirmed: statusData.salesConfirmed,
         sales_type: statusData.salesType,
         prospect_notes: formData.prospectNotes || null,
         is_prospect: statusData.isProspect,
-        partial_sales_value: formData.status === 'venda_parcial' ? formData.valorVendaParcial : null,
+        partial_sales_value: formData.status === 'Venda Parcial' ? formData.valor_venda_parcial : null,
         updated_at: new Date().toISOString()
       };
 
@@ -166,27 +180,28 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         throw updateError;
       }
 
-      // Atualizar produtos
-      if (formData.products.length > 0) {
+      // Atualizar produtos (itens_oportunidade)
+      if (formData.itens_oportunidade.length > 0) {
         const { data: existingProducts, error: fetchError } = await supabase
           .from('products')
           .select('*')
           .eq('task_id', task.id);
 
         if (!fetchError && existingProducts) {
-          for (const product of formData.products) {
+          for (const item of formData.itens_oportunidade) {
             const existingProduct = existingProducts.find(p => 
-              p.id === product.id || (p.name === product.name && p.category === product.category)
+              p.id === item.id || (p.name === item.produto && p.category === item.category)
             );
 
             if (existingProduct) {
               await supabase
                 .from('products')
                 .update({
-                  selected: Boolean(product.selected),
-                  quantity: Number(product.quantity) || 0,
-                  price: Number(product.price) || 0,
-                  observations: product.observations || null,
+                  name: item.produto || existingProduct.name,
+                  selected: Boolean(item.selected),
+                  quantity: Number(item.quantidade) || 0,
+                  price: Number(item.preco_unitario) || 0,
+                  observations: item.observations || null,
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', existingProduct.id);
@@ -255,66 +270,81 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
           </div>
 
-          {/* Status do Prospect - Radio Group */}
+          {/* Status do Prospect - Radio Group Unificado */}
           <div className="space-y-3">
             <Label className="text-base font-medium">Status do Prospect</Label>
             <RadioGroup
               value={formData.status}
               onValueChange={handleStatusChange}
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-2 md:grid-cols-4 gap-4"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="prospect" id="prospect" />
+                <RadioGroupItem value="Prospect" id="prospect" />
                 <Label htmlFor="prospect">Prospect</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_total" id="venda_total" />
+                <RadioGroupItem value="Venda Total" id="venda_total" />
                 <Label htmlFor="venda_total">Venda Total</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_parcial" id="venda_parcial" />
+                <RadioGroupItem value="Venda Parcial" id="venda_parcial" />
                 <Label htmlFor="venda_parcial">Venda Parcial</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_perdida" id="venda_perdida" />
+                <RadioGroupItem value="Venda Perdida" id="venda_perdida" />
                 <Label htmlFor="venda_perdida">Venda Perdida</Label>
               </div>
             </RadioGroup>
           </div>
 
           {/* Campo Valor da Venda Parcial - Condicional */}
-          {formData.status === 'venda_parcial' && (
+          {formData.status === 'Venda Parcial' && (
             <div className="space-y-2">
-              <Label htmlFor="valorVendaParcial">Valor da Venda Parcial (R$)</Label>
+              <Label htmlFor="valor_venda_parcial">Valor da Venda Parcial (R$) *</Label>
               <Input
-                id="valorVendaParcial"
+                id="valor_venda_parcial"
                 type="number"
-                value={formData.valorVendaParcial}
-                onChange={(e) => setFormData(prev => ({ ...prev, valorVendaParcial: Number(e.target.value) }))}
-                placeholder="0,00"
+                value={formData.valor_venda_parcial || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, valor_venda_parcial: Number(e.target.value) }))}
+                placeholder="Informe o valor fechado nesta etapa"
                 min="0"
                 step="0.01"
+                required
               />
             </div>
           )}
 
-          {/* Campo Valor da Venda - Calculado automaticamente */}
-          <div className="space-y-2">
-            <Label htmlFor="valorVenda">Valor da Venda (R$)</Label>
-            <Input
-              id="valorVenda"
-              value={Number(formData.valorVenda).toFixed(2)}
-              readOnly
-              className="bg-gray-50"
-              placeholder="Calculado automaticamente"
-            />
-            <p className="text-xs text-gray-500">
-              Este valor é calculado automaticamente baseado no status selecionado
-            </p>
+          {/* Valores Calculados */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="valor_total_oportunidade">Valor Total da Oportunidade (R$)</Label>
+              <Input
+                id="valor_total_oportunidade"
+                value={valor_total_oportunidade.toFixed(2)}
+                readOnly
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Soma dos produtos (quantidade × preço unitário)
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="valor_venda_realizada">Valor da Venda (R$)</Label>
+              <Input
+                id="valor_venda_realizada"
+                value={formData.valor_venda_realizada.toFixed(2)}
+                readOnly
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Calculado automaticamente baseado no status
+              </p>
+            </div>
           </div>
 
           {/* Motivo da Perda - Condicional */}
-          {formData.status === 'venda_perdida' && (
+          {formData.status === 'Venda Perdida' && (
             <div className="space-y-2">
               <Label htmlFor="prospectNotes">Motivo da Perda *</Label>
               <Textarea
@@ -331,78 +361,58 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
           )}
 
-          {/* Produtos Vendidos */}
+          {/* Produtos da Oportunidade */}
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Label className="text-base font-medium">Produtos da Oportunidade</Label>
-              <div className="text-sm text-gray-500">
-                Valor Total: R$ {valorTotalOportunidade.toFixed(2)}
-              </div>
-            </div>
+            <Label className="text-base font-medium">Produtos da Oportunidade</Label>
             
             <div className="space-y-3 max-h-60 overflow-y-auto">
-              {formData.products.map((product, index) => (
-                <div key={product.id || index} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={product.selected || false}
-                        onCheckedChange={(checked) => handleProductChange(index, 'selected', checked)}
-                      />
-                      <span className="font-medium">{product.name}</span>
-                      <span className="text-sm text-gray-500">({product.category})</span>
+              {formData.itens_oportunidade.map((item, index) => (
+                <div key={item.id || index} className="border rounded-lg p-4">
+                  <div className="grid grid-cols-4 gap-3 items-center">
+                    <div>
+                      <Label className="text-xs">Produto</Label>
+                      <p className="font-medium">{item.produto || '—'}</p>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2">
+                    
                     <div>
                       <Label className="text-xs">Quantidade</Label>
                       <Input
                         type="number"
-                        value={product.quantity || 1}
-                        onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
-                        min="1"
+                        value={item.quantidade || 0}
+                        onChange={(e) => handleProductChange(index, 'quantidade', Number(e.target.value))}
+                        min="0"
                         className="h-8"
                       />
                     </div>
+                    
                     <div>
-                      <Label className="text-xs">Preço Unitário</Label>
+                      <Label className="text-xs">Preço Unitário (R$)</Label>
                       <Input
                         type="number"
-                        value={product.price || 0}
-                        onChange={(e) => handleProductChange(index, 'price', Number(e.target.value))}
+                        value={item.preco_unitario || 0}
+                        onChange={(e) => handleProductChange(index, 'preco_unitario', Number(e.target.value))}
                         min="0"
                         step="0.01"
                         className="h-8"
                       />
                     </div>
+                    
                     <div>
-                      <Label className="text-xs">Subtotal</Label>
+                      <Label className="text-xs">Subtotal (R$)</Label>
                       <Input
-                        value={((product.quantity || 0) * (product.price || 0)).toFixed(2)}
+                        value={((item.quantidade || 0) * (item.preco_unitario || 0)).toFixed(2)}
                         readOnly
-                        className="h-8 bg-gray-50"
+                        className="h-8 bg-muted"
                       />
                     </div>
                   </div>
-
-                  {product.observations && (
-                    <div>
-                      <Label className="text-xs">Observações</Label>
-                      <Textarea
-                        value={product.observations}
-                        onChange={(e) => handleProductChange(index, 'observations', e.target.value)}
-                        rows={2}
-                        className="text-sm"
-                      />
-                    </div>
-                  )}
                 </div>
               ))}
               
-              {formData.products.length === 0 && (
-                <div className="text-center py-6 text-gray-500">
-                  <p className="text-sm">Nenhum produto cadastrado para esta oportunidade</p>
+              {formData.itens_oportunidade.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <p className="text-sm">—</p>
+                  <p className="text-xs">Nenhum produto cadastrado para esta oportunidade</p>
                 </div>
               )}
             </div>
