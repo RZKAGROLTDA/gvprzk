@@ -74,6 +74,10 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
+      // Usar sistema padronizado de relatórios
+      const { generateStandardReport } = await import('@/lib/reportFieldMapping');
+      const { sections } = generateStandardReport(task);
+      
       const jsPDF = (await import('jspdf')).default;
       await import('jspdf-autotable');
       
@@ -91,31 +95,35 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
       doc.line(20, yPosition, 190, yPosition);
       yPosition += 15;
 
-      // Resumo da Oportunidade
+      // Resumo da Oportunidade usando campos padronizados
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text('RESUMO DA OPORTUNIDADE', 20, yPosition);
       yPosition += 15;
 
-      // Três colunas do resumo
+      // Três colunas do resumo - usando dados padronizados
+      const clienteField = sections.cliente?.find(f => f.key === 'cliente');
+      const valorField = sections.comercial?.find(f => f.key === 'valorVenda');
+      const statusField = sections.comercial?.find(f => f.key === 'statusVenda');
+
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Cliente:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(task.client, 20, yPosition + 8);
+      doc.text(clienteField?.value || '—', 20, yPosition + 8);
 
       doc.setFont('helvetica', 'bold');
       doc.text('Valor da Oportunidade:', 70, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(formatSalesValue(opportunityValue), 70, yPosition + 8);
+      doc.text(valorField?.value || '—', 70, yPosition + 8);
 
       doc.setFont('helvetica', 'bold');
       doc.text('Status:', 140, yPosition);
       doc.setFont('helvetica', 'normal');
-      doc.text(statusInfo.label, 140, yPosition + 8);
+      doc.text(statusField?.value || '—', 140, yPosition + 8);
       yPosition += 25;
 
-      // Informações Gerais
+      // Informações Gerais usando campos padronizados
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.text('INFORMAÇÕES GERAIS', 20, yPosition);
@@ -123,11 +131,11 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
 
       doc.setFontSize(10);
       const infoData = [
-        ['Cliente:', task.client, 'Vendedor:', task.responsible],
-        ['Código:', task.clientCode || 'N/A', 'Filial:', resolveFilialName(task.filial) || 'N/A'],
-        ['E-mail:', task.email || 'N/A', 'Hectares:', task.propertyHectares || 'N/A'],
-        ['Telefone:', task.phone || 'N/A', 'Família de Produtos:', task.familyProduct || 'N/A'],
-        ['Propriedade:', task.property, '', '']
+        ['Cliente:', clienteField?.value || '—', 'Responsável:', sections.basico?.find(f => f.key === 'responsavel')?.value || '—'],
+        ['Código:', sections.cliente?.find(f => f.key === 'codigoCliente')?.value || '—', 'Filial:', sections.basico?.find(f => f.key === 'filial')?.value || '—'],
+        ['E-mail:', sections.cliente?.find(f => f.key === 'email')?.value || '—', 'Hectares:', sections.tecnico?.find(f => f.key === 'hectaresPropriedade')?.value || '—'],
+        ['Telefone:', sections.cliente?.find(f => f.key === 'telefone')?.value || '—', 'Família de Produtos:', sections.tecnico?.find(f => f.key === 'familiaProduto')?.value || '—'],
+        ['Propriedade:', sections.cliente?.find(f => f.key === 'propriedade')?.value || '—', 'Tipo:', sections.basico?.find(f => f.key === 'tipoFormulario')?.value || '—']
       ];
 
       (doc as any).autoTable({
@@ -492,63 +500,75 @@ ${task.responsible}`;
             </CardContent>
           </Card>
 
-          {/* Informações Gerais */}
+          {/* Informações Gerais - usando campos padronizados */}
           <Card>
             <CardHeader>
               <CardTitle>Informações Gerais</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Cliente:</span>
-                    <span className="font-medium">{task.client}</span>
+              {(() => {
+                const { generateStandardReport } = require('@/lib/reportFieldMapping');
+                const { sections } = generateStandardReport(task);
+                
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Cliente:</span>
+                        <span className="font-medium">{sections.cliente?.find(f => f.key === 'cliente')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Hash className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Código:</span>
+                        <span className="font-medium">{sections.cliente?.find(f => f.key === 'codigoCliente')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <AtSign className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">E-mail:</span>
+                        <span className="font-medium">{sections.cliente?.find(f => f.key === 'email')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Telefone:</span>
+                        <span className="font-medium">{sections.cliente?.find(f => f.key === 'telefone')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Propriedade:</span>
+                        <span className="font-medium">{sections.cliente?.find(f => f.key === 'propriedade')?.value || '—'}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Responsável:</span>
+                        <span className="font-medium">{sections.basico?.find(f => f.key === 'responsavel')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Filial:</span>
+                        <span className="font-medium">{sections.basico?.find(f => f.key === 'filial')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Crop className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Hectares:</span>
+                        <span className="font-medium">{sections.tecnico?.find(f => f.key === 'hectaresPropriedade')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Package className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Família de Produtos:</span>
+                        <span className="font-medium">{sections.tecnico?.find(f => f.key === 'familiaProduto')?.value || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Tipo:</span>
+                        <span className="font-medium">{sections.basico?.find(f => f.key === 'tipoFormulario')?.value || '—'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Hash className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Código:</span>
-                    <span className="font-medium">{task.clientCode || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AtSign className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">E-mail:</span>
-                    <span className="font-medium">{task.email || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Telefone:</span>
-                    <span className="font-medium">{task.phone || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Propriedade:</span>
-                    <span className="font-medium">{task.property}</span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Vendedor:</span>
-                    <span className="font-medium">{task.responsible}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Building className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Filial:</span>
-                    <span className="font-medium">{resolveFilialName(task.filial) || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Crop className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Hectares:</span>
-                    <span className="font-medium">{task.propertyHectares || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Família de Produtos:</span>
-                    <span className="font-medium">{task.familyProduct || 'N/A'}</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
