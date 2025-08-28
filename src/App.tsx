@@ -99,49 +99,8 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   );
 };
 
-// This component lives inside AuthProvider and handles profile logic
-const AppWithAuth: React.FC = () => {
-  const { user, loading } = useAuth();
-  const { profile, loading: profileLoading } = useProfile();
-  const [showProfileCreator, setShowProfileCreator] = React.useState(false);
-
-  // Check if we need to show profile creator
-  React.useEffect(() => {
-    if (user && !loading && !profileLoading) {
-      if (!profile) {
-        setShowProfileCreator(true);
-      } else {
-        setShowProfileCreator(false);
-      }
-    } else {
-      setShowProfileCreator(false);
-    }
-  }, [user, loading, profile, profileLoading]);
-
-  const handleProfileCreated = () => {
-    setShowProfileCreator(false);
-    window.location.reload();
-  };
-
-  // Show profile creator if needed
-  if (showProfileCreator) {
-    return <ProfileAutoCreator onProfileCreated={handleProfileCreated} />;
-  }
-
-  // Show combined loading when either auth or profile is loading
-  if (loading || (user && profileLoading)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">
-            {loading ? "Carregando autenticação..." : "Carregando perfil..."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+// Simplified routing component without auth dependencies
+const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => {
   return (
     <BrowserRouter>
       <Routes>
@@ -159,13 +118,50 @@ const AppWithAuth: React.FC = () => {
   );
 };
 
-// Simple wrapper that only provides AuthProvider context
+// AuthProvider wrapper with profile management
 const AppContent: React.FC = () => {
   return (
     <AuthProvider>
-      <AppWithAuth />
+      <AuthAwareWrapper />
     </AuthProvider>
   );
+};
+
+// Component that safely uses auth hooks inside AuthProvider
+const AuthAwareWrapper: React.FC = () => {
+  const { user, loading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+  const [showProfileCreator, setShowProfileCreator] = React.useState(false);
+
+  // Show profile creator if user exists but no profile
+  React.useEffect(() => {
+    if (!loading && !profileLoading && user && !profile) {
+      setShowProfileCreator(true);
+    } else {
+      setShowProfileCreator(false);
+    }
+  }, [user, profile, loading, profileLoading]);
+
+  if (loading || profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (showProfileCreator) {
+    return (
+      <ProfileAutoCreator 
+        onProfileCreated={() => {
+          setShowProfileCreator(false);
+          window.location.reload();
+        }} 
+      />
+    );
+  }
+
+  return <AppRoutes user={user} profile={profile} />;
 };
 
 const App = () => (

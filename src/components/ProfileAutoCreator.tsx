@@ -11,15 +11,31 @@ interface ProfileAutoCreatorProps {
 }
 
 export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfileCreated }) => {
-  const { user } = useAuth();
+  // Verificação robusta do contexto de autenticação
+  let user = null;
+  let authError = false;
+  
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+  } catch (error) {
+    console.warn('ProfileAutoCreator: AuthProvider context not available:', error);
+    authError = true;
+  }
   const [isCreating, setIsCreating] = useState(false);
   const [status, setStatus] = useState<'checking' | 'missing' | 'creating' | 'done'>('checking');
 
   useEffect(() => {
+    if (authError) {
+      toast.error('❌ Erro de autenticação. Recarregando...');
+      setTimeout(() => window.location.reload(), 2000);
+      return;
+    }
+    
     if (user) {
       checkProfile();
     }
-  }, [user]);
+  }, [user, authError]);
 
   const checkProfile = async () => {
     if (!user) return;
@@ -54,7 +70,10 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
   };
 
   const createProfile = async () => {
-    if (!user) return;
+    if (authError || !user) {
+      toast.error('❌ Erro de autenticação. Recarregue a página.');
+      return;
+    }
 
     try {
       setIsCreating(true);
@@ -100,6 +119,23 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
       setIsCreating(false);
     }
   };
+
+  // Se há erro de autenticação, mostrar erro
+  if (authError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+            <CardTitle>Erro de Autenticação</CardTitle>
+            <CardDescription>
+              Não foi possível acessar o contexto de autenticação. Recarregando...
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   if (status === 'checking') {
     return (

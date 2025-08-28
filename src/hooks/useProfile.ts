@@ -13,21 +13,44 @@ interface Profile {
 }
 
 export const useProfile = () => {
-  const { user } = useAuth();
+  // Verificação robusta do contexto de autenticação
+  let user = null;
+  let contextAvailable = true;
+  
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+  } catch (error) {
+    console.warn('useProfile: AuthProvider context not available:', error);
+    contextAvailable = false;
+  }
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const loadingRef = useRef(false);
 
   useEffect(() => {
+    if (!contextAvailable) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
     if (user && user.id) {
       loadProfile();
     } else {
       setProfile(null);
       setLoading(false);
     }
-  }, [user?.id]); // Only depend on user.id to avoid unnecessary re-renders
+  }, [user?.id, contextAvailable]); // Include contextAvailable in dependencies
 
   const loadProfile = async () => {
+    if (!contextAvailable) {
+      console.warn('useProfile: Skipping profile load - no auth context');
+      setLoading(false);
+      return;
+    }
+
     // Prevent multiple simultaneous calls
     if (loadingRef.current) {
       return;
@@ -38,15 +61,17 @@ export const useProfile = () => {
       return;
     }
 
-    // Timeout de 5 segundos para carregamento do perfil
+    // Timeout de 10 segundos com retry automático
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
       loadingRef.current = true;
       setLoading(true);
       
-      const { data, error } = await supabase
+      console.log('🔄 Carregando perfil do usuário...');
+
+      const profilePromise = supabase
         .from('profiles')
         .select(`
           *,
@@ -56,6 +81,12 @@ export const useProfile = () => {
         `)
         .eq('user_id', user.id)
         .maybeSingle();
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Profile load timeout')), 10000);
+      });
+
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]);
 
       clearTimeout(timeout);
 
@@ -67,6 +98,8 @@ export const useProfile = () => {
           ...data,
           filial_nome: data.filiais?.nome
         } : null;
+        
+        console.log('✅ Perfil carregado:', profileData);
         setProfile(profileData);
       }
     } catch (error) {
