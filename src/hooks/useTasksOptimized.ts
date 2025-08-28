@@ -114,17 +114,37 @@ export const useTasksOptimized = (includeDetails = false) => {
         clearTimeout(timeout);
         console.error('❌ Erro crítico ao carregar tasks:', error);
         
-        // Circuit breaker - retornar dados vazios ao invés de falhar
-        console.log('🔄 Aplicando circuit breaker - retornando dados vazios');
-        return [];
+        // Melhor tratamento de erro - tentar cache local primeiro
+        console.log('🔄 Tentando recuperar dados do cache local...');
+        const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
+        if (cachedData) {
+          console.log('✅ Dados recuperados do cache local');
+          return cachedData as Task[];
+        }
+        
+        // Se offline, tentar dados offline
+        if (!isOnline) {
+          console.log('📴 Recuperando dados offline');
+          return getOfflineTasks();
+        }
+        
+        // Circuit breaker melhorado - só retornar vazio em último caso
+        console.log('⚠️ Circuit breaker ativado - sem dados disponíveis');
+        throw error; // Permitir que React Query tente novamente
       }
     },
     enabled: !!user,
-    staleTime: 2 * 60 * 1000, // 2 minutos para reduzir chamadas
-    refetchOnWindowFocus: false, // Desabilitar para reduzir carga
+    staleTime: 1 * 60 * 1000, // 1 minuto - menor tempo para dados mais frescos
+    refetchOnWindowFocus: true, // Reabilitar para sincronização
     refetchOnMount: true, 
-    retry: 2, // Máximo 2 tentativas
-    refetchInterval: false, // Remover auto-refetch automático
+    retry: (failureCount, error) => {
+      // Retry mais inteligente
+      if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
+        return false; // Não retry em erros de auth
+      }
+      return failureCount < 3; // Até 3 tentativas para outros erros
+    },
+    refetchInterval: false,
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
     }
@@ -290,11 +310,27 @@ export const useTasksOptimized = (includeDetails = false) => {
     refetch: tasksQuery.refetch,
     isCreating: createTaskMutation.isPending,
     isUpdating: updateTaskMutation.isPending,
-    // Add force refresh function that clears cache completely
-    forceRefresh: () => {
+    // Função de força refresh melhorada
+    forceRefresh: async () => {
+      console.log('🔄 Executando force refresh completo...');
+      // Limpar todo o cache
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
       queryClient.removeQueries({ queryKey: QUERY_KEYS.tasks });
-      return tasksQuery.refetch();
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.consultants });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.filiais });
+      
+      // Forçar refetch
+      const result = await tasksQuery.refetch();
+      console.log('✅ Force refresh concluído');
+      return result;
+    },
+    // Função para resetar filtros e cache
+    resetAndRefresh: async () => {
+      console.log('🔄 Reset completo com filtros...');
+      queryClient.clear(); // Limpa TUDO
+      const result = await tasksQuery.refetch();
+      console.log('✅ Reset completo concluído');
+      return result;
     }
   };
 };

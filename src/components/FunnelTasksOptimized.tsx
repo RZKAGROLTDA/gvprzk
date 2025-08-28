@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckSquare, Download, Search, Filter } from 'lucide-react';
+import { CheckSquare, Download, Search, Filter, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { resolveFilialName } from '@/lib/taskStandardization';
+import { toast } from 'react-hot-toast';
 
 interface TaskData {
   date: Date;
@@ -22,7 +23,7 @@ interface TaskData {
 }
 
 export const FunnelTasksOptimized: React.FC = () => {
-  const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
+  const { tasks, loading, refetch, forceRefresh, resetAndRefresh, error } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   const { invalidateAll } = useSecurityCache();
@@ -32,6 +33,8 @@ export const FunnelTasksOptimized: React.FC = () => {
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [isForceRefreshing, setIsForceRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   const tasksData = useMemo(() => {
     if (!tasks.length) return [];
@@ -119,6 +122,42 @@ export const FunnelTasksOptimized: React.FC = () => {
 
   const isLoading = loading || consultantsLoading || filiaisLoading;
 
+  // Função para force refresh com feedback visual
+  const handleForceRefresh = async () => {
+    setIsForceRefreshing(true);
+    try {
+      await forceRefresh();
+      setLastRefreshTime(new Date());
+      toast.success("✅ Dados Atualizados - Cache limpo e dados recarregados com sucesso!");
+    } catch (error) {
+      console.error('Erro no force refresh:', error);
+      toast.error("❌ Erro ao atualizar dados. Tente novamente.");
+    } finally {
+      setIsForceRefreshing(false);
+    }
+  };
+
+  // Função para reset completo
+  const handleResetAndRefresh = async () => {
+    setIsForceRefreshing(true);
+    try {
+      // Reset filtros
+      setSearchTerm('');
+      setSelectedPeriod('365');
+      setSelectedConsultant('all');
+      setSelectedFilial('all');
+      
+      await resetAndRefresh();
+      setLastRefreshTime(new Date());
+      toast.success("🔄 Reset Completo - Filtros resetados e dados recarregados!");
+    } catch (error) {
+      console.error('Erro no reset:', error);
+      toast.error("❌ Erro ao resetar dados. Tente novamente.");
+    } finally {
+      setIsForceRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -133,9 +172,42 @@ export const FunnelTasksOptimized: React.FC = () => {
       {/* Filtros */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Filter className="h-5 w-5" />
-            <span>Filtros e Busca</span>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Filter className="h-5 w-5" />
+              <span>Filtros e Busca</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              {error && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Erro ao carregar
+                </Badge>
+              )}
+              {lastRefreshTime && (
+                <span className="text-xs text-muted-foreground">
+                  Última atualização: {format(lastRefreshTime, 'HH:mm:ss')}
+                </span>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleForceRefresh}
+                disabled={isForceRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${isForceRefreshing ? 'animate-spin' : ''}`} />
+                {isForceRefreshing ? 'Atualizando...' : 'Atualizar'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleResetAndRefresh}
+                disabled={isForceRefreshing}
+              >
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Reset
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -271,9 +343,37 @@ export const FunnelTasksOptimized: React.FC = () => {
             </Table>
           </div>
           
-          {tasksData.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              Nenhuma atividade encontrada com os filtros aplicados.
+          {tasksData.length === 0 && !loading && (
+            <div className="text-center py-8">
+              {error ? (
+                <div className="space-y-4">
+                  <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
+                  <div>
+                    <h3 className="text-lg font-medium text-destructive">Erro ao carregar dados</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Não foi possível carregar as atividades. Verifique sua conexão.
+                    </p>
+                    <div className="mt-4 flex justify-center gap-2">
+                      <Button variant="outline" onClick={handleForceRefresh} disabled={isForceRefreshing}>
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isForceRefreshing ? 'animate-spin' : ''}`} />
+                        Tentar Novamente
+                      </Button>
+                      <Button variant="outline" onClick={handleResetAndRefresh} disabled={isForceRefreshing}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset Completo
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-muted-foreground">
+                  <Search className="h-12 w-12 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium">Nenhuma atividade encontrada</h3>
+                  <p className="text-sm">
+                    Nenhuma atividade corresponde aos filtros aplicados.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
