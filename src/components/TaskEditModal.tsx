@@ -53,20 +53,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       prospectItemsCount: task.prospectItems?.length
     });
 
-    // Padronizar produtos para todos os tipos de tarefa
-    let allProducts = [];
-    let prospectItemsForPartial = [];
-
-    // Para tarefas de ligação, usar prospectItems se disponível, senão checklist
-    if (task.taskType === 'ligacao') {
-      allProducts = task.prospectItems?.length > 0 ? task.prospectItems : task.checklist || [];
-      // Para venda parcial em ligação, usar os prospectItems existentes
-      prospectItemsForPartial = task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [];
-    } else {
-      // Para outras tarefas (checklist/prospection), usar checklist como padrão
-      allProducts = task.checklist || [];
-      prospectItemsForPartial = task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [];
-    }
+    // PADRONIZAÇÃO UNIFICADA: Usar sempre a mesma lógica para todos os tipos
+    // Priorizar prospectItems se existir e não estiver vazio, senão usar checklist
+    const allProducts = (task.prospectItems?.length > 0) ? task.prospectItems : (task.checklist || []);
+    
+    // Para vendas parciais, usar produtos já selecionados
+    const prospectItemsForPartial = task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [];
     
     setFormData({
       customerName: task.client || '',
@@ -321,6 +313,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             isProspect={formData.isProspect}
             prospectItems={formData.prospectItems}
             availableProducts={formData.products}
+            checklist={formData.products}
             onStatusChange={handleStatusChange}
             showError={formData.salesConfirmed === false && (!formData.prospectNotes || formData.prospectNotes.trim() === '')}
           />

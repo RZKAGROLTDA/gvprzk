@@ -30,11 +30,12 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     return mappedProduct;
   }) || [];
 
-  // Separate checklist and prospectItems based on task type
+  // PADRONIZAÇÃO: Garantir que TODAS as tasks tenham produtos em ambos checklist E prospectItems
   const taskType = supabaseTask.task_type || 'prospection';
-  const checklist = taskType === 'ligacao' ? [] : products;
-  // prospectItems devem estar disponíveis para todos os tipos de tarefa
-  const prospectItems = products;
+  
+  // Para compatibilidade total, sempre garantir que ambos existam
+  const checklist = products; // Todas as tasks têm checklist com todos os produtos
+  const prospectItems = products; // Todas as tasks têm prospectItems para vendas parciais
 
   const mappedTask: Task = {
     id: supabaseTask.id,

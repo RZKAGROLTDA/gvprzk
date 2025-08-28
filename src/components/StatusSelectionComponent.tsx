@@ -17,6 +17,7 @@ export interface StatusSelectionProps {
   isProspect?: boolean;
   prospectItems?: ProductType[];
   availableProducts?: ProductType[];
+  checklist?: ProductType[]; // Adicionar checklist para compatibilidade
   onStatusChange: (status: { 
     salesConfirmed?: boolean | null; 
     salesType?: 'ganho' | 'parcial' | 'perdido';
@@ -39,10 +40,18 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
   isProspect,
   prospectItems,
   availableProducts,
+  checklist,
   onStatusChange,
   showError = false,
   errorMessage
 }) => {
+  // PADRONIZAÇÃO: Usar sempre a mesma fonte de produtos
+  // Priorizar prospectItems se existir, senão usar checklist, senão availableProducts
+  const finalProducts = prospectItems?.length > 0 
+    ? prospectItems 
+    : checklist?.length > 0 
+    ? checklist 
+    : availableProducts || [];
   // Calculate partial sales value automatically
   const calculatePartialSalesValue = (items: ProductType[] = []): number => {
     return items
@@ -56,15 +65,15 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
 
   // Auto-recalculate partial sales value when products change
   useEffect(() => {
-    if (salesConfirmed === true && salesType === 'parcial' && prospectItems) {
-      const partialValue = calculatePartialSalesValue(prospectItems);
+    if (salesConfirmed === true && salesType === 'parcial' && finalProducts) {
+      const partialValue = calculatePartialSalesValue(finalProducts);
       
       console.log('🔍 StatusSelection - Auto-calculando valor parcial:', {
         taskId,
         salesType,
         salesConfirmed,
-        itemsCount: prospectItems.length,
-        selectedItems: prospectItems.filter(item => item.selected).length,
+        itemsCount: finalProducts.length,
+        selectedItems: finalProducts.filter(item => item.selected).length,
         calculatedValue: partialValue
       });
 
@@ -74,16 +83,16 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
         salesType,
         isProspect,
         prospectNotes,
-        prospectItems,
+        prospectItems: finalProducts,
         partialSalesValue: partialValue
       });
     }
-  }, [prospectItems, salesConfirmed, salesType]);
+  }, [finalProducts, salesConfirmed, salesType]);
 
   const handleProspectItemChange = (index: number, field: keyof ProductType, value: any) => {
-    if (!prospectItems) return;
+    if (!finalProducts) return;
     
-    const updatedItems = [...prospectItems];
+    const updatedItems = [...finalProducts];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     
     // Calculate new partial sales value
@@ -189,30 +198,30 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 : 'border-gray-200 bg-white hover:border-yellow-300'
             }`} 
              onClick={() => {
-               // Configurar produtos automaticamente para venda parcial
-               const selectedProducts = availableProducts?.filter(item => item.selected).map(item => ({
-                 ...item,
-                 selected: true,
-                 quantity: item.quantity || 1,
-                 price: item.price || 0
-               })) || [];
-               
-               const partialValue = calculatePartialSalesValue(selectedProducts);
-               
-               console.log('🔍 StatusSelection - Venda parcial selecionada:', {
-                 selectedProducts: selectedProducts.length,
-                 partialValue
-               });
-               
-               onStatusChange({
-                 salesConfirmed: true,
-                 salesType: 'parcial',
-                 isProspect: true,
-                 prospectNotes: '',
-                 prospectItems: selectedProducts,
-                 partialSalesValue: partialValue
-               });
-             }}
+                // PADRONIZAÇÃO: Usar finalProducts para configurar venda parcial
+                const selectedProducts = finalProducts?.map(item => ({
+                  ...item,
+                  selected: true,
+                  quantity: item.quantity || 1,
+                  price: item.price || 0
+                })) || [];
+                
+                const partialValue = calculatePartialSalesValue(selectedProducts);
+                
+                console.log('🔍 StatusSelection - Venda parcial selecionada:', {
+                  selectedProducts: selectedProducts.length,
+                  partialValue
+                });
+                
+                onStatusChange({
+                  salesConfirmed: true,
+                  salesType: 'parcial',
+                  isProspect: true,
+                  prospectNotes: '',
+                  prospectItems: selectedProducts,
+                  partialSalesValue: partialValue
+                });
+              }}
           >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -333,7 +342,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
       )}
 
       {/* Seção de produtos para vendas parciais */}
-      {salesConfirmed === true && salesType === 'parcial' && prospectItems && prospectItems.length > 0 && (
+      {salesConfirmed === true && salesType === 'parcial' && finalProducts && finalProducts.length > 0 && (
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="partialSaleValue">Valor da Venda Parcial (R$)</Label>
@@ -344,7 +353,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 value={new Intl.NumberFormat('pt-BR', {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2
-                 }).format(calculatePartialSalesValue(prospectItems))} 
+                 }).format(calculatePartialSalesValue(finalProducts))} 
                  className="pl-8 bg-green-50 border-green-200 text-green-800 font-medium" 
                  readOnly 
                />
@@ -362,8 +371,8 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                  ✏️ Clique para editar quantidade e preço
                </span>
              </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto border-2 border-dashed border-blue-200 rounded-lg p-4 bg-blue-50/30">
-              {prospectItems.map((item, index) => (
+             <div className="space-y-2 max-h-48 overflow-y-auto border-2 border-dashed border-blue-200 rounded-lg p-4 bg-blue-50/30">
+               {finalProducts.map((item, index) => (
                 <div key={item.id} className="flex items-center justify-between space-x-3 p-4 bg-white rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center space-x-3">
                     <Checkbox 
