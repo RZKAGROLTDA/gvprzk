@@ -99,8 +99,8 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   );
 };
 
-// This component now lives inside AuthProvider and handles all routing
-const AppContent: React.FC = () => {
+// This component lives inside AuthProvider and handles profile logic
+const AppWithAuth: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const [showProfileCreator, setShowProfileCreator] = React.useState(false);
@@ -159,6 +159,15 @@ const AppContent: React.FC = () => {
   );
 };
 
+// Simple wrapper that only provides AuthProvider context
+const AppContent: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppWithAuth />
+    </AuthProvider>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -166,9 +175,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <HotToaster />
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <AppContent />
     </TooltipProvider>
   </QueryClientProvider>
 );
