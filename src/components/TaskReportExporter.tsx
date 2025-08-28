@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { mapTaskToStandardFields, mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
+import { generateStandardReport, SECTION_TITLES } from '@/lib/reportFieldMapping';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
 declare module 'jspdf' {
