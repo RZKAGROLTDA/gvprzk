@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
-import { StatusSelectionComponent } from './StatusSelectionComponent';
-import { ProductListComponent } from './ProductListComponent';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
 
 interface TaskEditModalProps {
@@ -26,77 +25,94 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   onTaskUpdate
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Status padronizado: prospect | venda_total | venda_parcial | venda_perdida
+  const getInitialStatus = () => {
+    if (task.isProspect && (!task.salesConfirmed && !task.salesType)) return 'prospect';
+    if (task.salesConfirmed && task.salesType === 'ganho') return 'venda_total';
+    if (task.salesConfirmed && task.salesType === 'parcial') return 'venda_parcial';
+    if (task.salesConfirmed === false) return 'venda_perdida';
+    return 'prospect';
+  };
+
   const [formData, setFormData] = useState({
     customerName: task.client || '',
-    customerPhone: '',
     customerEmail: task.email || '',
-    salesValue: task.salesValue || '',
-    salesConfirmed: task.salesConfirmed,
-    salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
+    status: getInitialStatus(),
+    valorVendaParcial: Number(task.partialSalesValue) || 0,
+    valorVenda: Number(task.salesValue) || 0,
     prospectNotes: task.prospectNotes || '',
-    prospectNotesJustification: task.prospectNotesJustification || '',
-    isProspect: task.isProspect || false,
-    products: task.checklist || [],
-    prospectItems: task.prospectItems || [],
-    partialSalesValue: task.partialSalesValue || 0
+    products: [] as any[]
   });
 
   const { invalidateAll } = useSecurityCache();
 
+  // Carregar produtos da task
   useEffect(() => {
-    console.log('🔍 TaskEditModal - Carregando task:', {
-      id: task.id,
-      taskType: task.taskType,
-      salesConfirmed: task.salesConfirmed,
-      salesType: task.salesType,
-      checklistCount: task.checklist?.length,
-      prospectItemsCount: task.prospectItems?.length
-    });
-
-    // CORREÇÃO: Sempre passar TODOS os produtos disponíveis para o StatusSelectionComponent
-    // Priorizar prospectItems se existir e não estiver vazio, senão usar checklist
     const allProducts = (task.prospectItems?.length > 0) ? task.prospectItems : (task.checklist || []);
-    
-    // Para venda parcial, manter TODOS os produtos com seleção correta
-    const prospectItemsForPartial = allProducts.map(product => ({
-      ...product,
-      selected: task.salesType === 'parcial' ? (product.selected || false) : false
-    }));
-    
-    setFormData({
-      customerName: task.client || '',
-      customerPhone: '',
-      customerEmail: task.email || '',
-      salesValue: task.salesValue || '',
-      salesConfirmed: task.salesConfirmed,
-      salesType: (task.salesType as 'ganho' | 'parcial' | 'perdido') || 'ganho',
-      prospectNotes: task.prospectNotes || '',
-      prospectNotesJustification: task.prospectNotesJustification || '',
-      isProspect: task.isProspect || false,
-      products: allProducts,
-      prospectItems: allProducts, // Passar TODOS os produtos, não apenas selecionados
-      partialSalesValue: task.partialSalesValue || 0
-    });
-  }, [task]);
-
-  const handleStatusChange = (status: { 
-    salesConfirmed?: boolean | null; 
-    salesType?: 'ganho' | 'parcial' | 'perdido'; 
-    isProspect?: boolean; 
-    prospectNotes?: string; 
-    prospectNotesJustification?: string;
-    prospectItems?: any[];
-    partialSalesValue?: number;
-  }) => {
-    console.log('🔍 TaskEditModal - Status alterado:', status);
     
     setFormData(prev => ({
       ...prev,
-      ...status,
-      // Garantir que prospectItems seja sempre atualizado quando vier no status
-      ...(status.prospectItems && { prospectItems: status.prospectItems }),
-      // Atualizar o valor parcial calculado
-      ...(status.partialSalesValue !== undefined && { partialSalesValue: status.partialSalesValue })
+      customerName: task.client || '',
+      customerEmail: task.email || '',
+      status: getInitialStatus(),
+      valorVendaParcial: Number(task.partialSalesValue) || 0,
+      valorVenda: Number(task.salesValue) || 0,
+      prospectNotes: task.prospectNotes || '',
+      products: allProducts.map(product => ({
+        ...product,
+        selected: task.salesType === 'parcial' ? (product.selected || false) : false,
+        quantity: product.quantity || 1,
+        price: product.price || 0
+      }))
+    }));
+  }, [task]);
+
+  // Cálculo automático do Valor Total da Oportunidade
+  const valorTotalOportunidade = useMemo(() => {
+    return formData.products.reduce((sum, product) => {
+      return sum + ((product.quantity || 0) * (product.price || 0));
+    }, 0);
+  }, [formData.products]);
+
+  // Cálculo automático do Valor da Venda baseado no status
+  const valorVendaCalculado = useMemo(() => {
+    switch (formData.status) {
+      case 'venda_total':
+        return valorTotalOportunidade;
+      case 'venda_parcial':
+        return formData.valorVendaParcial;
+      case 'prospect':
+      case 'venda_perdida':
+      default:
+        return 0;
+    }
+  }, [formData.status, valorTotalOportunidade, formData.valorVendaParcial]);
+
+  // Atualizar valor da venda quando mudar o cálculo
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      valorVenda: valorVendaCalculado
+    }));
+  }, [valorVendaCalculado]);
+
+  const handleStatusChange = (newStatus: string) => {
+    setFormData(prev => ({
+      ...prev,
+      status: newStatus,
+      // Reset de campos específicos ao mudar status
+      ...(newStatus !== 'venda_parcial' && { valorVendaParcial: 0 }),
+      ...(newStatus !== 'venda_perdida' && { prospectNotes: '' })
+    }));
+  };
+
+  const handleProductChange = (productIndex: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      products: prev.products.map((product, index) => 
+        index === productIndex ? { ...product, [field]: value } : product
+      )
     }));
   };
 
@@ -105,50 +121,40 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      console.log('🔍 TaskEditModal - Iniciando submit:', {
-        taskId: task.id,
-        formData
-      });
-
-      // Validações básicas aprimoradas
+      // Validações
       if (!task.id) {
-        console.error('🚨 TaskEditModal - Task ID não encontrado');
         toast.error('Erro: Task ID não encontrado');
         return;
       }
 
       // Validação para venda perdida
-      if (formData.salesConfirmed === false && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
+      if (formData.status === 'venda_perdida' && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
         toast.error('O motivo da perda é obrigatório');
         return;
       }
 
-      // Validar e converter sales_value
-      let salesValueToSave = null;
-      if (formData.salesValue && formData.salesValue !== '') {
-        const numericValue = typeof formData.salesValue === 'string' 
-          ? parseFloat(formData.salesValue.replace(/[^\d,.-]/g, '').replace(',', '.'))
-          : formData.salesValue;
-        
-        if (!isNaN(numericValue) && numericValue >= 0) {
-          salesValueToSave = numericValue;
-        }
-      }
+      // Mapear status para campos do banco
+      const statusMapping = {
+        prospect: { isProspect: true, salesConfirmed: null, salesType: null },
+        venda_total: { isProspect: false, salesConfirmed: true, salesType: 'ganho' },
+        venda_parcial: { isProspect: false, salesConfirmed: true, salesType: 'parcial' },
+        venda_perdida: { isProspect: false, salesConfirmed: false, salesType: 'perdido' }
+      };
 
-      // Preparar dados com mapeamento correto
+      const statusData = statusMapping[formData.status as keyof typeof statusMapping];
+
+      // Preparar dados para atualização
       const updateData = {
         client: formData.customerName || null,
         email: formData.customerEmail || null,
-        sales_value: salesValueToSave,
-        sales_confirmed: formData.salesConfirmed,
-        sales_type: formData.salesType || null,
+        sales_value: formData.valorVenda,
+        sales_confirmed: statusData.salesConfirmed,
+        sales_type: statusData.salesType,
         prospect_notes: formData.prospectNotes || null,
-        prospect_notes_justification: formData.prospectNotesJustification || null,
-        is_prospect: formData.isProspect || false,
+        is_prospect: statusData.isProspect,
+        partial_sales_value: formData.status === 'venda_parcial' ? formData.valorVendaParcial : null,
         updated_at: new Date().toISOString()
       };
-
-      console.log('🔍 TaskEditModal - Dados para Supabase:', updateData);
 
       // Atualizar task principal
       const { error: updateError } = await supabase
@@ -157,86 +163,37 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         .eq('id', task.id);
 
       if (updateError) {
-        console.error('🔍 TaskEditModal - Erro na atualização da task:', updateError);
         throw updateError;
       }
 
-      console.log('🔍 TaskEditModal - Task atualizada com sucesso');
+      // Atualizar produtos
+      if (formData.products.length > 0) {
+        const { data: existingProducts, error: fetchError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('task_id', task.id);
 
-      // Atualizar produtos se necessário
-      const productsToUpdate = formData.salesType === 'parcial' && formData.prospectItems?.length > 0 
-        ? formData.prospectItems 
-        : formData.products || [];
+        if (!fetchError && existingProducts) {
+          for (const product of formData.products) {
+            const existingProduct = existingProducts.find(p => 
+              p.id === product.id || (p.name === product.name && p.category === product.category)
+            );
 
-      if (productsToUpdate.length > 0) {
-        console.log('🔍 TaskEditModal - Produtos para atualizar:', productsToUpdate);
-        
-        try {
-          // Buscar produtos existentes
-          const { data: existingProducts, error: fetchError } = await supabase
-            .from('products')
-            .select('*')
-            .eq('task_id', task.id);
-
-          if (fetchError) {
-            console.error('🔍 TaskEditModal - Erro ao buscar produtos:', fetchError);
-            // Não falhar se buscar produtos falhar, apenas log
-            console.warn('⚠️ Continuando sem atualizar produtos devido ao erro de busca');
-          } else {
-            // Preparar atualizações de produtos
-            const productUpdates = [];
-            
-            for (const product of productsToUpdate) {
-              const existingProduct = existingProducts?.find(p => 
-                p.id === product.id || (p.name === product.name && p.category === product.category)
-              );
-
-              if (existingProduct) {
-                productUpdates.push({
-                  id: existingProduct.id,
+            if (existingProduct) {
+              await supabase
+                .from('products')
+                .update({
                   selected: Boolean(product.selected),
                   quantity: Number(product.quantity) || 0,
                   price: Number(product.price) || 0,
                   observations: product.observations || null,
                   updated_at: new Date().toISOString()
-                });
-              }
-            }
-
-            // Executar atualizações de produtos
-            if (productUpdates.length > 0) {
-              console.log('🔍 TaskEditModal - Atualizando produtos:', productUpdates.length);
-              
-              for (const update of productUpdates) {
-                const { error: productError } = await supabase
-                  .from('products')
-                  .update({
-                    selected: update.selected,
-                    quantity: update.quantity,
-                    price: update.price,
-                    observations: update.observations,
-                    updated_at: update.updated_at
-                  })
-                  .eq('id', update.id);
-
-                if (productError) {
-                  console.error('🔍 TaskEditModal - Erro ao atualizar produto:', update.id, productError);
-                  // Não falhar completamente se um produto falhar
-                  console.warn('⚠️ Produto não atualizado:', update.id);
-                }
-              }
-              
-              console.log('🔍 TaskEditModal - Produtos processados');
+                })
+                .eq('id', existingProduct.id);
             }
           }
-        } catch (productError) {
-          console.error('🔍 TaskEditModal - Erro geral nos produtos:', productError);
-          // Não falhar a operação inteira se produtos falharem
-          console.warn('⚠️ Continuando sem atualizar produtos devido ao erro');
         }
       }
-
-      console.log('🔍 TaskEditModal - Atualização completa realizada com sucesso');
 
       // Invalidar cache
       await invalidateAll();
@@ -273,7 +230,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           <DialogTitle>Editar Task</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Dados do Cliente */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customerName">Nome do Cliente</Label>
@@ -295,31 +253,160 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 placeholder="Email do cliente"
               />
             </div>
-            
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="salesValue">Valor da Venda (R$)</Label>
-              <Input
-                id="salesValue"
-                value={formData.salesValue}
-                onChange={(e) => setFormData(prev => ({ ...prev, salesValue: e.target.value }))}
-                placeholder="0,00"
-              />
-            </div>
           </div>
 
-          <StatusSelectionComponent
-            taskId={task.id}
-            salesConfirmed={formData.salesConfirmed}
-            salesType={formData.salesType}
-            prospectNotes={formData.prospectNotes}
-            prospectNotesJustification={formData.prospectNotesJustification}
-            isProspect={formData.isProspect}
-            prospectItems={formData.prospectItems}
-            availableProducts={formData.products}
-            checklist={formData.products}
-            onStatusChange={handleStatusChange}
-            showError={formData.salesConfirmed === false && (!formData.prospectNotes || formData.prospectNotes.trim() === '')}
-          />
+          {/* Status do Prospect - Radio Group */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Status do Prospect</Label>
+            <RadioGroup
+              value={formData.status}
+              onValueChange={handleStatusChange}
+              className="grid grid-cols-2 gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="prospect" id="prospect" />
+                <Label htmlFor="prospect">Prospect</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="venda_total" id="venda_total" />
+                <Label htmlFor="venda_total">Venda Total</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="venda_parcial" id="venda_parcial" />
+                <Label htmlFor="venda_parcial">Venda Parcial</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="venda_perdida" id="venda_perdida" />
+                <Label htmlFor="venda_perdida">Venda Perdida</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Campo Valor da Venda Parcial - Condicional */}
+          {formData.status === 'venda_parcial' && (
+            <div className="space-y-2">
+              <Label htmlFor="valorVendaParcial">Valor da Venda Parcial (R$)</Label>
+              <Input
+                id="valorVendaParcial"
+                type="number"
+                value={formData.valorVendaParcial}
+                onChange={(e) => setFormData(prev => ({ ...prev, valorVendaParcial: Number(e.target.value) }))}
+                placeholder="0,00"
+                min="0"
+                step="0.01"
+              />
+            </div>
+          )}
+
+          {/* Campo Valor da Venda - Calculado automaticamente */}
+          <div className="space-y-2">
+            <Label htmlFor="valorVenda">Valor da Venda (R$)</Label>
+            <Input
+              id="valorVenda"
+              value={Number(formData.valorVenda).toFixed(2)}
+              readOnly
+              className="bg-gray-50"
+              placeholder="Calculado automaticamente"
+            />
+            <p className="text-xs text-gray-500">
+              Este valor é calculado automaticamente baseado no status selecionado
+            </p>
+          </div>
+
+          {/* Motivo da Perda - Condicional */}
+          {formData.status === 'venda_perdida' && (
+            <div className="space-y-2">
+              <Label htmlFor="prospectNotes">Motivo da Perda *</Label>
+              <Textarea
+                id="prospectNotes"
+                value={formData.prospectNotes}
+                onChange={(e) => setFormData(prev => ({ ...prev, prospectNotes: e.target.value }))}
+                placeholder="Descreva o motivo da perda..."
+                rows={3}
+                className={formData.prospectNotes.trim() === '' ? 'border-red-500' : ''}
+              />
+              {formData.prospectNotes.trim() === '' && (
+                <p className="text-xs text-red-500">O motivo da perda é obrigatório</p>
+              )}
+            </div>
+          )}
+
+          {/* Produtos Vendidos */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <Label className="text-base font-medium">Produtos da Oportunidade</Label>
+              <div className="text-sm text-gray-500">
+                Valor Total: R$ {valorTotalOportunidade.toFixed(2)}
+              </div>
+            </div>
+            
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {formData.products.map((product, index) => (
+                <div key={product.id || index} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={product.selected || false}
+                        onCheckedChange={(checked) => handleProductChange(index, 'selected', checked)}
+                      />
+                      <span className="font-medium">{product.name}</span>
+                      <span className="text-sm text-gray-500">({product.category})</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs">Quantidade</Label>
+                      <Input
+                        type="number"
+                        value={product.quantity || 1}
+                        onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
+                        min="1"
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Preço Unitário</Label>
+                      <Input
+                        type="number"
+                        value={product.price || 0}
+                        onChange={(e) => handleProductChange(index, 'price', Number(e.target.value))}
+                        min="0"
+                        step="0.01"
+                        className="h-8"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Subtotal</Label>
+                      <Input
+                        value={((product.quantity || 0) * (product.price || 0)).toFixed(2)}
+                        readOnly
+                        className="h-8 bg-gray-50"
+                      />
+                    </div>
+                  </div>
+
+                  {product.observations && (
+                    <div>
+                      <Label className="text-xs">Observações</Label>
+                      <Textarea
+                        value={product.observations}
+                        onChange={(e) => handleProductChange(index, 'observations', e.target.value)}
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {formData.products.length === 0 && (
+                <div className="text-center py-6 text-gray-500">
+                  <p className="text-sm">Nenhum produto cadastrado para esta oportunidade</p>
+                </div>
+              )}
+            </div>
+          </div>
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
