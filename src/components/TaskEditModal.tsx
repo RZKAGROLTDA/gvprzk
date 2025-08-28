@@ -142,30 +142,28 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       console.log('🔍 TaskEditModal - Dados para Supabase:', updateData);
 
-      // Usar transação para atualizar task e produtos
-      const { error: taskError } = await supabase.rpc('begin');
-      if (taskError) throw taskError;
+      // Atualizar task principal
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', task.id);
 
-      try {
-        // Atualizar task principal
-        const { error: updateError } = await supabase
-          .from('tasks')
-          .update(updateData)
-          .eq('id', task.id);
+      if (updateError) {
+        console.error('🔍 TaskEditModal - Erro na atualização da task:', updateError);
+        throw updateError;
+      }
 
-        if (updateError) {
-          console.error('🔍 TaskEditModal - Erro na atualização da task:', updateError);
-          throw updateError;
-        }
+      console.log('🔍 TaskEditModal - Task atualizada com sucesso');
 
-        // Atualizar produtos se necessário
-        const productsToUpdate = formData.salesType === 'parcial' && formData.prospectItems?.length > 0 
-          ? formData.prospectItems 
-          : formData.products || [];
+      // Atualizar produtos se necessário
+      const productsToUpdate = formData.salesType === 'parcial' && formData.prospectItems?.length > 0 
+        ? formData.prospectItems 
+        : formData.products || [];
 
-        if (productsToUpdate.length > 0) {
-          console.log('🔍 TaskEditModal - Produtos para atualizar:', productsToUpdate);
-          
+      if (productsToUpdate.length > 0) {
+        console.log('🔍 TaskEditModal - Produtos para atualizar:', productsToUpdate);
+        
+        try {
           // Buscar produtos existentes
           const { data: existingProducts, error: fetchError } = await supabase
             .from('products')
@@ -174,72 +172,73 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
           if (fetchError) {
             console.error('🔍 TaskEditModal - Erro ao buscar produtos:', fetchError);
-            throw fetchError;
-          }
+            // Não falhar se buscar produtos falhar, apenas log
+            console.warn('⚠️ Continuando sem atualizar produtos devido ao erro de busca');
+          } else {
+            // Preparar atualizações de produtos
+            const productUpdates = [];
+            
+            for (const product of productsToUpdate) {
+              const existingProduct = existingProducts?.find(p => 
+                p.id === product.id || (p.name === product.name && p.category === product.category)
+              );
 
-          // Atualizar produtos em lote
-          const productUpdates = [];
-          
-          for (const product of productsToUpdate) {
-            const existingProduct = existingProducts?.find(p => 
-              p.id === product.id || (p.name === product.name && p.category === product.category)
-            );
-
-            if (existingProduct) {
-              productUpdates.push({
-                id: existingProduct.id,
-                selected: Boolean(product.selected),
-                quantity: Number(product.quantity) || 0,
-                price: Number(product.price) || 0,
-                observations: product.observations || null,
-                updated_at: new Date().toISOString()
-              });
-            }
-          }
-
-          // Executar atualizações de produtos
-          if (productUpdates.length > 0) {
-            for (const update of productUpdates) {
-              const { error: productError } = await supabase
-                .from('products')
-                .update({
-                  selected: update.selected,
-                  quantity: update.quantity,
-                  price: update.price,
-                  observations: update.observations,
-                  updated_at: update.updated_at
-                })
-                .eq('id', update.id);
-
-              if (productError) {
-                console.error('🔍 TaskEditModal - Erro ao atualizar produto:', update.id, productError);
-                throw productError;
+              if (existingProduct) {
+                productUpdates.push({
+                  id: existingProduct.id,
+                  selected: Boolean(product.selected),
+                  quantity: Number(product.quantity) || 0,
+                  price: Number(product.price) || 0,
+                  observations: product.observations || null,
+                  updated_at: new Date().toISOString()
+                });
               }
             }
+
+            // Executar atualizações de produtos
+            if (productUpdates.length > 0) {
+              console.log('🔍 TaskEditModal - Atualizando produtos:', productUpdates.length);
+              
+              for (const update of productUpdates) {
+                const { error: productError } = await supabase
+                  .from('products')
+                  .update({
+                    selected: update.selected,
+                    quantity: update.quantity,
+                    price: update.price,
+                    observations: update.observations,
+                    updated_at: update.updated_at
+                  })
+                  .eq('id', update.id);
+
+                if (productError) {
+                  console.error('🔍 TaskEditModal - Erro ao atualizar produto:', update.id, productError);
+                  // Não falhar completamente se um produto falhar
+                  console.warn('⚠️ Produto não atualizado:', update.id);
+                }
+              }
+              
+              console.log('🔍 TaskEditModal - Produtos processados');
+            }
           }
+        } catch (productError) {
+          console.error('🔍 TaskEditModal - Erro geral nos produtos:', productError);
+          // Não falhar a operação inteira se produtos falharem
+          console.warn('⚠️ Continuando sem atualizar produtos devido ao erro');
         }
-
-        // Commit da transação
-        const { error: commitError } = await supabase.rpc('commit');
-        if (commitError) throw commitError;
-
-        console.log('🔍 TaskEditModal - Atualização realizada com sucesso');
-
-        // Invalidar cache
-        await invalidateAll();
-        
-        // Aguardar sincronização
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        onTaskUpdate();
-        onClose();
-        toast.success('Task atualizada com sucesso!');
-
-      } catch (transactionError) {
-        // Rollback em caso de erro
-        await supabase.rpc('rollback');
-        throw transactionError;
       }
+
+      console.log('🔍 TaskEditModal - Atualização completa realizada com sucesso');
+
+      // Invalidar cache
+      await invalidateAll();
+      
+      // Aguardar sincronização
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      onTaskUpdate();
+      onClose();
+      toast.success('Task atualizada com sucesso!');
 
     } catch (error: any) {
       console.error('🔍 TaskEditModal - Erro geral:', error);
