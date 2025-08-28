@@ -197,20 +197,18 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 ? 'border-yellow-500 bg-yellow-50 shadow-lg' 
                 : 'border-gray-200 bg-white hover:border-yellow-300'
             }`} 
-             onClick={() => {
-                // PADRONIZAÇÃO: Usar finalProducts para configurar venda parcial
-                const selectedProducts = finalProducts?.map(item => ({
+              onClick={() => {
+                // CORREÇÃO: Manter todos os produtos, mas preparar para seleção
+                const productsForPartial = finalProducts?.map(item => ({
                   ...item,
-                  selected: true,
+                  selected: false, // Iniciar com nenhum produto selecionado
                   quantity: item.quantity || 1,
                   price: item.price || 0
                 })) || [];
                 
-                const partialValue = calculatePartialSalesValue(selectedProducts);
-                
-                console.log('🔍 StatusSelection - Venda parcial selecionada:', {
-                  selectedProducts: selectedProducts.length,
-                  partialValue
+                console.log('🔍 StatusSelection - Venda parcial iniciada:', {
+                  totalProducts: productsForPartial.length,
+                  readyForSelection: true
                 });
                 
                 onStatusChange({
@@ -218,8 +216,8 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                   salesType: 'parcial',
                   isProspect: true,
                   prospectNotes: '',
-                  prospectItems: selectedProducts,
-                  partialSalesValue: partialValue
+                  prospectItems: productsForPartial,
+                  partialSalesValue: 0 // Iniciar com valor zero
                 });
               }}
           >
@@ -440,7 +438,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 </div>
               ))}
               
-              {prospectItems.filter(item => item.selected).length === 0 && (
+              {finalProducts.filter(item => item.selected).length === 0 && (
                 <div className="text-center py-6 text-gray-500">
                   <div className="text-sm">Nenhum produto selecionado</div>
                   <div className="text-xs mt-1">Marque os produtos que foram vendidos</div>

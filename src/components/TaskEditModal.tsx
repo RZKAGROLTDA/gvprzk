@@ -53,12 +53,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       prospectItemsCount: task.prospectItems?.length
     });
 
-    // PADRONIZAÇÃO UNIFICADA: Usar sempre a mesma lógica para todos os tipos
+    // CORREÇÃO: Sempre passar TODOS os produtos disponíveis para o StatusSelectionComponent
     // Priorizar prospectItems se existir e não estiver vazio, senão usar checklist
     const allProducts = (task.prospectItems?.length > 0) ? task.prospectItems : (task.checklist || []);
     
-    // Para vendas parciais, usar produtos já selecionados
-    const prospectItemsForPartial = task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [];
+    // Para venda parcial, manter TODOS os produtos com seleção correta
+    const prospectItemsForPartial = allProducts.map(product => ({
+      ...product,
+      selected: task.salesType === 'parcial' ? (product.selected || false) : false
+    }));
     
     setFormData({
       customerName: task.client || '',
@@ -71,7 +74,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       prospectNotesJustification: task.prospectNotesJustification || '',
       isProspect: task.isProspect || false,
       products: allProducts,
-      prospectItems: prospectItemsForPartial,
+      prospectItems: allProducts, // Passar TODOS os produtos, não apenas selecionados
       partialSalesValue: task.partialSalesValue || 0
     });
   }, [task]);
