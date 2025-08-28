@@ -7,111 +7,130 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Task } from '@/types/task';
-import { supabase } from '@/integrations/supabase/client';
-import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { useTaskWithOpportunity, useTaskOpportunityItems, useUpdateTaskWithOpportunity } from '@/hooks/useTaskWithOpportunity';
 
 interface TaskEditModalProps {
-  task: Task;
+  taskId: string;
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdate: () => void;
 }
 
 export const TaskEditModal: React.FC<TaskEditModalProps> = ({
-  task,
+  taskId,
   isOpen,
   onClose,
   onTaskUpdate
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prospectNotes, setProspectNotes] = useState('');
   
-  // Status padronizado: prospect | venda_total | venda_parcial | venda_perdida
-  const getInitialStatus = () => {
-    if (task.isProspect && (!task.salesConfirmed && !task.salesType)) return 'prospect';
-    if (task.salesConfirmed && task.salesType === 'ganho') return 'venda_total';
-    if (task.salesConfirmed && task.salesType === 'parcial') return 'venda_parcial';
-    if (task.salesConfirmed === false) return 'venda_perdida';
-    return 'prospect';
-  };
+  // Fetch task with opportunity data
+  const { data: taskData, isLoading: isLoadingTask } = useTaskWithOpportunity(taskId);
+  const { data: items = [], isLoading: isLoadingItems } = useTaskOpportunityItems(taskId);
+  const updateTaskMutation = useUpdateTaskWithOpportunity();
 
   const [formData, setFormData] = useState({
-    customerName: task.client || '',
-    customerEmail: task.email || '',
-    status: getInitialStatus(),
-    valorVendaParcial: Number(task.partialSalesValue) || 0,
-    valorVenda: Number(task.salesValue) || 0,
-    prospectNotes: task.prospectNotes || '',
-    products: [] as any[]
+    customerName: '',
+    customerEmail: '',
+    status: 'Prospect' as 'Prospect' | 'Venda Total' | 'Venda Parcial' | 'Venda Perdida',
+    itens_oportunidade: [] as any[]
   });
 
-  const { invalidateAll } = useSecurityCache();
-
-  // Carregar produtos da task
+  // Initialize form data when task and items are loaded
   useEffect(() => {
-    const allProducts = (task.prospectItems?.length > 0) ? task.prospectItems : (task.checklist || []);
-    
-    setFormData(prev => ({
-      ...prev,
-      customerName: task.client || '',
-      customerEmail: task.email || '',
-      status: getInitialStatus(),
-      valorVendaParcial: Number(task.partialSalesValue) || 0,
-      valorVenda: Number(task.salesValue) || 0,
-      prospectNotes: task.prospectNotes || '',
-      products: allProducts.map(product => ({
-        ...product,
-        selected: task.salesType === 'parcial' ? (product.selected || false) : false,
-        quantity: product.quantity || 1,
-        price: product.price || 0
-      }))
-    }));
-  }, [task]);
+    if (taskData && items) {
+      setFormData({
+        customerName: taskData.cliente_nome || '',
+        customerEmail: taskData.cliente_email || '',
+        status: taskData.status,
+        itens_oportunidade: items.map(item => ({
+          id: item.id,
+          produto: item.produto || '—',
+          quantidade: item.qtd_ofertada || 0,
+          preco_unitario: item.preco_unit || 0,
+          incluir_na_venda_parcial: item.incluir_na_venda_parcial || false,
+          ...item
+        }))
+      });
+      setProspectNotes('');
+    }
+  }, [taskData, items]);
 
-  // Cálculo automático do Valor Total da Oportunidade
-  const valorTotalOportunidade = useMemo(() => {
-    return formData.products.reduce((sum, product) => {
-      return sum + ((product.quantity || 0) * (product.price || 0));
+  // Valor Total da Oportunidade (soma de quantidade * preço_unitário de todos os itens)
+  const valor_total_oportunidade = useMemo(() => {
+    return formData.itens_oportunidade.reduce((sum, item) => {
+      return sum + ((item.quantidade || 0) * (item.preco_unitario || 0));
     }, 0);
-  }, [formData.products]);
+  }, [formData.itens_oportunidade]);
 
-  // Cálculo automático do Valor da Venda baseado no status
-  const valorVendaCalculado = useMemo(() => {
+  // Valor da Venda Parcial (soma dos itens marcados para venda parcial)
+  const valor_venda_parcial = useMemo(() => {
+    return formData.itens_oportunidade
+      .filter(item => item.incluir_na_venda_parcial)
+      .reduce((sum, item) => {
+        return sum + ((item.quantidade || 0) * (item.preco_unitario || 0));
+      }, 0);
+  }, [formData.itens_oportunidade]);
+
+  // Valor da Venda (calculado baseado no status)
+  const valor_venda_realizada = useMemo(() => {
     switch (formData.status) {
-      case 'venda_total':
-        return valorTotalOportunidade;
-      case 'venda_parcial':
-        return formData.valorVendaParcial;
-      case 'prospect':
-      case 'venda_perdida':
+      case 'Venda Total':
+        return valor_total_oportunidade;
+      case 'Venda Parcial':
+        return valor_venda_parcial;
+      case 'Prospect':
+      case 'Venda Perdida':
       default:
         return 0;
     }
-  }, [formData.status, valorTotalOportunidade, formData.valorVendaParcial]);
-
-  // Atualizar valor da venda quando mudar o cálculo
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      valorVenda: valorVendaCalculado
-    }));
-  }, [valorVendaCalculado]);
+  }, [formData.status, valor_total_oportunidade, valor_venda_parcial]);
 
   const handleStatusChange = (newStatus: string) => {
     setFormData(prev => ({
       ...prev,
-      status: newStatus,
-      // Reset de campos específicos ao mudar status
-      ...(newStatus !== 'venda_parcial' && { valorVendaParcial: 0 }),
-      ...(newStatus !== 'venda_perdida' && { prospectNotes: '' })
+      status: newStatus as 'Prospect' | 'Venda Total' | 'Venda Parcial' | 'Venda Perdida'
+    }));
+    
+    // Reset prospect notes when changing away from "Venda Perdida"
+    if (newStatus !== 'Venda Perdida') {
+      setProspectNotes('');
+    }
+  };
+
+  const handleSelectAllProducts = () => {
+    setFormData(prev => ({
+      ...prev,
+      itens_oportunidade: prev.itens_oportunidade.map(item => ({
+        ...item,
+        incluir_na_venda_parcial: true
+      }))
     }));
   };
 
-  const handleProductChange = (productIndex: number, field: string, value: any) => {
+  const handleClearAllProducts = () => {
     setFormData(prev => ({
       ...prev,
-      products: prev.products.map((product, index) => 
-        index === productIndex ? { ...product, [field]: value } : product
+      itens_oportunidade: prev.itens_oportunidade.map(item => ({
+        ...item,
+        incluir_na_venda_parcial: false
+      }))
+    }));
+  };
+
+  const handleProductChange = (itemIndex: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      itens_oportunidade: prev.itens_oportunidade.map((item, index) => 
+        index === itemIndex ? { 
+          ...item, 
+          [field]: value,
+          // Recalcular subtotal quando quantidade ou preço mudarem
+          ...(field === 'quantidade' || field === 'preco_unitario' 
+            ? { subtotal: (field === 'quantidade' ? value : item.quantidade || 0) * (field === 'preco_unitario' ? value : item.preco_unitario || 0) }
+            : {})
+        } : item
       )
     }));
   };
@@ -122,106 +141,87 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
     try {
       // Validações
-      if (!task.id) {
+      if (!taskId) {
         toast.error('Erro: Task ID não encontrado');
         return;
       }
 
       // Validação para venda perdida
-      if (formData.status === 'venda_perdida' && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
+      if (formData.status === 'Venda Perdida' && (!prospectNotes || prospectNotes.trim() === '')) {
         toast.error('O motivo da perda é obrigatório');
         return;
       }
 
-      // Mapear status para campos do banco
-      const statusMapping = {
-        prospect: { isProspect: true, salesConfirmed: null, salesType: null },
-        venda_total: { isProspect: false, salesConfirmed: true, salesType: 'ganho' },
-        venda_parcial: { isProspect: false, salesConfirmed: true, salesType: 'parcial' },
-        venda_perdida: { isProspect: false, salesConfirmed: false, salesType: 'perdido' }
-      };
-
-      const statusData = statusMapping[formData.status as keyof typeof statusMapping];
-
-      // Preparar dados para atualização
-      const updateData = {
-        client: formData.customerName || null,
-        email: formData.customerEmail || null,
-        sales_value: formData.valorVenda,
-        sales_confirmed: statusData.salesConfirmed,
-        sales_type: statusData.salesType,
-        prospect_notes: formData.prospectNotes || null,
-        is_prospect: statusData.isProspect,
-        partial_sales_value: formData.status === 'venda_parcial' ? formData.valorVendaParcial : null,
-        updated_at: new Date().toISOString()
-      };
-
-      // Atualizar task principal
-      const { error: updateError } = await supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', task.id);
-
-      if (updateError) {
-        throw updateError;
+      // Validação para venda parcial
+      if (formData.status === 'Venda Parcial' && valor_venda_parcial <= 0) {
+        toast.error('Selecione ao menos um item para a venda parcial');
+        return;
       }
 
-      // Atualizar produtos
-      if (formData.products.length > 0) {
-        const { data: existingProducts, error: fetchError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('task_id', task.id);
+      // Prepare update data
+      const data_fechamento = formData.status === 'Venda Total' || formData.status === 'Venda Parcial' || formData.status === 'Venda Perdida' 
+        ? new Date().toISOString() 
+        : null;
 
-        if (!fetchError && existingProducts) {
-          for (const product of formData.products) {
-            const existingProduct = existingProducts.find(p => 
-              p.id === product.id || (p.name === product.name && p.category === product.category)
-            );
+      await updateTaskMutation.mutateAsync({
+        taskId,
+        taskData: {
+          cliente_nome: formData.customerName,
+          cliente_email: formData.customerEmail || null
+        },
+        opportunityData: {
+          status: formData.status,
+          valor_venda_fechada: valor_venda_realizada,
+          data_fechamento
+        },
+        items: formData.itens_oportunidade.map(item => ({
+          id: item.id,
+          qtd_vendida: item.quantidade || 0,
+          incluir_na_venda_parcial: Boolean(item.incluir_na_venda_parcial)
+        }))
+      });
 
-            if (existingProduct) {
-              await supabase
-                .from('products')
-                .update({
-                  selected: Boolean(product.selected),
-                  quantity: Number(product.quantity) || 0,
-                  price: Number(product.price) || 0,
-                  observations: product.observations || null,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', existingProduct.id);
-            }
-          }
-        }
-      }
-
-      // Invalidar cache
-      await invalidateAll();
-      
-      // Aguardar sincronização
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
       onTaskUpdate();
       onClose();
-      toast.success('Task atualizada com sucesso!');
 
     } catch (error: any) {
       console.error('🔍 TaskEditModal - Erro geral:', error);
-      
-      // Mensagens de erro mais específicas
-      if (error?.code === 'PGRST116') {
-        toast.error('Erro: Dados inválidos para atualização');
-      } else if (error?.message?.includes('constraint')) {
-        toast.error('Erro: Violação de restrição no banco de dados');
-      } else if (error?.message?.includes('permission')) {
-        toast.error('Erro: Permissão negada para atualização');
-      } else {
-        toast.error(`Erro ao atualizar task: ${error?.message || 'Erro desconhecido'}`);
-      }
+      // Error is already handled by the mutation
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state
+  if (isLoadingTask || isLoadingItems) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Task</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Carregando...</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!taskData) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Task</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Task não encontrada</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -255,154 +255,181 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             </div>
           </div>
 
-          {/* Status do Prospect - Radio Group */}
+          {/* Status do Prospect - Radio Group Unificado */}
           <div className="space-y-3">
             <Label className="text-base font-medium">Status do Prospect</Label>
             <RadioGroup
               value={formData.status}
               onValueChange={handleStatusChange}
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-2 md:grid-cols-4 gap-4"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="prospect" id="prospect" />
+                <RadioGroupItem value="Prospect" id="prospect" />
                 <Label htmlFor="prospect">Prospect</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_total" id="venda_total" />
+                <RadioGroupItem value="Venda Total" id="venda_total" />
                 <Label htmlFor="venda_total">Venda Total</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_parcial" id="venda_parcial" />
+                <RadioGroupItem value="Venda Parcial" id="venda_parcial" />
                 <Label htmlFor="venda_parcial">Venda Parcial</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_perdida" id="venda_perdida" />
+                <RadioGroupItem value="Venda Perdida" id="venda_perdida" />
                 <Label htmlFor="venda_perdida">Venda Perdida</Label>
               </div>
             </RadioGroup>
           </div>
 
-          {/* Campo Valor da Venda Parcial - Condicional */}
-          {formData.status === 'venda_parcial' && (
+          {/* Valores Calculados (ReadOnly) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="valorVendaParcial">Valor da Venda Parcial (R$)</Label>
+              <Label htmlFor="valor_total_oportunidade">Valor Total da Oportunidade (R$)</Label>
               <Input
-                id="valorVendaParcial"
-                type="number"
-                value={formData.valorVendaParcial}
-                onChange={(e) => setFormData(prev => ({ ...prev, valorVendaParcial: Number(e.target.value) }))}
-                placeholder="0,00"
-                min="0"
-                step="0.01"
+                id="valor_total_oportunidade"
+                value={valor_total_oportunidade.toFixed(2)}
+                readOnly
+                className="bg-muted"
               />
+              <p className="text-xs text-muted-foreground">
+                Soma de todos os produtos
+              </p>
             </div>
-          )}
 
-          {/* Campo Valor da Venda - Calculado automaticamente */}
-          <div className="space-y-2">
-            <Label htmlFor="valorVenda">Valor da Venda (R$)</Label>
-            <Input
-              id="valorVenda"
-              value={Number(formData.valorVenda).toFixed(2)}
-              readOnly
-              className="bg-gray-50"
-              placeholder="Calculado automaticamente"
-            />
-            <p className="text-xs text-gray-500">
-              Este valor é calculado automaticamente baseado no status selecionado
-            </p>
+            {formData.status === 'Venda Parcial' && (
+              <div className="space-y-2">
+                <Label htmlFor="valor_venda_parcial">Valor da Venda Parcial (R$)</Label>
+                <Input
+                  id="valor_venda_parcial"
+                  value={valor_venda_parcial.toFixed(2)}
+                  readOnly
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Soma dos itens selecionados
+                </p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="valor_venda_realizada">Valor da Venda (R$)</Label>
+              <Input
+                id="valor_venda_realizada"
+                value={valor_venda_realizada.toFixed(2)}
+                readOnly
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Calculado pelo status
+              </p>
+            </div>
           </div>
 
           {/* Motivo da Perda - Condicional */}
-          {formData.status === 'venda_perdida' && (
+          {formData.status === 'Venda Perdida' && (
             <div className="space-y-2">
               <Label htmlFor="prospectNotes">Motivo da Perda *</Label>
               <Textarea
                 id="prospectNotes"
-                value={formData.prospectNotes}
-                onChange={(e) => setFormData(prev => ({ ...prev, prospectNotes: e.target.value }))}
+                value={prospectNotes}
+                onChange={(e) => setProspectNotes(e.target.value)}
                 placeholder="Descreva o motivo da perda..."
                 rows={3}
-                className={formData.prospectNotes.trim() === '' ? 'border-red-500' : ''}
+                className={prospectNotes.trim() === '' ? 'border-red-500' : ''}
               />
-              {formData.prospectNotes.trim() === '' && (
+              {prospectNotes.trim() === '' && (
                 <p className="text-xs text-red-500">O motivo da perda é obrigatório</p>
               )}
             </div>
           )}
 
-          {/* Produtos Vendidos */}
+          {/* Produtos da Oportunidade */}
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
               <Label className="text-base font-medium">Produtos da Oportunidade</Label>
-              <div className="text-sm text-gray-500">
-                Valor Total: R$ {valorTotalOportunidade.toFixed(2)}
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSelectAllProducts}
+                  disabled={formData.itens_oportunidade.length === 0}
+                >
+                  Selecionar Todos
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleClearAllProducts}
+                  disabled={formData.itens_oportunidade.length === 0}
+                >
+                  Limpar Seleção
+                </Button>
               </div>
             </div>
             
             <div className="space-y-3 max-h-60 overflow-y-auto">
-              {formData.products.map((product, index) => (
-                <div key={product.id || index} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={product.selected || false}
-                        onCheckedChange={(checked) => handleProductChange(index, 'selected', checked)}
-                      />
-                      <span className="font-medium">{product.name}</span>
-                      <span className="text-sm text-gray-500">({product.category})</span>
+              {formData.itens_oportunidade.map((item, index) => (
+                <div key={item.id || index} className="border rounded-lg p-4">
+                  <div className="grid grid-cols-5 gap-3 items-center">
+                    <div className="flex items-center justify-center">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-center block">✓ Incluir na venda parcial</Label>
+                        <Checkbox
+                          checked={Boolean(item.incluir_na_venda_parcial)}
+                          onCheckedChange={(checked) => 
+                            handleProductChange(index, 'incluir_na_venda_parcial', Boolean(checked))
+                          }
+                        />
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2">
+                    
+                    <div>
+                      <Label className="text-xs">Produto</Label>
+                      <p className="font-medium">{item.produto || '—'}</p>
+                    </div>
+                    
                     <div>
                       <Label className="text-xs">Quantidade</Label>
                       <Input
                         type="number"
-                        value={product.quantity || 1}
-                        onChange={(e) => handleProductChange(index, 'quantity', Number(e.target.value))}
-                        min="1"
+                        value={item.quantidade || 0}
+                        onChange={(e) => handleProductChange(index, 'quantidade', Number(e.target.value))}
+                        min="0"
                         className="h-8"
                       />
                     </div>
+                    
                     <div>
-                      <Label className="text-xs">Preço Unitário</Label>
+                      <Label className="text-xs">Preço Unitário (R$)</Label>
                       <Input
                         type="number"
-                        value={product.price || 0}
-                        onChange={(e) => handleProductChange(index, 'price', Number(e.target.value))}
+                        value={item.preco_unitario || 0}
+                        onChange={(e) => handleProductChange(index, 'preco_unitario', Number(e.target.value))}
                         min="0"
                         step="0.01"
                         className="h-8"
                       />
                     </div>
+                    
                     <div>
-                      <Label className="text-xs">Subtotal</Label>
+                      <Label className="text-xs">Subtotal (R$)</Label>
                       <Input
-                        value={((product.quantity || 0) * (product.price || 0)).toFixed(2)}
+                        value={((item.quantidade || 0) * (item.preco_unitario || 0)).toFixed(2)}
                         readOnly
-                        className="h-8 bg-gray-50"
+                        className="h-8 bg-muted"
                       />
                     </div>
                   </div>
-
-                  {product.observations && (
-                    <div>
-                      <Label className="text-xs">Observações</Label>
-                      <Textarea
-                        value={product.observations}
-                        onChange={(e) => handleProductChange(index, 'observations', e.target.value)}
-                        rows={2}
-                        className="text-sm"
-                      />
-                    </div>
-                  )}
                 </div>
               ))}
               
-              {formData.products.length === 0 && (
-                <div className="text-center py-6 text-gray-500">
-                  <p className="text-sm">Nenhum produto cadastrado para esta oportunidade</p>
+              {formData.itens_oportunidade.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <p className="text-sm">—</p>
+                  <p className="text-xs">Nenhum produto cadastrado para esta oportunidade</p>
                 </div>
               )}
             </div>
