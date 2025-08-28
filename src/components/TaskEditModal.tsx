@@ -102,120 +102,158 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         formData
       });
 
-      // Adicionar validação básica
+      // Validações básicas aprimoradas
       if (!task.id) {
         console.error('🚨 TaskEditModal - Task ID não encontrado');
         toast.error('Erro: Task ID não encontrado');
-        setIsSubmitting(false);
         return;
       }
 
       // Validação para venda perdida
       if (formData.salesConfirmed === false && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
         toast.error('O motivo da perda é obrigatório');
-        setIsSubmitting(false);
         return;
       }
 
+      // Validar e converter sales_value
+      let salesValueToSave = null;
+      if (formData.salesValue && formData.salesValue !== '') {
+        const numericValue = typeof formData.salesValue === 'string' 
+          ? parseFloat(formData.salesValue.replace(/[^\d,.-]/g, '').replace(',', '.'))
+          : formData.salesValue;
+        
+        if (!isNaN(numericValue) && numericValue >= 0) {
+          salesValueToSave = numericValue;
+        }
+      }
+
+      // Preparar dados com mapeamento correto
       const updateData = {
-        client: formData.customerName,
-        email: formData.customerEmail,
-        sales_value: formData.salesValue,
+        client: formData.customerName || null,
+        email: formData.customerEmail || null,
+        sales_value: salesValueToSave,
         sales_confirmed: formData.salesConfirmed,
-        sales_type: formData.salesType,
-        prospect_notes: formData.prospectNotes,
-        prospect_notes_justification: formData.prospectNotesJustification,
-        is_prospect: formData.isProspect
+        sales_type: formData.salesType || null,
+        prospect_notes: formData.prospectNotes || null,
+        prospect_notes_justification: formData.prospectNotesJustification || null,
+        is_prospect: formData.isProspect || false,
+        updated_at: new Date().toISOString()
       };
 
       console.log('🔍 TaskEditModal - Dados para Supabase:', updateData);
 
-      const { error } = await supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', task.id);
+      // Usar transação para atualizar task e produtos
+      const { error: taskError } = await supabase.rpc('begin');
+      if (taskError) throw taskError;
 
-      if (error) {
-        console.error('🔍 TaskEditModal - Erro na atualização:', error);
-        throw error;
+      try {
+        // Atualizar task principal
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update(updateData)
+          .eq('id', task.id);
+
+        if (updateError) {
+          console.error('🔍 TaskEditModal - Erro na atualização da task:', updateError);
+          throw updateError;
+        }
+
+        // Atualizar produtos se necessário
+        const productsToUpdate = formData.salesType === 'parcial' && formData.prospectItems?.length > 0 
+          ? formData.prospectItems 
+          : formData.products || [];
+
+        if (productsToUpdate.length > 0) {
+          console.log('🔍 TaskEditModal - Produtos para atualizar:', productsToUpdate);
+          
+          // Buscar produtos existentes
+          const { data: existingProducts, error: fetchError } = await supabase
+            .from('products')
+            .select('*')
+            .eq('task_id', task.id);
+
+          if (fetchError) {
+            console.error('🔍 TaskEditModal - Erro ao buscar produtos:', fetchError);
+            throw fetchError;
+          }
+
+          // Atualizar produtos em lote
+          const productUpdates = [];
+          
+          for (const product of productsToUpdate) {
+            const existingProduct = existingProducts?.find(p => 
+              p.id === product.id || (p.name === product.name && p.category === product.category)
+            );
+
+            if (existingProduct) {
+              productUpdates.push({
+                id: existingProduct.id,
+                selected: Boolean(product.selected),
+                quantity: Number(product.quantity) || 0,
+                price: Number(product.price) || 0,
+                observations: product.observations || null,
+                updated_at: new Date().toISOString()
+              });
+            }
+          }
+
+          // Executar atualizações de produtos
+          if (productUpdates.length > 0) {
+            for (const update of productUpdates) {
+              const { error: productError } = await supabase
+                .from('products')
+                .update({
+                  selected: update.selected,
+                  quantity: update.quantity,
+                  price: update.price,
+                  observations: update.observations,
+                  updated_at: update.updated_at
+                })
+                .eq('id', update.id);
+
+              if (productError) {
+                console.error('🔍 TaskEditModal - Erro ao atualizar produto:', update.id, productError);
+                throw productError;
+              }
+            }
+          }
+        }
+
+        // Commit da transação
+        const { error: commitError } = await supabase.rpc('commit');
+        if (commitError) throw commitError;
+
+        console.log('🔍 TaskEditModal - Atualização realizada com sucesso');
+
+        // Invalidar cache
+        await invalidateAll();
+        
+        // Aguardar sincronização
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        onTaskUpdate();
+        onClose();
+        toast.success('Task atualizada com sucesso!');
+
+      } catch (transactionError) {
+        // Rollback em caso de erro
+        await supabase.rpc('rollback');
+        throw transactionError;
       }
 
-  // Atualizar produtos - corrigir tanto checklist quanto prospectItems
-  const productsToUpdate = formData.salesType === 'parcial' && formData.prospectItems?.length > 0 
-    ? formData.prospectItems 
-    : formData.products || [];
-
-  if (productsToUpdate.length > 0) {
-    console.log('🔍 TaskEditModal - Produtos para atualizar:', productsToUpdate);
-    
-    // Buscar todos os produtos existentes da task
-    const { data: existingProducts, error: fetchError } = await supabase
-      .from('products')
-      .select('*')
-      .eq('task_id', task.id);
-
-    if (fetchError) {
-      console.error('🔍 TaskEditModal - Erro ao buscar produtos:', fetchError);
-      throw fetchError;
-    }
-
-    console.log('🔍 TaskEditModal - Produtos no banco:', existingProducts);
-
-    // Atualizar cada produto
-    for (const product of productsToUpdate) {
-      // Encontrar produto existente pelo ID ou por nome/categoria
-      const existingProduct = existingProducts?.find(p => 
-        p.id === product.id || (p.name === product.name && p.category === product.category)
-      );
-
-      if (!existingProduct) {
-        console.warn(`🔍 TaskEditModal - Produto ${product.name} não encontrado, pulando`);
-        continue;
-      }
-
-      console.log(`🔍 TaskEditModal - Atualizando produto ${product.name}:`, {
-        id: existingProduct.id,
-        selected: product.selected,
-        quantity: product.quantity || 0,
-        price: product.price || 0
-      });
-
-      const { error: productError } = await supabase
-        .from('products')
-        .update({
-          selected: product.selected,
-          quantity: product.quantity || 0,
-          price: product.price || 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingProduct.id);
-
-      if (productError) {
-        console.error('🔍 TaskEditModal - Erro ao atualizar produto:', existingProduct.id, productError);
-        throw productError;
-      }
-
-      console.log(`🔍 TaskEditModal - Produto ${product.name} atualizado com sucesso`);
-    }
-  }
-
-      console.log('🔍 TaskEditModal - Atualização realizada com sucesso');
-
-      // Invalidar cache e aguardar
-      console.log('🔍 TaskEditModal - Invalidando cache...');
-      await invalidateAll();
-      
-      // Aguardar um momento para garantir sincronização
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('🔍 TaskEditModal - Atualização concluída, fechando modal');
-      onTaskUpdate();
-      onClose();
-      
-      toast.success('Task atualizada com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔍 TaskEditModal - Erro geral:', error);
-      toast.error('Erro ao atualizar task');
+      
+      // Mensagens de erro mais específicas
+      if (error?.code === 'PGRST116') {
+        toast.error('Erro: Dados inválidos para atualização');
+      } else if (error?.message?.includes('constraint')) {
+        toast.error('Erro: Violação de restrição no banco de dados');
+      } else if (error?.message?.includes('permission')) {
+        toast.error('Erro: Permissão negada para atualização');
+      } else {
+        toast.error(`Erro ao atualizar task: ${error?.message || 'Erro desconhecido'}`);
+      }
     } finally {
       setIsSubmitting(false);
     }
