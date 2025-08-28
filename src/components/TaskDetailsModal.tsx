@@ -362,7 +362,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                           errorDiv.className = 'w-full h-full flex flex-col items-center justify-center text-muted-foreground';
                           
                           const iconDiv = document.createElement('div');
-                          iconDiv.innerHTML = '📷'; // Safe emoji instead of Lucide icon
+                          iconDiv.textContent = '📷'; // Secure: use textContent instead of innerHTML
                           iconDiv.className = 'text-lg mb-1';
                           
                           const textSpan = document.createElement('span');
@@ -471,7 +471,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                       errorDiv.className = 'w-full h-full flex flex-col items-center justify-center text-muted-foreground';
                                       
                                       const iconDiv = document.createElement('div');
-                                      iconDiv.innerHTML = '📷';
+                                      iconDiv.textContent = '📷'; // Secure: use textContent instead of innerHTML
                                       iconDiv.className = 'text-lg mb-1';
                                       
                                       const textSpan = document.createElement('span');
@@ -600,7 +600,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     errorDiv.className = 'w-full h-full flex flex-col items-center justify-center text-muted-foreground';
                     
                     const iconDiv = document.createElement('div');
-                    iconDiv.innerHTML = '📷'; // Safe emoji instead of HTML
+                    iconDiv.textContent = '📷'; // Secure: use textContent instead of innerHTML
                     iconDiv.className = 'text-2xl mb-2';
                     
                     const textSpan = document.createElement('span');
