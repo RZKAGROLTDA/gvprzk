@@ -36,6 +36,7 @@ import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { getTaskTypeLabel } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { resolveFilialName } from '@/lib/taskStandardization';
+import { generateStandardReport } from '@/lib/reportFieldMapping';
 
 interface OpportunityReportProps {
   task: Task;
@@ -507,7 +508,6 @@ ${task.responsible}`;
             </CardHeader>
             <CardContent className="space-y-4">
               {(() => {
-                const { generateStandardReport } = require('@/lib/reportFieldMapping');
                 const { sections } = generateStandardReport(task);
                 
                 return (
