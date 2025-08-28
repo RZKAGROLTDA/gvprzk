@@ -1186,23 +1186,31 @@ export const SalesFunnel: React.FC = () => {
           </CardContent>
         </Card>}
 
+    </div>
+    {/* Modals outside main content */}
+    <>
       {/* Modal de Detalhes da Oportunidade */}
-      <OpportunityDetailsModal task={selectedTask} isOpen={isModalOpen} onClose={() => {
-      setIsModalOpen(false);
-      setSelectedTask(null);
-    }} onTaskUpdated={updatedTask => {
-      console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
-
-      // Update selected task with the received data
-      console.log('🔄 FUNNEL: Atualizando selectedTask com dados recebidos:', updatedTask);
-      setSelectedTask(updatedTask);
-
-      // CRITICAL: Reload tasks to reflect status changes in the table
-      console.log('🔄 FUNNEL: Recarregando tarefas para atualizar status na tabela');
-      refetch();
-    }} />
-    
-    {selectedTask && (
+      {selectedTask && (
+        <OpportunityDetailsModal 
+          task={selectedTask} 
+          isOpen={isModalOpen} 
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedTask(null);
+          }} 
+          onTaskUpdated={updatedTask => {
+            console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
+            // Update selected task with the received data
+            console.log('🔄 FUNNEL: Atualizando selectedTask com dados recebidos:', updatedTask);
+            setSelectedTask(updatedTask);
+            // CRITICAL: Reload tasks to reflect status changes in the table
+            console.log('🔄 FUNNEL: Recarregando tarefas para atualizar status na tabela');
+            refetch();
+          }} 
+        />
+      )}
+      
+      {selectedTask && (
         <OpportunityReport
           task={selectedTask}
           isOpen={isVisualizationModalOpen}
@@ -1211,27 +1219,26 @@ export const SalesFunnel: React.FC = () => {
             setSelectedTask(null);
           }}
         />
-    )}
-    
-    {selectedTask && (
-        <TaskEditModal
-          task={selectedTask}
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedTask(null);
-          }}
-          onTaskUpdate={async () => {
-            console.log('🔄 SalesFunnel - Callback onTaskUpdate chamado, forçando atualização');
-            // Invalidar cache globalmente para garantir sincronização
-            await invalidateAll();
-            // Recarregar dados localmente com força
-            console.log('🔄 SalesFunnel - Refetchando dados após update');
-            await refetch();
-            // Forçar re-render do componente
-            console.log('🔄 SalesFunnel - Update concluído');
-          }}
-        />
-    )}
-    </div>;
+      )}
+      
+      <TaskEditModal
+        taskId={selectedTask?.id || null}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedTask(null);
+        }}
+        onTaskUpdate={async () => {
+          console.log('🔄 SalesFunnel - Callback onTaskUpdate chamado, forçando atualização');
+          // Invalidar cache globalmente para garantir sincronização
+          await invalidateAll();
+          // Recarregar dados localmente com força
+          console.log('🔄 SalesFunnel - Refetchando dados após update');
+          await refetch();
+          // Forçar re-render do componente
+          console.log('🔄 SalesFunnel - Update concluído');
+        }}
+      />
+    </>
+  );
 };
