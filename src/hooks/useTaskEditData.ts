@@ -51,9 +51,12 @@ export const useTaskEditData = (taskId: string | null) => {
         .from('tasks_new')
         .select('*')
         .eq('id', taskId)
-        .single();
+        .maybeSingle();
 
       if (taskError) throw taskError;
+      if (!taskData) {
+        throw new Error('Task não encontrada');
+      }
 
       // Fetch opportunity data
       const { data: opportunityData, error: opportunityError } = await supabase
