@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
@@ -71,57 +71,6 @@ export type Database = {
         }
         Relationships: []
       }
-      clients: {
-        Row: {
-          archive_reason: string | null
-          archived: boolean
-          archived_at: string | null
-          attachments: string[] | null
-          created_at: string
-          created_by: string
-          email: string
-          id: string
-          name: string
-          notes: string | null
-          phone: string | null
-          session_date: string | null
-          stage: string
-          updated_at: string
-        }
-        Insert: {
-          archive_reason?: string | null
-          archived?: boolean
-          archived_at?: string | null
-          attachments?: string[] | null
-          created_at?: string
-          created_by: string
-          email: string
-          id?: string
-          name: string
-          notes?: string | null
-          phone?: string | null
-          session_date?: string | null
-          stage?: string
-          updated_at?: string
-        }
-        Update: {
-          archive_reason?: string | null
-          archived?: boolean
-          archived_at?: string | null
-          attachments?: string[] | null
-          created_at?: string
-          created_by?: string
-          email?: string
-          id?: string
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          session_date?: string | null
-          stage?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       filiais: {
         Row: {
           created_at: string
@@ -142,113 +91,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      opportunities: {
-        Row: {
-          cliente_nome: string
-          created_at: string
-          data_criacao: string
-          data_fechamento: string | null
-          filial: string
-          id: string
-          status: string
-          task_id: string
-          updated_at: string
-          valor_total_oportunidade: number
-          valor_venda_fechada: number
-        }
-        Insert: {
-          cliente_nome: string
-          created_at?: string
-          data_criacao?: string
-          data_fechamento?: string | null
-          filial: string
-          id?: string
-          status?: string
-          task_id: string
-          updated_at?: string
-          valor_total_oportunidade?: number
-          valor_venda_fechada?: number
-        }
-        Update: {
-          cliente_nome?: string
-          created_at?: string
-          data_criacao?: string
-          data_fechamento?: string | null
-          filial?: string
-          id?: string
-          status?: string
-          task_id?: string
-          updated_at?: string
-          valor_total_oportunidade?: number
-          valor_venda_fechada?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "opportunities_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks_new"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      opportunity_items: {
-        Row: {
-          created_at: string
-          id: string
-          opportunity_id: string
-          preco_unit: number
-          produto: string
-          qtd_ofertada: number
-          qtd_vendida: number
-          sku: string | null
-          subtotal_ofertado: number | null
-          subtotal_vendido: number | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          opportunity_id: string
-          preco_unit: number
-          produto: string
-          qtd_ofertada: number
-          qtd_vendida?: number
-          sku?: string | null
-          subtotal_ofertado?: number | null
-          subtotal_vendido?: number | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          opportunity_id?: string
-          preco_unit?: number
-          produto?: string
-          qtd_ofertada?: number
-          qtd_vendida?: number
-          sku?: string | null
-          subtotal_ofertado?: number | null
-          subtotal_vendido?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "opportunity_items_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "opportunities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opportunity_items_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "vw_oportunidades_kpis"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       products: {
         Row: {
@@ -586,45 +428,6 @@ export type Database = {
         }
         Relationships: []
       }
-      tasks_new: {
-        Row: {
-          cliente_email: string | null
-          cliente_nome: string
-          created_at: string
-          data: string
-          filial: string
-          id: string
-          notas: string | null
-          tipo: string
-          updated_at: string
-          vendedor_id: string
-        }
-        Insert: {
-          cliente_email?: string | null
-          cliente_nome: string
-          created_at?: string
-          data: string
-          filial: string
-          id?: string
-          notas?: string | null
-          tipo: string
-          updated_at?: string
-          vendedor_id: string
-        }
-        Update: {
-          cliente_email?: string | null
-          cliente_nome?: string
-          created_at?: string
-          data?: string
-          filial?: string
-          id?: string
-          notas?: string | null
-          tipo?: string
-          updated_at?: string
-          vendedor_id?: string
-        }
-        Relationships: []
-      }
       user_directory_cache: {
         Row: {
           approval_status: string
@@ -702,34 +505,11 @@ export type Database = {
       }
     }
     Views: {
-      vw_oportunidades_kpis: {
-        Row: {
-          cliente_nome: string | null
-          conversao_pct: number | null
-          data_criacao: string | null
-          data_fechamento: string | null
-          filial: string | null
-          id: string | null
-          status: string | null
-          tipo_task: string | null
-          valor_total_oportunidade: number | null
-          valor_venda_fechada: number | null
-          vendedor_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
-      can_access_customer_data: {
-        Args: { task_owner_id: string }
-        Returns: boolean
-      }
       can_modify_user_role: {
         Args: { new_role: string; target_user_id: string }
-        Returns: boolean
-      }
-      check_client_operation_rate_limit: {
-        Args: { operation_type?: string }
         Returns: boolean
       }
       check_enhanced_rate_limit: {
@@ -815,43 +595,6 @@ export type Database = {
           nome: string
         }[]
       }
-      get_opportunities_with_tasks: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          cliente_email: string
-          cliente_nome: string
-          conversao_pct: number
-          created_at: string
-          data: string
-          data_criacao: string
-          data_fechamento: string
-          filial: string
-          notas: string
-          opportunity_id: string
-          status: string
-          task_id: string
-          tipo: string
-          updated_at: string
-          valor_total_oportunidade: number
-          valor_venda_fechada: number
-          vendedor_id: string
-        }[]
-      }
-      get_opportunity_items: {
-        Args: { opportunity_id_param: string }
-        Returns: {
-          created_at: string
-          id: string
-          preco_unit: number
-          produto: string
-          qtd_ofertada: number
-          qtd_vendida: number
-          sku: string
-          subtotal_ofertado: number
-          subtotal_vendido: number
-          updated_at: string
-        }[]
-      }
       get_secure_customer_contacts: {
         Args: { task_ids?: string[] }
         Returns: {
@@ -890,15 +633,41 @@ export type Database = {
       get_secure_task_data: {
         Args: { task_id_param: string } | { task_ids?: string[] }
         Returns: {
+          access_level: string
+          check_in_location: Json
           client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
           email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
           filial: string
+          final_km: number
           id: string
+          initial_km: number
           is_masked: boolean
+          is_prospect: boolean
           name: string
+          observations: string
+          photos: string[]
+          priority: string
           property: string
+          propertyhectares: number
+          prospect_notes: string
           responsible: string
+          sales_confirmed: boolean
+          sales_type: string
           sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
         }[]
       }
       get_secure_task_data_enhanced: {
@@ -1012,7 +781,7 @@ export type Database = {
         Returns: boolean
       }
       is_high_value_task: {
-        Args: { sales_value: number }
+        Args: { task_sales_value: number }
         Returns: boolean
       }
       log_data_export: {
@@ -1087,10 +856,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      monitor_security_events: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       refresh_user_directory_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1115,10 +880,6 @@ export type Database = {
       validate_and_sanitize_task_input: {
         Args: { input_data: Json }
         Returns: Json
-      }
-      validate_client_input: {
-        Args: { input_data: Json }
-        Returns: boolean
       }
       validate_password_strength: {
         Args: { password: string }

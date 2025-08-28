@@ -8,8 +8,6 @@ import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthChec
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
-import { OpportunitiesDashboard } from '@/components/OpportunitiesDashboard';
-import { OpportunitiesTable } from '@/components/OpportunitiesTable';
 import { SalesFunnelOptimized } from '@/components/SalesFunnelOptimized';
 import { FunnelClientsOptimized } from '@/components/FunnelClientsOptimized';
 import { FunnelTasksOptimized } from '@/components/FunnelTasksOptimized';
@@ -23,8 +21,8 @@ const Dashboard: React.FC = () => {
     <div className="p-6">
       <div className="mb-6 flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard de Oportunidades</h1>
-          <p className="text-muted-foreground">Gestão completa do pipeline de vendas</p>
+          <h1 className="text-3xl font-bold">Funil de Vendas</h1>
+          <p className="text-muted-foreground">Análise completa das atividades comerciais</p>
         </div>
         <div className="flex items-center gap-4">
           <AuthenticationHealthCheck />
@@ -35,22 +33,14 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="oportunidades" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="oportunidades">Oportunidades</TabsTrigger>
-          <TabsTrigger value="funil">Funil Antigo</TabsTrigger>
+      <Tabs defaultValue="funil" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="funil">Funil</TabsTrigger>
           <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
           <TabsTrigger value="emergencia">🔧 Correção</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="oportunidades" className="space-y-6">
-          <Suspense fallback={<DashboardLoading />}>
-            <OpportunitiesDashboard />
-            <OpportunitiesTable />
-          </Suspense>
-        </TabsContent>
 
         <TabsContent value="funil" className="space-y-6">
           <Suspense fallback={<DashboardLoading />}>

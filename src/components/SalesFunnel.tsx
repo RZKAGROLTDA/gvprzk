@@ -1215,7 +1215,7 @@ export const SalesFunnel: React.FC = () => {
     
     {selectedTask && (
         <TaskEditModal
-          taskId={selectedTask.id}
+          task={selectedTask}
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
