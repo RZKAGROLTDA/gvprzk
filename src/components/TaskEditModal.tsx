@@ -46,14 +46,27 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   useEffect(() => {
     console.log('🔍 TaskEditModal - Carregando task:', {
       id: task.id,
+      taskType: task.taskType,
       salesConfirmed: task.salesConfirmed,
       salesType: task.salesType,
       checklistCount: task.checklist?.length,
       prospectItemsCount: task.prospectItems?.length
     });
 
-    // Usar checklist como fonte principal de produtos
-    const allProducts = task.checklist || [];
+    // Padronizar produtos para todos os tipos de tarefa
+    let allProducts = [];
+    let prospectItemsForPartial = [];
+
+    // Para tarefas de ligação, usar prospectItems se disponível, senão checklist
+    if (task.taskType === 'ligacao') {
+      allProducts = task.prospectItems?.length > 0 ? task.prospectItems : task.checklist || [];
+      // Para venda parcial em ligação, usar os prospectItems existentes
+      prospectItemsForPartial = task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [];
+    } else {
+      // Para outras tarefas (checklist/prospection), usar checklist como padrão
+      allProducts = task.checklist || [];
+      prospectItemsForPartial = task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [];
+    }
     
     setFormData({
       customerName: task.client || '',
@@ -66,7 +79,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       prospectNotesJustification: task.prospectNotesJustification || '',
       isProspect: task.isProspect || false,
       products: allProducts,
-      prospectItems: task.salesType === 'parcial' ? allProducts.filter(p => p.selected) : [],
+      prospectItems: prospectItemsForPartial,
       partialSalesValue: task.partialSalesValue || 0
     });
   }, [task]);
