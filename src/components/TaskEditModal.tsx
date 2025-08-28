@@ -7,63 +7,55 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Task } from '@/types/task';
-import { supabase } from '@/integrations/supabase/client';
-import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { useTaskWithOpportunity, useTaskOpportunityItems, useUpdateTaskWithOpportunity } from '@/hooks/useTaskWithOpportunity';
 
 interface TaskEditModalProps {
-  task: Task;
+  taskId: string;
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdate: () => void;
 }
 
 export const TaskEditModal: React.FC<TaskEditModalProps> = ({
-  task,
+  taskId,
   isOpen,
   onClose,
   onTaskUpdate
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prospectNotes, setProspectNotes] = useState('');
   
-  // Status padronizado conforme especificação
-  const getInitialStatus = () => {
-    if (task.isProspect && (!task.salesConfirmed && !task.salesType)) return 'Prospect';
-    if (task.salesConfirmed && task.salesType === 'ganho') return 'Venda Total';
-    if (task.salesConfirmed && task.salesType === 'parcial') return 'Venda Parcial';
-    if (task.salesConfirmed === false) return 'Venda Perdida';
-    return 'Prospect';
-  };
+  // Fetch task with opportunity data
+  const { data: taskData, isLoading: isLoadingTask } = useTaskWithOpportunity(taskId);
+  const { data: items = [], isLoading: isLoadingItems } = useTaskOpportunityItems(taskId);
+  const updateTaskMutation = useUpdateTaskWithOpportunity();
 
   const [formData, setFormData] = useState({
-    customerName: task.client || '',
-    customerEmail: task.email || '',
-    status: getInitialStatus(),
-    prospectNotes: task.prospectNotes || '',
+    customerName: '',
+    customerEmail: '',
+    status: 'Prospect' as 'Prospect' | 'Venda Total' | 'Venda Parcial' | 'Venda Perdida',
     itens_oportunidade: [] as any[]
   });
 
-  const { invalidateAll } = useSecurityCache();
-
-  // Carregar produtos da task (itens_oportunidade)
+  // Initialize form data when task and items are loaded
   useEffect(() => {
-    const allProducts = (task.prospectItems?.length > 0) ? task.prospectItems : (task.checklist || []);
-    
-    setFormData(prev => ({
-      ...prev,
-      customerName: task.client || '',
-      customerEmail: task.email || '',
-      status: getInitialStatus(),
-      prospectNotes: task.prospectNotes || '',
-      itens_oportunidade: allProducts.map(product => ({
-        produto: product.name || '—',
-        quantidade: product.quantity || 0,
-        preco_unitario: product.price || 0,
-        incluir_na_venda_parcial: Boolean(product.selected) || false,
-        ...product
-      }))
-    }));
-  }, [task]);
+    if (taskData && items) {
+      setFormData({
+        customerName: taskData.cliente_nome || '',
+        customerEmail: taskData.cliente_email || '',
+        status: taskData.status,
+        itens_oportunidade: items.map(item => ({
+          id: item.id,
+          produto: item.produto || '—',
+          quantidade: item.qtd_ofertada || 0,
+          preco_unitario: item.preco_unit || 0,
+          incluir_na_venda_parcial: item.incluir_na_venda_parcial || false,
+          ...item
+        }))
+      });
+      setProspectNotes('');
+    }
+  }, [taskData, items]);
 
   // Valor Total da Oportunidade (soma de quantidade * preço_unitário de todos os itens)
   const valor_total_oportunidade = useMemo(() => {
@@ -98,10 +90,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const handleStatusChange = (newStatus: string) => {
     setFormData(prev => ({
       ...prev,
-      status: newStatus,
-      // Reset de campos específicos ao mudar status
-      ...(newStatus !== 'Venda Perdida' && { prospectNotes: '' })
+      status: newStatus as 'Prospect' | 'Venda Total' | 'Venda Parcial' | 'Venda Perdida'
     }));
+    
+    // Reset prospect notes when changing away from "Venda Perdida"
+    if (newStatus !== 'Venda Perdida') {
+      setProspectNotes('');
+    }
   };
 
   const handleSelectAllProducts = () => {
@@ -146,13 +141,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
     try {
       // Validações
-      if (!task.id) {
+      if (!taskId) {
         toast.error('Erro: Task ID não encontrado');
         return;
       }
 
       // Validação para venda perdida
-      if (formData.status === 'Venda Perdida' && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
+      if (formData.status === 'Venda Perdida' && (!prospectNotes || prospectNotes.trim() === '')) {
         toast.error('O motivo da perda é obrigatório');
         return;
       }
@@ -163,96 +158,70 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         return;
       }
 
-      // Mapear status para campos do banco
-      const statusMapping = {
-        'Prospect': { isProspect: true, salesConfirmed: null, salesType: null },
-        'Venda Total': { isProspect: false, salesConfirmed: true, salesType: 'ganho' },
-        'Venda Parcial': { isProspect: false, salesConfirmed: true, salesType: 'parcial' },
-        'Venda Perdida': { isProspect: false, salesConfirmed: false, salesType: 'perdido' }
-      };
+      // Prepare update data
+      const data_fechamento = formData.status === 'Venda Total' || formData.status === 'Venda Parcial' || formData.status === 'Venda Perdida' 
+        ? new Date().toISOString() 
+        : null;
 
-      const statusData = statusMapping[formData.status as keyof typeof statusMapping];
+      await updateTaskMutation.mutateAsync({
+        taskId,
+        taskData: {
+          cliente_nome: formData.customerName,
+          cliente_email: formData.customerEmail || null
+        },
+        opportunityData: {
+          status: formData.status,
+          valor_venda_fechada: valor_venda_realizada,
+          data_fechamento
+        },
+        items: formData.itens_oportunidade.map(item => ({
+          id: item.id,
+          qtd_vendida: item.quantidade || 0,
+          incluir_na_venda_parcial: Boolean(item.incluir_na_venda_parcial)
+        }))
+      });
 
-      // Preparar dados para atualização
-      const updateData = {
-        client: formData.customerName || null,
-        email: formData.customerEmail || null,
-        sales_value: valor_venda_realizada,
-        sales_confirmed: statusData.salesConfirmed,
-        sales_type: statusData.salesType,
-        prospect_notes: formData.prospectNotes || null,
-        is_prospect: statusData.isProspect,
-        partial_sales_value: formData.status === 'Venda Parcial' ? valor_venda_parcial : null,
-        updated_at: new Date().toISOString()
-      };
-
-      // Atualizar task principal
-      const { error: updateError } = await supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', task.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      // Atualizar produtos (itens_oportunidade)
-      if (formData.itens_oportunidade.length > 0) {
-        const { data: existingProducts, error: fetchError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('task_id', task.id);
-
-        if (!fetchError && existingProducts) {
-          for (const item of formData.itens_oportunidade) {
-            const existingProduct = existingProducts.find(p => 
-              p.id === item.id || (p.name === item.produto && p.category === item.category)
-            );
-
-            if (existingProduct) {
-              await supabase
-                .from('products')
-                .update({
-                  name: item.produto || existingProduct.name,
-                  selected: Boolean(item.selected),
-                  quantity: Number(item.quantidade) || 0,
-                  price: Number(item.preco_unitario) || 0,
-                  observations: item.observations || null,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', existingProduct.id);
-            }
-          }
-        }
-      }
-
-      // Invalidar cache
-      await invalidateAll();
-      
-      // Aguardar sincronização
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
       onTaskUpdate();
       onClose();
-      toast.success('Task atualizada com sucesso!');
 
     } catch (error: any) {
       console.error('🔍 TaskEditModal - Erro geral:', error);
-      
-      // Mensagens de erro mais específicas
-      if (error?.code === 'PGRST116') {
-        toast.error('Erro: Dados inválidos para atualização');
-      } else if (error?.message?.includes('constraint')) {
-        toast.error('Erro: Violação de restrição no banco de dados');
-      } else if (error?.message?.includes('permission')) {
-        toast.error('Erro: Permissão negada para atualização');
-      } else {
-        toast.error(`Erro ao atualizar task: ${error?.message || 'Erro desconhecido'}`);
-      }
+      // Error is already handled by the mutation
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Show loading state
+  if (isLoadingTask || isLoadingItems) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Task</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Carregando...</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!taskData) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Task</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Task não encontrada</div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -363,13 +332,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               <Label htmlFor="prospectNotes">Motivo da Perda *</Label>
               <Textarea
                 id="prospectNotes"
-                value={formData.prospectNotes}
-                onChange={(e) => setFormData(prev => ({ ...prev, prospectNotes: e.target.value }))}
+                value={prospectNotes}
+                onChange={(e) => setProspectNotes(e.target.value)}
                 placeholder="Descreva o motivo da perda..."
                 rows={3}
-                className={formData.prospectNotes.trim() === '' ? 'border-red-500' : ''}
+                className={prospectNotes.trim() === '' ? 'border-red-500' : ''}
               />
-              {formData.prospectNotes.trim() === '' && (
+              {prospectNotes.trim() === '' && (
                 <p className="text-xs text-red-500">O motivo da perda é obrigatório</p>
               )}
             </div>
