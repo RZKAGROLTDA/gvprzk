@@ -11,6 +11,7 @@ import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
+import { OpportunityReportSidebar } from '@/components/OpportunityReportSidebar';
 import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
@@ -64,6 +65,7 @@ export const SalesFunnel: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isReportSidebarOpen, setIsReportSidebarOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
@@ -940,41 +942,74 @@ export const SalesFunnel: React.FC = () => {
           </div>
         </div>}
 
-      {/* Coverage View */}
+      {/* Relatório View */}
       {activeView === 'coverage' && <Card>
           <CardHeader>
-            <CardTitle>Cobertura de Carteira por Consultor</CardTitle>
+            <CardTitle>Relatório de Oportunidades</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Visualizar relatórios detalhados de oportunidades de venda
+            </p>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Consultor</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Vendedor</TableHead>
                   <TableHead>Filial</TableHead>
-                  <TableHead>Total de Clientes</TableHead>
-                  <TableHead>Clientes Visitados</TableHead>
-                  <TableHead>Cobertura (%)</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor Oportunidade</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data Criação</TableHead>
+                  <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {coverageData.map((coverage, index) => <TableRow key={index}>
-                    <TableCell className="font-medium">{coverage.consultant}</TableCell>
-                    <TableCell>{coverage.filial}</TableCell>
-                    <TableCell>{coverage.totalClients}</TableCell>
-                    <TableCell>{coverage.visitedClients}</TableCell>
+                {filteredTasks.slice(0, 50).map((task) => (
+                  <TableRow key={task.id}>
+                    <TableCell className="font-medium">{task.client}</TableCell>
+                    <TableCell>{task.responsible}</TableCell>
+                    <TableCell>{getFilialName(task.filial)}</TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <span>{coverage.coverage.toFixed(1)}%</span>
-                        <div className="w-24 h-2 bg-gray-200 rounded-full">
-                          <div className="h-2 bg-primary rounded-full" style={{
-                      width: `${Math.min(coverage.coverage, 100)}%`
-                    }}></div>
-                        </div>
-                      </div>
+                      <Badge variant="outline">
+                        {task.taskType === 'prospection' ? 'Visita' : 
+                         task.taskType === 'ligacao' ? 'Ligação' : 
+                         task.taskType === 'checklist' ? 'Checklist' : task.taskType}
+                      </Badge>
                     </TableCell>
-                  </TableRow>)}
+                    <TableCell>{formatSalesValue(task.salesValue)}</TableCell>
+                    <TableCell>
+                      <Badge variant={task.salesConfirmed ? 'default' : 'secondary'}>
+                        {task.salesConfirmed ? 'Fechada' : 'Em andamento'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(task.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setIsReportSidebarOpen(true);
+                        }}
+                        className="flex items-center space-x-1"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span>Ver</span>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
+            
+            {filteredTasks.length > 50 && (
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Mostrando 50 de {filteredTasks.length} oportunidades. Use os filtros para refinar a busca.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>}
 
@@ -1049,5 +1084,15 @@ export const SalesFunnel: React.FC = () => {
       });
       await refetch();
     }} />
+
+    {/* Opportunity Report Sidebar */}
+    <OpportunityReportSidebar
+      task={selectedTask}
+      isOpen={isReportSidebarOpen}
+      onClose={() => {
+        setIsReportSidebarOpen(false);
+        setSelectedTask(null);
+      }}
+    />
     </div>;
 };
