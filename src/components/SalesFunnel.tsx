@@ -16,7 +16,7 @@ import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue } from '@/lib/securityUtils';
-import { getFilialNameRobust } from '@/lib/taskStandardization';
+import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
 
 interface SalesFunnelData {
   contacts: {
@@ -101,6 +101,16 @@ export const SalesFunnel: React.FC = () => {
     }
   });
   
+
+  // Initialize filial cache on component mount
+  useEffect(() => {
+    const initializeCache = async () => {
+      console.log('🚀 SalesFunnel: Initializing filial cache...');
+      await loadFiliaisCache();
+      console.log('✅ SalesFunnel: Filial cache initialized');
+    };
+    initializeCache();
+  }, []);
 
   // Use optimized task hook
   const {

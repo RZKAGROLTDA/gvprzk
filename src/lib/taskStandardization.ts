@@ -75,20 +75,37 @@ export const getFilialDisplayName = (record: any, filiais: any[] = []): string =
 
 // Robust function to handle both UUID and string values for filial
 export const getFilialNameRobust = (filialValue: string | null | undefined, filiais: any[] = []): string => {
-  if (!filialValue) return "—";
+  console.log('🏢 getFilialNameRobust:', { filialValue, filiaisCacheSize: filiaisCache.size, filiaisArrayLength: filiais.length });
+  
+  if (!filialValue) {
+    console.log('🔴 Filial value is empty');
+    return "—";
+  }
   
   // Check if it's a UUID (format: 8-4-4-4-12 characters)
   if (filialValue.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+    console.log('✅ UUID detected:', filialValue);
+    
     // Try cache first
     const fromCache = filiaisCache.get(filialValue);
-    if (fromCache) return fromCache;
+    if (fromCache) {
+      console.log('🎯 Found in cache:', fromCache);
+      return fromCache;
+    }
     
     // Try provided filiais array
     const filial = filiais.find(f => f.id === filialValue);
-    return filial ? filial.nome : filialValue;
+    if (filial?.nome) {
+      console.log('🎯 Found in array:', filial.nome);
+      return filial.nome;
+    }
+    
+    console.log('❌ UUID not found in cache or array');
+    return filialValue;
   }
   
   // If it's already a name (like "Tele Vendas", "Não informado"), return it directly
+  console.log('📝 Direct name:', filialValue);
   return filialValue;
 };
 
