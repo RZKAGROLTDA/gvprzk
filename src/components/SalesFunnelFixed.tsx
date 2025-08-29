@@ -88,7 +88,7 @@ export const SalesFunnel: React.FC = () => {
   }, [filiais]);
 
   // Use optimized task hook
-  const { tasks = [], loading, refetch } = useTasksOptimized();
+  const { data: tasks = [], isLoading, refetch } = useTasksOptimized();
 
   const forceRefresh = useCallback(async () => {
     console.log('🔄 FUNNEL: Forçando atualização de dados...');
