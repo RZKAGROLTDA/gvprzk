@@ -546,7 +546,8 @@ export const SalesFunnel: React.FC = () => {
       </div>;
   }
   
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       {/* Header com botão de refresh */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
@@ -1200,11 +1201,7 @@ export const SalesFunnel: React.FC = () => {
           }} 
           onTaskUpdated={updatedTask => {
             console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
-            // Update selected task with the received data
-            console.log('🔄 FUNNEL: Atualizando selectedTask com dados recebidos:', updatedTask);
             setSelectedTask(updatedTask);
-            // CRITICAL: Reload tasks to reflect status changes in the table
-            console.log('🔄 FUNNEL: Recarregando tarefas para atualizar status na tabela');
             refetch();
           }} 
         />
@@ -1230,13 +1227,8 @@ export const SalesFunnel: React.FC = () => {
         }}
         onTaskUpdate={async () => {
           console.log('🔄 SalesFunnel - Callback onTaskUpdate chamado, forçando atualização');
-          // Invalidar cache globalmente para garantir sincronização
           await invalidateAll();
-          // Recarregar dados localmente com força
-          console.log('🔄 SalesFunnel - Refetchando dados após update');
           await refetch();
-          // Forçar re-render do componente
-          console.log('🔄 SalesFunnel - Update concluído');
         }}
       />
     </>
