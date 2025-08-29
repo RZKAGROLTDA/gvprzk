@@ -581,8 +581,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesAbertas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Abertas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesAbertas.value)}</div>
+                  <div className="text-blue-700 font-medium">Abertas</div>
                 </CardContent>
               </Card>
               
@@ -592,8 +591,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesFechadas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Fechadas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesFechadas.value)}</div>
+                  <div className="text-blue-700 font-medium">Fechadas</div>
                 </CardContent>
               </Card>
               
@@ -603,8 +601,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesPerdidas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Perdidas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesPerdidas.value)}</div>
+                  <div className="text-blue-700 font-medium">Perdidas</div>
                 </CardContent>
               </Card>
             </div>
@@ -741,8 +738,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.visitas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Visitas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.visitas.value)}</div>
+                  <div className="text-blue-700 font-medium">Visitas</div>
                 </CardContent>
               </Card>
               
@@ -752,8 +748,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.checklists.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Checklists</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.checklists.value)}</div>
+                  <div className="text-blue-700 font-medium">Checklists</div>
                 </CardContent>
               </Card>
               
@@ -763,8 +758,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.ligacoes.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Ligações</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.ligacoes.value)}</div>
+                  <div className="text-blue-700 font-medium">Ligações</div>
                 </CardContent>
               </Card>
             </div>
@@ -913,8 +907,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasTotal.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Total</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.vendasTotal.value)}</div>
+                  <div className="text-blue-700 font-medium">Total</div>
                 </CardContent>
               </Card>
               
@@ -924,8 +917,7 @@ export const SalesFunnel: React.FC = () => {
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasParcial.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Parcial</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.vendasParcial.value)}</div>
+                  <div className="text-blue-700 font-medium">Parcial</div>
                 </CardContent>
               </Card>
             </div>
@@ -1019,9 +1011,6 @@ export const SalesFunnel: React.FC = () => {
               <CardContent className="p-6 text-center">
                 <div className="text-4xl font-bold mb-2">{funnelData.taxaConversao.toFixed(1)}%</div>
                 <div className="text-purple-100 font-medium">Taxa de Conversão</div>
-                <div className="text-sm text-purple-200 mt-1">
-                  {funnelData.totalVendas} vendas de {funnelData.totalContatos} contatos
-                </div>
               </CardContent>
             </Card>
           </div>
