@@ -180,6 +180,11 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
                   <div>
                     <p className="text-sm text-muted-foreground">Responsável</p>
                     <p className="font-medium">{task?.responsible || 'N/A'}</p>
+                    {task?.filial && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Filial: {task.filial}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
