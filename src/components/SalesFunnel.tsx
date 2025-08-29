@@ -561,136 +561,7 @@ export const SalesFunnel: React.FC = () => {
 
       {/* Hierarchical Funnel View */}
       {activeView === 'funnel' && <div className="space-y-8">
-          {/* PROSPECÇÃO (primeira seção) */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-center text-primary">
-              PROSPECÇÃO ({funnelData.totalProspeccoes})
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => toggleSection('prospeccoesAbertas')}>
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesAbertas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Abertas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesAbertas.value)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => toggleSection('prospeccoesFechadas')}>
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesFechadas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Fechadas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesFechadas.value)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => toggleSection('prospeccoesPerdidas')}>
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesPerdidas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Perdidas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesPerdidas.value)}</div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Lista expandida de Prospecções Abertas */}
-            {expandedSections.prospeccoesAbertas && <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Prospecções Abertas ({funnelData.prospeccoesAbertas.count})</span>
-                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesAbertas')}>
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Responsável</TableHead>
-                        <TableHead>Filial</TableHead>
-                        <TableHead>Data</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTasks.filter(task => task.isProspect && !task.salesConfirmed).map(task => <TableRow key={task.id}>
-                          <TableCell>{task.client}</TableCell>
-                          <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                        </TableRow>)}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>}
-
-            {/* Lista expandida de Prospecções Fechadas */}
-            {expandedSections.prospeccoesFechadas && <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Prospecções Fechadas ({funnelData.prospeccoesFechadas.count})</span>
-                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesFechadas')}>
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Responsável</TableHead>
-                        <TableHead>Filial</TableHead>
-                        <TableHead>Data</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTasks.filter(task => task.isProspect && task.salesType === 'ganho').map(task => <TableRow key={task.id}>
-                          <TableCell>{task.client}</TableCell>
-                          <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                        </TableRow>)}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>}
-
-            {/* Lista expandida de Prospecções Perdidas */}
-            {expandedSections.prospeccoesPerdidas && <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Prospecções Perdidas ({funnelData.prospeccoesPerdidas.count})</span>
-                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesPerdidas')}>
-                      <ChevronUp className="h-4 w-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Responsável</TableHead>
-                        <TableHead>Filial</TableHead>
-                        <TableHead>Data</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTasks.filter(task => task.isProspect && task.salesType === 'perdido').map(task => <TableRow key={task.id}>
-                          <TableCell>{task.client}</TableCell>
-                          <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                        </TableRow>)}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>}
-          </div>
-
-          {/* CONTATOS COM CLIENTES (segunda seção) */}
+          {/* CONTATOS COM CLIENTES (primeira seção) */}
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-center text-primary">
               CONTATOS COM CLIENTES ({funnelData.totalContatos})
@@ -721,7 +592,7 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
-
+            
             {/* Lista expandida de Visitas */}
             {expandedSections.visitas && <Card className="mt-4">
                 <CardHeader>
@@ -830,6 +701,135 @@ export const SalesFunnel: React.FC = () => {
                               {task.status === 'completed' ? 'Realizada' : 'Pendente'}
                             </Badge>
                           </TableCell>
+                        </TableRow>)}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>}
+          </div>
+
+          {/* PROSPECÇÃO (segunda seção) */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-center text-primary">
+              PROSPECÇÃO ({funnelData.totalProspeccoes})
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => toggleSection('prospeccoesAbertas')}>
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesAbertas.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Abertas</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesAbertas.value)}</div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => toggleSection('prospeccoesFechadas')}>
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesFechadas.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Fechadas</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesFechadas.value)}</div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" onClick={() => toggleSection('prospeccoesPerdidas')}>
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesPerdidas.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Perdidas</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesPerdidas.value)}</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Lista expandida de Prospecções Abertas */}
+            {expandedSections.prospeccoesAbertas && <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Prospecções Abertas ({funnelData.prospeccoesAbertas.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesAbertas')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
+                        <TableHead>Data</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.isProspect && !task.salesConfirmed).map(task => <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                        </TableRow>)}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>}
+
+            {/* Lista expandida de Prospecções Fechadas */}
+            {expandedSections.prospeccoesFechadas && <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Prospecções Fechadas ({funnelData.prospeccoesFechadas.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesFechadas')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
+                        <TableHead>Data</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.isProspect && task.salesType === 'ganho').map(task => <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                        </TableRow>)}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>}
+
+            {/* Lista expandida de Prospecções Perdidas */}
+            {expandedSections.prospeccoesPerdidas && <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Prospecções Perdidas ({funnelData.prospeccoesPerdidas.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesPerdidas')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
+                        <TableHead>Data</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.isProspect && task.salesType === 'perdido').map(task => <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
