@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -42,6 +43,7 @@ interface ClientDetails {
 }
 
 export const SalesFunnel: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
@@ -150,26 +152,42 @@ export const SalesFunnel: React.FC = () => {
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
-    // CONTATOS COM CLIENTES
-    const visitas = filteredTasks.filter(task => task.taskType === 'prospection');
-    const checklists = filteredTasks.filter(task => task.taskType === 'checklist');
-    const ligacoes = filteredTasks.filter(task => task.taskType === 'ligacao');
-    
-    // PROSPECÇÕES
+    // PROSPECÇÕES (primeira seção)
     const prospeccoesAbertas = filteredTasks.filter(task => task.isProspect && !task.salesConfirmed);
     const prospeccoesFechadas = filteredTasks.filter(task => task.isProspect && task.salesType === 'ganho');
     const prospeccoesPerdidas = filteredTasks.filter(task => task.isProspect && task.salesType === 'perdido');
     
-    // VENDAS
+    // CONTATOS COM CLIENTES (segunda seção)
+    const visitas = filteredTasks.filter(task => task.taskType === 'prospection');
+    const checklists = filteredTasks.filter(task => task.taskType === 'checklist');
+    const ligacoes = filteredTasks.filter(task => task.taskType === 'ligacao');
+    
+    // VENDAS (terceira seção)
     const vendasTotal = filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'ganho');
     const vendasParcial = filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'parcial');
     
+    const totalProspeccoes = prospeccoesAbertas.length + prospeccoesFechadas.length + prospeccoesPerdidas.length;
     const totalContatos = visitas.length + checklists.length + ligacoes.length;
     const totalVendas = vendasTotal.length + vendasParcial.length;
     const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
     return {
-      // Contatos com clientes
+      // Prospecções (primeira seção)
+      prospeccoesAbertas: {
+        count: prospeccoesAbertas.length,
+        value: prospeccoesAbertas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
+      },
+      prospeccoesFechadas: {
+        count: prospeccoesFechadas.length,
+        value: prospeccoesFechadas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
+      },
+      prospeccoesPerdidas: {
+        count: prospeccoesPerdidas.length,
+        value: prospeccoesPerdidas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
+      },
+      totalProspeccoes,
+      
+      // Contatos com clientes (segunda seção)
       visitas: {
         count: visitas.length,
         value: visitas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
@@ -184,22 +202,7 @@ export const SalesFunnel: React.FC = () => {
       },
       totalContatos,
       
-      // Prospecções
-      prospeccoesAbertas: {
-        count: prospeccoesAbertas.length,
-        value: prospeccoesAbertas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
-      },
-      prospeccoesFechadas: {
-        count: prospeccoesFechadas.length,
-        value: prospeccoesFechadas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
-      },
-      prospeccoesPerdidas: {
-        count: prospeccoesPerdidas.length,
-        value: prospeccoesPerdidas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
-      },
-      totalProspeccoes: prospeccoesAbertas.length + prospeccoesFechadas.length + prospeccoesPerdidas.length,
-      
-      // Vendas
+      // Vendas (terceira seção)
       vendasTotal: {
         count: vendasTotal.length,
         value: vendasTotal.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
@@ -565,14 +568,63 @@ export const SalesFunnel: React.FC = () => {
       {/* Hierarchical Funnel View */}
       {activeView === 'funnel' && (
         <div className="space-y-8">
-          {/* CONTATOS COM CLIENTES */}
+          {/* PROSPECÇÃO (primeira seção) */}
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-center bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              CONTATOS COM CLIENTES
+            <h2 className="text-xl font-bold text-center text-primary">
+              PROSPECÇÃO ({funnelData.totalProspeccoes})
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
+                onClick={() => navigate('/create-field-visit')}
+              >
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesAbertas.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Abertas</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesAbertas.value)}</div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesFechadas.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Fechadas</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesFechadas.value)}</div>
+                </CardContent>
+              </Card>
+              
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesPerdidas.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Perdidas</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesPerdidas.value)}</div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Total Prospecções */}
+            <div className="flex justify-center">
+              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white min-w-[200px]">
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold">{funnelData.totalProspeccoes}</div>
+                  <div className="text-blue-100 font-medium">Total</div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* CONTATOS COM CLIENTES (segunda seção) */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-center text-primary">
+              CONTATOS COM CLIENTES ({funnelData.totalContatos})
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
+                onClick={() => navigate('/create-field-visit')}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.visitas.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Visitas</div>
@@ -580,7 +632,10 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
+                onClick={() => navigate('/create-workshop-checklist')}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.checklists.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Checklists</div>
@@ -588,7 +643,10 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
+                onClick={() => navigate('/create-call')}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.ligacoes.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Ligações</div>
@@ -608,79 +666,36 @@ export const SalesFunnel: React.FC = () => {
             </div>
           </div>
 
-          {/* PROSPECÇÕES */}
+          {/* VENDAS (terceira seção) */}
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-center bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              PROSPECÇÕES
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesAbertas.count}</div>
-                  <div className="text-blue-700 font-medium mb-1">Abertas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesAbertas.value)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-lg transition-all duration-200">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-green-900 mb-2">{funnelData.prospeccoesFechadas.count}</div>
-                  <div className="text-green-700 font-medium mb-1">Fechadas</div>
-                  <div className="text-sm text-green-600">{formatSalesValue(funnelData.prospeccoesFechadas.value)}</div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:shadow-lg transition-all duration-200">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-red-900 mb-2">{funnelData.prospeccoesPerdidas.count}</div>
-                  <div className="text-red-700 font-medium mb-1">Perdidas</div>
-                  <div className="text-sm text-red-600">{formatSalesValue(funnelData.prospeccoesPerdidas.value)}</div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Total Prospecções */}
-            <div className="flex justify-center">
-              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white min-w-[200px]">
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold">{funnelData.totalProspeccoes}</div>
-                  <div className="text-blue-100 font-medium">Total</div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* VENDAS */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-center bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-              VENDAS
+            <h2 className="text-xl font-bold text-center text-primary">
+              VENDAS ({funnelData.totalVendas})
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 hover:shadow-lg transition-all duration-200">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
                 <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-green-900 mb-2">{funnelData.vendasTotal.count}</div>
-                  <div className="text-green-700 font-medium mb-1">Total</div>
-                  <div className="text-sm text-green-600">{formatSalesValue(funnelData.vendasTotal.value)}</div>
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasTotal.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Total</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.vendasTotal.value)}</div>
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 hover:shadow-lg transition-all duration-200">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
                 <CardContent className="p-6 text-center">
-                  <div className="text-3xl font-bold text-orange-900 mb-2">{funnelData.vendasParcial.count}</div>
-                  <div className="text-orange-700 font-medium mb-1">Parcial</div>
-                  <div className="text-sm text-orange-600">{formatSalesValue(funnelData.vendasParcial.value)}</div>
+                  <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasParcial.count}</div>
+                  <div className="text-blue-700 font-medium mb-1">Parcial</div>
+                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.vendasParcial.value)}</div>
                 </CardContent>
               </Card>
             </div>
             
             {/* Total Vendas */}
             <div className="flex justify-center">
-              <Card className="bg-gradient-to-r from-green-600 to-green-700 text-white min-w-[200px]">
+              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white min-w-[200px]">
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold">{funnelData.totalVendas}</div>
-                  <div className="text-green-100 font-medium">Total</div>
+                  <div className="text-blue-100 font-medium">Total</div>
                 </CardContent>
               </Card>
             </div>
