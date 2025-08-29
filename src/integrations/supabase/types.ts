@@ -1136,7 +1136,7 @@ export type Database = {
           event_type: string
           metadata?: Json
           risk_score?: number
-          target_user_id?: string
+          target_user_id: string
         }
         Returns: undefined
       }
