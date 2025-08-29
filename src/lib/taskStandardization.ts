@@ -73,6 +73,25 @@ export const getFilialDisplayName = (record: any, filiais: any[] = []): string =
   return '—';
 };
 
+// Robust function to handle both UUID and string values for filial
+export const getFilialNameRobust = (filialValue: string | null | undefined, filiais: any[] = []): string => {
+  if (!filialValue) return "—";
+  
+  // Check if it's a UUID (format: 8-4-4-4-12 characters)
+  if (filialValue.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+    // Try cache first
+    const fromCache = filiaisCache.get(filialValue);
+    if (fromCache) return fromCache;
+    
+    // Try provided filiais array
+    const filial = filiais.find(f => f.id === filialValue);
+    return filial ? filial.nome : filialValue;
+  }
+  
+  // If it's already a name (like "Tele Vendas", "Não informado"), return it directly
+  return filialValue;
+};
+
 // Função para criar task com snapshot da filial
 export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> => {
   // Se não tem cache, carrega antes

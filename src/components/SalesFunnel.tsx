@@ -16,7 +16,7 @@ import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue } from '@/lib/securityUtils';
-import { getFilialDisplayName } from '@/lib/taskStandardization';
+import { getFilialNameRobust } from '@/lib/taskStandardization';
 
 interface SalesFunnelData {
   contacts: {
@@ -101,10 +101,6 @@ export const SalesFunnel: React.FC = () => {
     }
   });
   
-  const getFilialName = useCallback((filialId: string): string => {
-    const filial = filiais.find(f => f.id === filialId);
-    return filial ? filial.nome : filialId;
-  }, [filiais]);
 
   // Use optimized task hook
   const {
@@ -287,13 +283,13 @@ export const SalesFunnel: React.FC = () => {
       const visitedClients = stats.visitedClients.size;
       return {
         consultant,
-        filial: getFilialName(stats.filial),
+        filial: getFilialNameRobust(stats.filial, filiais),
         totalClients,
         visitedClients,
         coverage: totalClients > 0 ? visitedClients / totalClients * 100 : 0
       };
     });
-  }, [filteredTasks, getFilialName]);
+  }, [filteredTasks, filiais]);
 
   // Calculate client details
   const clientDetails = useMemo((): ClientDetails[] => {
@@ -338,14 +334,14 @@ export const SalesFunnel: React.FC = () => {
     });
     return Array.from(clientStats.entries()).map(([key, stats]) => ({
       client: key.split('-')[0],
-      filial: getFilialName(stats.filial),
+      filial: getFilialNameRobust(stats.filial, filiais),
       consultant: stats.consultant,
       totalActivities: stats.activities.length,
       lastActivity: stats.lastActivity,
       salesValue: stats.salesValue,
       status: stats.status
     })).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime()).slice(0, 10); // Limit to top 10
-  }, [filteredTasks, getFilialName]);
+  }, [filteredTasks, filiais]);
 
   // Get detailed data for tables
   const getDetailedData = useCallback((section: string) => {
@@ -621,7 +617,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.taskType === 'prospection').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
@@ -659,7 +655,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.taskType === 'checklist').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
@@ -697,7 +693,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.taskType === 'ligacao').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
@@ -767,7 +763,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.isProspect && !task.salesConfirmed).map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
@@ -799,7 +795,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.isProspect && task.salesType === 'ganho').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
@@ -831,7 +827,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.isProspect && task.salesType === 'perdido').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
@@ -888,7 +884,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'ganho').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
@@ -920,7 +916,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'parcial').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
-                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
+                          <TableCell>{getFilialNameRobust(task.filial || '', filiais)}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
@@ -970,7 +966,7 @@ export const SalesFunnel: React.FC = () => {
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">{task.client}</TableCell>
                     <TableCell>{task.responsible}</TableCell>
-                    <TableCell>{getFilialName(task.filial)}</TableCell>
+                    <TableCell>{getFilialNameRobust(task.filial, filiais)}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {task.taskType === 'prospection' ? 'Visita' : 
