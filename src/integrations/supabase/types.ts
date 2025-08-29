@@ -735,6 +735,16 @@ export type Database = {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
       }
+      check_bi_security_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          alert_type: string
+          count: number
+          description: string
+          recommendation: string
+          severity: string
+        }[]
+      }
       check_client_operation_rate_limit: {
         Args: { operation_type?: string }
         Returns: boolean
@@ -807,6 +817,15 @@ export type Database = {
           violation_type: string
         }[]
       }
+      detect_unauthorized_bi_access: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          last_violation: string
+          risk_details: Json
+          user_id: string
+          violation_count: number
+        }[]
+      }
       diagnostic_query: {
         Args: { query_text: string }
         Returns: Json
@@ -859,11 +878,41 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_secure_bi_data_with_access_control: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          cliente_nome: string
+          conversao_pct: number
+          data_criacao: string
+          data_fechamento: string
+          filial: string
+          id: string
+          is_masked: boolean
+          status: string
+          tipo_task: string
+          valor_total_oportunidade: number
+          valor_venda_fechada: number
+          vendedor_id: string
+        }[]
+      }
       get_secure_bi_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
           access_level: string
           average_conversion_rate: number
+          period_end: string
+          period_start: string
+          total_opportunities: number
+          total_sales_value: number
+        }[]
+      }
+      get_secure_bi_summary_enhanced: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          average_conversion_rate: number
+          data_mask_applied: boolean
           period_end: string
           period_start: string
           total_opportunities: number
