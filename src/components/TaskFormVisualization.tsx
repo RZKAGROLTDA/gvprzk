@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -20,7 +21,7 @@ import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 
 interface TaskFormVisualizationProps {
-  task: Task;
+  task: Task | null;
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdated?: () => void;
@@ -35,10 +36,28 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
+  // Early return if no task is provided
+  if (!task) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nenhuma tarefa selecionada</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 text-center text-muted-foreground">
+            Selecione uma tarefa para visualizar os detalhes.
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   // Calculate sales status for display usando a lógica padronizada
   const salesStatus = mapSalesStatus(task);
 
   const handleGeneratePDF = async () => {
+    if (!task) return;
+    
     setIsGeneratingPDF(true);
     try {
       await generateTaskPDF(task, calculateTaskTotalValue, getTaskTypeLabel);

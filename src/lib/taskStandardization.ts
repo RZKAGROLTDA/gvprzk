@@ -46,7 +46,10 @@ export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> 
   };
 };
 
-export const mapSalesStatus = (task: Task): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
+export const mapSalesStatus = (task: Task | null): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
+  // Handle null or undefined task
+  if (!task) return 'prospect';
+  
   // Se não é um prospect, retorna prospect
   if (!task.isProspect) return 'prospect';
   
