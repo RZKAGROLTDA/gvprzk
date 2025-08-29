@@ -11,7 +11,7 @@ import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
-import { OpportunityReportSidebar } from '@/components/OpportunityReportSidebar';
+import { TaskFormVisualization } from '@/components/TaskFormVisualization';
 import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
@@ -65,7 +65,7 @@ export const SalesFunnel: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isReportSidebarOpen, setIsReportSidebarOpen] = useState(false);
+  const [isTaskVisualizationOpen, setIsTaskVisualizationOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
@@ -991,7 +991,7 @@ export const SalesFunnel: React.FC = () => {
                           size="sm"
                           onClick={() => {
                             setSelectedTask(task);
-                            setIsReportSidebarOpen(true);
+                            setIsTaskVisualizationOpen(true);
                           }}
                           className="flex items-center space-x-1"
                         >
@@ -1099,12 +1099,12 @@ export const SalesFunnel: React.FC = () => {
       await refetch();
     }} />
 
-    {/* Opportunity Report Sidebar */}
-    <OpportunityReportSidebar
+    {/* Task Form Visualization Modal */}
+    <TaskFormVisualization
       task={selectedTask}
-      isOpen={isReportSidebarOpen}
+      isOpen={isTaskVisualizationOpen}
       onClose={() => {
-        setIsReportSidebarOpen(false);
+        setIsTaskVisualizationOpen(false);
         setSelectedTask(null);
       }}
     />
