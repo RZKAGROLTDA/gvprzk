@@ -8,7 +8,7 @@ import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthChec
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
-import { SalesFunnelOptimized } from '@/components/SalesFunnelOptimized';
+import { SalesFunnel } from '@/components/SalesFunnel';
 import { FunnelClientsOptimized } from '@/components/FunnelClientsOptimized';
 import { FunnelTasksOptimized } from '@/components/FunnelTasksOptimized';
 import Reports from '@/pages/Reports';
@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
 
         <TabsContent value="funil" className="space-y-6">
           <Suspense fallback={<DashboardLoading />}>
-            <SalesFunnelOptimized />
+            <SalesFunnel />
           </Suspense>
         </TabsContent>
 
