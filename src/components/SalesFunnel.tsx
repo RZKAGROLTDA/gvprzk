@@ -481,7 +481,7 @@ export const SalesFunnel: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <MapPin className="h-5 w-5 text-primary" />
-              <span className="font-medium">Cobertura</span>
+              <span className="font-medium">Relatório</span>
             </div>
           </CardContent>
         </Card>
