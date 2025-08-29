@@ -302,7 +302,7 @@ export const SalesFunnel: React.FC = () => {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
   
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -328,9 +328,9 @@ export const SalesFunnel: React.FC = () => {
             variant="outline" 
             size="sm" 
             onClick={forceRefresh}
-            disabled={isLoading}
+            disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Recarregar Dados
           </Button>
         </div>
