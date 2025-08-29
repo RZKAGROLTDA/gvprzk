@@ -12,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { OpportunityReport } from '@/components/OpportunityReport';
-import OpportunityReportSidebar from '@/components/OpportunityReportSidebar';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue } from '@/lib/securityUtils';
@@ -65,7 +64,6 @@ export const SalesFunnel: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isReportSidebarOpen, setIsReportSidebarOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
@@ -363,12 +361,6 @@ export const SalesFunnel: React.FC = () => {
         return [];
     }
   }, [filteredTasks]);
-  
-  const openReportSidebar = (task: Task) => {
-    setSelectedTask(task);
-    setIsReportSidebarOpen(true);
-  };
-  
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
       ...prev,
@@ -614,14 +606,13 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent>
                   <Table>
                     <TableHeader>
-                       <TableRow>
-                         <TableHead>Cliente</TableHead>
-                         <TableHead>Responsável</TableHead>
-                         <TableHead>Filial</TableHead>
-                         <TableHead>Data</TableHead>
-                         <TableHead>Status</TableHead>
-                         <TableHead>Ações</TableHead>
-                       </TableRow>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.filter(task => task.taskType === 'prospection').map(task => <TableRow key={task.id}>
@@ -629,22 +620,11 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                           <TableCell>
-                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
-                               {task.status === 'completed' ? 'Concluída' : 'Pendente'}
-                             </Badge>
-                           </TableCell>
-                           <TableCell>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => openReportSidebar(task)}
-                               className="flex items-center gap-1"
-                             >
-                               <Eye className="h-3 w-3" />
-                               Ver
-                             </Button>
-                           </TableCell>
+                          <TableCell>
+                            <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                              {task.status === 'completed' ? 'Concluída' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -1069,15 +1049,5 @@ export const SalesFunnel: React.FC = () => {
       });
       await refetch();
     }} />
-
-    {/* Painel Lateral de Relatório de Oportunidade */}
-    <OpportunityReportSidebar 
-      isOpen={isReportSidebarOpen}
-      onClose={() => {
-        setIsReportSidebarOpen(false);
-        setSelectedTask(null);
-      }}
-      task={selectedTask}
-    />
     </div>;
 };
