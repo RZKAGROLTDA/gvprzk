@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { 
@@ -21,9 +22,10 @@ import {
   RefreshCw,
   X,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  Eye
 } from 'lucide-react';
-import { TaskStats } from '@/types/task';
+import { TaskStats, Task } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateTaskSalesValue, calculateProspectValue } from '@/lib/salesValueCalculator';
@@ -33,6 +35,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { DataMigrationButton } from '@/components/DataMigrationButton';
+import OpportunityReportSidebar from '@/components/OpportunityReportSidebar';
 
 const Reports: React.FC = () => {
   const { user } = useAuth();
@@ -51,6 +54,11 @@ const Reports: React.FC = () => {
   const [totalProspects, setTotalProspects] = useState(0);
   const [totalProspectsValue, setTotalProspectsValue] = useState(0);
   const [totalSalesValue, setTotalSalesValue] = useState(0);
+  
+  // Estados para o relatório de oportunidades
+  const [opportunities, setOpportunities] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Taxa de conversão geral corrigida: (Vendas Realizadas / Valor Total de Prospects) * 100
   const overallConversionRate = totalProspectsValue > 0 ? (totalSalesValue / totalProspectsValue) * 100 : 0;
@@ -142,11 +150,37 @@ const Reports: React.FC = () => {
       setTotalProspects(prospects);
       setTotalProspectsValue(prospectsValue);
       setTotalSalesValue(salesValue);
+      setOpportunities(tasks);
     } catch (error) {
       console.error('Erro ao carregar estatísticas agregadas:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getTaskTypeLabel = (type: string) => {
+    switch (type) {
+      case 'prospection':
+        return 'Visita';
+      case 'ligacao':
+        return 'Ligação';
+      case 'checklist':
+        return 'Checklist';
+      default:
+        return type;
+    }
+  };
+
+  const getStatusLabel = (task: Task) => {
+    if (task.salesConfirmed) return 'Venda Realizada';
+    if (task.salesType === 'parcial') return 'Venda Parcial';
+    if (task.isProspect) return 'Prospect';
+    return 'Em Andamento';
+  };
+
+  const handleViewOpportunity = (task: Task) => {
+    setSelectedTask(task);
+    setSidebarOpen(true);
   };
 
   const clearFilters = () => {
@@ -476,6 +510,96 @@ const Reports: React.FC = () => {
         </Card>
       </div>
 
+      {/* Relatório de Oportunidades */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            Relatório de Oportunidades
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Vendedor</TableHead>
+                  <TableHead>Filial</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor Oportunidade</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead className="text-center">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                      <div className="flex items-center justify-center">
+                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                        Carregando oportunidades...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : opportunities.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                      Nenhuma oportunidade encontrada com os filtros aplicados.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  opportunities.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell className="font-medium">{task.client || '—'}</TableCell>
+                      <TableCell>{task.responsible || '—'}</TableCell>
+                      <TableCell>{task.filial || '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {getTaskTypeLabel(task.taskType)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {task.salesValue ? 
+                          `R$ ${calculateProspectValue(task).toLocaleString('pt-BR')}` : 
+                          '—'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            task.salesConfirmed ? 'default' : 
+                            task.salesType === 'parcial' ? 'secondary' :
+                            task.isProspect ? 'outline' : 'destructive'
+                          }
+                        >
+                          {getStatusLabel(task)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(task.startDate), 'dd/MM/yyyy')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewOpportunity(task)}
+                          className="gap-1"
+                        >
+                          <Eye className="h-3 w-3" />
+                          Ver
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Análises Detalhadas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card Desempenho por Filial */}
@@ -537,6 +661,13 @@ const Reports: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sidebar de Relatório de Oportunidade */}
+      <OpportunityReportSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        task={selectedTask}
+      />
     </div>
   );
 };
