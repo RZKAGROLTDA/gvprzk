@@ -985,18 +985,32 @@ export const SalesFunnel: React.FC = () => {
                     </TableCell>
                     <TableCell>{new Date(task.createdAt).toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setIsReportSidebarOpen(true);
-                        }}
-                        className="flex items-center space-x-1"
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span>Ver</span>
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setIsReportSidebarOpen(true);
+                          }}
+                          className="flex items-center space-x-1"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span>Ver</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setIsEditModalOpen(true);
+                          }}
+                          className="flex items-center space-x-1"
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span>Editar</span>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
