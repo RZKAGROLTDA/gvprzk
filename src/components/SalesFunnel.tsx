@@ -233,23 +233,23 @@ export const SalesFunnel: React.FC = () => {
       // Legacy data for compatibility
       contacts: {
         count: totalContatos,
-        value: visitas.value + checklists.value + ligacoes.value
+        value: funnelData.visitas.value + funnelData.checklists.value + funnelData.ligacoes.value
       },
       prospects: {
         count: prospeccoesAbertas.length,
-        value: prospeccoesAbertas.value
+        value: funnelData.prospeccoesAbertas.value
       },
       sales: {
         count: vendasTotal.length,
-        value: vendasTotal.value
+        value: funnelData.vendasTotal.value
       },
       partialSales: {
         count: vendasParcial.length,
-        value: vendasParcial.value
+        value: funnelData.vendasParcial.value
       },
       lostSales: {
         count: prospeccoesPerdidas.length,
-        value: prospeccoesPerdidas.value
+        value: funnelData.prospeccoesPerdidas.value
       }
     };
   }, [filteredTasks]);
