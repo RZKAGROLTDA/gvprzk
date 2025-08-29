@@ -970,7 +970,7 @@ export const SalesFunnel: React.FC = () => {
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">{task.client}</TableCell>
                     <TableCell>{task.responsible}</TableCell>
-                    <TableCell>{getFilialDisplayName(task, filiais)}</TableCell>
+                    <TableCell>{getFilialName(task.filial)}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {task.taskType === 'prospection' ? 'Visita' : 
