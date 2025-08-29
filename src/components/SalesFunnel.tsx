@@ -577,7 +577,7 @@ export const SalesFunnel: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card 
                 className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
-                onClick={() => navigate('/create-field-visit')}
+                onClick={() => toggleSection('prospeccoesAbertas')}
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesAbertas.count}</div>
@@ -586,7 +586,10 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                onClick={() => toggleSection('prospeccoesFechadas')}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesFechadas.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Fechadas</div>
@@ -594,7 +597,10 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                onClick={() => toggleSection('prospeccoesPerdidas')}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesPerdidas.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Perdidas</div>
@@ -602,6 +608,114 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+            
+            {/* Lista expandida de Prospecções Abertas */}
+            {expandedSections.prospeccoesAbertas && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Prospecções Abertas ({funnelData.prospeccoesAbertas.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesAbertas')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.isProspect && !task.salesConfirmed).map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista expandida de Prospecções Fechadas */}
+            {expandedSections.prospeccoesFechadas && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Prospecções Fechadas ({funnelData.prospeccoesFechadas.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesFechadas')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.isProspect && task.salesType === 'ganho').map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista expandida de Prospecções Perdidas */}
+            {expandedSections.prospeccoesPerdidas && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Prospecções Perdidas ({funnelData.prospeccoesPerdidas.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('prospeccoesPerdidas')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.isProspect && task.salesType === 'perdido').map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
             
             {/* Total Prospecções */}
             <div className="flex justify-center">
@@ -623,7 +737,7 @@ export const SalesFunnel: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card 
                 className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
-                onClick={() => navigate('/create-field-visit')}
+                onClick={() => toggleSection('visitas')}
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.visitas.count}</div>
@@ -634,7 +748,7 @@ export const SalesFunnel: React.FC = () => {
               
               <Card 
                 className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
-                onClick={() => navigate('/create-workshop-checklist')}
+                onClick={() => toggleSection('checklists')}
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.checklists.count}</div>
@@ -645,7 +759,7 @@ export const SalesFunnel: React.FC = () => {
               
               <Card 
                 className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer" 
-                onClick={() => navigate('/create-call')}
+                onClick={() => toggleSection('ligacoes')}
               >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.ligacoes.count}</div>
@@ -654,6 +768,126 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Lista expandida de Visitas */}
+            {expandedSections.visitas && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Visitas ({funnelData.visitas.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('visitas')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.taskType === 'prospection').map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>
+                            <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                              {task.status === 'completed' ? 'Concluída' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista expandida de Checklists */}
+            {expandedSections.checklists && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Checklists ({funnelData.checklists.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('checklists')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.taskType === 'checklist').map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>
+                            <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                              {task.status === 'completed' ? 'Concluído' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista expandida de Ligações */}
+            {expandedSections.ligacoes && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Ligações ({funnelData.ligacoes.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('ligacoes')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.taskType === 'ligacao').map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>
+                            <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
+                              {task.status === 'completed' ? 'Realizada' : 'Pendente'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
             
             {/* Total Contatos */}
             <div className="flex justify-center">
@@ -673,7 +907,10 @@ export const SalesFunnel: React.FC = () => {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                onClick={() => toggleSection('vendasTotal')}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasTotal.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Total</div>
@@ -681,7 +918,10 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
               
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover:shadow-lg transition-all duration-200 cursor-pointer"
+                onClick={() => toggleSection('vendasParcial')}
+              >
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasParcial.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Parcial</div>
@@ -689,6 +929,78 @@ export const SalesFunnel: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Lista expandida de Vendas Total */}
+            {expandedSections.vendasTotal && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Vendas Totais ({funnelData.vendasTotal.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('vendasTotal')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'ganho').map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Lista expandida de Vendas Parciais */}
+            {expandedSections.vendasParcial && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Vendas Parciais ({funnelData.vendasParcial.count})</span>
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection('vendasParcial')}>
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Responsável</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'parcial').map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>{task.client}</TableCell>
+                          <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
             
             {/* Total Vendas */}
             <div className="flex justify-center">
