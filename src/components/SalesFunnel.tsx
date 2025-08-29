@@ -15,6 +15,7 @@ import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue } from '@/lib/securityUtils';
+
 interface SalesFunnelData {
   contacts: {
     count: number;
@@ -91,14 +92,15 @@ export const SalesFunnel: React.FC = () => {
       const {
         data,
         error
-      } = await supabase.from('filiais').select('id, name, city');
+      } = await supabase.from('filiais').select('id, nome');
       if (error) throw error;
       return data || [];
     }
   });
+  
   const getFilialName = useCallback((filialId: string): string => {
     const filial = filiais.find(f => f.id === filialId);
-    return filial ? `${filial.name} - ${filial.city}` : filialId;
+    return filial ? filial.nome : filialId;
   }, [filiais]);
 
   // Use optimized task hook
@@ -431,7 +433,7 @@ export const SalesFunnel: React.FC = () => {
             <SelectContent>
               <SelectItem value="all">Todas as filiais</SelectItem>
               {filiais.map(filial => <SelectItem key={filial.id} value={filial.id}>
-                  {filial.name} - {filial.city}
+                  {filial.nome}
                 </SelectItem>)}
             </SelectContent>
           </Select>
@@ -568,7 +570,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesAbertas.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Abertas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesAbertas.value)}</div>
                 </CardContent>
               </Card>
               
@@ -576,7 +577,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesFechadas.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Fechadas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesFechadas.value)}</div>
                 </CardContent>
               </Card>
               
@@ -584,7 +584,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.prospeccoesPerdidas.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Perdidas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.prospeccoesPerdidas.value)}</div>
                 </CardContent>
               </Card>
             </div>
@@ -605,16 +604,16 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
-                        <TableHead>Valor</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.filter(task => task.isProspect && !task.salesConfirmed).map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -637,16 +636,16 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
-                        <TableHead>Valor</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.filter(task => task.isProspect && task.salesType === 'ganho').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -669,28 +668,21 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
-                        <TableHead>Valor</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.filter(task => task.isProspect && task.salesType === 'perdido').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>}
-            
-            {/* Total Prospecções */}
-            <div className="flex justify-center">
-              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white min-w-[200px]">
-                
-              </Card>
-            </div>
           </div>
 
           {/* CONTATOS COM CLIENTES (segunda seção) */}
@@ -704,7 +696,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.visitas.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Visitas</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.visitas.value)}</div>
                 </CardContent>
               </Card>
               
@@ -712,7 +703,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.checklists.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Checklists</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.checklists.value)}</div>
                 </CardContent>
               </Card>
               
@@ -720,7 +710,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.ligacoes.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Ligações</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.ligacoes.value)}</div>
                 </CardContent>
               </Card>
             </div>
@@ -741,6 +730,7 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
@@ -749,6 +739,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.taskType === 'prospection').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
@@ -777,6 +768,7 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
@@ -785,6 +777,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.taskType === 'checklist').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
@@ -813,6 +806,7 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
@@ -821,6 +815,7 @@ export const SalesFunnel: React.FC = () => {
                       {filteredTasks.filter(task => task.taskType === 'ligacao').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
@@ -832,13 +827,6 @@ export const SalesFunnel: React.FC = () => {
                   </Table>
                 </CardContent>
               </Card>}
-            
-            {/* Total Contatos */}
-            <div className="flex justify-center">
-              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white min-w-[200px]">
-                
-              </Card>
-            </div>
           </div>
 
           {/* VENDAS (terceira seção) */}
@@ -852,7 +840,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasTotal.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Total</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.vendasTotal.value)}</div>
                 </CardContent>
               </Card>
               
@@ -860,7 +847,6 @@ export const SalesFunnel: React.FC = () => {
                 <CardContent className="p-6 text-center">
                   <div className="text-3xl font-bold text-blue-900 mb-2">{funnelData.vendasParcial.count}</div>
                   <div className="text-blue-700 font-medium mb-1">Parcial</div>
-                  <div className="text-sm text-blue-600">{formatSalesValue(funnelData.vendasParcial.value)}</div>
                 </CardContent>
               </Card>
             </div>
@@ -881,16 +867,16 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
-                        <TableHead>Valor</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'ganho').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -913,28 +899,21 @@ export const SalesFunnel: React.FC = () => {
                       <TableRow>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Responsável</TableHead>
+                        <TableHead>Filial</TableHead>
                         <TableHead>Data</TableHead>
-                        <TableHead>Valor</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'parcial').map(task => <TableRow key={task.id}>
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
+                          <TableCell>{getFilialName(task.filial || '')}</TableCell>
                           <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
-                          <TableCell>{formatSalesValue(calculateTaskSalesValue(task))}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>}
-            
-            {/* Total Vendas */}
-            <div className="flex justify-center">
-              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white min-w-[200px]">
-                
-              </Card>
-            </div>
           </div>
 
           {/* TAXA DE CONVERSÃO */}
