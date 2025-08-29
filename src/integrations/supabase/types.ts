@@ -493,6 +493,7 @@ export type Database = {
           is_prospect: boolean | null
           name: string
           observations: string | null
+          partial_sales_value: number | null
           phone: string | null
           photos: string[] | null
           priority: string
@@ -530,6 +531,7 @@ export type Database = {
           is_prospect?: boolean | null
           name: string
           observations?: string | null
+          partial_sales_value?: number | null
           phone?: string | null
           photos?: string[] | null
           priority: string
@@ -567,6 +569,7 @@ export type Database = {
           is_prospect?: boolean | null
           name?: string
           observations?: string | null
+          partial_sales_value?: number | null
           phone?: string | null
           photos?: string[] | null
           priority?: string
@@ -720,6 +723,10 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_task_partial_sales_value: {
+        Args: { task_id: string }
+        Returns: number
+      }
       can_access_customer_data: {
         Args: { task_owner_id: string }
         Returns: boolean
