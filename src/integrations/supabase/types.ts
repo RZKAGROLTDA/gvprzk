@@ -859,6 +859,35 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_secure_bi_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          average_conversion_rate: number
+          period_end: string
+          period_start: string
+          total_opportunities: number
+          total_sales_value: number
+        }[]
+      }
+      get_secure_business_intelligence: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          cliente_nome: string
+          conversao_pct: number
+          data_criacao: string
+          data_fechamento: string
+          filial: string
+          id: string
+          is_masked: boolean
+          status: string
+          tipo_task: string
+          valor_total_oportunidade: number
+          valor_venda_fechada: number
+          vendedor_id: string
+        }[]
+      }
       get_secure_customer_contacts: {
         Args: { task_ids?: string[] }
         Returns: {
