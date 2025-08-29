@@ -31,6 +31,48 @@ export const resolveFilialName = (filialId: string | null): string => {
   return filiaisCache.get(filialId) || 'Não informado';
 };
 
+// Function to get filial name with unified fallback logic
+export const getFilialDisplayName = (record: any, filiais: any[] = []): string => {
+  // Check in order: filial?.nome, filial_nome, branch?.name, branch_name, filial, branch
+  const candidates = [
+    record?.filial?.nome,
+    record?.filial_nome,
+    record?.branch?.name,
+    record?.branch_name,
+    record?.filial,
+    record?.branch
+  ];
+  
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'string' && candidate.trim() !== '') {
+      // If it looks like a UUID, try to resolve it
+      if (candidate.length === 36 && candidate.includes('-')) {
+        // Try cache first
+        const fromCache = filiaisCache.get(candidate);
+        if (fromCache) return fromCache;
+        
+        // Try provided filiais array
+        const filial = filiais.find(f => f.id === candidate);
+        if (filial?.nome) return filial.nome;
+      } else {
+        // Return the name directly
+        return candidate;
+      }
+    }
+  }
+  
+  // If we have branch_id, try lookup
+  if (record?.branch_id) {
+    const fromCache = filiaisCache.get(record.branch_id);
+    if (fromCache) return fromCache;
+    
+    const filial = filiais.find(f => f.id === record.branch_id);
+    if (filial?.nome) return filial.nome;
+  }
+  
+  return '—';
+};
+
 // Função para criar task com snapshot da filial
 export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> => {
   // Se não tem cache, carrega antes

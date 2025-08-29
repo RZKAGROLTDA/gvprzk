@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useFiliais } from '@/hooks/useTasksOptimized';
-import { mapSalesStatus, getStatusLabel, getStatusColor } from '@/lib/taskStandardization';
+import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialDisplayName } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 
@@ -38,10 +38,6 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { data: filiais = [] } = useFiliais();
 
-  const getFilialName = (filialId: string): string => {
-    const filial = filiais.find(f => f.id === filialId);
-    return filial ? filial.nome : filialId;
-  };
 
   // Early return if no task is provided
   if (!task) {
@@ -178,7 +174,7 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
                   <Building className="w-5 h-5 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Filial</p>
-                    <p className="font-medium">{task?.filial ? getFilialName(task.filial) : 'N/A'}</p>
+                    <p className="font-medium">{getFilialDisplayName(task, filiais)}</p>
                   </div>
                 </div>
                 
@@ -189,7 +185,7 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
                     <p className="font-medium">{task?.responsible || 'N/A'}</p>
                     {task?.filial && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Filial: {getFilialName(task.filial)}
+                        Filial: {getFilialDisplayName(task, filiais)}
                       </p>
                     )}
                   </div>

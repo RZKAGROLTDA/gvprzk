@@ -16,6 +16,7 @@ import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue } from '@/lib/securityUtils';
+import { getFilialDisplayName } from '@/lib/taskStandardization';
 
 interface SalesFunnelData {
   contacts: {
@@ -969,7 +970,7 @@ export const SalesFunnel: React.FC = () => {
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">{task.client}</TableCell>
                     <TableCell>{task.responsible}</TableCell>
-                    <TableCell>{getFilialName(task.filial)}</TableCell>
+                    <TableCell>{getFilialDisplayName(task, filiais)}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {task.taskType === 'prospection' ? 'Visita' : 
