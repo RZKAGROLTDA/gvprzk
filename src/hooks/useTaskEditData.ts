@@ -103,12 +103,13 @@ export const useTaskEditData = (taskId: string | null) => {
         table: 'tasks_new'
       });
 
-      // Try to get additional data from original tasks table if it exists
+      // Try to get additional data from original tasks table by multiple criteria
       const { data: originalTaskData } = await supabase
         .from('tasks')
         .select('name, responsible, property, phone, clientcode, task_type, priority, start_date, end_date, start_time, end_time, family_product, equipment_quantity, propertyhectares')
-        .eq('client', taskData.cliente_nome)
-        .eq('created_by', taskData.vendedor_id)
+        .or(`and(client.eq.${taskData.cliente_nome},created_by.eq.${taskData.vendedor_id}),and(name.ilike.%${taskData.cliente_nome}%,created_by.eq.${taskData.vendedor_id})`)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       console.log('🔍 useTaskEditData: Dados adicionais encontrados:', { 
@@ -195,8 +196,8 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
-      // Update task data
-      if (updates.cliente_nome || updates.cliente_email || updates.filial || updates.notas) {
+      // Update task data in tasks_new
+      if (updates.cliente_nome || updates.cliente_email || updates.filial || updates.notas || updates.tipo) {
         const { error: taskError } = await supabase
           .from('tasks_new')
           .update({
@@ -204,11 +205,34 @@ export const useTaskEditData = (taskId: string | null) => {
             cliente_email: updates.cliente_email || data.cliente_email,
             filial: updates.filial || data.filial,
             notas: updates.notas || data.notas,
+            tipo: updates.tipo || data.tipo,
             updated_at: new Date().toISOString()
           })
           .eq('id', taskId);
 
         if (taskError) throw taskError;
+      }
+
+      // Update additional task data in original tasks table if we have the data
+      if (data.name && (updates.name || updates.responsible || updates.property || updates.phone || updates.clientCode || updates.taskType || updates.priority)) {
+        const { error: originalTaskError } = await supabase
+          .from('tasks')
+          .update({
+            name: updates.name || data.name,
+            responsible: updates.responsible || data.responsible,
+            property: updates.property || data.property,
+            phone: updates.phone || data.phone,
+            clientcode: updates.clientCode || data.clientCode,
+            task_type: updates.taskType || data.taskType,
+            priority: updates.priority || data.priority,
+            updated_at: new Date().toISOString()
+          })
+          .eq('client', data.cliente_nome)
+          .eq('created_by', data.vendedor_id);
+
+        if (originalTaskError) {
+          console.warn('Erro ao atualizar dados adicionais da task:', originalTaskError);
+        }
       }
 
       // Update opportunity data if exists

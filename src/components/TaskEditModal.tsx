@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
@@ -44,6 +44,24 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   
   console.log('🔧 TaskEditModal: Estado dos dados:', { taskData: !!taskData, loading, error });
   
+  // Map task type from different sources to standardized values
+  const mapTaskType = (type: string): 'visita' | 'ligacao' | 'checklist' => {
+    switch (type) {
+      case 'prospection':
+      case 'field-visit':
+      case 'visita':
+        return 'visita';
+      case 'ligacao':
+      case 'call':
+        return 'ligacao';
+      case 'checklist':
+      case 'workshop-checklist':
+        return 'checklist';
+      default:
+        return 'visita';
+    }
+  };
+  
   // Status mapping from opportunity status
   const getInitialStatus = () => {
     if (!taskData?.opportunity) return 'prospect';
@@ -72,7 +90,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     property: '',
     phone: '',
     clientCode: '',
-    taskType: 'prospection' as 'prospection' | 'ligacao' | 'checklist',
+    taskType: 'visita' as 'visita' | 'ligacao' | 'checklist',
     priority: 'medium' as 'low' | 'medium' | 'high',
     startDate: '',
     endDate: '',
@@ -117,7 +135,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       property: taskData.property || '',
       phone: taskData.phone || '',
       clientCode: taskData.clientCode || '',
-      taskType: (taskData.taskType as 'prospection' | 'ligacao' | 'checklist') || 'prospection',
+      taskType: mapTaskType(taskData.taskType || taskData.tipo || 'prospection'),
       priority: (taskData.priority as 'low' | 'medium' | 'high') || 'medium',
       startDate: taskData.startDate ? new Date(taskData.startDate).toISOString().split('T')[0] : '',
       endDate: taskData.endDate ? new Date(taskData.endDate).toISOString().split('T')[0] : '',
@@ -229,25 +247,32 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       const opportunityStatus = statusMapping[formData.status as keyof typeof statusMapping];
 
-      // Prepare update data
-      const updates = {
+      // Prepare update data including all task fields
+      const updatedData = {
         cliente_nome: formData.customerName,
         cliente_email: formData.customerEmail,
         filial: formData.filial,
         notas: formData.observacoes,
-        opportunity: taskData.opportunity ? {
-          id: taskData.opportunity.id,
+        tipo: formData.taskType,
+        // Additional task fields
+        name: formData.name,
+        responsible: formData.responsible,
+        property: formData.property,
+        phone: formData.phone,
+        clientCode: formData.clientCode,
+        taskType: formData.taskType,
+        priority: formData.priority,
+        opportunity: {
           status: opportunityStatus,
-          valor_total_oportunidade: valorTotalOportunidade,
           valor_venda_fechada: valorVenda
-        } : undefined,
+        },
         items: formData.products.map(product => ({
           id: product.id,
           qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_ofertada : 0
         }))
       };
 
-      const success = await updateTaskData(updates);
+      const success = await updateTaskData(updatedData);
       
       if (success) {
         await invalidateAll();
@@ -336,7 +361,35 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="taskType">Tipo de Atividade</Label>
+                <Select value={formData.taskType} onValueChange={(value: 'visita' | 'ligacao' | 'checklist') => setFormData(prev => ({ ...prev, taskType: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="visita">Visita</SelectItem>
+                    <SelectItem value="ligacao">Ligação</SelectItem>
+                    <SelectItem value="checklist">Checklist</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="priority">Prioridade</Label>
+                <Select value={formData.priority} onValueChange={(value: 'low' | 'medium' | 'high') => setFormData(prev => ({ ...prev, priority: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Baixa</SelectItem>
+                    <SelectItem value="medium">Média</SelectItem>
+                    <SelectItem value="high">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="startDate">Data de Início</Label>
                 <Input
@@ -346,7 +399,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                 />
               </div>
-              
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="endDate">Data de Fim</Label>
                 <Input
@@ -356,9 +411,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
               <div className="space-y-2">
                 <Label htmlFor="startTime">Hora de Início</Label>
                 <Input
@@ -368,7 +421,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                   onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="endTime">Hora de Fim</Label>
                 <Input
