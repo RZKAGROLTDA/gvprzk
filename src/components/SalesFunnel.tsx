@@ -266,6 +266,11 @@ export const SalesFunnel: React.FC = () => {
     };
   }, [filteredTasks]);
 
+  // Memoized function to get filial name to prevent excessive recalculations
+  const getFilialName = useCallback((filialValue: string | null | undefined) => {
+    return getFilialNameRobust(filialValue, filiais);
+  }, [filiais]);
+
   // Calculate coverage data
   const coverageData = useMemo((): CoverageData[] => {
     const consultantStats = new Map<string, {
@@ -300,7 +305,7 @@ export const SalesFunnel: React.FC = () => {
         coverage: totalClients > 0 ? visitedClients / totalClients * 100 : 0
       };
     });
-  }, [filteredTasks, filiais]);
+  }, [filteredTasks, getFilialName]);
 
   // Calculate client details
   const clientDetails = useMemo((): ClientDetails[] => {
@@ -352,7 +357,7 @@ export const SalesFunnel: React.FC = () => {
       salesValue: stats.salesValue,
       status: stats.status
     })).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime()).slice(0, 10); // Limit to top 10
-  }, [filteredTasks, filiais]);
+  }, [filteredTasks, getFilialName]);
 
   // Get detailed data for tables
   const getDetailedData = useCallback((section: string) => {
@@ -378,11 +383,6 @@ export const SalesFunnel: React.FC = () => {
     }));
   };
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
-
-  // Memoized function to get filial name to prevent excessive recalculations
-  const getFilialName = useCallback((filialValue: string | null | undefined) => {
-    return getFilialNameRobust(filialValue, filiais);
-  }, [filiais]);
 
   // Handler para abrir o modal de edição
   const handleEditTask = useCallback((task: Task) => {
