@@ -63,7 +63,7 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
-      // Fetch task data from tasks_new first
+      // Try to fetch from tasks_new table first
       let { data: taskData, error: taskError } = await supabase
         .from('tasks_new')
         .select('*')
@@ -74,50 +74,17 @@ export const useTaskEditData = (taskId: string | null) => {
         console.error('🔍 useTaskEditData: Erro buscando em tasks_new:', taskError);
         throw taskError;
       }
-      
-      // If not found in tasks_new, try the old tasks table
-      if (!taskData) {
-        console.log('🔍 useTaskEditData: Task não encontrada em tasks_new, tentando tasks antigas...');
-        const { data: oldTaskData, error: oldTaskError } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('id', taskId)
-          .maybeSingle();
 
-        if (oldTaskError) {
-          console.error('🔍 useTaskEditData: Erro buscando em tasks antigas:', oldTaskError);
-          throw oldTaskError;
-        }
-        
-        if (!oldTaskData) {
-          throw new Error('Task não encontrada em nenhuma tabela');
-        }
-        
-        // Convert old task format to new format
-        taskData = {
-          id: oldTaskData.id,
-          vendedor_id: oldTaskData.created_by,
-          data: oldTaskData.start_date,
-          tipo: oldTaskData.task_type,
-          cliente_nome: oldTaskData.client,
-          cliente_email: oldTaskData.email,
-          filial: oldTaskData.filial,
-          notas: oldTaskData.observations,
-          created_at: oldTaskData.created_at,
-          updated_at: oldTaskData.updated_at
-        };
-        
-        console.log('🔍 useTaskEditData: Task convertida da tabela antiga:', {
-          id: taskData.id,
-          cliente_nome: taskData.cliente_nome
-        });
+      // If not found in tasks_new, this task doesn't exist
+      if (!taskData) {
+        throw new Error('Task não encontrada');
       }
 
       console.log('🔍 useTaskEditData: Task encontrada:', { 
         id: taskData.id, 
         cliente_nome: taskData.cliente_nome,
         vendedor_id: taskData.vendedor_id,
-        table: taskData.tipo ? 'tasks_new' : 'tasks_old'
+        table: 'tasks_new'
       });
 
       // Fetch opportunity data
