@@ -185,6 +185,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_opportunities_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_new"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "opportunities_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
@@ -234,6 +241,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_opportunity_items_opportunity"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_opportunity_items_opportunity"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "vw_oportunidades_kpis"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "opportunity_items_opportunity_id_fkey"
             columns: ["opportunity_id"]
@@ -292,6 +313,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_products_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "products_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
@@ -342,6 +370,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_profiles_filial"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profiles_filial_id_fkey"
             columns: ["filial_id"]
             isOneToOne: false
@@ -385,6 +420,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_reminders_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reminders_task_id_fkey"
             columns: ["task_id"]
@@ -470,7 +512,15 @@ export type Database = {
           start_date?: string | null
           task_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_task_creation_log_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
@@ -586,6 +636,123 @@ export type Database = {
           status?: string
           task_type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks_backup: {
+        Row: {
+          check_in_location: Json | null
+          client: string | null
+          clientcode: string | null
+          created_at: string | null
+          created_by: string | null
+          documents: string[] | null
+          email: string | null
+          end_date: string | null
+          end_time: string | null
+          equipment_list: Json | null
+          equipment_quantity: number | null
+          family_product: string | null
+          filial: string | null
+          final_km: number | null
+          id: string | null
+          initial_km: number | null
+          is_prospect: boolean | null
+          name: string | null
+          observations: string | null
+          partial_sales_value: number | null
+          phone: string | null
+          photos: string[] | null
+          priority: string | null
+          property: string | null
+          propertyhectares: number | null
+          prospect_notes: string | null
+          prospect_notes_justification: string | null
+          responsible: string | null
+          sales_confirmed: boolean | null
+          sales_type: string | null
+          sales_value: number | null
+          start_date: string | null
+          start_time: string | null
+          status: string | null
+          task_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          check_in_location?: Json | null
+          client?: string | null
+          clientcode?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: string[] | null
+          email?: string | null
+          end_date?: string | null
+          end_time?: string | null
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
+          filial?: string | null
+          final_km?: number | null
+          id?: string | null
+          initial_km?: number | null
+          is_prospect?: boolean | null
+          name?: string | null
+          observations?: string | null
+          partial_sales_value?: number | null
+          phone?: string | null
+          photos?: string[] | null
+          priority?: string | null
+          property?: string | null
+          propertyhectares?: number | null
+          prospect_notes?: string | null
+          prospect_notes_justification?: string | null
+          responsible?: string | null
+          sales_confirmed?: boolean | null
+          sales_type?: string | null
+          sales_value?: number | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          check_in_location?: Json | null
+          client?: string | null
+          clientcode?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: string[] | null
+          email?: string | null
+          end_date?: string | null
+          end_time?: string | null
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
+          filial?: string | null
+          final_km?: number | null
+          id?: string | null
+          initial_km?: number | null
+          is_prospect?: boolean | null
+          name?: string | null
+          observations?: string | null
+          partial_sales_value?: number | null
+          phone?: string | null
+          photos?: string[] | null
+          priority?: string | null
+          property?: string | null
+          propertyhectares?: number | null
+          prospect_notes?: string | null
+          prospect_notes_justification?: string | null
+          responsible?: string | null
+          sales_confirmed?: boolean | null
+          sales_type?: string | null
+          sales_value?: number | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_type?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -794,6 +961,14 @@ export type Database = {
       cleanup_invitation_tokens: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      cleanup_orphaned_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          action: string
+          count: number
+          table_name: string
+        }[]
       }
       cleanup_security_audit_logs: {
         Args: Record<PropertyKey, never>
@@ -1168,6 +1343,16 @@ export type Database = {
         Args: { is_owner: boolean; phone: string; user_role: string }
         Returns: string
       }
+      migrate_tasks_to_new_structure: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          action: string
+          client_name: string
+          new_task_id: string
+          old_task_id: string
+          status: string
+        }[]
+      }
       monitor_high_risk_activity: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1204,6 +1389,15 @@ export type Database = {
       validate_client_input: {
         Args: { input_data: Json }
         Returns: boolean
+      }
+      validate_data_integrity: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          check_name: string
+          count: number
+          details: string
+          status: string
+        }[]
       }
       validate_password_strength: {
         Args: { password: string }
