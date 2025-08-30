@@ -73,40 +73,55 @@ export const getFilialDisplayName = (record: any, filiais: any[] = []): string =
   return '—';
 };
 
+// Cache for memoized results to prevent excessive recalculations
+const filialNameCache = new Map<string, string>();
+
 // Robust function to handle both UUID and string values for filial
 export const getFilialNameRobust = (filialValue: string | null | undefined, filiais: any[] = []): string => {
-  console.log('🏢 getFilialNameRobust:', { filialValue, filiaisCacheSize: filiaisCache.size, filiaisArrayLength: filiais.length });
-  
+  // Early return for empty values
   if (!filialValue) {
-    console.log('🔴 Filial value is empty');
     return "—";
   }
   
+  // Check cache first to avoid repeated calculations
+  const cacheKey = `${filialValue}-${filiais.length}`;
+  if (filialNameCache.has(cacheKey)) {
+    return filialNameCache.get(cacheKey)!;
+  }
+  
+  let result: string;
+  
   // Check if it's a UUID (format: 8-4-4-4-12 characters)
   if (filialValue.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-    console.log('✅ UUID detected:', filialValue);
-    
     // Try cache first
     const fromCache = filiaisCache.get(filialValue);
     if (fromCache) {
-      console.log('🎯 Found in cache:', fromCache);
-      return fromCache;
+      result = fromCache;
+    } else {
+      // Try provided filiais array
+      const filial = filiais.find(f => f.id === filialValue);
+      if (filial?.nome) {
+        result = filial.nome;
+        // Store in main cache for future use
+        filiaisCache.set(filialValue, filial.nome);
+      } else {
+        result = filialValue;
+      }
     }
-    
-    // Try provided filiais array
-    const filial = filiais.find(f => f.id === filialValue);
-    if (filial?.nome) {
-      console.log('🎯 Found in array:', filial.nome);
-      return filial.nome;
-    }
-    
-    console.log('❌ UUID not found in cache or array');
-    return filialValue;
+  } else {
+    // If it's already a name (like "Tele Vendas", "Não informado"), return it directly
+    result = filialValue;
   }
   
-  // If it's already a name (like "Tele Vendas", "Não informado"), return it directly
-  console.log('📝 Direct name:', filialValue);
-  return filialValue;
+  // Cache the result to prevent repeated calculations
+  filialNameCache.set(cacheKey, result);
+  
+  // Clear cache if it gets too large (prevent memory leaks)
+  if (filialNameCache.size > 1000) {
+    filialNameCache.clear();
+  }
+  
+  return result;
 };
 
 // Função para criar task com snapshot da filial
