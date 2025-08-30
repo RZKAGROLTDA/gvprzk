@@ -65,7 +65,22 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     observacoes: '',
     status: 'prospect',
     prospectNotes: '',
-    products: [] as OpportunityItem[]
+    products: [] as OpportunityItem[],
+    // Campos adicionais da tarefa
+    name: '',
+    responsible: '',
+    property: '',
+    phone: '',
+    clientCode: '',
+    taskType: 'prospection' as 'prospection' | 'ligacao' | 'checklist',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    startDate: '',
+    endDate: '',
+    startTime: '',
+    endTime: '',
+    familyProduct: '',
+    equipmentQuantity: 0,
+    propertyHectares: 0
   });
 
   // Load task data into form when available
@@ -95,7 +110,22 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         subtotal_ofertado: item.subtotal_ofertado,
         subtotal_vendido: item.subtotal_vendido,
         incluir_na_venda_parcial: item.qtd_vendida > 0
-      }))
+      })),
+      // Preencher campos adicionais da tarefa
+      name: taskData.name || '',
+      responsible: taskData.responsible || '',
+      property: taskData.property || '',
+      phone: taskData.phone || '',
+      clientCode: taskData.clientCode || '',
+      taskType: (taskData.taskType as 'prospection' | 'ligacao' | 'checklist') || 'prospection',
+      priority: (taskData.priority as 'low' | 'medium' | 'high') || 'medium',
+      startDate: taskData.startDate ? new Date(taskData.startDate).toISOString().split('T')[0] : '',
+      endDate: taskData.endDate ? new Date(taskData.endDate).toISOString().split('T')[0] : '',
+      startTime: taskData.startTime || '',
+      endTime: taskData.endTime || '',
+      familyProduct: taskData.familyProduct || '',
+      equipmentQuantity: taskData.equipmentQuantity || 0,
+      propertyHectares: taskData.propertyHectares || 0
     };
     
     console.log('🔧 TaskEditModal: Atualizando formData:', newFormData);
@@ -281,38 +311,179 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Dados do Cliente */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="customerName">Nome do Cliente</Label>
-              <Input
-                id="customerName"
-                value={formData.customerName}
-                onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                placeholder="Nome do cliente"
-              />
+          {/* Dados da Tarefa */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Informações da Tarefa</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="taskName">Nome da Tarefa</Label>
+                <Input
+                  id="taskName"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Nome da tarefa"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="responsible">Responsável</Label>
+                <Input
+                  id="responsible"
+                  value={formData.responsible}
+                  onChange={(e) => setFormData(prev => ({ ...prev, responsible: e.target.value }))}
+                  placeholder="Responsável pela tarefa"
+                />
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="customerEmail">Email</Label>
-              <Input
-                id="customerEmail"
-                type="email"
-                value={formData.customerEmail || '—'}
-                onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                placeholder="Email do cliente"
-              />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Data de Início</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="endDate">Data de Fim</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Hora de Início</Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="endTime">Hora de Fim</Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="filial">Filial</Label>
-            <Input
-              id="filial"
-              value={formData.filial || '—'}
-              onChange={(e) => setFormData(prev => ({ ...prev, filial: e.target.value }))}
-              placeholder="Filial"
-            />
+          {/* Dados do Cliente */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Informações do Cliente</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="customerName">Nome do Cliente</Label>
+                <Input
+                  id="customerName"
+                  value={formData.customerName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
+                  placeholder="Nome do cliente"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="customerEmail">Email</Label>
+                <Input
+                  id="customerEmail"
+                  type="email"
+                  value={formData.customerEmail || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                  placeholder="Email do cliente"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="Telefone do cliente"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="clientCode">Código do Cliente</Label>
+                <Input
+                  id="clientCode"
+                  value={formData.clientCode}
+                  onChange={(e) => setFormData(prev => ({ ...prev, clientCode: e.target.value }))}
+                  placeholder="Código do cliente"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="property">Propriedade</Label>
+                <Input
+                  id="property"
+                  value={formData.property}
+                  onChange={(e) => setFormData(prev => ({ ...prev, property: e.target.value }))}
+                  placeholder="Nome da propriedade"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="filial">Filial</Label>
+                <Input
+                  id="filial"
+                  value={formData.filial || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, filial: e.target.value }))}
+                  placeholder="Filial"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                <Input
+                  id="propertyHectares"
+                  type="number"
+                  value={formData.propertyHectares}
+                  onChange={(e) => setFormData(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="equipmentQuantity">Quantidade de Equipamentos</Label>
+                <Input
+                  id="equipmentQuantity"
+                  type="number"
+                  value={formData.equipmentQuantity}
+                  onChange={(e) => setFormData(prev => ({ ...prev, equipmentQuantity: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="familyProduct">Família do Produto</Label>
+                <Input
+                  id="familyProduct"
+                  value={formData.familyProduct}
+                  onChange={(e) => setFormData(prev => ({ ...prev, familyProduct: e.target.value }))}
+                  placeholder="Família do produto"
+                />
+              </div>
+            </div>
           </div>
 
           {/* 1) Totais (READ-ONLY) */}

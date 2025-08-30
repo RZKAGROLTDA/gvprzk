@@ -14,6 +14,22 @@ export interface TaskEditData {
   data: Date;
   tipo: string;
   
+  // Additional task data from original tasks table
+  name?: string;
+  responsible?: string;
+  property?: string;
+  phone?: string;
+  clientCode?: string;
+  taskType?: string;
+  priority?: string;
+  startDate?: Date;
+  endDate?: Date;
+  startTime?: string;
+  endTime?: string;
+  familyProduct?: string;
+  equipmentQuantity?: number;
+  propertyHectares?: number;
+  
   // Opportunity data
   opportunity?: {
     id: string;
@@ -87,6 +103,18 @@ export const useTaskEditData = (taskId: string | null) => {
         table: 'tasks_new'
       });
 
+      // Try to get additional data from original tasks table if it exists
+      const { data: originalTaskData } = await supabase
+        .from('tasks')
+        .select('name, responsible, property, phone, clientcode, task_type, priority, start_date, end_date, start_time, end_time, family_product, equipment_quantity, propertyhectares')
+        .eq('client', taskData.cliente_nome)
+        .eq('created_by', taskData.vendedor_id)
+        .maybeSingle();
+
+      console.log('🔍 useTaskEditData: Dados adicionais encontrados:', { 
+        hasOriginalData: !!originalTaskData
+      });
+
       // Fetch opportunity data
       const { data: opportunityData, error: opportunityError } = await supabase
         .from('opportunities')
@@ -120,6 +148,21 @@ export const useTaskEditData = (taskId: string | null) => {
 
       const fullData = {
         ...taskData,
+        // Include additional data from original tasks table if available
+        name: originalTaskData?.name,
+        responsible: originalTaskData?.responsible,
+        property: originalTaskData?.property,
+        phone: originalTaskData?.phone,
+        clientCode: originalTaskData?.clientcode,
+        taskType: originalTaskData?.task_type,
+        priority: originalTaskData?.priority,
+        startDate: originalTaskData?.start_date,
+        endDate: originalTaskData?.end_date,
+        startTime: originalTaskData?.start_time,
+        endTime: originalTaskData?.end_time,
+        familyProduct: originalTaskData?.family_product,
+        equipmentQuantity: originalTaskData?.equipment_quantity,
+        propertyHectares: originalTaskData?.propertyhectares,
         opportunity: opportunityData,
         items: itemsData || []
       };
