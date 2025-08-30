@@ -56,6 +56,7 @@ interface ClientDetails {
   salesValue: number;
   status: string;
 }
+
 export const SalesFunnel: React.FC = () => {
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
@@ -377,12 +378,37 @@ export const SalesFunnel: React.FC = () => {
     }));
   };
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+
+  // Handler para abrir o modal de edição
+  const handleEditTask = useCallback((task: Task) => {
+    console.log('🔧 SalesFunnel: Abrindo modal de edição para task:', task.id, task.client);
+    setSelectedTask(task);
+    setIsEditModalOpen(true);
+  }, []);
+
+  // Handler para fechar o modal de edição
+  const handleCloseEditModal = useCallback(() => {
+    console.log('🔧 SalesFunnel: Fechando modal de edição');
+    setIsEditModalOpen(false);
+    setSelectedTask(null);
+  }, []);
+
+  // Handler para atualização de task
+  const handleTaskUpdate = useCallback(async () => {
+    console.log('🔄 SalesFunnel: Callback onTaskUpdate chamado, forçando atualização');
+    await queryClient.invalidateQueries({
+      queryKey: ['tasks-optimized']
+    });
+    await refetch();
+  }, [queryClient, refetch]);
+
   if (loading) {
     return <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         <span className="ml-2">Carregando todos os dados...</span>
       </div>;
   }
+
   return <div className="space-y-6">
       {/* Header com botão de refresh */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
@@ -1008,10 +1034,7 @@ export const SalesFunnel: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setIsEditModalOpen(true);
-                          }}
+                          onClick={() => handleEditTask(task)}
                           className="flex items-center space-x-1"
                         >
                           <Edit className="h-4 w-4" />
@@ -1095,25 +1118,21 @@ export const SalesFunnel: React.FC = () => {
       setSelectedTask(null);
     }} />}
       
-      <TaskEditModal taskId={selectedTask?.id || null} isOpen={isEditModalOpen} onClose={() => {
-      setIsEditModalOpen(false);
-      setSelectedTask(null);
-    }} onTaskUpdate={async () => {
-      console.log('🔄 SalesFunnel - Callback onTaskUpdate chamado, forçando atualização');
-      await queryClient.invalidateQueries({
-        queryKey: ['tasks-optimized']
-      });
-      await refetch();
-    }} />
+      <TaskEditModal 
+        taskId={selectedTask?.id || null} 
+        isOpen={isEditModalOpen} 
+        onClose={handleCloseEditModal}
+        onTaskUpdate={handleTaskUpdate}
+      />
 
-    {/* Task Form Visualization Modal */}
-    <TaskFormVisualization
-      task={selectedTask}
-      isOpen={isTaskVisualizationOpen}
-      onClose={() => {
-        setIsTaskVisualizationOpen(false);
-        setSelectedTask(null);
-      }}
-    />
+      {/* Task Form Visualization Modal */}
+      <TaskFormVisualization
+        task={selectedTask}
+        isOpen={isTaskVisualizationOpen}
+        onClose={() => {
+          setIsTaskVisualizationOpen(false);
+          setSelectedTask(null);
+        }}
+      />
     </div>;
 };
