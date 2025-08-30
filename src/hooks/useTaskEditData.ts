@@ -134,14 +134,18 @@ export const useTaskEditData = (taskId: string | null) => {
         status: opportunityData?.status 
       });
 
-      // Fetch opportunity items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('opportunity_items')
-        .select('*')
-        .eq('opportunity_id', opportunityData?.id || 'none')
-        .order('produto');
+      // Fetch opportunity items only if we have a valid opportunity
+      let itemsData = [];
+      if (opportunityData?.id) {
+        const { data: fetchedItems, error: itemsError } = await supabase
+          .from('opportunity_items')
+          .select('*')
+          .eq('opportunity_id', opportunityData.id)
+          .order('produto');
 
-      if (itemsError) throw itemsError;
+        if (itemsError) throw itemsError;
+        itemsData = fetchedItems || [];
+      }
 
       console.log('🔍 useTaskEditData: Items encontrados:', { 
         items: itemsData?.length || 0 
