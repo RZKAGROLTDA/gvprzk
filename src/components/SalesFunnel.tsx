@@ -386,10 +386,19 @@ export const SalesFunnel: React.FC = () => {
 
   // Handler para abrir o modal de edição
   const handleEditTask = useCallback((task: Task) => {
-    console.log('🔧 SalesFunnel: Abrindo modal de edição para task:', task.id, task.client);
+    console.log('🔧 SalesFunnel: Abrindo modal de edição para task:', {
+      taskId: task.id, 
+      client: task.client,
+      hasId: !!task.id,
+      modalOpen: isEditModalOpen
+    });
     setSelectedTask(task);
     setIsEditModalOpen(true);
-  }, []);
+    console.log('🔧 SalesFunnel: Estado após abrir modal:', {
+      selectedTask: !!task,
+      isEditModalOpen: true
+    });
+  }, [isEditModalOpen]);
 
   // Handler para fechar o modal de edição
   const handleCloseEditModal = useCallback(() => {

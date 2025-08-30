@@ -36,9 +36,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   onClose,
   onTaskUpdate
 }) => {
+  console.log('🔧 TaskEditModal: Renderizado com props:', { taskId, isOpen });
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { data: taskData, loading, updateTaskData } = useTaskEditData(taskId);
+  const { data: taskData, loading, error, updateTaskData } = useTaskEditData(taskId);
   const { invalidateAll } = useSecurityCache();
+  
+  console.log('🔧 TaskEditModal: Estado dos dados:', { taskData: !!taskData, loading, error });
   
   // Status mapping from opportunity status
   const getInitialStatus = () => {
@@ -66,9 +70,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
   // Load task data into form when available
   useEffect(() => {
+    console.log('🔧 TaskEditModal: useEffect - taskData mudou:', { 
+      hasTaskData: !!taskData,
+      taskId: taskData?.id,
+      cliente_nome: taskData?.cliente_nome 
+    });
+    
     if (!taskData) return;
     
-    setFormData({
+    const newFormData = {
       customerName: taskData.cliente_nome || '',
       customerEmail: taskData.cliente_email || '',
       filial: taskData.filial || '',
@@ -86,7 +96,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         subtotal_vendido: item.subtotal_vendido,
         incluir_na_venda_parcial: item.qtd_vendida > 0
       }))
-    });
+    };
+    
+    console.log('🔧 TaskEditModal: Atualizando formData:', newFormData);
+    setFormData(newFormData);
   }, [taskData]);
 
   // 1) Cálculos dos totais (READ-ONLY)
@@ -222,14 +235,38 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
   // Show loading state
   if (loading || !taskData) {
+    console.log('🔧 TaskEditModal: Exibindo estado de carregamento:', { loading, hasTaskData: !!taskData, error });
+    
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Carregando...</DialogTitle>
+            <DialogTitle>
+              {loading ? 'Carregando dados da task...' : error ? 'Erro ao carregar' : 'Carregando...'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            {loading && (
+              <>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="text-sm text-muted-foreground">Carregando dados da task...</p>
+              </>
+            )}
+            {error && (
+              <div className="text-center space-y-2">
+                <p className="text-red-600 font-medium">Erro: {error}</p>
+                <p className="text-sm text-muted-foreground">
+                  Verifique sua conexão e permissões de acesso
+                </p>
+                <Button 
+                  onClick={onClose} 
+                  variant="outline"
+                  className="mt-4"
+                >
+                  Fechar
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
