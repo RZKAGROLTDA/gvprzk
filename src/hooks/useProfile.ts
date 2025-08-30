@@ -75,7 +75,7 @@ export const useProfile = () => {
         .from('profiles')
         .select(`
           *,
-          filiais:filial_id (
+          filiais!fk_profiles_filial (
             nome
           )
         `)

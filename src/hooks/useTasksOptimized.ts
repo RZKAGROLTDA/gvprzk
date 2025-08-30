@@ -81,10 +81,21 @@ export const useTasksOptimized = (includeDetails = false) => {
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
-      // Verificar perfil primeiro
-      const hasValidProfile = await ensureUserProfile();
-      if (!hasValidProfile) {
-        throw new Error('Profile required - redirecting to setup');
+      // Verificar perfil primeiro (sem criar se não existir para evitar loops)
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, approval_status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!profile || profile.approval_status !== 'approved') {
+          console.log('❌ Perfil não encontrado ou não aprovado, retornando array vazio');
+          return [];
+        }
+      } catch (error) {
+        console.error('❌ Erro ao verificar perfil:', error);
+        return [];
       }
 
         // Timeout de 15 segundos

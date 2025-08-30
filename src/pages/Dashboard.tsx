@@ -6,6 +6,7 @@ import { DashboardSkeleton, TableSkeleton } from '@/components/SkeletonLoader';
 import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthCheck';
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
+import { DatabaseMigrationButton } from '@/components/DatabaseMigrationButton';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnel } from '@/components/SalesFunnel';
@@ -67,7 +68,16 @@ const Dashboard: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="emergencia" className="space-y-6">
-          <EmergencyDataAccess />
+          <div className="space-y-4">
+            <div className="border rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4">Migração e Correção do Banco de Dados</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Use estas ferramentas para migrar dados da estrutura antiga para a nova e corrigir problemas de integridade.
+              </p>
+              <DatabaseMigrationButton />
+            </div>
+            <EmergencyDataAccess />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

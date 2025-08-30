@@ -191,13 +191,6 @@ export type Database = {
             referencedRelation: "tasks_new"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "opportunities_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks_new"
-            referencedColumns: ["id"]
-          },
         ]
       }
       opportunity_items: {
@@ -255,20 +248,6 @@ export type Database = {
             referencedRelation: "vw_oportunidades_kpis"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "opportunity_items_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "opportunities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "opportunity_items_opportunity_id_fkey"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "vw_oportunidades_kpis"
-            referencedColumns: ["id"]
-          },
         ]
       }
       products: {
@@ -314,13 +293,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "fk_products_task"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "products_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
@@ -376,13 +348,6 @@ export type Database = {
             referencedRelation: "filiais"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "profiles_filial_id_fkey"
-            columns: ["filial_id"]
-            isOneToOne: false
-            referencedRelation: "filiais"
-            referencedColumns: ["id"]
-          },
         ]
       }
       reminders: {
@@ -422,13 +387,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "fk_reminders_task"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reminders_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
