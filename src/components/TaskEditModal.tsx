@@ -665,7 +665,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     {formData.products.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                          Nenhum produto cadastrado para esta oportunidade
+                          <div className="space-y-2">
+                            <p>Nenhum produto cadastrado para esta task</p>
+                            <p className="text-sm text-gray-400">
+                              Os produtos podem estar em uma estrutura de dados diferente ou não foram cadastrados durante a criação da task
+                            </p>
+                          </div>
                         </td>
                       </tr>
                     )}

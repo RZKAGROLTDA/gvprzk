@@ -86,37 +86,100 @@ export const useTaskEditData = (taskId: string | null) => {
         .eq('id', taskId)
         .maybeSingle();
 
-      if (taskError) {
-        console.error('🔍 useTaskEditData: Erro buscando em tasks_new:', taskError);
-        throw taskError;
-      }
+      let isFromTasksNew = true;
 
-      // If not found in tasks_new, this task doesn't exist
+      // If not found in tasks_new, try tasks table
       if (!taskData) {
-        throw new Error('Task não encontrada');
+        console.log('🔍 useTaskEditData: Task não encontrada em tasks_new, tentando tasks');
+        
+        const { data: originalTaskData, error: originalTaskError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('id', taskId)
+          .maybeSingle();
+
+        if (originalTaskError) {
+          console.error('🔍 useTaskEditData: Erro buscando em tasks:', originalTaskError);
+          throw originalTaskError;
+        }
+
+        if (!originalTaskData) {
+          throw new Error('Task não encontrada');
+        }
+
+        // Convert tasks table data to tasks_new format
+        taskData = {
+          id: originalTaskData.id,
+          cliente_nome: originalTaskData.client,
+          cliente_email: originalTaskData.email,
+          filial: originalTaskData.filial,
+          notas: originalTaskData.observations,
+          vendedor_id: originalTaskData.created_by,
+          data: originalTaskData.start_date,
+          tipo: originalTaskData.task_type,
+          created_at: originalTaskData.created_at,
+          updated_at: originalTaskData.updated_at,
+          // Include original task data
+          name: originalTaskData.name,
+          responsible: originalTaskData.responsible,
+          property: originalTaskData.property,
+          phone: originalTaskData.phone,
+          clientCode: originalTaskData.clientcode,
+          taskType: originalTaskData.task_type,
+          priority: originalTaskData.priority,
+          startDate: originalTaskData.start_date,
+          endDate: originalTaskData.end_date,
+          startTime: originalTaskData.start_time,
+          endTime: originalTaskData.end_time,
+          familyProduct: originalTaskData.family_product,
+          equipmentQuantity: originalTaskData.equipment_quantity,
+          propertyHectares: originalTaskData.propertyhectares
+        };
+        isFromTasksNew = false;
       }
 
       console.log('🔍 useTaskEditData: Task encontrada:', { 
         id: taskData.id, 
         cliente_nome: taskData.cliente_nome,
         vendedor_id: taskData.vendedor_id,
-        table: 'tasks_new'
+        table: isFromTasksNew ? 'tasks_new' : 'tasks'
       });
 
-      // Try to get additional data from original tasks table by multiple criteria
-      const { data: originalTaskData } = await supabase
-        .from('tasks')
-        .select('name, responsible, property, phone, clientcode, task_type, priority, start_date, end_date, start_time, end_time, family_product, equipment_quantity, propertyhectares')
-        .or(`and(client.eq.${taskData.cliente_nome},created_by.eq.${taskData.vendedor_id}),and(name.ilike.%${taskData.cliente_nome}%,created_by.eq.${taskData.vendedor_id})`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // If from tasks_new, try to get additional data from original tasks table
+      if (isFromTasksNew) {
+        const { data: originalTaskData } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('client', taskData.cliente_nome)
+          .eq('created_by', taskData.vendedor_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      console.log('🔍 useTaskEditData: Dados adicionais encontrados:', { 
-        hasOriginalData: !!originalTaskData
-      });
+        console.log('🔍 useTaskEditData: Dados adicionais encontrados:', { 
+          hasOriginalData: !!originalTaskData
+        });
 
-      // Fetch opportunity data
+        // Merge additional data if found
+        if (originalTaskData) {
+          taskData.name = originalTaskData.name;
+          taskData.responsible = originalTaskData.responsible;
+          taskData.property = originalTaskData.property;
+          taskData.phone = originalTaskData.phone;
+          taskData.clientCode = originalTaskData.clientcode;
+          taskData.taskType = originalTaskData.task_type;
+          taskData.priority = originalTaskData.priority;
+          taskData.startDate = originalTaskData.start_date;
+          taskData.endDate = originalTaskData.end_date;
+          taskData.startTime = originalTaskData.start_time;
+          taskData.endTime = originalTaskData.end_time;
+          taskData.familyProduct = originalTaskData.family_product;
+          taskData.equipmentQuantity = originalTaskData.equipment_quantity;
+          taskData.propertyHectares = originalTaskData.propertyhectares;
+        }
+      }
+
+      // Fetch opportunity data - try both tables
       const { data: opportunityData, error: opportunityError } = await supabase
         .from('opportunities')
         .select('*')
@@ -130,8 +193,9 @@ export const useTaskEditData = (taskId: string | null) => {
         status: opportunityData?.status 
       });
 
-      // Fetch opportunity items only if we have a valid opportunity
+      // Fetch opportunity items and products - try both sources
       let itemsData = [];
+      
       if (opportunityData?.id) {
         const { data: fetchedItems, error: itemsError } = await supabase
           .from('opportunity_items')
@@ -143,27 +207,45 @@ export const useTaskEditData = (taskId: string | null) => {
         itemsData = fetchedItems || [];
       }
 
+      // If no opportunity items, try products table for this task
+      if (itemsData.length === 0) {
+        console.log('🔍 useTaskEditData: Tentando buscar produtos da tabela products');
+        
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('*')
+          .eq('task_id', taskId)
+          .order('name');
+
+        if (productsError) {
+          console.error('🔍 useTaskEditData: Erro buscando produtos:', productsError);
+        } else if (productsData && productsData.length > 0) {
+          // Convert products to opportunity items format
+          itemsData = productsData.map(product => ({
+            id: product.id,
+            produto: product.name,
+            sku: product.category,
+            qtd_ofertada: product.quantity || 0,
+            qtd_vendida: product.selected ? (product.quantity || 0) : 0,
+            preco_unit: product.price || 0,
+            subtotal_ofertado: (product.quantity || 0) * (product.price || 0),
+            subtotal_vendido: product.selected ? ((product.quantity || 0) * (product.price || 0)) : 0
+          }));
+          
+          console.log('🔍 useTaskEditData: Produtos convertidos:', { 
+            productsCount: productsData.length,
+            convertedItems: itemsData.length
+          });
+        }
+      }
+
       console.log('🔍 useTaskEditData: Items encontrados:', { 
         items: itemsData?.length || 0 
       });
 
       const fullData = {
         ...taskData,
-        // Include additional data from original tasks table if available
-        name: originalTaskData?.name,
-        responsible: originalTaskData?.responsible,
-        property: originalTaskData?.property,
-        phone: originalTaskData?.phone,
-        clientCode: originalTaskData?.clientcode,
-        taskType: originalTaskData?.task_type,
-        priority: originalTaskData?.priority,
-        startDate: originalTaskData?.start_date,
-        endDate: originalTaskData?.end_date,
-        startTime: originalTaskData?.start_time,
-        endTime: originalTaskData?.end_time,
-        familyProduct: originalTaskData?.family_product,
-        equipmentQuantity: originalTaskData?.equipment_quantity,
-        propertyHectares: originalTaskData?.propertyhectares,
+        // Include additional data if available (already merged above for tasks table)
         opportunity: opportunityData,
         items: itemsData || []
       };
@@ -214,7 +296,8 @@ export const useTaskEditData = (taskId: string | null) => {
       }
 
       // Update additional task data in original tasks table if we have the data
-      if (data.name && (updates.name || updates.responsible || updates.property || updates.phone || updates.clientCode || updates.taskType || updates.priority)) {
+      if (data.name || !data.opportunity) {
+        // Try to update tasks table directly by ID first
         const { error: originalTaskError } = await supabase
           .from('tasks')
           .update({
@@ -225,13 +308,16 @@ export const useTaskEditData = (taskId: string | null) => {
             clientcode: updates.clientCode || data.clientCode,
             task_type: updates.taskType || data.taskType,
             priority: updates.priority || data.priority,
+            client: updates.cliente_nome || data.cliente_nome,
+            email: updates.cliente_email || data.cliente_email,
+            filial: updates.filial || data.filial,
+            observations: updates.notas || data.notas,
             updated_at: new Date().toISOString()
           })
-          .eq('client', data.cliente_nome)
-          .eq('created_by', data.vendedor_id);
+          .eq('id', taskId);
 
         if (originalTaskError) {
-          console.warn('Erro ao atualizar dados adicionais da task:', originalTaskError);
+          console.warn('Erro ao atualizar dados da task:', originalTaskError);
         }
       }
 
@@ -249,19 +335,39 @@ export const useTaskEditData = (taskId: string | null) => {
         if (opportunityError) throw opportunityError;
       }
 
-      // Update items if provided
+      // Update items - try both opportunity_items and products
       if (updates.items) {
         for (const item of updates.items) {
-          const { error: itemError } = await supabase
-            .from('opportunity_items')
-            .update({
-              qtd_vendida: item.qtd_vendida,
-              subtotal_vendido: item.qtd_vendida * item.preco_unit,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', item.id);
+          // Try opportunity_items first
+          if (data.opportunity?.id) {
+            const { error: itemError } = await supabase
+              .from('opportunity_items')
+              .update({
+                qtd_vendida: item.qtd_vendida,
+                subtotal_vendido: item.qtd_vendida * item.preco_unit,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.id);
 
-          if (itemError) throw itemError;
+            if (itemError) {
+              console.warn('Erro ao atualizar opportunity_items:', itemError);
+            }
+          } else {
+            // Try products table
+            const { error: productError } = await supabase
+              .from('products')
+              .update({
+                selected: item.qtd_vendida > 0,
+                quantity: item.qtd_ofertada,
+                price: item.preco_unit,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.id);
+
+            if (productError) {
+              console.warn('Erro ao atualizar products:', productError);
+            }
+          }
         }
       }
 
