@@ -5941,6 +5941,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     switch (taskCategory) {
       case 'field-visit':
         return fieldVisitProducts;
+      case 'call':
+        return fieldVisitProducts; // Use the same products for call tasks
       case 'workshop-checklist':
         return workshopChecklistItems;
       default:
