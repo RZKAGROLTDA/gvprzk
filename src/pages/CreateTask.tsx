@@ -6875,12 +6875,12 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardContent>
             </Card>}
 
-          {/* Produtos / Checklist - apenas para visita a campo e workshop */}
-          {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <Card>
+          {/* Produtos / Checklist - para visita a campo, workshop e ligação */}
+          {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist' || taskCategory === 'call') && <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Building className="h-5 w-5" />
-                  {taskCategory === 'field-visit' ? 'Produtos para Ofertar' : 'Checklist da Oficina'}
+                  {taskCategory === 'field-visit' || taskCategory === 'call' ? 'Produtos para Ofertar' : 'Checklist da Oficina'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -6944,8 +6944,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardContent>
             </Card>}
 
-          {/* Campos específicos para Ligação */}
-          {taskCategory === 'call' && <>
               {/* Perguntas da Ligação */}
               <Card>
                 <CardHeader>
@@ -7082,9 +7080,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </CardContent>
               </Card>
 
-              {/* Produtos para Ofertar */}
-              
-            </>}
         </div>
 
         {/* Observações e Valores */}
