@@ -14,15 +14,22 @@ interface PhotoUploadProps {
   photos: string[];
   onPhotosChange: (photos: string[]) => void;
   maxPhotos?: number;
+  hidePhotoUpload?: boolean; // New prop to hide photo functionality
 }
 
 export const PhotoUpload: React.FC<PhotoUploadProps> = ({ 
   photos, 
   onPhotosChange, 
-  maxPhotos = 10 
+  maxPhotos = 10,
+  hidePhotoUpload = false // Default to false to maintain existing behavior
 }) => {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // If hidePhotoUpload is true, don't render anything
+  if (hidePhotoUpload) {
+    return null;
+  }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
