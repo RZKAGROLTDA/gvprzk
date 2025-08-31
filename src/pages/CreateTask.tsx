@@ -7287,10 +7287,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             
           </CardContent>
         </Card>
-        {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <PhotoUpload photos={task.photos || []} onPhotosChange={photos => setTask(prev => ({
+        <PhotoUpload photos={task.photos || []} onPhotosChange={photos => setTask(prev => ({
         ...prev,
         photos
-      }))} maxPhotos={10} />}
+      }))} maxPhotos={10} hidePhotoUpload={taskCategory === 'call'} />
 
         {/* Check-in de Localização - apenas para visita a campo */}
         {taskCategory === 'field-visit' && <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />}
