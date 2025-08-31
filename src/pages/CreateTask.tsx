@@ -6392,7 +6392,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       // Horário atual exato
       endTime: currentTime,
       // Horário atual exato
-      checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
+      checklist: checklist.filter(item => item.selected),
       reminders,
       equipmentList
     };
@@ -6453,7 +6453,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     const draftData = {
       ...task,
       taskType: getTaskTypeFromCategory(taskCategory),
-      checklist: taskCategory === 'call' ? callProducts.filter(item => item.selected) : checklist.filter(item => item.selected),
+      checklist: checklist.filter(item => item.selected),
       reminders,
       equipmentList,
       isDraft: true
