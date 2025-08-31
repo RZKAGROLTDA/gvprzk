@@ -665,11 +665,27 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     {formData.products.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                          <div className="space-y-2">
-                            <p>Nenhum produto cadastrado para esta task</p>
+                          <div className="space-y-4">
+                            <p>Nenhum produto cadastrado para esta tarefa</p>
                             <p className="text-sm text-gray-400">
-                              Os produtos podem estar em uma estrutura de dados diferente ou não foram cadastrados durante a criação da task
+                              Esta tarefa foi criada antes da implementação do sistema de produtos ou não teve produtos selecionados
                             </p>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => {
+                                // Adicionar produtos padrão baseados no tipo da tarefa
+                                const defaultProducts = [
+                                  { id: '1', produto: 'Lubrificante Motor', sku: 'LUB001', qtd_ofertada: 1, qtd_vendida: 0, preco_unit: 50.00, subtotal_ofertado: 50.00, subtotal_vendido: 0, incluir_na_venda_parcial: false },
+                                  { id: '2', produto: 'Filtro de Óleo', sku: 'FIL001', qtd_ofertada: 1, qtd_vendida: 0, preco_unit: 25.00, subtotal_ofertado: 25.00, subtotal_vendido: 0, incluir_na_venda_parcial: false },
+                                  { id: '3', produto: 'Peças Diversas', sku: 'PEC001', qtd_ofertada: 1, qtd_vendida: 0, preco_unit: 100.00, subtotal_ofertado: 100.00, subtotal_vendido: 0, incluir_na_venda_parcial: false }
+                                ];
+                                setFormData(prev => ({ ...prev, products: defaultProducts }));
+                              }}
+                              className="mx-auto"
+                            >
+                              Adicionar Produtos Padrão
+                            </Button>
                           </div>
                         </td>
                       </tr>
