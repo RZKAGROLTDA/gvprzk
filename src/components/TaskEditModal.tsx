@@ -118,7 +118,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       observacoes: taskData.notas || '',
       status: getInitialStatus(),
       prospectNotes: taskData.notas || '',
-      products: taskData.items.map(item => ({
+      products: (taskData.items || []).map(item => ({
         id: item.id,
         produto: item.produto,
         sku: item.sku,
