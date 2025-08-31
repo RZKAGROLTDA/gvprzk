@@ -6944,147 +6944,74 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardContent>
             </Card>}
 
-          {/* Campos específicos para Ligação */}
-          {taskCategory === 'call' && <>
-              {/* Perguntas da Ligação */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5" />
-                    Produtos para Ofertar
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  
-
-                  
-
-                  
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Está precisando de Lubrificantes:</Label>
-                      <div className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="lubricants-yes" checked={callQuestions.lubricants.needsProduct} onCheckedChange={checked => updateCallQuestion('lubricants', 'needsProduct', checked as boolean)} />
-                          <Label htmlFor="lubricants-yes">SIM</Label>
+          {/* Produtos para Ligação */}
+          {taskCategory === 'call' && <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Produtos para Ofertar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {checklist.map(item => <Card key={item.id} className="border border-border/50">
+                      <CardContent className="p-4">
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id={item.id} checked={item.selected} onCheckedChange={checked => handleChecklistChange(item.id, checked as boolean)} />
+                            <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {item.name}
+                            </Label>
+                          </div>
+                          
+                          {item.selected && <div className="ml-6 space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`qty-${item.id}`}>QTD</Label>
+                                  <Input id={`qty-${item.id}`} type="number" min="0" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor={`price-${item.id}`}>Valor Unitário</Label>
+                                  <div className="relative">
+                                    <Input id={`price-${item.id}`} type="text" value={item.price ? new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format(item.price) : ''} onChange={e => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const numericValue = parseFloat(value) / 100;
+                              handleProductChange(item.id, 'price', isNaN(numericValue) ? 0 : numericValue);
+                            }} placeholder="0,00" className="pl-8" />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Valor Total</Label>
+                                  <div className="relative">
+                                    <Input type="text" className="pl-8 bg-muted cursor-not-allowed" value={item.selected && item.price && item.quantity ? new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format(item.price * item.quantity) : '0,00'} readOnly />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label htmlFor={`obs-${item.id}`}>Observações</Label>
+                                <Textarea id={`obs-${item.id}`} value={item.observations || ''} onChange={e => handleProductChange(item.id, 'observations', e.target.value)} placeholder="Observações sobre este produto..." className="min-h-[80px]" />
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <Label>Fotos do Produto</Label>
+                                <PhotoUpload photos={item.photos || []} onPhotosChange={photos => handleProductPhotoChange(item.id, photos)} maxPhotos={5} />
+                              </div>
+                            </div>}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="lubricants-no" checked={!callQuestions.lubricants.needsProduct} onCheckedChange={checked => updateCallQuestion('lubricants', 'needsProduct', !(checked as boolean))} />
-                          <Label htmlFor="lubricants-no">NÃO</Label>
-                        </div>
-                      </div>
-                      {callQuestions.lubricants.needsProduct && renderValueFields('lubricants')}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Está precisando de Pneus:</Label>
-                      <div className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="tires-yes" checked={callQuestions.tires.needsProduct} onCheckedChange={checked => updateCallQuestion('tires', 'needsProduct', checked as boolean)} />
-                          <Label htmlFor="tires-yes">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="tires-no" checked={!callQuestions.tires.needsProduct} onCheckedChange={checked => updateCallQuestion('tires', 'needsProduct', !(checked as boolean))} />
-                          <Label htmlFor="tires-no">NÃO</Label>
-                        </div>
-                      </div>
-                      {callQuestions.tires.needsProduct && renderValueFields('tires')}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Está precisando de Filtros:</Label>
-                      <div className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="filters-yes" checked={callQuestions.filters.needsProduct} onCheckedChange={checked => updateCallQuestion('filters', 'needsProduct', checked as boolean)} />
-                          <Label htmlFor="filters-yes">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="filters-no" checked={!callQuestions.filters.needsProduct} onCheckedChange={checked => updateCallQuestion('filters', 'needsProduct', !(checked as boolean))} />
-                          <Label htmlFor="filters-no">NÃO</Label>
-                        </div>
-                      </div>
-                      {callQuestions.filters.needsProduct && renderValueFields('filters')}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Está precisando de Baterias:</Label>
-                      <div className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="batteries-yes" checked={callQuestions.batteries.needsProduct} onCheckedChange={checked => updateCallQuestion('batteries', 'needsProduct', checked as boolean)} />
-                          <Label htmlFor="batteries-yes">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="batteries-no" checked={!callQuestions.batteries.needsProduct} onCheckedChange={checked => updateCallQuestion('batteries', 'needsProduct', !(checked as boolean))} />
-                          <Label htmlFor="batteries-no">NÃO</Label>
-                        </div>
-                      </div>
-                      {callQuestions.batteries.needsProduct && renderValueFields('batteries')}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Está precisando de Peças:</Label>
-                      <div className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="parts-yes" checked={callQuestions.parts.needsProduct} onCheckedChange={checked => updateCallQuestion('parts', 'needsProduct', checked as boolean)} />
-                          <Label htmlFor="parts-yes">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="parts-no" checked={!callQuestions.parts.needsProduct} onCheckedChange={checked => updateCallQuestion('parts', 'needsProduct', !(checked as boolean))} />
-                          <Label htmlFor="parts-no">NÃO</Label>
-                        </div>
-                      </div>
-                      {callQuestions.parts.needsProduct && renderValueFields('parts')}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Está precisando de Silo Bolsa:</Label>
-                      <div className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="silobag-yes" checked={callQuestions.silobag.needsProduct} onCheckedChange={checked => updateCallQuestion('silobag', 'needsProduct', checked as boolean)} />
-                          <Label htmlFor="silobag-yes">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="silobag-no" checked={!callQuestions.silobag.needsProduct} onCheckedChange={checked => updateCallQuestion('silobag', 'needsProduct', !(checked as boolean))} />
-                          <Label htmlFor="silobag-no">NÃO</Label>
-                        </div>
-                      </div>
-                      {callQuestions.silobag.needsProduct && renderValueFields('silobag')}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Está precisando de Disco:</Label>
-                      <div className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="disk-yes" checked={callQuestions.disk.needsProduct} onCheckedChange={checked => updateCallQuestion('disk', 'needsProduct', checked as boolean)} />
-                          <Label htmlFor="disk-yes">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="disk-no" checked={!callQuestions.disk.needsProduct} onCheckedChange={checked => updateCallQuestion('disk', 'needsProduct', !(checked as boolean))} />
-                          <Label htmlFor="disk-no">NÃO</Label>
-                        </div>
-                      </div>
-                      {callQuestions.disk.needsProduct && renderValueFields('disk')}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="serviceImprovement">O que podemos fazer para melhorar o atendimento de peças junto a Fazenda do senhor?</Label>
-                    <Textarea id="serviceImprovement" placeholder="Sugestões para melhorar o atendimento..." className="min-h-[80px]" />
-                  </div>
-
-                  
-
-                  <div className="grid grid-cols-2 gap-4">
-                    
-                    
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Produtos para Ofertar */}
-              
-            </>}
+                      </CardContent>
+                    </Card>)}
+                </div>
+              </CardContent>
+            </Card>}
         </div>
 
         {/* Observações e Valores */}
