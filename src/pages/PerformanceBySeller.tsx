@@ -262,6 +262,8 @@ const PerformanceBySeller: React.FC = () => {
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, name, role, user_id')
+        .in('role', ['consultant', 'manager', 'admin', 'rac', 'sales_consultant', 'supervisor'])
+        .eq('approval_status', 'approved')
         .order('name');
 
       if (error) throw error;
@@ -279,7 +281,7 @@ const PerformanceBySeller: React.FC = () => {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, name, role, id')
-        .in('role', ['consultant', 'manager', 'admin'])
+        .in('role', ['consultant', 'manager', 'admin', 'rac', 'sales_consultant', 'supervisor'])
         .eq('approval_status', 'approved')
         .order('name');
 
