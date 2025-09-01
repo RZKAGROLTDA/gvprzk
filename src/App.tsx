@@ -32,7 +32,6 @@ import SecureRegistration from "./pages/SecureRegistration";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
-import { EmergencyFix } from "@/components/EmergencyFix";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -106,7 +105,6 @@ const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => 
     <BrowserRouter>
       <Routes>
         {/* Public routes - accessible without authentication */}
-        <Route path="/emergency-fix" element={<EmergencyFix />} />
         <Route path="/register" element={<UserRegistration />} />
         <Route path="/cadastro" element={<SecureRegistration />} />
         <Route path="/registration-success" element={<RegistrationSuccess />} />
