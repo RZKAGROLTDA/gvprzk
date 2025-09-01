@@ -13,6 +13,7 @@ import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 
 interface Profile {
   id: string;
+  user_id: string;
   name: string;
   email: string;
   role: string;
@@ -78,27 +79,9 @@ export const Users: React.FC = () => {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      // First, get the target user's profile using their user_id from the profiles table
-      const { data: targetProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('id', userId)
-        .single();
-
-      if (profileError) {
-        console.error('Erro ao buscar perfil do usuário:', profileError);
-        toast.error('Erro ao buscar dados do usuário');
-        return;
-      }
-
-      if (!targetProfile) {
-        toast.error('Usuário não encontrado');
-        return;
-      }
-
       // Use RPC function for secure role updates with server-side authorization
       const { data, error } = await supabase.rpc('update_user_role_secure', {
-        target_user_id: targetProfile.user_id,
+        target_user_id: userId,
         new_role: newRole
       });
 
@@ -133,7 +116,7 @@ export const Users: React.FC = () => {
       const { error } = await supabase
         .from('profiles')
         .update({ filial_id: filialToUpdate })
-        .eq('id', userId);
+        .eq('user_id', userId);
 
       if (error) throw error;
 
@@ -151,7 +134,7 @@ export const Users: React.FC = () => {
       const { error } = await supabase
         .from('profiles')
         .update({ approval_status: status })
-        .eq('id', userId);
+        .eq('user_id', userId);
 
       if (error) throw error;
 
@@ -375,7 +358,7 @@ export const Users: React.FC = () => {
                        {currentUserProfile?.role === 'manager' ? (
                          <Select
                            value={profile.role}
-                           onValueChange={(value) => updateUserRole(profile.id, value)}
+                           onValueChange={(value) => updateUserRole(profile.user_id, value)}
                          >
                            <SelectTrigger className="w-32">
                              <SelectValue />
@@ -399,7 +382,7 @@ export const Users: React.FC = () => {
                        {currentUserProfile?.role === 'manager' ? (
                          <Select
                            value={profile.filial_id || "none"}
-                           onValueChange={(value) => updateUserFilial(profile.id, value)}
+                           onValueChange={(value) => updateUserFilial(profile.user_id, value)}
                          >
                            <SelectTrigger className="w-40">
                              <SelectValue placeholder="Selecionar filial" />
