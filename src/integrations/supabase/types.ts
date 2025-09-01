@@ -823,7 +823,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      secure_clients_view: {
+        Row: {
+          access_level: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          id: string | null
+          is_masked: boolean | null
+          name: string | null
+          notes: string | null
+          phone: string | null
+          session_date: string | null
+          stage: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -952,6 +967,15 @@ export type Database = {
           sales_value: number
         }[]
       }
+      get_security_dashboard_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          alert_level: string
+          description: string
+          metric_name: string
+          metric_value: number
+        }[]
+      }
       get_user_filial_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1026,6 +1050,14 @@ export type Database = {
       }
       mask_phone_number: {
         Args: { is_owner: boolean; phone: string; user_role: string }
+        Returns: string
+      }
+      mask_sensitive_data: {
+        Args: {
+          data_value: string
+          field_type: string
+          user_has_access: boolean
+        }
         Returns: string
       }
       migrate_tasks_to_new_structure: {
