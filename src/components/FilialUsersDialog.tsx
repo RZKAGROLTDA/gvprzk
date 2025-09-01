@@ -38,12 +38,13 @@ export const FilialUsersDialog: React.FC<FilialUsersDialogProps> = ({
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, name, email, role, approval_status, created_at')
-        .eq('filial_id', filialId)
-        .order('name');
+        .rpc('get_filial_users', { filial_uuid: filialId });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar usuários:', error);
+        throw error;
+      }
+      
       setUsers(data || []);
     } catch (error) {
       console.error('Erro ao carregar usuários da filial:', error);

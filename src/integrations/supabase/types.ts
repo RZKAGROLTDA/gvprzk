@@ -866,6 +866,10 @@ export type Database = {
           task_id: string
         }[]
       }
+      cleanup_old_security_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_orphaned_data: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -933,6 +937,17 @@ export type Database = {
           user_count: number
         }[]
       }
+      get_filial_users: {
+        Args: { filial_uuid: string }
+        Returns: {
+          approval_status: string
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+        }[]
+      }
       get_secure_client_data: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -949,6 +964,22 @@ export type Database = {
         }[]
       }
       get_secure_clients: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          is_masked: boolean
+          name: string
+          notes: string
+          phone: string
+          session_date: string
+          stage: string
+        }[]
+      }
+      get_secure_clients_enhanced: {
         Args: Record<PropertyKey, never>
         Returns: {
           access_level: string
@@ -987,6 +1018,33 @@ export type Database = {
           property: string
           responsible: string
           sales_value: number
+        }[]
+      }
+      get_secure_tasks_enhanced: {
+        Args: { limit_count?: number; offset_count?: number }
+        Returns: {
+          access_level: string
+          client: string
+          created_at: string
+          created_by: string
+          email: string
+          end_date: string
+          filial: string
+          id: string
+          is_masked: boolean
+          is_prospect: boolean
+          name: string
+          observations: string
+          phone: string
+          priority: string
+          property: string
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          status: string
+          task_type: string
         }[]
       }
       get_secure_user_directory: {
@@ -1126,6 +1184,15 @@ export type Database = {
           new_task_id: string
           old_task_id: string
           status: string
+        }[]
+      }
+      monitor_high_value_access: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          event_type: string
+          last_24h: number
+          risk_level: string
+          user_count: number
         }[]
       }
       secure_log_security_event: {
