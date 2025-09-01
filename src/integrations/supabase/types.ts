@@ -912,6 +912,21 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_secure_client_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          created_at: string
+          email: string
+          id: string
+          is_masked: boolean
+          name: string
+          notes: string
+          phone: string
+          session_date: string
+          stage: string
+        }[]
+      }
       get_secure_sales_data: {
         Args: { include_high_value?: boolean }
         Returns: {
@@ -944,6 +959,14 @@ export type Database = {
       is_high_value_task: {
         Args: { sales_value: number }
         Returns: boolean
+      }
+      log_client_data_access: {
+        Args: {
+          access_type?: string
+          accessed_fields?: string[]
+          client_id: string
+        }
+        Returns: undefined
       }
       log_high_risk_activity: {
         Args: {
