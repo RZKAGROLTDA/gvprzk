@@ -979,6 +979,22 @@ export type Database = {
           sales_value: number
         }[]
       }
+      get_secure_user_directory: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          approval_status: string
+          created_at: string
+          email: string
+          filial_id: string
+          filial_nome: string
+          id: string
+          is_masked: boolean
+          name: string
+          role: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_security_dashboard_data: {
         Args: Record<PropertyKey, never>
         Returns: {
