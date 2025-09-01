@@ -84,18 +84,25 @@ export const useProfile = () => {
         // Consulta separada para filial se existir
         let filialNome = null;
         if (profileData.filial_id) {
-          const { data: filial } = await supabase
-            .from('filiais')
-            .select('nome')
-            .eq('id', profileData.filial_id)
-            .maybeSingle();
-          filialNome = filial?.nome;
+          try {
+            const { data: filial, error: filialError } = await supabase
+              .from('filiais')
+              .select('nome')
+              .eq('id', profileData.filial_id)
+              .maybeSingle();
+            
+            if (!filialError && filial) {
+              filialNome = filial.nome;
+            }
+          } catch (error) {
+            console.warn('⚠️ Erro ao carregar filial:', error);
+          }
         }
 
         // Combinar os dados sem JOIN complexo
         const completeProfile = {
           ...profileData,
-          filial_nome: filialNome
+          filial_nome: filialNome || null
         };
 
         console.log('✅ Perfil carregado:', completeProfile);

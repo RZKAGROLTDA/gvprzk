@@ -852,6 +852,10 @@ export type Database = {
         Args: { operation_type?: string }
         Returns: boolean
       }
+      check_login_rate_limit: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
       clean_duplicate_tasks: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -910,6 +914,13 @@ export type Database = {
           status: string
           task_type: string
           updated_at: string
+        }[]
+      }
+      get_filiais_for_registration: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          nome: string
         }[]
       }
       get_secure_client_data: {
@@ -980,6 +991,10 @@ export type Database = {
       get_user_filial_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      is_admin_by_email: {
+        Args: { check_email: string }
+        Returns: boolean
       }
       is_high_value_task: {
         Args: { sales_value: number }
