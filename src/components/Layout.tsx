@@ -42,6 +42,11 @@ const useNavigationItems = () => {
         path: '/filiais',
         icon: Building,
         label: 'Filiais'
+      },
+      {
+        path: '/management',
+        icon: Settings,
+        label: 'Gestão'
       }
     ]
   }), []);
