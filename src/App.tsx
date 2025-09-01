@@ -10,7 +10,6 @@ import { AuthProvider } from '@/components/AuthProvider';
 import { ProfileAutoCreator } from '@/components/ProfileAutoCreator';
 import { LoginForm } from '@/components/LoginForm';
 import { SecurityHeaders } from '@/components/SecurityHeaders';
-import { EmergencyFix } from '@/components/EmergencyFix';
 import { useAuth } from '@/hooks/useAuth';
 import Dashboard from "./pages/Dashboard";
 import { SalesFunnel } from "./components/SalesFunnel";
@@ -83,7 +82,6 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   return (
     <Routes>
       <Route path="/" element={<Layout><CreateTask /></Layout>} />
-      <Route path="/emergency-fix" element={<EmergencyFix />} />
       <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
       <Route path="/create-field-visit" element={<Layout><CreateFieldVisit /></Layout>} />
