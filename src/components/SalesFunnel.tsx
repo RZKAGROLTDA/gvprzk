@@ -271,6 +271,15 @@ export const SalesFunnel: React.FC = () => {
     return getFilialNameRobust(filialValue, filiais);
   }, [filiais]);
 
+  // Memoized function to get consultant info with filial
+  const getConsultantWithFilial = useCallback((responsible: string, taskFilial: string | null | undefined) => {
+    const filialName = getFilialName(taskFilial);
+    if (filialName && filialName !== 'Não informado') {
+      return `${responsible} - ${filialName}`;
+    }
+    return responsible;
+  }, [getFilialName]);
+
   // Calculate coverage data
   const coverageData = useMemo((): CoverageData[] => {
     const consultantStats = new Map<string, {
@@ -1002,8 +1011,7 @@ export const SalesFunnel: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Vendedor</TableHead>
-                  <TableHead>Filial</TableHead>
+                  <TableHead>Vendedor - Filial</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Valor Oportunidade</TableHead>
                   <TableHead>Status</TableHead>
@@ -1015,8 +1023,7 @@ export const SalesFunnel: React.FC = () => {
                 {filteredTasks.slice(0, 50).map((task) => (
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">{task.client}</TableCell>
-                    <TableCell>{task.responsible}</TableCell>
-                    <TableCell>{getFilialName(task.filial)}</TableCell>
+                    <TableCell>{getConsultantWithFilial(task.responsible, task.filial)}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {task.taskType === 'prospection' ? 'Visita' : 
