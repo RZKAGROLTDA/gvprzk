@@ -1131,6 +1131,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      update_user_filial_secure: {
+        Args: { new_filial_id: string; target_user_id: string }
+        Returns: Json
+      }
       update_user_role_secure: {
         Args: { new_role: string; target_user_id: string }
         Returns: Json

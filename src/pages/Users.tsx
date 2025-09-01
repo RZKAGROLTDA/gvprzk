@@ -113,15 +113,26 @@ export const Users: React.FC = () => {
   const updateUserFilial = async (userId: string, filialId: string) => {
     try {
       const filialToUpdate = filialId === 'none' ? null : filialId;
-      const { error } = await supabase
-        .from('profiles')
-        .update({ filial_id: filialToUpdate })
-        .eq('user_id', userId);
+      
+      // Use RPC function for secure filial updates with server-side authorization
+      const { data, error } = await supabase.rpc('update_user_filial_secure', {
+        target_user_id: userId,
+        new_filial_id: filialToUpdate
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na função RPC:', error);
+        toast.error('Erro ao atualizar filial');
+        return;
+      }
 
-      toast.success('Filial atualizada com sucesso');
-      // Reload data instead of full page refresh
+      if (data && !data.success) {
+        console.error('Erro da função:', data.error);
+        toast.error(data.error || 'Erro ao atualizar filial');
+        return;
+      }
+
+      toast.success('Filial atualizada com sucesso!');
       loadData();
     } catch (error) {
       console.error('Erro ao atualizar filial:', error);
