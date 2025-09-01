@@ -241,20 +241,6 @@ export type Database = {
             referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_opportunity_items_opportunity"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "vw_oportunidades_kpis"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_opportunity_items_opportunity"
-            columns: ["opportunity_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secure_oportunidades_kpis"
-            referencedColumns: ["id"]
-          },
         ]
       }
       products: {
@@ -837,38 +823,7 @@ export type Database = {
       }
     }
     Views: {
-      vw_oportunidades_kpis: {
-        Row: {
-          cliente_nome: string | null
-          conversao_pct: number | null
-          data_criacao: string | null
-          data_fechamento: string | null
-          filial: string | null
-          id: string | null
-          status: string | null
-          tipo_task: string | null
-          valor_total_oportunidade: number | null
-          valor_venda_fechada: number | null
-          vendedor_id: string | null
-        }
-        Relationships: []
-      }
-      vw_secure_oportunidades_kpis: {
-        Row: {
-          cliente_nome: string | null
-          conversao_pct: number | null
-          data_criacao: string | null
-          data_fechamento: string | null
-          filial: string | null
-          id: string | null
-          status: string | null
-          tipo_task: string | null
-          valor_total_oportunidade: number | null
-          valor_venda_fechada: number | null
-          vendedor_id: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       calculate_task_partial_sales_value: {
