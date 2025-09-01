@@ -284,10 +284,45 @@ export const Users: React.FC = () => {
     );
   }
 
+  const handleEmergencyPromotion = async () => {
+    if (!confirm('ATENÇÃO: Isto irá promover sua conta atual para manager. Continuar?')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('emergency_promote_to_manager');
+      
+      if (error) {
+        console.error('❌ Erro na promoção:', error);
+        toast.error('Erro ao promover usuário: ' + error.message);
+        return;
+      }
+      
+      console.log('✅ Resultado da promoção:', data);
+      
+      if (data?.includes('SUCCESS')) {
+        toast.success('Usuário promovido a manager com sucesso!');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        toast.error(data || 'Erro desconhecido na promoção');
+      }
+    } catch (error) {
+      console.error('❌ Erro crítico:', error);
+      toast.error('Erro crítico na promoção');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const profiles = secureUserData || [];
   const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
   const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
   const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
+  
+  const isAdmin = currentUserProfile?.role === 'manager';
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -300,6 +335,29 @@ export const Users: React.FC = () => {
           <OfflineIndicator />
         </div>
       </div>
+
+      {!isAdmin && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-amber-800">Acesso Restrito</h3>
+                <p className="text-sm text-amber-700">
+                  Você precisa ser manager para aprovar usuários. 
+                  Use o botão abaixo para promover sua conta (função de emergência).
+                </p>
+              </div>
+              <Button 
+                onClick={handleEmergencyPromotion}
+                disabled={loading}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {loading ? 'Promovendo...' : 'Promover para Manager'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Novos Usuários - Pendentes de Aprovação */}
       {pendingUsers.length > 0 && (

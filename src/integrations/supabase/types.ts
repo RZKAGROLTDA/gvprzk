@@ -874,6 +874,10 @@ export type Database = {
           table_name: string
         }[]
       }
+      emergency_promote_to_manager: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_all_secure_tasks: {
         Args: Record<PropertyKey, never>
         Returns: {
