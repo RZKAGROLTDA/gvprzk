@@ -7,6 +7,8 @@ import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthCheck';
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 import { DatabaseMigrationButton } from '@/components/DatabaseMigrationButton';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnel } from '@/components/SalesFunnel';
@@ -20,6 +22,30 @@ const DashboardLoading = () => <DashboardSkeleton />;
 const Dashboard: React.FC = () => {
   return (
     <div className="p-6">
+      {/* Botão de Emergência */}
+      <div className="mb-4 bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div>
+              <h3 className="font-medium text-destructive">Ferramenta de Emergência</h3>
+              <p className="text-sm text-muted-foreground">
+                Use em caso de timeouts ou sistema inacessível
+              </p>
+            </div>
+          </div>
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => window.open('/emergency-fix', '_blank')}
+            className="gap-2"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Abrir Ferramenta
+          </Button>
+        </div>
+      </div>
+
       <div className="mb-6 flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold">Funil de Vendas</h1>
