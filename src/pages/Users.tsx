@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ interface Filial {
 
 export const Users: React.FC = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,8 +101,8 @@ export const Users: React.FC = () => {
 
       if (data && data.success) {
         toast.success(data.message || 'Permissão atualizada com sucesso');
-        // Trigger refetch of secure user data
-        window.location.reload(); // Simple refresh to ensure data consistency
+        // Invalidate cache to trigger fresh data fetch
+        await queryClient.invalidateQueries({ queryKey: ['secure-user-directory'] });
       } else {
         toast.error('Erro inesperado ao atualizar permissão');
       }
@@ -133,7 +135,8 @@ export const Users: React.FC = () => {
       }
 
       toast.success('Filial atualizada com sucesso!');
-      loadData();
+      // Invalidate cache to trigger fresh data fetch
+      await queryClient.invalidateQueries({ queryKey: ['secure-user-directory'] });
     } catch (error) {
       console.error('Erro ao atualizar filial:', error);
       toast.error('Erro ao atualizar filial');
@@ -150,7 +153,8 @@ export const Users: React.FC = () => {
       if (error) throw error;
 
       toast.success(`Usuário ${status === 'approved' ? 'aprovado' : 'rejeitado'} com sucesso`);
-      loadData();
+      // Invalidate cache to trigger fresh data fetch
+      await queryClient.invalidateQueries({ queryKey: ['secure-user-directory'] });
     } catch (error) {
       console.error('Erro ao atualizar aprovação:', error);
       toast.error('Erro ao atualizar aprovação');
@@ -182,7 +186,8 @@ export const Users: React.FC = () => {
       }
 
       toast.success(data?.message || `Usuário "${userName}" deletado com sucesso`);
-      loadData();
+      // Invalidate cache to trigger fresh data fetch
+      await queryClient.invalidateQueries({ queryKey: ['secure-user-directory'] });
     } catch (error) {
       console.error('Erro ao deletar usuário:', error);
       toast.error('Erro ao deletar usuário');
