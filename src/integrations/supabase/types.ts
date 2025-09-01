@@ -248,6 +248,13 @@ export type Database = {
             referencedRelation: "vw_oportunidades_kpis"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_opportunity_items_opportunity"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "vw_secure_oportunidades_kpis"
+            referencedColumns: ["id"]
+          },
         ]
       }
       products: {
@@ -846,6 +853,22 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_secure_oportunidades_kpis: {
+        Row: {
+          cliente_nome: string | null
+          conversao_pct: number | null
+          data_criacao: string | null
+          data_fechamento: string | null
+          filial: string | null
+          id: string | null
+          status: string | null
+          tipo_task: string | null
+          valor_total_oportunidade: number | null
+          valor_venda_fechada: number | null
+          vendedor_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -874,38 +897,6 @@ export type Database = {
         Args: { operation_type?: string }
         Returns: boolean
       }
-      check_enhanced_rate_limit: {
-        Args: { action_type?: string; user_email: string }
-        Returns: boolean
-      }
-      check_login_rate_limit: {
-        Args: { user_email: string }
-        Returns: boolean
-      }
-      check_security_alerts: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          alert_type: string
-          count: number
-          description: string
-          recommendation: string
-          severity: string
-        }[]
-      }
-      check_security_configuration: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          check_name: string
-          description: string
-          recommendation: string
-          risk_level: number
-          status: string
-        }[]
-      }
-      check_suspicious_login_pattern: {
-        Args: { ip_addr: unknown; user_email: string }
-        Returns: boolean
-      }
       clean_duplicate_tasks: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -916,10 +907,6 @@ export type Database = {
           task_id: string
         }[]
       }
-      cleanup_invitation_tokens: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       cleanup_orphaned_data: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -928,171 +915,9 @@ export type Database = {
           table_name: string
         }[]
       }
-      cleanup_security_audit_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      consume_invitation_token: {
-        Args: { token_value: string }
-        Returns: Json
-      }
       current_user_is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
-      }
-      detect_security_violations: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          details: Json
-          occurred_at: string
-          risk_score: number
-          user_id: string
-          violation_type: string
-        }[]
-      }
-      detect_unauthorized_bi_access: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          last_violation: string
-          risk_details: Json
-          user_id: string
-          violation_count: number
-        }[]
-      }
-      diagnostic_query: {
-        Args: { query_text: string }
-        Returns: Json
-      }
-      generate_invitation_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_filiais_for_registration: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          nome: string
-        }[]
-      }
-      get_opportunities_with_tasks: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          cliente_email: string
-          cliente_nome: string
-          conversao_pct: number
-          created_at: string
-          data: string
-          data_criacao: string
-          data_fechamento: string
-          filial: string
-          notas: string
-          opportunity_id: string
-          status: string
-          task_id: string
-          tipo: string
-          updated_at: string
-          valor_total_oportunidade: number
-          valor_venda_fechada: number
-          vendedor_id: string
-        }[]
-      }
-      get_opportunity_items: {
-        Args: { opportunity_id_param: string }
-        Returns: {
-          created_at: string
-          id: string
-          preco_unit: number
-          produto: string
-          qtd_ofertada: number
-          qtd_vendida: number
-          sku: string
-          subtotal_ofertado: number
-          subtotal_vendido: number
-          updated_at: string
-        }[]
-      }
-      get_secure_bi_data_with_access_control: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          access_level: string
-          cliente_nome: string
-          conversao_pct: number
-          data_criacao: string
-          data_fechamento: string
-          filial: string
-          id: string
-          is_masked: boolean
-          status: string
-          tipo_task: string
-          valor_total_oportunidade: number
-          valor_venda_fechada: number
-          vendedor_id: string
-        }[]
-      }
-      get_secure_bi_summary: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          access_level: string
-          average_conversion_rate: number
-          period_end: string
-          period_start: string
-          total_opportunities: number
-          total_sales_value: number
-        }[]
-      }
-      get_secure_bi_summary_enhanced: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          access_level: string
-          average_conversion_rate: number
-          data_mask_applied: boolean
-          period_end: string
-          period_start: string
-          total_opportunities: number
-          total_sales_value: number
-        }[]
-      }
-      get_secure_business_intelligence: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          access_level: string
-          cliente_nome: string
-          conversao_pct: number
-          data_criacao: string
-          data_fechamento: string
-          filial: string
-          id: string
-          is_masked: boolean
-          status: string
-          tipo_task: string
-          valor_total_oportunidade: number
-          valor_venda_fechada: number
-          vendedor_id: string
-        }[]
-      }
-      get_secure_customer_contacts: {
-        Args: { task_ids?: string[] }
-        Returns: {
-          access_level: string
-          client_name: string
-          email: string
-          phone: string
-          task_id: string
-        }[]
-      }
-      get_secure_customer_data: {
-        Args: { task_ids?: string[] }
-        Returns: {
-          access_level: string
-          client_code: string
-          client_name: string
-          email: string
-          is_masked: boolean
-          phone: string
-          property: string
-          sales_value: number
-          task_id: string
-        }[]
       }
       get_secure_sales_data: {
         Args: { include_high_value?: boolean }
@@ -1106,115 +931,17 @@ export type Database = {
         }[]
       }
       get_secure_task_data: {
-        Args: { task_id_param: string } | { task_ids?: string[] }
-        Returns: {
-          client: string
-          email: string
-          filial: string
-          id: string
-          is_masked: boolean
-          name: string
-          property: string
-          responsible: string
-          sales_value: number
-        }[]
-      }
-      get_secure_task_data_enhanced: {
-        Args: { task_ids?: string[] }
-        Returns: {
-          access_level: string
-          client: string
-          email: string
-          end_date: string
-          filial: string
-          id: string
-          is_masked: boolean
-          name: string
-          priority: string
-          property: string
-          responsible: string
-          sales_value: number
-          start_date: string
-          status: string
-          task_type: string
-        }[]
-      }
-      get_secure_tasks_view: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          access_level: string
-          check_in_location: Json
-          client: string
-          clientcode: string
-          created_at: string
-          created_by: string
-          documents: string[]
-          email: string
-          end_date: string
-          end_time: string
-          equipment_list: Json
-          equipment_quantity: number
-          family_product: string
-          filial: string
-          final_km: number
-          id: string
-          initial_km: number
-          is_masked: boolean
-          is_prospect: boolean
-          name: string
-          observations: string
-          photos: string[]
-          priority: string
-          property: string
-          propertyhectares: number
-          prospect_notes: string
-          responsible: string
-          sales_confirmed: boolean
-          sales_type: string
-          sales_value: number
-          start_date: string
-          start_time: string
-          status: string
-          task_type: string
-          updated_at: string
-        }[]
-      }
-      get_secure_user_directory: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          approval_status: string
-          email: string
-          filial_id: string
-          filial_nome: string
-          id: string
-          name: string
-          role: string
-          user_id: string
-        }[]
-      }
-      get_security_dashboard: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          count: number
-          metric_name: string
-          time_period: string
-        }[]
-      }
-      get_task_data_access_level: {
         Args: { task_id_param: string }
-        Returns: string
-      }
-      get_user_directory: {
-        Args: Record<PropertyKey, never>
         Returns: {
-          approval_status: string
+          client: string
           email: string
-          filial_id: string
-          filial_nome: string
+          filial: string
           id: string
+          is_masked: boolean
           name: string
-          role: string
-          user_id: string
+          property: string
+          responsible: string
+          sales_value: number
         }[]
       }
       get_user_filial_id: {
@@ -1225,21 +952,9 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
-      is_admin_by_email: {
-        Args: { check_email: string }
-        Returns: boolean
-      }
       is_high_value_task: {
         Args: { sales_value: number }
         Returns: boolean
-      }
-      log_data_export: {
-        Args: {
-          export_type: string
-          filters_applied?: Json
-          record_count: number
-        }
-        Returns: undefined
       }
       log_high_risk_activity: {
         Args: {
@@ -1311,18 +1026,6 @@ export type Database = {
           status: string
         }[]
       }
-      monitor_high_risk_activity: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      monitor_security_events: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_user_directory_cache: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       secure_log_security_event: {
         Args: {
           event_type: string
@@ -1331,10 +1034,6 @@ export type Database = {
           target_user_id: string
         }
         Returns: undefined
-      }
-      update_user_role_secure: {
-        Args: { new_role: string; target_user_id: string }
-        Returns: Json
       }
       user_same_filial: {
         Args: { target_user_id: string }
@@ -1356,10 +1055,6 @@ export type Database = {
           details: string
           status: string
         }[]
-      }
-      validate_password_strength: {
-        Args: { password: string }
-        Returns: Json
       }
       validate_task_input: {
         Args: { input_data: Json }
