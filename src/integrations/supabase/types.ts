@@ -823,22 +823,7 @@ export type Database = {
       }
     }
     Views: {
-      secure_clients_view: {
-        Row: {
-          access_level: string | null
-          created_at: string | null
-          created_by: string | null
-          email: string | null
-          id: string | null
-          is_masked: boolean | null
-          name: string | null
-          notes: string | null
-          phone: string | null
-          session_date: string | null
-          stage: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -932,6 +917,22 @@ export type Database = {
         Returns: {
           access_level: string
           created_at: string
+          email: string
+          id: string
+          is_masked: boolean
+          name: string
+          notes: string
+          phone: string
+          session_date: string
+          stage: string
+        }[]
+      }
+      get_secure_clients: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          created_at: string
+          created_by: string
           email: string
           id: string
           is_masked: boolean
