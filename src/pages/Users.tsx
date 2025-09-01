@@ -284,43 +284,9 @@ export const Users: React.FC = () => {
     );
   }
 
-  const handleEmergencyPromotion = async () => {
-    if (!confirm('ATENÇÃO: Isto irá promover sua conta atual para manager. Continuar?')) {
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.rpc('emergency_promote_to_manager');
-      
-      if (error) {
-        console.error('❌ Erro na promoção:', error);
-        toast.error('Erro ao promover usuário: ' + error.message);
-        return;
-      }
-      
-      console.log('✅ Resultado da promoção:', data);
-      
-      if (data?.includes('SUCCESS')) {
-        toast.success('Usuário promovido a manager com sucesso!');
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } else {
-        toast.error(data || 'Erro desconhecido na promoção');
-      }
-    } catch (error) {
-      console.error('❌ Erro crítico:', error);
-      toast.error('Erro crítico na promoção');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const profiles = secureUserData || [];
-  const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
-  const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
-  const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
+  const allUsers = profiles.filter(p => p.approval_status === 'approved');
   
   const isAdmin = currentUserProfile?.role === 'manager';
 
@@ -343,106 +309,22 @@ export const Users: React.FC = () => {
               <div>
                 <h3 className="font-semibold text-amber-800">Acesso Restrito</h3>
                 <p className="text-sm text-amber-700">
-                  Você precisa ser manager para aprovar usuários. 
-                  Use o botão abaixo para promover sua conta (função de emergência).
+                  Você precisa ser manager para gerenciar usuários.
                 </p>
               </div>
-              <Button 
-                onClick={handleEmergencyPromotion}
-                disabled={loading}
-                className="bg-amber-600 hover:bg-amber-700"
-              >
-                {loading ? 'Promovendo...' : 'Promover para Manager'}
-              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Novos Usuários - Pendentes de Aprovação */}
-      {pendingUsers.length > 0 && (
+      {/* Todos os Usuários */}
+      {allUsers.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-600">
-              <UsersIcon className="h-5 w-5" />
-              Novos Usuários Aguardando Aprovação
-              <Badge variant="secondary" className="ml-2">{pendingUsers.length}</Badge>
+            <CardTitle className="text-xl font-semibold text-gray-900">
+              Usuários do Sistema ({allUsers.length})
             </CardTitle>
-            <CardDescription>
-              Revise as informações dos novos cadastros antes de aprovar o acesso ao sistema
-            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {pendingUsers.map((profile) => (
-                <div key={profile.id} className="border rounded-lg p-4 bg-orange-50 dark:bg-orange-950/20">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">{profile.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <p className="text-muted-foreground">{profile.email}</p>
-                        {profile.email === '***@***.***' && (
-                          <Badge variant="secondary" className="text-xs">
-                            Email Protegido
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-sm font-medium">Cargo solicitado:</span>
-                        <Badge variant={getRoleBadgeVariant(profile.role)} className="ml-2">
-                          {getRoleLabel(profile.role)}
-                        </Badge>
-                      </div>
-                      {profile.filial_nome && (
-                        <div>
-                          <span className="text-sm font-medium">Filial:</span>
-                          <div className="flex items-center gap-1 ml-2 inline-flex">
-                            <Building className="h-4 w-4" />
-                            {profile.filial_nome}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateUserApproval(profile.id, 'rejected')}
-                      className="text-red-600 hover:text-red-700 hover:border-red-300"
-                    >
-                      Rejeitar Cadastro
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => updateUserApproval(profile.id, 'approved')}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      Aprovar Cadastro
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Usuários Aprovados */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Usuários Aprovados
-            <Badge variant="secondary" className="ml-2">{approvedUsers.length}</Badge>
-          </CardTitle>
-          <CardDescription>
-            Gerencie as permissões e filiais dos usuários ativos do sistema
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -456,7 +338,7 @@ export const Users: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {approvedUsers.map((profile) => (
+              {allUsers.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.name}</TableCell>
                   <TableCell>
@@ -562,67 +444,6 @@ export const Users: React.FC = () => {
           </Table>
         </CardContent>
       </Card>
-
-      {/* Usuários Rejeitados */}
-      {rejectedUsers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
-              <UsersIcon className="h-5 w-5" />
-              Usuários Rejeitados
-              <Badge variant="destructive" className="ml-2">{rejectedUsers.length}</Badge>
-            </CardTitle>
-            <CardDescription>
-              Usuários que tiveram seus cadastros rejeitados
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Cargo Solicitado</TableHead>
-                  <TableHead>Filial</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rejectedUsers.map((profile) => (
-                  <TableRow key={profile.id}>
-                    <TableCell className="font-medium">{profile.name}</TableCell>
-                    <TableCell>{profile.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(profile.role)}>
-                        {getRoleLabel(profile.role)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {profile.filial_nome ? (
-                        <div className="flex items-center gap-1">
-                          <Building className="h-4 w-4" />
-                          {profile.filial_nome}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">Sem filial</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => updateUserApproval(profile.id, 'approved')}
-                        className="text-green-600 hover:text-green-700"
-                      >
-                        Reaprovar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
       )}
     </div>
   );

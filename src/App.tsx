@@ -48,35 +48,11 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
     return <LoginForm />;
   }
 
-  // If user exists but no profile found, show profile setup
+  // If user exists but no profile found, show profile setup (auto-approved after creation)
   if (!profile) {
     return <ProfileSetup />;
   }
 
-  // If profile is pending approval, force logout and show registration success page
-  if (profile.approval_status === 'pending') {
-    supabase.auth.signOut();
-    return <RegistrationSuccess />;
-  }
-
-  // If profile is rejected, force logout and show rejection message
-  if (profile.approval_status === 'rejected') {
-    supabase.auth.signOut();
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-8">
-          <h1 className="text-2xl font-bold text-destructive mb-4">Acesso Negado</h1>
-          <p className="text-muted-foreground">Seu cadastro foi rejeitado. Entre em contato com o administrador.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Only allow access if approval_status is 'approved'
-  if (profile.approval_status !== 'approved') {
-    supabase.auth.signOut();
-    return <RegistrationSuccess />;
-  }
 
   // If everything is approved, show main app routes
   return (
