@@ -34,39 +34,17 @@ export const Filiais: React.FC = () => {
     try {
       setLoading(true);
       
-      // Load filiais
+      // Use RPC function to get filiais with user counts
       const { data: filiaisData, error: filiaisError } = await supabase
-        .from('filiais')
-        .select('*')
-        .order('nome');
+        .rpc('get_filial_user_counts');
 
-      if (filiaisError) throw filiaisError;
+      if (filiaisError) {
+        console.error('Erro ao carregar filiais:', filiaisError);
+        throw filiaisError;
+      }
 
-      // Load user counts for each filial using the corrected approach
       if (filiaisData) {
-        const filiaisWithCounts = await Promise.all(
-          filiaisData.map(async (filial) => {
-            try {
-              const { count, error: countError } = await supabase
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('filial_id', filial.id)
-                .eq('approval_status', 'approved');
-
-              if (countError) {
-                console.error(`Erro ao contar usuários da filial ${filial.nome}:`, countError);
-                return { ...filial, user_count: 0 };
-              }
-
-              return { ...filial, user_count: count || 0 };
-            } catch (error) {
-              console.error(`Erro inesperado ao contar usuários da filial ${filial.nome}:`, error);
-              return { ...filial, user_count: 0 };
-            }
-          })
-        );
-
-        setFiliais(filiaisWithCounts);
+        setFiliais(filiaisData);
       }
     } catch (error) {
       console.error('Erro ao carregar filiais:', error);

@@ -923,6 +923,16 @@ export type Database = {
           nome: string
         }[]
       }
+      get_filial_user_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_count: number
+        }[]
+      }
       get_secure_client_data: {
         Args: Record<PropertyKey, never>
         Returns: {
