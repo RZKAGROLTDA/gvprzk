@@ -897,38 +897,6 @@ export type Database = {
         Args: { operation_type?: string }
         Returns: boolean
       }
-      check_enhanced_rate_limit: {
-        Args: { action_type?: string; user_email: string }
-        Returns: boolean
-      }
-      check_login_rate_limit: {
-        Args: { user_email: string }
-        Returns: boolean
-      }
-      check_security_alerts: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          alert_type: string
-          count: number
-          description: string
-          recommendation: string
-          severity: string
-        }[]
-      }
-      check_security_configuration: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          check_name: string
-          description: string
-          recommendation: string
-          risk_level: number
-          status: string
-        }[]
-      }
-      check_suspicious_login_pattern: {
-        Args: { ip_addr: unknown; user_email: string }
-        Returns: boolean
-      }
       clean_duplicate_tasks: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -939,10 +907,6 @@ export type Database = {
           task_id: string
         }[]
       }
-      cleanup_invitation_tokens: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       cleanup_orphaned_data: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -951,51 +915,9 @@ export type Database = {
           table_name: string
         }[]
       }
-      cleanup_security_audit_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      consume_invitation_token: {
-        Args: { token_value: string }
-        Returns: Json
-      }
       current_user_is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
-      }
-      detect_security_violations: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          details: Json
-          occurred_at: string
-          risk_score: number
-          user_id: string
-          violation_type: string
-        }[]
-      }
-      detect_unauthorized_bi_access: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          last_violation: string
-          risk_details: Json
-          user_id: string
-          violation_count: number
-        }[]
-      }
-      diagnostic_query: {
-        Args: { query_text: string }
-        Returns: Json
-      }
-      generate_invitation_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_filiais_for_registration: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          nome: string
-        }[]
       }
       get_opportunities_with_tasks: {
         Args: Record<PropertyKey, never>
