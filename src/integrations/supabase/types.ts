@@ -915,10 +915,6 @@ export type Database = {
           table_name: string
         }[]
       }
-      current_user_is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       get_secure_sales_data: {
         Args: { include_high_value?: boolean }
         Returns: {
@@ -947,10 +943,6 @@ export type Database = {
       get_user_filial_id: {
         Args: Record<PropertyKey, never>
         Returns: string
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
       }
       is_high_value_task: {
         Args: { sales_value: number }
@@ -1035,8 +1027,8 @@ export type Database = {
         }
         Returns: undefined
       }
-      user_same_filial: {
-        Args: { target_user_id: string }
+      simple_is_admin: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       validate_and_sanitize_task_input: {
