@@ -61,50 +61,50 @@ export const useProfile = () => {
       return;
     }
 
-    // Timeout de 10 segundos com retry automático
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
     try {
       loadingRef.current = true;
       setLoading(true);
       
       console.log('🔄 Carregando perfil do usuário...');
 
-      const profilePromise = supabase
+      // Consulta simples para profile sem JOIN para evitar recursão RLS
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          filiais!fk_profiles_filial (
-            nome
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Profile load timeout')), 10000);
-      });
-
-      const { data, error } = await Promise.race([profilePromise, timeoutPromise]);
-
-      clearTimeout(timeout);
-
-      if (error) {
-        console.warn('⚠️ Erro ao carregar perfil:', error);
+      if (profileError) {
+        console.warn('⚠️ Erro ao carregar perfil:', profileError);
         setProfile(null);
+        return;
+      }
+
+      if (profileData) {
+        // Consulta separada para filial se existir
+        let filialNome = null;
+        if (profileData.filial_id) {
+          const { data: filial } = await supabase
+            .from('filiais')
+            .select('nome')
+            .eq('id', profileData.filial_id)
+            .maybeSingle();
+          filialNome = filial?.nome;
+        }
+
+        // Combinar os dados sem JOIN complexo
+        const completeProfile = {
+          ...profileData,
+          filial_nome: filialNome
+        };
+
+        console.log('✅ Perfil carregado:', completeProfile);
+        setProfile(completeProfile);
       } else {
-        const profileData = data ? {
-          ...data,
-          filial_nome: data.filiais?.nome
-        } : null;
-        
-        console.log('✅ Perfil carregado:', profileData);
-        setProfile(profileData);
+        setProfile(null);
       }
     } catch (error) {
-      clearTimeout(timeout);
-      console.warn('⚠️ Timeout ou erro no perfil:', error);
+      console.warn('⚠️ Erro no perfil:', error);
       setProfile(null);
     } finally {
       setLoading(false);
