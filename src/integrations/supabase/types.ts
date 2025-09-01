@@ -248,6 +248,13 @@ export type Database = {
             referencedRelation: "vw_oportunidades_kpis"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_opportunity_items_opportunity"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "vw_secure_oportunidades_kpis"
+            referencedColumns: ["id"]
+          },
         ]
       }
       products: {
@@ -846,32 +853,14 @@ export type Database = {
         }
         Relationships: []
       }
-      vw_oportunidades_kpis_secure: {
-        Row: {
-          cliente_nome: string | null
-          conversao_pct: number | null
-          data_criacao: string | null
-          data_fechamento: string | null
-          filial: string | null
-          id: string | null
-          status: string | null
-          tipo_task: string | null
-          valor_total_oportunidade: number | null
-          valor_venda_fechada: number | null
-          vendedor_id: string | null
-        }
-        Relationships: []
-      }
       vw_secure_oportunidades_kpis: {
         Row: {
-          access_level: string | null
           cliente_nome: string | null
           conversao_pct: number | null
           data_criacao: string | null
           data_fechamento: string | null
           filial: string | null
           id: string | null
-          is_masked: boolean | null
           status: string | null
           tipo_task: string | null
           valor_total_oportunidade: number | null
@@ -1043,24 +1032,6 @@ export type Database = {
           subtotal_ofertado: number
           subtotal_vendido: number
           updated_at: string
-        }[]
-      }
-      get_secure_bi_data_with_access_control: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          access_level: string
-          cliente_nome: string
-          conversao_pct: number
-          data_criacao: string
-          data_fechamento: string
-          filial: string
-          id: string
-          is_masked: boolean
-          status: string
-          tipo_task: string
-          valor_total_oportunidade: number
-          valor_venda_fechada: number
-          vendedor_id: string
         }[]
       }
       get_secure_bi_summary: {
