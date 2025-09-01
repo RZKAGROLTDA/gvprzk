@@ -32,7 +32,9 @@ export const Filiais: React.FC = () => {
 
   const loadFiliais = async () => {
     try {
-      // Load filiais with user count
+      setLoading(true);
+      
+      // Load filiais
       const { data: filiaisData, error: filiaisError } = await supabase
         .from('filiais')
         .select('*')
@@ -40,22 +42,27 @@ export const Filiais: React.FC = () => {
 
       if (filiaisError) throw filiaisError;
 
-      // Load user counts for each filial
+      // Load user counts for each filial using the corrected approach
       if (filiaisData) {
         const filiaisWithCounts = await Promise.all(
           filiaisData.map(async (filial) => {
-            const { count, error: countError } = await supabase
-              .from('profiles')
-              .select('*', { count: 'exact', head: true })
-              .eq('filial_id', filial.id)
-              .eq('approval_status', 'approved');
+            try {
+              const { count, error: countError } = await supabase
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('filial_id', filial.id)
+                .eq('approval_status', 'approved');
 
-            if (countError) {
-              console.error('Erro ao contar usuários da filial:', countError);
+              if (countError) {
+                console.error(`Erro ao contar usuários da filial ${filial.nome}:`, countError);
+                return { ...filial, user_count: 0 };
+              }
+
+              return { ...filial, user_count: count || 0 };
+            } catch (error) {
+              console.error(`Erro inesperado ao contar usuários da filial ${filial.nome}:`, error);
               return { ...filial, user_count: 0 };
             }
-
-            return { ...filial, user_count: count || 0 };
           })
         );
 
@@ -220,8 +227,8 @@ export const Filiais: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Usuários Cadastrados</TableHead>
+                  <TableHead>Nome da Filial</TableHead>
+                  <TableHead>Usuários Aprovados</TableHead>
                   <TableHead>Data de Criação</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -233,11 +240,16 @@ export const Filiais: React.FC = () => {
                     <TableCell>
                       <button
                         onClick={() => handleShowUsers(filial)}
-                        className="flex items-center gap-2 hover:bg-muted/50 p-2 rounded-md transition-colors cursor-pointer"
+                        className="flex items-center gap-2 hover:bg-muted/50 p-2 rounded-md transition-colors cursor-pointer min-w-0"
+                        title={`Ver usuários da filial ${filial.nome}`}
                       >
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{filial.user_count || 0}</span>
-                        <span className="text-sm text-muted-foreground">usuários</span>
+                        <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="font-medium text-sm">
+                          {typeof filial.user_count === 'number' ? filial.user_count : '0'}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {filial.user_count === 1 ? 'usuário' : 'usuários'}
+                        </span>
                       </button>
                     </TableCell>
                     <TableCell>
@@ -249,6 +261,7 @@ export const Filiais: React.FC = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleEdit(filial)}
+                          title="Editar filial"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -256,6 +269,7 @@ export const Filiais: React.FC = () => {
                           size="sm"
                           variant="destructive"
                           onClick={() => handleDelete(filial.id)}
+                          title="Excluir filial"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
