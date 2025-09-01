@@ -1,18 +1,17 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Configuração de emergência para reduzir consumo de créditos
+// Configuração estabilizada para performance e segurança
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 60 * 1000, // 30 minutos - cache muito longo
-      gcTime: 60 * 60 * 1000, // 1 hora no cache
+      staleTime: 5 * 60 * 1000, // 5 minutos - cache razoável
+      gcTime: 10 * 60 * 1000, // 10 minutos no cache
       refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      refetchOnReconnect: false, // Desabilitar reconexão automática
-      retry: false, // Desabilitar retry completamente
+      refetchOnMount: true, // Reabilitar mount fetch
+      refetchOnReconnect: false,
+      retry: 1, // Apenas 1 retry
       networkMode: 'online',
-      enabled: false, // Desabilitar queries automáticas
     },
     mutations: {
       retry: false,
