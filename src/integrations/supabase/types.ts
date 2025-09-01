@@ -1004,6 +1004,22 @@ export type Database = {
           metric_value: number
         }[]
       }
+      get_user_directory_with_fallback: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          approval_status: string
+          created_at: string
+          email: string
+          filial_id: string
+          filial_nome: string
+          id: string
+          is_masked: boolean
+          name: string
+          role: string
+          updated_at: string
+          user_id: string
+        }[]
+      }
       get_user_filial_id: {
         Args: Record<PropertyKey, never>
         Returns: string

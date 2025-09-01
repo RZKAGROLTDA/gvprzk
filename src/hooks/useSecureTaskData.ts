@@ -72,7 +72,8 @@ export const useSecureUserDirectory = () => {
     queryKey: ['secure-user-directory'],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.rpc('get_secure_user_directory');
+        // Try the fallback function first (handles cases where no manager exists)
+        const { data, error } = await supabase.rpc('get_user_directory_with_fallback');
 
         if (error) {
           monitorSuspiciousActivity('user_directory_access_error', { error: error.message }, 3);

@@ -138,8 +138,8 @@ export const Users: React.FC = () => {
       if (error) throw error;
 
       toast.success('Filial atualizada com sucesso');
-      // Trigger page refresh to ensure data consistency
-      window.location.reload();
+      // Reload data instead of full page refresh
+      loadData();
     } catch (error) {
       console.error('Erro ao atualizar filial:', error);
       toast.error('Erro ao atualizar filial');
