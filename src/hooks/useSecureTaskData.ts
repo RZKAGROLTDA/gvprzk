@@ -72,28 +72,41 @@ export const useSecureUserDirectory = () => {
     queryKey: ['secure-user-directory'],
     queryFn: async () => {
       try {
-        // Try the fallback function first (handles cases where no manager exists)
+        // Use the corrected fallback function
         const { data, error } = await supabase.rpc('get_user_directory_with_fallback');
 
         if (error) {
+          console.error('🚨 User directory access error:', error);
           monitorSuspiciousActivity('user_directory_access_error', { error: error.message }, 3);
-          throw error;
+          
+          // Provide more specific error handling
+          if (error.message?.includes('ambiguous')) {
+            throw new Error('Erro de configuração do banco de dados. Tente novamente em alguns segundos.');
+          } else if (error.message?.includes('Access denied')) {
+            throw new Error('Acesso negado. Verifique suas permissões.');
+          } else {
+            throw new Error('Não foi possível carregar os dados dos usuários. Tente novamente.');
+          }
         }
 
+        console.log('✅ User directory loaded successfully:', data?.length || 0, 'users');
+
         // Log email masking for audit
-        const maskedEmails = data?.filter((user: any) => user.email === '***@***.***').length || 0;
+        const maskedEmails = data?.filter((user: any) => user.email?.includes('***')).length || 0;
         if (maskedEmails > 0) {
           console.log(`🔒 Email masking applied to ${maskedEmails} user records for privacy protection`);
         }
 
-        return data;
+        return data || [];
       } catch (error) {
-        console.error('Error fetching secure user directory:', error);
+        console.error('🚨 Failed to fetch user directory:', error);
         throw error;
       }
     },
     enabled: true,
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 15 * 60 * 1000, // 15 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
