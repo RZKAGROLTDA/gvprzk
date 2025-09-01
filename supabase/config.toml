@@ -1,4 +1,1 @@
 project_id = "wuvbrkbhunifudaewhng"
-
-[functions.emergency-cleanup]
-verify_jwt = false

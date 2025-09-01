@@ -7,8 +7,6 @@ import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthCheck';
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 import { DatabaseMigrationButton } from '@/components/DatabaseMigrationButton';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnel } from '@/components/SalesFunnel';
@@ -28,15 +26,6 @@ const Dashboard: React.FC = () => {
           <p className="text-muted-foreground">Análise completa das atividades comerciais</p>
         </div>
         <div className="flex items-center gap-4">
-          <Button 
-            variant="destructive" 
-            size="sm" 
-            onClick={() => window.location.href = '/emergency-fix'}
-            className="bg-red-600 hover:bg-red-700 text-white shadow-lg"
-          >
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Ferramenta de Emergência
-          </Button>
           <AuthenticationHealthCheck />
           <SessionRefreshButton />
           <div className="w-80">
