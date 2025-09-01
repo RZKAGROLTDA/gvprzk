@@ -1,27 +1,18 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Configuração super otimizada do QueryClient para performance
+// Configuração de emergência para reduzir consumo de créditos
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10 * 60 * 1000, // 10 minutos - cache mais longo
-      gcTime: 15 * 60 * 1000, // 15 minutos no cache
+      staleTime: 30 * 60 * 1000, // 30 minutos - cache muito longo
+      gcTime: 60 * 60 * 1000, // 1 hora no cache
       refetchOnWindowFocus: false,
-      refetchOnMount: false, // Não refetch automático no mount
-      refetchOnReconnect: 'always',
-      retry: (failureCount, error) => {
-        // Não retry em erros de autenticação
-        if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
-          return false;
-        }
-        return failureCount < 1; // Reduzido para 1 tentativa
-      },
+      refetchOnMount: false,
+      refetchOnReconnect: false, // Desabilitar reconexão automática
+      retry: false, // Desabilitar retry completamente
       networkMode: 'online',
-      // Cache específico por tipo de query
-      meta: {
-        errorMessage: 'Erro ao carregar dados'
-      }
+      enabled: false, // Desabilitar queries automáticas
     },
     mutations: {
       retry: false,
