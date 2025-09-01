@@ -32,6 +32,7 @@ import SecureRegistration from "./pages/SecureRegistration";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import { EmergencyFix } from "@/components/EmergencyFix";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -110,6 +111,7 @@ const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => 
         <Route path="/registration-success" element={<RegistrationSuccess />} />
         <Route path="/invite" element={<InviteAccept />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/emergency-fix" element={<EmergencyFix />} />
         
         {/* Protected routes */}
         <Route path="/*" element={<ProtectedRoutes user={user} profile={profile} />} />
