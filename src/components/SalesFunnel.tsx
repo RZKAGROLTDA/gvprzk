@@ -404,7 +404,7 @@ export const SalesFunnel: React.FC = () => {
     });
   }, [isEditModalOpen]);
 
-  // Handler para deletar relatório (apenas administradores)
+  // Handler para deletar relatório (apenas administradores) - SECURE VERSION
   const handleDeleteTask = useCallback(async (task: Task) => {
     if (!isAdmin) {
       toast.error('Apenas administradores podem deletar relatórios');
@@ -416,14 +416,18 @@ export const SalesFunnel: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', task.id);
+      // Use secure deletion function instead of direct delete
+      const { data, error } = await supabase.rpc('secure_delete_task', {
+        task_id_param: task.id
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao deletar relatório:', error);
+        toast.error(`Erro ao deletar relatório: ${error.message}`);
+        return;
+      }
 
-      toast.success('Relatório deletado com sucesso');
+      toast.success(`Relatório deletado com sucesso: ${data.client}`);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } catch (error) {
       console.error('Erro ao deletar relatório:', error);
