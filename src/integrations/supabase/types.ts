@@ -1495,6 +1495,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      simple_is_manager: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       simple_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
