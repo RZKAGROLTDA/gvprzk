@@ -117,7 +117,7 @@ export const useTasksOptimized = (includeDetails = false) => {
           let tasksData, error;
           try {
             const result = await supabase
-              .rpc('get_all_secure_tasks')
+              .rpc('get_completely_secure_tasks')
               .abortSignal(controller.signal);
               
             tasksData = result.data;
@@ -475,7 +475,7 @@ export const useTaskDetails = (taskId: string | null) => {
 
       const [taskResult, productsResult, remindersResult] = await Promise.all([
         supabase
-          .rpc('get_all_secure_tasks')
+          .rpc('get_completely_secure_tasks')
           .eq('id', taskId)
           .single(),
         supabase
