@@ -72,7 +72,7 @@ NavLink.displayName = 'NavLink';
 export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { isAdmin } = useProfile();
+  const { profile, isAdmin } = useProfile();
   
   // Initialize session security monitoring
   useSessionSecurity();
@@ -102,11 +102,17 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
             </div>
             
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <div className="hidden sm:flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                   <User className="h-4 w-4 text-primary-foreground" />
                 </div>
-                <span className="text-sm font-medium">{userDisplayName}</span>
+                <div className="hidden sm:flex flex-col text-right">
+                  <span className="text-sm font-medium text-foreground">{profile?.name || userDisplayName}</span>
+                  <div className="flex flex-col text-xs text-muted-foreground">
+                    <span className="capitalize">{profile?.role || 'Usuário'}</span>
+                    {profile?.filial_nome && <span>{profile.filial_nome}</span>}
+                  </div>
+                </div>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="h-8 w-8 sm:h-10 sm:w-10">
                 <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
