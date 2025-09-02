@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { StandardTaskForm } from './StandardTaskForm';
+import { toast } from 'sonner';
 
 interface TaskEditModalProps {
   taskId: string | null;
@@ -150,77 +145,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     setFormData(newFormData);
   }, [taskData]);
 
-  // 1) Cálculos dos totais (READ-ONLY)
-  const valorTotalOportunidade = useMemo(() => {
-    return formData.products.reduce((sum, item) => {
-      return sum + (item.qtd_ofertada * item.preco_unit);
-    }, 0);
-  }, [formData.products]);
-
-  const valorVendaParcial = useMemo(() => {
-    return formData.products
-      .filter(item => item.incluir_na_venda_parcial)
-      .reduce((sum, item) => {
-        return sum + (item.qtd_ofertada * item.preco_unit);
-      }, 0);
-  }, [formData.products]);
-
-  const valorVenda = useMemo(() => {
-    switch (formData.status) {
-      case 'venda_total':
-        return valorTotalOportunidade;
-      case 'venda_parcial':
-        return valorVendaParcial;
-      default:
-        return 0;
-    }
-  }, [formData.status, valorTotalOportunidade, valorVendaParcial]);
-
-  // Contador de itens incluídos
-  const itensIncluidos = useMemo(() => {
-    return formData.products.filter(item => item.incluir_na_venda_parcial).length;
-  }, [formData.products]);
-
-  const handleStatusChange = (newStatus: string) => {
-    setFormData(prev => ({
-      ...prev,
-      status: newStatus,
-      ...(newStatus !== 'venda_perdida' && { prospectNotes: '' })
-    }));
-  };
-
-  // 2) Funções para gerenciar itens da oportunidade
-  const handleItemToggle = (itemIndex: number) => {
-    setFormData(prev => ({
-      ...prev,
-      products: prev.products.map((product, index) => 
-        index === itemIndex 
-          ? { ...product, incluir_na_venda_parcial: !product.incluir_na_venda_parcial }
-          : product
-      )
-    }));
-  };
-
-  const handleSelectAll = () => {
-    setFormData(prev => ({
-      ...prev,
-      products: prev.products.map(product => ({
-        ...product,
-        incluir_na_venda_parcial: true
-      }))
-    }));
-  };
-
-  const handleClearSelection = () => {
-    setFormData(prev => ({
-      ...prev,
-      products: prev.products.map(product => ({
-        ...product,
-        incluir_na_venda_parcial: false
-      }))
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -246,6 +170,28 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       };
 
       const opportunityStatus = statusMapping[formData.status as keyof typeof statusMapping];
+
+      // Calcular valor da venda baseado no status
+      const valorVenda = (() => {
+        const valorTotalOportunidade = formData.products.reduce((sum, item) => {
+          return sum + (item.qtd_ofertada * item.preco_unit);
+        }, 0);
+
+        const valorVendaParcial = formData.products
+          .filter(item => item.incluir_na_venda_parcial)
+          .reduce((sum, item) => {
+            return sum + (item.qtd_ofertada * item.preco_unit);
+          }, 0);
+
+        switch (formData.status) {
+          case 'venda_total':
+            return valorTotalOportunidade;
+          case 'venda_parcial':
+            return valorVendaParcial;
+          default:
+            return 0;
+        }
+      })();
 
       // Prepare update data including all task fields
       const updatedData = {
@@ -332,409 +278,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Task</DialogTitle>
+          <DialogTitle>Editar Tarefa</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Dados da Tarefa */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Informações da Tarefa</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="taskName">Nome da Tarefa</Label>
-                <Input
-                  id="taskName"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Nome da tarefa"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="responsible">Responsável</Label>
-                <Input
-                  id="responsible"
-                  value={formData.responsible}
-                  onChange={(e) => setFormData(prev => ({ ...prev, responsible: e.target.value }))}
-                  placeholder="Responsável pela tarefa"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="taskType">Tipo de Atividade</Label>
-                <Select value={formData.taskType} onValueChange={(value: 'visita' | 'ligacao' | 'checklist') => setFormData(prev => ({ ...prev, taskType: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="visita">Visita</SelectItem>
-                    <SelectItem value="ligacao">Ligação</SelectItem>
-                    <SelectItem value="checklist">Checklist</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority">Prioridade</Label>
-                <Select value={formData.priority} onValueChange={(value: 'low' | 'medium' | 'high') => setFormData(prev => ({ ...prev, priority: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Data de Início</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="endDate">Data de Fim</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Hora de Início</Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={formData.startTime}
-                  onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endTime">Hora de Fim</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={formData.endTime}
-                  onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Dados do Cliente */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Informações do Cliente</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="customerName">Nome do Cliente</Label>
-                <Input
-                  id="customerName"
-                  value={formData.customerName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                  placeholder="Nome do cliente"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="customerEmail">Email</Label>
-                <Input
-                  id="customerEmail"
-                  type="email"
-                  value={formData.customerEmail || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                  placeholder="Email do cliente"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="Telefone do cliente"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="clientCode">Código do Cliente</Label>
-                <Input
-                  id="clientCode"
-                  value={formData.clientCode}
-                  onChange={(e) => setFormData(prev => ({ ...prev, clientCode: e.target.value }))}
-                  placeholder="Código do cliente"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="property">Propriedade</Label>
-                <Input
-                  id="property"
-                  value={formData.property}
-                  onChange={(e) => setFormData(prev => ({ ...prev, property: e.target.value }))}
-                  placeholder="Nome da propriedade"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="filial">Filial</Label>
-                <Input
-                  id="filial"
-                  value={formData.filial || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, filial: e.target.value }))}
-                  placeholder="Filial"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                <Input
-                  id="propertyHectares"
-                  type="number"
-                  value={formData.propertyHectares}
-                  onChange={(e) => setFormData(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || 0 }))}
-                  placeholder="0"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="equipmentQuantity">Quantidade de Equipamentos</Label>
-                <Input
-                  id="equipmentQuantity"
-                  type="number"
-                  value={formData.equipmentQuantity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, equipmentQuantity: parseInt(e.target.value) || 0 }))}
-                  placeholder="0"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="familyProduct">Família do Produto</Label>
-                <Input
-                  id="familyProduct"
-                  value={formData.familyProduct}
-                  onChange={(e) => setFormData(prev => ({ ...prev, familyProduct: e.target.value }))}
-                  placeholder="Família do produto"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 1) Totais (READ-ONLY) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div className="space-y-2">
-              <Label>Valor Total da Oportunidade (R$)</Label>
-              <Input
-                value={valorTotalOportunidade.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                readOnly
-                className="bg-white"
-              />
-            </div>
-            
-            {/* 3) Visibilidade - Campo aparece apenas quando status == "Venda Parcial" */}
-            {formData.status === 'venda_parcial' && (
-              <div className="space-y-2">
-                <Label>Valor da Venda Parcial (R$)</Label>
-                <Input
-                  value={valorVendaParcial.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  readOnly
-                  className="bg-white"
-                />
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label>Valor da Venda (R$)</Label>
-              <Input
-                value={valorVenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                readOnly
-                className="bg-white"
-              />
-            </div>
-          </div>
-
-          {/* Status do Prospect - Radio Group */}
-          <div className="space-y-3">
-            <Label className="text-base font-medium">Status do Prospect</Label>
-            <RadioGroup
-              value={formData.status}
-              onValueChange={handleStatusChange}
-              className="grid grid-cols-2 gap-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="prospect" id="prospect" />
-                <Label htmlFor="prospect">Prospect</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_total" id="venda_total" />
-                <Label htmlFor="venda_total">Venda Total</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_parcial" id="venda_parcial" />
-                <Label htmlFor="venda_parcial">Venda Parcial</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="venda_perdida" id="venda_perdida" />
-                <Label htmlFor="venda_perdida">Venda Perdida</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* 2) Tabela de itens da oportunidade */}
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Label className="text-base font-medium">Produtos da Oportunidade</Label>
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-600">
-                  Itens incluídos: {itensIncluidos}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSelectAll}
-                  >
-                    Selecionar todos
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearSelection}
-                  >
-                    Limpar seleção
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="border rounded-lg overflow-hidden">
-              <div className="max-h-60 overflow-y-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-sm font-medium">✓ Incluir na venda parcial</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Produto</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">SKU</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Qtd. Ofertada</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Preço Unit.</th>
-                      <th className="px-4 py-2 text-left text-sm font-medium">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {formData.products.map((product, index) => (
-                      <tr key={product.id} className="border-t">
-                        <td className="px-4 py-2">
-                          <Checkbox
-                            checked={product.incluir_na_venda_parcial || false}
-                            onCheckedChange={() => handleItemToggle(index)}
-                          />
-                        </td>
-                        <td className="px-4 py-2 font-medium">{product.produto || '—'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-600">{product.sku || '—'}</td>
-                        <td className="px-4 py-2">{product.qtd_ofertada || '—'}</td>
-                        <td className="px-4 py-2">
-                          {(product.preco_unit || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </td>
-                        <td className="px-4 py-2">
-                          {((product.qtd_ofertada || 0) * (product.preco_unit || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </td>
-                      </tr>
-                    ))}
-                    
-                    {formData.products.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                          <div className="space-y-4">
-                            <p>Nenhum produto cadastrado para esta tarefa</p>
-                            <p className="text-sm text-gray-400">
-                              Esta tarefa foi criada antes da implementação do sistema de produtos ou não teve produtos selecionados
-                            </p>
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              onClick={() => {
-                                // Adicionar produtos padrão baseados no tipo da tarefa
-                                const defaultProducts = [
-                                  { id: '1', produto: 'Lubrificante Motor', sku: 'LUB001', qtd_ofertada: 1, qtd_vendida: 0, preco_unit: 50.00, subtotal_ofertado: 50.00, subtotal_vendido: 0, incluir_na_venda_parcial: false },
-                                  { id: '2', produto: 'Filtro de Óleo', sku: 'FIL001', qtd_ofertada: 1, qtd_vendida: 0, preco_unit: 25.00, subtotal_ofertado: 25.00, subtotal_vendido: 0, incluir_na_venda_parcial: false },
-                                  { id: '3', produto: 'Peças Diversas', sku: 'PEC001', qtd_ofertada: 1, qtd_vendida: 0, preco_unit: 100.00, subtotal_ofertado: 100.00, subtotal_vendido: 0, incluir_na_venda_parcial: false }
-                                ];
-                                setFormData(prev => ({ ...prev, products: defaultProducts }));
-                              }}
-                              className="mx-auto"
-                            >
-                              Adicionar Produtos Padrão
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          {/* Observações */}
-          <div className="space-y-2">
-            <Label htmlFor="observacoes">Observações</Label>
-            <Textarea
-              id="observacoes"
-              value={formData.observacoes || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
-              placeholder="Observações gerais..."
-              rows={3}
-            />
-          </div>
-
-          {/* Motivo da Perda - Condicional */}
-          {formData.status === 'venda_perdida' && (
-            <div className="space-y-2">
-              <Label htmlFor="prospectNotes">Motivo da Perda *</Label>
-              <Textarea
-                id="prospectNotes"
-                value={formData.prospectNotes}
-                onChange={(e) => setFormData(prev => ({ ...prev, prospectNotes: e.target.value }))}
-                placeholder="Descreva o motivo da perda..."
-                rows={3}
-                className={formData.prospectNotes.trim() === '' ? 'border-red-500' : ''}
-              />
-              {formData.prospectNotes.trim() === '' && (
-                <p className="text-xs text-red-500">O motivo da perda é obrigatório</p>
-              )}
-            </div>
-          )}
-
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </div>
-        </form>
+        <StandardTaskForm
+          formData={formData}
+          onFormDataChange={setFormData}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          showProductsSection={true}
+          title="Editar Tarefa"
+        />
       </DialogContent>
     </Dialog>
   );

@@ -1,0 +1,644 @@
+import React, { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Calculator, Package, TrendingUp, AlertCircle } from 'lucide-react';
+
+interface OpportunityItem {
+  id: string;
+  produto: string;
+  sku: string;
+  qtd_ofertada: number;
+  qtd_vendida: number;
+  preco_unit: number;
+  subtotal_ofertado: number;
+  subtotal_vendido: number;
+  incluir_na_venda_parcial?: boolean;
+}
+
+interface StandardTaskFormProps {
+  formData: {
+    customerName: string;
+    customerEmail: string;
+    filial: string;
+    observacoes: string;
+    status: string;
+    prospectNotes: string;
+    products: OpportunityItem[];
+    name: string;
+    responsible: string;
+    property: string;
+    phone: string;
+    clientCode: string;
+    taskType: 'visita' | 'ligacao' | 'checklist';
+    priority: 'low' | 'medium' | 'high';
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    familyProduct: string;
+    equipmentQuantity: number;
+    propertyHectares: number;
+  };
+  onFormDataChange: (data: any) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  isSubmitting: boolean;
+  showProductsSection?: boolean;
+  title: string;
+}
+
+export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
+  formData,
+  onFormDataChange,
+  onSubmit,
+  isSubmitting,
+  showProductsSection = true,
+  title
+}) => {
+  // Cálculos dos totais (READ-ONLY)
+  const valorTotalOportunidade = useMemo(() => {
+    return formData.products.reduce((sum, item) => {
+      return sum + (item.qtd_ofertada * item.preco_unit);
+    }, 0);
+  }, [formData.products]);
+
+  const valorVendaParcial = useMemo(() => {
+    return formData.products
+      .filter(item => item.incluir_na_venda_parcial)
+      .reduce((sum, item) => {
+        return sum + (item.qtd_ofertada * item.preco_unit);
+      }, 0);
+  }, [formData.products]);
+
+  const valorVenda = useMemo(() => {
+    switch (formData.status) {
+      case 'venda_total':
+        return valorTotalOportunidade;
+      case 'venda_parcial':
+        return valorVendaParcial;
+      default:
+        return 0;
+    }
+  }, [formData.status, valorTotalOportunidade, valorVendaParcial]);
+
+  // Contador de itens incluídos
+  const itensIncluidos = useMemo(() => {
+    return formData.products.filter(item => item.incluir_na_venda_parcial).length;
+  }, [formData.products]);
+
+  const handleStatusChange = (newStatus: string) => {
+    onFormDataChange({
+      ...formData,
+      status: newStatus,
+      ...(newStatus !== 'venda_perdida' && { prospectNotes: '' })
+    });
+  };
+
+  // Funções para gerenciar itens da oportunidade
+  const handleItemToggle = (itemIndex: number) => {
+    onFormDataChange({
+      ...formData,
+      products: formData.products.map((product, index) => 
+        index === itemIndex 
+          ? { ...product, incluir_na_venda_parcial: !product.incluir_na_venda_parcial }
+          : product
+      )
+    });
+  };
+
+  const handleSelectAll = () => {
+    onFormDataChange({
+      ...formData,
+      products: formData.products.map(product => ({
+        ...product,
+        incluir_na_venda_parcial: true
+      }))
+    });
+  };
+
+  const handleClearSelection = () => {
+    onFormDataChange({
+      ...formData,
+      products: formData.products.map(product => ({
+        ...product,
+        incluir_na_venda_parcial: false
+      }))
+    });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      {/* Informações da Tarefa */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Informações da Tarefa
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="taskName">Nome da Tarefa</Label>
+              <Input
+                id="taskName"
+                value={formData.name}
+                onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
+                placeholder="Nome da tarefa"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="responsible">Responsável</Label>
+              <Input
+                id="responsible"
+                value={formData.responsible}
+                onChange={(e) => onFormDataChange({ ...formData, responsible: e.target.value })}
+                placeholder="Responsável pela tarefa"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="taskType">Tipo de Atividade</Label>
+              <Select 
+                value={formData.taskType} 
+                onValueChange={(value: 'visita' | 'ligacao' | 'checklist') => 
+                  onFormDataChange({ ...formData, taskType: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="visita">Visita</SelectItem>
+                  <SelectItem value="ligacao">Ligação</SelectItem>
+                  <SelectItem value="checklist">Checklist</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="priority">Prioridade</Label>
+              <Select 
+                value={formData.priority} 
+                onValueChange={(value: 'low' | 'medium' | 'high') => 
+                  onFormDataChange({ ...formData, priority: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Data de Início</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={(e) => onFormDataChange({ ...formData, startDate: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="endDate">Data de Fim</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={formData.endDate}
+                onChange={(e) => onFormDataChange({ ...formData, endDate: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="startTime">Hora de Início</Label>
+              <Input
+                id="startTime"
+                type="time"
+                value={formData.startTime}
+                onChange={(e) => onFormDataChange({ ...formData, startTime: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="endTime">Hora de Fim</Label>
+              <Input
+                id="endTime"
+                type="time"
+                value={formData.endTime}
+                onChange={(e) => onFormDataChange({ ...formData, endTime: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Informações do Cliente */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Informações do Cliente</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="customerName">Nome do Cliente</Label>
+              <Input
+                id="customerName"
+                value={formData.customerName}
+                onChange={(e) => onFormDataChange({ ...formData, customerName: e.target.value })}
+                placeholder="Nome do cliente"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="customerEmail">Email</Label>
+              <Input
+                id="customerEmail"
+                type="email"
+                value={formData.customerEmail || ''}
+                onChange={(e) => onFormDataChange({ ...formData, customerEmail: e.target.value })}
+                placeholder="Email do cliente"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => onFormDataChange({ ...formData, phone: e.target.value })}
+                placeholder="Telefone do cliente"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="clientCode">Código do Cliente</Label>
+              <Input
+                id="clientCode"
+                value={formData.clientCode}
+                onChange={(e) => onFormDataChange({ ...formData, clientCode: e.target.value })}
+                placeholder="Código do cliente"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="property">Propriedade</Label>
+              <Input
+                id="property"
+                value={formData.property}
+                onChange={(e) => onFormDataChange({ ...formData, property: e.target.value })}
+                placeholder="Nome da propriedade"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="filial">Filial</Label>
+              <Input
+                id="filial"
+                value={formData.filial}
+                onChange={(e) => onFormDataChange({ ...formData, filial: e.target.value })}
+                placeholder="Filial"
+                required
+              />
+            </div>
+          </div>
+
+          {formData.taskType !== 'ligacao' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="equipmentQuantity">Quantidade de Equipamentos</Label>
+                <Input
+                  id="equipmentQuantity"
+                  type="number"
+                  min="0"
+                  value={formData.equipmentQuantity}
+                  onChange={(e) => onFormDataChange({ 
+                    ...formData, 
+                    equipmentQuantity: parseInt(e.target.value) || 0 
+                  })}
+                  placeholder="Quantidade"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                <Input
+                  id="propertyHectares"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={formData.propertyHectares}
+                  onChange={(e) => onFormDataChange({ 
+                    ...formData, 
+                    propertyHectares: parseFloat(e.target.value) || 0 
+                  })}
+                  placeholder="Hectares"
+                />
+              </div>
+            </div>
+          )}
+
+          {formData.taskType === 'checklist' && (
+            <div className="space-y-2">
+              <Label htmlFor="familyProduct">Família do Produto</Label>
+              <Input
+                id="familyProduct"
+                value={formData.familyProduct}
+                onChange={(e) => onFormDataChange({ ...formData, familyProduct: e.target.value })}
+                placeholder="Família do produto"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Seção de Produtos e Valores - Padrão Único */}
+      {showProductsSection && formData.products.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Produtos Oferecidos e Valores
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Resumo Financeiro - SEMPRE VISÍVEL */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Valor Total da Oportunidade</p>
+                <p className="text-2xl font-bold text-primary">
+                  R$ {valorTotalOportunidade.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Valor da Venda Parcial</p>
+                <p className="text-2xl font-bold text-warning">
+                  R$ {valorVendaParcial.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {itensIncluidos} de {formData.products.length} itens
+                </p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Valor da Venda</p>
+                <p className="text-2xl font-bold text-success">
+                  R$ {valorVenda.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </p>
+              </div>
+            </div>
+
+            {/* Status da Venda */}
+            <div className="space-y-4">
+              <Label>Status da Venda</Label>
+              <RadioGroup value={formData.status} onValueChange={handleStatusChange}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="prospect" id="prospect" />
+                  <Label htmlFor="prospect">
+                    <Badge variant="warning">Prospect</Badge>
+                    <span className="ml-2">Em prospecção</span>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="venda_total" id="venda_total" />
+                  <Label htmlFor="venda_total">
+                    <Badge variant="success">Venda Total</Badge>
+                    <span className="ml-2">Venda de todos os itens ofertados</span>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="venda_parcial" id="venda_parcial" />
+                  <Label htmlFor="venda_parcial">
+                    <Badge variant="warning">Venda Parcial</Badge>
+                    <span className="ml-2">Venda de itens selecionados</span>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="venda_perdida" id="venda_perdida" />
+                  <Label htmlFor="venda_perdida">
+                    <Badge variant="destructive">Venda Perdida</Badge>
+                    <span className="ml-2">Venda não realizada</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Lista de Produtos com Seleção para Venda Parcial */}
+            {formData.status === 'venda_parcial' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">
+                    Selecione os itens para venda parcial:
+                  </Label>
+                  <div className="space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSelectAll}
+                    >
+                      Selecionar Todos
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearSelection}
+                    >
+                      Limpar Seleção
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {formData.products.map((product, index) => (
+                    <div
+                      key={product.id}
+                      className={`border rounded-lg p-4 transition-colors ${
+                        product.incluir_na_venda_parcial 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-muted'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id={`product-${index}`}
+                          checked={product.incluir_na_venda_parcial}
+                          onCheckedChange={() => handleItemToggle(index)}
+                        />
+                        
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium">{product.produto}</Label>
+                            <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm">Qtd: {product.qtd_ofertada}</p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm">
+                              R$ {product.preco_unit.toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm font-medium">
+                              Total: R$ {(product.qtd_ofertada * product.preco_unit).toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Lista Completa de Produtos (Somente Leitura) */}
+            {formData.status !== 'venda_parcial' && (
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Produtos Oferecidos:</Label>
+                <div className="space-y-2">
+                  {formData.products.map((product, index) => (
+                    <div key={product.id} className="border rounded p-3 bg-muted/20">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="font-medium">{product.produto}</p>
+                          <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm">Qtd: {product.qtd_ofertada}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm">
+                            R$ {product.preco_unit.toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            Total: R$ {(product.qtd_ofertada * product.preco_unit).toLocaleString('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Motivo da Perda (obrigatório para venda perdida) */}
+            {formData.status === 'venda_perdida' && (
+              <div className="space-y-2">
+                <Label htmlFor="prospectNotes" className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  Motivo da Perda (Obrigatório)
+                </Label>
+                <Textarea
+                  id="prospectNotes"
+                  value={formData.prospectNotes}
+                  onChange={(e) => onFormDataChange({ ...formData, prospectNotes: e.target.value })}
+                  placeholder="Descreva o motivo da perda da venda..."
+                  required={formData.status === 'venda_perdida'}
+                  className="min-h-[100px]"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Observações */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Observações</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="observacoes">Observações Gerais</Label>
+            <Textarea
+              id="observacoes"
+              value={formData.observacoes}
+              onChange={(e) => onFormDataChange({ ...formData, observacoes: e.target.value })}
+              placeholder="Observações adicionais sobre a tarefa..."
+              className="min-h-[100px]"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Botões de Ação */}
+      <div className="flex justify-end space-x-4">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="min-w-[120px]"
+        >
+          {isSubmitting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Salvando...
+            </>
+          ) : (
+            'Salvar Tarefa'
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+};
