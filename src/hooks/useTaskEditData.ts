@@ -383,6 +383,51 @@ export const useTaskEditData = (taskId: string | null) => {
           .eq('id', data.opportunity.id);
 
         if (opportunityError) throw opportunityError;
+      } else if (updates.opportunity && updates.salesValue !== undefined) {
+        // Criar nova oportunidade se não existe
+        let clientName = data.cliente_nome || 'Cliente';
+        let filialName = data.filial || 'Não informado';
+        
+        // Se não temos dados completos, buscar na tabela tasks
+        if (!data.name) {
+          const { data: taskDetails } = await supabase
+            .from('tasks')
+            .select('client, filial')
+            .eq('id', taskId)
+            .single();
+            
+          if (taskDetails) {
+            clientName = taskDetails.client || data.cliente_nome || 'Cliente';
+            filialName = taskDetails.filial || data.filial || 'Não informado';
+          }
+        }
+        
+        const newOpportunityData = {
+          task_id: taskId,
+          cliente_nome: clientName,
+          filial: filialName,
+          status: updates.opportunity.status || 'Prospect',
+          valor_total_oportunidade: updates.salesValue, // Valor total da oportunidade
+          valor_venda_fechada: updates.sales_type === 'parcial' 
+            ? (updates.partialSalesValue || 0)
+            : updates.sales_type === 'ganho' 
+              ? updates.salesValue 
+              : 0,
+          data_criacao: new Date().toISOString(),
+          data_fechamento: updates.sales_confirmed ? new Date().toISOString() : null
+        };
+        
+        console.log('🔍 useTaskEditData: Criando nova oportunidade:', newOpportunityData);
+        
+        const { error: insertError } = await supabase
+          .from('opportunities')
+          .insert(newOpportunityData);
+          
+        if (insertError) {
+          console.warn('Erro ao criar nova oportunidade:', insertError);
+        } else {
+          console.log('✅ useTaskEditData: Nova oportunidade criada com sucesso');
+        }
       }
 
       // Additional sales values update (fallback if not handled above)

@@ -177,8 +177,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       const valorVenda = formDataToProcess.salesValue || 0;
       const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
       
-      // CRÍTICO: Preservar valor original da oportunidade
-      const valorTotalOportunidade = taskData?.opportunity?.valor_total_oportunidade || 0;
+      // CRÍTICO: Preservar valor original da oportunidade ou usar valor da task se oportunidade não existe
+      const valorTotalOportunidade = taskData?.opportunity?.valor_total_oportunidade || valorVenda;
 
       console.log('🔧 TaskEditModal: Valores calculados recebidos:', {
         salesValue: valorVenda,
