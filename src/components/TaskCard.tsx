@@ -22,6 +22,7 @@ import { ptBR } from 'date-fns/locale';
 import { PhotoGallery } from '@/components/PhotoGallery';
 import { TaskLocationInfo } from '@/components/TaskLocationInfo';
 import { FormVisualization } from '@/components/FormVisualization';
+import { SecureTaskDisplay } from '@/components/SecureTaskDisplay';
 
 interface TaskCardProps {
   task: Task;

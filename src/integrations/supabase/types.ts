@@ -852,6 +852,16 @@ export type Database = {
         Args: { operation_type?: string }
         Returns: boolean
       }
+      check_customer_data_access_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          alert_type: string
+          count: number
+          description: string
+          recommendation: string
+          severity: string
+        }[]
+      }
       check_login_rate_limit: {
         Args: { user_email: string }
         Returns: boolean
@@ -876,48 +886,6 @@ export type Database = {
           action: string
           count: number
           table_name: string
-        }[]
-      }
-      get_all_secure_tasks: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          access_level: string
-          check_in_location: Json
-          client: string
-          clientcode: string
-          created_at: string
-          created_by: string
-          documents: string[]
-          email: string
-          end_date: string
-          end_time: string
-          equipment_list: Json
-          equipment_quantity: number
-          family_product: string
-          filial: string
-          final_km: number
-          id: string
-          initial_km: number
-          is_masked: boolean
-          is_prospect: boolean
-          name: string
-          observations: string
-          partial_sales_value: number
-          phone: string
-          photos: string[]
-          priority: string
-          property: string
-          propertyhectares: number
-          prospect_notes: string
-          responsible: string
-          sales_confirmed: boolean
-          sales_type: string
-          sales_value: number
-          start_date: string
-          start_time: string
-          status: string
-          task_type: string
-          updated_at: string
         }[]
       }
       get_filiais_for_registration: {
@@ -993,6 +961,48 @@ export type Database = {
           phone: string
           session_date: string
           stage: string
+        }[]
+      }
+      get_secure_customer_data_enhanced: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          check_in_location: Json
+          client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
+          email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
+          filial: string
+          final_km: number
+          id: string
+          initial_km: number
+          is_masked: boolean
+          is_prospect: boolean
+          name: string
+          observations: string
+          partial_sales_value: number
+          phone: string
+          photos: string[]
+          priority: string
+          property: string
+          propertyhectares: number
+          prospect_notes: string
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
         }[]
       }
       get_secure_sales_data: {
@@ -1105,6 +1115,14 @@ export type Database = {
           access_type?: string
           accessed_fields?: string[]
           client_id: string
+        }
+        Returns: undefined
+      }
+      log_customer_contact_access: {
+        Args: {
+          access_type?: string
+          customer_count?: number
+          masked_count?: number
         }
         Returns: undefined
       }

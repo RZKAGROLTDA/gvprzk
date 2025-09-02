@@ -24,44 +24,51 @@ interface SecureTaskData {
   created_by: string;
 }
 
-export const useSecureTaskData = (taskIds?: string[]) => {
+export const useSecureTaskData = () => {
   const { monitorSuspiciousActivity } = useSecurityMonitor();
 
   return useQuery({
-    queryKey: ['secure-task-data', taskIds],
+    queryKey: ['secure-customer-data-enhanced'],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.rpc('get_secure_task_data_enhanced', {
-          task_ids: taskIds || null
-        });
+        const { data, error } = await supabase.rpc('get_secure_customer_data_enhanced');
 
         if (error) {
-          console.error('Secure task data error:', error);
-          monitorSuspiciousActivity('task_data_access_error', { error: error.message }, 3);
-          // Return empty array as fallback instead of throwing
+          console.error('🚨 Secure customer data access error:', error);
+          monitorSuspiciousActivity('customer_data_access_error', { error: error.message }, 3);
           return [];
         }
 
-        // Log successful data access for audit
+        // Log customer data access with security monitoring
         if (data?.length > 0) {
           const maskedCount = data.filter((task: SecureTaskData) => task.is_masked).length;
+          const totalCustomers = data.length;
+          
+          console.log(`✅ Customer data loaded: ${totalCustomers} records, ${maskedCount} masked for security`);
+          
+          // Log the access for security monitoring
+          await supabase.rpc('log_customer_contact_access', {
+            access_type: 'bulk_view',
+            customer_count: totalCustomers,
+            masked_count: maskedCount
+          });
+          
           if (maskedCount > 0) {
-            console.log(`🔒 Data masking applied to ${maskedCount} tasks for security`);
+            console.log(`🔒 Customer contact information masked for ${maskedCount} records to protect privacy`);
           }
         }
 
         return data as SecureTaskData[];
       } catch (error) {
-        console.error('Failed to fetch secure task data:', error);
-        monitorSuspiciousActivity('task_data_access_failure', { error: String(error) }, 4);
-        // Return empty array as fallback instead of throwing
+        console.error('🚨 Failed to fetch secure customer data:', error);
+        monitorSuspiciousActivity('customer_data_access_failure', { error: String(error) }, 4);
         return [];
       }
     },
     enabled: true,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2, // Retry twice on failure
+    retry: 2,
   });
 };
 

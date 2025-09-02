@@ -7,6 +7,7 @@ import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthCheck';
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 import { DatabaseMigrationButton } from '@/components/DatabaseMigrationButton';
+import { SecurityAlertPanel } from '@/components/SecurityAlertPanel';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnel } from '@/components/SalesFunnel';
@@ -33,6 +34,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <SecurityAlertPanel />
 
       <Tabs defaultValue="funil" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
