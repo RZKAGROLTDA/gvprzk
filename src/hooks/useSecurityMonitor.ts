@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 interface SecurityEvent {
-  type: 'login_attempt' | 'failed_login' | 'password_reset' | 'suspicious_activity' | 'privilege_escalation' | 'data_access_violation' | 'high_risk_activity';
+  type: 'login_attempt' | 'failed_login' | 'password_reset' | 'suspicious_activity' | 'privilege_escalation' | 'data_access_violation' | 'high_risk_activity' | 'customer_data_access' | 'bulk_data_export' | 'sensitive_field_access';
   metadata?: Record<string, any>;
   riskLevel?: number;
 }
@@ -137,6 +137,49 @@ export const useSecurityMonitor = () => {
     });
   }, [logSecurityEvent, user?.id]);
 
+  const monitorCustomerDataAccess = useCallback((accessType: 'view' | 'edit' | 'export', customerCount: number = 1, sensitiveFields: string[] = []) => {
+    const riskLevel = accessType === 'export' ? 4 : sensitiveFields.length > 0 ? 3 : 2;
+    
+    logSecurityEvent({
+      type: 'customer_data_access',
+      riskLevel,
+      metadata: {
+        access_type: accessType,
+        customer_count: customerCount,
+        sensitive_fields: sensitiveFields,
+        timestamp: new Date().toISOString(),
+        current_user_id: user?.id
+      }
+    });
+  }, [logSecurityEvent, user?.id]);
+
+  const monitorBulkDataExport = useCallback((exportType: string, recordCount: number, includesSensitiveData: boolean = false) => {
+    logSecurityEvent({
+      type: 'bulk_data_export',
+      riskLevel: includesSensitiveData ? 5 : 3,
+      metadata: {
+        export_type: exportType,
+        record_count: recordCount,
+        includes_sensitive_data: includesSensitiveData,
+        timestamp: new Date().toISOString(),
+        current_user_id: user?.id
+      }
+    });
+  }, [logSecurityEvent, user?.id]);
+
+  const monitorSensitiveFieldAccess = useCallback((fieldType: 'email' | 'phone' | 'sales_value' | 'customer_name', accessContext: string) => {
+    logSecurityEvent({
+      type: 'sensitive_field_access',
+      riskLevel: 3,
+      metadata: {
+        field_type: fieldType,
+        access_context: accessContext,
+        timestamp: new Date().toISOString(),
+        current_user_id: user?.id
+      }
+    });
+  }, [logSecurityEvent, user?.id]);
+
   // Monitor for suspicious patterns
   useEffect(() => {
     let rapidClickCount = 0;
@@ -174,6 +217,9 @@ export const useSecurityMonitor = () => {
     monitorSuspiciousActivity,
     monitorPrivilegeEscalation,
     monitorDataAccessViolation,
+    monitorCustomerDataAccess,
+    monitorBulkDataExport,
+    monitorSensitiveFieldAccess,
     checkRateLimit
   };
 };

@@ -62,3 +62,56 @@ export const canPerformNumericOperation = (salesValue?: number | string): boolea
   return typeof salesValue === 'number' || 
     (typeof salesValue === 'string' && !isMaskedValue(salesValue) && !isNaN(parseFloat(salesValue)));
 };
+
+export const sanitizeCustomerEmail = (email: string, userRole: string): string => {
+  if (!email || email.trim() === '') return '';
+  
+  // Admin/Manager can see full email
+  if (userRole === 'manager' || userRole === 'admin') {
+    return email;
+  }
+  
+  // Others see masked email
+  const [localPart, domain] = email.split('@');
+  if (!domain) return 'protected@***';
+  
+  const maskedLocal = localPart.length > 2 ? 
+    localPart.charAt(0) + '***' + localPart.charAt(localPart.length - 1) : 
+    '***';
+    
+  return `${maskedLocal}@${domain}`;
+};
+
+export const sanitizeCustomerPhone = (phone: string, userRole: string): string => {
+  if (!phone || phone.trim() === '') return '';
+  
+  // Admin/Manager can see full phone
+  if (userRole === 'manager' || userRole === 'admin') {
+    return phone;
+  }
+  
+  // Others see masked phone
+  if (phone.length > 4) {
+    return '***-***-' + phone.slice(-4);
+  }
+  
+  return '***-***-****';
+};
+
+export const validateSensitiveDataAccess = (userRole: string, dataType: 'customer_email' | 'customer_phone' | 'high_value_sales'): boolean => {
+  const allowedRoles: Record<string, string[]> = {
+    'customer_email': ['manager', 'admin', 'supervisor'],
+    'customer_phone': ['manager', 'admin', 'supervisor'],
+    'high_value_sales': ['manager', 'admin']
+  };
+  
+  return allowedRoles[dataType]?.includes(userRole) || false;
+};
+
+export const logSensitiveAccess = (accessType: string, metadata: Record<string, any> = {}) => {
+  // This would typically integrate with your security monitoring system
+  console.warn(`[SECURITY] Sensitive data access: ${accessType}`, {
+    timestamp: new Date().toISOString(),
+    ...metadata
+  });
+};
