@@ -1164,6 +1164,48 @@ export type Database = {
           task_type: string
         }[]
       }
+      get_secure_tasks_with_customer_protection: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          check_in_location: Json
+          client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
+          email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
+          filial: string
+          final_km: number
+          id: string
+          initial_km: number
+          is_customer_data_masked: boolean
+          is_prospect: boolean
+          name: string
+          observations: string
+          partial_sales_value: number
+          phone: string
+          photos: string[]
+          priority: string
+          property: string
+          propertyhectares: number
+          prospect_notes: string
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
+        }[]
+      }
       get_secure_user_directory: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1252,6 +1294,10 @@ export type Database = {
         Returns: string
       }
       get_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_user_security_level: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
@@ -1381,6 +1427,10 @@ export type Database = {
           risk_level: string
           user_count: number
         }[]
+      }
+      monitor_unauthorized_customer_access: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       secure_log_security_event: {
         Args: {

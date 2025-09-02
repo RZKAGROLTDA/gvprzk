@@ -48,24 +48,22 @@ export const useTasksOptimized = (includeDetails = false) => {
           .limit(1)
           .single();
 
-        const { error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: user.id,
-            name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
-            email: user.email || '',
-            role: 'consultant',
-            filial_id: defaultFilial?.id || null,
-            approval_status: 'approved'
-          });
+        // Use secure profile creation function
+        const { error: createError } = await supabase.rpc('create_secure_profile', {
+          user_id_param: user.id,
+          name_param: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+          email_param: user.email || '',
+          role_param: 'consultant',
+          filial_id_param: defaultFilial?.id || null
+        });
 
         if (createError) {
           console.error('❌ Erro ao criar perfil:', createError);
           return false;
         }
         
-        console.log('✅ Perfil criado automaticamente');
-        return true;
+        console.log('✅ Perfil criado automaticamente (aguardando aprovação)');
+        return false; // Return false since profile needs approval
       }
 
       return profile.approval_status === 'approved';
@@ -113,37 +111,28 @@ export const useTasksOptimized = (includeDetails = false) => {
 
           console.log('🔄 Carregando tasks via função segura...');
           
-          // Usar a nova função RPC otimizada para supervisores
+          // Use enhanced secure function that protects customer data
           let tasksData, error;
           try {
             const result = await supabase
-              .rpc('get_supervisor_filial_tasks')
+              .rpc('get_secure_tasks_with_customer_protection')
               .abortSignal(controller.signal);
               
             tasksData = result.data;
             error = result.error;
-            console.log('✅ Tasks carregadas via RPC supervisor:', tasksData?.length || 0);
+            console.log('✅ Tasks carregadas via função segura:', tasksData?.length || 0);
           } catch (rpcError: any) {
-            console.log('⚠️ RPC falhou, tentando query direta...');
+            console.log('⚠️ Função segura falhou, bloqueando acesso direto por segurança');
             
-            // Fallback: query direta na tabela tasks
-            const result = await supabase
-              .from('tasks')
-              .select(`
-                id, name, responsible, client, property, filial, email, 
-                sales_value, start_date, end_date, task_type, status, 
-                priority, created_by, created_at, updated_at, is_prospect,
-                sales_confirmed, equipment_quantity, equipment_list,
-                propertyhectares, initial_km, final_km, check_in_location,
-                clientcode, sales_type, start_time, end_time, observations,
-                prospect_notes, family_product, photos, documents
-              `)
-              .order('created_at', { ascending: false })
-              .limit(500)
-              .abortSignal(controller.signal);
-              
-            tasksData = result.data;
-            error = result.error;
+            // Log unauthorized access attempt
+            try {
+              await supabase.rpc('monitor_unauthorized_customer_access');
+            } catch (logError) {
+              console.error('Failed to log unauthorized access:', logError);
+            }
+            
+            // Do NOT fall back to direct table access for security
+            throw new Error('Access to customer data requires secure function. Direct table access blocked for security.');
           }
 
           clearTimeout(timeout);
@@ -475,7 +464,7 @@ export const useTaskDetails = (taskId: string | null) => {
 
       const [taskResult, productsResult, remindersResult] = await Promise.all([
         supabase
-          .rpc('get_supervisor_filial_tasks')
+          .rpc('get_secure_tasks_with_customer_protection')
           .eq('id', taskId)
           .single(),
         supabase
