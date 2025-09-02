@@ -28,47 +28,47 @@ export const useSecureTaskData = () => {
   const { monitorSuspiciousActivity } = useSecurityMonitor();
 
   return useQuery({
-    queryKey: ['secure-customer-data-enhanced'],
+    queryKey: ['completely-secure-tasks'],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.rpc('get_secure_customer_data_enhanced');
+        const { data, error } = await supabase.rpc('get_completely_secure_tasks');
 
         if (error) {
-          console.error('🚨 Secure customer data access error:', error);
-          monitorSuspiciousActivity('customer_data_access_error', { error: error.message }, 3);
+          console.error('🚨 Ultra-secure task data access error:', error);
+          monitorSuspiciousActivity('ultra_secure_task_access_error', { error: error.message }, 4);
           return [];
         }
 
-        // Log customer data access with security monitoring
+        // Log secure access with detailed monitoring
         if (data?.length > 0) {
-          const maskedCount = data.filter((task: SecureTaskData) => task.is_masked).length;
-          const totalCustomers = data.length;
+          const protectedCount = data.filter((task: any) => task.is_customer_data_protected).length;
+          const totalTasks = data.length;
           
-          console.log(`✅ Customer data loaded: ${totalCustomers} records, ${maskedCount} masked for security`);
+          console.log(`✅ Ultra-secure task data loaded: ${totalTasks} records, ${protectedCount} with customer data protection`);
           
-          // Log the access for security monitoring
+          // Log the secure access for monitoring
           await supabase.rpc('log_customer_contact_access', {
-            access_type: 'bulk_view',
-            customer_count: totalCustomers,
-            masked_count: maskedCount
+            access_type: 'ultra_secure_access',
+            customer_count: totalTasks,
+            masked_count: protectedCount
           });
           
-          if (maskedCount > 0) {
-            console.log(`🔒 Customer contact information masked for ${maskedCount} records to protect privacy`);
+          if (protectedCount > 0) {
+            console.log(`🔒 Customer contact information fully protected for ${protectedCount} records`);
           }
         }
 
         return data as SecureTaskData[];
       } catch (error) {
-        console.error('🚨 Failed to fetch secure customer data:', error);
-        monitorSuspiciousActivity('customer_data_access_failure', { error: String(error) }, 4);
+        console.error('🚨 Failed to fetch ultra-secure task data:', error);
+        monitorSuspiciousActivity('ultra_secure_task_access_failure', { error: String(error) }, 5);
         return [];
       }
     },
     enabled: true,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
+    retry: 1, // Only retry once for security
   });
 };
 
