@@ -286,7 +286,9 @@ export const Users: React.FC = () => {
 
 
   const profiles = secureUserData || [];
-  const allUsers = profiles.filter(p => p.approval_status === 'approved');
+  const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
+  const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
+  const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
   
   const isAdmin = currentUserProfile?.role === 'manager';
 
@@ -317,12 +319,71 @@ export const Users: React.FC = () => {
         </Card>
       )}
 
-      {/* Todos os Usuários */}
-      {allUsers.length > 0 && (
+      {/* Usuários Pendentes de Aprovação */}
+      {pendingUsers.length > 0 && isAdmin && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-amber-800 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Usuários Aguardando Aprovação ({pendingUsers.length})
+            </CardTitle>
+            <CardDescription>
+              Novos usuários que se cadastraram no sistema e precisam de aprovação
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingUsers.map((profile) => (
+                  <TableRow key={profile.id}>
+                    <TableCell className="font-medium">{profile.name}</TableCell>
+                    <TableCell>{profile.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={getApprovalBadgeVariant(profile.approval_status)}>
+                        {getApprovalLabel(profile.approval_status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => updateUserApproval(profile.user_id, 'approved')}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Aprovar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => updateUserApproval(profile.user_id, 'rejected')}
+                        >
+                          Rejeitar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Todos os Usuários Aprovados */}
+      {approvedUsers.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-gray-900">
-              Usuários do Sistema ({allUsers.length})
+              Usuários Aprovados ({approvedUsers.length})
             </CardTitle>
           </CardHeader>
         <CardContent>
@@ -338,7 +399,7 @@ export const Users: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allUsers.map((profile) => (
+              {approvedUsers.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.name}</TableCell>
                   <TableCell>
