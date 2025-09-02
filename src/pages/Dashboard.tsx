@@ -8,6 +8,7 @@ import { AuthenticationHealthCheck } from '@/components/AuthenticationHealthChec
 import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 import { DatabaseMigrationButton } from '@/components/DatabaseMigrationButton';
 import { SecurityAlertPanel } from '@/components/SecurityAlertPanel';
+import { SecurityConfiguration } from '@/components/SecurityConfiguration';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnel } from '@/components/SalesFunnel';
@@ -38,11 +39,12 @@ const Dashboard: React.FC = () => {
       <SecurityAlertPanel />
 
       <Tabs defaultValue="funil" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="funil">Funil</TabsTrigger>
           <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas</TabsTrigger>
           <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="seguranca">🔒 Segurança</TabsTrigger>
           <TabsTrigger value="emergencia">🔧 Correção</TabsTrigger>
         </TabsList>
 
@@ -67,6 +69,12 @@ const Dashboard: React.FC = () => {
         <TabsContent value="relatorios" className="space-y-6">
           <Suspense fallback={<DashboardLoading />}>
             <Reports />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="seguranca" className="space-y-6">
+          <Suspense fallback={<DashboardLoading />}>
+            <SecurityConfiguration />
           </Suspense>
         </TabsContent>
 

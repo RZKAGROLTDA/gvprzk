@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Shield, AlertTriangle, ExternalLink, Activity, CheckCircle, Settings, Bell } from 'lucide-react';
+import { useEnhancedSecurityMonitor } from '@/hooks/useEnhancedSecurityMonitor';
+import { useToast } from '@/hooks/use-toast';
 
 interface SecurityConfigurationProps {
   onConfigureOTP?: () => void;
@@ -16,6 +20,32 @@ export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
   onConfigurePasswordProtection,
   onCleanupAuditLogs
 }) => {
+  const { toast } = useToast();
+  const { 
+    activeAlerts, 
+    dismissAlert, 
+    getCriticalAlerts,
+    alertStats 
+  } = useEnhancedSecurityMonitor();
+
+  const [monitoringEnabled, setMonitoringEnabled] = useState({
+    bulkExport: true,
+    customerAccess: true,
+    rateLimit: true,
+    suspiciousActivity: true
+  });
+
+  const handleMonitoringToggle = (type: keyof typeof monitoringEnabled) => {
+    setMonitoringEnabled(prev => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+    
+    toast({
+      title: "Configuração atualizada",
+      description: `Monitoramento de ${type} ${!monitoringEnabled[type] ? 'ativado' : 'desativado'}`,
+    });
+  };
   const securityChecks = [
     {
       id: 'database_functions',
@@ -97,72 +127,309 @@ export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Shield className="h-6 w-6 text-primary" />
-        <h2 className="text-2xl font-bold">Security Configuration</h2>
+        <h2 className="text-2xl font-bold">Configuração de Segurança</h2>
       </div>
 
-      <Alert>
-        <Shield className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Security Status:</strong> {secureCount} items secured, {warningCount} configuration items pending
-        </AlertDescription>
-      </Alert>
+      <Tabs defaultValue="status" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="status">Status</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoramento</TabsTrigger>
+          <TabsTrigger value="alerts">Alertas ({activeAlerts.length})</TabsTrigger>
+          <TabsTrigger value="config">Configuração</TabsTrigger>
+        </TabsList>
 
-      <div className="grid gap-4">
-        {securityChecks.map((check) => (
-          <Card key={check.id} className="relative">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{check.title}</CardTitle>
-                <Badge 
-                  variant={check.status === 'secure' ? 'default' : 'secondary'}
-                  className={check.status === 'secure' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
-                >
-                  {check.status === 'secure' ? (
-                    <Shield className="h-3 w-3 mr-1" />
-                  ) : (
-                    <AlertTriangle className="h-3 w-3 mr-1" />
+        <TabsContent value="status" className="space-y-6">
+          {/* Alert Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                  <div>
+                    <p className="text-sm font-medium">Críticos</p>
+                    <p className="text-2xl font-bold">{alertStats.critical}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  <div>
+                    <p className="text-sm font-medium">Alto</p>
+                    <p className="text-2xl font-bold">{alertStats.high}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-5 w-5 text-yellow-500" />
+                  <div>
+                    <p className="text-sm font-medium">Médio</p>
+                    <p className="text-2xl font-bold">{alertStats.medium}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="text-sm font-medium">Baixo</p>
+                    <p className="text-2xl font-bold">{alertStats.low}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Alert>
+            <Shield className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Status de Segurança:</strong> {secureCount} itens seguros, {warningCount} configurações pendentes
+            </AlertDescription>
+          </Alert>
+
+          <div className="grid gap-4">
+            {securityChecks.map((check) => (
+              <Card key={check.id} className="relative">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{check.title}</CardTitle>
+                    <Badge 
+                      variant={check.status === 'secure' ? 'default' : 'secondary'}
+                      className={check.status === 'secure' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}
+                    >
+                      {check.status === 'secure' ? (
+                        <Shield className="h-3 w-3 mr-1" />
+                      ) : (
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                      )}
+                      {check.status === 'secure' ? 'Seguro' : 'Configuração Necessária'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="mb-3">
+                    {check.description}
+                  </CardDescription>
+                  
+                  {check.action === 'cleanup-logs' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onCleanupAuditLogs}
+                      className="flex items-center gap-2"
+                    >
+                      Executar Limpeza
+                    </Button>
                   )}
-                  {check.status === 'secure' ? 'Secure' : 'Configuration Required'}
-                </Badge>
+                  {check.action && check.link && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(check.link, '_blank')}
+                      className="flex items-center gap-2"
+                    >
+                      {check.action}
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Configurações de Monitoramento
+              </CardTitle>
+              <CardDescription>
+                Configure quais eventos de segurança devem ser monitorados ativamente
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Exportação em Massa</p>
+                  <p className="text-sm text-muted-foreground">Monitora exportações de dados em grande volume</p>
+                </div>
+                <Switch
+                  checked={monitoringEnabled.bulkExport}
+                  onCheckedChange={() => handleMonitoringToggle('bulkExport')}
+                />
               </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Acesso a Dados de Cliente</p>
+                  <p className="text-sm text-muted-foreground">Monitora acesso a informações sensíveis de clientes</p>
+                </div>
+                <Switch
+                  checked={monitoringEnabled.customerAccess}
+                  onCheckedChange={() => handleMonitoringToggle('customerAccess')}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Limite de Taxa</p>
+                  <p className="text-sm text-muted-foreground">Monitora tentativas excessivas de acesso</p>
+                </div>
+                <Switch
+                  checked={monitoringEnabled.rateLimit}
+                  onCheckedChange={() => handleMonitoringToggle('rateLimit')}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Atividade Suspeita</p>
+                  <p className="text-sm text-muted-foreground">Detecta padrões anômalos de comportamento</p>
+                </div>
+                <Switch
+                  checked={monitoringEnabled.suspiciousActivity}
+                  onCheckedChange={() => handleMonitoringToggle('suspiciousActivity')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="alerts" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Alertas Ativos ({activeAlerts.length})
+              </CardTitle>
+              <CardDescription>
+                Alertas de segurança em tempo real
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <CardDescription className="mb-3">
-                {check.description}
-              </CardDescription>
-              
-              {check.action === 'cleanup-logs' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onCleanupAuditLogs}
-                  className="flex items-center gap-2"
-                >
-                  Run Cleanup
-                </Button>
-              )}
-              {check.action && check.link && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(check.link, '_blank')}
-                  className="flex items-center gap-2"
-                >
-                  {check.action}
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
+              {activeAlerts.length > 0 ? (
+                <div className="space-y-4">
+                  {activeAlerts.map((alert) => (
+                    <Alert key={alert.id}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-4 w-4" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="font-medium">{alert.title}</h4>
+                              <Badge variant="secondary">
+                                {alert.severity}
+                              </Badge>
+                            </div>
+                            <AlertDescription className="mb-2">
+                              {alert.description}
+                            </AlertDescription>
+                            <p className="text-sm text-muted-foreground">
+                              <strong>Recomendação:</strong> {alert.recommendation}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {new Date(alert.timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => dismissAlert(alert.id)}
+                        >
+                          Dispensar
+                        </Button>
+                      </div>
+                    </Alert>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                  <h3 className="font-medium text-green-700">Tudo Limpo</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum alerta de segurança detectado
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
-        ))}
-      </div>
+        </TabsContent>
 
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Manual Configuration Required:</strong> Please configure the OTP expiry and leaked password protection settings in your Supabase dashboard to complete the security setup.
-        </AlertDescription>
-      </Alert>
+        <TabsContent value="config" className="space-y-6">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Configuração Manual Necessária:</strong> Configure a expiração do OTP e proteção contra senhas vazadas no seu dashboard do Supabase para completar a configuração de segurança.
+            </AlertDescription>
+          </Alert>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações do Supabase</CardTitle>
+              <CardDescription>
+                Configurações que devem ser ajustadas no dashboard do Supabase
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <Alert>
+                  <Settings className="h-4 w-4" />
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium mb-2">Expiração do OTP</h4>
+                      <AlertDescription className="mb-3">
+                        Reduzir tempo de expiração do OTP para 300 segundos (5 minutos) para melhor segurança.
+                      </AlertDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('https://supabase.com/dashboard/project/wuvbrkbhunifudaewhng/auth/providers', '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Configurar
+                    </Button>
+                  </div>
+                </Alert>
+                
+                <Alert>
+                  <Settings className="h-4 w-4" />
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium mb-2">Proteção contra Senhas Vazadas</h4>
+                      <AlertDescription className="mb-3">
+                        Ativar proteção para impedir que usuários usem senhas encontradas em vazamentos de dados.
+                      </AlertDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('https://supabase.com/dashboard/project/wuvbrkbhunifudaewhng/auth/providers', '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Configurar
+                    </Button>
+                  </div>
+                </Alert>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
     </div>
   );
 };
