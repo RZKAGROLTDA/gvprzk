@@ -1440,6 +1440,16 @@ export type Database = {
         Args: { input_data: Json }
         Returns: boolean
       }
+      verify_customer_data_security: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          has_rls: boolean
+          is_secure: boolean
+          policy_count: number
+          recommendation: string
+          table_name: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
