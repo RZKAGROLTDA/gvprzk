@@ -5711,7 +5711,20 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       total += Object.values(callQuestions).reduce((sum, item) => {
         return sum + (item.needsProduct ? item.totalValue : 0);
       }, 0);
+      
+      // Somar também produtos do callProducts
+      total += callProducts.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
     }
+
+    // Somar produtos de venda parcial (prospectItems) se existirem
+    if (task.prospectItems && task.prospectItems.length > 0) {
+      total += task.prospectItems.reduce((sum, item) => {
+        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
+      }, 0);
+    }
+
     return total;
   };
 
@@ -5725,7 +5738,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         salesValue: totalValue
       }));
     }
-  }, [checklist, callQuestions, taskCategory, task.prospectItems]);
+  }, [checklist, callQuestions, callProducts, taskCategory, task.prospectItems]);
 
   // REMOVER este useEffect que estava alterando o valor quando prospectItems mudava
   // useEffect(() => {
