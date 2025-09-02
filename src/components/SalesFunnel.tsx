@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Trash2 } from 'lucide-react';
+import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin } from 'lucide-react';
 import { Task } from '@/types/task';
 import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,8 +17,6 @@ import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
-import { useProfile } from '@/hooks/useProfile';
-import { toast } from 'sonner';
 
 interface SalesFunnelData {
   contacts: {
@@ -65,7 +63,6 @@ export const SalesFunnel: React.FC = () => {
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
-  const [itemsPerPage, setItemsPerPage] = useState<string>('all');
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
@@ -74,7 +71,6 @@ export const SalesFunnel: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
-  const { isAdmin } = useProfile();
 
   // Fetch all users
   const {
@@ -360,7 +356,7 @@ export const SalesFunnel: React.FC = () => {
       lastActivity: stats.lastActivity,
       salesValue: stats.salesValue,
       status: stats.status
-    })).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime()); // Show all clients, will be filtered by itemsPerPage in render
+    })).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime()).slice(0, 10); // Limit to top 10
   }, [filteredTasks, getFilialName]);
 
   // Get detailed data for tables
@@ -403,37 +399,6 @@ export const SalesFunnel: React.FC = () => {
       isEditModalOpen: true
     });
   }, [isEditModalOpen]);
-
-  // Handler para deletar relatório (apenas administradores) - SECURE VERSION
-  const handleDeleteTask = useCallback(async (task: Task) => {
-    if (!isAdmin) {
-      toast.error('Apenas administradores podem deletar relatórios');
-      return;
-    }
-
-    if (!confirm(`Tem certeza que deseja deletar o relatório do cliente "${task.client}"?`)) {
-      return;
-    }
-
-    try {
-      // Use secure deletion function instead of direct delete
-      const { data, error } = await supabase.rpc('secure_delete_task', {
-        task_id_param: task.id
-      });
-
-      if (error) {
-        console.error('Erro ao deletar relatório:', error);
-        toast.error(`Erro ao deletar relatório: ${error.message}`);
-        return;
-      }
-
-      toast.success(`Relatório deletado com sucesso: ${data.client}`);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    } catch (error) {
-      console.error('Erro ao deletar relatório:', error);
-      toast.error('Erro ao deletar relatório');
-    }
-  }, [isAdmin, queryClient]);
 
   // Handler para fechar o modal de edição
   const handleCloseEditModal = useCallback(() => {
@@ -478,7 +443,7 @@ export const SalesFunnel: React.FC = () => {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label className="text-sm font-medium mb-2 block">Período</label>
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -536,21 +501,6 @@ export const SalesFunnel: React.FC = () => {
               <SelectItem value="prospection">Prospecção</SelectItem>
               <SelectItem value="ligacao">Ligação</SelectItem>
               <SelectItem value="checklist">Checklist</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium mb-2 block">Exibir</label>
-          <Select value={itemsPerPage} onValueChange={setItemsPerPage}>
-            <SelectTrigger>
-              <SelectValue placeholder="Itens por página" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="20">20 itens</SelectItem>
-              <SelectItem value="50">50 itens</SelectItem>
-              <SelectItem value="100">100 itens</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1062,7 +1012,7 @@ export const SalesFunnel: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage))).map((task) => (
+                {filteredTasks.slice(0, 50).map((task) => (
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">{task.client}</TableCell>
                     <TableCell>{task.responsible}</TableCell>
@@ -1104,17 +1054,6 @@ export const SalesFunnel: React.FC = () => {
                           <Edit className="h-4 w-4" />
                           <span>Editar</span>
                         </Button>
-                        {isAdmin && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteTask(task)}
-                            className="flex items-center space-x-1 text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span>Deletar</span>
-                          </Button>
-                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1154,7 +1093,7 @@ export const SalesFunnel: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 'all' ? clientDetails : clientDetails.slice(0, parseInt(itemsPerPage))).map((client, index) => <TableRow key={index}>
+                {clientDetails.map((client, index) => <TableRow key={index}>
                     <TableCell className="font-medium">{client.client}</TableCell>
                     <TableCell>{client.filial}</TableCell>
                     <TableCell>{client.consultant}</TableCell>

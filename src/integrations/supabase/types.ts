@@ -838,10 +838,6 @@ export type Database = {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
       }
-      can_perform_admin_action: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       check_bi_security_alerts: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1474,10 +1470,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      secure_delete_task: {
-        Args: { task_id_param: string }
-        Returns: Json
-      }
       secure_log_security_event: {
         Args: {
           event_type_param: string
@@ -1486,10 +1478,6 @@ export type Database = {
           user_id_param?: string
         }
         Returns: undefined
-      }
-      secure_update_profile: {
-        Args: { profile_id_param: string; updates: Json }
-        Returns: Json
       }
       simple_is_admin: {
         Args: Record<PropertyKey, never>
