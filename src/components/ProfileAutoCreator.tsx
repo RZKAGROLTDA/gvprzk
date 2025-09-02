@@ -79,33 +79,21 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
       setIsCreating(true);
       setStatus('creating');
 
-      // Buscar filial padrão
-      const { data: defaultFilial } = await supabase
-        .from('filiais')
-        .select('id, nome')
-        .order('nome')
-        .limit(1)
-        .single();
-
-      const profileData = {
-        user_id: user.id,
-        name: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
-        email: user.email || '',
-        role: 'consultant',
-        filial_id: defaultFilial?.id || null,
-        approval_status: 'approved'
-      };
-
-      const { error } = await supabase
-        .from('profiles')
-        .insert(profileData);
+      // Use secure profile creation function
+      const { error } = await supabase.rpc('create_secure_profile', {
+        user_id_param: user.id,
+        name_param: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
+        email_param: user.email || '',
+        role_param: 'consultant',
+        filial_id_param: null // Let function use default
+      });
 
       if (error) {
         throw error;
       }
 
       setStatus('done');
-      toast.success('✅ Perfil criado com sucesso!');
+      toast.success('✅ Perfil criado! Aguardando aprovação do administrador.');
       
       setTimeout(() => {
         onProfileCreated();
@@ -113,7 +101,7 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
 
     } catch (error: any) {
       console.error('❌ Erro ao criar perfil:', error);
-      toast.error('❌ Erro ao criar perfil. Tente novamente.');
+      toast.error('❌ Erro ao criar perfil. Aguarde aprovação do administrador.');
       setStatus('missing');
     } finally {
       setIsCreating(false);
@@ -206,7 +194,7 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
 
           <div className="text-xs text-center text-muted-foreground">
             <p>• Role: Consultor (padrão)</p>
-            <p>• Status: Aprovado automaticamente</p>
+            <p>• Status: Aguardando aprovação</p>
             <p>• Filial: Primeira disponível</p>
           </div>
         </CardContent>

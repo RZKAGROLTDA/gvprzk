@@ -35,34 +35,22 @@ export const useSecurityMonitor = () => {
       const userAgent = navigator.userAgent;
       const timestamp = new Date().toISOString();
       
-      // Use the new secure logging function
-      if (event.riskLevel && event.riskLevel > 3) {
-        await supabase.rpc('secure_log_security_event', {
-          event_type: 'high_risk_activity',
-          target_user_id: user?.id || null,
-          risk_score: event.riskLevel,
-          metadata: {
-            activity_type: event.type,
-            ...event.metadata,
-            user_agent: userAgent,
-            timestamp,
-            screen_resolution: `${screen.width}x${screen.height}`,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-          }
-        });
-      } else {
-        await supabase.rpc('secure_log_security_event', {
-          event_type: event.type,
-          target_user_id: user?.id || null,
-          risk_score: event.riskLevel || 1,
-          metadata: {
-            ...event.metadata,
-            user_agent: userAgent,
-            timestamp,
-            screen_resolution: `${screen.width}x${screen.height}`,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-          }
-        });
+      // Use the new secure logging function with proper parameter names
+      const { error } = await supabase.rpc('secure_log_security_event', {
+        event_type_param: event.type,
+        user_id_param: user?.id,
+        metadata_param: {
+          ...event.metadata,
+          user_agent: userAgent,
+          timestamp,
+          screen_resolution: `${screen.width}x${screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        risk_score_param: event.riskLevel || 1
+      });
+
+      if (error) {
+        console.error('Security logging error:', error);
       }
     } catch (error) {
       // Silently fail - don't break functionality for logging

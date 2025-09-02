@@ -892,6 +892,16 @@ export type Database = {
           table_name: string
         }[]
       }
+      create_secure_profile: {
+        Args: {
+          email_param: string
+          filial_id_param?: string
+          name_param: string
+          role_param?: string
+          user_id_param: string
+        }
+        Returns: string
+      }
       detect_customer_data_theft_attempts: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1269,6 +1279,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_customer_data_access: {
+        Args: {
+          access_type?: string
+          customer_count?: number
+          masked_count?: number
+        }
+        Returns: undefined
+      }
       log_high_risk_activity: {
         Args: {
           activity_type: string
@@ -1366,10 +1384,10 @@ export type Database = {
       }
       secure_log_security_event: {
         Args: {
-          event_type: string
-          metadata?: Json
-          risk_score?: number
-          target_user_id: string
+          event_type_param: string
+          metadata_param?: Json
+          risk_score_param?: number
+          user_id_param?: string
         }
         Returns: undefined
       }

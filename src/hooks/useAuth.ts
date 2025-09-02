@@ -26,14 +26,14 @@ export const useAuthProvider = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Função para criar perfil automaticamente
+  // Função para criar perfil automaticamente usando função segura
   const createUserProfile = async (authUser: User) => {
     try {
       console.log('🔄 Criando perfil automático para usuário...');
       
       const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, approval_status')
         .eq('user_id', authUser.id)
         .maybeSingle();
 
@@ -43,35 +43,23 @@ export const useAuthProvider = () => {
       }
 
       if (existingProfile) {
-        console.log('✅ Perfil já existe');
+        console.log('✅ Perfil já existe com status:', existingProfile.approval_status);
         return;
       }
 
-      // Buscar filial padrão
-      const { data: defaultFilial } = await supabase
-        .from('filiais')
-        .select('id, nome')
-        .order('nome')
-        .limit(1)
-        .single();
+      // Use secure profile creation function (creates with pending status)
+      const { error: createError } = await supabase.rpc('create_secure_profile', {
+        user_id_param: authUser.id,
+        name_param: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Usuário',
+        email_param: authUser.email || '',
+        role_param: 'consultant', // Role padrão seguro
+        filial_id_param: null // Let function use default
+      });
 
-      const profileData = {
-        user_id: authUser.id,
-        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Usuário',
-        email: authUser.email || '',
-        role: 'consultant', // Role padrão seguro
-        filial_id: defaultFilial?.id || null,
-        approval_status: 'approved' // Auto-aprovar para resolver acesso imediato
-      };
-
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert(profileData);
-
-      if (insertError) {
-        console.error('❌ Erro ao criar perfil:', insertError);
+      if (createError) {
+        console.error('❌ Erro ao criar perfil seguro:', createError);
       } else {
-        console.log('✅ Perfil criado automaticamente:', profileData);
+        console.log('✅ Perfil criado automaticamente (aguardando aprovação)');
       }
     } catch (error) {
       console.error('❌ Erro crítico na criação do perfil:', error);

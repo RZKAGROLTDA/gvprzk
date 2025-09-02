@@ -65,23 +65,42 @@ const ProfileSetup: React.FC = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .upsert({
-          user_id: user.id,
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-          filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
-        }, {
-          onConflict: 'user_id'
+        .select('id, approval_status')
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingProfile) {
+        // Update existing profile
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: formData.name,
+            email: formData.email,
+            role: formData.role,
+            filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
+          })
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } else {
+        // Create new profile using secure function
+        const { error } = await supabase.rpc('create_secure_profile', {
+          user_id_param: user.id,
+          name_param: formData.name,
+          email_param: formData.email,
+          role_param: formData.role,
+          filial_id_param: formData.filial_id === 'none' ? null : formData.filial_id || null
         });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       toast({
         title: "Sucesso!",
-        description: "Perfil configurado com sucesso!",
+        description: "Perfil configurado! Aguardando aprovação do administrador.",
       });
 
       // Recarregar a página para que o usuário seja redirecionado
@@ -90,7 +109,7 @@ const ProfileSetup: React.FC = () => {
       console.error('Erro ao salvar perfil:', error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar perfil. Tente novamente.",
+        description: "Erro ao salvar perfil. Aguarde aprovação do administrador.",
         variant: "destructive",
       });
     } finally {
