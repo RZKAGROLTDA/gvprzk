@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { SecurityConfiguration } from '@/components/SecurityConfiguration';
+import { SecurityConfigurationGuide } from '@/components/SecurityConfigurationGuide';
+import { SecurityMonitoringEnhanced } from '@/components/SecurityMonitoringEnhanced';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -178,12 +180,17 @@ export const SecurityAdmin: React.FC = () => {
       <Tabs defaultValue="configuration" className="space-y-4">
         <TabsList>
           <TabsTrigger value="configuration">Configuração de Segurança</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoramento Avançado</TabsTrigger>
           <TabsTrigger value="logs">Logs de Auditoria</TabsTrigger>
           <TabsTrigger value="users">Gerenciamento de Usuários</TabsTrigger>
         </TabsList>
 
         <TabsContent value="configuration">
-          <SecurityConfiguration />
+          <SecurityConfigurationGuide />
+        </TabsContent>
+
+        <TabsContent value="monitoring">
+          <SecurityMonitoringEnhanced />
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-4">
