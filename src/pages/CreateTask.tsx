@@ -7051,8 +7051,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <div className="space-y-4">
                 <div>
                   <Label className="text-base font-medium text-foreground mb-3 block flex items-center gap-2">
-                    Status da Oportunidade 
-                    <span className="text-destructive">*</span>
+                    Status da Oportunidade
                   </Label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* PROSPECT */}
