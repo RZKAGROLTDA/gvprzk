@@ -120,6 +120,33 @@ export const SalesFunnel: React.FC = () => {
     loading,
     refetch
   } = useTasksOptimized();
+
+  // Fetch opportunities data to get valor_total_oportunidade and valor_venda_fechada
+  const {
+    data: opportunitiesData = []
+  } = useQuery({
+    queryKey: ['opportunities-data'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('task_id, valor_total_oportunidade, valor_venda_fechada, status');
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
+  // Create a map for quick lookup of opportunity values
+  const opportunityValues = useMemo(() => {
+    const map = new Map();
+    opportunitiesData.forEach(opp => {
+      map.set(opp.task_id, {
+        valor_total_oportunidade: opp.valor_total_oportunidade || 0,
+        valor_venda_fechada: opp.valor_venda_fechada || 0,
+        status: opp.status
+      });
+    });
+    return map;
+  }, [opportunitiesData]);
   const forceRefresh = useCallback(async () => {
     console.log('🔄 FUNNEL: Forçando atualização de dados...');
 
@@ -133,6 +160,9 @@ export const SalesFunnel: React.FC = () => {
       });
       await queryClient.invalidateQueries({
         queryKey: ['filiais']
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['opportunities-data']
       });
       console.log('♻️ FUNNEL: Todas as queries invalidadas');
     };
@@ -1022,58 +1052,73 @@ export const SalesFunnel: React.FC = () => {
                   <TableHead>Filial</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Valor Oportunidade</TableHead>
+                  <TableHead>Valor Venda Fechada</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data Criação</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage))).map((task) => (
-                  <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.client}</TableCell>
-                    <TableCell>{task.responsible}</TableCell>
-                    <TableCell>{getFilialName(task.filial)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {task.taskType === 'prospection' ? 'Visita' : 
-                         task.taskType === 'ligacao' ? 'Ligação' : 
-                         task.taskType === 'checklist' ? 'Checklist' : task.taskType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatSalesValue(task.salesValue)}</TableCell>
-                    <TableCell>
-                      <Badge variant={task.salesConfirmed ? 'default' : 'secondary'}>
-                        {task.salesConfirmed ? 'Fechada' : 'Em andamento'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(task.createdAt).toLocaleDateString('pt-BR')}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setIsTaskVisualizationOpen(true);
-                          }}
-                          className="flex items-center space-x-1"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span>Ver</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditTask(task)}
-                          className="flex items-center space-x-1"
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span>Editar</span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage))).map((task) => {
+                  // Get opportunity values for this task
+                  const oppValues = opportunityValues.get(task.id) || { 
+                    valor_total_oportunidade: 0, 
+                    valor_venda_fechada: 0,
+                    status: 'Prospect' 
+                  };
+                  
+                  return (
+                    <TableRow key={task.id}>
+                      <TableCell className="font-medium">{task.client}</TableCell>
+                      <TableCell>{task.responsible}</TableCell>
+                      <TableCell>{getFilialName(task.filial)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {task.taskType === 'prospection' ? 'Visita' : 
+                           task.taskType === 'ligacao' ? 'Ligação' : 
+                           task.taskType === 'checklist' ? 'Checklist' : task.taskType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {formatSalesValue(oppValues.valor_total_oportunidade)}
+                      </TableCell>
+                      <TableCell className="font-medium text-green-600">
+                        {formatSalesValue(oppValues.valor_venda_fechada)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={task.salesConfirmed ? 'default' : 'secondary'}>
+                          {oppValues.status || (task.salesConfirmed ? 'Fechada' : 'Em andamento')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(task.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTask(task);
+                              setIsTaskVisualizationOpen(true);
+                            }}
+                            className="flex items-center space-x-1"
+                          >
+                            <Eye className="h-4 w-4" />
+                            <span>Ver</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditTask(task)}
+                            className="flex items-center space-x-1"
+                          >
+                            <Edit className="h-4 w-4" />
+                            <span>Editar</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             
