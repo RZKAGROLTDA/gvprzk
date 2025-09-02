@@ -884,12 +884,12 @@ export type Database = {
         }
         Insert: {
           check_in_location?: Json | null
-          client?: never
+          client?: string | null
           clientcode?: string | null
           created_at?: string | null
           created_by?: string | null
           documents?: string[] | null
-          email?: never
+          email?: string | null
           end_date?: string | null
           end_time?: string | null
           equipment_list?: Json | null
@@ -901,18 +901,18 @@ export type Database = {
           initial_km?: number | null
           is_prospect?: boolean | null
           name?: string | null
-          observations?: never
+          observations?: string | null
           partial_sales_value?: number | null
-          phone?: never
+          phone?: string | null
           photos?: string[] | null
           priority?: string | null
-          property?: never
+          property?: string | null
           propertyhectares?: number | null
           prospect_notes?: string | null
           responsible?: string | null
           sales_confirmed?: boolean | null
           sales_type?: string | null
-          sales_value?: never
+          sales_value?: number | null
           start_date?: string | null
           start_time?: string | null
           status?: string | null
@@ -921,12 +921,12 @@ export type Database = {
         }
         Update: {
           check_in_location?: Json | null
-          client?: never
+          client?: string | null
           clientcode?: string | null
           created_at?: string | null
           created_by?: string | null
           documents?: string[] | null
-          email?: never
+          email?: string | null
           end_date?: string | null
           end_time?: string | null
           equipment_list?: Json | null
@@ -938,18 +938,18 @@ export type Database = {
           initial_km?: number | null
           is_prospect?: boolean | null
           name?: string | null
-          observations?: never
+          observations?: string | null
           partial_sales_value?: number | null
-          phone?: never
+          phone?: string | null
           photos?: string[] | null
           priority?: string | null
-          property?: never
+          property?: string | null
           propertyhectares?: number | null
           prospect_notes?: string | null
           responsible?: string | null
           sales_confirmed?: boolean | null
           sales_type?: string | null
-          sales_value?: never
+          sales_value?: number | null
           start_date?: string | null
           start_time?: string | null
           status?: string | null
