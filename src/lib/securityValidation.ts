@@ -207,7 +207,9 @@ export const useSecureValidation = () => {
 
     // Log sensitive access if required
     if (result.requiresLogging && result.isValid) {
-      const validOperation = context.operation === 'create' || context.operation === 'delete' ? 'edit' : context.operation;
+      const validOperation: 'view' | 'edit' | 'export' = 
+        context.operation === 'view' ? 'view' : 
+        context.operation === 'export' ? 'export' : 'edit';
       monitorSensitiveFieldAccess(fieldType, `${validOperation}_${context.resourceType}`);
     }
 
@@ -225,7 +227,9 @@ export const useSecureValidation = () => {
       if (context.operation === 'export') {
         monitorBulkDataExport(context.resourceType, recordCount, includesSensitiveData);
       } else {
-        monitorCustomerDataAccess(context.operation, recordCount);
+        const validOperation: 'view' | 'edit' | 'export' = 
+          context.operation === 'view' ? 'view' : 'edit';
+        monitorCustomerDataAccess(validOperation, recordCount);
       }
     }
 
