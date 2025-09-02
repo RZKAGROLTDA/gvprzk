@@ -49,7 +49,7 @@ interface StandardTaskFormProps {
     propertyHectares: number;
   };
   onFormDataChange: (data: any) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (data: any) => void;
   isSubmitting: boolean;
   showProductsSection?: boolean;
   title: string;
@@ -147,8 +147,22 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
     });
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Incluir os valores calculados no formData antes de salvar
+    const formDataWithValues = {
+      ...formData,
+      salesValue: valorVenda, // Valor da venda calculado
+      prospectValue: valorTotalOportunidade, // Valor total da oportunidade (fixo)
+      partialSalesValue: valorVendaParcial // Valor da venda parcial
+    };
+    
+    onSubmit(formDataWithValues);
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Informações da Tarefa */}
       <Card>
         <CardHeader>
