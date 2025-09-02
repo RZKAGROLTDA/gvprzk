@@ -52,6 +52,16 @@ const useNavigationItems = () => {
   }), []);
 };
 
+// Mapeamento de roles para português
+const roleLabels: Record<string, string> = {
+  'manager': 'Gerente',
+  'supervisor': 'Supervisor',
+  'rac': 'RAC',
+  'consultant': 'Consultor',
+  'sales_consultant': 'Consultor de Vendas',
+  'technical_consultant': 'Consultor Técnico'
+};
+
 // Memoize navigation link component to prevent unnecessary re-renders
 const NavLink = memo(({ item, isActive, className }: { 
   item: { path: string; icon: React.ComponentType<any>; label: string }; 
@@ -109,7 +119,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                 <div className="hidden sm:flex flex-col text-right">
                   <span className="text-sm font-medium text-foreground">{profile?.name || userDisplayName}</span>
                   <div className="flex flex-col text-xs text-muted-foreground">
-                    <span className="capitalize">{profile?.role || 'Usuário'}</span>
+                    <span>{roleLabels[profile?.role] || 'Usuário'}</span>
                     {profile?.filial_nome && <span>{profile.filial_nome}</span>}
                   </div>
                 </div>
