@@ -297,27 +297,51 @@ export const useTaskEditData = (taskId: string | null) => {
 
       // Update additional task data in original tasks table if we have the data
       if (data.name || !data.opportunity) {
+        // Prepare task update with all fields including sales values
+        const taskUpdateData: any = {
+          name: updates.name || data.name,
+          responsible: updates.responsible || data.responsible,
+          property: updates.property || data.property,
+          phone: updates.phone || data.phone,
+          clientcode: updates.clientCode || data.clientCode,
+          task_type: updates.taskType || data.taskType,
+          priority: updates.priority || data.priority,
+          client: updates.cliente_nome || data.cliente_nome,
+          email: updates.cliente_email || data.cliente_email,
+          filial: updates.filial || data.filial,
+          observations: updates.notas || data.notas,
+          updated_at: new Date().toISOString()
+        };
+
+        // Add sales values if provided
+        if (updates.salesValue !== undefined) {
+          taskUpdateData.sales_value = updates.salesValue;
+        }
+        if (updates.partialSalesValue !== undefined) {
+          taskUpdateData.partial_sales_value = updates.partialSalesValue;
+        }
+        if (updates.sales_type !== undefined) {
+          taskUpdateData.sales_type = updates.sales_type;
+        }
+        if (updates.sales_confirmed !== undefined) {
+          taskUpdateData.sales_confirmed = updates.sales_confirmed;
+        }
+        if (updates.status !== undefined) {
+          taskUpdateData.status = updates.status;
+        }
+
+        console.log('🔍 useTaskEditData: Atualizando tasks table com:', taskUpdateData);
+
         // Try to update tasks table directly by ID first
         const { error: originalTaskError } = await supabase
           .from('tasks')
-          .update({
-            name: updates.name || data.name,
-            responsible: updates.responsible || data.responsible,
-            property: updates.property || data.property,
-            phone: updates.phone || data.phone,
-            clientcode: updates.clientCode || data.clientCode,
-            task_type: updates.taskType || data.taskType,
-            priority: updates.priority || data.priority,
-            client: updates.cliente_nome || data.cliente_nome,
-            email: updates.cliente_email || data.cliente_email,
-            filial: updates.filial || data.filial,
-            observations: updates.notas || data.notas,
-            updated_at: new Date().toISOString()
-          })
+          .update(taskUpdateData)
           .eq('id', taskId);
 
         if (originalTaskError) {
           console.warn('Erro ao atualizar dados da task:', originalTaskError);
+        } else {
+          console.log('✅ useTaskEditData: Tasks table atualizada com sucesso');
         }
       }
 
@@ -336,19 +360,27 @@ export const useTaskEditData = (taskId: string | null) => {
         if (opportunityError) throw opportunityError;
       }
 
-      // Update tasks table with calculated values if provided
-      if (updates.salesValue !== undefined || updates.prospectValue !== undefined || updates.partialSalesValue !== undefined) {
+      // Additional sales values update (fallback if not handled above)
+      if ((updates.salesValue !== undefined || updates.partialSalesValue !== undefined) && 
+          (!data.name && data.opportunity)) {
+        console.log('🔍 useTaskEditData: Fallback - atualizando valores de venda separadamente');
+        
         const { error: taskValuesError } = await supabase
           .from('tasks')
           .update({
             sales_value: updates.salesValue,
             partial_sales_value: updates.partialSalesValue,
+            sales_type: updates.sales_type,
+            sales_confirmed: updates.sales_confirmed,
+            status: updates.status,
             updated_at: new Date().toISOString()
           })
           .eq('id', taskId);
 
         if (taskValuesError) {
-          console.warn('Erro ao atualizar valores calculados na tabela tasks:', taskValuesError);
+          console.warn('Erro ao atualizar valores calculados na tabela tasks (fallback):', taskValuesError);
+        } else {
+          console.log('✅ useTaskEditData: Valores de venda atualizados com sucesso (fallback)');
         }
       }
 

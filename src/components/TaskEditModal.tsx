@@ -199,10 +199,19 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         clientCode: formDataToProcess.clientCode,
         taskType: formDataToProcess.taskType,
         priority: formDataToProcess.priority,
-        // Valores calculados
+        status: 'closed', // Garantir que o status seja fechado
+        // Valores calculados corretos para ambas as tabelas
         salesValue: valorVenda,
         prospectValue: valorTotalOportunidade,
         partialSalesValue: valorVendaParcial,
+        // Sales value fields for tasks table
+        sales_value: valorVenda,
+        partial_sales_value: valorVendaParcial,
+        // Sales type based on status
+        sales_type: formDataToProcess.status === 'venda_total' ? 'ganho' :
+                   formDataToProcess.status === 'venda_parcial' ? 'parcial' :
+                   formDataToProcess.status === 'venda_perdida' ? 'perdido' : null,
+        sales_confirmed: formDataToProcess.status !== 'prospect',
         opportunity: {
           status: opportunityStatus,
           valor_venda_fechada: valorVenda,
@@ -210,9 +219,22 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         },
         items: formDataToProcess.products.map(product => ({
           id: product.id,
-          qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_ofertada : 0
+          qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_ofertada : 0,
+          qtd_ofertada: product.qtd_ofertada,
+          preco_unit: product.preco_unit
         }))
       };
+
+      console.log('🔧 TaskEditModal: Dados de atualização preparados:', {
+        salesValue: updatedData.salesValue,
+        sales_value: updatedData.sales_value,
+        partialSalesValue: updatedData.partialSalesValue,
+        partial_sales_value: updatedData.partial_sales_value,
+        sales_type: updatedData.sales_type,
+        sales_confirmed: updatedData.sales_confirmed,
+        status: updatedData.status,
+        opportunity: updatedData.opportunity
+      });
 
       const success = await updateTaskData(updatedData);
       
