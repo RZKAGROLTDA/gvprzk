@@ -352,9 +352,24 @@ export const useTaskEditData = (taskId: string | null) => {
           updated_at: new Date().toISOString()
         };
         
-        // Só atualizar valor_venda_fechada se fornecido
+        // Atualizar valor_venda_fechada baseado no status e tipo de venda
         if (updates.opportunity.valor_venda_fechada !== undefined) {
           updateData.valor_venda_fechada = updates.opportunity.valor_venda_fechada;
+        }
+        
+        // Para vendas parciais, valor_venda_fechada deve ser o valor parcial
+        if (updates.sales_type === 'parcial' && updates.partialSalesValue !== undefined) {
+          updateData.valor_venda_fechada = updates.partialSalesValue;
+        }
+        
+        // Para vendas totais, valor_venda_fechada deve ser o valor total da oportunidade
+        if (updates.sales_type === 'ganho' && updates.salesValue !== undefined) {
+          updateData.valor_venda_fechada = updates.salesValue;
+        }
+        
+        // Para vendas perdidas ou prospects, valor_venda_fechada deve ser 0
+        if (updates.sales_type === 'perdido' || updates.sales_confirmed === false) {
+          updateData.valor_venda_fechada = 0;
         }
         
         // CRÍTICO: Não alterar valor_total_oportunidade durante edições

@@ -15,7 +15,7 @@ import { TaskFormVisualization } from '@/components/TaskFormVisualization';
 import { OpportunityReport } from '@/components/OpportunityReport';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
-import { formatSalesValue } from '@/lib/securityUtils';
+import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
 
 interface SalesFunnelData {
@@ -1060,11 +1060,17 @@ export const SalesFunnel: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage))).map((task) => {
-                  // Get opportunity values for this task
+                  // Get opportunity values for this task or fallback to task values
                   const oppValues = opportunityValues.get(task.id) || { 
-                    valor_total_oportunidade: 0, 
-                    valor_venda_fechada: 0,
-                    status: 'Prospect' 
+                    valor_total_oportunidade: getSalesValueAsNumber(task.salesValue) || 0, 
+                    valor_venda_fechada: task.salesType === 'parcial' 
+                      ? (task.partialSalesValue || 0) 
+                      : task.salesConfirmed && task.salesType === 'ganho' 
+                        ? getSalesValueAsNumber(task.salesValue) || 0 
+                        : 0,
+                    status: task.salesConfirmed 
+                      ? (task.salesType === 'ganho' ? 'Ganho' : task.salesType === 'parcial' ? 'Parcial' : 'Perdido')
+                      : 'Prospect' 
                   };
                   
                   return (

@@ -86,6 +86,16 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
         prospectItems: finalProducts,
         partialSalesValue: partialValue
       });
+    } else {
+      // Clear partial sales value if not partial sale
+      onStatusChange({
+        salesConfirmed,
+        salesType,
+        isProspect,
+        prospectNotes,
+        prospectItems: finalProducts,
+        partialSalesValue: 0
+      });
     }
   }, [finalProducts, salesConfirmed, salesType]);
 
@@ -111,7 +121,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
       isProspect,
       prospectNotes,
       prospectItems: updatedItems,
-      partialSalesValue: partialValue
+      partialSalesValue: salesType === 'parcial' ? partialValue : 0
     });
   };
   return (
@@ -166,7 +176,8 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 salesConfirmed: true,
                 salesType: 'ganho',
                 isProspect: true,
-                prospectNotes: ''
+                prospectNotes: '',
+                partialSalesValue: 0 // Limpar valor parcial para venda total
               });
             }}
           >
