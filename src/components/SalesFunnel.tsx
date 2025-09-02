@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin } from 'lucide-react';
+import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Trash2 } from 'lucide-react';
 import { Task } from '@/types/task';
 import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,8 @@ import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
+import { useProfile } from '@/hooks/useProfile';
+import { toast } from 'sonner';
 
 interface SalesFunnelData {
   contacts: {
@@ -72,6 +74,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
+  const { isAdmin } = useProfile();
 
   // Fetch all users
   const {
@@ -400,6 +403,33 @@ export const SalesFunnel: React.FC = () => {
       isEditModalOpen: true
     });
   }, [isEditModalOpen]);
+
+  // Handler para deletar relatório (apenas administradores)
+  const handleDeleteTask = useCallback(async (task: Task) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem deletar relatórios');
+      return;
+    }
+
+    if (!confirm(`Tem certeza que deseja deletar o relatório do cliente "${task.client}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', task.id);
+
+      if (error) throw error;
+
+      toast.success('Relatório deletado com sucesso');
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    } catch (error) {
+      console.error('Erro ao deletar relatório:', error);
+      toast.error('Erro ao deletar relatório');
+    }
+  }, [isAdmin, queryClient]);
 
   // Handler para fechar o modal de edição
   const handleCloseEditModal = useCallback(() => {
@@ -1070,6 +1100,17 @@ export const SalesFunnel: React.FC = () => {
                           <Edit className="h-4 w-4" />
                           <span>Editar</span>
                         </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteTask(task)}
+                            className="flex items-center space-x-1 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span>Deletar</span>
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
