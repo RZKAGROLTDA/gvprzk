@@ -328,11 +328,28 @@ export const useTaskEditData = (taskId: string | null) => {
           .update({
             status: updates.opportunity.status || data.opportunity.status,
             valor_venda_fechada: updates.opportunity.valor_venda_fechada || data.opportunity.valor_venda_fechada,
+            valor_total_oportunidade: updates.opportunity.valor_total_oportunidade || data.opportunity.valor_total_oportunidade,
             updated_at: new Date().toISOString()
           })
           .eq('id', data.opportunity.id);
 
         if (opportunityError) throw opportunityError;
+      }
+
+      // Update tasks table with calculated values if provided
+      if (updates.salesValue !== undefined || updates.prospectValue !== undefined || updates.partialSalesValue !== undefined) {
+        const { error: taskValuesError } = await supabase
+          .from('tasks')
+          .update({
+            sales_value: updates.salesValue,
+            partial_sales_value: updates.partialSalesValue,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', taskId);
+
+        if (taskValuesError) {
+          console.warn('Erro ao atualizar valores calculados na tabela tasks:', taskValuesError);
+        }
       }
 
       // Update items - try both opportunity_items and products

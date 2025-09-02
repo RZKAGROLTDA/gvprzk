@@ -145,8 +145,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     setFormData(newFormData);
   }, [taskData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formDataWithValues: any) => {
     setIsSubmitting(true);
 
     try {
@@ -155,8 +154,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         return;
       }
 
+      // Usar os dados recebidos do StandardTaskForm que já incluem os valores calculados
+      const formDataToProcess = formDataWithValues || formData;
+
       // Validação para venda perdida
-      if (formData.status === 'venda_perdida' && (!formData.prospectNotes || formData.prospectNotes.trim() === '')) {
+      if (formDataToProcess.status === 'venda_perdida' && (!formDataToProcess.prospectNotes || formDataToProcess.prospectNotes.trim() === '')) {
         toast.error('O motivo da perda é obrigatório');
         return;
       }
@@ -169,50 +171,44 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         venda_perdida: 'Venda Perdida'
       };
 
-      const opportunityStatus = statusMapping[formData.status as keyof typeof statusMapping];
+      const opportunityStatus = statusMapping[formDataToProcess.status as keyof typeof statusMapping];
 
-      // Calcular valor da venda baseado no status
-      const valorVenda = (() => {
-        const valorTotalOportunidade = formData.products.reduce((sum, item) => {
-          return sum + (item.qtd_ofertada * item.preco_unit);
-        }, 0);
+      // Usar valores calculados que vieram do StandardTaskForm
+      const valorVenda = formDataToProcess.salesValue || 0;
+      const valorTotalOportunidade = formDataToProcess.prospectValue || 0;
+      const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
 
-        const valorVendaParcial = formData.products
-          .filter(item => item.incluir_na_venda_parcial)
-          .reduce((sum, item) => {
-            return sum + (item.qtd_ofertada * item.preco_unit);
-          }, 0);
+      console.log('🔧 TaskEditModal: Valores calculados recebidos:', {
+        salesValue: valorVenda,
+        prospectValue: valorTotalOportunidade,
+        partialSalesValue: valorVendaParcial
+      });
 
-        switch (formData.status) {
-          case 'venda_total':
-            return valorTotalOportunidade;
-          case 'venda_parcial':
-            return valorVendaParcial;
-          default:
-            return 0;
-        }
-      })();
-
-      // Prepare update data including all task fields
+      // Prepare update data including all task fields and calculated values
       const updatedData = {
-        cliente_nome: formData.customerName,
-        cliente_email: formData.customerEmail,
-        filial: formData.filial,
-        notas: formData.observacoes,
-        tipo: formData.taskType,
+        cliente_nome: formDataToProcess.customerName,
+        cliente_email: formDataToProcess.customerEmail,
+        filial: formDataToProcess.filial,
+        notas: formDataToProcess.observacoes,
+        tipo: formDataToProcess.taskType,
         // Additional task fields
-        name: formData.name,
-        responsible: formData.responsible,
-        property: formData.property,
-        phone: formData.phone,
-        clientCode: formData.clientCode,
-        taskType: formData.taskType,
-        priority: formData.priority,
+        name: formDataToProcess.name,
+        responsible: formDataToProcess.responsible,
+        property: formDataToProcess.property,
+        phone: formDataToProcess.phone,
+        clientCode: formDataToProcess.clientCode,
+        taskType: formDataToProcess.taskType,
+        priority: formDataToProcess.priority,
+        // Valores calculados
+        salesValue: valorVenda,
+        prospectValue: valorTotalOportunidade,
+        partialSalesValue: valorVendaParcial,
         opportunity: {
           status: opportunityStatus,
-          valor_venda_fechada: valorVenda
+          valor_venda_fechada: valorVenda,
+          valor_total_oportunidade: valorTotalOportunidade
         },
-        items: formData.products.map(product => ({
+        items: formDataToProcess.products.map(product => ({
           id: product.id,
           qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_ofertada : 0
         }))
