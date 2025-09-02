@@ -5621,9 +5621,10 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   // Definir filial automaticamente quando o perfil carregar
   useEffect(() => {
     if (profile) {
+      console.log('🔄 Profile carregado, definindo filial:', profile.filial_nome);
       setTask(prev => ({
         ...prev,
-        filial: profile.filial_id || ''
+        filial: profile.filial_nome || 'Não informado' // Usar nome da filial, não ID
       }));
     }
   }, [profile]);
@@ -6043,7 +6044,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       responsible: profile?.name || '',
       client: '',
       property: '',
-      filial: profile?.filial_id || '',
+      filial: profile?.filial_nome || 'Não informado',
       cpf: '',
       email: '',
       taskType: getTaskTypeFromCategory(taskCategory),

@@ -136,12 +136,28 @@ export const getFilialNameRobust = (filialValue: string | null | undefined, fili
 
 // Função para criar task com snapshot da filial
 export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> => {
+  console.log('🔄 Processando task com filial_id:', taskData.filial_id);
+  
   // Se não tem cache, carrega antes
   if (filiaisCache.size === 0) {
+    console.log('📥 Cache vazio, carregando filiais...');
     await loadFiliaisCache();
   }
   
-  const filialName = resolveFilialName(taskData.filial_id);
+  // Garantir que temos um filial_id válido
+  let filialId = taskData.filial_id;
+  
+  // Se não veio filial_id, tentar pegar do campo filial se for UUID
+  if (!filialId && taskData.filial) {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(taskData.filial);
+    if (isUUID) {
+      filialId = taskData.filial;
+      console.log('🔍 Usando filial como filial_id:', filialId);
+    }
+  }
+  
+  const filialName = resolveFilialName(filialId);
+  console.log('✅ Filial resolvida:', filialName);
   
   return {
     ...taskData,

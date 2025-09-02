@@ -85,6 +85,7 @@ export const useProfile = () => {
         let filialNome = null;
         if (profileData.filial_id) {
           try {
+            console.log('🔍 Carregando filial para ID:', profileData.filial_id);
             const { data: filial, error: filialError } = await supabase
               .from('filiais')
               .select('nome')
@@ -93,10 +94,15 @@ export const useProfile = () => {
             
             if (!filialError && filial) {
               filialNome = filial.nome;
+              console.log('✅ Filial carregada:', filialNome);
+            } else {
+              console.warn('⚠️ Filial não encontrada para ID:', profileData.filial_id);
             }
           } catch (error) {
             console.warn('⚠️ Erro ao carregar filial:', error);
           }
+        } else {
+          console.warn('⚠️ Profile sem filial_id');
         }
 
         // Combinar os dados sem JOIN complexo
