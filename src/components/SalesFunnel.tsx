@@ -72,7 +72,7 @@ export const SalesFunnel: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
 
-  // Fetch consultants
+  // Fetch all users
   const {
     data: consultants = []
   } = useQuery({
@@ -81,7 +81,7 @@ export const SalesFunnel: React.FC = () => {
       const {
         data,
         error
-      } = await supabase.from('profiles').select('id, name').eq('role', 'consultant');
+      } = await supabase.from('profiles').select('id, name').order('name');
       if (error) throw error;
       return data || [];
     }
@@ -461,13 +461,13 @@ export const SalesFunnel: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-2 block">Consultor</label>
+          <label className="text-sm font-medium mb-2 block">Usuário</label>
           <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione o consultor" />
+              <SelectValue placeholder="Selecione o usuário" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os consultores</SelectItem>
+              <SelectItem value="all">Todos os usuários</SelectItem>
               {consultants.map(consultant => <SelectItem key={consultant.id} value={consultant.id}>
                   {consultant.name}
                 </SelectItem>)}
