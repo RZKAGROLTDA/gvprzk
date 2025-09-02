@@ -1164,6 +1164,23 @@ export type Database = {
           task_type: string
         }[]
       }
+      get_secure_tasks_new_with_customer_protection: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          cliente_email: string
+          cliente_nome: string
+          created_at: string
+          data: string
+          filial: string
+          id: string
+          is_customer_data_masked: boolean
+          notas: string
+          tipo: string
+          updated_at: string
+          vendedor_id: string
+        }[]
+      }
       get_secure_tasks_with_customer_protection: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1427,6 +1444,10 @@ export type Database = {
           risk_level: string
           user_count: number
         }[]
+      }
+      monitor_tasks_new_unauthorized_access: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       monitor_unauthorized_customer_access: {
         Args: Record<PropertyKey, never>
