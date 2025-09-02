@@ -114,6 +114,18 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
     });
   };
 
+  // Função para atualizar quantidade do produto
+  const handleQuantityChange = (itemIndex: number, newQuantity: number) => {
+    onFormDataChange({
+      ...formData,
+      products: formData.products.map((product, index) => 
+        index === itemIndex 
+          ? { ...product, qtd_ofertada: newQuantity }
+          : product
+      )
+    });
+  };
+
   const handleSelectAll = () => {
     onFormDataChange({
       ...formData,
@@ -517,7 +529,14 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                           </div>
                           
                           <div>
-                            <p className="text-sm">Qtd: {product.qtd_ofertada}</p>
+                            <Label className="text-xs text-muted-foreground">Quantidade</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={product.qtd_ofertada}
+                              onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
+                              className="h-8 text-sm"
+                            />
                           </div>
                           
                           <div>
