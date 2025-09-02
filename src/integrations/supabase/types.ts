@@ -288,13 +288,6 @@ export type Database = {
             foreignKeyName: "fk_products_task"
             columns: ["task_id"]
             isOneToOne: false
-            referencedRelation: "secure_tasks_view_final"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_products_task"
-            columns: ["task_id"]
-            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -389,13 +382,6 @@ export type Database = {
             foreignKeyName: "fk_reminders_task"
             columns: ["task_id"]
             isOneToOne: false
-            referencedRelation: "secure_tasks_view_final"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_reminders_task"
-            columns: ["task_id"]
-            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -478,13 +464,6 @@ export type Database = {
           task_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "fk_task_creation_log_task"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "secure_tasks_view_final"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "fk_task_creation_log_task"
             columns: ["task_id"]
@@ -844,120 +823,7 @@ export type Database = {
       }
     }
     Views: {
-      secure_tasks_view_final: {
-        Row: {
-          check_in_location: Json | null
-          client: string | null
-          clientcode: string | null
-          created_at: string | null
-          created_by: string | null
-          documents: string[] | null
-          email: string | null
-          end_date: string | null
-          end_time: string | null
-          equipment_list: Json | null
-          equipment_quantity: number | null
-          family_product: string | null
-          filial: string | null
-          final_km: number | null
-          id: string | null
-          initial_km: number | null
-          is_prospect: boolean | null
-          name: string | null
-          observations: string | null
-          partial_sales_value: number | null
-          phone: string | null
-          photos: string[] | null
-          priority: string | null
-          property: string | null
-          propertyhectares: number | null
-          prospect_notes: string | null
-          responsible: string | null
-          sales_confirmed: boolean | null
-          sales_type: string | null
-          sales_value: number | null
-          start_date: string | null
-          start_time: string | null
-          status: string | null
-          task_type: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          check_in_location?: Json | null
-          client?: never
-          clientcode?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          documents?: string[] | null
-          email?: never
-          end_date?: string | null
-          end_time?: string | null
-          equipment_list?: Json | null
-          equipment_quantity?: number | null
-          family_product?: string | null
-          filial?: string | null
-          final_km?: number | null
-          id?: string | null
-          initial_km?: number | null
-          is_prospect?: boolean | null
-          name?: string | null
-          observations?: never
-          partial_sales_value?: number | null
-          phone?: never
-          photos?: string[] | null
-          priority?: string | null
-          property?: never
-          propertyhectares?: number | null
-          prospect_notes?: string | null
-          responsible?: string | null
-          sales_confirmed?: boolean | null
-          sales_type?: string | null
-          sales_value?: never
-          start_date?: string | null
-          start_time?: string | null
-          status?: string | null
-          task_type?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          check_in_location?: Json | null
-          client?: never
-          clientcode?: string | null
-          created_at?: string | null
-          created_by?: string | null
-          documents?: string[] | null
-          email?: never
-          end_date?: string | null
-          end_time?: string | null
-          equipment_list?: Json | null
-          equipment_quantity?: number | null
-          family_product?: string | null
-          filial?: string | null
-          final_km?: number | null
-          id?: string | null
-          initial_km?: number | null
-          is_prospect?: boolean | null
-          name?: string | null
-          observations?: never
-          partial_sales_value?: number | null
-          phone?: never
-          photos?: string[] | null
-          priority?: string | null
-          property?: never
-          propertyhectares?: number | null
-          prospect_notes?: string | null
-          responsible?: string | null
-          sales_confirmed?: boolean | null
-          sales_type?: string | null
-          sales_value?: never
-          start_date?: string | null
-          start_time?: string | null
-          status?: string | null
-          task_type?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -1153,6 +1019,48 @@ export type Database = {
         }[]
       }
       get_secure_customer_data_enhanced: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          check_in_location: Json
+          client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
+          email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
+          filial: string
+          final_km: number
+          id: string
+          initial_km: number
+          is_masked: boolean
+          is_prospect: boolean
+          name: string
+          observations: string
+          partial_sales_value: number
+          phone: string
+          photos: string[]
+          priority: string
+          property: string
+          propertyhectares: number
+          prospect_notes: string
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
+        }[]
+      }
+      get_secure_customer_data_with_rls: {
         Args: Record<PropertyKey, never>
         Returns: {
           access_level: string
@@ -1398,6 +1306,10 @@ export type Database = {
         }[]
       }
       monitor_customer_data_access: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      monitor_high_risk_customer_access: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
