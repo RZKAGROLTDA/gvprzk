@@ -207,7 +207,8 @@ export const useSecureValidation = () => {
 
     // Log sensitive access if required
     if (result.requiresLogging && result.isValid) {
-      monitorSensitiveFieldAccess(fieldType, `${context.operation}_${context.resourceType}`);
+      const validOperation = context.operation === 'create' || context.operation === 'delete' ? 'edit' : context.operation;
+      monitorSensitiveFieldAccess(fieldType, `${validOperation}_${context.resourceType}`);
     }
 
     return result;
