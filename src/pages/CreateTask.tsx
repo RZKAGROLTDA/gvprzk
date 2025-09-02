@@ -7145,13 +7145,13 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     <select id="lossReason" value={task.prospectNotes || ''} onChange={e => setTask(prev => ({
                   ...prev,
                   prospectNotes: e.target.value,
-                  prospectNotesJustification: e.target.value === 'Outros' ? prev.prospectNotesJustification : undefined
+                  prospectNotesJustification: e.target.value === 'Outros' ? prev.prospectNotesJustification : ''
                 }))} className="w-full px-3 py-2 border border-input rounded-md bg-background">
                       <option value="">Selecione o motivo</option>
-                      <option value="Falta de peça">Falta de peça</option>
                       <option value="Preço">Preço</option>
-                      <option value="Prazo">Prazo</option>
-                      <option value="Dlupo Domicilio">Dlupo Domicilio</option>
+                      <option value="Falta de Produto">Falta de Produto</option>
+                      <option value="Paralelo">Paralelo</option>
+                      <option value="Duplo Domicilio">Duplo Domicilio</option>
                       <option value="Outros">Outros</option>
                     </select>
                     

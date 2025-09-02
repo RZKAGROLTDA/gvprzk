@@ -275,10 +275,10 @@ export const validateTaskData = (
 // Hook personalizado para gerenciar formulário de tarefa
 // Opções padronizadas para motivo de perda
 export const LOSS_REASONS = [
-  'Falta de peça',
   'Preço',
-  'Prazo',
-  'Dlupo Domicilio',
+  'Falta de Produto',
+  'Paralelo',
+  'Duplo Domicilio',
   'Outros'
 ] as const;
 

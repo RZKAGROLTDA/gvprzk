@@ -31,6 +31,7 @@ interface StandardTaskFormProps {
     observacoes: string;
     status: string;
     prospectNotes: string;
+    prospectNotesJustification?: string;
     products: OpportunityItem[];
     name: string;
     responsible: string;
@@ -589,14 +590,43 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                   <AlertCircle className="h-4 w-4 text-destructive" />
                   Motivo da Perda (Obrigatório)
                 </Label>
-                <Textarea
-                  id="prospectNotes"
-                  value={formData.prospectNotes}
-                  onChange={(e) => onFormDataChange({ ...formData, prospectNotes: e.target.value })}
-                  placeholder="Descreva o motivo da perda da venda..."
-                  required={formData.status === 'venda_perdida'}
-                  className="min-h-[100px]"
-                />
+                <Select 
+                  value={formData.prospectNotes || ''} 
+                  onValueChange={(value) => onFormDataChange({ 
+                    ...formData, 
+                    prospectNotes: value,
+                    ...(value !== 'Outros' && { prospectNotesJustification: '' })
+                  })}
+                >
+                  <SelectTrigger className="z-10">
+                    <SelectValue placeholder="Selecione o motivo da perda" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    <SelectItem value="Preço">Preço</SelectItem>
+                    <SelectItem value="Falta de Produto">Falta de Produto</SelectItem>
+                    <SelectItem value="Paralelo">Paralelo</SelectItem>
+                    <SelectItem value="Duplo Domicilio">Duplo Domicilio</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {/* Campo de justificativa para "Outros" */}
+                {formData.prospectNotes === 'Outros' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="prospectNotesJustification">Justificativa (Obrigatório)</Label>
+                    <Textarea
+                      id="prospectNotesJustification"
+                      value={formData.prospectNotesJustification || ''}
+                      onChange={(e) => onFormDataChange({ 
+                        ...formData, 
+                        prospectNotesJustification: e.target.value 
+                      })}
+                      placeholder="Descreva o motivo da perda..."
+                      required
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
