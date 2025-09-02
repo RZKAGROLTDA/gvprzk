@@ -64,9 +64,10 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
   title
 }) => {
   // Cálculos dos totais (READ-ONLY)
+  // Valor Total da Oportunidade deve ser FIXO baseado no subtotal_ofertado original
   const valorTotalOportunidade = useMemo(() => {
     return formData.products.reduce((sum, item) => {
-      return sum + (item.qtd_ofertada * item.preco_unit);
+      return sum + (item.subtotal_ofertado || 0);
     }, 0);
   }, [formData.products]);
 
