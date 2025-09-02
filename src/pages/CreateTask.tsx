@@ -6812,7 +6812,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <CardContent className="space-y-4">
                 {/* Hectares da Propriedade */}
                  <div className="space-y-2">
-                   <Label htmlFor="propertyHectares">Hectares da Propriedade *</Label>
+                   <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
                     <Input id="propertyHectares" type="number" min="0" value={task.propertyHectares || ''} onChange={e => setTask(prev => ({
                 ...prev,
                 propertyHectares: parseInt(e.target.value) || undefined
