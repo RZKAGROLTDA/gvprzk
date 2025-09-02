@@ -113,16 +113,16 @@ export const useTasksOptimized = (includeDetails = false) => {
 
           console.log('🔄 Carregando tasks via função segura...');
           
-          // Usar a nova função RPC otimizada
+          // Usar a nova função RPC otimizada para supervisores
           let tasksData, error;
           try {
             const result = await supabase
-              .rpc('get_completely_secure_tasks')
+              .rpc('get_supervisor_filial_tasks')
               .abortSignal(controller.signal);
               
             tasksData = result.data;
             error = result.error;
-            console.log('✅ Tasks carregadas via RPC:', tasksData?.length || 0);
+            console.log('✅ Tasks carregadas via RPC supervisor:', tasksData?.length || 0);
           } catch (rpcError: any) {
             console.log('⚠️ RPC falhou, tentando query direta...');
             
@@ -475,7 +475,7 @@ export const useTaskDetails = (taskId: string | null) => {
 
       const [taskResult, productsResult, remindersResult] = await Promise.all([
         supabase
-          .rpc('get_completely_secure_tasks')
+          .rpc('get_supervisor_filial_tasks')
           .eq('id', taskId)
           .single(),
         supabase

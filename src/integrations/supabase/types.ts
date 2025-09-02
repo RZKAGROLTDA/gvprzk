@@ -1179,6 +1179,48 @@ export type Database = {
           metric_value: number
         }[]
       }
+      get_supervisor_filial_tasks: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          check_in_location: Json
+          client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
+          email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
+          filial: string
+          final_km: number
+          id: string
+          initial_km: number
+          is_customer_data_protected: boolean
+          is_prospect: boolean
+          name: string
+          observations: string
+          partial_sales_value: number
+          phone: string
+          photos: string[]
+          priority: string
+          property: string
+          propertyhectares: number
+          prospect_notes: string
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
+        }[]
+      }
       get_user_directory_with_fallback: {
         Args: Record<PropertyKey, never>
         Returns: {
