@@ -884,12 +884,12 @@ export type Database = {
         }
         Insert: {
           check_in_location?: Json | null
-          client?: string | null
+          client?: never
           clientcode?: string | null
           created_at?: string | null
           created_by?: string | null
           documents?: string[] | null
-          email?: string | null
+          email?: never
           end_date?: string | null
           end_time?: string | null
           equipment_list?: Json | null
@@ -901,18 +901,18 @@ export type Database = {
           initial_km?: number | null
           is_prospect?: boolean | null
           name?: string | null
-          observations?: string | null
+          observations?: never
           partial_sales_value?: number | null
-          phone?: string | null
+          phone?: never
           photos?: string[] | null
           priority?: string | null
-          property?: string | null
+          property?: never
           propertyhectares?: number | null
           prospect_notes?: string | null
           responsible?: string | null
           sales_confirmed?: boolean | null
           sales_type?: string | null
-          sales_value?: number | null
+          sales_value?: never
           start_date?: string | null
           start_time?: string | null
           status?: string | null
@@ -921,12 +921,12 @@ export type Database = {
         }
         Update: {
           check_in_location?: Json | null
-          client?: string | null
+          client?: never
           clientcode?: string | null
           created_at?: string | null
           created_by?: string | null
           documents?: string[] | null
-          email?: string | null
+          email?: never
           end_date?: string | null
           end_time?: string | null
           equipment_list?: Json | null
@@ -938,18 +938,18 @@ export type Database = {
           initial_km?: number | null
           is_prospect?: boolean | null
           name?: string | null
-          observations?: string | null
+          observations?: never
           partial_sales_value?: number | null
-          phone?: string | null
+          phone?: never
           photos?: string[] | null
           priority?: string | null
-          property?: string | null
+          property?: never
           propertyhectares?: number | null
           prospect_notes?: string | null
           responsible?: string | null
           sales_confirmed?: boolean | null
           sales_type?: string | null
-          sales_value?: number | null
+          sales_value?: never
           start_date?: string | null
           start_time?: string | null
           status?: string | null
@@ -998,6 +998,10 @@ export type Database = {
       }
       check_login_rate_limit: {
         Args: { user_email: string }
+        Returns: boolean
+      }
+      check_sensitive_data_rate_limit: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       clean_duplicate_tasks: {
@@ -1389,6 +1393,10 @@ export type Database = {
           status: string
         }[]
       }
+      monitor_customer_data_access: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       monitor_high_value_access: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1411,6 +1419,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      simple_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       update_user_filial_secure: {
         Args: { new_filial_id: string; target_user_id: string }
         Returns: Json
@@ -1418,6 +1430,10 @@ export type Database = {
       update_user_role_secure: {
         Args: { new_role: string; target_user_id: string }
         Returns: Json
+      }
+      user_same_filial: {
+        Args: { target_user_id: string }
+        Returns: boolean
       }
       validate_and_sanitize_task_input: {
         Args: { input_data: Json }
