@@ -6388,6 +6388,18 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       return;
     }
 
+    // Validação obrigatória da filial do usuário
+    if (!profile?.filial_id) {
+      submissionLockRef.current = false;
+      setIsSubmitting(false);
+      toast({
+        title: "Filial não configurada",
+        description: "Usuário deve ter uma filial configurada para criar tarefas. Entre em contato com o administrador.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Capturar data e hora atual exatos no momento da criação
     const now = new Date();
     const currentTime = format(now, 'HH:mm');
@@ -6397,8 +6409,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       // Garantir que taskType está correto
       responsible: profile?.name || 'Vendedor',
       // SEMPRE usar o nome do vendedor logado
-      filial: profile?.filial_nome || 'Filial',
-      // Usar nome da filial do profile
+      filial_id: profile?.filial_id,
+      // Usar ID da filial do profile
       startDate: now,
       // Data atual exata
       endDate: now,
@@ -6416,8 +6428,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         ...taskData,
         responsible: profile?.name || 'Vendedor',
         // SEMPRE nome do vendedor logado
-        filial: profile?.filial_nome || 'Filial',
-        // Nome da filial do profile
+        filial_id: profile?.filial_id,
+        // ID da filial do profile
         createdAt: now,
         updatedAt: now,
         status: 'pending' as const,
