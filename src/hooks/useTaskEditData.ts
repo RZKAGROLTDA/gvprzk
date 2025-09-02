@@ -347,14 +347,24 @@ export const useTaskEditData = (taskId: string | null) => {
 
       // Update opportunity data if exists
       if (data.opportunity && updates.opportunity) {
+        const updateData: any = {
+          status: updates.opportunity.status || data.opportunity.status,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Só atualizar valor_venda_fechada se fornecido
+        if (updates.opportunity.valor_venda_fechada !== undefined) {
+          updateData.valor_venda_fechada = updates.opportunity.valor_venda_fechada;
+        }
+        
+        // CRÍTICO: Não alterar valor_total_oportunidade durante edições
+        // Esse valor representa o potencial original da oportunidade
+        
+        console.log('🔍 useTaskEditData: Atualizando opportunity:', updateData);
+
         const { error: opportunityError } = await supabase
           .from('opportunities')
-          .update({
-            status: updates.opportunity.status || data.opportunity.status,
-            valor_venda_fechada: updates.opportunity.valor_venda_fechada || data.opportunity.valor_venda_fechada,
-            valor_total_oportunidade: updates.opportunity.valor_total_oportunidade || data.opportunity.valor_total_oportunidade,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', data.opportunity.id);
 
         if (opportunityError) throw opportunityError;

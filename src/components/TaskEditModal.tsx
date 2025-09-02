@@ -175,8 +175,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       // Usar valores calculados que vieram do StandardTaskForm
       const valorVenda = formDataToProcess.salesValue || 0;
-      const valorTotalOportunidade = formDataToProcess.prospectValue || 0;
       const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
+      
+      // CRÍTICO: Preservar valor original da oportunidade
+      const valorTotalOportunidade = taskData?.opportunity?.valor_total_oportunidade || 0;
 
       console.log('🔧 TaskEditModal: Valores calculados recebidos:', {
         salesValue: valorVenda,
@@ -214,8 +216,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: formDataToProcess.status !== 'prospect',
         opportunity: {
           status: opportunityStatus,
-          valor_venda_fechada: valorVenda,
-          valor_total_oportunidade: valorTotalOportunidade
+          valor_venda_fechada: valorVenda
+          // NÃO alterar valor_total_oportunidade - ele preserva o valor original
         },
         items: formDataToProcess.products.map(product => ({
           id: product.id,
