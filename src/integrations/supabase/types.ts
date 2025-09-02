@@ -862,12 +862,25 @@ export type Database = {
           severity: string
         }[]
       }
+      check_data_integrity: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          issue_count: number
+          issue_type: string
+          severity: string
+          table_name: string
+        }[]
+      }
       check_login_rate_limit: {
         Args: { user_email: string }
         Returns: boolean
       }
       check_sensitive_data_rate_limit: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_suspicious_login_pattern: {
+        Args: { ip_address?: unknown; user_email: string }
         Returns: boolean
       }
       clean_duplicate_tasks: {
@@ -1445,6 +1458,10 @@ export type Database = {
           user_count: number
         }[]
       }
+      monitor_session_security: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       monitor_tasks_new_unauthorized_access: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1481,6 +1498,10 @@ export type Database = {
       user_same_filial: {
         Args: { target_user_id: string }
         Returns: boolean
+      }
+      validate_and_sanitize_input: {
+        Args: { input_data: Json; validation_rules?: Json }
+        Returns: Json
       }
       validate_and_sanitize_task_input: {
         Args: { input_data: Json }
