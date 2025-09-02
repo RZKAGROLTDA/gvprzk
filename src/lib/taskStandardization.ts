@@ -28,7 +28,17 @@ export const loadFiliaisCache = async (): Promise<void> => {
 
 export const resolveFilialName = (filialId: string | null): string => {
   if (!filialId) return 'Não informado';
-  return filiaisCache.get(filialId) || 'Não informado';
+  
+  // Se é um UUID (formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filialId);
+  
+  if (isUUID) {
+    // É um UUID, consultar no cache
+    return filiaisCache.get(filialId) || filialId; // Retorna o próprio UUID se não encontrar no cache
+  } else {
+    // Já é um nome de filial, retornar diretamente
+    return filialId;
+  }
 };
 
 // Function to get filial name with unified fallback logic
