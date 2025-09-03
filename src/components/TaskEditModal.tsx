@@ -61,15 +61,21 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   
   // Status mapping from opportunity status
   const getInitialStatus = () => {
+    console.log('🔧 getInitialStatus: dados da opportunity:', taskData?.opportunity);
+    
     if (!taskData?.opportunity) return 'prospect';
     
     const status = taskData.opportunity.status;
+    console.log('🔧 getInitialStatus: status da opportunity:', status);
+    
     switch (status) {
       case 'Prospect': return 'prospect';
       case 'Venda Total': return 'venda_total';
       case 'Venda Parcial': return 'venda_parcial';
       case 'Venda Perdida': return 'venda_perdida';
-      default: return 'prospect';
+      default: 
+        console.log('🔧 getInitialStatus: status não reconhecido, usando prospect');
+        return 'prospect';
     }
   };
 
@@ -115,17 +121,27 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       observacoes: taskData.notas || '',
       status: getInitialStatus(),
       prospectNotes: taskData.notas || '',
-      products: (taskData.items || []).map(item => ({
-        id: item.id,
-        produto: item.produto,
-        sku: item.sku,
-        qtd_ofertada: item.qtd_ofertada,
-        qtd_vendida: item.qtd_vendida,
-        preco_unit: item.preco_unit,
-        subtotal_ofertado: item.subtotal_ofertado,
-        subtotal_vendido: item.subtotal_vendido,
-        incluir_na_venda_parcial: item.qtd_vendida > 0
-      })),
+      products: (taskData.items || []).map(item => {
+        console.log('🔧 Mapeando item:', { 
+          produto: item.produto, 
+          qtd_ofertada: item.qtd_ofertada, 
+          qtd_vendida: item.qtd_vendida,
+          incluir_na_venda_parcial: item.qtd_vendida > 0 && item.qtd_vendida < item.qtd_ofertada
+        });
+        
+        return {
+          id: item.id,
+          produto: item.produto,
+          sku: item.sku,
+          qtd_ofertada: item.qtd_ofertada,
+          qtd_vendida: item.qtd_vendida,
+          preco_unit: item.preco_unit,
+          subtotal_ofertado: item.subtotal_ofertado,
+          subtotal_vendido: item.subtotal_vendido,
+          // CORRETO: incluir na venda parcial se vendeu menos que ofertado
+          incluir_na_venda_parcial: item.qtd_vendida > 0 && item.qtd_vendida < item.qtd_ofertada
+        };
+      }),
       // Preencher campos adicionais da tarefa
       name: taskData.name || '',
       responsible: taskData.responsible || '',
