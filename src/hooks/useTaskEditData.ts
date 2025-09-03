@@ -247,10 +247,8 @@ export const useTaskEditData = (taskId: string | null) => {
           updated_at: new Date().toISOString()
         };
 
-        // Add sales values if provided - preservar valor original para sales_value
-        if (updates.sales_value !== undefined) {
-          taskUpdateData.sales_value = updates.sales_value; // Usar valor específico para tasks
-        }
+        // CRÍTICO: NUNCA alterar sales_value - sempre preservar o valor original
+        // sales_value não deve ser incluído no update para preservar o valor original
         if (updates.partialSalesValue !== undefined) {
           taskUpdateData.partial_sales_value = updates.partialSalesValue;
         }

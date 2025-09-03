@@ -89,7 +89,7 @@ export const useOpportunityManager = () => {
       console.log('🔧 opportunityData preparado:', opportunityData);
 
       if (existingOpportunity) {
-        // Atualizar oportunidade existente - preservar valor_total_oportunidade original
+        // Atualizar oportunidade existente - NUNCA alterar valor_total_oportunidade
         const updateData = {
           task_id: taskId,
           cliente_nome: clientName,
@@ -97,10 +97,8 @@ export const useOpportunityManager = () => {
           status: salesType === 'ganho' ? 'Venda Total' : 
                   salesType === 'parcial' ? 'Venda Parcial' : 
                   salesType === 'perdido' ? 'Venda Perdida' : 'Prospect',
-          // Para vendas parciais, manter o valor_total_oportunidade original
-          valor_total_oportunidade: salesType === 'parcial' 
-            ? existingOpportunity.valor_total_oportunidade // Preservar valor original
-            : salesValue, // Para outros casos, usar o valor atual
+          // CRÍTICO: NUNCA alterar valor_total_oportunidade - sempre preservar o valor original
+          // valor_total_oportunidade: NÃO INCLUIR NO UPDATE
           valor_venda_fechada: salesType === 'parcial' 
             ? partialSalesValue // Para venda parcial, usar valor parcial
             : salesType === 'ganho' 

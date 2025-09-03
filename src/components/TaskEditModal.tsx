@@ -214,8 +214,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesValue: valorVenda,
         prospectValue: valorTotalOportunidade,
         partialSalesValue: valorVendaParcial,
-        // Sales value fields for tasks table - preservar valor original
-        sales_value: valorTaskOriginal, // SEMPRE preservar o valor original da task
+        // CRÍTICO: NÃO incluir sales_value no update - deve preservar valor original
+        // sales_value: NÃO ATUALIZAR
         partial_sales_value: valorVendaParcial,
         // Sales type based on status
         sales_type: formDataToProcess.status === 'venda_total' ? 'ganho' :
@@ -241,7 +241,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       console.log('🔧 TaskEditModal: Dados de atualização preparados:', {
         salesValue: updatedData.salesValue,
-        sales_value: updatedData.sales_value,
         partialSalesValue: updatedData.partialSalesValue,
         partial_sales_value: updatedData.partial_sales_value,
         sales_type: updatedData.sales_type,
