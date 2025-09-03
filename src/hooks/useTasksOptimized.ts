@@ -297,9 +297,9 @@ export const useTasksOptimized = (includeDetails = false) => {
             task_id: task.id,
             cliente_nome: taskData.client || 'Cliente',
             filial: standardizedTaskData.filial || 'Não informado',
-            status: standardizedTaskData.salesType === 'ganho' ? 'Ganho' : 
+            status: standardizedTaskData.salesType === 'ganho' ? 'Venda Total' : 
                     standardizedTaskData.salesType === 'parcial' ? 'Venda Parcial' : 
-                    standardizedTaskData.salesType === 'perdido' ? 'Perdido' : 'Prospect',
+                    standardizedTaskData.salesType === 'perdido' ? 'Venda Perdida' : 'Prospect',
             valor_total_oportunidade: standardizedTaskData.salesValue,
             valor_venda_fechada: standardizedTaskData.salesType === 'parcial' 
               ? (standardizedTaskData.partialSalesValue || 0)
