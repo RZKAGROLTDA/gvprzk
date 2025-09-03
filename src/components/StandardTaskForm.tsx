@@ -75,7 +75,9 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
     return formData.products
       .filter(item => item.incluir_na_venda_parcial)
       .reduce((sum, item) => {
-        return sum + (item.qtd_ofertada * item.preco_unit);
+        // CORRIGIDO: usar qtd_vendida quando item incluído na venda parcial
+        const quantidadeVendida = item.qtd_vendida || item.qtd_ofertada;
+        return sum + (quantidadeVendida * item.preco_unit);
       }, 0);
   }, [formData.products]);
 
@@ -109,7 +111,11 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
       ...formData,
       products: formData.products.map((product, index) => 
         index === itemIndex 
-          ? { ...product, incluir_na_venda_parcial: !product.incluir_na_venda_parcial }
+          ? { 
+              ...product, 
+              incluir_na_venda_parcial: !product.incluir_na_venda_parcial,
+              qtd_vendida: !product.incluir_na_venda_parcial ? product.qtd_ofertada : 0 // CORRETO: atualizar qtd_vendida
+            }
           : product
       )
     });
@@ -121,7 +127,11 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
       ...formData,
       products: formData.products.map((product, index) => 
         index === itemIndex 
-          ? { ...product, qtd_ofertada: newQuantity }
+          ? { 
+              ...product, 
+              qtd_ofertada: newQuantity,
+              qtd_vendida: product.incluir_na_venda_parcial ? newQuantity : product.qtd_vendida // CORRETO: atualizar qtd_vendida se selecionado
+            }
           : product
       )
     });

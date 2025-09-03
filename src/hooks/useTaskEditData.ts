@@ -305,7 +305,7 @@ export const useTaskEditData = (taskId: string | null) => {
               .from('products')
               .update({
                 selected: item.qtd_vendida > 0,
-                quantity: item.qtd_ofertada,
+                quantity: item.qtd_vendida > 0 ? item.qtd_vendida : item.qtd_ofertada, // CORRETO: salvar quantidade vendida se vendeu, senão ofertada
                 price: item.preco_unit,
                 updated_at: new Date().toISOString()
               })
