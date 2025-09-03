@@ -35,9 +35,9 @@ export const useOpportunityManager = () => {
         task_id: taskId,
         cliente_nome: clientName,
         filial: filial,
-        status: salesType === 'ganho' ? 'Ganho' : 
+        status: salesType === 'ganho' ? 'Venda Total' : 
                 salesType === 'parcial' ? 'Venda Parcial' : 
-                salesType === 'perdido' ? 'Perdido' : 'Prospect',
+                salesType === 'perdido' ? 'Venda Perdida' : 'Prospect',
         valor_total_oportunidade: salesValue, // Valor total sempre é o da venda
         valor_venda_fechada: salesType === 'parcial' 
           ? partialSalesValue
