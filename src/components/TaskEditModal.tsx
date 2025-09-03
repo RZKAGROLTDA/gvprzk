@@ -164,10 +164,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   }, [taskData]);
 
   const handleSubmit = async (formDataWithValues: any) => {
+    console.log('🚀 SUBMIT INICIADO:', { formDataWithValues, formData });
     setIsSubmitting(true);
 
     try {
       if (!taskId || !taskData) {
+        console.error('❌ SUBMIT ERRO: Task não encontrada');
         toast.error('Erro: Task não encontrada');
         return;
       }
@@ -267,7 +269,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       // CRÍTICO: Garantir que a oportunidade seja criada/atualizada usando o manager
       if (valorVenda > 0 || formDataToProcess.status !== 'prospect') {
-        console.log('🔧 TaskEditModal: Chamando ensureOpportunity com:', {
+        console.log('🔧 CHAMANDO ensureOpportunity com:', {
           taskId,
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
@@ -293,11 +295,16 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       }
 
       const success = await updateTaskData(updatedData);
+      console.log('🔧 RESULTADO updateTaskData:', success);
       
       if (success) {
+        console.log('✅ SUCESSO: Task atualizada, invalidando cache');
         await invalidateAll();
         onTaskUpdate();
         onClose();
+      } else {
+        console.error('❌ ERRO: updateTaskData retornou false');
+        toast.error('Erro ao atualizar task');
       }
 
     } catch (error: any) {
