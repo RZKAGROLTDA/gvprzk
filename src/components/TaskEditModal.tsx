@@ -256,7 +256,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           taskId,
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
-          salesValue: valorTotalOportunidade,
+          salesValue: valorVenda, // SEMPRE usar o valor atual calculado
           salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
@@ -267,7 +267,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           taskId: taskId,
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
-          salesValue: valorTotalOportunidade, // Valor total da oportunidade
+          salesValue: valorVenda, // CORRETO: Usar o valor atual da venda para determinar o valor total correto
           salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
