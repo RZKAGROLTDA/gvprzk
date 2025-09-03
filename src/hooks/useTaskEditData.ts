@@ -277,32 +277,8 @@ export const useTaskEditData = (taskId: string | null) => {
         }
       }
 
-      // Update opportunity data if exists - APENAS atualizar, não criar
-      if (data.opportunity && updates.opportunity) {
-        const updateData: any = {
-          status: updates.opportunity.status || data.opportunity.status,
-          updated_at: new Date().toISOString()
-        };
-        
-        // Atualizar valor_venda_fechada baseado no status e tipo de venda
-        if (updates.opportunity.valor_venda_fechada !== undefined) {
-          updateData.valor_venda_fechada = updates.opportunity.valor_venda_fechada;
-        }
-        
-        console.log('🔍 useTaskEditData: Atualizando opportunity existente:', updateData);
-
-        const { error: opportunityError } = await supabase
-          .from('opportunities')
-          .update(updateData)
-          .eq('id', data.opportunity.id);
-
-        if (opportunityError) {
-          console.error('Erro ao atualizar opportunity:', opportunityError);
-          throw opportunityError;
-        } else {
-          console.log('✅ useTaskEditData: Opportunity atualizada com sucesso');
-        }
-      }
+      // REMOVIDO: Não atualizar opportunity aqui - deixar o ensureOpportunity do TaskEditModal gerenciar
+      // A opportunity já é gerenciada pelo useOpportunityManager via ensureOpportunity
       
       // REMOVIDO: Criação de nova oportunidade - isso é responsabilidade do ensureOpportunity no TaskEditModal
 
