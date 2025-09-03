@@ -26,14 +26,48 @@ export const useOpportunityManager = () => {
     console.log('🔧 ensureOpportunity chamado com:', { taskId, salesType, salesValue, partialSalesValue });
     
     try {
+      console.log('🔍 Buscando oportunidade existente para task:', taskId);
+      
       // Verificar se já existe uma oportunidade para esta task
-      const { data: existingOpportunity, error: checkError } = await supabase
+      const { data: allOpportunities, error: checkError } = await supabase
         .from('opportunities')
         .select('*')
         .eq('task_id', taskId)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
       
-      console.log('🔍 Verificando oportunidade existente:', { taskId, existingOpportunity: !!existingOpportunity, checkError });
+      if (checkError) {
+        console.error('❌ Erro ao verificar oportunidade existente:', checkError);
+        throw checkError;
+      }
+      
+      console.log('🔍 Resultado da busca:', { 
+        taskId, 
+        totalEncontradas: allOpportunities?.length || 0,
+        oportunidades: allOpportunities?.map(o => ({ id: o.id, status: o.status, created_at: o.created_at }))
+      });
+
+      // Se existem múltiplas oportunidades (duplicatas), manter apenas a mais recente
+      let existingOpportunity = null;
+      if (allOpportunities && allOpportunities.length > 0) {
+        existingOpportunity = allOpportunities[0]; // Mais recente devido ao order by
+        
+        // Remover duplicatas se existirem
+        if (allOpportunities.length > 1) {
+          console.log('🧹 Removendo duplicatas antigas...');
+          const duplicateIds = allOpportunities.slice(1).map(o => o.id);
+          
+          const { error: deleteError } = await supabase
+            .from('opportunities')
+            .delete()
+            .in('id', duplicateIds);
+            
+          if (deleteError) {
+            console.error('❌ Erro ao remover duplicatas:', deleteError);
+          } else {
+            console.log('✅ Duplicatas removidas:', duplicateIds);
+          }
+        }
+      }
 
       const opportunityData = {
         task_id: taskId,
