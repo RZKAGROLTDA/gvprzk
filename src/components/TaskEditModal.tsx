@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { useOpportunityManager } from '@/hooks/useOpportunityManager';
 import { StandardTaskForm } from './StandardTaskForm';
 import { toast } from 'sonner';
 
@@ -36,6 +37,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: taskData, loading, error, updateTaskData } = useTaskEditData(taskId);
   const { invalidateAll } = useSecurityCache();
+  const { ensureOpportunity } = useOpportunityManager();
   
   console.log('🔧 TaskEditModal: Estado dos dados:', { taskData: !!taskData, loading, error });
   
@@ -237,6 +239,21 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         status: updatedData.status,
         opportunity: updatedData.opportunity
       });
+
+      // CRÍTICO: Garantir que a oportunidade seja criada/atualizada usando o manager
+      if (valorVenda > 0 || formDataToProcess.status !== 'prospect') {
+        await ensureOpportunity({
+          taskId: taskId,
+          clientName: formDataToProcess.customerName,
+          filial: formDataToProcess.filial,
+          salesValue: valorTotalOportunidade, // Valor total da oportunidade
+          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
+                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
+          partialSalesValue: valorVendaParcial,
+          salesConfirmed: formDataToProcess.status !== 'prospect'
+        });
+      }
 
       const success = await updateTaskData(updatedData);
       
