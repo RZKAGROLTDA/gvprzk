@@ -27,11 +27,13 @@ export const useOpportunityManager = () => {
     
     try {
       // Verificar se já existe uma oportunidade para esta task
-      const { data: existingOpportunity } = await supabase
+      const { data: existingOpportunity, error: checkError } = await supabase
         .from('opportunities')
         .select('*')
         .eq('task_id', taskId)
-        .single();
+        .maybeSingle();
+      
+      console.log('🔍 Verificando oportunidade existente:', { taskId, existingOpportunity: !!existingOpportunity, checkError });
 
       const opportunityData = {
         task_id: taskId,
