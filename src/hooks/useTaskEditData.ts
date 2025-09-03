@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
 export interface TaskEditData {
-  // Task data from tasks_new
+  // Unified task data from tasks table
   id: string;
   cliente_nome: string;
   cliente_email: string;
@@ -14,7 +14,7 @@ export interface TaskEditData {
   data: Date;
   tipo: string;
   
-  // Additional task data from original tasks table
+  // Additional task data
   name?: string;
   responsible?: string;
   property?: string;
@@ -79,107 +79,59 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
-      // Try to fetch from tasks_new table first
-      let { data: taskData, error: taskError } = await supabase
-        .from('tasks_new')
+      // Buscar task na tabela unificada tasks
+      const { data: taskData, error: taskError } = await supabase
+        .from('tasks')
         .select('*')
         .eq('id', taskId)
         .maybeSingle();
 
-      let isFromTasksNew = true;
-
-      // If not found in tasks_new, try tasks table
-      if (!taskData) {
-        console.log('🔍 useTaskEditData: Task não encontrada em tasks_new, tentando tasks');
-        
-        const { data: originalTaskData, error: originalTaskError } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('id', taskId)
-          .maybeSingle();
-
-        if (originalTaskError) {
-          console.error('🔍 useTaskEditData: Erro buscando em tasks:', originalTaskError);
-          throw originalTaskError;
-        }
-
-        if (!originalTaskData) {
-          throw new Error('Task não encontrada');
-        }
-
-        // Convert tasks table data to tasks_new format
-        taskData = {
-          id: originalTaskData.id,
-          cliente_nome: originalTaskData.client,
-          cliente_email: originalTaskData.email,
-          filial: originalTaskData.filial,
-          notas: originalTaskData.observations,
-          vendedor_id: originalTaskData.created_by,
-          data: originalTaskData.start_date,
-          tipo: originalTaskData.task_type,
-          created_at: originalTaskData.created_at,
-          updated_at: originalTaskData.updated_at,
-          // Include original task data
-          name: originalTaskData.name,
-          responsible: originalTaskData.responsible,
-          property: originalTaskData.property,
-          phone: originalTaskData.phone,
-          clientCode: originalTaskData.clientcode,
-          taskType: originalTaskData.task_type,
-          priority: originalTaskData.priority,
-          startDate: originalTaskData.start_date,
-          endDate: originalTaskData.end_date,
-          startTime: originalTaskData.start_time,
-          endTime: originalTaskData.end_time,
-          familyProduct: originalTaskData.family_product,
-          equipmentQuantity: originalTaskData.equipment_quantity,
-          propertyHectares: originalTaskData.propertyhectares
-        };
-        isFromTasksNew = false;
+      if (taskError) {
+        console.error('🔍 useTaskEditData: Erro buscando task:', taskError);
+        throw taskError;
       }
+
+      if (!taskData) {
+        throw new Error('Task não encontrada');
+      }
+
+      // Convert tasks table data to unified format
+      const unifiedTaskData = {
+        id: taskData.id,
+        cliente_nome: taskData.client,
+        cliente_email: taskData.email,
+        filial: taskData.filial,
+        notas: taskData.observations,
+        vendedor_id: taskData.created_by,
+        data: taskData.start_date,
+        tipo: taskData.task_type,
+        created_at: taskData.created_at,
+        updated_at: taskData.updated_at,
+        // Include all additional task data
+        name: taskData.name,
+        responsible: taskData.responsible,
+        property: taskData.property,
+        phone: taskData.phone,
+        clientCode: taskData.clientcode,
+        taskType: taskData.task_type,
+        priority: taskData.priority,
+        startDate: taskData.start_date,
+        endDate: taskData.end_date,
+        startTime: taskData.start_time,
+        endTime: taskData.end_time,
+        familyProduct: taskData.family_product,
+        equipmentQuantity: taskData.equipment_quantity,
+        propertyHectares: taskData.propertyhectares
+      };
 
       console.log('🔍 useTaskEditData: Task encontrada:', { 
-        id: taskData.id, 
-        cliente_nome: taskData.cliente_nome,
-        vendedor_id: taskData.vendedor_id,
-        table: isFromTasksNew ? 'tasks_new' : 'tasks'
+        id: unifiedTaskData.id, 
+        cliente_nome: unifiedTaskData.cliente_nome,
+        vendedor_id: unifiedTaskData.vendedor_id,
+        table: 'tasks'
       });
 
-      // If from tasks_new, try to get additional data from original tasks table
-      if (isFromTasksNew) {
-        const { data: originalTaskData } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('client', taskData.cliente_nome)
-          .eq('created_by', taskData.vendedor_id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        console.log('🔍 useTaskEditData: Dados adicionais encontrados:', { 
-          hasOriginalData: !!originalTaskData
-        });
-
-        // Merge additional data if found
-        if (originalTaskData) {
-          taskData.name = originalTaskData.name;
-          taskData.responsible = originalTaskData.responsible;
-          taskData.property = originalTaskData.property;
-          taskData.phone = originalTaskData.phone;
-          taskData.clientCode = originalTaskData.clientcode;
-          taskData.taskType = originalTaskData.task_type;
-          taskData.priority = originalTaskData.priority;
-          taskData.startDate = originalTaskData.start_date;
-          taskData.endDate = originalTaskData.end_date;
-          taskData.startTime = originalTaskData.start_time;
-          taskData.endTime = originalTaskData.end_time;
-          taskData.familyProduct = originalTaskData.family_product;
-          taskData.equipmentQuantity = originalTaskData.equipment_quantity;
-          taskData.propertyHectares = originalTaskData.propertyhectares;
-        }
-      }
-
-      // Fetch opportunity data - try both tables
+      // Fetch opportunity data
       const { data: opportunityData, error: opportunityError } = await supabase
         .from('opportunities')
         .select('*')
@@ -193,7 +145,7 @@ export const useTaskEditData = (taskId: string | null) => {
         status: opportunityData?.status 
       });
 
-      // Fetch opportunity items and products - try both sources
+      // Fetch opportunity items and products
       let itemsData = [];
       
       if (opportunityData?.id) {
@@ -244,14 +196,13 @@ export const useTaskEditData = (taskId: string | null) => {
       });
 
       const fullData = {
-        ...taskData,
-        // Include additional data if available (already merged above for tasks table)
+        ...unifiedTaskData,
         opportunity: opportunityData,
         items: itemsData || []
       };
 
       console.log('🔍 useTaskEditData: Dados completos carregados:', { 
-        hasTask: !!taskData,
+        hasTask: !!unifiedTaskData,
         hasOpportunity: !!opportunityData,
         itemsCount: itemsData?.length || 0
       });
@@ -278,25 +229,8 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
-      // Update task data in tasks_new
+      // Update task data in unified tasks table
       if (updates.cliente_nome || updates.cliente_email || updates.filial || updates.notas || updates.tipo) {
-        const { error: taskError } = await supabase
-          .from('tasks_new')
-          .update({
-            cliente_nome: updates.cliente_nome || data.cliente_nome,
-            cliente_email: updates.cliente_email || data.cliente_email,
-            filial: updates.filial || data.filial,
-            notas: updates.notas || data.notas,
-            tipo: updates.tipo || data.tipo,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', taskId);
-
-        if (taskError) throw taskError;
-      }
-
-      // Update additional task data in original tasks table if we have the data
-      if (data.name || !data.opportunity) {
         // Prepare task update with all fields including sales values
         const taskUpdateData: any = {
           name: updates.name || data.name,
@@ -304,7 +238,7 @@ export const useTaskEditData = (taskId: string | null) => {
           property: updates.property || data.property,
           phone: updates.phone || data.phone,
           clientcode: updates.clientCode || data.clientCode,
-          task_type: updates.taskType || data.taskType,
+          task_type: updates.taskType || data.taskType || updates.tipo,
           priority: updates.priority || data.priority,
           client: updates.cliente_nome || data.cliente_nome,
           email: updates.cliente_email || data.cliente_email,
@@ -332,14 +266,14 @@ export const useTaskEditData = (taskId: string | null) => {
 
         console.log('🔍 useTaskEditData: Atualizando tasks table com:', taskUpdateData);
 
-        // Try to update tasks table directly by ID first
-        const { error: originalTaskError } = await supabase
+        const { error: taskError } = await supabase
           .from('tasks')
           .update(taskUpdateData)
           .eq('id', taskId);
 
-        if (originalTaskError) {
-          console.warn('Erro ao atualizar dados da task:', originalTaskError);
+        if (taskError) {
+          console.error('Erro ao atualizar task:', taskError);
+          throw taskError;
         } else {
           console.log('✅ useTaskEditData: Tasks table atualizada com sucesso');
         }
@@ -372,9 +306,6 @@ export const useTaskEditData = (taskId: string | null) => {
           updateData.valor_venda_fechada = 0;
         }
         
-        // CRÍTICO: Não alterar valor_total_oportunidade durante edições
-        // Esse valor representa o potencial original da oportunidade
-        
         console.log('🔍 useTaskEditData: Atualizando opportunity:', updateData);
 
         const { error: opportunityError } = await supabase
@@ -387,20 +318,6 @@ export const useTaskEditData = (taskId: string | null) => {
         // Criar nova oportunidade se não existe
         let clientName = data.cliente_nome || 'Cliente';
         let filialName = data.filial || 'Não informado';
-        
-        // Se não temos dados completos, buscar na tabela tasks
-        if (!data.name) {
-          const { data: taskDetails } = await supabase
-            .from('tasks')
-            .select('client, filial')
-            .eq('id', taskId)
-            .single();
-            
-          if (taskDetails) {
-            clientName = taskDetails.client || data.cliente_nome || 'Cliente';
-            filialName = taskDetails.filial || data.filial || 'Não informado';
-          }
-        }
         
         const newOpportunityData = {
           task_id: taskId,
@@ -427,30 +344,6 @@ export const useTaskEditData = (taskId: string | null) => {
           console.warn('Erro ao criar nova oportunidade:', insertError);
         } else {
           console.log('✅ useTaskEditData: Nova oportunidade criada com sucesso');
-        }
-      }
-
-      // Additional sales values update (fallback if not handled above)
-      if ((updates.salesValue !== undefined || updates.partialSalesValue !== undefined) && 
-          (!data.name && data.opportunity)) {
-        console.log('🔍 useTaskEditData: Fallback - atualizando valores de venda separadamente');
-        
-        const { error: taskValuesError } = await supabase
-          .from('tasks')
-          .update({
-            sales_value: updates.salesValue,
-            partial_sales_value: updates.partialSalesValue,
-            sales_type: updates.sales_type,
-            sales_confirmed: updates.sales_confirmed,
-            status: updates.status,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', taskId);
-
-        if (taskValuesError) {
-          console.warn('Erro ao atualizar valores calculados na tabela tasks (fallback):', taskValuesError);
-        } else {
-          console.log('✅ useTaskEditData: Valores de venda atualizados com sucesso (fallback)');
         }
       }
 
@@ -490,14 +383,18 @@ export const useTaskEditData = (taskId: string | null) => {
         }
       }
 
-      toast.success('Task atualizada com sucesso!');
-      await fetchTaskData(); // Reload data
+      console.log('✅ useTaskEditData: Dados atualizados com sucesso');
+      toast.success('Dados atualizados com sucesso');
       return true;
 
     } catch (err: any) {
-      console.error('Error updating task data:', err);
+      console.error('🔍 useTaskEditData: Erro ao atualizar dados:', {
+        error: err.message,
+        taskId,
+        stack: err.stack
+      });
       setError(err.message);
-      toast.error('Erro ao atualizar task');
+      toast.error('Erro ao atualizar dados');
       return false;
     } finally {
       setLoading(false);

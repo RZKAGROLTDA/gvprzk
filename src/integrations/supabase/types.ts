@@ -201,15 +201,7 @@ export type Database = {
           valor_total_oportunidade?: number
           valor_venda_fechada?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "fk_opportunities_task"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks_new"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       opportunity_items: {
         Row: {
@@ -722,45 +714,6 @@ export type Database = {
           status?: string | null
           task_type?: string | null
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      tasks_new: {
-        Row: {
-          cliente_email: string | null
-          cliente_nome: string
-          created_at: string
-          data: string
-          filial: string
-          id: string
-          notas: string | null
-          tipo: string
-          updated_at: string
-          vendedor_id: string
-        }
-        Insert: {
-          cliente_email?: string | null
-          cliente_nome: string
-          created_at?: string
-          data: string
-          filial: string
-          id?: string
-          notas?: string | null
-          tipo: string
-          updated_at?: string
-          vendedor_id: string
-        }
-        Update: {
-          cliente_email?: string | null
-          cliente_nome?: string
-          created_at?: string
-          data?: string
-          filial?: string
-          id?: string
-          notas?: string | null
-          tipo?: string
-          updated_at?: string
-          vendedor_id?: string
         }
         Relationships: []
       }
