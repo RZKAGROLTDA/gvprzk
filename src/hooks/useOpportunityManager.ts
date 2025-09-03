@@ -42,12 +42,12 @@ export const useOpportunityManager = () => {
         status: salesType === 'ganho' ? 'Venda Total' : 
                 salesType === 'parcial' ? 'Venda Parcial' : 
                 salesType === 'perdido' ? 'Venda Perdida' : 'Prospect',
-        valor_total_oportunidade: salesValue, // Valor total sempre é o da venda
+        valor_total_oportunidade: salesValue, // Valor total da oportunidade (sempre preserva o valor original)
         valor_venda_fechada: salesType === 'parcial' 
-          ? partialSalesValue
+          ? partialSalesValue // Para venda parcial, usa o valor parcial
           : salesType === 'ganho' 
-            ? salesValue 
-            : 0,
+            ? salesValue // Para venda total, usa o valor total
+            : 0, // Para perdas, 0
         data_criacao: new Date().toISOString(),
         data_fechamento: salesConfirmed ? new Date().toISOString() : null
       };
