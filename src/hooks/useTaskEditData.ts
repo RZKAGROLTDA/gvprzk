@@ -279,7 +279,7 @@ export const useTaskEditData = (taskId: string | null) => {
         }
       }
 
-      // Update opportunity data if exists
+      // Update opportunity data if exists - APENAS atualizar, não criar
       if (data.opportunity && updates.opportunity) {
         const updateData: any = {
           status: updates.opportunity.status || data.opportunity.status,
@@ -291,61 +291,22 @@ export const useTaskEditData = (taskId: string | null) => {
           updateData.valor_venda_fechada = updates.opportunity.valor_venda_fechada;
         }
         
-        // Para vendas parciais, valor_venda_fechada deve ser o valor parcial
-        if (updates.sales_type === 'parcial' && updates.partialSalesValue !== undefined) {
-          updateData.valor_venda_fechada = updates.partialSalesValue;
-        }
-        
-        // Para vendas totais, valor_venda_fechada deve ser o valor total da oportunidade
-        if (updates.sales_type === 'ganho' && updates.salesValue !== undefined) {
-          updateData.valor_venda_fechada = updates.salesValue;
-        }
-        
-        // Para vendas perdidas ou prospects, valor_venda_fechada deve ser 0
-        if (updates.sales_type === 'perdido' || updates.sales_confirmed === false) {
-          updateData.valor_venda_fechada = 0;
-        }
-        
-        console.log('🔍 useTaskEditData: Atualizando opportunity:', updateData);
+        console.log('🔍 useTaskEditData: Atualizando opportunity existente:', updateData);
 
         const { error: opportunityError } = await supabase
           .from('opportunities')
           .update(updateData)
           .eq('id', data.opportunity.id);
 
-        if (opportunityError) throw opportunityError;
-      } else if (updates.opportunity && updates.salesValue !== undefined) {
-        // Criar nova oportunidade se não existe
-        let clientName = data.cliente_nome || 'Cliente';
-        let filialName = data.filial || 'Não informado';
-        
-        const newOpportunityData = {
-          task_id: taskId,
-          cliente_nome: clientName,
-          filial: filialName,
-          status: updates.opportunity.status || 'Prospect',
-          valor_total_oportunidade: updates.salesValue, // Valor total da oportunidade
-          valor_venda_fechada: updates.sales_type === 'parcial' 
-            ? (updates.partialSalesValue || 0)
-            : updates.sales_type === 'ganho' 
-              ? updates.salesValue 
-              : 0,
-          data_criacao: new Date().toISOString(),
-          data_fechamento: updates.sales_confirmed ? new Date().toISOString() : null
-        };
-        
-        console.log('🔍 useTaskEditData: Criando nova oportunidade:', newOpportunityData);
-        
-        const { error: insertError } = await supabase
-          .from('opportunities')
-          .insert(newOpportunityData);
-          
-        if (insertError) {
-          console.warn('Erro ao criar nova oportunidade:', insertError);
+        if (opportunityError) {
+          console.error('Erro ao atualizar opportunity:', opportunityError);
+          throw opportunityError;
         } else {
-          console.log('✅ useTaskEditData: Nova oportunidade criada com sucesso');
+          console.log('✅ useTaskEditData: Opportunity atualizada com sucesso');
         }
       }
+      
+      // REMOVIDO: Criação de nova oportunidade - isso é responsabilidade do ensureOpportunity no TaskEditModal
 
       // Update items - try both opportunity_items and products
       if (updates.items) {
