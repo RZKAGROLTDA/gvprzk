@@ -23,6 +23,8 @@ export const useOpportunityManager = () => {
   const ensureOpportunity = useCallback(async (params: CreateOpportunityParams) => {
     const { taskId, clientName, filial, salesValue, salesType, partialSalesValue = 0, salesConfirmed = false } = params;
     
+    console.log('🔧 ensureOpportunity chamado com:', { taskId, salesType, salesValue, partialSalesValue });
+    
     try {
       // Verificar se já existe uma oportunidade para esta task
       const { data: existingOpportunity } = await supabase
@@ -47,6 +49,8 @@ export const useOpportunityManager = () => {
         data_criacao: new Date().toISOString(),
         data_fechamento: salesConfirmed ? new Date().toISOString() : null
       };
+
+      console.log('🔧 opportunityData preparado:', opportunityData);
 
       if (existingOpportunity) {
         // Atualizar oportunidade existente

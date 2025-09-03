@@ -242,6 +242,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       // CRÍTICO: Garantir que a oportunidade seja criada/atualizada usando o manager
       if (valorVenda > 0 || formDataToProcess.status !== 'prospect') {
+        console.log('🔧 TaskEditModal: Chamando ensureOpportunity com:', {
+          taskId,
+          clientName: formDataToProcess.customerName,
+          filial: formDataToProcess.filial,
+          salesValue: valorTotalOportunidade,
+          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
+                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
+          partialSalesValue: valorVendaParcial
+        });
+        
         await ensureOpportunity({
           taskId: taskId,
           clientName: formDataToProcess.customerName,
