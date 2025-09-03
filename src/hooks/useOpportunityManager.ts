@@ -89,14 +89,36 @@ export const useOpportunityManager = () => {
       console.log('🔧 opportunityData preparado:', opportunityData);
 
       if (existingOpportunity) {
-        // Atualizar oportunidade existente
+        // Atualizar oportunidade existente - preservar valor_total_oportunidade original
+        const updateData = {
+          task_id: taskId,
+          cliente_nome: clientName,
+          filial: filial,
+          status: salesType === 'ganho' ? 'Venda Total' : 
+                  salesType === 'parcial' ? 'Venda Parcial' : 
+                  salesType === 'perdido' ? 'Venda Perdida' : 'Prospect',
+          // Para vendas parciais, manter o valor_total_oportunidade original
+          valor_total_oportunidade: salesType === 'parcial' 
+            ? existingOpportunity.valor_total_oportunidade // Preservar valor original
+            : salesValue, // Para outros casos, usar o valor atual
+          valor_venda_fechada: salesType === 'parcial' 
+            ? partialSalesValue // Para venda parcial, usar valor parcial
+            : salesType === 'ganho' 
+              ? salesValue // Para venda total, usar valor total
+              : 0, // Para perdas, 0
+          data_fechamento: salesConfirmed ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        };
+
+        console.log('🔧 updateData preparado (preservando valor original):', updateData);
+        
         const { error } = await supabase
           .from('opportunities')
-          .update(opportunityData)
+          .update(updateData)
           .eq('id', existingOpportunity.id);
         
         if (error) throw error;
-        console.log('✅ Oportunidade atualizada:', opportunityData);
+        console.log('✅ Oportunidade atualizada:', updateData);
         return existingOpportunity.id;
       } else {
         // Criar nova oportunidade
