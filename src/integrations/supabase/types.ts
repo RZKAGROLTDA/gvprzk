@@ -77,48 +77,66 @@ export type Database = {
           archived: boolean
           archived_at: string | null
           attachments: string[] | null
+          budget_date: string | null
           created_at: string
           created_by: string
           email: string
+          gallery_date: string | null
           id: string
           name: string
           notes: string | null
           phone: string | null
+          preview_date: string | null
+          return_date: string | null
           session_date: string | null
           stage: string
           updated_at: string
+          voucher_date: string | null
+          workflow_status: string | null
         }
         Insert: {
           archive_reason?: string | null
           archived?: boolean
           archived_at?: string | null
           attachments?: string[] | null
+          budget_date?: string | null
           created_at?: string
           created_by: string
           email: string
+          gallery_date?: string | null
           id?: string
           name: string
           notes?: string | null
           phone?: string | null
+          preview_date?: string | null
+          return_date?: string | null
           session_date?: string | null
           stage?: string
           updated_at?: string
+          voucher_date?: string | null
+          workflow_status?: string | null
         }
         Update: {
           archive_reason?: string | null
           archived?: boolean
           archived_at?: string | null
           attachments?: string[] | null
+          budget_date?: string | null
           created_at?: string
           created_by?: string
           email?: string
+          gallery_date?: string | null
           id?: string
           name?: string
           notes?: string | null
           phone?: string | null
+          preview_date?: string | null
+          return_date?: string | null
           session_date?: string | null
           stage?: string
           updated_at?: string
+          voucher_date?: string | null
+          workflow_status?: string | null
         }
         Relationships: []
       }
