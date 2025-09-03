@@ -108,15 +108,24 @@ export const useOpportunityManager = () => {
           updated_at: new Date().toISOString()
         };
 
-        console.log('🔧 updateData preparado (preservando valor original):', updateData);
+        console.log('🔧 updateData preparado (preservando valor original):', {
+          ...updateData,
+          existingOpportunityId: existingOpportunity.id,
+          salesType,
+          partialSalesValue,
+          salesValue
+        });
         
         const { error } = await supabase
           .from('opportunities')
           .update(updateData)
           .eq('id', existingOpportunity.id);
         
-        if (error) throw error;
-        console.log('✅ Oportunidade atualizada:', updateData);
+        if (error) {
+          console.error('❌ Erro ao atualizar oportunidade:', error);
+          throw error;
+        }
+        console.log('✅ Oportunidade atualizada com sucesso:', updateData);
         return existingOpportunity.id;
       } else {
         // Criar nova oportunidade
