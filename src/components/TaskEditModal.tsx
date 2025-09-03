@@ -179,11 +179,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       const valorVenda = formDataToProcess.salesValue || 0;
       const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
       
-      // CRÍTICO: Para venda parcial, valor total é sempre o valor da task (prospect original)
-      // Para venda total, valor total é igual ao valor da venda
+      // CRÍTICO: Para venda parcial, valor total preserva o original da oportunidade
+      // Para outros casos, usar o valor atual da venda
       const valorTotalOportunidade = formDataToProcess.status === 'venda_parcial' 
         ? (taskData?.opportunity?.valor_total_oportunidade || valorVenda) // Preserva o valor original do prospect
         : valorVenda; // Para venda total, usa o valor da venda
+        
+      // Valor para salvar na tabela tasks - sempre preservar o valor original da task
+      const valorTaskOriginal = taskData?.opportunity?.valor_total_oportunidade || valorVenda;
 
       console.log('🔧 TaskEditModal: Valores calculados recebidos:', {
         salesValue: valorVenda,
@@ -211,8 +214,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         salesValue: valorVenda,
         prospectValue: valorTotalOportunidade,
         partialSalesValue: valorVendaParcial,
-        // Sales value fields for tasks table
-        sales_value: valorVenda,
+        // Sales value fields for tasks table - preservar valor original
+        sales_value: valorTaskOriginal, // SEMPRE preservar o valor original da task
         partial_sales_value: valorVendaParcial,
         // Sales type based on status
         sales_type: formDataToProcess.status === 'venda_total' ? 'ganho' :
@@ -221,7 +224,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: formDataToProcess.status !== 'prospect',
         opportunity: {
           status: opportunityStatus,
-          valor_venda_fechada: valorVenda
+          valor_venda_fechada: formDataToProcess.status === 'venda_parcial' 
+            ? valorVendaParcial // Para venda parcial, usar valor parcial
+            : formDataToProcess.status === 'venda_total' 
+              ? valorVenda // Para venda total, usar valor total
+              : 0 // Para perdas, 0
           // NÃO alterar valor_total_oportunidade - ele preserva o valor original
         },
         items: formDataToProcess.products.map(product => ({
