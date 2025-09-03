@@ -290,6 +290,35 @@ export const useTasksOptimized = (includeDetails = false) => {
 
       if (taskError) throw taskError;
 
+      // Auto-criar opportunity se há valor de venda
+      if (standardizedTaskData.salesValue && standardizedTaskData.salesValue > 0) {
+        try {
+          const opportunityData = {
+            task_id: task.id,
+            cliente_nome: taskData.client || 'Cliente',
+            filial: standardizedTaskData.filial || 'Não informado',
+            status: standardizedTaskData.salesType === 'ganho' ? 'Ganho' : 
+                    standardizedTaskData.salesType === 'parcial' ? 'Venda Parcial' : 
+                    standardizedTaskData.salesType === 'perdido' ? 'Perdido' : 'Prospect',
+            valor_total_oportunidade: standardizedTaskData.salesValue,
+            valor_venda_fechada: standardizedTaskData.salesType === 'parcial' 
+              ? (standardizedTaskData.partialSalesValue || 0)
+              : standardizedTaskData.salesType === 'ganho' 
+                ? standardizedTaskData.salesValue 
+                : 0,
+            data_criacao: new Date().toISOString(),
+            data_fechamento: standardizedTaskData.salesConfirmed ? new Date().toISOString() : null
+          };
+
+          await supabase.from('opportunities').insert(opportunityData);
+          console.log('✅ Opportunity criada automaticamente para nova task');
+        } catch (oppError) {
+          console.warn('⚠️ Erro ao criar opportunity automática:', oppError);
+          // Não falhar a criação da task por causa da opportunity
+        }
+      }
+
+
       // Criar products e reminders em paralelo se necessário
       const promises = [];
       

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin } from 'lucide-react';
+import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Database } from 'lucide-react';
 import { Task } from '@/types/task';
 import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,8 @@ import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
+import { useUnifiedSalesData } from '@/hooks/useUnifiedSalesData';
+import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 
 interface SalesFunnelData {
   contacts: {
@@ -64,7 +66,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
   const [itemsPerPage, setItemsPerPage] = useState<string>('all');
-  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details'>('overview');
+  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'migration'>('overview');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -586,6 +588,15 @@ export const SalesFunnel: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Users className="h-5 w-5 text-primary" />
               <span className="font-medium">Detalhes dos Clientes</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`cursor-pointer transition-colors ${activeView === 'migration' ? 'border-primary bg-primary/5' : 'hover:bg-accent'}`} onClick={() => setActiveView('migration')}>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Database className="h-5 w-5 text-primary" />
+              <span className="font-medium">Migração de Dados</span>
             </div>
           </CardContent>
         </Card>
@@ -1183,6 +1194,9 @@ export const SalesFunnel: React.FC = () => {
               </div>}
           </CardContent>
         </Card>}
+
+      {/* Migration Panel */}
+      {activeView === 'migration' && <DataMigrationPanel />}
 
       {/* Modals */}
       {selectedTask && <OpportunityDetailsModal task={selectedTask} isOpen={isModalOpen} onClose={() => {
