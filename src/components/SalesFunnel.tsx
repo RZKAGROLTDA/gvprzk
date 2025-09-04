@@ -592,14 +592,6 @@ export const SalesFunnel: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card className={`cursor-pointer transition-colors ${activeView === 'migration' ? 'border-primary bg-primary/5' : 'hover:bg-accent'}`} onClick={() => setActiveView('migration')}>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Database className="h-5 w-5 text-primary" />
-              <span className="font-medium">Migração de Dados</span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Overview */}
@@ -1195,8 +1187,6 @@ export const SalesFunnel: React.FC = () => {
           </CardContent>
         </Card>}
 
-      {/* Migration Panel */}
-      {activeView === 'migration' && <DataMigrationPanel />}
 
       {/* Modals */}
       {selectedTask && <OpportunityDetailsModal task={selectedTask} isOpen={isModalOpen} onClose={() => {

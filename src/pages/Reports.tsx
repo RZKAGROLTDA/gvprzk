@@ -327,7 +327,7 @@ const Reports: React.FC = () => {
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Atualizando...' : 'Atualizar'}
         </Button>
-                   <DataMigrationButton />
+                   
                    <AlertDialog>
                      <AlertDialogTrigger asChild>
                        <Button variant="outline" size="icon" className="shrink-0">
