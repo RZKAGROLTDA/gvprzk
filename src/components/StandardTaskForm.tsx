@@ -75,9 +75,8 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
     return formData.products
       .filter(item => item.incluir_na_venda_parcial)
       .reduce((sum, item) => {
-        // CORRIGIDO: usar qtd_vendida quando item incluído na venda parcial
-        const quantidadeVendida = item.qtd_vendida || item.qtd_ofertada;
-        return sum + (quantidadeVendida * item.preco_unit);
+        // CORRETO: usar sempre qtd_vendida para calcular valor da venda parcial
+        return sum + (item.qtd_vendida * item.preco_unit);
       }, 0);
   }, [formData.products]);
 
@@ -114,7 +113,7 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
           ? { 
               ...product, 
               incluir_na_venda_parcial: !product.incluir_na_venda_parcial,
-              qtd_vendida: !product.incluir_na_venda_parcial ? product.qtd_ofertada : 0 // CORRETO: atualizar qtd_vendida
+              qtd_vendida: !product.incluir_na_venda_parcial ? product.qtd_vendida || product.qtd_ofertada : 0
             }
           : product
       )
@@ -131,6 +130,21 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               ...product, 
               qtd_ofertada: newQuantity,
               qtd_vendida: product.incluir_na_venda_parcial ? newQuantity : product.qtd_vendida // CORRETO: atualizar qtd_vendida se selecionado
+            }
+          : product
+      )
+    });
+  };
+
+  // Função para atualizar quantidade vendida diretamente
+  const handleSoldQuantityChange = (itemIndex: number, newQuantity: number) => {
+    onFormDataChange({
+      ...formData,
+      products: formData.products.map((product, index) => 
+        index === itemIndex 
+          ? { 
+              ...product, 
+              qtd_vendida: newQuantity
             }
           : product
       )
@@ -555,16 +569,17 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                             <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
                           </div>
                           
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Quantidade</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={product.qtd_ofertada}
-                              onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 0)}
-                              className="h-8 text-sm"
-                            />
-                          </div>
+                           <div>
+                             <Label className="text-xs text-muted-foreground">Qtd: {product.qtd_vendida}</Label>
+                             <Input
+                               type="number"
+                               min="0"
+                               value={product.qtd_vendida}
+                               onChange={(e) => handleSoldQuantityChange(index, parseInt(e.target.value) || 0)}
+                               className="h-8 text-sm"
+                               disabled={!product.incluir_na_venda_parcial}
+                             />
+                           </div>
                           
                           <div>
                             <p className="text-sm">

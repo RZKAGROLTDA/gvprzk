@@ -122,11 +122,18 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       status: getInitialStatus(),
       prospectNotes: taskData.notas || '',
       products: (taskData.items || []).map(item => {
+        // CRÍTICO: Para venda parcial, usar qtd_vendida como base
+        // Para venda total, usar qtd_ofertada como base
+        const isPartialSale = getInitialStatus() === 'venda_parcial';
+        const isVendaTotal = getInitialStatus() === 'venda_total';
+        
         console.log('🔧 Mapeando item:', { 
           produto: item.produto, 
           qtd_ofertada: item.qtd_ofertada, 
           qtd_vendida: item.qtd_vendida,
-          incluir_na_venda_parcial: item.qtd_vendida > 0 && item.qtd_vendida < item.qtd_ofertada
+          status: getInitialStatus(),
+          isPartialSale,
+          isVendaTotal
         });
         
         return {
@@ -138,8 +145,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           preco_unit: item.preco_unit,
           subtotal_ofertado: item.subtotal_ofertado,
           subtotal_vendido: item.subtotal_vendido,
-          // CORRETO: incluir na venda parcial se vendeu menos que ofertado
-          incluir_na_venda_parcial: item.qtd_vendida > 0 && item.qtd_vendida < item.qtd_ofertada
+          // CRÍTICO: Lógica correta para incluir na venda parcial
+          incluir_na_venda_parcial: isPartialSale ? (item.qtd_vendida > 0) : isVendaTotal
         };
       }),
       // Preencher campos adicionais da tarefa
@@ -251,7 +258,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         },
         items: formDataToProcess.products.map(product => ({
           id: product.id,
-          qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_ofertada : 0,
+          qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_vendida : 0,
           qtd_ofertada: product.qtd_ofertada,
           preco_unit: product.preco_unit
         }))
