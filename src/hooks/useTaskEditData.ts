@@ -336,22 +336,25 @@ export const useTaskEditData = (taskId: string | null) => {
           
           // Try opportunity_items first
           if (data.opportunity?.id) {
-            console.log('🔍 useTaskEditData: Tentando atualizar opportunity_items');
+            console.log('🔍 useTaskEditData: Tentando upsert opportunity_items');
             
             const { data: updateResult, error: itemError } = await supabase
               .from('opportunity_items')
-              .update({
+              .upsert({
+                id: item.id,
+                opportunity_id: data.opportunity.id,
+                produto: item.produto || 'Produto',
+                sku: item.sku || '',
                 qtd_vendida: item.qtd_vendida,
                 qtd_ofertada: item.qtd_ofertada,
                 preco_unit: item.preco_unit,
-                // REMOVIDO: subtotal_vendido e subtotal_ofertado são colunas geradas
-                // Elas serão calculadas automaticamente pelo banco de dados
                 updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'id'
               })
-              .eq('id', item.id)
               .select();
 
-            console.log('🔍 useTaskEditData: Resultado update opportunity_items:', {
+            console.log('🔍 useTaskEditData: Resultado upsert opportunity_items:', {
               itemId: item.id,
               error: itemError,
               updateResult,
@@ -359,7 +362,7 @@ export const useTaskEditData = (taskId: string | null) => {
             });
 
             if (itemError) {
-              console.warn('❌ Erro ao atualizar opportunity_items:', itemError);
+              console.warn('❌ Erro ao fazer upsert opportunity_items:', itemError);
             }
           } else {
             // Try products table
