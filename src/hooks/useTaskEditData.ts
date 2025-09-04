@@ -32,6 +32,11 @@ export interface TaskEditData {
   equipmentQuantity?: number;
   propertyHectares?: number;
   
+  // Sales data
+  sales_confirmed?: boolean;
+  sales_type?: string;
+  partial_sales_value?: number;
+  
   // Opportunity data
   opportunity?: {
     id: string;
@@ -121,10 +126,14 @@ export const useTaskEditData = (taskId: string | null) => {
         endDate: taskData.end_date,
         startTime: taskData.start_time,
         endTime: taskData.end_time,
-        familyProduct: taskData.family_product,
-        equipmentQuantity: taskData.equipment_quantity,
-        propertyHectares: taskData.propertyhectares
-      };
+         familyProduct: taskData.family_product,
+         equipmentQuantity: taskData.equipment_quantity,
+         propertyHectares: taskData.propertyhectares,
+         // Sales data
+         sales_confirmed: taskData.sales_confirmed,
+         sales_type: taskData.sales_type,
+         partial_sales_value: taskData.partial_sales_value
+       };
 
       console.log('🔍 useTaskEditData: Task encontrada:', { 
         id: unifiedTaskData.id, 

@@ -59,11 +59,27 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     }
   };
   
-  // Status mapping from opportunity status
+  // Status mapping from opportunity status and task data
   const getInitialStatus = () => {
     console.log('🔧 getInitialStatus: dados da opportunity:', taskData?.opportunity);
+    console.log('🔧 getInitialStatus: dados da task:', { 
+      sales_confirmed: taskData?.sales_confirmed,
+      sales_type: taskData?.sales_type,
+      partial_sales_value: taskData?.partial_sales_value
+    });
     
-    if (!taskData?.opportunity) return 'prospect';
+    // Se não há opportunity, usar os dados da task
+    if (!taskData?.opportunity) {
+      if (taskData?.sales_confirmed) {
+        switch (taskData?.sales_type) {
+          case 'ganho': return 'venda_total';
+          case 'parcial': return 'venda_parcial';
+          case 'perdido': return 'venda_perdida';
+          default: return 'prospect';
+        }
+      }
+      return 'prospect';
+    }
     
     const status = taskData.opportunity.status;
     console.log('🔧 getInitialStatus: status da opportunity:', status);
@@ -124,14 +140,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       products: (taskData.items || []).map(item => {
         // CRÍTICO: Para venda parcial, usar qtd_vendida como base
         // Para venda total, usar qtd_ofertada como base
-        const isPartialSale = getInitialStatus() === 'venda_parcial';
-        const isVendaTotal = getInitialStatus() === 'venda_total';
+        const currentStatus = getInitialStatus();
+        const isPartialSale = currentStatus === 'venda_parcial';
+        const isVendaTotal = currentStatus === 'venda_total';
         
         console.log('🔧 Mapeando item:', { 
           produto: item.produto, 
           qtd_ofertada: item.qtd_ofertada, 
           qtd_vendida: item.qtd_vendida,
-          status: getInitialStatus(),
+          status: currentStatus,
           isPartialSale,
           isVendaTotal
         });
@@ -163,7 +180,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       endTime: taskData.endTime || '',
       familyProduct: taskData.familyProduct || '',
       equipmentQuantity: taskData.equipmentQuantity || 0,
-      propertyHectares: taskData.propertyHectares || 0
+      propertyHectares: taskData.propertyHectares || 0,
+      // CRÍTICO: Adicionar valores calculados para que apareçam na interface
+      salesValue: taskData.opportunity?.valor_venda_fechada || 0,
+      prospectValue: taskData.opportunity?.valor_total_oportunidade || 0,
+      partialSalesValue: taskData.partial_sales_value || 0
     };
     
     console.log('🔧 TaskEditModal: Atualizando formData:', newFormData);
