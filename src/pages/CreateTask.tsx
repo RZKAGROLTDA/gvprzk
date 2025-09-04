@@ -6837,7 +6837,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     <Input id="propertyHectares" type="number" min="0" value={task.propertyHectares || ''} onChange={e => setTask(prev => ({
                 ...prev,
                 propertyHectares: parseInt(e.target.value) || undefined
-              }))} placeholder="Digite os hectares da propriedade" required />
+              }))} placeholder="Digite os hectares da propriedade" />
                  </div>
 
                 {/* Lista de Equipamentos */}
