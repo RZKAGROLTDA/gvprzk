@@ -69,10 +69,12 @@ export const useOpportunityManager = () => {
         }
       }
 
-      // CRÍTICO: Determinar status correto baseado no salesType e valores
+      // CRÍTICO: Determinar status correto baseado no salesType e relação entre valores
       const isVendaPerdida = salesType === 'perdido';
-      const isPartialSale = salesType === 'parcial' && partialSalesValue > 0;
-      const isVendaTotal = salesType === 'ganho' && (salesValue > 0 || partialSalesValue > 0);
+      // Para venda parcial: salesType parcial OU quando há partial value menor que sales value
+      const isPartialSale = salesType === 'parcial' || (partialSalesValue > 0 && partialSalesValue < salesValue);
+      // Para venda total: salesType ganho E não é venda parcial
+      const isVendaTotal = salesType === 'ganho' && !isPartialSale && (salesValue > 0 || partialSalesValue > 0);
       
       let correctStatus = 'Prospect';
       if (isVendaPerdida) {
@@ -110,8 +112,10 @@ export const useOpportunityManager = () => {
         // Atualizar oportunidade existente - NUNCA alterar valor_total_oportunidade
         // CRÍTICO: Usar a mesma lógica de status correto para update
         const isVendaPerdidaUpdate = salesType === 'perdido';
-        const isPartialSaleUpdate = salesType === 'parcial' && partialSalesValue > 0;
-        const isVendaTotalUpdate = salesType === 'ganho' && (salesValue > 0 || partialSalesValue > 0);
+        // Para venda parcial: salesType parcial OU quando há partial value menor que sales value
+        const isPartialSaleUpdate = salesType === 'parcial' || (partialSalesValue > 0 && partialSalesValue < salesValue);
+        // Para venda total: salesType ganho E não é venda parcial
+        const isVendaTotalUpdate = salesType === 'ganho' && !isPartialSaleUpdate && (salesValue > 0 || partialSalesValue > 0);
         
         let correctStatusUpdate = 'Prospect';
         if (isVendaPerdidaUpdate) {
