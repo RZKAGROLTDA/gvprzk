@@ -69,10 +69,10 @@ export const useOpportunityManager = () => {
         }
       }
 
-      // CRÍTICO: Determinar status correto baseado nos valores reais
-      const isPartialSale = partialSalesValue > 0 && partialSalesValue < salesValue;
-      const isVendaTotal = salesValue > 0 && (partialSalesValue === 0 || partialSalesValue === salesValue);
+      // CRÍTICO: Determinar status correto baseado no salesType e valores
       const isVendaPerdida = salesType === 'perdido';
+      const isPartialSale = salesType === 'parcial' && partialSalesValue > 0;
+      const isVendaTotal = salesType === 'ganho' && (salesValue > 0 || partialSalesValue > 0);
       
       let correctStatus = 'Prospect';
       if (isVendaPerdida) {
@@ -98,7 +98,7 @@ export const useOpportunityManager = () => {
         cliente_nome: clientName,
         filial: filial,
         status: correctStatus, // CORRETO: usar status baseado nos valores
-        valor_total_oportunidade: salesValue, // Para criação, sempre usar o valor total inicial
+        valor_total_oportunidade: Math.max(salesValue, partialSalesValue), // Usar o maior valor como total
         valor_venda_fechada: partialSalesValue > 0 ? partialSalesValue : (salesConfirmed ? salesValue : 0),
         data_criacao: new Date().toISOString(),
         data_fechamento: salesConfirmed ? new Date().toISOString() : null
@@ -109,9 +109,9 @@ export const useOpportunityManager = () => {
       if (existingOpportunity) {
         // Atualizar oportunidade existente - NUNCA alterar valor_total_oportunidade
         // CRÍTICO: Usar a mesma lógica de status correto para update
-        const isPartialSaleUpdate = partialSalesValue > 0 && partialSalesValue < salesValue;
-        const isVendaTotalUpdate = salesValue > 0 && (partialSalesValue === 0 || partialSalesValue === salesValue);
         const isVendaPerdidaUpdate = salesType === 'perdido';
+        const isPartialSaleUpdate = salesType === 'parcial' && partialSalesValue > 0;
+        const isVendaTotalUpdate = salesType === 'ganho' && (salesValue > 0 || partialSalesValue > 0);
         
         let correctStatusUpdate = 'Prospect';
         if (isVendaPerdidaUpdate) {
