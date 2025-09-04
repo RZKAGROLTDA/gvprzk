@@ -200,22 +200,30 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       const opportunityStatus = statusMapping[formDataToProcess.status as keyof typeof statusMapping];
 
-      // Usar valores calculados que vieram do StandardTaskForm
-      const valorVenda = formDataToProcess.salesValue || 0;
+      // CRÍTICO: Calcular valores corretos
+      // Para venda parcial: valor total = valor original do prospect, valor parcial = soma dos produtos vendidos
+      // Para venda total: valor total = valor parcial = soma de todos os produtos
       const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
       
-      // CRÍTICO: Para venda parcial, valor total preserva o original da oportunidade
-      // Para outros casos, usar o valor atual da venda
-      const valorTotalOportunidade = formDataToProcess.status === 'venda_parcial' 
-        ? (taskData?.opportunity?.valor_total_oportunidade || valorVenda) // Preserva o valor original do prospect
-        : valorVenda; // Para venda total, usa o valor da venda
+      // CRÍTICO: Para determinar valor total correto
+      const valorTotalOriginal = taskData?.opportunity?.valor_total_oportunidade || 0;
+      
+      // Para a lógica de oportunidade, usar sempre o valor total original (do prospect inicial)
+      const valorVenda = valorTotalOriginal;
+      
+      console.log('🔧 TaskEditModal: Valores para ensureOpportunity:', {
+        valorTotalOriginal,
+        valorVenda,
+        valorVendaParcial,
+        status: formDataToProcess.status
+      });
         
       // Valor para salvar na tabela tasks - sempre preservar o valor original da task
       const valorTaskOriginal = taskData?.opportunity?.valor_total_oportunidade || valorVenda;
 
       console.log('🔧 TaskEditModal: Valores calculados recebidos:', {
         salesValue: valorVenda,
-        prospectValue: valorTotalOportunidade,
+        prospectValue: valorTotalOriginal,
         partialSalesValue: valorVendaParcial
       });
 
@@ -237,7 +245,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         status: 'closed', // Garantir que o status seja fechado
         // Valores calculados corretos para ambas as tabelas
         salesValue: valorVenda,
-        prospectValue: valorTotalOportunidade,
+        prospectValue: valorTotalOriginal,
         partialSalesValue: valorVendaParcial,
         // CRÍTICO: NÃO incluir sales_value no update - deve preservar valor original
         // sales_value: NÃO ATUALIZAR
