@@ -328,7 +328,8 @@ export const useTaskEditData = (taskId: string | null) => {
                 qtd_vendida: item.qtd_vendida,
                 qtd_ofertada: item.qtd_ofertada,
                 preco_unit: item.preco_unit,
-                // REMOVIDO: subtotal_vendido é uma coluna gerada, não pode ser atualizada
+                // REMOVIDO: subtotal_vendido é uma coluna gerada, será calculada automaticamente
+                subtotal_ofertado: item.qtd_ofertada * item.preco_unit,
                 updated_at: new Date().toISOString()
               })
               .eq('id', item.id);
