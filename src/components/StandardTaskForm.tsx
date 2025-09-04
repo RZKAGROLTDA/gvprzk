@@ -473,7 +473,11 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               </div>
               
               <div className="text-center">
-                <p className="text-sm text-muted-foreground">Valor da Venda</p>
+                <p className="text-sm text-muted-foreground">
+                  {formData.status === 'venda_total' ? 'Valor Venda Fechada' : 
+                   formData.status === 'venda_parcial' ? 'Valor Venda Parcial' : 
+                   'Valor da Venda'}
+                </p>
                 <p className="text-2xl font-bold text-success">
                   R$ {valorVenda.toLocaleString('pt-BR', {
                     minimumFractionDigits: 2,
