@@ -5700,22 +5700,17 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const calculateTotalSalesValue = () => {
     let total = 0;
 
-    // Somar valores dos produtos selecionados (visita a campo e workshop)
-    if (taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') {
+    // Somar valores dos produtos selecionados (todos os tipos de tarefa usam checklist)
+    if (taskCategory === 'field-visit' || taskCategory === 'workshop-checklist' || taskCategory === 'call') {
       total += checklist.reduce((sum, item) => {
         return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
       }, 0);
     }
 
-    // Somar valores das perguntas da ligação
+    // Somar valores das perguntas da ligação (mantido para compatibilidade)
     if (taskCategory === 'call') {
       total += Object.values(callQuestions).reduce((sum, item) => {
         return sum + (item.needsProduct ? item.totalValue : 0);
-      }, 0);
-      
-      // Somar também produtos do callProducts
-      total += callProducts.reduce((sum, item) => {
-        return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
       }, 0);
     }
 
