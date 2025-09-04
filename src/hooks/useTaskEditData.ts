@@ -10,9 +10,11 @@ export interface TaskEditData {
   cliente_email: string;
   filial: string;
   notas: string;
+  observations?: string;
   vendedor_id: string;
   data: Date;
   tipo: string;
+  task_type?: string;
   
   // Additional task data
   name?: string;
@@ -265,20 +267,20 @@ export const useTaskEditData = (taskId: string | null) => {
 
     try {
       // Update task data in unified tasks table
-      if (updates.cliente_nome || updates.cliente_email || updates.filial || updates.notas || updates.tipo) {
+      if (updates.cliente_nome || updates.cliente_email || updates.filial || updates.observations || updates.task_type) {
         // Prepare task update with all fields including sales values
         const taskUpdateData: any = {
           name: updates.name || data.name,
           responsible: updates.responsible || data.responsible,
           property: updates.property || data.property,
           phone: updates.phone || data.phone,
-          clientcode: updates.clientCode || data.clientCode,
-          task_type: updates.taskType || data.taskType || updates.tipo,
+          clientcode: updates.clientcode || data.clientCode,
+          task_type: updates.task_type || data.taskType || data.tipo,
           priority: updates.priority || data.priority,
           client: updates.cliente_nome || data.cliente_nome,
           email: updates.cliente_email || data.cliente_email,
           filial: updates.filial || data.filial,
-          observations: updates.notas || data.notas,
+          observations: updates.observations || data.notas,
           updated_at: new Date().toISOString()
         };
 

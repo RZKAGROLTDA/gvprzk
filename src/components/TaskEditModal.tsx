@@ -155,7 +155,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       property: taskData.property || '',
       phone: taskData.phone || '',
       clientCode: taskData.clientCode || '',
-      taskType: mapTaskType(taskData.taskType || taskData.tipo || 'prospection'),
+      taskType: mapTaskType(taskData.taskType || taskData.tipo || taskData.task_type || 'prospection'),
       priority: (taskData.priority as 'low' | 'medium' | 'high') || 'medium',
       startDate: taskData.startDate ? new Date(taskData.startDate).toISOString().split('T')[0] : '',
       endDate: taskData.endDate ? new Date(taskData.endDate).toISOString().split('T')[0] : '',
@@ -232,15 +232,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         cliente_nome: formDataToProcess.customerName,
         cliente_email: formDataToProcess.customerEmail,
         filial: formDataToProcess.filial,
-        notas: formDataToProcess.observacoes,
-        tipo: formDataToProcess.taskType,
+        observations: formDataToProcess.observacoes,
+        task_type: mapTaskType(formDataToProcess.taskType),
         // Additional task fields
         name: formDataToProcess.name,
         responsible: formDataToProcess.responsible,
         property: formDataToProcess.property,
         phone: formDataToProcess.phone,
-        clientCode: formDataToProcess.clientCode,
-        taskType: formDataToProcess.taskType,
+        clientcode: formDataToProcess.clientCode,
         priority: formDataToProcess.priority,
         status: 'closed', // Garantir que o status seja fechado
         // Valores calculados corretos para ambas as tabelas
