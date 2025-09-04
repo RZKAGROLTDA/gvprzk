@@ -6338,23 +6338,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
     // Verificar campos obrigatórios baseados no tipo de tarefa
     if (taskCategory === 'field-visit') {
-      requiredFields.push({
-        field: task.email?.trim(),
-        name: 'E-mail'
-      }, {
-        field: task.propertyHectares && task.propertyHectares > 0 ? task.propertyHectares.toString() : undefined,
-        name: 'Hectares da Propriedade'
-      });
+      // Campos opcionais removidos - email e hectares não são mais obrigatórios
     } else if (taskCategory === 'call') {
-      requiredFields.push({
-        field: task.observations?.trim(),
-        name: 'Observações da Ligação'
-      });
-    } else if (taskCategory === 'workshop-checklist') {
-      requiredFields.push({
-        field: task.observations?.trim(),
-        name: 'Observações do Checklist'
-      });
+      // Campos opcionais removidos - observações não são mais obrigatórias
     }
 
     // Verificar se algum campo obrigatório está vazio
