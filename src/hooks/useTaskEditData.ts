@@ -173,16 +173,51 @@ export const useTaskEditData = (taskId: string | null) => {
           console.error('🔍 useTaskEditData: Erro buscando produtos:', productsError);
         } else if (productsData && productsData.length > 0) {
           // Convert products to opportunity items format
-          itemsData = productsData.map(product => ({
-            id: product.id,
-            produto: product.name,
-            sku: product.category,
-            qtd_ofertada: product.quantity || 0,
-            qtd_vendida: product.selected ? (product.quantity || 0) : 0,
-            preco_unit: product.price || 0,
-            subtotal_ofertado: (product.quantity || 0) * (product.price || 0),
-            subtotal_vendido: product.selected ? ((product.quantity || 0) * (product.price || 0)) : 0
-          }));
+          itemsData = productsData.map(product => {
+            console.log('🔍 Convertendo produto da tabela products:', {
+              name: product.name,
+              selected: product.selected,
+              quantity: product.quantity,
+              price: product.price
+            });
+            
+            // CRÍTICO: Calcular qtd_ofertada baseado no valor total original da oportunidade
+            const preco = product.price || 0;
+            let qtdOfertada = 0;
+            let qtdVendida = product.selected ? (product.quantity || 0) : 0;
+            
+            // Calcular qtd_ofertada baseado no valor total da oportunidade
+            if (preco > 0 && opportunityData?.valor_total_oportunidade) {
+              qtdOfertada = Math.round(opportunityData.valor_total_oportunidade / preco);
+            } else {
+              qtdOfertada = product.quantity || 0;
+            }
+            
+            // Se não está selecionado, a quantidade atual é ofertada mas não vendida
+            if (!product.selected) {
+              qtdOfertada = product.quantity || 0;
+              qtdVendida = 0;
+            }
+            
+            console.log('🔍 Produto convertido:', {
+              produto: product.name,
+              qtdOfertada,
+              qtdVendida,
+              preco,
+              selected: product.selected
+            });
+            
+            return {
+              id: product.id,
+              produto: product.name,
+              sku: product.category,
+              qtd_ofertada: qtdOfertada,
+              qtd_vendida: qtdVendida,
+              preco_unit: preco,
+              subtotal_ofertado: qtdOfertada * preco,
+              subtotal_vendido: qtdVendida * preco
+            };
+          });
           
           console.log('🔍 useTaskEditData: Produtos convertidos:', { 
             productsCount: productsData.length,
