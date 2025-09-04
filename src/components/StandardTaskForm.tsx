@@ -129,7 +129,8 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
           ? { 
               ...product, 
               qtd_ofertada: newQuantity,
-              qtd_vendida: product.incluir_na_venda_parcial ? newQuantity : product.qtd_vendida // CORRETO: atualizar qtd_vendida se selecionado
+              qtd_vendida: product.incluir_na_venda_parcial ? newQuantity : product.qtd_vendida,
+              subtotal_ofertado: newQuantity * product.preco_unit // CORRETO: recalcular subtotal
             }
           : product
       )
@@ -144,7 +145,8 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
         index === itemIndex 
           ? { 
               ...product, 
-              qtd_vendida: newQuantity
+              qtd_vendida: newQuantity,
+              subtotal_vendido: newQuantity * product.preco_unit // CORRETO: recalcular subtotal vendido
             }
           : product
       )
