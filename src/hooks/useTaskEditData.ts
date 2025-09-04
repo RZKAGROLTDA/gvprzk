@@ -319,10 +319,26 @@ export const useTaskEditData = (taskId: string | null) => {
 
       // Update items - try both opportunity_items and products
       if (updates.items) {
+        console.log('🔍 useTaskEditData: Atualizando items:', {
+          itemsCount: updates.items.length,
+          hasOpportunity: !!data.opportunity?.id,
+          opportunityId: data.opportunity?.id
+        });
+        
         for (const item of updates.items) {
+          console.log('🔍 useTaskEditData: Processando item:', {
+            id: item.id,
+            produto: item.produto,
+            qtd_vendida: item.qtd_vendida,
+            qtd_ofertada: item.qtd_ofertada,
+            preco_unit: item.preco_unit
+          });
+          
           // Try opportunity_items first
           if (data.opportunity?.id) {
-            const { error: itemError } = await supabase
+            console.log('🔍 useTaskEditData: Tentando atualizar opportunity_items');
+            
+            const { data: updateResult, error: itemError } = await supabase
               .from('opportunity_items')
               .update({
                 qtd_vendida: item.qtd_vendida,
@@ -332,10 +348,18 @@ export const useTaskEditData = (taskId: string | null) => {
                 // Elas serão calculadas automaticamente pelo banco de dados
                 updated_at: new Date().toISOString()
               })
-              .eq('id', item.id);
+              .eq('id', item.id)
+              .select();
+
+            console.log('🔍 useTaskEditData: Resultado update opportunity_items:', {
+              itemId: item.id,
+              error: itemError,
+              updateResult,
+              rowsAffected: updateResult?.length || 0
+            });
 
             if (itemError) {
-              console.warn('Erro ao atualizar opportunity_items:', itemError);
+              console.warn('❌ Erro ao atualizar opportunity_items:', itemError);
             }
           } else {
             // Try products table
