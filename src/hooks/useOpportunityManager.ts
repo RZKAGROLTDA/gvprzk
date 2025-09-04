@@ -69,19 +69,37 @@ export const useOpportunityManager = () => {
         }
       }
 
+      // CRÍTICO: Determinar status correto baseado nos valores reais
+      const isPartialSale = partialSalesValue > 0 && partialSalesValue < salesValue;
+      const isVendaTotal = salesValue > 0 && (partialSalesValue === 0 || partialSalesValue === salesValue);
+      const isVendaPerdida = salesType === 'perdido';
+      
+      let correctStatus = 'Prospect';
+      if (isVendaPerdida) {
+        correctStatus = 'Venda Perdida';
+      } else if (isPartialSale) {
+        correctStatus = 'Venda Parcial';
+      } else if (isVendaTotal) {
+        correctStatus = 'Venda Total';
+      }
+
+      console.log('🔧 ensureOpportunity: Determinando status correto:', {
+        salesValue,
+        partialSalesValue,
+        salesType,
+        isPartialSale,
+        isVendaTotal,
+        isVendaPerdida,
+        correctStatus
+      });
+
       const opportunityData = {
         task_id: taskId,
         cliente_nome: clientName,
         filial: filial,
-        status: salesType === 'ganho' ? 'Venda Total' : 
-                salesType === 'parcial' ? 'Venda Parcial' : 
-                salesType === 'perdido' ? 'Venda Perdida' : 'Prospect',
+        status: correctStatus, // CORRETO: usar status baseado nos valores
         valor_total_oportunidade: salesValue, // Para criação, sempre usar o valor total inicial
-        valor_venda_fechada: salesType === 'parcial' 
-          ? partialSalesValue // Para venda parcial, usa o valor parcial
-          : salesType === 'ganho' 
-            ? salesValue // Para venda total, usa o valor total
-            : 0, // Para perdas, 0
+        valor_venda_fechada: partialSalesValue > 0 ? partialSalesValue : (salesConfirmed ? salesValue : 0),
         data_criacao: new Date().toISOString(),
         data_fechamento: salesConfirmed ? new Date().toISOString() : null
       };
@@ -90,20 +108,28 @@ export const useOpportunityManager = () => {
 
       if (existingOpportunity) {
         // Atualizar oportunidade existente - NUNCA alterar valor_total_oportunidade
+        // CRÍTICO: Usar a mesma lógica de status correto para update
+        const isPartialSaleUpdate = partialSalesValue > 0 && partialSalesValue < salesValue;
+        const isVendaTotalUpdate = salesValue > 0 && (partialSalesValue === 0 || partialSalesValue === salesValue);
+        const isVendaPerdidaUpdate = salesType === 'perdido';
+        
+        let correctStatusUpdate = 'Prospect';
+        if (isVendaPerdidaUpdate) {
+          correctStatusUpdate = 'Venda Perdida';
+        } else if (isPartialSaleUpdate) {
+          correctStatusUpdate = 'Venda Parcial';
+        } else if (isVendaTotalUpdate) {
+          correctStatusUpdate = 'Venda Total';
+        }
+
         const updateData = {
           task_id: taskId,
           cliente_nome: clientName,
           filial: filial,
-          status: salesType === 'ganho' ? 'Venda Total' : 
-                  salesType === 'parcial' ? 'Venda Parcial' : 
-                  salesType === 'perdido' ? 'Venda Perdida' : 'Prospect',
+          status: correctStatusUpdate, // CORRETO: usar status baseado nos valores
           // CRÍTICO: NUNCA alterar valor_total_oportunidade - sempre preservar o valor original
           // valor_total_oportunidade: NÃO INCLUIR NO UPDATE
-          valor_venda_fechada: salesType === 'parcial' 
-            ? partialSalesValue // Para venda parcial, usar valor parcial
-            : salesType === 'ganho' 
-              ? salesValue // Para venda total, usar valor total
-              : 0, // Para perdas, 0
+          valor_venda_fechada: partialSalesValue > 0 ? partialSalesValue : (salesConfirmed ? salesValue : 0),
           data_fechamento: salesConfirmed ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         };
