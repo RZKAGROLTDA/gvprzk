@@ -86,7 +86,8 @@ export const getValidationRulesByType = (taskType: string) => {
   const typeSpecificRules: Record<string, any> = {
     field_visit: {
       ...baseRules,
-      propertyHectares: { required: true, custom: (value: string) => {
+      propertyHectares: { required: false, custom: (value: string) => {
+        if (!value) return null; // Allow empty values
         const num = parseFloat(value);
         return num > 0 && num <= 10000 ? null : 'Hectares deve ser entre 0.1 e 10.000';
       }},
@@ -111,7 +112,8 @@ export const getValidationRulesByType = (taskType: string) => {
     },
     prospection: {
       ...baseRules,
-      propertyHectares: { required: true, custom: (value: string) => {
+      propertyHectares: { required: false, custom: (value: string) => {
+        if (!value) return null; // Allow empty values
         const num = parseFloat(value);
         return num > 0 && num <= 10000 ? null : 'Hectares deve ser entre 0.1 e 10.000';
       }}
