@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { SecurityConfiguration } from '@/components/SecurityConfiguration';
 import { SecurityConfigurationGuide } from '@/components/SecurityConfigurationGuide';
 import { SecurityMonitoringEnhanced } from '@/components/SecurityMonitoringEnhanced';
-import { GlobalCacheManager } from '@/components/GlobalCacheManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -182,7 +181,6 @@ export const SecurityAdmin: React.FC = () => {
         <TabsList>
           <TabsTrigger value="configuration">Configuração de Segurança</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoramento Avançado</TabsTrigger>
-          <TabsTrigger value="cache">Cache Global</TabsTrigger>
           <TabsTrigger value="logs">Logs de Auditoria</TabsTrigger>
           <TabsTrigger value="users">Gerenciamento de Usuários</TabsTrigger>
         </TabsList>
@@ -193,10 +191,6 @@ export const SecurityAdmin: React.FC = () => {
 
         <TabsContent value="monitoring">
           <SecurityMonitoringEnhanced />
-        </TabsContent>
-
-        <TabsContent value="cache">
-          <GlobalCacheManager />
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-4">
