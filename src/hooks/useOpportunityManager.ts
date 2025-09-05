@@ -76,12 +76,16 @@ export const useOpportunityManager = () => {
       // Para venda total: salesType ganho E não é venda parcial
       const isVendaTotal = salesType === 'ganho' && !isPartialSale && (salesValue > 0 || partialSalesValue > 0);
       
+      // CORREÇÃO: Também verificar se o status da opportunity existente já é "Venda Total"
+      const isVendaTotalExistente = existingOpportunity?.status === 'Venda Total';
+      const finalIsVendaTotal = isVendaTotal || isVendaTotalExistente;
+      
       let correctStatus = 'Prospect';
       if (isVendaPerdida) {
         correctStatus = 'Venda Perdida';
       } else if (isPartialSale) {
         correctStatus = 'Venda Parcial';
-      } else if (isVendaTotal) {
+      } else if (finalIsVendaTotal) {
         correctStatus = 'Venda Total';
       }
 
@@ -104,15 +108,16 @@ export const useOpportunityManager = () => {
         filial: filial,
         status: correctStatus, // CORRETO: usar status baseado nos valores
         valor_total_oportunidade: Math.max(salesValue, partialSalesValue), // Usar o maior valor como total
-        valor_venda_fechada: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0),
+        valor_venda_fechada: finalIsVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0),
         data_criacao: new Date().toISOString(),
-        data_fechamento: (isVendaTotal || isPartialSale) ? new Date().toISOString() : null
+        data_fechamento: (finalIsVendaTotal || isPartialSale) ? new Date().toISOString() : null
       };
 
       console.log('🔧 opportunityData preparado:', {
         ...opportunityData,
         calculatedValues: {
           isVendaTotal,
+          finalIsVendaTotal,
           isPartialSale,
           valorVendaFechada: opportunityData.valor_venda_fechada
         }
