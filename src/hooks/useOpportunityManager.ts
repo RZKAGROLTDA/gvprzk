@@ -148,7 +148,7 @@ export const useOpportunityManager = () => {
           status: correctStatusUpdate, // CORRETO: usar status baseado nos valores
           // CRÍTICO: NUNCA alterar valor_total_oportunidade - sempre preservar o valor original
           // valor_total_oportunidade: NÃO INCLUIR NO UPDATE
-          valor_venda_fechada: isVendaTotalUpdate ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0),
+          valor_venda_fechada: correctStatusUpdate === 'Venda Total' ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0),
           data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         };
