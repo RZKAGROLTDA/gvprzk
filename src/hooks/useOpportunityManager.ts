@@ -129,8 +129,8 @@ export const useOpportunityManager = () => {
         const isVendaPerdidaUpdate = salesType === 'perdido';
         // Para venda parcial: salesType parcial OU quando há partial value menor que sales value
         const isPartialSaleUpdate = salesType === 'parcial' || (partialSalesValue > 0 && partialSalesValue < salesValue);
-        // Para venda total: salesType ganho E não é venda parcial
-        const isVendaTotalUpdate = salesType === 'ganho' && !isPartialSaleUpdate && (salesValue > 0 || partialSalesValue > 0);
+        // Para venda total: salesType ganho E partialSalesValue >= salesValue (ou sem partial definido)
+        const isVendaTotalUpdate = salesType === 'ganho' && (!partialSalesValue || partialSalesValue >= salesValue);
         
         let correctStatusUpdate = 'Prospect';
         if (isVendaPerdidaUpdate) {
