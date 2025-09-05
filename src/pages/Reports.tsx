@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -44,6 +44,7 @@ const Reports: React.FC = () => {
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
 
   // Estados para as estatísticas agregadas
   const [totalTasks, setTotalTasks] = useState(0);
@@ -104,7 +105,7 @@ const Reports: React.FC = () => {
     }
   };
 
-  const loadAggregatedStats = async () => {
+  const loadAggregatedStats = useCallback(async () => {
     if (!user) return;
     
     // 🐛 DEBUG: Log do estado atual dos filtros
@@ -117,6 +118,8 @@ const Reports: React.FC = () => {
     });
     
     setLoading(true);
+    setIsFiltering(true);
+    
     try {
       let query = supabase.from('tasks').select(`
         *,
@@ -142,10 +145,14 @@ const Reports: React.FC = () => {
         console.log('👤 REPORTS DEBUG: Aplicando filtro de usuário:', selectedUser);
       }
 
-      // Aplicar filtro de filial se definido
+      // Aplicar filtro de filial se definido - FIXED EXACT MATCH
       if (selectedFilial !== 'all') {
         query = query.eq('filial', selectedFilial);
-        console.log('🏢 REPORTS DEBUG: Aplicando filtro de filial:', selectedFilial);
+        console.log('🏢 REPORTS DEBUG: Aplicando filtro de filial (EXACT MATCH):', {
+          value: selectedFilial,
+          type: typeof selectedFilial,
+          length: selectedFilial.length
+        });
       }
 
       console.log('🚀 REPORTS DEBUG: Executando query...');
@@ -168,6 +175,10 @@ const Reports: React.FC = () => {
             created_by: task.created_by
           }))
         );
+        
+        // NEW: Log all unique filials in the result
+        const uniqueFilials = [...new Set(supabaseTasks.map(task => task.filial))];
+        console.log('🏢 REPORTS DEBUG: Filiais únicas no resultado:', uniqueFilials);
       }
 
       // Mapear tasks do Supabase para o formato da aplicação
@@ -213,9 +224,10 @@ const Reports: React.FC = () => {
       console.error('❌ REPORTS DEBUG: Erro ao carregar estatísticas agregadas:', error);
     } finally {
       setLoading(false);
+      setIsFiltering(false);
       console.log('🏁 REPORTS DEBUG: Loading finalizado');
     }
-  };
+  }, [user, dateFrom, dateTo, selectedUser, selectedFilial]);
 
   const clearFilters = () => {
     setDateFrom(undefined);
@@ -239,18 +251,20 @@ const Reports: React.FC = () => {
       timestamp: new Date().toISOString()
     });
     
+    // Add timeout to ensure state is updated before query
+    const timeoutId = setTimeout(() => {
+      loadAggregatedStats();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [loadAggregatedStats]);
+
+  useEffect(() => {
     if (user) {
-      // Adicionar timeout para garantir que o estado seja atualizado
-      const timeoutId = setTimeout(() => {
-        loadAggregatedStats();
-      }, 100);
-      
       loadCollaborators();
       loadFiliais();
-      
-      return () => clearTimeout(timeoutId);
     }
-  }, [user, dateFrom, dateTo, selectedUser, selectedFilial]);
+  }, [user]);
 
   const exportReport = (type: 'filial' | 'cep') => {
     console.log(`Exportando relatório por ${type}...`);
@@ -392,6 +406,7 @@ const Reports: React.FC = () => {
                     console.log('🏢 REPORTS DEBUG: Mudança de filial detectada:', {
                       valorAnterior: selectedFilial,
                       novoValor: value,
+                      filiaisDisponiveis: filiais.map(f => f.nome),
                       timestamp: new Date().toISOString()
                     });
                     setSelectedFilial(value);
@@ -399,7 +414,7 @@ const Reports: React.FC = () => {
                 >
                   <SelectTrigger className={selectedFilial !== 'all' ? 'border-primary' : ''}>
                     <SelectValue placeholder="Todas as filiais" />
-                    {selectedFilial !== 'all' && loading && (
+                    {selectedFilial !== 'all' && isFiltering && (
                       <RefreshCw className="h-4 w-4 ml-2 animate-spin" />
                     )}
                   </SelectTrigger>
@@ -511,8 +526,13 @@ const Reports: React.FC = () => {
                 <p>Filial selecionada: <span className="font-mono bg-yellow-100 px-1 rounded">{selectedFilial}</span></p>
                 <p>Usuário selecionado: <span className="font-mono bg-yellow-100 px-1 rounded">{selectedUser}</span></p>
                 <p>Estado de loading: <span className="font-mono bg-yellow-100 px-1 rounded">{loading ? 'true' : 'false'}</span></p>
+                <p>Estado de filtering: <span className="font-mono bg-yellow-100 px-1 rounded">{isFiltering ? 'true' : 'false'}</span></p>
                 <p>Total de tasks: <span className="font-mono bg-yellow-100 px-1 rounded">{totalTasks}</span></p>
+                <p>Filiais carregadas: <span className="font-mono bg-yellow-100 px-1 rounded">{filiais.length}</span></p>
                 <p>Última atualização: <span className="font-mono bg-yellow-100 px-1 rounded">{new Date().toLocaleTimeString()}</span></p>
+                {selectedFilial !== 'all' && (
+                  <p>Filtro ativo: <span className="font-mono bg-yellow-100 px-1 rounded">filial = "{selectedFilial}"</span></p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -521,19 +541,26 @@ const Reports: React.FC = () => {
 
       {/* Resumo Geral */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        <Card className={`bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 ${loading ? 'animate-pulse' : ''}`}>
+        <Card className={`bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 ${isFiltering ? 'animate-pulse' : ''}`}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Total</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total {isFiltering && <span className="text-blue-500">(Filtrando...)</span>}
+                </p>
                 <p className="text-2xl font-bold text-primary">
-                  {loading ? (
+                  {isFiltering ? (
                     <div className="flex items-center gap-2">
                       <RefreshCw className="h-5 w-5 animate-spin" />
                       ...
                     </div>
                   ) : totalTasks}
                 </p>
+                {selectedFilial !== 'all' && !isFiltering && (
+                  <p className="text-xs text-muted-foreground">
+                    Filial: {selectedFilial}
+                  </p>
+                )}
               </div>
               <Activity className="h-8 w-8 text-primary/50" />
             </div>
