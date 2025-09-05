@@ -13,17 +13,27 @@ export interface VersionInfo {
 // Get version info from build-time injected globals
 export const getVersionInfo = (): VersionInfo => {
   try {
+    // Try to get from build-time injected globals first
+    if (typeof __APP_VERSION__ !== 'undefined') {
+      return {
+        version: __APP_VERSION__,
+        buildTime: __BUILD_TIME__,
+        buildHash: __BUILD_HASH__,
+      };
+    }
+    
+    // Fallback to environment variables (development mode)
     return {
-      version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.1',
-      buildTime: typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString(),
-      buildHash: typeof __BUILD_HASH__ !== 'undefined' ? __BUILD_HASH__ : undefined,
+      version: import.meta.env.VITE_APP_VERSION || '1.0.1',
+      buildTime: import.meta.env.VITE_BUILD_TIME || new Date().toISOString(),
+      buildHash: import.meta.env.VITE_BUILD_HASH || `dev-${Date.now().toString(36)}`,
     };
   } catch {
-    // Fallback for development mode
+    // Final fallback for development mode
     return {
-      version: '1.0.0',
+      version: '1.0.1',
       buildTime: new Date().toISOString(),
-      buildHash: undefined,
+      buildHash: `dev-${Date.now().toString(36)}`,
     };
   }
 };

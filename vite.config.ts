@@ -24,6 +24,9 @@ export default defineConfig(({ mode }) => {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __BUILD_TIME__: JSON.stringify(buildTime),
     __BUILD_HASH__: JSON.stringify(buildHash),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(buildTime),
+    'import.meta.env.VITE_BUILD_HASH': JSON.stringify(buildHash),
   },
   resolve: {
     alias: {
