@@ -141,37 +141,60 @@ export const useOpportunityManager = () => {
           correctStatusUpdate = 'Venda Total';
         }
 
+        const valorVendaFechada = correctStatusUpdate === 'Venda Total' ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0);
+        
+        console.log('🔥 ANTES DA ATUALIZAÇÃO - Dados que serão salvos:', {
+          opportunityId: existingOpportunity.id,
+          status: correctStatusUpdate,
+          valor_venda_fechada: valorVendaFechada,
+          salesValue,
+          partialSalesValue,
+          correctStatusUpdate,
+          isVendaTotalUpdate,
+          isPartialSaleUpdate
+        });
+
         const updateData = {
           task_id: taskId,
           cliente_nome: clientName,
           filial: filial,
-          status: correctStatusUpdate, // CORRETO: usar status baseado nos valores
-          // CRÍTICO: NUNCA alterar valor_total_oportunidade - sempre preservar o valor original
-          // valor_total_oportunidade: NÃO INCLUIR NO UPDATE
-          valor_venda_fechada: correctStatusUpdate === 'Venda Total' ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0),
+          status: correctStatusUpdate,
+          valor_venda_fechada: valorVendaFechada,
           data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         };
-
-        console.log('🔧 updateData preparado (preservando valor original):', {
-          ...updateData,
-          existingOpportunityId: existingOpportunity.id,
-          salesType,
-          partialSalesValue,
-          salesValue
-        });
         
         console.log('🔧 Atualizando oportunidade no banco:', updateData);
-        const { error } = await supabase
+        const { data: updatedOpportunity, error } = await supabase
           .from('opportunities')
           .update(updateData)
-          .eq('id', existingOpportunity.id);
+          .eq('id', existingOpportunity.id)
+          .select()
+          .single();
         
         if (error) {
           console.error('❌ Erro ao atualizar oportunidade:', error);
           throw error;
         }
-        console.log('✅ Oportunidade atualizada com sucesso:', updateData);
+
+        console.log('🎯 APÓS A ATUALIZAÇÃO - Dados salvos no banco:', {
+          id: updatedOpportunity.id,
+          status: updatedOpportunity.status,
+          valor_venda_fechada: updatedOpportunity.valor_venda_fechada,
+          valor_total_oportunidade: updatedOpportunity.valor_total_oportunidade,
+          data_fechamento: updatedOpportunity.data_fechamento,
+          updated_at: updatedOpportunity.updated_at
+        });
+
+        // Verificação crítica para confirmar que o valor foi salvo corretamente
+        if (correctStatusUpdate === 'Venda Total' && updatedOpportunity.valor_venda_fechada !== salesValue) {
+          console.error('🚨 ERRO CRÍTICO: valor_venda_fechada não foi salvo corretamente!', {
+            esperado: salesValue,
+            salvo: updatedOpportunity.valor_venda_fechada,
+            diferenca: salesValue - updatedOpportunity.valor_venda_fechada
+          });
+        }
+
         return existingOpportunity.id;
       } else {
         // Criar nova oportunidade

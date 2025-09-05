@@ -322,17 +322,26 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           partialSalesValue: valorVendaParcial
         });
         
-        await ensureOpportunity({
+        console.log('🎯 ANTES de chamar ensureOpportunity:', {
+          taskId: taskId,
+          salesValue: valorVenda,
+          salesType: formDataToProcess.status,
+          valorVendaParcial
+        });
+        
+        const opportunityId = await ensureOpportunity({
           taskId: taskId,
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
-          salesValue: valorVenda, // CORRETO: Usar o valor atual da venda para determinar o valor total correto
+          salesValue: valorVenda,
           salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
           partialSalesValue: valorVendaParcial,
           salesConfirmed: formDataToProcess.status !== 'prospect'
         });
+        
+        console.log('✅ DEPOIS de chamar ensureOpportunity, ID:', opportunityId);
       }
 
       const success = await updateTaskData(updatedData);
