@@ -301,13 +301,6 @@ export type Database = {
             foreignKeyName: "fk_products_task"
             columns: ["task_id"]
             isOneToOne: false
-            referencedRelation: "secure_customer_data_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_products_task"
-            columns: ["task_id"]
-            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -402,13 +395,6 @@ export type Database = {
             foreignKeyName: "fk_reminders_task"
             columns: ["task_id"]
             isOneToOne: false
-            referencedRelation: "secure_customer_data_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_reminders_task"
-            columns: ["task_id"]
-            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -491,13 +477,6 @@ export type Database = {
           task_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "fk_task_creation_log_task"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "secure_customer_data_view"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "fk_task_creation_log_task"
             columns: ["task_id"]
@@ -818,63 +797,7 @@ export type Database = {
       }
     }
     Views: {
-      secure_customer_data_view: {
-        Row: {
-          client: string | null
-          created_at: string | null
-          created_by: string | null
-          email: string | null
-          end_date: string | null
-          filial: string | null
-          id: string | null
-          is_data_masked: boolean | null
-          name: string | null
-          phone: string | null
-          priority: string | null
-          responsible: string | null
-          sales_value: number | null
-          start_date: string | null
-          status: string | null
-          task_type: string | null
-        }
-        Insert: {
-          client?: never
-          created_at?: string | null
-          created_by?: string | null
-          email?: never
-          end_date?: string | null
-          filial?: string | null
-          id?: string | null
-          is_data_masked?: never
-          name?: string | null
-          phone?: never
-          priority?: string | null
-          responsible?: string | null
-          sales_value?: never
-          start_date?: string | null
-          status?: string | null
-          task_type?: string | null
-        }
-        Update: {
-          client?: never
-          created_at?: string | null
-          created_by?: string | null
-          email?: never
-          end_date?: string | null
-          filial?: string | null
-          id?: string | null
-          is_data_masked?: never
-          name?: string | null
-          phone?: never
-          priority?: string | null
-          responsible?: string | null
-          sales_value?: never
-          start_date?: string | null
-          status?: string | null
-          task_type?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -936,6 +859,15 @@ export type Database = {
           issue_type: string
           severity: string
           table_name: string
+        }[]
+      }
+      check_function_security_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          function_name: string
+          has_search_path: boolean
+          is_secure: boolean
+          recommendation: string
         }[]
       }
       check_login_rate_limit: {
@@ -1185,6 +1117,27 @@ export type Database = {
           status: string
           task_type: string
           updated_at: string
+        }[]
+      }
+      get_secure_customer_data_view: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          client: string
+          created_at: string
+          created_by: string
+          email: string
+          end_date: string
+          filial: string
+          id: string
+          is_data_masked: boolean
+          name: string
+          phone: string
+          priority: string
+          responsible: string
+          sales_value: number
+          start_date: string
+          status: string
+          task_type: string
         }[]
       }
       get_secure_customer_data_with_rls: {
