@@ -12,13 +12,22 @@ export interface VersionInfo {
 
 // Get version info from build-time injected globals
 export const getVersionInfo = (): VersionInfo => {
-  // Forçar versão específica para teste - simular build de produção
-  const currentDate = new Date();
-  const buildTime = currentDate.toISOString();
-  const buildHash = `build-${currentDate.getTime().toString(36)}`;
+  // Sistema automático baseado em timestamp
+  const now = new Date();
+  const buildTime = now.toISOString();
+  
+  // Versão automática baseada na data (YYYY.MM.DD.HHMM)
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  
+  const autoVersion = `${year}.${month}.${day}.${hour}${minute}`;
+  const buildHash = `auto-${now.getTime().toString(36)}`;
   
   return {
-    version: '1.0.1', // Versão fixa para teste
+    version: autoVersion,
     buildTime,
     buildHash,
   };
@@ -27,8 +36,15 @@ export const getVersionInfo = (): VersionInfo => {
 // Format version for display
 export const formatVersion = (versionInfo: VersionInfo): string => {
   const { version, buildTime } = versionInfo;
-  const buildDate = new Date(buildTime).toLocaleDateString('pt-BR');
-  return `v${version} (${buildDate})`;
+  const buildDateTime = new Date(buildTime).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+  return `v${version} (${buildDateTime})`;
 };
 
 // Format detailed version for debug
