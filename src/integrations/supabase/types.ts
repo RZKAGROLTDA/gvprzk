@@ -301,6 +301,13 @@ export type Database = {
             foreignKeyName: "fk_products_task"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "secure_customer_data_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_products_task"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -395,6 +402,13 @@ export type Database = {
             foreignKeyName: "fk_reminders_task"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "secure_customer_data_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_reminders_task"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -477,6 +491,13 @@ export type Database = {
           task_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_task_creation_log_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "secure_customer_data_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_task_creation_log_task"
             columns: ["task_id"]
@@ -797,7 +818,63 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      secure_customer_data_view: {
+        Row: {
+          client: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          end_date: string | null
+          filial: string | null
+          id: string | null
+          is_data_masked: boolean | null
+          name: string | null
+          phone: string | null
+          priority: string | null
+          responsible: string | null
+          sales_value: number | null
+          start_date: string | null
+          status: string | null
+          task_type: string | null
+        }
+        Insert: {
+          client?: never
+          created_at?: string | null
+          created_by?: string | null
+          email?: never
+          end_date?: string | null
+          filial?: string | null
+          id?: string | null
+          is_data_masked?: never
+          name?: string | null
+          phone?: never
+          priority?: string | null
+          responsible?: string | null
+          sales_value?: never
+          start_date?: string | null
+          status?: string | null
+          task_type?: string | null
+        }
+        Update: {
+          client?: never
+          created_at?: string | null
+          created_by?: string | null
+          email?: never
+          end_date?: string | null
+          filial?: string | null
+          id?: string | null
+          is_data_masked?: never
+          name?: string | null
+          phone?: never
+          priority?: string | null
+          responsible?: string | null
+          sales_value?: never
+          start_date?: string | null
+          status?: string | null
+          task_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -814,6 +891,14 @@ export type Database = {
       }
       can_perform_admin_action: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      check_advanced_rate_limit: {
+        Args: {
+          max_attempts?: number
+          operation_type?: string
+          time_window?: unknown
+        }
         Returns: boolean
       }
       check_bi_security_alerts: {
@@ -856,6 +941,15 @@ export type Database = {
       check_login_rate_limit: {
         Args: { user_email: string }
         Returns: boolean
+      }
+      check_security_threats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          event_count: number
+          recommendation: string
+          threat_level: string
+          threat_type: string
+        }[]
       }
       check_sensitive_data_rate_limit: {
         Args: Record<PropertyKey, never>
@@ -1383,6 +1477,15 @@ export type Database = {
               customer_count?: number
               masked_count?: number
             }
+        Returns: undefined
+      }
+      log_customer_data_access_enhanced: {
+        Args: {
+          has_sensitive_data?: boolean
+          operation_type?: string
+          sales_value?: number
+          table_name: string
+        }
         Returns: undefined
       }
       log_high_risk_activity: {
