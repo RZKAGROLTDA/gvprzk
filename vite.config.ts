@@ -4,7 +4,13 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // Generate version info at build time
+  const packageJson = require('./package.json');
+  const buildTime = new Date().toISOString();
+  const buildHash = process.env.COMMIT_HASH || Math.random().toString(36).substring(2, 10);
+
+  return {
   server: {
     host: "::",
     port: 8080,
@@ -14,6 +20,11 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+    __BUILD_TIME__: JSON.stringify(buildTime),
+    __BUILD_HASH__: JSON.stringify(buildHash),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -31,4 +42,4 @@ export default defineConfig(({ mode }) => ({
     // Enable CSS code splitting for better loading performance
     cssCodeSplit: true,
   },
-}));
+}});

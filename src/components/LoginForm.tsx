@@ -13,6 +13,7 @@ import { useInputValidation } from '@/hooks/useInputValidation';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
+import { getVersionInfo, formatVersion, formatDetailedVersion, storeCurrentVersion } from '@/config/version';
 
 export const LoginForm: React.FC = () => {
   const { signIn, signUp } = useAuth();
@@ -34,6 +35,9 @@ export const LoginForm: React.FC = () => {
   const [filiais, setFiliais] = useState<Array<{id: string, nome: string}>>([]);
   const [filiaisLoading, setFiliaisLoading] = useState(true);
   const [filiaisError, setFiliaisError] = useState('');
+  
+  // Version info
+  const versionInfo = getVersionInfo();
 
   const { validateField, getFieldErrors, hasErrors, validationRules } = useInputValidation();
   const { monitorLoginAttempt, monitorPasswordReset, checkRateLimit } = useSecurityMonitor();
@@ -252,6 +256,7 @@ export const LoginForm: React.FC = () => {
     } else {
       setLoginAttempts(0); // Reset contador em caso de sucesso
       monitorLoginAttempt(formData.email, true);
+      storeCurrentVersion(); // Store version after successful login
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo ao sistema de tarefas",
@@ -348,6 +353,7 @@ export const LoginForm: React.FC = () => {
         });
       } else {
         console.log('✅ Mobile Signup: Cadastro realizado com sucesso');
+        storeCurrentVersion(); // Store version after successful signup
         toast({
           title: "Cadastro realizado com sucesso!",
           description: "Verifique seu email para confirmar a conta",
@@ -718,6 +724,13 @@ export const LoginForm: React.FC = () => {
               </form>
             </TabsContent>
           </Tabs>
+          
+          {/* Version Footer */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-xs text-center text-muted-foreground">
+              {formatVersion(versionInfo)}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -731,6 +744,11 @@ export const LoginForm: React.FC = () => {
               <CardTitle className="text-sm">Ferramentas de Administrador</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
+              <div className="p-2 bg-muted rounded">
+                <p className="font-medium">Informações da Versão:</p>
+                <p className="text-muted-foreground mt-1">{formatDetailedVersion(versionInfo)}</p>
+              </div>
+              
               <div className="p-2 bg-muted rounded">
                 <p className="font-medium">Acesso Administrativo:</p>
                 <p className="text-muted-foreground mt-1">Você tem acesso às funcionalidades de administrador</p>
