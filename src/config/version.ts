@@ -14,7 +14,7 @@ export interface VersionInfo {
 export const getVersionInfo = (): VersionInfo => {
   try {
     return {
-      version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0',
+      version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.1',
       buildTime: typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString(),
       buildHash: typeof __BUILD_HASH__ !== 'undefined' ? __BUILD_HASH__ : undefined,
     };
