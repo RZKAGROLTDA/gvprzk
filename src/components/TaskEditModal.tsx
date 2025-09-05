@@ -229,14 +229,20 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       // CRÍTICO: Para determinar valor total correto
       const valorTotalOriginal = taskData?.opportunity?.valor_total_oportunidade || 0;
       
-      // Para a lógica de oportunidade, usar sempre o valor total original (do prospect inicial)
-      const valorVenda = valorTotalOriginal;
+      // CORREÇÃO: Para venda total, usar o valor do prospect se o original for 0
+      const prospectValue = formDataToProcess.salesValue || 0;
+      const valorVenda = formDataToProcess.status === 'venda_total' && valorTotalOriginal === 0 
+        ? prospectValue 
+        : (valorTotalOriginal || prospectValue);
       
       console.log('🔧 TaskEditModal: Valores para ensureOpportunity:', {
         valorTotalOriginal,
+        prospectValue,
         valorVenda,
         valorVendaParcial,
-        status: formDataToProcess.status
+        status: formDataToProcess.status,
+        isVendaTotal: formDataToProcess.status === 'venda_total',
+        isVendaParcial: formDataToProcess.status === 'venda_parcial'
       });
         
       // Valor para salvar na tabela tasks - sempre preservar o valor original da task

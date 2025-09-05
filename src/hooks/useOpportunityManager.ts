@@ -86,13 +86,16 @@ export const useOpportunityManager = () => {
       }
 
       console.log('🔧 ensureOpportunity: Determinando status correto:', {
+        taskId,
+        clientName,
         salesValue,
         partialSalesValue,
         salesType,
         isPartialSale,
         isVendaTotal,
         isVendaPerdida,
-        correctStatus
+        correctStatus,
+        valorVendaFechadaCalculado: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0)
       });
 
       const opportunityData = {
@@ -106,7 +109,14 @@ export const useOpportunityManager = () => {
         data_fechamento: (isVendaTotal || isPartialSale) ? new Date().toISOString() : null
       };
 
-      console.log('🔧 opportunityData preparado:', opportunityData);
+      console.log('🔧 opportunityData preparado:', {
+        ...opportunityData,
+        calculatedValues: {
+          isVendaTotal,
+          isPartialSale,
+          valorVendaFechada: opportunityData.valor_venda_fechada
+        }
+      });
 
       if (existingOpportunity) {
         // Atualizar oportunidade existente - NUNCA alterar valor_total_oportunidade
@@ -146,6 +156,7 @@ export const useOpportunityManager = () => {
           salesValue
         });
         
+        console.log('🔧 Atualizando oportunidade no banco:', updateData);
         const { error } = await supabase
           .from('opportunities')
           .update(updateData)
@@ -159,6 +170,7 @@ export const useOpportunityManager = () => {
         return existingOpportunity.id;
       } else {
         // Criar nova oportunidade
+        console.log('🔧 Inserindo nova oportunidade no banco:', opportunityData);
         const { data, error } = await supabase
           .from('opportunities')
           .insert(opportunityData)
