@@ -107,6 +107,15 @@ const Reports: React.FC = () => {
   const loadAggregatedStats = async () => {
     if (!user) return;
     
+    // 🐛 DEBUG: Log do estado atual dos filtros
+    console.log('🔍 REPORTS DEBUG: Carregando estatísticas com filtros:', {
+      dateFrom: dateFrom?.toISOString().split('T')[0],
+      dateTo: dateTo?.toISOString().split('T')[0],
+      selectedUser,
+      selectedFilial,
+      timestamp: new Date().toISOString()
+    });
+    
     setLoading(true);
     try {
       let query = supabase.from('tasks').select(`
@@ -117,25 +126,49 @@ const Reports: React.FC = () => {
 
       // Aplicar filtros de data se definidos
       if (dateFrom) {
-        query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
+        const dateFilter = dateFrom.toISOString().split('T')[0];
+        query = query.gte('start_date', dateFilter);
+        console.log('🗓️ REPORTS DEBUG: Aplicando filtro dateFrom:', dateFilter);
       }
       if (dateTo) {
-        query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
+        const dateFilter = dateTo.toISOString().split('T')[0];
+        query = query.lte('end_date', dateFilter);
+        console.log('🗓️ REPORTS DEBUG: Aplicando filtro dateTo:', dateFilter);
       }
 
       // Aplicar filtro de usuário se definido
       if (selectedUser !== 'all') {
         query = query.eq('created_by', selectedUser);
+        console.log('👤 REPORTS DEBUG: Aplicando filtro de usuário:', selectedUser);
       }
 
       // Aplicar filtro de filial se definido
       if (selectedFilial !== 'all') {
         query = query.eq('filial', selectedFilial);
+        console.log('🏢 REPORTS DEBUG: Aplicando filtro de filial:', selectedFilial);
       }
 
+      console.log('🚀 REPORTS DEBUG: Executando query...');
       const { data: supabaseTasks, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ REPORTS DEBUG: Erro na query:', error);
+        throw error;
+      }
+
+      console.log('✅ REPORTS DEBUG: Query executada com sucesso. Total de tasks retornadas:', supabaseTasks?.length || 0);
+      
+      // Log das primeiras 3 tasks para debug (se existirem)
+      if (supabaseTasks && supabaseTasks.length > 0) {
+        console.log('📋 REPORTS DEBUG: Primeiras 3 tasks retornadas:', 
+          supabaseTasks.slice(0, 3).map(task => ({
+            id: task.id,
+            filial: task.filial,
+            task_type: task.task_type,
+            created_by: task.created_by
+          }))
+        );
+      }
 
       // Mapear tasks do Supabase para o formato da aplicação
       const tasks = supabaseTasks?.map(mapSupabaseTaskToTask) || [];
@@ -156,6 +189,17 @@ const Reports: React.FC = () => {
         .filter(task => task.salesConfirmed === true || task.salesType === 'parcial')
         .reduce((sum, task) => sum + calculateTaskSalesValue(task), 0);
 
+      // 📊 REPORTS DEBUG: Log das estatísticas calculadas
+      console.log('📊 REPORTS DEBUG: Estatísticas calculadas:', {
+        totalTasks: visitas + checklist + ligacoes,
+        visitas,
+        checklist,
+        ligacoes,
+        prospects,
+        prospectsValue,
+        salesValue
+      });
+
       setTotalTasks(visitas + checklist + ligacoes);
       setTotalVisitas(visitas);
       setTotalChecklist(checklist);
@@ -163,10 +207,13 @@ const Reports: React.FC = () => {
       setTotalProspects(prospects);
       setTotalProspectsValue(prospectsValue);
       setTotalSalesValue(salesValue);
+      
+      console.log('✅ REPORTS DEBUG: Estados atualizados com sucesso');
     } catch (error) {
-      console.error('Erro ao carregar estatísticas agregadas:', error);
+      console.error('❌ REPORTS DEBUG: Erro ao carregar estatísticas agregadas:', error);
     } finally {
       setLoading(false);
+      console.log('🏁 REPORTS DEBUG: Loading finalizado');
     }
   };
 
@@ -183,10 +230,25 @@ const Reports: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('🔄 REPORTS DEBUG: useEffect disparado com dependências:', {
+      user: !!user,
+      dateFrom: dateFrom?.toISOString().split('T')[0],
+      dateTo: dateTo?.toISOString().split('T')[0],
+      selectedUser,
+      selectedFilial,
+      timestamp: new Date().toISOString()
+    });
+    
     if (user) {
-      loadAggregatedStats();
+      // Adicionar timeout para garantir que o estado seja atualizado
+      const timeoutId = setTimeout(() => {
+        loadAggregatedStats();
+      }, 100);
+      
       loadCollaborators();
       loadFiliais();
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [user, dateFrom, dateTo, selectedUser, selectedFilial]);
 
@@ -324,9 +386,22 @@ const Reports: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Filial</label>
-                <Select value={selectedFilial} onValueChange={setSelectedFilial}>
-                  <SelectTrigger>
+                <Select 
+                  value={selectedFilial} 
+                  onValueChange={(value) => {
+                    console.log('🏢 REPORTS DEBUG: Mudança de filial detectada:', {
+                      valorAnterior: selectedFilial,
+                      novoValor: value,
+                      timestamp: new Date().toISOString()
+                    });
+                    setSelectedFilial(value);
+                  }}
+                >
+                  <SelectTrigger className={selectedFilial !== 'all' ? 'border-primary' : ''}>
                     <SelectValue placeholder="Todas as filiais" />
+                    {selectedFilial !== 'all' && loading && (
+                      <RefreshCw className="h-4 w-4 ml-2 animate-spin" />
+                    )}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as filiais</SelectItem>
@@ -426,15 +501,38 @@ const Reports: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Debug Info Card - Remover após resolver o problema */}
+      {(selectedFilial !== 'all' || selectedUser !== 'all') && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-yellow-800">🐛 Informações de Debug</p>
+              <div className="text-xs text-yellow-700 space-y-1">
+                <p>Filial selecionada: <span className="font-mono bg-yellow-100 px-1 rounded">{selectedFilial}</span></p>
+                <p>Usuário selecionado: <span className="font-mono bg-yellow-100 px-1 rounded">{selectedUser}</span></p>
+                <p>Estado de loading: <span className="font-mono bg-yellow-100 px-1 rounded">{loading ? 'true' : 'false'}</span></p>
+                <p>Total de tasks: <span className="font-mono bg-yellow-100 px-1 rounded">{totalTasks}</span></p>
+                <p>Última atualização: <span className="font-mono bg-yellow-100 px-1 rounded">{new Date().toLocaleTimeString()}</span></p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Resumo Geral */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+        <Card className={`bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 ${loading ? 'animate-pulse' : ''}`}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Total</p>
                 <p className="text-2xl font-bold text-primary">
-                  {loading ? '...' : totalTasks}
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                      ...
+                    </div>
+                  ) : totalTasks}
                 </p>
               </div>
               <Activity className="h-8 w-8 text-primary/50" />
