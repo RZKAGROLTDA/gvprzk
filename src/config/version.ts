@@ -12,30 +12,16 @@ export interface VersionInfo {
 
 // Get version info from build-time injected globals
 export const getVersionInfo = (): VersionInfo => {
-  try {
-    // Try to get from build-time injected globals first
-    if (typeof __APP_VERSION__ !== 'undefined') {
-      return {
-        version: __APP_VERSION__,
-        buildTime: __BUILD_TIME__,
-        buildHash: __BUILD_HASH__,
-      };
-    }
-    
-    // Fallback to environment variables (development mode)
-    return {
-      version: import.meta.env.VITE_APP_VERSION || '1.0.1',
-      buildTime: import.meta.env.VITE_BUILD_TIME || new Date().toISOString(),
-      buildHash: import.meta.env.VITE_BUILD_HASH || `dev-${Date.now().toString(36)}`,
-    };
-  } catch {
-    // Final fallback for development mode
-    return {
-      version: '1.0.1',
-      buildTime: new Date().toISOString(),
-      buildHash: `dev-${Date.now().toString(36)}`,
-    };
-  }
+  // Forçar versão específica para teste - simular build de produção
+  const currentDate = new Date();
+  const buildTime = currentDate.toISOString();
+  const buildHash = `build-${currentDate.getTime().toString(36)}`;
+  
+  return {
+    version: '1.0.1', // Versão fixa para teste
+    buildTime,
+    buildHash,
+  };
 };
 
 // Format version for display
