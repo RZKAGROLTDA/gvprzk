@@ -40,7 +40,9 @@ const Reports: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedUser, setSelectedUser] = useState('all');
+  const [selectedFilial, setSelectedFilial] = useState('all');
   const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [filiais, setFiliais] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Estados para as estatísticas agregadas
@@ -88,6 +90,20 @@ const Reports: React.FC = () => {
     }
   };
 
+  const loadFiliais = async () => {
+    try {
+      const { data: filiaisData, error } = await supabase
+        .from('filiais')
+        .select('id, nome')
+        .order('nome');
+
+      if (error) throw error;
+      setFiliais(filiaisData || []);
+    } catch (error) {
+      console.error('Erro ao carregar filiais:', error);
+    }
+  };
+
   const loadAggregatedStats = async () => {
     if (!user) return;
     
@@ -110,6 +126,11 @@ const Reports: React.FC = () => {
       // Aplicar filtro de usuário se definido
       if (selectedUser !== 'all') {
         query = query.eq('created_by', selectedUser);
+      }
+
+      // Aplicar filtro de filial se definido
+      if (selectedFilial !== 'all') {
+        query = query.eq('filial', selectedFilial);
       }
 
       const { data: supabaseTasks, error } = await query;
@@ -153,6 +174,7 @@ const Reports: React.FC = () => {
     setDateFrom(undefined);
     setDateTo(undefined);
     setSelectedUser('all');
+    setSelectedFilial('all');
     
     toast({
       title: "✨ Filtros limpos",
@@ -164,8 +186,9 @@ const Reports: React.FC = () => {
     if (user) {
       loadAggregatedStats();
       loadCollaborators();
+      loadFiliais();
     }
-  }, [user, dateFrom, dateTo, selectedUser]);
+  }, [user, dateFrom, dateTo, selectedUser, selectedFilial]);
 
   const exportReport = (type: 'filial' | 'cep') => {
     console.log(`Exportando relatório por ${type}...`);
@@ -174,9 +197,10 @@ const Reports: React.FC = () => {
     const filtrosAplicados = {
       dataInicial: dateFrom ? format(dateFrom, "dd/MM/yyyy") : 'Não definida',
       dataFinal: dateTo ? format(dateTo, "dd/MM/yyyy") : 'Não definida',
-      cepSelecionado: selectedUser !== 'all' ? 
-        collaborators.find(c => c.id === selectedUser)?.name || 'CEP específico' : 
-        'Todos os CEPs'
+      colaboradorSelecionado: selectedUser !== 'all' ? 
+        collaborators.find(c => c.id === selectedUser)?.name || 'Colaborador específico' : 
+        'Todos os colaboradores',
+      filialSelecionada: selectedFilial !== 'all' ? selectedFilial : 'Todas as filiais'
     };
 
     if (type === 'filial') {
@@ -242,7 +266,7 @@ const Reports: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Data Inicial</label>
                 <Popover>
@@ -299,13 +323,30 @@ const Reports: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">CEP</label>
-                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <label className="text-sm font-medium">Filial</label>
+                <Select value={selectedFilial} onValueChange={setSelectedFilial}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos os CEPs" />
+                    <SelectValue placeholder="Todas as filiais" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos os CEPs</SelectItem>
+                    <SelectItem value="all">Todas as filiais</SelectItem>
+                    {filiais.map((filial) => (
+                      <SelectItem key={filial.id} value={filial.nome}>
+                        {filial.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Colaborador</label>
+                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todos os colaboradores" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os colaboradores</SelectItem>
                     {collaborators.map((collaborator) => (
                       <SelectItem key={collaborator.id} value={collaborator.id}>
                         {collaborator.name} - {getRoleLabel(collaborator.role)}
@@ -353,7 +394,7 @@ const Reports: React.FC = () => {
               </div>
             </div>
 
-            {(dateFrom || dateTo || selectedUser !== 'all') && (
+            {(dateFrom || dateTo || selectedUser !== 'all' || selectedFilial !== 'all') && (
               <div className="flex items-center gap-2 pt-2 border-t">
                 <p className="text-sm text-muted-foreground">Filtros ativos:</p>
                 {dateFrom && (
@@ -366,9 +407,14 @@ const Reports: React.FC = () => {
                     Até: {format(dateTo, "dd/MM/yyyy")}
                   </Badge>
                 )}
+                {selectedFilial !== 'all' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Filial: {selectedFilial}
+                  </Badge>
+                )}
                 {selectedUser !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
-                    {collaborators.find(c => c.id === selectedUser)?.name || 'CEP específico'}
+                    {collaborators.find(c => c.id === selectedUser)?.name || 'Colaborador específico'}
                   </Badge>
                 )}
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2">
