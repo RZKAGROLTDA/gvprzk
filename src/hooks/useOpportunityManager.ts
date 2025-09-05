@@ -177,6 +177,42 @@ export const useOpportunityManager = () => {
           throw error;
         }
 
+        // CRÍTICO: Se é Venda Total, garantir que qtd_vendida = qtd_ofertada nos items
+        // para que o trigger de recálculo funcione corretamente
+        if (correctStatusUpdate === 'Venda Total') {
+          console.log('🔧 Atualizando qtd_vendida para Venda Total');
+          
+          // Primeiro buscar os items atuais
+          const { data: currentItems } = await supabase
+            .from('opportunity_items')
+            .select('id, qtd_ofertada, preco_unit')
+            .eq('opportunity_id', existingOpportunity.id);
+            
+          if (currentItems && currentItems.length > 0) {
+            // Atualizar cada item individualmente
+            for (const item of currentItems) {
+              const { error: itemError } = await supabase
+                .from('opportunity_items')
+                .update({ 
+                  qtd_vendida: item.qtd_ofertada,
+                  subtotal_vendido: item.qtd_ofertada * item.preco_unit,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', item.id);
+                
+              if (itemError) {
+                console.error('❌ Erro ao atualizar item:', itemError);
+              }
+            }
+            console.log('✅ Items atualizados para Venda Total');
+          }
+        }
+        
+        if (error) {
+          console.error('❌ Erro ao atualizar oportunidade:', error);
+          throw error;
+        }
+
         console.log('🎯 APÓS A ATUALIZAÇÃO - Dados salvos no banco:', {
           id: updatedOpportunity.id,
           status: updatedOpportunity.status,
@@ -207,6 +243,36 @@ export const useOpportunityManager = () => {
         
         if (error) throw error;
         console.log('✅ Nova oportunidade criada:', opportunityData);
+        
+        // CRÍTICO: Se é Venda Total, garantir que qtd_vendida = qtd_ofertada nos items
+        if (correctStatus === 'Venda Total') {
+          console.log('🔧 Atualizando qtd_vendida para nova Venda Total');
+          
+          // Buscar items existentes (se houver)
+          const { data: existingItems } = await supabase
+            .from('opportunity_items')
+            .select('id, qtd_ofertada, preco_unit')
+            .eq('opportunity_id', data.id);
+            
+          if (existingItems && existingItems.length > 0) {
+            for (const item of existingItems) {
+              const { error: itemError } = await supabase
+                .from('opportunity_items')
+                .update({ 
+                  qtd_vendida: item.qtd_ofertada,
+                  subtotal_vendido: item.qtd_ofertada * item.preco_unit,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', item.id);
+                
+              if (itemError) {
+                console.error('❌ Erro ao atualizar item da nova oportunidade:', itemError);
+              }
+            }
+            console.log('✅ Items da nova oportunidade atualizados para Venda Total');
+          }
+        }
+        
         return data.id;
       }
     } catch (error) {
