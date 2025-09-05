@@ -89,6 +89,7 @@ export type Database = {
           preview_date: string | null
           return_date: string | null
           session_date: string | null
+          session_type: string | null
           stage: string
           updated_at: string
           voucher_date: string | null
@@ -111,6 +112,7 @@ export type Database = {
           preview_date?: string | null
           return_date?: string | null
           session_date?: string | null
+          session_type?: string | null
           stage?: string
           updated_at?: string
           voucher_date?: string | null
@@ -133,6 +135,7 @@ export type Database = {
           preview_date?: string | null
           return_date?: string | null
           session_date?: string | null
+          session_type?: string | null
           stage?: string
           updated_at?: string
           voucher_date?: string | null
@@ -837,6 +840,10 @@ export type Database = {
           severity: string
         }[]
       }
+      check_data_access_rate_limit: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       check_data_integrity: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1014,6 +1021,34 @@ export type Database = {
           phone: string
           session_date: string
           stage: string
+        }[]
+      }
+      get_secure_clients_with_masking: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          archive_reason: string
+          archived: boolean
+          archived_at: string
+          attachments: string[]
+          budget_date: string
+          created_at: string
+          created_by: string
+          email: string
+          gallery_date: string
+          id: string
+          is_data_masked: boolean
+          name: string
+          notes: string
+          phone: string
+          preview_date: string
+          return_date: string
+          session_date: string
+          session_type: string
+          stage: string
+          updated_at: string
+          voucher_date: string
+          workflow_status: string
         }[]
       }
       get_secure_customer_data_enhanced: {
@@ -1315,11 +1350,17 @@ export type Database = {
         Returns: boolean
       }
       log_client_data_access: {
-        Args: {
-          access_type?: string
-          accessed_fields?: string[]
-          client_id: string
-        }
+        Args:
+          | {
+              access_type?: string
+              accessed_fields?: string[]
+              client_id: string
+            }
+          | {
+              access_type?: string
+              client_count?: number
+              masked_count?: number
+            }
         Returns: undefined
       }
       log_customer_contact_access: {
@@ -1331,11 +1372,17 @@ export type Database = {
         Returns: undefined
       }
       log_customer_data_access: {
-        Args: {
-          access_type?: string
-          customer_count?: number
-          masked_count?: number
-        }
+        Args:
+          | {
+              access_type?: string
+              additional_metadata?: Json
+              customer_count?: number
+            }
+          | {
+              access_type?: string
+              customer_count?: number
+              masked_count?: number
+            }
         Returns: undefined
       }
       log_high_risk_activity: {
@@ -1376,6 +1423,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      mask_client_name: {
+        Args: { can_view: boolean; name_input: string }
+        Returns: string
+      }
       mask_customer_email: {
         Args: {
           email: string
@@ -1392,6 +1443,14 @@ export type Database = {
           name: string
           user_role: string
         }
+        Returns: string
+      }
+      mask_email: {
+        Args: { can_view: boolean; email_input: string }
+        Returns: string
+      }
+      mask_phone: {
+        Args: { can_view: boolean; phone_input: string }
         Returns: string
       }
       mask_phone_number: {
