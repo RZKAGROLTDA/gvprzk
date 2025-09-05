@@ -101,9 +101,9 @@ export const useOpportunityManager = () => {
         filial: filial,
         status: correctStatus, // CORRETO: usar status baseado nos valores
         valor_total_oportunidade: Math.max(salesValue, partialSalesValue), // Usar o maior valor como total
-        valor_venda_fechada: partialSalesValue > 0 ? partialSalesValue : (salesConfirmed ? salesValue : 0),
+        valor_venda_fechada: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0),
         data_criacao: new Date().toISOString(),
-        data_fechamento: salesConfirmed ? new Date().toISOString() : null
+        data_fechamento: (isVendaTotal || isPartialSale) ? new Date().toISOString() : null
       };
 
       console.log('🔧 opportunityData preparado:', opportunityData);
@@ -133,8 +133,8 @@ export const useOpportunityManager = () => {
           status: correctStatusUpdate, // CORRETO: usar status baseado nos valores
           // CRÍTICO: NUNCA alterar valor_total_oportunidade - sempre preservar o valor original
           // valor_total_oportunidade: NÃO INCLUIR NO UPDATE
-          valor_venda_fechada: partialSalesValue > 0 ? partialSalesValue : (salesConfirmed ? salesValue : 0),
-          data_fechamento: salesConfirmed ? new Date().toISOString() : null,
+          valor_venda_fechada: isVendaTotalUpdate ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0),
+          data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         };
 
