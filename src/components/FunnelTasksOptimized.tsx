@@ -41,6 +41,7 @@ export const FunnelTasksOptimized: React.FC = () => {
   const tasksData = useMemo(() => {
     console.log('🔧 FILTRO DEBUG - selectedFilial:', selectedFilial);
     console.log('🔧 FILTRO DEBUG - tasks.length:', tasks.length);
+    console.log('🔧 FILTRO DEBUG - primeira task:', tasks[0]);
     
     if (!tasks.length) return [];
 
@@ -53,7 +54,8 @@ export const FunnelTasksOptimized: React.FC = () => {
     const result: TaskData[] = [];
     
     for (const task of tasks) {
-      const taskDate = new Date(task.createdAt);
+      if (!task || !task.created_at) continue;
+      const taskDate = new Date(task.created_at);
       
       // Early exits para máxima performance
       if (daysAgo < 9999 && taskDate < periodStart) continue;
@@ -77,7 +79,7 @@ export const FunnelTasksOptimized: React.FC = () => {
 
       // Mapear diretamente
       result.push({
-        date: task.createdAt,
+        date: new Date(task.created_at),
         client: task.client,
         responsible: task.responsible,
         taskType: getTaskTypeLabel(task.taskType),
