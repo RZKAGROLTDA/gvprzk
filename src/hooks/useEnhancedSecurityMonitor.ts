@@ -1,24 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
+import { useSecurityMonitor } from './useSecurityMonitor';
+import { useAuth } from './useAuth';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useSecurityMonitor } from './useSecurityMonitor';
-import { toast } from '@/components/ui/use-toast';
-
-interface BulkExportAlert {
-  type: 'bulk_export';
-  severity: 'HIGH' | 'CRITICAL';
-  description: string;
-  recordCount: number;
-  includesSensitiveData: boolean;
-  timestamp: string;
-}
-
-interface RateLimitAlert {
-  type: 'rate_limit_exceeded';
-  severity: 'MEDIUM' | 'HIGH';
-  description: string;
-  operationType: string;
-  timestamp: string;
-}
+import { useToast } from '@/hooks/use-toast';
 
 interface SecurityAlert {
   id: string;
@@ -26,220 +11,185 @@ interface SecurityAlert {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   title: string;
   description: string;
-  recommendation: string;
   timestamp: string;
+  dismissed: boolean;
+  recommendation: string;
+  metadata?: Record<string, any>;
 }
 
 export const useEnhancedSecurityMonitor = () => {
-  const { 
-    monitorBulkDataExport, 
-    monitorSuspiciousActivity,
-    monitorCustomerDataAccess,
-    logSecurityEvent
-  } = useSecurityMonitor();
-  
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeAlerts, setActiveAlerts] = useState<SecurityAlert[]>([]);
-  const [bulkExportThreshold, setBulkExportThreshold] = useState(50);
-  const [rateLimitThreshold, setRateLimitThreshold] = useState(100);
+  const [alertStats, setAlertStats] = useState({
+    total: 0,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0
+  });
 
-  // Enhanced bulk data export monitoring with alerts
-  const monitorBulkDataExportWithAlert = useCallback(async (
-    exportType: string,
-    recordCount: number,
-    includesSensitiveData: boolean = false
-  ) => {
-    // Log the export
+  const { 
+    monitorSuspiciousActivity, 
+    monitorCustomerDataAccess, 
+    monitorBulkDataExport 
+  } = useSecurityMonitor();
+
+  // Monitor high-value sales access with enhanced security
+  const monitorHighValueAccess = useCallback(async (salesValue: number, context: string) => {
+    if (salesValue > 15000) {
+      await supabase.rpc('monitor_high_value_sales_access');
+      
+      monitorSuspiciousActivity('high_value_sales_access', {
+        sales_value: salesValue,
+        context,
+        threshold_exceeded: true
+      }, 4);
+    }
+  }, [monitorSuspiciousActivity]);
+
+  // Monitor data export activities with enhanced tracking
+  const monitorSecureExport = useCallback((exportType: string, recordCount: number) => {
+    monitorBulkDataExport(exportType, recordCount, true);
+    
+    if (recordCount > 100) {
+      monitorSuspiciousActivity('large_data_export', {
+        export_type: exportType,
+        record_count: recordCount,
+        user_id: user?.id
+      }, 4);
+    }
+  }, [monitorBulkDataExport, monitorSuspiciousActivity, user?.id]);
+
+  // Monitor customer data access patterns
+  const monitorCustomerDataPattern = useCallback((accessCount: number, timeWindow: string) => {
+    if (accessCount > 50) {
+      monitorSuspiciousActivity('excessive_customer_data_access', {
+        access_count: accessCount,
+        time_window: timeWindow,
+        user_id: user?.id
+      }, 5);
+    }
+  }, [monitorSuspiciousActivity, user?.id]);
+
+  // Bulk export monitoring with alerts
+  const monitorBulkDataExportWithAlert = useCallback(async (exportType: string, recordCount: number, includesSensitiveData: boolean = false) => {
     monitorBulkDataExport(exportType, recordCount, includesSensitiveData);
     
-    // Check if this triggers an alert
-    if (recordCount > bulkExportThreshold || includesSensitiveData) {
-      const severity = includesSensitiveData || recordCount > 100 ? 'CRITICAL' : 'HIGH';
-      
+    if (recordCount > 50 || includesSensitiveData) {
       const alert: SecurityAlert = {
-        id: `bulk_export_${Date.now()}`,
+        id: `export-${Date.now()}`,
         type: 'bulk_export',
-        severity,
-        title: 'Bulk Data Export Detected',
-        description: `Large data export detected: ${recordCount} records exported${includesSensitiveData ? ' (includes sensitive data)' : ''}`,
-        recommendation: includesSensitiveData 
-          ? 'Immediately investigate this sensitive data export. Verify user authorization and business justification.'
-          : 'Review data export justification and ensure compliance with data protection policies.',
-        timestamp: new Date().toISOString()
+        severity: recordCount > 200 ? 'CRITICAL' : recordCount > 100 ? 'HIGH' : 'MEDIUM',
+        title: 'Large Data Export Detected',
+        description: `Export of ${recordCount} records containing ${includesSensitiveData ? 'sensitive' : 'standard'} data`,
+        timestamp: new Date().toISOString(),
+        dismissed: false,
+        recommendation: recordCount > 200 ? 'Immediate review required - potential data breach' : 'Monitor user activity for suspicious patterns',
+        metadata: { exportType, recordCount, includesSensitiveData }
       };
       
-      setActiveAlerts(prev => [alert, ...prev.slice(0, 9)]); // Keep last 10 alerts
-      
-      // Show toast notification for critical alerts
-      if (severity === 'CRITICAL') {
-        toast({
-          title: "⚠️ Critical Security Alert",
-          description: alert.description,
-          variant: "destructive",
-        });
-      }
+      setActiveAlerts(prev => [...prev, alert]);
     }
-  }, [monitorBulkDataExport, bulkExportThreshold]);
+  }, [monitorBulkDataExport]);
 
-  // Enhanced customer data access monitoring
-  const monitorCustomerDataAccessWithAlert = useCallback(async (
-    accessType: 'view' | 'edit' | 'export',
-    customerCount: number = 1,
-    sensitiveFields: string[] = []
-  ) => {
+  // Customer data access monitoring with alerts
+  const monitorCustomerDataAccessWithAlert = useCallback(async (accessType: 'view' | 'edit' | 'export', customerCount: number = 1, sensitiveFields: string[] = []) => {
     monitorCustomerDataAccess(accessType, customerCount, sensitiveFields);
     
-    // Alert for high-volume customer data access
-    if (customerCount > 20 && accessType === 'view') {
+    if (customerCount > 20 || sensitiveFields.length > 0) {
       const alert: SecurityAlert = {
-        id: `customer_access_${Date.now()}`,
-        type: 'high_volume_customer_access',
-        severity: 'MEDIUM',
+        id: `access-${Date.now()}`,
+        type: 'customer_access',
+        severity: customerCount > 50 ? 'HIGH' : 'MEDIUM',
         title: 'High Volume Customer Data Access',
-        description: `User accessed ${customerCount} customer records in a single operation`,
-        recommendation: 'Monitor for potential data harvesting. Verify legitimate business purpose.',
-        timestamp: new Date().toISOString()
+        description: `Access to ${customerCount} customer records with ${sensitiveFields.length} sensitive fields`,
+        timestamp: new Date().toISOString(),
+        dismissed: false,
+        recommendation: customerCount > 50 ? 'Review user permissions and implement additional access controls' : 'Monitor for data harvesting patterns',
+        metadata: { accessType, customerCount, sensitiveFields }
       };
       
-      setActiveAlerts(prev => [alert, ...prev.slice(0, 9)]);
+      setActiveAlerts(prev => [...prev, alert]);
     }
   }, [monitorCustomerDataAccess]);
 
-  // Rate limit monitoring with enhanced alerting
-  const checkRateLimitWithAlert = useCallback(async (
-    operationType: string,
-    currentCount: number
-  ) => {
-    if (currentCount > rateLimitThreshold) {
-      logSecurityEvent({
-        type: 'suspicious_activity',
-        riskLevel: 4,
-        metadata: {
-          activity_type: 'rate_limit_exceeded',
-          operation_type: operationType,
-          current_count: currentCount,
-          threshold: rateLimitThreshold
-        }
-      });
-
-      const alert: SecurityAlert = {
-        id: `rate_limit_${Date.now()}`,
-        type: 'rate_limit_exceeded',
-        severity: 'HIGH',
-        title: 'Rate Limit Exceeded',
-        description: `User exceeded rate limit for ${operationType}: ${currentCount} operations`,
-        recommendation: 'Investigate potential automated/bot activity. Consider temporary access restriction.',
-        timestamp: new Date().toISOString()
-      };
-      
-      setActiveAlerts(prev => [alert, ...prev.slice(0, 9)]);
-      
-      toast({
-        title: "🚨 Rate Limit Alert",
-        description: alert.description,
-        variant: "destructive",
-      });
-      
-      return false; // Block operation
-    }
-    return true; // Allow operation
-  }, [logSecurityEvent, rateLimitThreshold]);
-
-  // Monitor for suspicious patterns in real-time
-  const monitorSuspiciousPatterns = useCallback(async () => {
-    try {
-      const { data: recentLogs, error } = await supabase
-        .from('security_audit_log')
-        .select('*')
-        .gte('created_at', new Date(Date.now() - 15 * 60 * 1000).toISOString()) // Last 15 minutes
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) return;
-
-      // Check for rapid successive high-risk activities
-      const highRiskEvents = recentLogs?.filter(log => log.risk_score >= 3) || [];
-      
-      if (highRiskEvents.length > 5) {
-        const alert: SecurityAlert = {
-          id: `suspicious_pattern_${Date.now()}`,
-          type: 'suspicious_activity_pattern',
-          severity: 'CRITICAL',
-          title: 'Suspicious Activity Pattern Detected',
-          description: `Multiple high-risk activities detected in short timeframe: ${highRiskEvents.length} events`,
-          recommendation: 'Immediately investigate user account for potential compromise or misuse.',
-          timestamp: new Date().toISOString()
-        };
-        
-        setActiveAlerts(prev => [alert, ...prev.slice(0, 9)]);
-        
-        toast({
-          title: "🔴 Critical Security Pattern Alert",
-          description: alert.description,
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error monitoring suspicious patterns:', error);
-    }
-  }, []);
-
-  // Periodic monitoring
-  useEffect(() => {
-    const interval = setInterval(monitorSuspiciousPatterns, 5 * 60 * 1000); // Every 5 minutes
-    return () => clearInterval(interval);
-  }, [monitorSuspiciousPatterns]);
-
-  // Clear old alerts
-  useEffect(() => {
-    const cleanup = setInterval(() => {
-      setActiveAlerts(prev => 
-        prev.filter(alert => 
-          Date.now() - new Date(alert.timestamp).getTime() < 24 * 60 * 60 * 1000 // Keep for 24 hours
-        )
-      );
-    }, 60 * 60 * 1000); // Every hour
-    
-    return () => clearInterval(cleanup);
-  }, []);
-
+  // Dismiss alert
   const dismissAlert = useCallback((alertId: string) => {
-    setActiveAlerts(prev => prev.filter(alert => alert.id !== alertId));
+    setActiveAlerts(prev => prev.map(alert => 
+      alert.id === alertId ? { ...alert, dismissed: true } : alert
+    ));
   }, []);
 
-  const getAlertsByType = useCallback((type: string) => {
-    return activeAlerts.filter(alert => alert.type === type);
+  // Get critical alerts
+  const getCriticalAlerts = useCallback(() => {
+    return activeAlerts.filter(alert => alert.severity === 'CRITICAL' && !alert.dismissed);
   }, [activeAlerts]);
 
-  const getCriticalAlerts = useCallback(() => {
-    return activeAlerts.filter(alert => alert.severity === 'CRITICAL');
+  // Get alerts by type
+  const getAlertsByType = useCallback((type: string) => {
+    return activeAlerts.filter(alert => alert.type === type && !alert.dismissed);
   }, [activeAlerts]);
+
+  // Update alert stats
+  useEffect(() => {
+    const nonDismissedAlerts = activeAlerts.filter(alert => !alert.dismissed);
+    setAlertStats({
+      total: nonDismissedAlerts.length,
+      critical: nonDismissedAlerts.filter(a => a.severity === 'CRITICAL').length,
+      high: nonDismissedAlerts.filter(a => a.severity === 'HIGH').length,
+      medium: nonDismissedAlerts.filter(a => a.severity === 'MEDIUM').length,
+      low: nonDismissedAlerts.filter(a => a.severity === 'LOW').length
+    });
+  }, [activeAlerts]);
+
+  // Enhanced session monitoring
+  useEffect(() => {
+    let activityCount = 0;
+    let sessionTimer: NodeJS.Timeout;
+
+    const trackActivity = () => {
+      activityCount++;
+      
+      // Reset counter every hour
+      clearTimeout(sessionTimer);
+      sessionTimer = setTimeout(() => {
+        if (activityCount > 200) {
+          monitorSuspiciousActivity('high_activity_session', {
+            activity_count: activityCount,
+            session_duration: '1_hour'
+          }, 3);
+        }
+        activityCount = 0;
+      }, 3600000); // 1 hour
+    };
+
+    const events = ['click', 'keydown', 'scroll', 'mousemove'];
+    events.forEach(event => {
+      document.addEventListener(event, trackActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, trackActivity);
+      });
+      clearTimeout(sessionTimer);
+    };
+  }, [monitorSuspiciousActivity]);
 
   return {
     // Enhanced monitoring functions
-    monitorBulkDataExportWithAlert,
-    monitorCustomerDataAccessWithAlert,
-    checkRateLimitWithAlert,
-    monitorSuspiciousPatterns,
+    monitorHighValueAccess,
+    monitorSecureExport,
+    monitorCustomerDataPattern,
     
     // Alert management
-    activeAlerts,
+    monitorBulkDataExportWithAlert,
+    monitorCustomerDataAccessWithAlert,
+    activeAlerts: activeAlerts.filter(alert => !alert.dismissed),
     dismissAlert,
-    getAlertsByType,
     getCriticalAlerts,
-    
-    // Configuration
-    bulkExportThreshold,
-    setBulkExportThreshold,
-    rateLimitThreshold,
-    setRateLimitThreshold,
-    
-    // Statistics
-    alertStats: {
-      total: activeAlerts.length,
-      critical: activeAlerts.filter(a => a.severity === 'CRITICAL').length,
-      high: activeAlerts.filter(a => a.severity === 'HIGH').length,
-      medium: activeAlerts.filter(a => a.severity === 'MEDIUM').length,
-      low: activeAlerts.filter(a => a.severity === 'LOW').length
-    }
+    getAlertsByType,
+    alertStats
   };
 };

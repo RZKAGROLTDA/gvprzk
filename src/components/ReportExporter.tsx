@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { mapSalesStatus, getStatusLabel } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { useEnhancedSecurityMonitor } from '@/hooks/useEnhancedSecurityMonitor';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -32,6 +33,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const { user } = useAuth();
+  const { monitorSecureExport } = useEnhancedSecurityMonitor();
 
 
   const fetchVisitData = async () => {
@@ -39,22 +41,21 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       throw new Error('Usuário não autenticado');
     }
 
-    // Buscar tarefas de visita com todas as informações relacionadas
-    const { data: tasks, error } = await supabase
-      .from('tasks')
-      .select(`
-        *,
-        products (*),
-        reminders (*)
-      `)
-      .eq('task_type', 'prospection')
-      .order('created_at', { ascending: false });
+    // Use secure export function instead of direct table access
+    const { data: secureData, error } = await supabase.rpc('get_secure_export_data', {
+      start_date_param: null,
+      end_date_param: null,
+      filial_filter_param: null
+    });
 
     if (error) {
       throw error;
     }
 
-    return tasks;
+    // Filter for prospection tasks only
+    const prospectionTasks = secureData?.filter(task => task.task_type === 'prospection') || [];
+    
+    return prospectionTasks;
   };
 
   const exportToPDF = async () => {
@@ -134,6 +135,9 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       doc.text(`Vendas Parciais: ${partiaisCount}`, 20, finalY + 30);
       doc.text(`Vendas Realizadas: ${ganhosCount}`, 20, finalY + 40);
       doc.text(`Taxa de Conclusão: ${((completedVisits / visitData.length) * 100).toFixed(1)}%`, 20, finalY + 50);
+
+      // Monitor export activity
+      monitorSecureExport('pdf_report', visitData.length);
 
       // Salvar o PDF
       doc.save(`relatorio-visitas-${format(new Date(), 'yyyy-MM-dd-HHmm')}.pdf`);
@@ -228,6 +232,9 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
 
       const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
       XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Resumo');
+
+      // Monitor export activity
+      monitorSecureExport('excel_report', visitData.length);
 
       // Salvar arquivo
       XLSX.writeFile(workbook, `relatorio-visitas-${format(new Date(), 'yyyy-MM-dd-HHmm')}.xlsx`);

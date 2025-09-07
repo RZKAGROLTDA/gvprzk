@@ -1182,6 +1182,29 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_secure_export_data: {
+        Args: {
+          end_date_param?: string
+          filial_filter_param?: string
+          start_date_param?: string
+        }
+        Returns: {
+          client: string
+          created_at: string
+          email: string
+          end_date: string
+          filial: string
+          id: string
+          name: string
+          phone: string
+          property: string
+          responsible: string
+          sales_value: number
+          start_date: string
+          status: string
+          task_type: string
+        }[]
+      }
       get_secure_sales_data: {
         Args: { include_high_value?: boolean }
         Returns: {
@@ -1547,6 +1570,10 @@ export type Database = {
           risk_level: string
           user_count: number
         }[]
+      }
+      monitor_high_value_sales_access: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       monitor_session_security: {
         Args: Record<PropertyKey, never>

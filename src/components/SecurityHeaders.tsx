@@ -3,10 +3,10 @@ import { Helmet } from 'react-helmet-async';
 export const SecurityHeaders = () => {
   return (
     <Helmet>
-      {/* Enhanced Content Security Policy - Phase 4 Security Enhancement */}
+      {/* Enhanced Content Security Policy - Optimized for Security */}
       <meta 
         httpEquiv="Content-Security-Policy" 
-        content="default-src 'self'; script-src 'self' https://wuvbrkbhunifudaewhng.supabase.co; style-src 'self' 'unsafe-inline' blob:; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://wuvbrkbhunifudaewhng.supabase.co wss://wuvbrkbhunifudaewhng.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests; report-uri /api/csp-report;" 
+        content="default-src 'self'; script-src 'self' 'unsafe-eval' https://wuvbrkbhunifudaewhng.supabase.co; style-src 'self' 'unsafe-inline' blob:; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://wuvbrkbhunifudaewhng.supabase.co wss://wuvbrkbhunifudaewhng.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;" 
       />
       
       {/* X-Frame-Options removed to allow iframe loading in Lovable */}
