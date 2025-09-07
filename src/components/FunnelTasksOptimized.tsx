@@ -40,6 +40,12 @@ export const FunnelTasksOptimized: React.FC = () => {
   const tasksData = useMemo(() => {
     if (!tasks.length) return [];
 
+    console.log('=== FunnelTasksOptimized Debug ===');
+    console.log('Total tasks:', tasks.length);
+    console.log('Selected filial:', selectedFilial);
+    console.log('Available filiais:', filiais.map(f => ({ id: f.id, nome: f.nome })));
+    console.log('Sample task filials:', tasks.slice(0, 3).map(t => ({ id: t.id, filial: t.filial })));
+
     const now = new Date();
     const daysAgo = parseInt(selectedPeriod);
     const periodStart = daysAgo >= 9999 ? new Date(0) : subDays(now, daysAgo);
@@ -59,7 +65,10 @@ export const FunnelTasksOptimized: React.FC = () => {
         if (!consultant || task.responsible !== consultant.name) continue;
       }
 
-      if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
+      if (selectedFilial !== 'all' && task.filial !== selectedFilial) {
+        console.log('Filtrando task por filial:', { taskFilial: task.filial, selectedFilial, taskId: task.id });
+        continue;
+      }
       
       if (searchTerm && !task.client.toLowerCase().includes(searchLower)) continue;
 
