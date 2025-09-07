@@ -516,7 +516,7 @@ export const SalesFunnel: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as filiais</SelectItem>
-              {filiais.map(filial => <SelectItem key={filial.id} value={filial.id}>
+              {filiais.map(filial => <SelectItem key={filial.id} value={filial.nome}>
                   {filial.nome}
                 </SelectItem>)}
             </SelectContent>
