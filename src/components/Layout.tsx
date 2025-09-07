@@ -7,6 +7,7 @@ import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Settings, Log
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useSessionSecurity } from '@/hooks/useSessionSecurity';
+import { getVersionInfo, formatVersion } from '@/config/version';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -97,6 +98,9 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   }, [signOut]);
 
   const userDisplayName = useMemo(() => user?.email || 'Usuário', [user?.email]);
+  
+  // Get version info for footer
+  const versionInfo = useMemo(() => getVersionInfo(), []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -198,6 +202,15 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
             </div>
           </main>
         </div>
+        
+        {/* Footer com versão - discreto */}
+        <footer className="mt-8 pt-4 border-t border-border/50">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground/60">
+              {formatVersion(versionInfo)}
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
   );
