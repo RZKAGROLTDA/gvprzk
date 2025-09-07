@@ -38,13 +38,12 @@ export const FunnelTasksOptimized: React.FC = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   const tasksData = useMemo(() => {
+    console.log('🎯 FUNNELTASKS DEBUG: Executando filtro de filial');
+    console.log('🎯 Tasks disponíveis:', tasks.length);
+    console.log('🎯 Filtro de filial selecionado:', selectedFilial);
+    console.log('🎯 Filiais disponíveis:', filiais.map(f => f.nome));
+    
     if (!tasks.length) return [];
-
-    console.log('=== FunnelTasksOptimized Debug ===');
-    console.log('Total tasks:', tasks.length);
-    console.log('Selected filial:', selectedFilial);
-    console.log('Available filiais:', filiais.map(f => ({ id: f.id, nome: f.nome })));
-    console.log('Sample task filials:', tasks.slice(0, 3).map(t => ({ id: t.id, filial: t.filial })));
 
     const now = new Date();
     const daysAgo = parseInt(selectedPeriod);
@@ -66,7 +65,12 @@ export const FunnelTasksOptimized: React.FC = () => {
       }
 
       if (selectedFilial !== 'all' && task.filial !== selectedFilial) {
-        console.log('Filtrando task por filial:', { taskFilial: task.filial, selectedFilial, taskId: task.id });
+        console.log('🚫 FILTRANDO TASK:', { 
+          taskId: task.id.slice(0,8), 
+          taskFilial: task.filial, 
+          selectedFilial,
+          match: task.filial === selectedFilial 
+        });
         continue;
       }
       
