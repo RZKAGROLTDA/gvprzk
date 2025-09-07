@@ -24,6 +24,7 @@ interface TaskData {
 }
 
 export const FunnelTasksOptimized: React.FC = () => {
+  console.log('🔧 FunnelTasksOptimized: Componente carregado');
   const { tasks, loading, refetch, forceRefresh, resetAndRefresh, error } = useTasksOptimized();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
@@ -38,10 +39,8 @@ export const FunnelTasksOptimized: React.FC = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   const tasksData = useMemo(() => {
-    console.log('🎯 FUNNELTASKS DEBUG: Executando filtro de filial');
-    console.log('🎯 Tasks disponíveis:', tasks.length);
-    console.log('🎯 Filtro de filial selecionado:', selectedFilial);
-    console.log('🎯 Filiais disponíveis:', filiais.map(f => f.nome));
+    console.log('🔧 FILTRO DEBUG - selectedFilial:', selectedFilial);
+    console.log('🔧 FILTRO DEBUG - tasks.length:', tasks.length);
     
     if (!tasks.length) return [];
 
