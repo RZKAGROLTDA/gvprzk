@@ -123,8 +123,8 @@ const Reports: React.FC = () => {
     try {
       let query = supabase.from('tasks').select(`
         *,
-        task_products (*),
-        task_reminders (*)
+        products (*),
+        reminders (*)
       `);
 
       // Aplicar filtros de data se definidos
