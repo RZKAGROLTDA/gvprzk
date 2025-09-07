@@ -147,12 +147,17 @@ const Reports: React.FC = () => {
 
       // Aplicar filtro de filial se definido - FIXED EXACT MATCH
       if (selectedFilial !== 'all') {
-        query = query.eq('filial', selectedFilial);
-        console.log('🏢 REPORTS DEBUG: Aplicando filtro de filial (EXACT MATCH):', {
-          value: selectedFilial,
+        // Debug antes do filtro
+        console.log('🏢 REPORTS DEBUG: Preparando filtro de filial:', {
+          selectedFilial,
           type: typeof selectedFilial,
-          length: selectedFilial.length
+          length: selectedFilial.length,
+          trimmed: selectedFilial.trim(),
+          charCodes: selectedFilial.split('').map(c => c.charCodeAt(0))
         });
+        
+        query = query.eq('filial', selectedFilial);
+        console.log('🏢 REPORTS DEBUG: Filtro de filial aplicado com eq() filter');
       }
 
       console.log('🚀 REPORTS DEBUG: Executando query...');
@@ -164,6 +169,16 @@ const Reports: React.FC = () => {
       }
 
       console.log('✅ REPORTS DEBUG: Query executada com sucesso. Total de tasks retornadas:', supabaseTasks?.length || 0);
+      
+      // Debug específico para filtro de filial
+      if (selectedFilial !== 'all') {
+        console.log('🎯 REPORTS DEBUG: Resultado com filtro de filial aplicado:', {
+          filtroFilial: selectedFilial,
+          totalResultados: supabaseTasks?.length || 0,
+          primeiraTaskFilial: supabaseTasks?.[0]?.filial,
+          todasFiliaisDoResultado: [...new Set(supabaseTasks?.map(task => task.filial) || [])]
+        });
+      }
       
       // Log das primeiras 3 tasks para debug (se existirem)
       if (supabaseTasks && supabaseTasks.length > 0) {
@@ -179,6 +194,8 @@ const Reports: React.FC = () => {
         // NEW: Log all unique filials in the result
         const uniqueFilials = [...new Set(supabaseTasks.map(task => task.filial))];
         console.log('🏢 REPORTS DEBUG: Filiais únicas no resultado:', uniqueFilials);
+      } else if (selectedFilial !== 'all') {
+        console.log('❌ REPORTS DEBUG: NENHUM RESULTADO para filial:', selectedFilial);
       }
 
       // Mapear tasks do Supabase para o formato da aplicação
