@@ -35,16 +35,8 @@ export const getVersionInfo = (): VersionInfo => {
 
 // Format version for display
 export const formatVersion = (versionInfo: VersionInfo): string => {
-  const { version, buildTime } = versionInfo;
-  const buildDateTime = new Date(buildTime).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit', 
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-  return `v${version} (${buildDateTime})`;
+  const { version } = versionInfo;
+  return `v${version}`;
 };
 
 // Format detailed version for debug
