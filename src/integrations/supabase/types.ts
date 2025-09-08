@@ -834,6 +834,17 @@ export type Database = {
           severity: string
         }[]
       }
+      check_client_data_access_patterns: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_count: number
+          alert_type: string
+          description: string
+          recommendation: string
+          severity: string
+          user_count: number
+        }[]
+      }
       check_client_operation_rate_limit: {
         Args: { operation_type?: string }
         Returns: boolean
