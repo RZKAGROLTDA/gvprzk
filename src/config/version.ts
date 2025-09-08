@@ -12,22 +12,22 @@ export interface VersionInfo {
 
 // Get version info from build-time injected globals
 export const getVersionInfo = (): VersionInfo => {
-  // Sistema automático baseado em timestamp
-  const now = new Date();
-  const buildTime = now.toISOString();
+  // Use build-time injected variables from Vite
+  const buildTime = import.meta.env.VITE_BUILD_TIME || new Date().toISOString();
+  const buildHash = import.meta.env.VITE_BUILD_HASH || 'dev';
   
-  // Versão automática baseada na data (YYYY.MM.DD.HHMM)
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hour = String(now.getHours()).padStart(2, '0');
-  const minute = String(now.getMinutes()).padStart(2, '0');
+  // Generate version based on build time
+  const buildDate = new Date(buildTime);
+  const year = buildDate.getFullYear();
+  const month = String(buildDate.getMonth() + 1).padStart(2, '0');
+  const day = String(buildDate.getDate()).padStart(2, '0');
+  const hour = String(buildDate.getHours()).padStart(2, '0');
+  const minute = String(buildDate.getMinutes()).padStart(2, '0');
   
-  const autoVersion = `${year}.${month}.${day}.${hour}${minute}`;
-  const buildHash = `auto-${now.getTime().toString(36)}`;
+  const version = `${year}.${month}.${day}.${hour}${minute}`;
   
   return {
-    version: autoVersion,
+    version,
     buildTime,
     buildHash,
   };
