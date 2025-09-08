@@ -1,5 +1,7 @@
 // Service Worker para funcionalidades offline
-const CACHE_NAME = 'visitapp-v1';
+// Use timestamp para invalidar cache quando há nova versão
+const VERSION = '__BUILD_TIME__'; // Será substituído na build
+const CACHE_NAME = `visitapp-${VERSION}`;
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
@@ -33,18 +35,29 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// Ativar Service Worker
+// Ativar Service Worker e limpar caches antigos
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
+          // Remove todos os caches que não são da versão atual
+          if (cacheName !== CACHE_NAME || cacheName.startsWith('visitapp-')) {
             console.log('Removendo cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      // Assume controle imediatamente para todas as abas
+      return self.clients.claim();
     })
   );
+});
+
+// Escutar mensagens para forçar atualização
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });

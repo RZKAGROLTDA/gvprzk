@@ -45,4 +45,11 @@ export default defineConfig(({ mode }) => {
     // Enable CSS code splitting for better loading performance
     cssCodeSplit: true,
   },
+  // Replace version placeholders in service worker
+  transformIndexHtml: {
+    enforce: 'post',
+    transform(html: string) {
+      return html.replace(/__BUILD_TIME__/g, buildTime);
+    }
+  },
 }});

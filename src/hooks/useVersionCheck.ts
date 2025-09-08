@@ -15,9 +15,21 @@ export const useVersionCheck = () => {
     
     if (versionChanged) {
       setShouldUpdate(true);
+      
+      // Force service worker update if available
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+          if (registration.waiting) {
+            // Tell the waiting service worker to skip waiting
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+          return registration.update();
+        }).catch(console.warn);
+      }
+      
       toast({
         title: "Nova versão disponível",
-        description: "Uma nova versão do sistema foi detectada. Considere atualizar a página para obter as últimas funcionalidades.",
+        description: "Uma nova versão do sistema foi detectada. A página será atualizada automaticamente.",
         duration: 10000,
       });
     }
