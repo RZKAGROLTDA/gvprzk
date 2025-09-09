@@ -348,6 +348,16 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           }))
         });
         
+        console.log('🔧 DADOS ENVIADOS PARA ensureOpportunity:', {
+          taskId,
+          salesValue: valorTotalOportunidade,
+          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
+                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
+          partialSalesValue: valorVendaParcial,
+          formStatus: formDataToProcess.status
+        });
+        
         console.log('✅ DEPOIS de chamar ensureOpportunity, ID:', opportunityId);
       }
 
