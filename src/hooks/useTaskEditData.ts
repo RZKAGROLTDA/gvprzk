@@ -64,6 +64,12 @@ export const useTaskEditData = (taskId: string | null) => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  // Force clear data when taskId or user changes to avoid stale cache
+  useEffect(() => {
+    setData(null);
+    setError(null);
+  }, [taskId, user?.id]);
+
   const fetchTaskData = async () => {
     if (!taskId || !user?.id) {
       return;
@@ -73,6 +79,9 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
+      // Force refresh session to ensure latest auth state
+      await supabase.auth.refreshSession();
+      
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .select('*')

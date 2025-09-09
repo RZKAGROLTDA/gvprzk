@@ -6,6 +6,7 @@ import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { useOpportunityManager } from '@/hooks/useOpportunityManager';
 import { StandardTaskForm } from './StandardTaskForm';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskEditModalProps {
   taskId: string | null;
@@ -389,10 +390,16 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 <div className="space-y-2">
                   <p className="text-red-600 font-medium">Erro: {error}</p>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    {error.includes('permissão') ? (
-                      <p>Você não tem acesso a esta task. Verifique com seu supervisor.</p>
-                    ) : error.includes('não encontrada') ? (
-                      <p>Esta task pode ter sido excluída ou você não tem acesso a ela.</p>
+                    {error.includes('permissão') || error.includes('não encontrada') ? (
+                      <div className="space-y-2">
+                        <p>Problema de acesso detectado. Isso pode ser devido a:</p>
+                        <ul className="text-xs list-disc list-inside space-y-1">
+                          <li>Cache de autenticação desatualizado</li>
+                          <li>Permissões alteradas recentemente</li>
+                          <li>Sessão expirada</li>
+                        </ul>
+                        <p className="font-medium">Tente recarregar a página para atualizar suas permissões.</p>
+                      </div>
                     ) : (
                       <p>Verifique sua conexão com a internet e tente novamente.</p>
                     )}
@@ -400,7 +407,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 </div>
                 <div className="flex gap-2 justify-center">
                   <Button 
-                    onClick={() => window.location.reload()} 
+                    onClick={async () => {
+                      // Clear all possible caches
+                      await invalidateAll();
+                      // Force session refresh
+                      await supabase.auth.refreshSession();
+                      // Hard reload
+                      window.location.reload();
+                    }} 
                     variant="outline"
                     size="sm"
                   >
