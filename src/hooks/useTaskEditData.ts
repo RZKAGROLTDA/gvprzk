@@ -95,11 +95,20 @@ export const useTaskEditData = (taskId: string | null) => {
 
       if (taskError) {
         console.error('🔍 useTaskEditData: Erro buscando task:', taskError);
-        throw taskError;
+        // Verificar se é erro de permissão
+        if (taskError.message?.includes('permission') || taskError.message?.includes('policy')) {
+          throw new Error('Você não tem permissão para acessar esta task');
+        }
+        throw new Error(`Erro ao buscar task: ${taskError.message}`);
       }
 
       if (!taskData) {
-        throw new Error('Task não encontrada');
+        console.error('🔍 useTaskEditData: Task não encontrada no banco:', { 
+          taskId, 
+          userId: user?.id,
+          timestamp: new Date().toISOString()
+        });
+        throw new Error('Task não encontrada. Verifique se o ID está correto e se você tem permissão para acessá-la.');
       }
 
       // Convert tasks table data to unified format

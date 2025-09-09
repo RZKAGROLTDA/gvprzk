@@ -385,18 +385,35 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               </>
             )}
             {error && (
-              <div className="text-center space-y-2">
-                <p className="text-red-600 font-medium">Erro: {error}</p>
-                <p className="text-sm text-muted-foreground">
-                  Verifique sua conexão e permissões de acesso
-                </p>
-                <Button 
-                  onClick={onClose} 
-                  variant="outline"
-                  className="mt-4"
-                >
-                  Fechar
-                </Button>
+              <div className="text-center space-y-4">
+                <div className="space-y-2">
+                  <p className="text-red-600 font-medium">Erro: {error}</p>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    {error.includes('permissão') ? (
+                      <p>Você não tem acesso a esta task. Verifique com seu supervisor.</p>
+                    ) : error.includes('não encontrada') ? (
+                      <p>Esta task pode ter sido excluída ou você não tem acesso a ela.</p>
+                    ) : (
+                      <p>Verifique sua conexão com a internet e tente novamente.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-center">
+                  <Button 
+                    onClick={() => window.location.reload()} 
+                    variant="outline"
+                    size="sm"
+                  >
+                    Recarregar Página
+                  </Button>
+                  <Button 
+                    onClick={onClose} 
+                    variant="outline"
+                    size="sm"
+                  >
+                    Fechar
+                  </Button>
+                </div>
               </div>
             )}
           </div>
