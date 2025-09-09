@@ -37,14 +37,12 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   value,
   onSelect,
   placeholder = "Selecione uma opção...",
-  searchPlaceholder = "Buscar...",
   emptyMessage = "Nenhuma opção encontrada.",
   className,
   disabled = false,
 }) => {
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState(value || "")
-  const [hasFocused, setHasFocused] = React.useState(false)
 
   React.useEffect(() => {
     setInputValue(value || "")
@@ -63,28 +61,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     const newValue = e.target.value
     setInputValue(newValue)
     onSelect(newValue)
-    
-    // Abre apenas se já teve foco antes
-    if (hasFocused) {
-      setOpen(true)
-    }
-  }
-
-  const handleInputFocus = () => {
-    if (!hasFocused) {
-      setHasFocused(true)
-      // Pequeno delay apenas na primeira vez
-      setTimeout(() => {
-        if (filteredOptions.length > 0) {
-          setOpen(true)
-        }
-      }, 50)
-    } else {
-      // Nas próximas vezes, abre imediatamente
-      if (filteredOptions.length > 0) {
-        setOpen(true)
-      }
-    }
+    setOpen(true)
   }
 
   const handleSelect = (selectedValue: string) => {
@@ -93,77 +70,44 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     setOpen(false)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setOpen(false)
-    }
-    if (e.key === 'ArrowDown' && !open && hasFocused) {
-      setOpen(true)
-    }
-  }
-
-  const handleToggle = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    if (!hasFocused) {
-      setHasFocused(true)
-    }
-    
-    setOpen(!open)
-  }
-
-  // Fecha o popover quando clica fora
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen)
-  }
-
   return (
-    <div className="relative">
-      <Popover open={open} onOpenChange={handleOpenChange}>
-        <PopoverTrigger asChild>
-          <div className="relative">
-            <Input
-              value={inputValue}
-              onChange={handleInputChange}
-              onFocus={handleInputFocus}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              className={cn("pr-10", className)}
-              disabled={disabled}
-            />
-            <button
-              type="button"
-              onClick={handleToggle}
-              className="absolute right-3 top-1/2 -translate-y-1/2 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-              tabIndex={-1}
-            >
-              <ChevronsUpDown className="h-4 w-4" />
-            </button>
-          </div>
-        </PopoverTrigger>
-        <PopoverContent 
-          className="w-full p-0 z-50 bg-popover border shadow-md" 
-          align="start"
-          side="bottom"
-          sideOffset={2}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          <Command className="bg-popover">
-            <CommandList className="max-h-60 overflow-y-auto">
-              <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
-              </CommandEmpty>
-              {filteredOptions.length > 0 && (
-                <CommandGroup>
-                  {filteredOptions.map((option) => (
-                    <CommandItem
-                      key={option.value}
-                      value={option.value}
-                      onSelect={() => handleSelect(option.value)}
-                      className="flex items-center justify-between cursor-pointer"
-                    >
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className="relative">
+          <Input
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={() => setOpen(true)}
+            placeholder={placeholder}
+            className={cn("pr-10", className)}
+            disabled={disabled}
+          />
+          <ChevronsUpDown 
+            className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 opacity-50 pointer-events-none" 
+          />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent 
+        className="w-full p-0 z-50" 
+        align="start"
+        side="bottom"
+        sideOffset={4}
+      >
+        <Command>
+          <CommandList className="max-h-60">
+            <CommandEmpty className="py-6 text-center text-sm">
+              {emptyMessage}
+            </CommandEmpty>
+            {filteredOptions.length > 0 && (
+              <CommandGroup>
+                {filteredOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.value}
+                    onSelect={() => handleSelect(option.value)}
+                    className="cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between w-full">
                       <div className="flex flex-col">
                         <span>{option.label}</span>
                         {option.category && (
@@ -174,18 +118,18 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                       </div>
                       <Check
                         className={cn(
-                          "ml-auto h-4 w-4",
+                          "ml-2 h-4 w-4",
                           inputValue === option.value ? "opacity-100" : "opacity-0"
                         )}
                       />
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
