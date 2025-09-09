@@ -154,7 +154,7 @@ export const useOpportunityManager = () => {
           correctStatusUpdate = 'Venda Total';
         }
 
-        const valorVendaFechada = correctStatusUpdate === 'Venda Total' ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0);
+        const valorVendaFechada = isVendaTotalUpdate ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0);
         
         console.log('🔥 ANTES DA ATUALIZAÇÃO - Dados que serão salvos:', {
           opportunityId: existingOpportunity.id,
