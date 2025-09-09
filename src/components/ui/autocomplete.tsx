@@ -6,7 +6,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
@@ -54,7 +53,12 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     const newValue = e.target.value
     setInputValue(newValue)
     onSelect(newValue)
-    setOpen(newValue.length > 0) // Abre o popover quando há texto
+    // Só abre se há texto ou se está vazio (para mostrar todas as opções)
+    setOpen(true)
+  }
+
+  const handleInputFocus = () => {
+    setOpen(true)
   }
 
   const handleSelect = (selectedValue: string) => {
@@ -63,10 +67,20 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     setOpen(false)
   }
 
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(inputValue.toLowerCase()) ||
-    (option.category && option.category.toLowerCase().includes(inputValue.toLowerCase()))
-  )
+  const filteredOptions = React.useMemo(() => {
+    if (!inputValue.trim()) return options.slice(0, 10) // Mostra primeiras 10 opções quando vazio
+    
+    return options.filter(option =>
+      option.label.toLowerCase().includes(inputValue.toLowerCase()) ||
+      (option.category && option.category.toLowerCase().includes(inputValue.toLowerCase()))
+    )
+  }, [options, inputValue])
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setOpen(false)
+    }
+  }
 
   return (
     <div className="relative">
@@ -76,18 +90,37 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             <Input
               value={inputValue}
               onChange={handleInputChange}
-              onFocus={() => setOpen(true)}
+              onFocus={handleInputFocus}
+              onKeyDown={handleKeyDown}
               placeholder={placeholder}
               className={cn("pr-10", className)}
               disabled={disabled}
             />
-            <ChevronsUpDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 opacity-50" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setOpen(!open)
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 shrink-0 opacity-50 hover:opacity-100"
+            >
+              <ChevronsUpDown className="h-4 w-4" />
+            </button>
           </div>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
-          <Command>
-            <CommandList>
-              <CommandEmpty>{emptyMessage}</CommandEmpty>
+        <PopoverContent 
+          className="w-full p-0 z-50 bg-background border shadow-lg" 
+          align="start"
+          side="bottom"
+          sideOffset={4}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <Command className="bg-background">
+            <CommandList className="max-h-60 overflow-y-auto">
+              <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </CommandEmpty>
               {filteredOptions.length > 0 && (
                 <CommandGroup>
                   {filteredOptions.map((option) => (
@@ -95,7 +128,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                       key={option.value}
                       value={option.value}
                       onSelect={() => handleSelect(option.value)}
-                      className="flex items-center justify-between"
+                      className="flex items-center justify-between cursor-pointer hover:bg-accent hover:text-accent-foreground"
                     >
                       <div className="flex flex-col">
                         <span>{option.label}</span>
