@@ -46,12 +46,16 @@ export const useSecureTaskData = () => {
           
           console.log(`✅ Ultra-secure task data loaded: ${totalTasks} records, ${protectedCount} with customer data protection`);
           
-          // Log the secure access for monitoring
-          await supabase.rpc('log_customer_contact_access', {
-            access_type: 'ultra_secure_access',
-            customer_count: totalTasks,
-            masked_count: protectedCount
-          });
+          // Only log if user is authenticated to avoid 500 errors
+          try {
+            await supabase.rpc('log_customer_contact_access', {
+              access_type: 'ultra_secure_access',
+              customer_count: totalTasks,
+              masked_count: protectedCount
+            });
+          } catch (logError) {
+            console.warn('Failed to log access (user may not be authenticated):', logError);
+          }
           
           if (protectedCount > 0) {
             console.log(`🔒 Customer contact information fully protected for ${protectedCount} records`);
