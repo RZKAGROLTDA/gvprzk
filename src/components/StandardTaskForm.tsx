@@ -605,14 +605,14 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                             </p>
                           </div>
                           
-                          <div>
-                            <p className="text-sm font-medium">
-                              Total: R$ {(product.qtd_ofertada * product.preco_unit).toLocaleString('pt-BR', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
-                            </p>
-                          </div>
+                           <div>
+                             <p className="text-sm font-medium">
+                               Total: R$ {(product.qtd_vendida * product.preco_unit).toLocaleString('pt-BR', {
+                                 minimumFractionDigits: 2,
+                                 maximumFractionDigits: 2
+                               })}
+                             </p>
+                           </div>
                         </div>
                       </div>
                     </div>
