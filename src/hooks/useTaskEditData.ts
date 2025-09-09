@@ -74,7 +74,7 @@ export const useTaskEditData = (taskId: string | null) => {
 
     console.log('🔍 useTaskEditData: Iniciando carregamento para taskId:', taskId);
     
-    // Verificar autenticação
+    // Verificar autenticação DETALHADAMENTE
     if (!user) {
       console.error('🔍 useTaskEditData: Usuário não autenticado');
       setError('Usuário não autenticado');
@@ -82,18 +82,55 @@ export const useTaskEditData = (taskId: string | null) => {
       return;
     }
     
+    console.log('🔍 useTaskEditData: Usuário autenticado:', {
+      userId: user.id,
+      email: user.email,
+      userObject: user
+    });
+    
     setLoading(true);
     setError(null);
 
     try {
       console.log('🔍 useTaskEditData: Fazendo query SIMPLES para taskId:', taskId);
       
-      // Buscar task com nova abordagem - recriar a conexão
+      // CRÍTICO: Verificar se temos uma sessão ativa no Supabase
+      const { data: session } = await supabase.auth.getSession();
+      console.log('🔍 useTaskEditData: Sessão do Supabase:', {
+        hasSession: !!session.session,
+        userId: session.session?.user?.id,
+        userEmail: session.session?.user?.email
+      });
+      
+      if (!session.session) {
+        console.error('🔍 useTaskEditData: Sem sessão ativa no Supabase');
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+      
+      // Buscar task com query normal mas com logs detalhados
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .select('*')
         .eq('id', taskId)
         .maybeSingle();
+        
+      console.log('🔍 useTaskEditData: Resultado completo da query:', {
+        taskData: taskData ? {
+          id: taskData.id,
+          client: taskData.client,
+          created_by: taskData.created_by,
+          sales_value: taskData.sales_value,
+          filial: taskData.filial
+        } : null,
+        taskError: taskError ? {
+          message: taskError.message,
+          details: taskError.details,
+          hint: taskError.hint,
+          code: taskError.code
+        } : null,
+        taskId,
+        currentUserId: user.id
+      });
         
       console.log('🔍 useTaskEditData: Resultado da query SIMPLES:', {
         taskData: taskData ? {
@@ -439,15 +476,19 @@ export const useTaskEditData = (taskId: string | null) => {
   };
 
   useEffect(() => {
-    // Forçar limpeza do cache quando taskId muda
-    if (taskId) {
+    // Aguardar um tempo para garantir que a autenticação está completamente estabelecida
+    if (taskId && user) {
       setData(null);
       setError(null);
-      setTimeout(() => {
+      
+      // Aguardar um pouco para garantir que a sessão do Supabase está sincronizada
+      const timer = setTimeout(() => {
         fetchTaskData();
-      }, 100); // Pequeno delay para garantir que o cache seja limpo
+      }, 500); // Aumentei o delay para 500ms
+      
+      return () => clearTimeout(timer);
     }
-  }, [taskId]);
+  }, [taskId, user?.id]); // Adicionar user?.id como dependência
 
   return {
     data,
