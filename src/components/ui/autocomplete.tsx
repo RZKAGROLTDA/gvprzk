@@ -44,19 +44,11 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState(value || "")
-  const [isInitialized, setIsInitialized] = React.useState(false)
+  const [hasFocused, setHasFocused] = React.useState(false)
 
   React.useEffect(() => {
     setInputValue(value || "")
   }, [value])
-
-  React.useEffect(() => {
-    // Marca como inicializado após o primeiro render para evitar o "piscar"
-    const timer = setTimeout(() => {
-      setIsInitialized(true)
-    }, 100)
-    return () => clearTimeout(timer)
-  }, [])
 
   const filteredOptions = React.useMemo(() => {
     if (!inputValue.trim()) return options.slice(0, 10)
@@ -72,16 +64,26 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     setInputValue(newValue)
     onSelect(newValue)
     
-    // Só abre se já foi inicializado
-    if (isInitialized) {
+    // Abre apenas se já teve foco antes
+    if (hasFocused) {
       setOpen(true)
     }
   }
 
   const handleInputFocus = () => {
-    // Só abre se já foi inicializado e há opções
-    if (isInitialized && filteredOptions.length > 0) {
-      setOpen(true)
+    if (!hasFocused) {
+      setHasFocused(true)
+      // Pequeno delay apenas na primeira vez
+      setTimeout(() => {
+        if (filteredOptions.length > 0) {
+          setOpen(true)
+        }
+      }, 50)
+    } else {
+      // Nas próximas vezes, abre imediatamente
+      if (filteredOptions.length > 0) {
+        setOpen(true)
+      }
     }
   }
 
@@ -95,19 +97,30 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     if (e.key === 'Escape') {
       setOpen(false)
     }
+    if (e.key === 'ArrowDown' && !open && hasFocused) {
+      setOpen(true)
+    }
   }
 
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (isInitialized) {
-      setOpen(!open)
+    
+    if (!hasFocused) {
+      setHasFocused(true)
     }
+    
+    setOpen(!open)
+  }
+
+  // Fecha o popover quando clica fora
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen)
   }
 
   return (
     <div className="relative">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <div className="relative">
             <Input
@@ -122,20 +135,22 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             <button
               type="button"
               onClick={handleToggle}
-              className="absolute right-3 top-1/2 -translate-y-1/2 shrink-0 opacity-50 hover:opacity-100"
+              className="absolute right-3 top-1/2 -translate-y-1/2 shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+              tabIndex={-1}
             >
               <ChevronsUpDown className="h-4 w-4" />
             </button>
           </div>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-full p-0 z-50 bg-background border shadow-lg" 
+          className="w-full p-0 z-50 bg-popover border shadow-md" 
           align="start"
           side="bottom"
-          sideOffset={4}
+          sideOffset={2}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
         >
-          <Command className="bg-background">
+          <Command className="bg-popover">
             <CommandList className="max-h-60 overflow-y-auto">
               <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
                 {emptyMessage}
@@ -147,7 +162,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                       key={option.value}
                       value={option.value}
                       onSelect={() => handleSelect(option.value)}
-                      className="flex items-center justify-between cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                      className="flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex flex-col">
                         <span>{option.label}</span>
