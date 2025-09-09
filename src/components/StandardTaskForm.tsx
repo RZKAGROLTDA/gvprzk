@@ -185,13 +185,13 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
     e.preventDefault();
     
     // Incluir os valores calculados no formData antes de salvar
-    // E definir status como "closed" para que apareça como Fechado nos relatórios
+    // CORREÇÃO: Preservar o status selecionado pelo usuário, não forçar 'closed'
     const formDataWithValues = {
       ...formData,
       salesValue: valorVenda, // Valor da venda calculado
       prospectValue: valorTotalOportunidade, // Valor total da oportunidade (fixo)
       partialSalesValue: valorVendaParcial, // Valor da venda parcial
-      status: 'closed' // Status definido como fechado para persistir nos relatórios
+      // Status deve permanecer o que foi selecionado pelo usuário (venda_parcial, venda_total, etc.)
     };
     
     onSubmit(formDataWithValues);

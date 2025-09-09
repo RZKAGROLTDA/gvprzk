@@ -9,6 +9,12 @@ interface CreateOpportunityParams {
   salesType: 'ganho' | 'parcial' | 'perdido';
   partialSalesValue?: number;
   salesConfirmed?: boolean;
+  items?: Array<{
+    id: string;
+    qtd_vendida: number;
+    qtd_ofertada: number;
+    preco_unit: number;
+  }>;
 }
 
 /**
@@ -21,9 +27,16 @@ export const useOpportunityManager = () => {
    * Cria ou atualiza uma oportunidade baseada nos dados da task
    */
   const ensureOpportunity = useCallback(async (params: CreateOpportunityParams) => {
-    const { taskId, clientName, filial, salesValue, salesType, partialSalesValue = 0, salesConfirmed = false } = params;
+    const { taskId, clientName, filial, salesValue, salesType, partialSalesValue = 0, salesConfirmed = false, items } = params;
     
-    console.log('🔧 ensureOpportunity chamado com:', { taskId, salesType, salesValue, partialSalesValue });
+    console.log('🔧 ensureOpportunity chamado com:', { 
+      taskId, 
+      salesType, 
+      salesValue, 
+      partialSalesValue,
+      itemsCount: items?.length || 0,
+      items: items?.map(i => ({ id: i.id, qtd_vendida: i.qtd_vendida, qtd_ofertada: i.qtd_ofertada }))
+    });
     
     try {
       console.log('🔍 Buscando oportunidade existente para task:', taskId);
@@ -175,6 +188,34 @@ export const useOpportunityManager = () => {
         if (error) {
           console.error('❌ Erro ao atualizar oportunidade:', error);
           throw error;
+        }
+
+        // NOVO: Atualizar items se fornecidos
+        if (items && items.length > 0) {
+          console.log('🔧 Atualizando items da oportunidade:', items);
+          for (const item of items) {
+            const { error: itemError } = await supabase
+              .from('opportunity_items')
+              .update({
+                qtd_vendida: item.qtd_vendida,
+                qtd_ofertada: item.qtd_ofertada,
+                preco_unit: item.preco_unit,
+                subtotal_vendido: item.qtd_vendida * item.preco_unit,
+                subtotal_ofertado: item.qtd_ofertada * item.preco_unit,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.id);
+              
+            if (itemError) {
+              console.error('❌ Erro ao atualizar item:', itemError);
+            } else {
+              console.log('✅ Item atualizado:', {
+                id: item.id,
+                qtd_vendida: item.qtd_vendida,
+                qtd_ofertada: item.qtd_ofertada
+              });
+            }
+          }
         }
 
         // CRÍTICO: Se é Venda Total, garantir que qtd_vendida = qtd_ofertada nos items

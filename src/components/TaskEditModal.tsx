@@ -269,7 +269,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         phone: formDataToProcess.phone,
         clientcode: formDataToProcess.clientCode,
         priority: formDataToProcess.priority,
-        status: 'closed', // Garantir que o status seja fechado
+        status: 'closed', // Sempre fechado para indicar que não está mais pendente
         // Valores calculados corretos para ambas as tabelas
         salesValue: valorTotalOportunidade,
         prospectValue: valorTotalOriginal,
@@ -339,7 +339,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
           partialSalesValue: valorVendaParcial,
-          salesConfirmed: formDataToProcess.status !== 'prospect'
+          salesConfirmed: formDataToProcess.status !== 'prospect',
+          items: formDataToProcess.products.map(product => ({
+            id: product.id,
+            qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_vendida : 0,
+            qtd_ofertada: product.qtd_ofertada,
+            preco_unit: product.preco_unit
+          }))
         });
         
         console.log('✅ DEPOIS de chamar ensureOpportunity, ID:', opportunityId);
