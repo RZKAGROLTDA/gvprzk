@@ -86,12 +86,29 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
-      // Buscar task na tabela unificada tasks
+      console.log('🔍 useTaskEditData: Fazendo query SIMPLES para taskId:', taskId);
+      
+      // Buscar task com nova abordagem - recriar a conexão
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .select('*')
         .eq('id', taskId)
         .maybeSingle();
+        
+      console.log('🔍 useTaskEditData: Resultado da query SIMPLES:', {
+        taskData: taskData ? {
+          id: taskData.id,
+          client: taskData.client,
+          created_by: taskData.created_by,
+          sales_value: taskData.sales_value
+        } : null,
+        taskError: taskError ? {
+          message: taskError.message,
+          details: taskError.details,
+          hint: taskError.hint,
+          code: taskError.code
+        } : null
+      });
 
       if (taskError) {
         console.error('🔍 useTaskEditData: Erro buscando task:', taskError);
@@ -422,7 +439,14 @@ export const useTaskEditData = (taskId: string | null) => {
   };
 
   useEffect(() => {
-    fetchTaskData();
+    // Forçar limpeza do cache quando taskId muda
+    if (taskId) {
+      setData(null);
+      setError(null);
+      setTimeout(() => {
+        fetchTaskData();
+      }, 100); // Pequeno delay para garantir que o cache seja limpo
+    }
   }, [taskId]);
 
   return {

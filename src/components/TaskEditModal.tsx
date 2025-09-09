@@ -388,11 +388,23 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               <div className="text-center space-y-4">
                 <div className="space-y-2">
                   <p className="text-red-600 font-medium">Erro: {error}</p>
-                  <div className="text-sm text-muted-foreground space-y-1">
+                  <div className="text-sm text-muted-foreground space-y-2">
                     {error.includes('permissão') ? (
-                      <p>Você não tem acesso a esta task. Verifique com seu supervisor.</p>
+                      <div className="bg-yellow-50 p-3 rounded-md border-l-4 border-yellow-400">
+                        <p className="font-medium text-yellow-800">⚠️ Problema de Permissão Detectado</p>
+                        <p className="text-yellow-700 mt-1">
+                          Suas permissões foram atualizadas recentemente. 
+                          <strong> Recarregue a página</strong> para aplicar as novas configurações de acesso.
+                        </p>
+                      </div>
                     ) : error.includes('não encontrada') ? (
-                      <p>Esta task pode ter sido excluída ou você não tem acesso a ela.</p>
+                      <div className="bg-blue-50 p-3 rounded-md border-l-4 border-blue-400">
+                        <p className="font-medium text-blue-800">🔍 Task Não Encontrada</p>
+                        <p className="text-blue-700 mt-1">
+                          O sistema foi atualizado recentemente. 
+                          <strong> Recarregue a página</strong> para ver todas as tasks disponíveis.
+                        </p>
+                      </div>
                     ) : (
                       <p>Verifique sua conexão com a internet e tente novamente.</p>
                     )}
@@ -400,11 +412,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                 </div>
                 <div className="flex gap-2 justify-center">
                   <Button 
-                    onClick={() => window.location.reload()} 
-                    variant="outline"
+                    onClick={() => {
+                      // Forçar reload completo para limpar cache do Supabase
+                      window.location.href = window.location.href;
+                    }} 
+                    variant="default"
                     size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    Recarregar Página
+                    🔄 Recarregar Página (Recomendado)
                   </Button>
                   <Button 
                     onClick={onClose} 
