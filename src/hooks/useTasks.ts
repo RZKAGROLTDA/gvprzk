@@ -299,6 +299,30 @@ export const useTasks = () => {
 
         if (taskError) throw taskError;
 
+        // Auto-criar opportunity se task tem valor de venda
+        if (standardizedTaskData.salesValue && standardizedTaskData.salesValue > 0) {
+          try {
+            // Importar dinamicamente para evitar circular dependency
+            const { useOpportunityManager } = await import('./useOpportunityManager');
+            const { ensureOpportunity } = useOpportunityManager();
+            
+            await ensureOpportunity({
+              taskId: task.id,
+              clientName: standardizedTaskData.client || '',
+              filial: standardizedTaskData.filial || '',
+              salesValue: standardizedTaskData.salesValue,
+              salesType: taskData.salesType || 'ganho',
+              partialSalesValue: taskData.partialSalesValue || 0,
+              salesConfirmed: standardizedTaskData.salesConfirmed || false
+            });
+            
+            console.log('✅ Opportunity criada automaticamente para task:', task.id);
+          } catch (opportunityError) {
+            console.error('❌ Erro ao criar opportunity automaticamente:', opportunityError);
+            // Não falhar a criação da task por causa disso
+          }
+        }
+
         // Criar produtos (checklist)
         if (taskData.checklist && taskData.checklist.length > 0) {
           const products = taskData.checklist.map(product => ({
