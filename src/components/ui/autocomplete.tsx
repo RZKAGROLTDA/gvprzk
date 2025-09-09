@@ -44,21 +44,45 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState(value || "")
+  const [isInitialized, setIsInitialized] = React.useState(false)
 
   React.useEffect(() => {
     setInputValue(value || "")
   }, [value])
 
+  React.useEffect(() => {
+    // Marca como inicializado após o primeiro render para evitar o "piscar"
+    const timer = setTimeout(() => {
+      setIsInitialized(true)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const filteredOptions = React.useMemo(() => {
+    if (!inputValue.trim()) return options.slice(0, 10)
+    
+    return options.filter(option =>
+      option.label.toLowerCase().includes(inputValue.toLowerCase()) ||
+      (option.category && option.category.toLowerCase().includes(inputValue.toLowerCase()))
+    )
+  }, [options, inputValue])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setInputValue(newValue)
     onSelect(newValue)
-    // Só abre se há texto ou se está vazio (para mostrar todas as opções)
-    setOpen(true)
+    
+    // Só abre se já foi inicializado
+    if (isInitialized) {
+      setOpen(true)
+    }
   }
 
   const handleInputFocus = () => {
-    setOpen(true)
+    // Só abre se já foi inicializado e há opções
+    if (isInitialized && filteredOptions.length > 0) {
+      setOpen(true)
+    }
   }
 
   const handleSelect = (selectedValue: string) => {
@@ -67,18 +91,17 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     setOpen(false)
   }
 
-  const filteredOptions = React.useMemo(() => {
-    if (!inputValue.trim()) return options.slice(0, 10) // Mostra primeiras 10 opções quando vazio
-    
-    return options.filter(option =>
-      option.label.toLowerCase().includes(inputValue.toLowerCase()) ||
-      (option.category && option.category.toLowerCase().includes(inputValue.toLowerCase()))
-    )
-  }, [options, inputValue])
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
       setOpen(false)
+    }
+  }
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isInitialized) {
+      setOpen(!open)
     }
   }
 
@@ -98,11 +121,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             />
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setOpen(!open)
-              }}
+              onClick={handleToggle}
               className="absolute right-3 top-1/2 -translate-y-1/2 shrink-0 opacity-50 hover:opacity-100"
             >
               <ChevronsUpDown className="h-4 w-4" />
