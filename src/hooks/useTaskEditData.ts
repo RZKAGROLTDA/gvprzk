@@ -79,16 +79,31 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
-      // Force refresh session to ensure latest auth state
-      await supabase.auth.refreshSession();
+      // CRITICAL: Force complete session refresh to ensure auth.uid() is current
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.error('Erro ao atualizar sessão:', refreshError);
+      }
       
-      const { data: taskData, error: taskError } = await supabase
+      // Wait a moment for session to be fully updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verify current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+      
+      console.log('🔍 Session verified for user:', session.user.id);
+      
+      let { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .select('*')
         .eq('id', taskId)
         .maybeSingle();
 
       if (taskError) {
+        console.error('🔍 TaskEditData - Supabase error:', taskError);
         if (taskError.message?.includes('permission') || taskError.message?.includes('policy')) {
           throw new Error('Você não tem permissão para acessar esta task');
         }
@@ -96,7 +111,33 @@ export const useTaskEditData = (taskId: string | null) => {
       }
 
       if (!taskData) {
-        throw new Error('Task não encontrada. Verifique se o ID está correto e se você tem permissão para acessá-la.');
+        // FALLBACK: Try using the secure function as last resort
+        console.log('🔍 Task not found via direct query, trying secure function...');
+        
+        const { data: secureData, error: secureError } = await supabase.rpc(
+          'get_supervisor_filial_tasks'
+        );
+        
+        if (!secureError && secureData) {
+          const foundTask = secureData.find((task: any) => task.id === taskId);
+          if (foundTask) {
+            console.log('🔍 Task found via secure function!', { taskId, client: foundTask.client });
+            // Convert the secure function result to our expected format
+            const convertedTask = {
+              ...foundTask,
+              task_type: foundTask.task_type,
+              start_date: foundTask.start_date,
+              end_date: foundTask.end_date,
+              // Map all fields properly
+            };
+            // Use the found task data
+            taskData = convertedTask;
+          }
+        }
+        
+        if (!taskData) {
+          throw new Error('Task não encontrada. Verifique se o ID está correto e se você tem permissão para acessá-la.');
+        }
       }
 
       // Convert tasks table data to unified format
