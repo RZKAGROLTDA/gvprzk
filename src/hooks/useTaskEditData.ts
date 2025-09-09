@@ -64,92 +64,22 @@ export const useTaskEditData = (taskId: string | null) => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  console.log('🔍 useTaskEditData: Hook inicializado com:', { taskId, userId: user?.id });
-
   const fetchTaskData = async () => {
-    if (!taskId) {
-      console.log('🔍 useTaskEditData: taskId é nulo, não carregando dados');
+    if (!taskId || !user?.id) {
       return;
     }
-
-    console.log('🔍 useTaskEditData: Iniciando carregamento para taskId:', taskId);
-    
-    // Verificar autenticação DETALHADAMENTE
-    if (!user) {
-      console.error('🔍 useTaskEditData: Usuário não autenticado');
-      setError('Usuário não autenticado');
-      setLoading(false);
-      return;
-    }
-    
-    console.log('🔍 useTaskEditData: Usuário autenticado:', {
-      userId: user.id,
-      email: user.email,
-      userObject: user
-    });
     
     setLoading(true);
     setError(null);
 
     try {
-      console.log('🔍 useTaskEditData: Fazendo query SIMPLES para taskId:', taskId);
-      
-      // CRÍTICO: Verificar se temos uma sessão ativa no Supabase
-      const { data: session } = await supabase.auth.getSession();
-      console.log('🔍 useTaskEditData: Sessão do Supabase:', {
-        hasSession: !!session.session,
-        userId: session.session?.user?.id,
-        userEmail: session.session?.user?.email
-      });
-      
-      if (!session.session) {
-        console.error('🔍 useTaskEditData: Sem sessão ativa no Supabase');
-        throw new Error('Sessão expirada. Faça login novamente.');
-      }
-      
-      // Buscar task com query normal mas com logs detalhados
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .select('*')
         .eq('id', taskId)
         .maybeSingle();
-        
-      console.log('🔍 useTaskEditData: Resultado completo da query:', {
-        taskData: taskData ? {
-          id: taskData.id,
-          client: taskData.client,
-          created_by: taskData.created_by,
-          sales_value: taskData.sales_value,
-          filial: taskData.filial
-        } : null,
-        taskError: taskError ? {
-          message: taskError.message,
-          details: taskError.details,
-          hint: taskError.hint,
-          code: taskError.code
-        } : null,
-        taskId,
-        currentUserId: user.id
-      });
-        
-      console.log('🔍 useTaskEditData: Resultado da query SIMPLES:', {
-        taskData: taskData ? {
-          id: taskData.id,
-          client: taskData.client,
-          created_by: taskData.created_by,
-          sales_value: taskData.sales_value
-        } : null,
-        taskError: taskError ? {
-          message: taskError.message,
-          details: taskError.details,
-          hint: taskError.hint,
-          code: taskError.code
-        } : null
-      });
 
       if (taskError) {
-        console.error('🔍 useTaskEditData: Erro buscando task:', taskError);
-        // Verificar se é erro de permissão
         if (taskError.message?.includes('permission') || taskError.message?.includes('policy')) {
           throw new Error('Você não tem permissão para acessar esta task');
         }
@@ -157,11 +87,6 @@ export const useTaskEditData = (taskId: string | null) => {
       }
 
       if (!taskData) {
-        console.error('🔍 useTaskEditData: Task não encontrada no banco:', { 
-          taskId, 
-          userId: user?.id,
-          timestamp: new Date().toISOString()
-        });
         throw new Error('Task não encontrada. Verifique se o ID está correto e se você tem permissão para acessá-la.');
       }
 
@@ -198,13 +123,6 @@ export const useTaskEditData = (taskId: string | null) => {
          partial_sales_value: taskData.partial_sales_value
        };
 
-      console.log('🔍 useTaskEditData: Task encontrada:', { 
-        id: unifiedTaskData.id, 
-        cliente_nome: unifiedTaskData.cliente_nome,
-        vendedor_id: unifiedTaskData.vendedor_id,
-        table: 'tasks'
-      });
-
       // Fetch opportunity data
       const { data: opportunityData, error: opportunityError } = await supabase
         .from('opportunities')
@@ -213,11 +131,6 @@ export const useTaskEditData = (taskId: string | null) => {
         .maybeSingle();
 
       if (opportunityError) throw opportunityError;
-
-      console.log('🔍 useTaskEditData: Opportunity encontrada:', { 
-        opportunity: !!opportunityData, 
-        status: opportunityData?.status 
-      });
 
       // Fetch opportunity items and products
       let itemsData = [];
@@ -235,8 +148,6 @@ export const useTaskEditData = (taskId: string | null) => {
 
       // If no opportunity items, try products table for this task
       if (itemsData.length === 0) {
-        console.log('🔍 useTaskEditData: Tentando buscar produtos da tabela products');
-        
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('*')
@@ -244,18 +155,10 @@ export const useTaskEditData = (taskId: string | null) => {
           .order('name');
 
         if (productsError) {
-          console.error('🔍 useTaskEditData: Erro buscando produtos:', productsError);
+          console.error('Erro buscando produtos:', productsError);
         } else if (productsData && productsData.length > 0) {
           // Convert products to opportunity items format
           itemsData = productsData.map(product => {
-            console.log('🔍 Convertendo produto da tabela products:', {
-              name: product.name,
-              selected: product.selected,
-              quantity: product.quantity,
-              price: product.price
-            });
-            
-            // CRÍTICO: Calcular qtd_ofertada baseado no valor total original da oportunidade
             const preco = product.price || 0;
             let qtdOfertada = 0;
             let qtdVendida = product.selected ? (product.quantity || 0) : 0;
@@ -273,14 +176,6 @@ export const useTaskEditData = (taskId: string | null) => {
               qtdVendida = 0;
             }
             
-            console.log('🔍 Produto convertido:', {
-              produto: product.name,
-              qtdOfertada,
-              qtdVendida,
-              preco,
-              selected: product.selected
-            });
-            
             return {
               id: product.id,
               produto: product.name,
@@ -292,17 +187,8 @@ export const useTaskEditData = (taskId: string | null) => {
               subtotal_vendido: qtdVendida * preco
             };
           });
-          
-          console.log('🔍 useTaskEditData: Produtos convertidos:', { 
-            productsCount: productsData.length,
-            convertedItems: itemsData.length
-          });
         }
       }
-
-      console.log('🔍 useTaskEditData: Items encontrados:', { 
-        items: itemsData?.length || 0 
-      });
 
       const fullData = {
         ...unifiedTaskData,
@@ -310,20 +196,9 @@ export const useTaskEditData = (taskId: string | null) => {
         items: itemsData || []
       };
 
-      console.log('🔍 useTaskEditData: Dados completos carregados:', { 
-        hasTask: !!unifiedTaskData,
-        hasOpportunity: !!opportunityData,
-        itemsCount: itemsData?.length || 0
-      });
-
       setData(fullData);
 
     } catch (err: any) {
-      console.error('🔍 useTaskEditData: Erro ao carregar dados:', {
-        error: err.message,
-        taskId,
-        stack: err.stack
-      });
       setError(err.message);
       toast.error('Erro ao carregar dados da task');
     } finally {
@@ -476,19 +351,12 @@ export const useTaskEditData = (taskId: string | null) => {
   };
 
   useEffect(() => {
-    // Aguardar um tempo para garantir que a autenticação está completamente estabelecida
-    if (taskId && user) {
+    if (taskId && user?.id) {
       setData(null);
       setError(null);
-      
-      // Aguardar um pouco para garantir que a sessão do Supabase está sincronizada
-      const timer = setTimeout(() => {
-        fetchTaskData();
-      }, 500); // Aumentei o delay para 500ms
-      
-      return () => clearTimeout(timer);
+      fetchTaskData();
     }
-  }, [taskId, user?.id]); // Adicionar user?.id como dependência
+  }, [taskId, user?.id]);
 
   return {
     data,
