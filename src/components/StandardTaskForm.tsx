@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, Package, TrendingUp, AlertCircle, Plus } from 'lucide-react';
+import { Autocomplete, AutocompleteOption } from '@/components/ui/autocomplete';
+import { predefinedProducts } from '@/lib/predefinedProducts';
 
 interface OpportunityItem {
   id: string;
@@ -63,6 +65,12 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
   showProductsSection = true,
   title
 }) => {
+  // Converter produtos pré-definidos para opções do autocomplete
+  const productOptions: AutocompleteOption[] = predefinedProducts.map(product => ({
+    value: product.name,
+    label: product.name,
+    category: product.category
+  }));
   // Cálculos dos totais (READ-ONLY)
   // Valor Total da Oportunidade deve ser FIXO baseado no subtotal_ofertado original
   const valorTotalOportunidade = useMemo(() => {
@@ -662,17 +670,20 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm">Nome do Produto</Label>
-                          <Input
+                          <Autocomplete
+                            options={productOptions}
                             value={product.produto}
-                            onChange={(e) => {
+                            onSelect={(selectedValue) => {
                               const updatedProducts = [...formData.products];
-                              updatedProducts[index] = { ...product, produto: e.target.value };
+                              updatedProducts[index] = { ...product, produto: selectedValue };
                               onFormDataChange({
                                 ...formData,
                                 products: updatedProducts
                               });
                             }}
-                            placeholder="Nome do produto/serviço"
+                            placeholder="Digite ou selecione um produto"
+                            searchPlaceholder="Buscar produtos..."
+                            emptyMessage="Nenhum produto encontrado. Digite para adicionar um novo."
                           />
                         </div>
                         <div className="space-y-2">
