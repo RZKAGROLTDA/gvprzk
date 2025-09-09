@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Package, TrendingUp, AlertCircle } from 'lucide-react';
+import { Calculator, Package, TrendingUp, AlertCircle, Plus } from 'lucide-react';
 
 interface OpportunityItem {
   id: string;
@@ -437,8 +437,8 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Seção de Produtos e Valores - Padrão Único */}
-      {showProductsSection && formData.products.length > 0 && (
+      {/* Seção de Produtos e Valores - SEMPRE VISÍVEL */}
+      {showProductsSection && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -469,6 +469,7 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {itensIncluidos} de {formData.products.length} itens
+                  {formData.products.length === 0 && " (nenhum produto cadastrado)"}
                 </p>
               </div>
               
@@ -612,40 +613,191 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               </div>
             )}
 
+            {/* Seção para adicionar produtos quando não há produtos */}
+            {formData.products.length === 0 && (
+              <div className="text-center p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  Nenhum produto cadastrado
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Esta tarefa ainda não possui produtos ou serviços cadastrados.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    // Adiciona um produto vazio para começar
+                    const newProduct = {
+                      id: `new-${Date.now()}`,
+                      produto: '',
+                      sku: '',
+                      qtd_ofertada: 1,
+                      qtd_vendida: 0,
+                      preco_unit: 0,
+                      subtotal_ofertado: 0,
+                      subtotal_vendido: 0,
+                      incluir_na_venda_parcial: false
+                    };
+                    onFormDataChange({
+                      ...formData,
+                      products: [newProduct]
+                    });
+                  }}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar Primeiro Produto
+                </Button>
+              </div>
+            )}
+
             {/* Lista Completa de Produtos (Somente Leitura) */}
-            {formData.status !== 'venda_parcial' && (
+            {formData.products.length > 0 && formData.status !== 'venda_parcial' && (
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Produtos Oferecidos:</Label>
                 <div className="space-y-2">
                   {formData.products.map((product, index) => (
-                    <div key={product.id} className="border rounded p-3 bg-muted/20">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                          <p className="font-medium">{product.produto}</p>
-                          <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
+                    <div key={product.id} className="border rounded p-3 bg-muted/20 space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm">Nome do Produto</Label>
+                          <Input
+                            value={product.produto}
+                            onChange={(e) => {
+                              const updatedProducts = [...formData.products];
+                              updatedProducts[index] = { ...product, produto: e.target.value };
+                              onFormDataChange({
+                                ...formData,
+                                products: updatedProducts
+                              });
+                            }}
+                            placeholder="Nome do produto/serviço"
+                          />
                         </div>
-                        <div>
-                          <p className="text-sm">Qtd: {product.qtd_ofertada}</p>
+                        <div className="space-y-2">
+                          <Label className="text-sm">SKU/Código</Label>
+                          <Input
+                            value={product.sku}
+                            onChange={(e) => {
+                              const updatedProducts = [...formData.products];
+                              updatedProducts[index] = { ...product, sku: e.target.value };
+                              onFormDataChange({
+                                ...formData,
+                                products: updatedProducts
+                              });
+                            }}
+                            placeholder="SKU ou código"
+                          />
                         </div>
-                        <div>
-                          <p className="text-sm">
-                            R$ {product.preco_unit.toLocaleString('pt-BR', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm">Quantidade</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={product.qtd_ofertada}
+                            onChange={(e) => {
+                              const newQtd = parseInt(e.target.value) || 1;
+                              const updatedProducts = [...formData.products];
+                              updatedProducts[index] = { 
+                                ...product, 
+                                qtd_ofertada: newQtd,
+                                subtotal_ofertado: newQtd * product.preco_unit
+                              };
+                              onFormDataChange({
+                                ...formData,
+                                products: updatedProducts
+                              });
+                            }}
+                          />
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            Total: R$ {(product.qtd_ofertada * product.preco_unit).toLocaleString('pt-BR', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            })}
-                          </p>
+                        <div className="space-y-2">
+                          <Label className="text-sm">Preço Unitário (R$)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={product.preco_unit}
+                            onChange={(e) => {
+                              const newPrice = parseFloat(e.target.value) || 0;
+                              const updatedProducts = [...formData.products];
+                              updatedProducts[index] = { 
+                                ...product, 
+                                preco_unit: newPrice,
+                                subtotal_ofertado: product.qtd_ofertada * newPrice
+                              };
+                              onFormDataChange({
+                                ...formData,
+                                products: updatedProducts
+                              });
+                            }}
+                          />
                         </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm">Subtotal</Label>
+                          <div className="flex items-center h-10 px-3 py-2 border rounded-md bg-muted">
+                            <span className="text-sm font-medium">
+                              R$ {(product.qtd_ofertada * product.preco_unit).toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Botão para remover produto */}
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const updatedProducts = formData.products.filter((_, i) => i !== index);
+                            onFormDataChange({
+                              ...formData,
+                              products: updatedProducts
+                            });
+                          }}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          Remover
+                        </Button>
                       </div>
                     </div>
                   ))}
+                </div>
+                
+                {/* Botão para adicionar mais produtos */}
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const newProduct = {
+                        id: `new-${Date.now()}`,
+                        produto: '',
+                        sku: '',
+                        qtd_ofertada: 1,
+                        qtd_vendida: 0,
+                        preco_unit: 0,
+                        subtotal_ofertado: 0,
+                        subtotal_vendido: 0,
+                        incluir_na_venda_parcial: false
+                      };
+                      onFormDataChange({
+                        ...formData,
+                        products: [...formData.products, newProduct]
+                      });
+                    }}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Adicionar Produto
+                  </Button>
                 </div>
               </div>
             )}
