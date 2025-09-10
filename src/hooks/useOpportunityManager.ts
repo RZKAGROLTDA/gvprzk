@@ -11,6 +11,7 @@ interface CreateOpportunityParams {
   salesConfirmed?: boolean;
   items?: Array<{
     id: string;
+    produto?: string;
     qtd_vendida: number;
     qtd_ofertada: number;
     preco_unit: number;
@@ -223,6 +224,7 @@ export const useOpportunityManager = () => {
             const { error: itemError } = await supabase
               .from('opportunity_items')
               .update({
+                produto: item.produto, // Preservar o nome do produto
                 qtd_vendida: item.qtd_vendida,
                 qtd_ofertada: item.qtd_ofertada,
                 preco_unit: item.preco_unit,

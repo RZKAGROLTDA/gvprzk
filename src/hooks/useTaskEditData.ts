@@ -342,7 +342,7 @@ export const useTaskEditData = (taskId: string | null) => {
               .upsert({
                 id: item.id,
                 opportunity_id: data.opportunity.id,
-                produto: item.produto || 'Produto',
+                produto: item.produto || 'Produto', // Preservar nome do produto se disponível
                 sku: item.sku || '',
                 qtd_vendida: item.qtd_vendida,
                 qtd_ofertada: item.qtd_ofertada,

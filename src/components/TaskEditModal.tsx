@@ -319,6 +319,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         },
         items: formDataToProcess.products.map(product => ({
           id: product.id,
+          produto: product.produto, // IMPORTANTE: Incluir o nome do produto
           qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_vendida : 0,
           qtd_ofertada: product.qtd_ofertada,
           preco_unit: product.preco_unit
@@ -390,6 +391,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
             
             return {
               id: product.id,
+              produto: product.produto, // IMPORTANTE: Incluir o nome do produto
               qtd_vendida: qtdVendida,
               qtd_ofertada: product.qtd_ofertada,
               preco_unit: product.preco_unit
