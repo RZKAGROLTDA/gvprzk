@@ -35,6 +35,7 @@ export interface TaskEditData {
   // Sales data
   sales_confirmed?: boolean;
   sales_type?: string;
+  sales_value?: number;
   partial_sales_value?: number;
   
   // Opportunity data
@@ -177,6 +178,7 @@ export const useTaskEditData = (taskId: string | null) => {
          // Sales data
          sales_confirmed: taskData.sales_confirmed,
          sales_type: taskData.sales_type,
+         sales_value: taskData.sales_value,
          partial_sales_value: taskData.partial_sales_value
        };
 

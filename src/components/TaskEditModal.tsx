@@ -187,8 +187,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       familyProduct: taskData.familyProduct || '',
       equipmentQuantity: taskData.equipmentQuantity || 0,
       propertyHectares: taskData.propertyHectares || 0,
-      // Usar valor_total_oportunidade como fallback quando não há produtos
-      fallbackTotalValue: taskData.opportunity?.valor_total_oportunidade || 0,
+      // Usar sales_value da tabela tasks como fallback quando não há produtos
+      fallbackTotalValue: taskData.sales_value || 0,
       // CRÍTICO: Adicionar valores calculados para que apareçam na interface
       salesValue: taskData.opportunity?.valor_venda_fechada || 0,
       prospectValue: taskData.opportunity?.valor_total_oportunidade || 0,
