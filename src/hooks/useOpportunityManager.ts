@@ -209,8 +209,7 @@ export const useOpportunityManager = () => {
                 qtd_vendida: item.qtd_vendida,
                 qtd_ofertada: item.qtd_ofertada,
                 preco_unit: item.preco_unit,
-                subtotal_vendido: item.qtd_vendida * item.preco_unit,
-                subtotal_ofertado: item.qtd_ofertada * item.preco_unit,
+                // Removido: subtotal_vendido e subtotal_ofertado são colunas geradas
                 updated_at: new Date().toISOString()
               })
               .eq('id', item.id);
@@ -245,7 +244,7 @@ export const useOpportunityManager = () => {
                 .from('opportunity_items')
                 .update({ 
                   qtd_vendida: item.qtd_ofertada,
-                  subtotal_vendido: item.qtd_ofertada * item.preco_unit,
+                  // Removido: subtotal_vendido é coluna gerada
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', item.id);
@@ -331,7 +330,7 @@ export const useOpportunityManager = () => {
                 .from('opportunity_items')
                 .update({ 
                   qtd_vendida: item.qtd_ofertada,
-                  subtotal_vendido: item.qtd_ofertada * item.preco_unit,
+                  // Removido: subtotal_vendido é coluna gerada
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', item.id);
