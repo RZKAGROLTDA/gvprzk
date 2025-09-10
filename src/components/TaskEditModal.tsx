@@ -340,14 +340,27 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
           partialSalesValue: valorVendaParcial,
           salesConfirmed: formDataToProcess.status !== 'prospect',
-          items: formDataToProcess.products.map(product => ({
-            id: product.id,
-            qtd_vendida: formDataToProcess.status === 'venda_total' 
+          items: formDataToProcess.products.map(product => {
+            const qtdVendida = formDataToProcess.status === 'venda_total' 
               ? product.qtd_ofertada  // Para venda total, vendido = ofertado
-              : (product.incluir_na_venda_parcial ? product.qtd_vendida : 0), // Para parcial, usar conforme seleção
-            qtd_ofertada: product.qtd_ofertada,
-            preco_unit: product.preco_unit
-          }))
+              : (product.incluir_na_venda_parcial ? product.qtd_vendida : 0); // Para parcial, usar conforme seleção
+            
+            console.log('🔧 ITEM SENDO ENVIADO:', {
+              id: product.id,
+              status: formDataToProcess.status,
+              qtd_vendida: qtdVendida,
+              qtd_ofertada: product.qtd_ofertada,
+              preco_unit: product.preco_unit,
+              isVendaTotal: formDataToProcess.status === 'venda_total'
+            });
+            
+            return {
+              id: product.id,
+              qtd_vendida: qtdVendida,
+              qtd_ofertada: product.qtd_ofertada,
+              preco_unit: product.preco_unit
+            };
+          })
         });
         
         console.log('🔧 DADOS ENVIADOS PARA ensureOpportunity:', {

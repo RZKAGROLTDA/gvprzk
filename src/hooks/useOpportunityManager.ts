@@ -201,15 +201,31 @@ export const useOpportunityManager = () => {
 
         // NOVO: Atualizar items se fornecidos
         if (items && items.length > 0) {
-          console.log('🔧 Atualizando items da oportunidade:', items);
+          console.log('🔧 PROCESSANDO ITEMS RECEBIDOS:', {
+            itemsCount: items.length,
+            salesType,
+            correctStatusUpdate,
+            items: items.map(i => ({
+              id: i.id,
+              qtd_vendida: i.qtd_vendida,
+              qtd_ofertada: i.qtd_ofertada,
+              preco_unit: i.preco_unit
+            }))
+          });
+
           for (const item of items) {
+            console.log('🔧 ANTES DE ATUALIZAR ITEM:', {
+              id: item.id,
+              qtd_vendida_enviada: item.qtd_vendida,
+              qtd_ofertada: item.qtd_ofertada
+            });
+
             const { error: itemError } = await supabase
               .from('opportunity_items')
               .update({
                 qtd_vendida: item.qtd_vendida,
                 qtd_ofertada: item.qtd_ofertada,
                 preco_unit: item.preco_unit,
-                // Removido: subtotal_vendido e subtotal_ofertado são colunas geradas
                 updated_at: new Date().toISOString()
               })
               .eq('id', item.id);
@@ -217,7 +233,7 @@ export const useOpportunityManager = () => {
             if (itemError) {
               console.error('❌ Erro ao atualizar item:', itemError);
             } else {
-              console.log('✅ Item atualizado:', {
+              console.log('✅ Item atualizado via items array:', {
                 id: item.id,
                 qtd_vendida: item.qtd_vendida,
                 qtd_ofertada: item.qtd_ofertada
@@ -303,26 +319,39 @@ export const useOpportunityManager = () => {
           });
         }
 
-        // Forçar refresh dos dados da oportunidade após atualização
-        console.log('🔄 Forçando refresh dos dados da oportunidade...');
-        
-        // Buscar novamente a oportunidade para garantir sincronização
-        const { data: refreshedOpportunity, error: refreshError } = await supabase
+        // Verificar o valor final após todas as atualizações
+        console.log('🔍 VERIFICANDO VALOR FINAL após atualizações...');
+        const { data: finalOpportunity, error: finalError } = await supabase
           .from('opportunities')
           .select('*')
           .eq('id', existingOpportunity.id)
           .single();
           
-        if (refreshError) {
-          console.error('❌ Erro ao buscar oportunidade atualizada:', refreshError);
+        if (finalError) {
+          console.error('❌ Erro ao buscar oportunidade final:', finalError);
         } else {
-          console.log('✅ Oportunidade refreshed:', {
-            id: refreshedOpportunity.id,
-            status: refreshedOpportunity.status,
-            valor_venda_fechada: refreshedOpportunity.valor_venda_fechada,
-            valor_total_oportunidade: refreshedOpportunity.valor_total_oportunidade
+          console.log('🎯 ESTADO FINAL DA OPORTUNIDADE:', {
+            id: finalOpportunity.id,
+            status: finalOpportunity.status,
+            valor_venda_fechada: finalOpportunity.valor_venda_fechada,
+            valor_total_oportunidade: finalOpportunity.valor_total_oportunidade,
+            updated_at: finalOpportunity.updated_at
           });
         }
+
+        // Verificar também o estado final dos items
+        const { data: finalItems } = await supabase
+          .from('opportunity_items')
+          .select('*')
+          .eq('opportunity_id', existingOpportunity.id);
+          
+        console.log('🎯 ESTADO FINAL DOS ITEMS:', finalItems?.map(item => ({
+          id: item.id,
+          qtd_vendida: item.qtd_vendida,
+          qtd_ofertada: item.qtd_ofertada,
+          subtotal_vendido: item.subtotal_vendido,
+          subtotal_ofertado: item.subtotal_ofertado
+        })));
 
         return existingOpportunity.id;
       } else {
