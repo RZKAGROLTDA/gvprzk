@@ -145,8 +145,12 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         const isPartialSale = currentStatus === 'venda_parcial';
         const isVendaTotal = currentStatus === 'venda_total';
         
+        // Buscar o nome real do produto na tabela products
+        const realProductName = taskData.originalProducts?.find(p => p.id === item.id)?.name || item.produto;
+        
         console.log('🔧 Mapeando item:', { 
-          produto: item.produto, 
+          produto: item.produto,
+          realProductName,
           qtd_ofertada: item.qtd_ofertada, 
           qtd_vendida: item.qtd_vendida,
           status: currentStatus,
@@ -156,7 +160,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         
         return {
           id: item.id,
-          produto: item.produto,
+          produto: realProductName, // Usar o nome real da tabela products
           sku: item.sku,
           qtd_ofertada: item.qtd_ofertada,
           qtd_vendida: item.qtd_vendida,

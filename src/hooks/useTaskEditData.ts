@@ -56,6 +56,13 @@ export interface TaskEditData {
     subtotal_ofertado: number;
     subtotal_vendido: number;
   }>;
+  
+  // Original products for name mapping
+  originalProducts?: Array<{
+    id: string;
+    name: string;
+    category: string;
+  }>;
 }
 
 export const useTaskEditData = (taskId: string | null) => {
@@ -240,10 +247,17 @@ export const useTaskEditData = (taskId: string | null) => {
         }
       }
 
+      // Buscar produtos originais para mapear nomes
+      const { data: originalProducts } = await supabase
+        .from('products')
+        .select('id, name, category')
+        .eq('task_id', taskId);
+
       const fullData = {
         ...unifiedTaskData,
         opportunity: opportunityData,
-        items: itemsData || []
+        items: itemsData || [],
+        originalProducts: originalProducts || []
       };
 
       setData(fullData);
