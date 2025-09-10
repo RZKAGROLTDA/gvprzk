@@ -255,6 +255,32 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         partialSalesValue: valorVendaParcial
       });
 
+      // CRÍTICO: Para venda total, garantir que qtd_vendida = qtd_ofertada ANTES de processar
+      if (formDataToProcess.status === 'venda_total') {
+        console.log('🔧 CORRIGINDO PRODUTOS para venda total');
+        formDataToProcess.products = formDataToProcess.products.map(product => {
+          console.log('🔧 Produto antes da correção:', {
+            id: product.id,
+            qtd_vendida: product.qtd_vendida,
+            qtd_ofertada: product.qtd_ofertada
+          });
+          
+          const produtoCorrigido = {
+            ...product,
+            qtd_vendida: product.qtd_ofertada, // Para venda total: vendido = ofertado
+            incluir_na_venda_parcial: true // Garantir que está incluído
+          };
+          
+          console.log('🔧 Produto após correção:', {
+            id: produtoCorrigido.id,
+            qtd_vendida: produtoCorrigido.qtd_vendida,
+            qtd_ofertada: produtoCorrigido.qtd_ofertada
+          });
+          
+          return produtoCorrigido;
+        });
+      }
+
       // Prepare update data including all task fields and calculated values
       const updatedData = {
         cliente_nome: formDataToProcess.customerName,
