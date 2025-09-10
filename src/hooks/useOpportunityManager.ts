@@ -281,6 +281,27 @@ export const useOpportunityManager = () => {
           });
         }
 
+        // Forçar refresh dos dados da oportunidade após atualização
+        console.log('🔄 Forçando refresh dos dados da oportunidade...');
+        
+        // Buscar novamente a oportunidade para garantir sincronização
+        const { data: refreshedOpportunity, error: refreshError } = await supabase
+          .from('opportunities')
+          .select('*')
+          .eq('id', existingOpportunity.id)
+          .single();
+          
+        if (refreshError) {
+          console.error('❌ Erro ao buscar oportunidade atualizada:', refreshError);
+        } else {
+          console.log('✅ Oportunidade refreshed:', {
+            id: refreshedOpportunity.id,
+            status: refreshedOpportunity.status,
+            valor_venda_fechada: refreshedOpportunity.valor_venda_fechada,
+            valor_total_oportunidade: refreshedOpportunity.valor_total_oportunidade
+          });
+        }
+
         return existingOpportunity.id;
       } else {
         // Criar nova oportunidade
