@@ -342,7 +342,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           salesConfirmed: formDataToProcess.status !== 'prospect',
           items: formDataToProcess.products.map(product => ({
             id: product.id,
-            qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_vendida : 0,
+            qtd_vendida: formDataToProcess.status === 'venda_total' 
+              ? product.qtd_ofertada  // Para venda total, vendido = ofertado
+              : (product.incluir_na_venda_parcial ? product.qtd_vendida : 0), // Para parcial, usar conforme seleção
             qtd_ofertada: product.qtd_ofertada,
             preco_unit: product.preco_unit
           }))
