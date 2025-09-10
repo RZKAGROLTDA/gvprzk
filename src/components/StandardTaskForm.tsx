@@ -49,6 +49,8 @@ interface StandardTaskFormProps {
     familyProduct: string;
     equipmentQuantity: number;
     propertyHectares: number;
+    // Valor de fallback para casos sem items
+    fallbackTotalValue?: number;
   };
   onFormDataChange: (data: any) => void;
   onSubmit: (data: any) => void;
@@ -73,11 +75,19 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
   }));
   // Cálculos dos totais (READ-ONLY)
   // Valor Total da Oportunidade deve ser FIXO baseado no subtotal_ofertado original
+  // Se não houver produtos, usar o valor de fallback (para casos de versões desatualizadas)
   const valorTotalOportunidade = useMemo(() => {
-    return formData.products.reduce((sum, item) => {
+    const valorDosProdutos = formData.products.reduce((sum, item) => {
       return sum + (item.subtotal_ofertado || 0);
     }, 0);
-  }, [formData.products]);
+    
+    // Se não há produtos mas há valor de fallback, usar o fallback
+    if (valorDosProdutos === 0 && formData.fallbackTotalValue) {
+      return formData.fallbackTotalValue;
+    }
+    
+    return valorDosProdutos;
+  }, [formData.products, formData.fallbackTotalValue]);
 
   const valorVendaParcial = useMemo(() => {
     return formData.products
