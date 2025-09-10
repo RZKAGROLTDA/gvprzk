@@ -309,6 +309,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         opportunity: updatedData.opportunity
       });
 
+      console.log('🔍 DEBUG CONDIÇÃO ensureOpportunity:', {
+        valorTotalOportunidade,
+        isValorMaiorQueZero: valorTotalOportunidade > 0,
+        formDataStatus: formDataToProcess.status,
+        isNotProspect: formDataToProcess.status !== 'prospect',
+        deveExecutarEnsureOpportunity: valorTotalOportunidade > 0 || formDataToProcess.status !== 'prospect'
+      });
+
       // CRÍTICO: Garantir que a oportunidade seja criada/atualizada usando o manager
       if (valorTotalOportunidade > 0 || formDataToProcess.status !== 'prospect') {
         console.log('🔧 CHAMANDO ensureOpportunity com:', {
