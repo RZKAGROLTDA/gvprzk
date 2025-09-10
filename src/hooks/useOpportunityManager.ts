@@ -181,7 +181,7 @@ export const useOpportunityManager = () => {
           cliente_nome: clientName,
           filial: filial,
           status: correctStatusUpdate,
-          valor_venda_fechada: valorVendaFechada,
+          // CRÍTICO: Não atualizar valor_venda_fechada aqui - será calculado pelo trigger
           data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         };
@@ -238,22 +238,45 @@ export const useOpportunityManager = () => {
             .eq('opportunity_id', existingOpportunity.id);
             
           if (currentItems && currentItems.length > 0) {
-            // Atualizar cada item individualmente
+            // Atualizar cada item individualmente - qtd_vendida = qtd_ofertada para venda total
             for (const item of currentItems) {
               const { error: itemError } = await supabase
                 .from('opportunity_items')
                 .update({ 
-                  qtd_vendida: item.qtd_ofertada,
-                  // Removido: subtotal_vendido é coluna gerada
+                  qtd_vendida: item.qtd_ofertada, // CRÍTICO: Para venda total, vendido = ofertado
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', item.id);
                 
               if (itemError) {
                 console.error('❌ Erro ao atualizar item:', itemError);
+              } else {
+                console.log('✅ Item atualizado para Venda Total:', {
+                  id: item.id,
+                  qtd_vendida: item.qtd_ofertada,
+                  qtd_ofertada: item.qtd_ofertada
+                });
               }
             }
             console.log('✅ Items atualizados para Venda Total');
+          }
+        } else if (correctStatusUpdate === 'Venda Parcial') {
+          // Para venda parcial, usar os valores de items fornecidos ou manter os existentes
+          console.log('🔧 Atualizando para Venda Parcial');
+          if (items && items.length > 0) {
+            for (const item of items) {
+              const { error: itemError } = await supabase
+                .from('opportunity_items')
+                .update({
+                  qtd_vendida: item.qtd_vendida, // Usar o valor específico fornecido
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', item.id);
+                
+              if (itemError) {
+                console.error('❌ Erro ao atualizar item parcial:', itemError);
+              }
+            }
           }
         }
         
@@ -329,8 +352,7 @@ export const useOpportunityManager = () => {
               const { error: itemError } = await supabase
                 .from('opportunity_items')
                 .update({ 
-                  qtd_vendida: item.qtd_ofertada,
-                  // Removido: subtotal_vendido é coluna gerada
+                  qtd_vendida: item.qtd_ofertada, // CRÍTICO: Para venda total, vendido = ofertado
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', item.id);
