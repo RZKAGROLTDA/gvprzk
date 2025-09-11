@@ -89,6 +89,14 @@ export const useOpportunityManager = () => {
       const isVendaTotal = salesType === 'total';
       const isProspect = salesType === 'prospect';
       
+      console.log('🔥 ENSURE OPPORTUNITY - Status Logic:', {
+        salesType,
+        isVendaPerdida,
+        isPartialSale,
+        isVendaTotal,
+        isProspect
+      });
+      
       let correctStatus = 'Prospect';
       if (isVendaPerdida) {
         correctStatus = 'Venda Perdida';
@@ -140,6 +148,14 @@ export const useOpportunityManager = () => {
         const isPartialSaleUpdate = salesType === 'parcial';
         const isVendaTotalUpdate = salesType === 'total';
         const isProspectUpdate = salesType === 'prospect';
+        
+        console.log('🔥 UPDATE OPPORTUNITY - Status Logic:', {
+          salesType,
+          isVendaPerdidaUpdate,
+          isPartialSaleUpdate,
+          isVendaTotalUpdate,
+          isProspectUpdate
+        });
         
         let correctStatusUpdate = 'Prospect';
         if (isVendaPerdidaUpdate) {

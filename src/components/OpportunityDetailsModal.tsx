@@ -212,17 +212,26 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       // IMPORTANTE: Zerar partial_sales_value para prospect e perdido
       const shouldZeroPartialValue = selectedStatus === 'prospect' || selectedStatus === 'perdido';
       
-      const {
-        data: taskUpdateResult,
-        error: taskError
-      } = await supabase.from('tasks').update({
+      const taskUpdateData = {
         sales_confirmed: salesConfirmed,
         sales_type: selectedStatus,
         status: taskStatus,
         is_prospect: isProspect,
         partial_sales_value: shouldZeroPartialValue ? 0 : (selectedStatus === 'parcial' ? partialValue : null),
         updated_at: new Date().toISOString()
-      }).eq('id', task.id).select().single();
+      };
+      
+      console.log('🔥 ATUALIZANDO TASK NO BANCO:', {
+        taskId: task.id,
+        updateData: taskUpdateData,
+        selectedStatus,
+        shouldZeroPartialValue
+      });
+      
+      const {
+        data: taskUpdateResult,
+        error: taskError
+      } = await supabase.from('tasks').update(taskUpdateData).eq('id', task.id).select().single();
       if (taskError) {
         throw taskError;
       }
@@ -271,6 +280,15 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       // NOVO: Atualizar a oportunidade também
       const totalSalesValue = getSalesValueAsNumber(task.salesValue);
       const shouldZeroSalesValue = selectedStatus === 'prospect' || selectedStatus === 'perdido';
+      
+      console.log('🔥 ANTES ENSURE OPPORTUNITY:', {
+        taskId: task.id,
+        selectedStatus,
+        shouldZeroSalesValue,
+        salesConfirmed,
+        totalSalesValue,
+        partialValue
+      });
       
       await ensureOpportunity({
         taskId: task.id,
