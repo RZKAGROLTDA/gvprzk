@@ -28,7 +28,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   onTaskUpdated
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
+  const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'total' | 'perdido' | 'parcial'>('prospect');
   const [selectedItems, setSelectedItems] = useState<{
     [key: string]: boolean;
   }>({});
@@ -163,7 +163,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
       // Mapear o status selecionado para os valores corretos
       switch (selectedStatus) {
-        case 'ganho':
+        case 'total':
           salesConfirmed = true;
           taskStatus = 'completed';
           isProspect = true;
@@ -194,7 +194,6 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           }));
           break;
         case 'prospect':
-          console.log('🔧 OpportunityDetailsModal: Configurando para PROSPECT');
           salesConfirmed = null;
           taskStatus = 'in_progress';
           isProspect = true;
@@ -210,16 +209,18 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       });
 
       // Update task in database with comprehensive status update
-      // IMPORTANTE: sales_value sempre mantém o valor total da oportunidade
+      // IMPORTANTE: Zerar partial_sales_value para prospect e perdido
+      const shouldZeroPartialValue = selectedStatus === 'prospect' || selectedStatus === 'perdido';
+      
       const {
         data: taskUpdateResult,
         error: taskError
       } = await supabase.from('tasks').update({
         sales_confirmed: salesConfirmed,
-        sales_type: selectedStatus === 'prospect' ? 'prospect' : selectedStatus === 'ganho' ? 'ganho' : selectedStatus === 'parcial' ? 'parcial' : selectedStatus === 'perdido' ? 'perdido' : null,
+        sales_type: selectedStatus,
         status: taskStatus,
         is_prospect: isProspect,
-        // sales_value nunca muda - sempre mantém o valor total da oportunidade
+        partial_sales_value: shouldZeroPartialValue ? 0 : (selectedStatus === 'parcial' ? partialValue : null),
         updated_at: new Date().toISOString()
       }).eq('id', task.id).select().single();
       if (taskError) {
@@ -269,13 +270,15 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
       // NOVO: Atualizar a oportunidade também
       const totalSalesValue = getSalesValueAsNumber(task.salesValue);
+      const shouldZeroSalesValue = selectedStatus === 'prospect' || selectedStatus === 'perdido';
+      
       await ensureOpportunity({
         taskId: task.id,
         clientName: task.client,
         filial: task.filial || '',
         salesValue: totalSalesValue,
         salesType: selectedStatus,
-        partialSalesValue: selectedStatus === 'parcial' ? partialValue : 0,
+        partialSalesValue: shouldZeroSalesValue ? 0 : (selectedStatus === 'parcial' ? partialValue : 0),
         salesConfirmed: salesConfirmed,
         items: task.checklist?.map(item => ({
           id: item.id,
@@ -283,7 +286,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           sku: '',
           preco_unit: item.price || 0,
           qtd_ofertada: item.quantity || 0,
-          qtd_vendida: selectedStatus === 'ganho' ? (item.quantity || 0) : 
+          qtd_vendida: selectedStatus === 'total' ? (item.quantity || 0) : 
                       (selectedStatus === 'parcial' && selectedItems[item.id]) ? (itemQuantities[item.id] || 0) : 0
         })) || []
       });
@@ -584,14 +587,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Status da Oportunidade</label>
-                <Select value={selectedStatus} onValueChange={(value: 'prospect' | 'ganho' | 'perdido' | 'parcial') => setSelectedStatus(value)}>
+                <Select value={selectedStatus} onValueChange={(value: 'prospect' | 'total' | 'perdido' | 'parcial') => setSelectedStatus(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="prospect">Prospect</SelectItem>
                     <SelectItem value="parcial">Venda Parcial</SelectItem>
-                    <SelectItem value="ganho">Vendas Total</SelectItem>
+                    <SelectItem value="total">Vendas Total</SelectItem>
                     <SelectItem value="perdido">Venda Perdida</SelectItem>
                   </SelectContent>
                 </Select>

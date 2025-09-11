@@ -311,7 +311,7 @@ export const useTasks = () => {
               clientName: standardizedTaskData.client || '',
               filial: standardizedTaskData.filial || '',
               salesValue: standardizedTaskData.salesValue,
-              salesType: taskData.salesType || 'ganho',
+              salesType: taskData.salesType === 'ganho' ? 'total' : (taskData.salesType || 'total'),
               partialSalesValue: taskData.partialSalesValue || 0,
               salesConfirmed: standardizedTaskData.salesConfirmed || false
             });

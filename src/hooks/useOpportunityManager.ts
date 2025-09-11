@@ -6,7 +6,7 @@ interface CreateOpportunityParams {
   clientName: string;
   filial: string;
   salesValue: number;
-  salesType: 'ganho' | 'parcial' | 'perdido' | 'prospect';
+  salesType: 'total' | 'parcial' | 'perdido' | 'prospect';
   partialSalesValue?: number;
   salesConfirmed?: boolean;
   items?: Array<{
@@ -85,22 +85,19 @@ export const useOpportunityManager = () => {
 
       // CRÍTICO: Determinar status correto baseado no salesType
       const isVendaPerdida = salesType === 'perdido';
-      // Para venda parcial: salesType parcial (não importa a relação de valores)
       const isPartialSale = salesType === 'parcial';
-      // Para venda total: salesType ganho
-      const isVendaTotal = salesType === 'ganho';
-      
-      // CORREÇÃO: Também verificar se o status da opportunity existente já é "Venda Total"
-      const isVendaTotalExistente = existingOpportunity?.status === 'Venda Total';
-      const finalIsVendaTotal = isVendaTotal || isVendaTotalExistente;
+      const isVendaTotal = salesType === 'total';
+      const isProspect = salesType === 'prospect';
       
       let correctStatus = 'Prospect';
       if (isVendaPerdida) {
         correctStatus = 'Venda Perdida';
       } else if (isPartialSale) {
         correctStatus = 'Venda Parcial';
-      } else if (finalIsVendaTotal) {
+      } else if (isVendaTotal) {
         correctStatus = 'Venda Total';
+      } else if (isProspect) {
+        correctStatus = 'Prospect';
       }
 
       console.log('🔧 ensureOpportunity: Determinando status correto:', {
@@ -122,16 +119,15 @@ export const useOpportunityManager = () => {
         filial: filial,
         status: correctStatus, // CORRETO: usar status baseado nos valores
         valor_total_oportunidade: salesValue, // CORREÇÃO: sempre usar salesValue como valor total da oportunidade
-        valor_venda_fechada: finalIsVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0),
+        valor_venda_fechada: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0),
         data_criacao: new Date().toISOString(),
-        data_fechamento: (finalIsVendaTotal || isPartialSale) ? new Date().toISOString() : null
+        data_fechamento: (isVendaTotal || isPartialSale) ? new Date().toISOString() : null
       };
 
       console.log('🔧 opportunityData preparado:', {
         ...opportunityData,
         calculatedValues: {
           isVendaTotal,
-          finalIsVendaTotal,
           isPartialSale,
           valorVendaFechada: opportunityData.valor_venda_fechada
         }
@@ -141,10 +137,9 @@ export const useOpportunityManager = () => {
         // Atualizar oportunidade existente - NUNCA alterar valor_total_oportunidade
         // CRÍTICO: Usar a mesma lógica de status correto para update
         const isVendaPerdidaUpdate = salesType === 'perdido';
-        // Para venda parcial: salesType parcial (não importa a relação de valores)
         const isPartialSaleUpdate = salesType === 'parcial';
-        // Para venda total: salesType ganho
-        const isVendaTotalUpdate = salesType === 'ganho';
+        const isVendaTotalUpdate = salesType === 'total';
+        const isProspectUpdate = salesType === 'prospect';
         
         let correctStatusUpdate = 'Prospect';
         if (isVendaPerdidaUpdate) {
@@ -153,9 +148,13 @@ export const useOpportunityManager = () => {
           correctStatusUpdate = 'Venda Parcial';
         } else if (isVendaTotalUpdate) {
           correctStatusUpdate = 'Venda Total';
+        } else if (isProspectUpdate) {
+          correctStatusUpdate = 'Prospect';
         }
 
-        const valorVendaFechada = (correctStatusUpdate === 'Venda Total') ? salesValue : (isPartialSaleUpdate ? partialSalesValue : 0);
+        // CRÍTICO: Zerar valor para Prospect e Venda Perdida
+        const valorVendaFechada = (correctStatusUpdate === 'Venda Total') ? salesValue : 
+                                  (correctStatusUpdate === 'Venda Parcial') ? partialSalesValue : 0;
         
         console.log('🔥 CALCULANDO VALOR VENDA FECHADA:', {
           correctStatusUpdate,
@@ -182,7 +181,7 @@ export const useOpportunityManager = () => {
           cliente_nome: clientName,
           filial: filial,
           status: correctStatusUpdate,
-          // CRÍTICO: Não atualizar valor_venda_fechada aqui - será calculado pelo trigger
+          valor_venda_fechada: valorVendaFechada, // CRÍTICO: Agora atualizamos diretamente
           data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         };

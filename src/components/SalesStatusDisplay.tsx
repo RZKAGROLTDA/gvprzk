@@ -89,7 +89,7 @@ export const SalesStatusDisplay: React.FC<SalesStatusDisplayProps> = ({
                   Valor Final Realizado
                 </label>
                 <p className={`text-xl font-bold ${
-                  salesStatus === 'ganho' ? 'text-green-600' : 
+                  salesStatus === 'total' ? 'text-green-600' : 
                   salesStatus === 'parcial' ? 'text-yellow-600' : 
                   salesStatus === 'perdido' ? 'text-red-600' : 'text-blue-600'
                 }`}>

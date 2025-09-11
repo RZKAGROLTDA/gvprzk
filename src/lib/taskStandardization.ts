@@ -165,7 +165,7 @@ export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> 
   };
 };
 
-export const mapSalesStatus = (task: Task | null): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
+export const mapSalesStatus = (task: Task | null): 'prospect' | 'total' | 'perdido' | 'parcial' => {
   // Handle null or undefined task
   if (!task) return 'prospect';
   
@@ -175,11 +175,11 @@ export const mapSalesStatus = (task: Task | null): 'prospect' | 'ganho' | 'perdi
   // Se salesConfirmed é undefined ou null, é um prospect em andamento
   if (task.salesConfirmed === undefined || task.salesConfirmed === null) return 'prospect';
   
-  // Se salesConfirmed é true, verificar se é ganho ou parcial
+  // Se salesConfirmed é true, verificar se é total ou parcial
   if (task.salesConfirmed === true) {
     if (task.salesType === 'parcial') return 'parcial';
-    if (task.salesType === 'ganho') return 'ganho';
-    return 'ganho'; // default para compatibilidade
+    if (task.salesType === 'total' || task.salesType === 'ganho') return 'total'; // compatibilidade com "ganho"
+    return 'total'; // default para compatibilidade
   }
   
   // Se salesConfirmed é false, é perdido
@@ -191,15 +191,17 @@ export const mapSalesStatus = (task: Task | null): 'prospect' | 'ganho' | 'perdi
 export const getStatusLabel = (status: string): string => {
   switch (status) {
     case 'prospect': return 'Prospect';
-    case 'ganho': return 'Ganho';
-    case 'perdido': return 'Perdido';
-    case 'parcial': return 'Parcial';
+    case 'total': return 'Venda Total';
+    case 'ganho': return 'Venda Total'; // compatibilidade
+    case 'perdido': return 'Venda Perdida';
+    case 'parcial': return 'Venda Parcial';
     default: return 'Prospect';
   }
 };
 
 export const getStatusColor = (status: string): string => {
   switch (status) {
+    case 'total':
     case 'ganho': return 'bg-green-100 text-green-800';
     case 'perdido': return 'bg-red-100 text-red-800';
     case 'parcial': return 'bg-yellow-100 text-yellow-800';
@@ -293,9 +295,10 @@ export const mapTaskToStandardFields = (task: Task) => {
     valorVenda: safeCurrency(task.salesValue),
     vendaConfirmada: safeValue(task.salesConfirmed === true ? 'Sim' : 
                               task.salesConfirmed === false ? 'Não' : '—'),
-    tipoVenda: safeValue(task.salesType === 'ganho' ? 'Ganho' :
-                        task.salesType === 'perdido' ? 'Perdido' :
-                        task.salesType === 'parcial' ? 'Parcial' : task.salesType),
+    tipoVenda: safeValue(task.salesType === 'total' || task.salesType === 'ganho' ? 'Venda Total' :
+                        task.salesType === 'perdido' ? 'Venda Perdida' :
+                        task.salesType === 'parcial' ? 'Venda Parcial' : 
+                        task.salesType === 'prospect' ? 'Prospect' : task.salesType),
     
     // === INFORMAÇÕES TÉCNICAS ===
     familiaProduto: safeValue(task.familyProduct),
@@ -349,7 +352,7 @@ export const calculateSalesValue = (taskOrTasks: Task | Task[]): number => {
 export const calculateTaskStats = (tasks: Task[]) => {
   const prospects = tasks.filter(t => t.isProspect);
   const completed = tasks.filter(t => t.status === 'completed');
-  const won = tasks.filter(t => t.salesConfirmed === true && t.salesType === 'ganho');
+  const won = tasks.filter(t => t.salesConfirmed === true && (t.salesType === 'total' || t.salesType === 'ganho'));
   
   const totalSalesValue = prospects.reduce((sum, task) => {
     return sum + getSalesValueAsNumber(task.salesValue);
