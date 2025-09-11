@@ -229,10 +229,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       const opportunityStatus = statusMapping[formDataToProcess.status as keyof typeof statusMapping];
 
-      // CRÍTICO: Calcular valores corretos
-      // Para venda parcial: valor total = valor original do prospect, valor parcial = soma dos produtos vendidos
-      // Para venda total: valor total = valor parcial = soma de todos os produtos
-      const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
+        // CRÍTICO: Calcular valores corretos
+        // Para venda parcial: valor total = valor original do prospect, valor parcial = soma dos produtos vendidos
+        // Para venda total: valor total = valor parcial = soma de todos os produtos
+        // Para venda perdida e prospect: valor parcial = 0
+        const valorVendaParcial = formDataToProcess.status === 'venda_perdida' || formDataToProcess.status === 'prospect' 
+          ? 0 
+          : (formDataToProcess.partialSalesValue || 0);
       
       // CRÍTICO: Para determinar valor total correto da oportunidade
       const valorTotalOriginal = taskData?.opportunity?.valor_total_oportunidade || 0;
