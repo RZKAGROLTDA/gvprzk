@@ -240,11 +240,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       // CRÍTICO: Para determinar valor total correto da oportunidade
       const valorTotalOriginal = taskData?.opportunity?.valor_total_oportunidade || 0;
       
-      // CORREÇÃO: O valor total da oportunidade deve ser sempre o valor total dos produtos (salesValue)
-      // Para venda parcial: valor total da oportunidade = salesValue (valor total dos produtos)
-      // Para venda total: valor total da oportunidade = salesValue (valor total dos produtos)
+      // CORREÇÃO: O valor total da oportunidade NUNCA deve ser zerado, apenas preservado
+      // Para prospect e venda perdida: manter valor original da oportunidade
+      // Para vendas: usar valor dos produtos se disponível, senão manter original
       const prospectValue = formDataToProcess.salesValue || 0;
-      const valorTotalOportunidade = prospectValue; // Sempre usar o valor total dos produtos
+      const valorTotalOportunidade = prospectValue > 0 ? prospectValue : valorTotalOriginal;
       
       console.log('🔧 TaskEditModal: Valores para ensureOpportunity:', {
         valorTotalOriginal,
