@@ -315,7 +315,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                    formDataToProcess.status === 'venda_perdida' ? 'perdido' :
                    formDataToProcess.status === 'prospect' ? 'prospect' : null,
-        sales_confirmed: formDataToProcess.status !== 'prospect',
+        sales_confirmed: formDataToProcess.status !== 'prospect' && formDataToProcess.status !== 'venda_perdida',
         opportunity: {
           status: opportunityStatus,
           valor_venda_fechada: formDataToProcess.status === 'venda_total' 
