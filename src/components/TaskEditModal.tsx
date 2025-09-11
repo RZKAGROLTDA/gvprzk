@@ -450,6 +450,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       
       if (success) {
         console.log('✅ SUCESSO: Task atualizada, invalidando cache');
+        toast.success('Status atualizado com sucesso');
         await invalidateAll();
         onTaskUpdate();
         onClose();
