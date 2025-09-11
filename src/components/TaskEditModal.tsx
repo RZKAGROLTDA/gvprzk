@@ -311,7 +311,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         // sales_value: NÃO ATUALIZAR
         partial_sales_value: valorVendaParcial,
         // Sales type based on status
-        sales_type: formDataToProcess.status === 'venda_total' ? 'total' :
+        sales_type: formDataToProcess.status === 'venda_total' ? 'ganho' :
                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                    formDataToProcess.status === 'venda_perdida' ? 'perdido' :
                    formDataToProcess.status === 'prospect' ? 'prospect' : null,
@@ -383,10 +383,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           filial: formDataToProcess.filial,
           formDataStatus: formDataToProcess.status, // DEBUG: verificar o status recebido
           salesValue: valorTotalOportunidade,
-          salesType: formDataToProcess.status === 'venda_total' ? 'total' :
+          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
-                    formDataToProcess.status === 'prospect' ? 'prospect' : 'total',
+                    formDataToProcess.status === 'prospect' ? 'prospect' : 'ganho',
           partialSalesValue: valorVendaParcial
         });
         
@@ -402,10 +402,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
           salesValue: valorTotalOportunidade,
-          salesType: formDataToProcess.status === 'venda_total' ? 'total' :
-                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
-                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
-                    formDataToProcess.status === 'prospect' ? 'prospect' : 'total',
+          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
+                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
+                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
+                     formDataToProcess.status === 'prospect' ? 'prospect' : 'ganho',
           partialSalesValue: valorVendaParcial,
           salesConfirmed: formDataToProcess.status !== 'prospect',
           items: formDataToProcess.products.map(product => {

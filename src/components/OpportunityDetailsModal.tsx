@@ -28,7 +28,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   onTaskUpdated
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'total' | 'perdido' | 'parcial'>('prospect');
+  const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
   const [selectedItems, setSelectedItems] = useState<{
     [key: string]: boolean;
   }>({});
@@ -194,7 +194,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
       // Mapear o status selecionado para os valores corretos
       switch (selectedStatus) {
-        case 'total':
+        case 'ganho':
           salesConfirmed = true;
           taskStatus = 'completed';
           isProspect = true;
@@ -341,7 +341,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           sku: '',
           preco_unit: item.price || 0,
           qtd_ofertada: item.quantity || 0,
-          qtd_vendida: selectedStatus === 'total' ? (item.quantity || 0) : 
+          qtd_vendida: selectedStatus === 'ganho' ? (item.quantity || 0) : 
                       (selectedStatus === 'parcial' && selectedItems[item.id]) ? (itemQuantities[item.id] || 0) : 0
         })) || []
       });
@@ -642,7 +642,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Status da Oportunidade</label>
-                <Select value={selectedStatus} onValueChange={(value: 'prospect' | 'total' | 'perdido' | 'parcial') => {
+                <Select value={selectedStatus} onValueChange={(value: 'prospect' | 'ganho' | 'perdido' | 'parcial') => {
                   console.log('🚨 STATUS MUDOU NO SELECT:', {
                     from: selectedStatus,
                     to: value,
@@ -656,7 +656,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
                   <SelectContent>
                     <SelectItem value="prospect">Prospect</SelectItem>
                     <SelectItem value="parcial">Venda Parcial</SelectItem>
-                    <SelectItem value="total">Vendas Total</SelectItem>
+                    <SelectItem value="ganho">Vendas Total</SelectItem>
                     <SelectItem value="perdido">Venda Perdida</SelectItem>
                   </SelectContent>
                 </Select>

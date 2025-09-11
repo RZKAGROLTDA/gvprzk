@@ -165,7 +165,7 @@ export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> 
   };
 };
 
-export const mapSalesStatus = (task: Task | null): 'prospect' | 'total' | 'perdido' | 'parcial' => {
+export const mapSalesStatus = (task: Task | null): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
   // Handle null or undefined task
   if (!task) return 'prospect';
   
@@ -178,8 +178,8 @@ export const mapSalesStatus = (task: Task | null): 'prospect' | 'total' | 'perdi
   // Se salesConfirmed é true, verificar se é total ou parcial
   if (task.salesConfirmed === true) {
     if (task.salesType === 'parcial') return 'parcial';
-    if (task.salesType === 'total') return 'total';
-    return 'total'; // default para vendas confirmadas
+    if (task.salesType === 'ganho') return 'ganho';
+    return 'ganho'; // default para vendas confirmadas
   }
   
   // Se salesConfirmed é false, é perdido
@@ -294,7 +294,7 @@ export const mapTaskToStandardFields = (task: Task) => {
     valorVenda: safeCurrency(task.salesValue),
     vendaConfirmada: safeValue(task.salesConfirmed === true ? 'Sim' : 
                               task.salesConfirmed === false ? 'Não' : '—'),
-    tipoVenda: safeValue(task.salesType === 'total' || task.salesType === 'ganho' ? 'Venda Total' :
+    tipoVenda: safeValue(task.salesType === 'ganho' ? 'Venda Total' :
                         task.salesType === 'perdido' ? 'Venda Perdida' :
                         task.salesType === 'parcial' ? 'Venda Parcial' : 
                         task.salesType === 'prospect' ? 'Prospect' : task.salesType),
@@ -351,7 +351,7 @@ export const calculateSalesValue = (taskOrTasks: Task | Task[]): number => {
 export const calculateTaskStats = (tasks: Task[]) => {
   const prospects = tasks.filter(t => t.isProspect);
   const completed = tasks.filter(t => t.status === 'completed');
-  const won = tasks.filter(t => t.salesConfirmed === true && (t.salesType === 'total' || t.salesType === 'ganho'));
+  const won = tasks.filter(t => t.salesConfirmed === true && t.salesType === 'ganho');
   
   const totalSalesValue = prospects.reduce((sum, task) => {
     return sum + getSalesValueAsNumber(task.salesValue);
