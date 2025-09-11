@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTasksOptimized, useTaskDetails } from '@/hooks/useTasksOptimized';
+import { useOpportunityManager } from '@/hooks/useOpportunityManager';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 interface OpportunityDetailsModalProps {
   task: Task | null;
@@ -35,6 +36,10 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     [key: string]: number;
   }>({});
   const [partialValue, setPartialValue] = useState<number>(0);
+  
+  // Add opportunity manager
+  const { ensureOpportunity } = useOpportunityManager();
+  
   const {
     refetch
   } = useTasksOptimized();
@@ -245,6 +250,27 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           }
         }
       }
+
+      // NOVO: Atualizar a oportunidade também
+      const totalSalesValue = getSalesValueAsNumber(task.salesValue);
+      await ensureOpportunity({
+        taskId: task.id,
+        clientName: task.client,
+        filial: task.filial || '',
+        salesValue: totalSalesValue,
+        salesType: selectedStatus,
+        partialSalesValue: selectedStatus === 'parcial' ? partialValue : 0,
+        salesConfirmed: salesConfirmed,
+        items: task.checklist?.map(item => ({
+          id: item.id,
+          produto: item.name,
+          sku: '',
+          preco_unit: item.price || 0,
+          qtd_ofertada: item.quantity || 0,
+          qtd_vendida: selectedStatus === 'ganho' ? (item.quantity || 0) : 
+                      (selectedStatus === 'parcial' && selectedItems[item.id]) ? (itemQuantities[item.id] || 0) : 0
+        })) || []
+      });
 
       // Create updated task object for immediate UI update
       const updatedTask: Task = {

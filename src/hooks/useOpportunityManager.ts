@@ -6,7 +6,7 @@ interface CreateOpportunityParams {
   clientName: string;
   filial: string;
   salesValue: number;
-  salesType: 'ganho' | 'parcial' | 'perdido';
+  salesType: 'ganho' | 'parcial' | 'perdido' | 'prospect';
   partialSalesValue?: number;
   salesConfirmed?: boolean;
   items?: Array<{
