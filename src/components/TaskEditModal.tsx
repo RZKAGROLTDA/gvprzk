@@ -383,10 +383,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           filial: formDataToProcess.filial,
           formDataStatus: formDataToProcess.status, // DEBUG: verificar o status recebido
           salesValue: valorTotalOportunidade,
-          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
+          salesType: formDataToProcess.status === 'venda_total' ? 'total' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
-                    formDataToProcess.status === 'prospect' ? 'prospect' : 'ganho',
+                    formDataToProcess.status === 'prospect' ? 'prospect' : 'total',
           partialSalesValue: valorVendaParcial
         });
         
