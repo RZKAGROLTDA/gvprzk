@@ -147,6 +147,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const handleStatusUpdate = async () => {
     if (!task) return;
     setIsUpdating(true);
+    
+    console.log('🔧 OpportunityDetailsModal: Iniciando atualização de status:', {
+      taskId: task.id,
+      selectedStatus,
+      currentSalesType: task.salesType,
+      currentSalesConfirmed: task.salesConfirmed
+    });
+    
     try {
       let salesConfirmed: boolean | null = null;
       let updatedChecklist = [...(task.checklist || [])];
@@ -186,12 +194,20 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
           }));
           break;
         case 'prospect':
+          console.log('🔧 OpportunityDetailsModal: Configurando para PROSPECT');
           salesConfirmed = null;
           taskStatus = 'in_progress';
           isProspect = true;
           // Keep current selection state
           break;
       }
+
+      console.log('🔧 OpportunityDetailsModal: Valores calculados:', {
+        salesConfirmed,
+        taskStatus,
+        isProspect,
+        selectedStatus
+      });
 
       // Update task in database with comprehensive status update
       // IMPORTANTE: sales_value sempre mantém o valor total da oportunidade
