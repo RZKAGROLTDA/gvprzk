@@ -115,6 +115,13 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
   }, [formData.products]);
 
   const handleStatusChange = (newStatus: string) => {
+    console.log('🚨 STATUS MUDOU NO RADIO BUTTON:', {
+      from: formData.status,
+      to: newStatus,
+      valorVenda: newStatus === 'prospect' ? 0 : (newStatus === 'venda_total' ? valorTotalOportunidade : valorVendaParcial),
+      timestamp: new Date().toISOString()
+    });
+    
     onFormDataChange({
       ...formData,
       status: newStatus,

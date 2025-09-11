@@ -311,9 +311,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         // sales_value: NÃO ATUALIZAR
         partial_sales_value: valorVendaParcial,
         // Sales type based on status
-        sales_type: formDataToProcess.status === 'venda_total' ? 'ganho' :
+        sales_type: formDataToProcess.status === 'venda_total' ? 'total' :
                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
-                   formDataToProcess.status === 'venda_perdida' ? 'perdido' : null,
+                   formDataToProcess.status === 'venda_perdida' ? 'perdido' :
+                   formDataToProcess.status === 'prospect' ? 'prospect' : null,
         sales_confirmed: formDataToProcess.status !== 'prospect',
         opportunity: {
           status: opportunityStatus,
@@ -340,8 +341,19 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_type: updatedData.sales_type,
         sales_confirmed: updatedData.sales_confirmed,
         status: updatedData.status,
+        formDataStatus: formDataToProcess.status,
         opportunity: updatedData.opportunity
       });
+
+      // LOG ESPECÍFICO PARA PROSPECT
+      if (formDataToProcess.status === 'prospect') {
+        console.log('🚨 PROSPECT DETECTADO - Valores esperados:', {
+          sales_type: 'prospect',
+          sales_confirmed: false,
+          valor_venda_fechada: 0,
+          partial_sales_value: 0
+        });
+      }
 
       console.log('🔍 DEBUG CONDIÇÃO ensureOpportunity:', {
         valorTotalOportunidade,
