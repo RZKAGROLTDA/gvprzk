@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -106,6 +106,25 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       }
     }
   }, [task, taskWithProducts, loadingProducts]);
+
+  // Auto-save when status changes
+  useEffect(() => {
+    if (selectedStatus && selectedStatus !== mapSalesStatus(task)) {
+      console.log('🚨 STATUS MUDOU - SALVAMENTO AUTOMÁTICO:', {
+        oldStatus: mapSalesStatus(task),
+        newStatus: selectedStatus,
+        taskId: task.id
+      });
+      
+      // Auto-save after a short delay to avoid multiple rapid saves
+      const timeoutId = setTimeout(() => {
+        handleStatusUpdate();
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedStatus]);
+
   const handleItemSelection = (itemId: string, selected: boolean) => {
     const currentTask = taskWithProducts || task;
     if (!currentTask) return;
@@ -623,7 +642,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Status da Oportunidade</label>
-                <Select value={selectedStatus} onValueChange={(value: 'prospect' | 'total' | 'perdido' | 'parcial') => setSelectedStatus(value)}>
+                <Select value={selectedStatus} onValueChange={(value: 'prospect' | 'total' | 'perdido' | 'parcial') => {
+                  console.log('🚨 STATUS MUDOU NO SELECT:', {
+                    from: selectedStatus,
+                    to: value,
+                    timestamp: new Date().toISOString()
+                  });
+                  setSelectedStatus(value);
+                }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
