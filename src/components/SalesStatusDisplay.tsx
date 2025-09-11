@@ -25,18 +25,20 @@ export const SalesStatusDisplay: React.FC<SalesStatusDisplayProps> = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'ganho': return <TrendingUp className="w-5 h-5" />;
+      case 'total': return <TrendingUp className="w-5 h-5" />;
       case 'perdido': return <TrendingDown className="w-5 h-5" />;
       case 'parcial': return <DollarSign className="w-5 h-5" />;
+      case 'prospect': return <Clock className="w-5 h-5" />;
       default: return <Clock className="w-5 h-5" />;
     }
   };
 
   const getStatusDescription = (status: string) => {
     switch (status) {
-      case 'ganho': return 'Vendas Total realizada com sucesso';
+      case 'total': return 'Venda Total realizada com sucesso';
       case 'perdido': return 'Oportunidade não convertida';
-      case 'parcial': return 'Vendas Parcial realizada';
+      case 'parcial': return 'Venda Parcial realizada';
+      case 'prospect': return 'Negociação em andamento';
       default: return 'Negociação em andamento';
     }
   };

@@ -178,8 +178,8 @@ export const mapSalesStatus = (task: Task | null): 'prospect' | 'total' | 'perdi
   // Se salesConfirmed é true, verificar se é total ou parcial
   if (task.salesConfirmed === true) {
     if (task.salesType === 'parcial') return 'parcial';
-    if (task.salesType === 'total' || task.salesType === 'ganho') return 'total'; // compatibilidade com "ganho"
-    return 'total'; // default para compatibilidade
+    if (task.salesType === 'total') return 'total';
+    return 'total'; // default para vendas confirmadas
   }
   
   // Se salesConfirmed é false, é perdido
@@ -192,7 +192,6 @@ export const getStatusLabel = (status: string): string => {
   switch (status) {
     case 'prospect': return 'Prospect';
     case 'total': return 'Venda Total';
-    case 'ganho': return 'Venda Total'; // compatibilidade
     case 'perdido': return 'Venda Perdida';
     case 'parcial': return 'Venda Parcial';
     default: return 'Prospect';
@@ -201,10 +200,10 @@ export const getStatusLabel = (status: string): string => {
 
 export const getStatusColor = (status: string): string => {
   switch (status) {
-    case 'total':
-    case 'ganho': return 'bg-green-100 text-green-800';
+    case 'total': return 'bg-green-100 text-green-800';
     case 'perdido': return 'bg-red-100 text-red-800';
     case 'parcial': return 'bg-yellow-100 text-yellow-800';
+    case 'prospect': return 'bg-blue-100 text-blue-800';
     default: return 'bg-blue-100 text-blue-800';
   }
 };

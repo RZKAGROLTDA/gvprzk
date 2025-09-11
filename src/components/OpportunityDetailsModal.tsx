@@ -152,8 +152,20 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       taskId: task.id,
       selectedStatus,
       currentSalesType: task.salesType,
-      currentSalesConfirmed: task.salesConfirmed
+      currentSalesConfirmed: task.salesConfirmed,
+      isProspectClick: selectedStatus === 'prospect'
     });
+    
+    // LOG ESPECÍFICO PARA PROSPECT
+    if (selectedStatus === 'prospect') {
+      console.log('🟦 PROSPECT SELECIONADO - Verificando lógica:', {
+        selectedStatus,
+        shouldZeroValue: true,
+        nextSalesConfirmed: null,
+        nextTaskStatus: 'in_progress',
+        nextIsProspect: true
+      });
+    }
     
     try {
       let salesConfirmed: boolean | null = null;
@@ -232,6 +244,12 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         data: taskUpdateResult,
         error: taskError
       } = await supabase.from('tasks').update(taskUpdateData).eq('id', task.id).select().single();
+      
+      console.log('✅ TASK ATUALIZADA NO BANCO:', {
+        taskUpdateResult,
+        error: taskError,
+        originalStatus: selectedStatus
+      });
       if (taskError) {
         throw taskError;
       }
