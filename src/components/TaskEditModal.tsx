@@ -385,7 +385,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           salesValue: valorTotalOportunidade,
           salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
-                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
+                    formDataToProcess.status === 'prospect' ? 'prospect' : 'ganho',
           partialSalesValue: valorVendaParcial
         });
         
@@ -403,7 +404,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           salesValue: valorTotalOportunidade,
           salesType: formDataToProcess.status === 'venda_total' ? 'total' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
-                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'total',
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
+                    formDataToProcess.status === 'prospect' ? 'prospect' : 'total',
           partialSalesValue: valorVendaParcial,
           salesConfirmed: formDataToProcess.status !== 'prospect',
           items: formDataToProcess.products.map(product => {
