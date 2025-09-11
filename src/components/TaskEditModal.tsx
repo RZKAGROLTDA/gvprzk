@@ -304,9 +304,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         priority: formDataToProcess.priority,
         status: 'closed', // Sempre fechado para indicar que não está mais pendente
         // Valores calculados corretos para ambas as tabelas
-        salesValue: valorTotalOportunidade,
+        salesValue: formDataToProcess.status === 'prospect' || formDataToProcess.status === 'venda_perdida' ? 0 : valorTotalOportunidade,
         prospectValue: valorTotalOriginal,
-        partialSalesValue: valorVendaParcial,
+        partialSalesValue: formDataToProcess.status === 'prospect' || formDataToProcess.status === 'venda_perdida' ? 0 : valorVendaParcial,
         // CRÍTICO: NÃO incluir sales_value no update - deve preservar valor original
         // sales_value: NÃO ATUALIZAR
         partial_sales_value: valorVendaParcial,
