@@ -318,11 +318,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: formDataToProcess.status !== 'prospect',
         opportunity: {
           status: opportunityStatus,
-          valor_venda_fechada: formDataToProcess.status === 'venda_parcial' 
-            ? valorVendaParcial // Para venda parcial, usar valor parcial
-            : formDataToProcess.status === 'venda_total' 
-              ? valorTotalOportunidade // Para venda total, usar valor total
-              : 0 // Para perdas, 0
+          valor_venda_fechada: formDataToProcess.status === 'venda_total' 
+            ? valorTotalOportunidade // Para venda total, usar valor total
+            : formDataToProcess.status === 'venda_parcial' 
+              ? valorVendaParcial // Para venda parcial, usar valor parcial
+              : 0 // Para prospects e perdas, 0
           // NÃO alterar valor_total_oportunidade - ele preserva o valor original
         },
         items: formDataToProcess.products.map(product => ({
@@ -352,6 +352,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           sales_confirmed: false,
           valor_venda_fechada: 0,
           partial_sales_value: 0
+        });
+      }
+
+      // LOG ESPECÍFICO PARA VENDA PARCIAL
+      if (formDataToProcess.status === 'venda_parcial') {
+        console.log('🚨 VENDA PARCIAL DETECTADA - Valores esperados:', {
+          sales_type: 'parcial',
+          sales_confirmed: true,
+          valor_venda_fechada: valorVendaParcial,
+          partial_sales_value: valorVendaParcial,
+          status: 'closed'
         });
       }
 
