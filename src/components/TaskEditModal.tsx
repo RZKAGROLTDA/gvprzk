@@ -79,6 +79,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           default: return 'prospect';
         }
       }
+      // Se sales_type é 'perdido' mesmo sem sales_confirmed, ainda é venda perdida
+      if (taskData?.sales_type === 'perdido') {
+        return 'venda_perdida';
+      }
       return 'prospect';
     }
     
