@@ -327,8 +327,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               ? valorVendaParcial // Para venda parcial, usar valor parcial
               : formDataToProcess.status === 'venda_perdida' || formDataToProcess.status === 'prospect'
                 ? 0 // Para prospects e venda perdida, SEMPRE 0
-                : 0 // Default para outros casos
-          // valor_total_oportunidade NÃO é alterado - preserva valor original
+                : 0, // Default para outros casos
+          valor_total_oportunidade: valorTotalOriginal // PRESERVAR valor original SEMPRE
         },
         items: formDataToProcess.products.map(product => ({
           id: product.id,
