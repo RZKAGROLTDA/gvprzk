@@ -71,6 +71,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     
     // Se não há opportunity, usar os dados da task
     if (!taskData?.opportunity) {
+      console.log('🔧 getInitialStatus: SEM OPPORTUNITY, usando dados da task');
+      if (taskData?.sales_type === 'perdido') {
+        console.log('🔧 getInitialStatus: SALES_TYPE = perdido, retornando venda_perdida');
+        return 'venda_perdida';
+      }
       if (taskData?.sales_confirmed) {
         switch (taskData?.sales_type) {
           case 'ganho': return 'venda_total';
@@ -78,10 +83,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           case 'perdido': return 'venda_perdida';
           default: return 'prospect';
         }
-      }
-      // Se sales_type é 'perdido' mesmo sem sales_confirmed, ainda é venda perdida
-      if (taskData?.sales_type === 'perdido') {
-        return 'venda_perdida';
       }
       return 'prospect';
     }
