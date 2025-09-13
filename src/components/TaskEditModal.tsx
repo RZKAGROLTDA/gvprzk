@@ -326,11 +326,13 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: formDataToProcess.status !== 'prospect' && formDataToProcess.status !== 'venda_perdida',
         opportunity: {
           status: opportunityStatus,
-          valor_venda_fechada: formDataToProcess.status === 'venda_total' 
-            ? valorTotalOportunidade // Para venda total, usar valor total
-            : formDataToProcess.status === 'venda_parcial' 
-              ? valorVendaParcial // Para venda parcial, usar valor parcial
-              : 0, // Para prospects e venda perdida, SEMPRE 0
+          valor_venda_fechada: (formDataToProcess.status === 'prospect' || formDataToProcess.status === 'venda_perdida') 
+            ? 0 // ZERAR para prospect e venda perdida - EXATAMENTE IGUAL
+            : formDataToProcess.status === 'venda_total' 
+              ? valorTotalOportunidade 
+              : formDataToProcess.status === 'venda_parcial' 
+                ? valorVendaParcial 
+                : 0,
           valor_total_oportunidade: valorTotalOriginal // PRESERVAR valor original SEMPRE
         },
         items: formDataToProcess.products.map(product => ({
