@@ -345,7 +345,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: updatedData.sales_confirmed,
         status: updatedData.status,
         formDataStatus: formDataToProcess.status,
-        opportunity: updatedData.opportunity
+        opportunity: updatedData.opportunity,
+        valorVendaFechada: updatedData.opportunity.valor_venda_fechada,
+        valorTotalOportunidade: updatedData.opportunity.valor_total_oportunidade
       });
 
       // LOG ESPECÍFICO PARA PROSPECT
@@ -358,14 +360,15 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         });
       }
 
-      // LOG ESPECÍFICO PARA VENDA PARCIAL
-      if (formDataToProcess.status === 'venda_parcial') {
-        console.log('🚨 VENDA PARCIAL DETECTADA - Valores esperados:', {
-          sales_type: 'parcial',
-          sales_confirmed: true,
-          valor_venda_fechada: valorVendaParcial,
-          partial_sales_value: valorVendaParcial,
-          status: 'closed'
+      // LOG ESPECÍFICO PARA VENDA PERDIDA
+      if (formDataToProcess.status === 'venda_perdida') {
+        console.log('🚨 VENDA PERDIDA DETECTADA - Valores esperados:', {
+          status: formDataToProcess.status,
+          sales_type: 'perdido',
+          sales_confirmed: false,
+          valor_venda_fechada: 0,
+          valor_total_oportunidade: valorTotalOriginal,
+          partial_sales_value: 0
         });
       }
 
