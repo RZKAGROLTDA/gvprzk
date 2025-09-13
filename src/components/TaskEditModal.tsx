@@ -407,7 +407,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           taskId: taskId,
           salesValue: valorTotalOportunidade,
           salesType: formDataToProcess.status,
-          valorVendaParcial
+          valorVendaParcial,
+          statusDetectado: formDataToProcess.status,
+          isVendaPerdida: formDataToProcess.status === 'venda_perdida',
+          isProspect: formDataToProcess.status === 'prospect'
         });
         
         const opportunityId = await ensureOpportunity({
@@ -420,7 +423,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
                      formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
                      formDataToProcess.status === 'prospect' ? 'prospect' : 'ganho',
           partialSalesValue: valorVendaParcial,
-          salesConfirmed: formDataToProcess.status !== 'prospect',
+          salesConfirmed: formDataToProcess.status !== 'prospect' && formDataToProcess.status !== 'venda_perdida',
           items: formDataToProcess.products.map(product => {
             const qtdVendida = formDataToProcess.status === 'venda_total' 
               ? product.qtd_ofertada  // Para venda total, vendido = ofertado
@@ -432,7 +435,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               qtd_vendida: qtdVendida,
               qtd_ofertada: product.qtd_ofertada,
               preco_unit: product.preco_unit,
-              isVendaTotal: formDataToProcess.status === 'venda_total'
+              isVendaTotal: formDataToProcess.status === 'venda_total',
+              isVendaPerdida: formDataToProcess.status === 'venda_perdida',
+              isProspect: formDataToProcess.status === 'prospect'
             });
             
             return {
@@ -459,6 +464,19 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       }
 
       const success = await updateTaskData(updatedData);
+      
+      console.log('🔧 LOG FINAL - STATUS E DADOS ENVIADOS:', {
+        statusFormData: formDataToProcess.status,
+        salesType: updatedData.sales_type,
+        salesConfirmed: updatedData.sales_confirmed,
+        partialSalesValue: updatedData.partial_sales_value,
+        opportunityData: {
+          status: updatedData.opportunity.status,
+          valor_venda_fechada: updatedData.opportunity.valor_venda_fechada,
+          valor_total_oportunidade: updatedData.opportunity.valor_total_oportunidade
+        }
+      });
+      
       console.log('🔧 RESULTADO updateTaskData:', success);
       
       if (success) {
