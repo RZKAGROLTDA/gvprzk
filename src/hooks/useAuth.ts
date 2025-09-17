@@ -146,6 +146,21 @@ export const useAuthProvider = () => {
 
   const signOut = async () => {
     try {
+      // Enhanced security logging for signout
+      try {
+        await supabase.rpc('secure_log_security_event', {
+          event_type_param: 'user_signout',
+          metadata_param: {
+            session_id: session?.access_token ? 'valid' : 'invalid',
+            explicit_logout: true,
+            timestamp: new Date().toISOString()
+          },
+          risk_score_param: 1
+        });
+      } catch (logError) {
+        console.warn('Failed to log signout event:', logError);
+      }
+      
       await supabase.auth.signOut();
       // Limpar cache local e recarregar
       localStorage.clear();

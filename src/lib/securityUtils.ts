@@ -100,13 +100,22 @@ export const sanitizeCustomerPhone = (phone: string, userRole: string): string =
 
 export const validateSensitiveDataAccess = (userRole: string, dataType: 'customer_email' | 'customer_phone' | 'high_value_sales'): boolean => {
   const allowedRoles: Record<string, string[]> = {
-    'customer_email': ['manager', 'admin', 'supervisor'],
-    'customer_phone': ['manager', 'admin', 'supervisor'],
+    'customer_email': ['manager', 'admin'], // Stricter: removed supervisor
+    'customer_phone': ['manager', 'admin'], // Stricter: removed supervisor  
     'high_value_sales': ['manager', 'admin']
   };
   
   return allowedRoles[dataType]?.includes(userRole) || false;
 };
+
+// Enhanced security thresholds (lowered for better protection)
+export const SECURITY_THRESHOLDS = {
+  HIGH_VALUE_SALES: 10000, // Lowered from 15000
+  BULK_ACCESS_LIMIT: 50,   // Lowered from 100
+  SUSPICIOUS_ACTIVITY_THRESHOLD: 20, // Lowered from 30
+  SESSION_TIMEOUT_MINUTES: 60, // Added session timeout
+  MAX_CONCURRENT_SESSIONS: 3   // Added concurrent session limit
+} as const;
 
 export const logSensitiveAccess = (accessType: string, metadata: Record<string, any> = {}) => {
   // This would typically integrate with your security monitoring system
