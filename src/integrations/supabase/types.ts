@@ -1565,6 +1565,10 @@ export type Database = {
           status: string
         }[]
       }
+      monitor_bulk_client_access: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       monitor_customer_data_access: {
         Args: Record<PropertyKey, never>
         Returns: undefined
