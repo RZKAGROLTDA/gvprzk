@@ -98,11 +98,12 @@ export const sanitizeCustomerPhone = (phone: string, userRole: string): string =
   return '***-***-****';
 };
 
-export const validateSensitiveDataAccess = (userRole: string, dataType: 'customer_email' | 'customer_phone' | 'high_value_sales'): boolean => {
+export const validateSensitiveDataAccess = (userRole: string, dataType: 'customer_email' | 'customer_phone' | 'high_value_sales' | 'client_contact'): boolean => {
   const allowedRoles: Record<string, string[]> = {
-    'customer_email': ['manager', 'admin'], // Stricter: removed supervisor
-    'customer_phone': ['manager', 'admin'], // Stricter: removed supervisor  
-    'high_value_sales': ['manager', 'admin']
+    'customer_email': ['manager'], // Strictest: only managers
+    'customer_phone': ['manager'], // Strictest: only managers  
+    'high_value_sales': ['manager'],
+    'client_contact': ['manager'] // New: client contact data access
   };
   
   return allowedRoles[dataType]?.includes(userRole) || false;
