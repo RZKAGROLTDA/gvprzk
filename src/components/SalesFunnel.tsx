@@ -116,12 +116,18 @@ export const SalesFunnel: React.FC = () => {
     initializeCache();
   }, []);
 
-  // Use optimized task hook
+  // Use optimized task hook with enhanced error handling
   const {
     tasks = [],
     loading,
-    refetch
+    error,
+    refetch,
+    forceRefresh: hookForceRefresh
   } = useTasksOptimized();
+
+  // Enhanced loading state with empty data detection
+  const hasNoData = !loading && tasks.length === 0;
+  const hasError = !!error;
 
   // Fetch opportunities data to get valor_total_oportunidade and valor_venda_fechada
   const {
@@ -449,11 +455,63 @@ export const SalesFunnel: React.FC = () => {
     await refetch();
   }, [queryClient, refetch]);
 
+  // Enhanced loading and error states
   if (loading) {
-    return <div className="flex items-center justify-center p-8">
+    return (
+      <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2">Carregando todos os dados...</span>
-      </div>;
+        <span className="ml-2">Carregando dados do funil...</span>
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-4">
+        <div className="text-red-500">
+          <Database className="h-12 w-12 mx-auto mb-2" />
+          <h3 className="text-lg font-semibold">Erro ao Carregar Dados</h3>
+          <p className="text-sm text-muted-foreground text-center">
+            Não foi possível carregar os dados do funil. Verifique sua conexão e tente novamente.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar Novamente
+          </Button>
+          <Button onClick={() => hookForceRefresh()} variant="default" size="sm">
+            <Database className="h-4 w-4 mr-2" />
+            Forçar Atualização
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasNoData) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-4">
+        <div className="text-muted-foreground">
+          <BarChart3 className="h-12 w-12 mx-auto mb-2" />
+          <h3 className="text-lg font-semibold">Nenhum Dado Encontrado</h3>
+          <p className="text-sm text-center">
+            Não foram encontradas tarefas para exibir no funil de vendas.
+            <br />
+            Verifique suas permissões ou crie uma nova tarefa para começar.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate('/create-task')} variant="default" size="sm">
+            Criar Primeira Tarefa
+          </Button>
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Atualizar
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return <div className="space-y-6">

@@ -1388,7 +1388,7 @@ export type Database = {
           final_km: number
           id: string
           initial_km: number
-          is_customer_data_masked: boolean
+          is_customer_data_protected: boolean
           is_prospect: boolean
           name: string
           observations: string

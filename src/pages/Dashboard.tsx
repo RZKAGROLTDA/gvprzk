@@ -9,6 +9,8 @@ import { EmergencyDataAccess } from '@/components/EmergencyDataAccess';
 import { DatabaseMigrationButton } from '@/components/DatabaseMigrationButton';
 import { SecurityAlertPanel } from '@/components/SecurityAlertPanel';
 import { SecurityConfiguration } from '@/components/SecurityConfiguration';
+import { DashboardDiagnostic } from '@/components/DashboardDiagnostic';
+import { QuickDiagnosticButton } from '@/components/QuickDiagnosticButton';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnel } from '@/components/SalesFunnel';
@@ -80,6 +82,7 @@ const Dashboard: React.FC = () => {
 
         <TabsContent value="emergencia" className="space-y-6">
           <div className="space-y-4">
+            <DashboardDiagnostic />
             <div className="border rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-4">Migração e Correção do Banco de Dados</h3>
               <p className="text-sm text-muted-foreground mb-4">

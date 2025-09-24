@@ -73,13 +73,13 @@ export const useTasksOptimized = (includeDetails = false) => {
     }
   };
 
-  // Query com retry automático e fallback
+  // Query com retry automático e fallback otimizado
   const tasksQuery = useQuery({
     queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
-      // Verificar perfil primeiro (sem criar se não existir para evitar loops)
+      // Verificar perfil primeiro
       try {
         const { data: profile } = await supabase
           .from('profiles')
@@ -96,108 +96,129 @@ export const useTasksOptimized = (includeDetails = false) => {
         return [];
       }
 
-        // Timeout de 15 segundos
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+      // Timeout otimizado de 8 segundos
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
 
+      try {
+        // Carregar cache de filiais
+        await loadFiliaisCache().catch(() => console.log('⚠️ Cache de filiais não carregado'));
+
+        if (!isOnline) {
+          console.log('📴 App offline - usando dados locais');
+          clearTimeout(timeout);
+          return getOfflineTasks();
+        }
+
+        console.log('🔄 Carregando tasks via função segura...');
+        
+        // Usar função segura com fallback melhorado
+        let tasksData, error;
         try {
-          // Carregar cache de filiais
-          await loadFiliaisCache().catch(() => console.log('⚠️ Cache de filiais não carregado'));
-
-          if (!isOnline) {
-            console.log('📴 App offline - usando dados locais');
-            return getOfflineTasks();
-          }
-
-          console.log('🔄 Carregando tasks via função segura...');
+          const result = await supabase
+            .rpc('get_secure_tasks_with_customer_protection')
+            .abortSignal(controller.signal);
+            
+          tasksData = result.data;
+          error = result.error;
+          console.log('✅ Tasks carregadas via função segura:', tasksData?.length || 0);
+        } catch (rpcError: any) {
+          console.log('⚠️ Função segura falhou, tentando fallback...');
           
-          // Use enhanced secure function that protects customer data
-          let tasksData, error;
+          // Tentar função alternativa como fallback
           try {
-            const result = await supabase
-              .rpc('get_secure_tasks_with_customer_protection')
+            const fallbackResult = await supabase
+              .rpc('get_secure_customer_data_enhanced')
               .abortSignal(controller.signal);
               
-            tasksData = result.data;
-            error = result.error;
-            console.log('✅ Tasks carregadas via função segura:', tasksData?.length || 0);
-          } catch (rpcError: any) {
-            console.log('⚠️ Função segura falhou, bloqueando acesso direto por segurança');
+            if (fallbackResult.error) {
+              throw fallbackResult.error;
+            }
             
-            // Log unauthorized access attempt
+            tasksData = fallbackResult.data;
+            error = null;
+            console.log('✅ Fallback bem-sucedido:', tasksData?.length || 0);
+          } catch (fallbackError) {
+            console.error('❌ Fallback também falhou:', fallbackError);
+            // Log de segurança
             try {
               await supabase.rpc('monitor_unauthorized_customer_access');
             } catch (logError) {
               console.error('Failed to log unauthorized access:', logError);
             }
-            
-            // Do NOT fall back to direct table access for security
-            throw new Error('Access to customer data requires secure function. Direct table access blocked for security.');
+            throw new Error('Access to customer data requires secure function. All access methods failed.');
           }
+        }
 
-          clearTimeout(timeout);
+        clearTimeout(timeout);
+        
+        if (error) {
+          console.error('❌ Erro ao carregar dados:', error);
+          // Tentar cache como último recurso
+          const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
+          if (cachedData) {
+            console.log('✅ Usando dados do cache como fallback');
+            return cachedData as Task[];
+          }
+          throw error;
+        }
+
+        if (!tasksData?.length) return [];
+
+        // Se incluir detalhes, carregar products e reminders
+        if (includeDetails) {
+          const taskIds = tasksData.map(task => task.id);
           
-          if (error) {
-            console.error('❌ Erro ao carregar dados:', error);
-            throw error;
-          }
+          const [productsResult, remindersResult] = await Promise.all([
+            supabase
+              .from('products')
+              .select('*')
+              .in('task_id', taskIds),
+            supabase
+              .from('reminders')
+              .select('*')
+              .in('task_id', taskIds)
+          ]);
 
-          if (!tasksData?.length) return [];
+          const productsByTask = productsResult.data?.reduce((acc, product) => {
+            if (!acc[product.task_id]) acc[product.task_id] = [];
+            acc[product.task_id].push(product);
+            return acc;
+          }, {} as Record<string, any[]>) || {};
 
-          // Se incluir detalhes, carregar products e reminders
-          if (includeDetails) {
-            const taskIds = tasksData.map(task => task.id);
-            
-            const [productsResult, remindersResult] = await Promise.all([
-              supabase
-                .from('products')
-                .select('*')
-                .in('task_id', taskIds),
-              supabase
-                .from('reminders')
-                .select('*')
-                .in('task_id', taskIds)
-            ]);
+          const remindersByTask = remindersResult.data?.reduce((acc, reminder) => {
+            if (!acc[reminder.task_id]) acc[reminder.task_id] = [];
+            acc[reminder.task_id].push(reminder);
+            return acc;
+          }, {} as Record<string, any[]>) || {};
 
-            const productsByTask = productsResult.data?.reduce((acc, product) => {
-              if (!acc[product.task_id]) acc[product.task_id] = [];
-              acc[product.task_id].push(product);
-              return acc;
-            }, {} as Record<string, any[]>) || {};
-
-            const remindersByTask = remindersResult.data?.reduce((acc, reminder) => {
-              if (!acc[reminder.task_id]) acc[reminder.task_id] = [];
-              acc[reminder.task_id].push(reminder);
-              return acc;
-            }, {} as Record<string, any[]>) || {};
-
-            // Mapear tasks com dados completos
-            const mappedTasks = tasksData.map(task => {
-              return mapSupabaseTaskToTask({
-                ...task,
-                products: productsByTask[task.id] || [],
-                reminders: remindersByTask[task.id] || []
-              });
-            });
-            
-            return mappedTasks;
-          }
-
-          // Mapear tasks diretamente para máxima performance (sem details)
+          // Mapear tasks com dados completos
           const mappedTasks = tasksData.map(task => {
             return mapSupabaseTaskToTask({
               ...task,
-              products: [], // Carregaremos sob demanda se necessário
-              reminders: [] // Carregaremos sob demanda se necessário
+              products: productsByTask[task.id] || [],
+              reminders: remindersByTask[task.id] || []
             });
           });
           
           return mappedTasks;
+        }
+
+        // Mapear tasks diretamente para máxima performance (sem details)
+        const mappedTasks = tasksData.map(task => {
+          return mapSupabaseTaskToTask({
+            ...task,
+            products: [], // Carregaremos sob demanda se necessário
+            reminders: [] // Carregaremos sob demanda se necessário
+          });
+        });
+        
+        return mappedTasks;
       } catch (error) {
         clearTimeout(timeout);
         console.error('❌ Erro crítico ao carregar tasks:', error);
         
-        // Melhor tratamento de erro - tentar cache local primeiro
+        // Circuit breaker inteligente
         console.log('🔄 Tentando recuperar dados do cache local...');
         const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
         if (cachedData) {
@@ -211,22 +232,26 @@ export const useTasksOptimized = (includeDetails = false) => {
           return getOfflineTasks();
         }
         
-        // Circuit breaker melhorado - só retornar vazio em último caso
-        console.log('⚠️ Circuit breaker ativado - sem dados disponíveis');
-        throw error; // Permitir que React Query tente novamente
+        // Em último caso, retornar array vazio ao invés de erro para melhor UX
+        console.log('⚠️ Circuit breaker ativado - retornando array vazio para melhor UX');
+        return [];
       }
     },
     enabled: !!user,
-    staleTime: 1 * 60 * 1000, // 1 minuto - menor tempo para dados mais frescos
-    refetchOnWindowFocus: true, // Reabilitar para sincronização
+    staleTime: 2 * 60 * 1000, // 2 minutos - reduzido para dados mais frescos
+    refetchOnWindowFocus: false, // Desabilitado para evitar requests desnecessários
     refetchOnMount: true, 
     retry: (failureCount, error) => {
-      // Retry mais inteligente
-      if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
-        return false; // Não retry em erros de auth
+      // Retry mais conservativo
+      if (error?.message?.includes('timeout') || 
+          error?.message?.includes('JWT') || 
+          error?.message?.includes('unauthorized') ||
+          error?.message?.includes('AbortError')) {
+        return false; // Não retry em timeouts ou erros de auth
       }
-      return failureCount < 3; // Até 3 tentativas para outros erros
+      return failureCount < 1; // Apenas 1 retry para outros erros
     },
+    retryDelay: 1500, // 1.5 segundos de delay
     refetchInterval: false,
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
