@@ -173,9 +173,9 @@ export const useTasksOptimized = (includeDetails = false) => {
         return [];
       }
 
-      // Timeout realista para permitir conectividade estável
+      // Timeout mais curto agora que temos queries otimizadas
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
+      const timeout = setTimeout(() => controller.abort(), 8000);
 
       try {
         // Carregar cache de filiais
@@ -194,50 +194,44 @@ export const useTasksOptimized = (includeDetails = false) => {
         let error = null;
         let strategyUsed = 'none';
 
-        // ESTRATÉGIA ÚNICA SIMPLIFICADA
+        // ESTRATÉGIA OTIMIZADA: Nova função ultra-rápida
         try {
-          console.log('🔐 ESTRATÉGIA ÚNICA: Função principal segura');
+          console.log('⚡ QUERY OTIMIZADA: Função ultra-simplificada');
           setDebugInfo(prev => ({ 
             ...prev, 
             functionAttempts: { ...prev.functionAttempts, secure: prev.functionAttempts.secure + 1 }
           }));
           
           const result = await supabase
-            .rpc('get_secure_tasks_with_customer_protection')
+            .rpc('get_tasks_optimized')
             .abortSignal(controller.signal);
             
           if (result.error) throw result.error;
           
           tasksData = result.data;
-          strategyUsed = 'secure_function';
-          console.log('✅ ESTRATÉGIA ÚNICA SUCESSO: Tasks carregadas via função segura:', tasksData?.length || 0);
+          strategyUsed = 'optimized_function';
+          console.log('✅ QUERY OTIMIZADA SUCESSO: Carregamento ultra-rápido:', tasksData?.length || 0);
           
-        } catch (secureError: any) {
-          console.log('❌ ESTRATÉGIA ÚNICA FALHOU:', secureError.message);
+        } catch (optimizedError: any) {
+          console.log('❌ QUERY OTIMIZADA FALHOU:', optimizedError.message);
           
-          // Tentar refresh da sessão e retry
-          console.log('🔄 Tentando refresh da sessão...');
+          // Fallback para função original apenas se necessário
+          console.log('🔄 Fallback para função original...');
           try {
-            const { error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (!refreshError) {
-              console.log('✅ Sessão atualizada, tentando novamente...');
-              const retryResult = await supabase
-                .rpc('get_secure_tasks_with_customer_protection');
-                
-              if (!retryResult.error && retryResult.data) {
-                console.log('✅ RETRY SUCESSO:', retryResult.data.length);
-                tasksData = retryResult.data;
-                strategyUsed = 'secure_function_retry';
-              } else {
-                throw new Error('Retry failed after session refresh');
-              }
+            const fallbackResult = await supabase
+              .rpc('get_secure_tasks_with_customer_protection')
+              .abortSignal(controller.signal);
+              
+            if (!fallbackResult.error && fallbackResult.data) {
+              console.log('✅ FALLBACK SUCESSO:', fallbackResult.data.length);
+              tasksData = fallbackResult.data;
+              strategyUsed = 'fallback_original';
             } else {
-              throw new Error('Session refresh failed');
+              throw new Error('Fallback failed');
             }
-          } catch (retryError) {
-            console.log('❌ Retry também falhou:', retryError.message);
-            error = new Error(`Estratégia principal falhou: ${secureError.message}`);
+          } catch (fallbackError) {
+            console.log('❌ Fallback também falhou:', fallbackError.message);
+            error = new Error(`Todas as estratégias falharam: ${optimizedError.message} | Fallback: ${fallbackError.message}`);
             setDebugInfo(prev => ({ ...prev, lastError: error }));
           }
         }

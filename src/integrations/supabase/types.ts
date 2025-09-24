@@ -1477,6 +1477,38 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_task_details: {
+        Args: { task_id_param: string }
+        Returns: {
+          check_in_location: Json
+          documents: string[]
+          email: string
+          equipment_list: Json
+          observations: string
+          phone: string
+          photos: string[]
+        }[]
+      }
+      get_tasks_optimized: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          client: string
+          created_at: string
+          created_by: string
+          end_date: string
+          filial: string
+          id: string
+          name: string
+          priority: string
+          property: string
+          responsible: string
+          sales_value: number
+          start_date: string
+          status: string
+          task_type: string
+        }[]
+      }
       get_user_directory_with_fallback: {
         Args: Record<PropertyKey, never>
         Returns: {
