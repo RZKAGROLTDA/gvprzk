@@ -173,9 +173,9 @@ export const useTasksOptimized = (includeDetails = false) => {
         return [];
       }
 
-      // Timeout otimizado de 8 segundos
+      // Timeout reduzido para 3 segundos para falha rápida
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+      const timeout = setTimeout(() => controller.abort(), 3000);
 
       try {
         // Carregar cache de filiais
@@ -413,20 +413,10 @@ export const useTasksOptimized = (includeDetails = false) => {
       }
     },
     enabled: !!user,
-    staleTime: 2 * 60 * 1000, // 2 minutos - reduzido para dados mais frescos
-    refetchOnWindowFocus: false, // Desabilitado para evitar requests desnecessários
+    staleTime: 30 * 1000, // 30 segundos - muito reduzido para detectar problemas
+    refetchOnWindowFocus: false, 
     refetchOnMount: true, 
-    retry: (failureCount, error) => {
-      // Retry mais conservativo
-      if (error?.message?.includes('timeout') || 
-          error?.message?.includes('JWT') || 
-          error?.message?.includes('unauthorized') ||
-          error?.message?.includes('AbortError')) {
-        return false; // Não retry em timeouts ou erros de auth
-      }
-      return failureCount < 1; // Apenas 1 retry para outros erros
-    },
-    retryDelay: 1500, // 1.5 segundos de delay
+    retry: false, // Sem retry - falha rápida
     refetchInterval: false,
     meta: {
       errorMessage: 'Erro ao carregar tarefas'

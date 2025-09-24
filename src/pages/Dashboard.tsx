@@ -13,6 +13,7 @@ import { DashboardDiagnostic } from '@/components/DashboardDiagnostic';
 import { QuickDiagnosticButton } from '@/components/QuickDiagnosticButton';
 import { TasksHealthMonitor } from '@/components/TasksHealthMonitor';
 import { SystemRecoveryPanel } from '@/components/SystemRecoveryPanel';
+import { EmergencyDashboard } from '@/components/EmergencyDashboard';
 
 // Componentes otimizados importados diretamente para melhor performance inicial
 import { SalesFunnel } from '@/components/SalesFunnel';
@@ -84,6 +85,7 @@ const Dashboard: React.FC = () => {
 
         <TabsContent value="emergencia" className="space-y-6">
           <div className="space-y-4">
+            <EmergencyDashboard />
             <TasksHealthMonitor />
             <SystemRecoveryPanel />
             <DashboardDiagnostic />
