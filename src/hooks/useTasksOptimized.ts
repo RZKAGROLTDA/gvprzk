@@ -173,9 +173,9 @@ export const useTasksOptimized = (includeDetails = false) => {
         return [];
       }
 
-      // Timeout reduzido para 3 segundos para falha rápida
+      // Timeout realista para permitir conectividade estável
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      const timeout = setTimeout(() => controller.abort(), 15000);
 
       try {
         // Carregar cache de filiais
@@ -194,9 +194,9 @@ export const useTasksOptimized = (includeDetails = false) => {
         let error = null;
         let strategyUsed = 'none';
 
-        // ESTRATÉGIA 1: Função principal segura
+        // ESTRATÉGIA ÚNICA SIMPLIFICADA
         try {
-          console.log('🔐 ESTRATÉGIA 1: Função principal segura');
+          console.log('🔐 ESTRATÉGIA ÚNICA: Função principal segura');
           setDebugInfo(prev => ({ 
             ...prev, 
             functionAttempts: { ...prev.functionAttempts, secure: prev.functionAttempts.secure + 1 }
@@ -210,89 +210,35 @@ export const useTasksOptimized = (includeDetails = false) => {
           
           tasksData = result.data;
           strategyUsed = 'secure_function';
-          console.log('✅ ESTRATÉGIA 1 SUCESSO: Tasks carregadas via função segura:', tasksData?.length || 0);
+          console.log('✅ ESTRATÉGIA ÚNICA SUCESSO: Tasks carregadas via função segura:', tasksData?.length || 0);
           
         } catch (secureError: any) {
-          console.log('❌ ESTRATÉGIA 1 FALHOU:', secureError.message);
+          console.log('❌ ESTRATÉGIA ÚNICA FALHOU:', secureError.message);
           
-          // ESTRATÉGIA 2: Função de fallback
+          // Tentar refresh da sessão e retry
+          console.log('🔄 Tentando refresh da sessão...');
           try {
-            console.log('🔄 ESTRATÉGIA 2: Função de fallback');
-            setDebugInfo(prev => ({ 
-              ...prev, 
-              functionAttempts: { ...prev.functionAttempts, fallback: prev.functionAttempts.fallback + 1 }
-            }));
+            const { error: refreshError } = await supabase.auth.refreshSession();
             
-            const fallbackResult = await supabase
-              .rpc('get_secure_customer_data_enhanced')
-              .abortSignal(controller.signal);
-              
-            if (fallbackResult.error) throw fallbackResult.error;
-            
-            tasksData = fallbackResult.data;
-            strategyUsed = 'fallback_function';
-            console.log('✅ ESTRATÉGIA 2 SUCESSO: Fallback funcionou:', tasksData?.length || 0);
-            
-          } catch (fallbackError) {
-            console.log('❌ ESTRATÉGIA 2 FALHOU:', fallbackError.message);
-            
-            // ESTRATÉGIA 3: Acesso direto (apenas para managers)
-            try {
-              console.log('🔑 ESTRATÉGIA 3: Acesso direto (emergência)');
-              setDebugInfo(prev => ({ 
-                ...prev, 
-                functionAttempts: { ...prev.functionAttempts, direct: prev.functionAttempts.direct + 1 }
-              }));
-              
-              // Verificar se é manager primeiro
-              const { data: managerCheck } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('user_id', user.id)
-                .single();
+            if (!refreshError) {
+              console.log('✅ Sessão atualizada, tentando novamente...');
+              const retryResult = await supabase
+                .rpc('get_secure_tasks_with_customer_protection');
                 
-              if (managerCheck?.role === 'manager') {
-                const directResult = await supabase
-                  .from('tasks')
-                  .select(`
-                    id, name, responsible, client, property, filial,
-                    email, phone, sales_value, start_date, end_date,
-                    status, priority, task_type, observations,
-                    created_at, created_by, updated_at, is_prospect,
-                    sales_confirmed, equipment_quantity, equipment_list,
-                    propertyhectares, initial_km, final_km,
-                    check_in_location, clientcode, sales_type,
-                    start_time, end_time, prospect_notes,
-                    family_product, photos, documents, partial_sales_value
-                  `)
-                  .order('created_at', { ascending: false })
-                  .abortSignal(controller.signal);
-                  
-                if (directResult.error) throw directResult.error;
-                
-                // Transformar dados para formato esperado
-                tasksData = directResult.data?.map(task => ({
-                  ...task,
-                  access_level: 'manager',
-                  is_customer_data_protected: false
-                }));
-                strategyUsed = 'direct_access_manager';
-                console.log('✅ ESTRATÉGIA 3 SUCESSO: Acesso direto para manager:', tasksData?.length || 0);
+              if (!retryResult.error && retryResult.data) {
+                console.log('✅ RETRY SUCESSO:', retryResult.data.length);
+                tasksData = retryResult.data;
+                strategyUsed = 'secure_function_retry';
               } else {
-                throw new Error('Direct access requires manager role');
+                throw new Error('Retry failed after session refresh');
               }
-              
-            } catch (directError) {
-              console.error('❌ ESTRATÉGIA 3 FALHOU:', directError.message);
-              
-              // Todas as estratégias falharam
-              error = new Error(`Todas as estratégias falharam:
-                1. Função segura: ${secureError.message}
-                2. Função fallback: ${fallbackError.message}
-                3. Acesso direto: ${directError.message}`);
-              
-              setDebugInfo(prev => ({ ...prev, lastError: error }));
+            } else {
+              throw new Error('Session refresh failed');
             }
+          } catch (retryError) {
+            console.log('❌ Retry também falhou:', retryError.message);
+            error = new Error(`Estratégia principal falhou: ${secureError.message}`);
+            setDebugInfo(prev => ({ ...prev, lastError: error }));
           }
         }
 
@@ -413,10 +359,11 @@ export const useTasksOptimized = (includeDetails = false) => {
       }
     },
     enabled: !!user,
-    staleTime: 30 * 1000, // 30 segundos - muito reduzido para detectar problemas
+    staleTime: 2 * 60 * 1000, // 2 minutos - cache mais duradouro para reduzir chamadas
     refetchOnWindowFocus: false, 
     refetchOnMount: true, 
-    retry: false, // Sem retry - falha rápida
+    retry: 1, // Um retry simples
+    retryDelay: 5000, // 5 segundos entre retries
     refetchInterval: false,
     meta: {
       errorMessage: 'Erro ao carregar tarefas'

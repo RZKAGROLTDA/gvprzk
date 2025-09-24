@@ -26,9 +26,9 @@ export const useEmergencyData = () => {
     try {
       console.log('🏥 Testando conectividade básica...');
       
-      // Timeout super rápido para detecção de problemas
+      // Timeout moderado para permitir conexão
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 1000);
+      const timeout = setTimeout(() => controller.abort(), 5000);
       
       const { data, error } = await supabase
         .from('profiles')
@@ -77,7 +77,7 @@ export const useEmergencyData = () => {
       console.log('🚨 MODO EMERGÊNCIA: Acesso simplificado');
       
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000);
+      const timeout = setTimeout(() => controller.abort(), 10000);
       
       // Query ultra-simplificada
       const { data, error } = await supabase
