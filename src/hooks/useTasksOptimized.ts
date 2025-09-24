@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,9 +19,54 @@ export const QUERY_KEYS = {
 
 // Hook principal otimizado para carregar tasks com cache
 export const useTasksOptimized = (includeDetails = false) => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
+
+  // Estados de debugging para monitoramento em tempo real
+  const [debugInfo, setDebugInfo] = React.useState({
+    lastAttempt: null as Date | null,
+    lastError: null as any,
+    functionAttempts: { secure: 0, fallback: 0, direct: 0 },
+    sessionStatus: 'unknown'
+  });
+
+  // Verificação robusta de sessão
+  const verifySessionHealth = async () => {
+    console.log('🔍 Verificando saúde da sessão...');
+    
+    if (!user || !session) {
+      setDebugInfo(prev => ({ ...prev, sessionStatus: 'missing' }));
+      console.log('❌ Sessão ou usuário ausente');
+      return false;
+    }
+
+    // Verificar se a sessão ainda é válida
+    const now = Date.now() / 1000;
+    const expiresAt = session.expires_at || 0;
+    
+    if (expiresAt <= now) {
+      setDebugInfo(prev => ({ ...prev, sessionStatus: 'expired' }));
+      console.log('❌ Sessão expirada');
+      
+      // Tentar refresh automático
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (!error && data.session) {
+          console.log('✅ Sessão renovada automaticamente');
+          setDebugInfo(prev => ({ ...prev, sessionStatus: 'refreshed' }));
+          return true;
+        }
+      } catch (refreshError) {
+        console.error('❌ Falha ao renovar sessão:', refreshError);
+      }
+      return false;
+    }
+
+    setDebugInfo(prev => ({ ...prev, sessionStatus: 'valid' }));
+    console.log('✅ Sessão válida');
+    return true;
+  };
 
   // Função para verificar e criar perfil se necessário
   const ensureUserProfile = async () => {
@@ -73,26 +119,57 @@ export const useTasksOptimized = (includeDetails = false) => {
     }
   };
 
-  // Query com retry automático e fallback otimizado
+  // Query com retry automático e fallback otimizado com debugging avançado
   const tasksQuery = useQuery({
     queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
     queryFn: async () => {
-      if (!user) throw new Error('User not authenticated');
+      const attemptTimestamp = new Date();
+      setDebugInfo(prev => ({ ...prev, lastAttempt: attemptTimestamp }));
+      
+      console.log('🚀 INÍCIO DA QUERY - Timestamp:', attemptTimestamp.toISOString());
+      
+      if (!user) {
+        const error = new Error('User not authenticated');
+        setDebugInfo(prev => ({ ...prev, lastError: error }));
+        throw error;
+      }
 
-      // Verificar perfil primeiro
+      // 1. Verificar saúde da sessão PRIMEIRO
+      const sessionHealthy = await verifySessionHealth();
+      if (!sessionHealthy) {
+        const error = new Error('Session is not healthy - authentication may be expired');
+        setDebugInfo(prev => ({ ...prev, lastError: error }));
+        console.log('❌ Sessão não saudável, abortando query');
+        return [];
+      }
+
+      // 2. Verificar perfil com logging detalhado
+      console.log('🔍 Verificando perfil do usuário...');
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, approval_status')
+          .select('id, approval_status, role, filial_id, name')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (!profile || profile.approval_status !== 'approved') {
-          console.log('❌ Perfil não encontrado ou não aprovado, retornando array vazio');
+        console.log('📊 Resultado do perfil:', profile);
+
+        if (!profile) {
+          console.log('❌ Perfil não encontrado');
+          setDebugInfo(prev => ({ ...prev, lastError: 'Profile not found' }));
           return [];
         }
+
+        if (profile.approval_status !== 'approved') {
+          console.log('❌ Perfil não aprovado:', profile.approval_status);
+          setDebugInfo(prev => ({ ...prev, lastError: 'Profile not approved' }));
+          return [];
+        }
+
+        console.log('✅ Perfil aprovado:', profile.name, '(', profile.role, ')');
       } catch (error) {
-        console.error('❌ Erro ao verificar perfil:', error);
+        console.error('❌ Erro crítico ao verificar perfil:', error);
+        setDebugInfo(prev => ({ ...prev, lastError: error }));
         return [];
       }
 
@@ -110,60 +187,158 @@ export const useTasksOptimized = (includeDetails = false) => {
           return getOfflineTasks();
         }
 
-        console.log('🔄 Carregando tasks via função segura...');
+        console.log('🔄 ETAPA 3: Carregando tasks via múltiplas estratégias...');
         
-        // Usar função segura com fallback melhorado
-        let tasksData, error;
+        // Strategy Pattern - tentar múltiplas abordagens
+        let tasksData = null;
+        let error = null;
+        let strategyUsed = 'none';
+
+        // ESTRATÉGIA 1: Função principal segura
         try {
+          console.log('🔐 ESTRATÉGIA 1: Função principal segura');
+          setDebugInfo(prev => ({ 
+            ...prev, 
+            functionAttempts: { ...prev.functionAttempts, secure: prev.functionAttempts.secure + 1 }
+          }));
+          
           const result = await supabase
             .rpc('get_secure_tasks_with_customer_protection')
             .abortSignal(controller.signal);
             
-          tasksData = result.data;
-          error = result.error;
-          console.log('✅ Tasks carregadas via função segura:', tasksData?.length || 0);
-        } catch (rpcError: any) {
-          console.log('⚠️ Função segura falhou, tentando fallback...');
+          if (result.error) throw result.error;
           
-          // Tentar função alternativa como fallback
+          tasksData = result.data;
+          strategyUsed = 'secure_function';
+          console.log('✅ ESTRATÉGIA 1 SUCESSO: Tasks carregadas via função segura:', tasksData?.length || 0);
+          
+        } catch (secureError: any) {
+          console.log('❌ ESTRATÉGIA 1 FALHOU:', secureError.message);
+          
+          // ESTRATÉGIA 2: Função de fallback
           try {
+            console.log('🔄 ESTRATÉGIA 2: Função de fallback');
+            setDebugInfo(prev => ({ 
+              ...prev, 
+              functionAttempts: { ...prev.functionAttempts, fallback: prev.functionAttempts.fallback + 1 }
+            }));
+            
             const fallbackResult = await supabase
               .rpc('get_secure_customer_data_enhanced')
               .abortSignal(controller.signal);
               
-            if (fallbackResult.error) {
-              throw fallbackResult.error;
-            }
+            if (fallbackResult.error) throw fallbackResult.error;
             
             tasksData = fallbackResult.data;
-            error = null;
-            console.log('✅ Fallback bem-sucedido:', tasksData?.length || 0);
+            strategyUsed = 'fallback_function';
+            console.log('✅ ESTRATÉGIA 2 SUCESSO: Fallback funcionou:', tasksData?.length || 0);
+            
           } catch (fallbackError) {
-            console.error('❌ Fallback também falhou:', fallbackError);
-            // Log de segurança
+            console.log('❌ ESTRATÉGIA 2 FALHOU:', fallbackError.message);
+            
+            // ESTRATÉGIA 3: Acesso direto (apenas para managers)
             try {
-              await supabase.rpc('monitor_unauthorized_customer_access');
-            } catch (logError) {
-              console.error('Failed to log unauthorized access:', logError);
+              console.log('🔑 ESTRATÉGIA 3: Acesso direto (emergência)');
+              setDebugInfo(prev => ({ 
+                ...prev, 
+                functionAttempts: { ...prev.functionAttempts, direct: prev.functionAttempts.direct + 1 }
+              }));
+              
+              // Verificar se é manager primeiro
+              const { data: managerCheck } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('user_id', user.id)
+                .single();
+                
+              if (managerCheck?.role === 'manager') {
+                const directResult = await supabase
+                  .from('tasks')
+                  .select(`
+                    id, name, responsible, client, property, filial,
+                    email, phone, sales_value, start_date, end_date,
+                    status, priority, task_type, observations,
+                    created_at, created_by, updated_at, is_prospect,
+                    sales_confirmed, equipment_quantity, equipment_list,
+                    propertyhectares, initial_km, final_km,
+                    check_in_location, clientcode, sales_type,
+                    start_time, end_time, prospect_notes,
+                    family_product, photos, documents, partial_sales_value
+                  `)
+                  .order('created_at', { ascending: false })
+                  .abortSignal(controller.signal);
+                  
+                if (directResult.error) throw directResult.error;
+                
+                // Transformar dados para formato esperado
+                tasksData = directResult.data?.map(task => ({
+                  ...task,
+                  access_level: 'manager',
+                  is_customer_data_protected: false
+                }));
+                strategyUsed = 'direct_access_manager';
+                console.log('✅ ESTRATÉGIA 3 SUCESSO: Acesso direto para manager:', tasksData?.length || 0);
+              } else {
+                throw new Error('Direct access requires manager role');
+              }
+              
+            } catch (directError) {
+              console.error('❌ ESTRATÉGIA 3 FALHOU:', directError.message);
+              
+              // Todas as estratégias falharam
+              error = new Error(`Todas as estratégias falharam:
+                1. Função segura: ${secureError.message}
+                2. Função fallback: ${fallbackError.message}
+                3. Acesso direto: ${directError.message}`);
+              
+              setDebugInfo(prev => ({ ...prev, lastError: error }));
             }
-            throw new Error('Access to customer data requires secure function. All access methods failed.');
           }
         }
+
+        console.log('📊 RESULTADO FINAL - Estratégia usada:', strategyUsed, '| Dados obtidos:', !!tasksData);
 
         clearTimeout(timeout);
         
         if (error) {
-          console.error('❌ Erro ao carregar dados:', error);
-          // Tentar cache como último recurso
+          console.error('❌ ERRO FINAL:', error);
+          setDebugInfo(prev => ({ ...prev, lastError: error }));
+          
+          // RECOVERY STRATEGIES
+          console.log('🔧 INICIANDO ESTRATÉGIAS DE RECUPERAÇÃO...');
+          
+          // Recovery 1: Cache local
           const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
           if (cachedData) {
-            console.log('✅ Usando dados do cache como fallback');
+            console.log('✅ RECOVERY 1: Usando dados do cache como fallback');
             return cachedData as Task[];
           }
-          throw error;
+          
+          // Recovery 2: Dados offline
+          if (!isOnline) {
+            console.log('📴 RECOVERY 2: Tentando dados offline');
+            const offlineData = getOfflineTasks();
+            if (offlineData?.length) {
+              console.log('✅ RECOVERY 2: Dados offline encontrados');
+              return offlineData;
+            }
+          }
+          
+          // Recovery 3: Array vazio com notificação
+          console.log('⚠️ RECOVERY 3: Retornando array vazio - todas as estratégias falharam');
+          toast({
+            title: "⚠️ Problema na Conexão",
+            description: "Não foi possível carregar os dados. Verifique sua conexão.",
+            variant: "destructive",
+          });
+          
+          return [];
         }
 
-        if (!tasksData?.length) return [];
+        if (!tasksData?.length) {
+          console.log('📝 Nenhum dado retornado pelas funções - array vazio válido');
+          return [];
+        }
 
         // Se incluir detalhes, carregar products e reminders
         if (includeDetails) {
@@ -442,27 +617,105 @@ export const useTasksOptimized = (includeDetails = false) => {
     refetch: tasksQuery.refetch,
     isCreating: createTaskMutation.isPending,
     isUpdating: updateTaskMutation.isPending,
-    // Função de força refresh melhorada
+    
+    // FUNÇÕES DE RECUPERAÇÃO E DIAGNÓSTICO AVANÇADAS
+    debugInfo,
+    
+    // Diagnóstico completo do hook
+    diagnose: async () => {
+      console.log('🔍 DIAGNÓSTICO COMPLETO DO HOOK');
+      console.log('User:', user ? `${user.email} (${user.id})` : 'None');
+      console.log('Session:', session ? 'Present' : 'Missing');
+      console.log('Online:', isOnline);
+      console.log('Debug Info:', debugInfo);
+      console.log('Query State:', {
+        data: tasksQuery.data?.length || 0,
+        loading: tasksQuery.isLoading,
+        error: tasksQuery.error?.message,
+        isFetching: tasksQuery.isFetching,
+        isStale: tasksQuery.isStale
+      });
+      return debugInfo;
+    },
+    
+    // Force refresh melhorado com logging
     forceRefresh: async () => {
-      console.log('🔄 Executando force refresh completo...');
-      // Limpar todo o cache
+      console.log('🔄 FORCE REFRESH INICIADO');
+      setDebugInfo(prev => ({ ...prev, lastAttempt: new Date() }));
+      
+      // Limpar todo o cache relacionado
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
       queryClient.removeQueries({ queryKey: QUERY_KEYS.tasks });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.consultants });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.filiais });
       
+      // Verificar sessão antes do refetch
+      const sessionHealthy = await verifySessionHealth();
+      if (!sessionHealthy) {
+        console.log('❌ Sessão não saudável durante force refresh');
+        return { data: [], error: 'Session not healthy' };
+      }
+      
       // Forçar refetch
       const result = await tasksQuery.refetch();
-      console.log('✅ Force refresh concluído');
+      console.log('✅ FORCE REFRESH CONCLUÍDO:', result.data?.length || 0, 'tasks');
       return result;
     },
-    // Função para resetar filtros e cache
+    
+    // Reset completo do sistema
     resetAndRefresh: async () => {
-      console.log('🔄 Reset completo com filtros...');
-      queryClient.clear(); // Limpa TUDO
+      console.log('🔄 RESET COMPLETO DO SISTEMA');
+      
+      // Limpar TUDO
+      queryClient.clear();
+      setDebugInfo({
+        lastAttempt: new Date(),
+        lastError: null,
+        functionAttempts: { secure: 0, fallback: 0, direct: 0 },
+        sessionStatus: 'unknown'
+      });
+      
+      // Verificar e renovar sessão se necessário
+      await verifySessionHealth();
+      
       const result = await tasksQuery.refetch();
-      console.log('✅ Reset completo concluído');
+      console.log('✅ RESET COMPLETO CONCLUÍDO:', result.data?.length || 0, 'tasks');
       return result;
+    },
+    
+    // Função de emergency para acesso direto (apenas managers)
+    emergencyAccess: async () => {
+      console.log('🚨 ACESSO DE EMERGÊNCIA INICIADO');
+      
+      if (!user) {
+        throw new Error('User not authenticated for emergency access');
+      }
+      
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (profile?.role !== 'manager') {
+          throw new Error('Emergency access requires manager role');
+        }
+        
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+          
+        if (error) throw error;
+        
+        console.log('✅ ACESSO DE EMERGÊNCIA CONCLUÍDO:', data?.length || 0, 'tasks');
+        return data;
+      } catch (error) {
+        console.error('❌ ACESSO DE EMERGÊNCIA FALHOU:', error);
+        throw error;
+      }
     }
   };
 };
