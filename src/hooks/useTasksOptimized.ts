@@ -1,4 +1,3 @@
-import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,54 +18,9 @@ export const QUERY_KEYS = {
 
 // Hook principal otimizado para carregar tasks com cache
 export const useTasksOptimized = (includeDetails = false) => {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { isOnline, getOfflineTasks } = useOffline();
   const queryClient = useQueryClient();
-
-  // Estados de debugging para monitoramento em tempo real
-  const [debugInfo, setDebugInfo] = React.useState({
-    lastAttempt: null as Date | null,
-    lastError: null as any,
-    functionAttempts: { secure: 0, fallback: 0, direct: 0 },
-    sessionStatus: 'unknown'
-  });
-
-  // Verificação robusta de sessão
-  const verifySessionHealth = async () => {
-    console.log('🔍 Verificando saúde da sessão...');
-    
-    if (!user || !session) {
-      setDebugInfo(prev => ({ ...prev, sessionStatus: 'missing' }));
-      console.log('❌ Sessão ou usuário ausente');
-      return false;
-    }
-
-    // Verificar se a sessão ainda é válida
-    const now = Date.now() / 1000;
-    const expiresAt = session.expires_at || 0;
-    
-    if (expiresAt <= now) {
-      setDebugInfo(prev => ({ ...prev, sessionStatus: 'expired' }));
-      console.log('❌ Sessão expirada');
-      
-      // Tentar refresh automático
-      try {
-        const { data, error } = await supabase.auth.refreshSession();
-        if (!error && data.session) {
-          console.log('✅ Sessão renovada automaticamente');
-          setDebugInfo(prev => ({ ...prev, sessionStatus: 'refreshed' }));
-          return true;
-        }
-      } catch (refreshError) {
-        console.error('❌ Falha ao renovar sessão:', refreshError);
-      }
-      return false;
-    }
-
-    setDebugInfo(prev => ({ ...prev, sessionStatus: 'valid' }));
-    console.log('✅ Sessão válida');
-    return true;
-  };
 
   // Função para verificar e criar perfil se necessário
   const ensureUserProfile = async () => {
@@ -119,221 +73,131 @@ export const useTasksOptimized = (includeDetails = false) => {
     }
   };
 
-  // Query com retry automático e fallback otimizado com debugging avançado
+  // Query com retry automático e fallback
   const tasksQuery = useQuery({
     queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
     queryFn: async () => {
-      const attemptTimestamp = new Date();
-      setDebugInfo(prev => ({ ...prev, lastAttempt: attemptTimestamp }));
-      
-      console.log('🚀 INÍCIO DA QUERY - Timestamp:', attemptTimestamp.toISOString());
-      
-      if (!user) {
-        const error = new Error('User not authenticated');
-        setDebugInfo(prev => ({ ...prev, lastError: error }));
-        throw error;
-      }
+      if (!user) throw new Error('User not authenticated');
 
-      // 1. Verificar saúde da sessão PRIMEIRO
-      const sessionHealthy = await verifySessionHealth();
-      if (!sessionHealthy) {
-        const error = new Error('Session is not healthy - authentication may be expired');
-        setDebugInfo(prev => ({ ...prev, lastError: error }));
-        console.log('❌ Sessão não saudável, abortando query');
-        return [];
-      }
-
-      // 2. Verificar perfil com logging detalhado
-      console.log('🔍 Verificando perfil do usuário...');
+      // Verificar perfil primeiro (sem criar se não existir para evitar loops)
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, approval_status, role, filial_id, name')
+          .select('id, approval_status')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        console.log('📊 Resultado do perfil:', profile);
-
-        if (!profile) {
-          console.log('❌ Perfil não encontrado');
-          setDebugInfo(prev => ({ ...prev, lastError: 'Profile not found' }));
+        if (!profile || profile.approval_status !== 'approved') {
+          console.log('❌ Perfil não encontrado ou não aprovado, retornando array vazio');
           return [];
         }
-
-        if (profile.approval_status !== 'approved') {
-          console.log('❌ Perfil não aprovado:', profile.approval_status);
-          setDebugInfo(prev => ({ ...prev, lastError: 'Profile not approved' }));
-          return [];
-        }
-
-        console.log('✅ Perfil aprovado:', profile.name, '(', profile.role, ')');
       } catch (error) {
-        console.error('❌ Erro crítico ao verificar perfil:', error);
-        setDebugInfo(prev => ({ ...prev, lastError: error }));
+        console.error('❌ Erro ao verificar perfil:', error);
         return [];
       }
 
-      // Timeout mais curto agora que temos queries otimizadas
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+        // Timeout de 15 segundos
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
 
-      try {
-        // Carregar cache de filiais
-        await loadFiliaisCache().catch(() => console.log('⚠️ Cache de filiais não carregado'));
-
-        if (!isOnline) {
-          console.log('📴 App offline - usando dados locais');
-          clearTimeout(timeout);
-          return getOfflineTasks();
-        }
-
-        console.log('🔄 ETAPA 3: Carregando tasks via múltiplas estratégias...');
-        
-        // Strategy Pattern - tentar múltiplas abordagens
-        let tasksData = null;
-        let error = null;
-        let strategyUsed = 'none';
-
-        // ESTRATÉGIA OTIMIZADA: Nova função ultra-rápida
         try {
-          console.log('⚡ QUERY OTIMIZADA: Função ultra-simplificada');
-          setDebugInfo(prev => ({ 
-            ...prev, 
-            functionAttempts: { ...prev.functionAttempts, secure: prev.functionAttempts.secure + 1 }
-          }));
+          // Carregar cache de filiais
+          await loadFiliaisCache().catch(() => console.log('⚠️ Cache de filiais não carregado'));
+
+          if (!isOnline) {
+            console.log('📴 App offline - usando dados locais');
+            return getOfflineTasks();
+          }
+
+          console.log('🔄 Carregando tasks via função segura...');
           
-          const result = await supabase
-            .rpc('get_tasks_optimized')
-            .abortSignal(controller.signal);
-            
-          if (result.error) throw result.error;
-          
-          tasksData = result.data;
-          strategyUsed = 'optimized_function';
-          console.log('✅ QUERY OTIMIZADA SUCESSO: Carregamento ultra-rápido:', tasksData?.length || 0);
-          
-        } catch (optimizedError: any) {
-          console.log('❌ QUERY OTIMIZADA FALHOU:', optimizedError.message);
-          
-          // Fallback para função original apenas se necessário
-          console.log('🔄 Fallback para função original...');
+          // Use enhanced secure function that protects customer data
+          let tasksData, error;
           try {
-            const fallbackResult = await supabase
+            const result = await supabase
               .rpc('get_secure_tasks_with_customer_protection')
               .abortSignal(controller.signal);
               
-            if (!fallbackResult.error && fallbackResult.data) {
-              console.log('✅ FALLBACK SUCESSO:', fallbackResult.data.length);
-              tasksData = fallbackResult.data;
-              strategyUsed = 'fallback_original';
-            } else {
-              throw new Error('Fallback failed');
+            tasksData = result.data;
+            error = result.error;
+            console.log('✅ Tasks carregadas via função segura:', tasksData?.length || 0);
+          } catch (rpcError: any) {
+            console.log('⚠️ Função segura falhou, bloqueando acesso direto por segurança');
+            
+            // Log unauthorized access attempt
+            try {
+              await supabase.rpc('monitor_unauthorized_customer_access');
+            } catch (logError) {
+              console.error('Failed to log unauthorized access:', logError);
             }
-          } catch (fallbackError) {
-            console.log('❌ Fallback também falhou:', fallbackError.message);
-            error = new Error(`Todas as estratégias falharam: ${optimizedError.message} | Fallback: ${fallbackError.message}`);
-            setDebugInfo(prev => ({ ...prev, lastError: error }));
+            
+            // Do NOT fall back to direct table access for security
+            throw new Error('Access to customer data requires secure function. Direct table access blocked for security.');
           }
-        }
 
-        console.log('📊 RESULTADO FINAL - Estratégia usada:', strategyUsed, '| Dados obtidos:', !!tasksData);
-
-        clearTimeout(timeout);
-        
-        if (error) {
-          console.error('❌ ERRO FINAL:', error);
-          setDebugInfo(prev => ({ ...prev, lastError: error }));
+          clearTimeout(timeout);
           
-          // RECOVERY STRATEGIES
-          console.log('🔧 INICIANDO ESTRATÉGIAS DE RECUPERAÇÃO...');
-          
-          // Recovery 1: Cache local
-          const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
-          if (cachedData) {
-            console.log('✅ RECOVERY 1: Usando dados do cache como fallback');
-            return cachedData as Task[];
+          if (error) {
+            console.error('❌ Erro ao carregar dados:', error);
+            throw error;
           }
-          
-          // Recovery 2: Dados offline
-          if (!isOnline) {
-            console.log('📴 RECOVERY 2: Tentando dados offline');
-            const offlineData = getOfflineTasks();
-            if (offlineData?.length) {
-              console.log('✅ RECOVERY 2: Dados offline encontrados');
-              return offlineData;
-            }
+
+          if (!tasksData?.length) return [];
+
+          // Se incluir detalhes, carregar products e reminders
+          if (includeDetails) {
+            const taskIds = tasksData.map(task => task.id);
+            
+            const [productsResult, remindersResult] = await Promise.all([
+              supabase
+                .from('products')
+                .select('*')
+                .in('task_id', taskIds),
+              supabase
+                .from('reminders')
+                .select('*')
+                .in('task_id', taskIds)
+            ]);
+
+            const productsByTask = productsResult.data?.reduce((acc, product) => {
+              if (!acc[product.task_id]) acc[product.task_id] = [];
+              acc[product.task_id].push(product);
+              return acc;
+            }, {} as Record<string, any[]>) || {};
+
+            const remindersByTask = remindersResult.data?.reduce((acc, reminder) => {
+              if (!acc[reminder.task_id]) acc[reminder.task_id] = [];
+              acc[reminder.task_id].push(reminder);
+              return acc;
+            }, {} as Record<string, any[]>) || {};
+
+            // Mapear tasks com dados completos
+            const mappedTasks = tasksData.map(task => {
+              return mapSupabaseTaskToTask({
+                ...task,
+                products: productsByTask[task.id] || [],
+                reminders: remindersByTask[task.id] || []
+              });
+            });
+            
+            return mappedTasks;
           }
-          
-          // Recovery 3: Array vazio com notificação
-          console.log('⚠️ RECOVERY 3: Retornando array vazio - todas as estratégias falharam');
-          toast({
-            title: "⚠️ Problema na Conexão",
-            description: "Não foi possível carregar os dados. Verifique sua conexão.",
-            variant: "destructive",
-          });
-          
-          return [];
-        }
 
-        if (!tasksData?.length) {
-          console.log('📝 Nenhum dado retornado pelas funções - array vazio válido');
-          return [];
-        }
-
-        // Se incluir detalhes, carregar products e reminders
-        if (includeDetails) {
-          const taskIds = tasksData.map(task => task.id);
-          
-          const [productsResult, remindersResult] = await Promise.all([
-            supabase
-              .from('products')
-              .select('*')
-              .in('task_id', taskIds),
-            supabase
-              .from('reminders')
-              .select('*')
-              .in('task_id', taskIds)
-          ]);
-
-          const productsByTask = productsResult.data?.reduce((acc, product) => {
-            if (!acc[product.task_id]) acc[product.task_id] = [];
-            acc[product.task_id].push(product);
-            return acc;
-          }, {} as Record<string, any[]>) || {};
-
-          const remindersByTask = remindersResult.data?.reduce((acc, reminder) => {
-            if (!acc[reminder.task_id]) acc[reminder.task_id] = [];
-            acc[reminder.task_id].push(reminder);
-            return acc;
-          }, {} as Record<string, any[]>) || {};
-
-          // Mapear tasks com dados completos
+          // Mapear tasks diretamente para máxima performance (sem details)
           const mappedTasks = tasksData.map(task => {
             return mapSupabaseTaskToTask({
               ...task,
-              products: productsByTask[task.id] || [],
-              reminders: remindersByTask[task.id] || []
+              products: [], // Carregaremos sob demanda se necessário
+              reminders: [] // Carregaremos sob demanda se necessário
             });
           });
           
           return mappedTasks;
-        }
-
-        // Mapear tasks diretamente para máxima performance (sem details)
-        const mappedTasks = tasksData.map(task => {
-          return mapSupabaseTaskToTask({
-            ...task,
-            products: [], // Carregaremos sob demanda se necessário
-            reminders: [] // Carregaremos sob demanda se necessário
-          });
-        });
-        
-        return mappedTasks;
       } catch (error) {
         clearTimeout(timeout);
         console.error('❌ Erro crítico ao carregar tasks:', error);
         
-        // Circuit breaker inteligente
+        // Melhor tratamento de erro - tentar cache local primeiro
         console.log('🔄 Tentando recuperar dados do cache local...');
         const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
         if (cachedData) {
@@ -347,17 +211,22 @@ export const useTasksOptimized = (includeDetails = false) => {
           return getOfflineTasks();
         }
         
-        // Em último caso, retornar array vazio ao invés de erro para melhor UX
-        console.log('⚠️ Circuit breaker ativado - retornando array vazio para melhor UX');
-        return [];
+        // Circuit breaker melhorado - só retornar vazio em último caso
+        console.log('⚠️ Circuit breaker ativado - sem dados disponíveis');
+        throw error; // Permitir que React Query tente novamente
       }
     },
     enabled: !!user,
-    staleTime: 2 * 60 * 1000, // 2 minutos - cache mais duradouro para reduzir chamadas
-    refetchOnWindowFocus: false, 
+    staleTime: 1 * 60 * 1000, // 1 minuto - menor tempo para dados mais frescos
+    refetchOnWindowFocus: true, // Reabilitar para sincronização
     refetchOnMount: true, 
-    retry: 1, // Um retry simples
-    retryDelay: 5000, // 5 segundos entre retries
+    retry: (failureCount, error) => {
+      // Retry mais inteligente
+      if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
+        return false; // Não retry em erros de auth
+      }
+      return failureCount < 3; // Até 3 tentativas para outros erros
+    },
     refetchInterval: false,
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
@@ -433,7 +302,7 @@ export const useTasksOptimized = (includeDetails = false) => {
             clientName: taskData.client || '',
             filial: standardizedTaskData.filial || '',
             salesValue: standardizedTaskData.salesValue,
-            salesType: taskData.salesType || 'ganho',
+            salesType: taskData.salesType === 'ganho' ? 'total' : (taskData.salesType || 'total'),
             partialSalesValue: taskData.partialSalesValue || 0,
             salesConfirmed: standardizedTaskData.salesConfirmed || false
           });
@@ -548,105 +417,27 @@ export const useTasksOptimized = (includeDetails = false) => {
     refetch: tasksQuery.refetch,
     isCreating: createTaskMutation.isPending,
     isUpdating: updateTaskMutation.isPending,
-    
-    // FUNÇÕES DE RECUPERAÇÃO E DIAGNÓSTICO AVANÇADAS
-    debugInfo,
-    
-    // Diagnóstico completo do hook
-    diagnose: async () => {
-      console.log('🔍 DIAGNÓSTICO COMPLETO DO HOOK');
-      console.log('User:', user ? `${user.email} (${user.id})` : 'None');
-      console.log('Session:', session ? 'Present' : 'Missing');
-      console.log('Online:', isOnline);
-      console.log('Debug Info:', debugInfo);
-      console.log('Query State:', {
-        data: tasksQuery.data?.length || 0,
-        loading: tasksQuery.isLoading,
-        error: tasksQuery.error?.message,
-        isFetching: tasksQuery.isFetching,
-        isStale: tasksQuery.isStale
-      });
-      return debugInfo;
-    },
-    
-    // Force refresh melhorado com logging
+    // Função de força refresh melhorada
     forceRefresh: async () => {
-      console.log('🔄 FORCE REFRESH INICIADO');
-      setDebugInfo(prev => ({ ...prev, lastAttempt: new Date() }));
-      
-      // Limpar todo o cache relacionado
+      console.log('🔄 Executando force refresh completo...');
+      // Limpar todo o cache
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
       queryClient.removeQueries({ queryKey: QUERY_KEYS.tasks });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.consultants });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.filiais });
       
-      // Verificar sessão antes do refetch
-      const sessionHealthy = await verifySessionHealth();
-      if (!sessionHealthy) {
-        console.log('❌ Sessão não saudável durante force refresh');
-        return { data: [], error: 'Session not healthy' };
-      }
-      
       // Forçar refetch
       const result = await tasksQuery.refetch();
-      console.log('✅ FORCE REFRESH CONCLUÍDO:', result.data?.length || 0, 'tasks');
+      console.log('✅ Force refresh concluído');
       return result;
     },
-    
-    // Reset completo do sistema
+    // Função para resetar filtros e cache
     resetAndRefresh: async () => {
-      console.log('🔄 RESET COMPLETO DO SISTEMA');
-      
-      // Limpar TUDO
-      queryClient.clear();
-      setDebugInfo({
-        lastAttempt: new Date(),
-        lastError: null,
-        functionAttempts: { secure: 0, fallback: 0, direct: 0 },
-        sessionStatus: 'unknown'
-      });
-      
-      // Verificar e renovar sessão se necessário
-      await verifySessionHealth();
-      
+      console.log('🔄 Reset completo com filtros...');
+      queryClient.clear(); // Limpa TUDO
       const result = await tasksQuery.refetch();
-      console.log('✅ RESET COMPLETO CONCLUÍDO:', result.data?.length || 0, 'tasks');
+      console.log('✅ Reset completo concluído');
       return result;
-    },
-    
-    // Função de emergency para acesso direto (apenas managers)
-    emergencyAccess: async () => {
-      console.log('🚨 ACESSO DE EMERGÊNCIA INICIADO');
-      
-      if (!user) {
-        throw new Error('User not authenticated for emergency access');
-      }
-      
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (profile?.role !== 'manager') {
-          throw new Error('Emergency access requires manager role');
-        }
-        
-        const { data, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-          
-        if (error) throw error;
-        
-        console.log('✅ ACESSO DE EMERGÊNCIA CONCLUÍDO:', data?.length || 0, 'tasks');
-        return data;
-      } catch (error) {
-        console.error('❌ ACESSO DE EMERGÊNCIA FALHOU:', error);
-        throw error;
-      }
     }
   };
 };

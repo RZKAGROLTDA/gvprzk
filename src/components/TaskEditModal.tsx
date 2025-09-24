@@ -71,11 +71,6 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     
     // Se não há opportunity, usar os dados da task
     if (!taskData?.opportunity) {
-      console.log('🔧 getInitialStatus: SEM OPPORTUNITY, usando dados da task');
-      if (taskData?.sales_type === 'perdido') {
-        console.log('🔧 getInitialStatus: SALES_TYPE = perdido, retornando venda_perdida');
-        return 'venda_perdida';
-      }
       if (taskData?.sales_confirmed) {
         switch (taskData?.sales_type) {
           case 'ganho': return 'venda_total';
@@ -234,22 +229,19 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       const opportunityStatus = statusMapping[formDataToProcess.status as keyof typeof statusMapping];
 
-        // CRÍTICO: Calcular valores corretos
-        // Para venda parcial: valor total = valor original do prospect, valor parcial = soma dos produtos vendidos
-        // Para venda total: valor total = valor parcial = soma de todos os produtos
-        // Para venda perdida e prospect: valor parcial = 0
-        const valorVendaParcial = formDataToProcess.status === 'venda_perdida' || formDataToProcess.status === 'prospect' 
-          ? 0 
-          : (formDataToProcess.partialSalesValue || 0);
+      // CRÍTICO: Calcular valores corretos
+      // Para venda parcial: valor total = valor original do prospect, valor parcial = soma dos produtos vendidos
+      // Para venda total: valor total = valor parcial = soma de todos os produtos
+      const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
       
       // CRÍTICO: Para determinar valor total correto da oportunidade
       const valorTotalOriginal = taskData?.opportunity?.valor_total_oportunidade || 0;
       
-      // CORREÇÃO: O valor total da oportunidade NUNCA deve ser zerado, apenas preservado
-      // Para prospect e venda perdida: manter valor original da oportunidade
-      // Para vendas: usar valor dos produtos se disponível, senão manter original
+      // CORREÇÃO: O valor total da oportunidade deve ser sempre o valor total dos produtos (salesValue)
+      // Para venda parcial: valor total da oportunidade = salesValue (valor total dos produtos)
+      // Para venda total: valor total da oportunidade = salesValue (valor total dos produtos)
       const prospectValue = formDataToProcess.salesValue || 0;
-      const valorTotalOportunidade = prospectValue > 0 ? prospectValue : valorTotalOriginal;
+      const valorTotalOportunidade = prospectValue; // Sempre usar o valor total dos produtos
       
       console.log('🔧 TaskEditModal: Valores para ensureOpportunity:', {
         valorTotalOriginal,
@@ -312,35 +304,31 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         priority: formDataToProcess.priority,
         status: 'closed', // Sempre fechado para indicar que não está mais pendente
         // Valores calculados corretos para ambas as tabelas
-        salesValue: formDataToProcess.status === 'prospect' || formDataToProcess.status === 'venda_perdida' ? 0 : valorTotalOportunidade,
+        salesValue: valorTotalOportunidade,
         prospectValue: valorTotalOriginal,
-        partialSalesValue: formDataToProcess.status === 'prospect' || formDataToProcess.status === 'venda_perdida' ? 0 : valorVendaParcial,
+        partialSalesValue: valorVendaParcial,
         // CRÍTICO: NÃO incluir sales_value no update - deve preservar valor original
         // sales_value: NÃO ATUALIZAR
         partial_sales_value: valorVendaParcial,
         // Sales type based on status
-        sales_type: formDataToProcess.status === 'venda_total' ? 'ganho' :
+        sales_type: formDataToProcess.status === 'venda_total' ? 'total' :
                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                    formDataToProcess.status === 'venda_perdida' ? 'perdido' :
                    formDataToProcess.status === 'prospect' ? 'prospect' : null,
-        sales_confirmed: formDataToProcess.status !== 'prospect' && formDataToProcess.status !== 'venda_perdida',
+        sales_confirmed: formDataToProcess.status !== 'prospect',
         opportunity: {
           status: opportunityStatus,
-          valor_venda_fechada: (formDataToProcess.status === 'prospect' || formDataToProcess.status === 'venda_perdida') 
-            ? 0 // ZERAR para prospect e venda perdida - EXATAMENTE IGUAL
-            : formDataToProcess.status === 'venda_total' 
-              ? valorTotalOportunidade 
-              : formDataToProcess.status === 'venda_parcial' 
-                ? valorVendaParcial 
-                : 0,
-          valor_total_oportunidade: valorTotalOriginal // PRESERVAR valor original SEMPRE
+          valor_venda_fechada: formDataToProcess.status === 'venda_total' 
+            ? valorTotalOportunidade // Para venda total, usar valor total
+            : formDataToProcess.status === 'venda_parcial' 
+              ? valorVendaParcial // Para venda parcial, usar valor parcial
+              : 0 // Para prospects e perdas, 0
+          // NÃO alterar valor_total_oportunidade - ele preserva o valor original
         },
         items: formDataToProcess.products.map(product => ({
           id: product.id,
           produto: product.produto, // IMPORTANTE: Incluir o nome do produto
-          qtd_vendida: formDataToProcess.status === 'venda_perdida' || formDataToProcess.status === 'prospect' 
-            ? 0 // ZERAR qtd vendida para prospect e venda perdida
-            : product.incluir_na_venda_parcial ? product.qtd_vendida : 0,
+          qtd_vendida: product.incluir_na_venda_parcial ? product.qtd_vendida : 0,
           qtd_ofertada: product.qtd_ofertada,
           preco_unit: product.preco_unit
         }))
@@ -354,9 +342,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         sales_confirmed: updatedData.sales_confirmed,
         status: updatedData.status,
         formDataStatus: formDataToProcess.status,
-        opportunity: updatedData.opportunity,
-        valorVendaFechada: updatedData.opportunity.valor_venda_fechada,
-        valorTotalOportunidade: updatedData.opportunity.valor_total_oportunidade
+        opportunity: updatedData.opportunity
       });
 
       // LOG ESPECÍFICO PARA PROSPECT
@@ -369,15 +355,14 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         });
       }
 
-      // LOG ESPECÍFICO PARA VENDA PERDIDA
-      if (formDataToProcess.status === 'venda_perdida') {
-        console.log('🚨 VENDA PERDIDA DETECTADA - Valores esperados:', {
-          status: formDataToProcess.status,
-          sales_type: 'perdido',
-          sales_confirmed: false,
-          valor_venda_fechada: 0,
-          valor_total_oportunidade: valorTotalOriginal,
-          partial_sales_value: 0
+      // LOG ESPECÍFICO PARA VENDA PARCIAL
+      if (formDataToProcess.status === 'venda_parcial') {
+        console.log('🚨 VENDA PARCIAL DETECTADA - Valores esperados:', {
+          sales_type: 'parcial',
+          sales_confirmed: true,
+          valor_venda_fechada: valorVendaParcial,
+          partial_sales_value: valorVendaParcial,
+          status: 'closed'
         });
       }
 
@@ -390,8 +375,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       });
 
       // CRÍTICO: Garantir que a oportunidade seja criada/atualizada usando o manager
-      // SEMPRE chamar ensureOpportunity para atualizar o status, independente do valor
-      if (true) {
+      if (valorTotalOportunidade > 0 || formDataToProcess.status !== 'prospect') {
         console.log('🔧 CHAMANDO ensureOpportunity com:', {
           taskId,
           clientName: formDataToProcess.customerName,
@@ -400,8 +384,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           salesValue: valorTotalOportunidade,
           salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
-                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
-                    formDataToProcess.status === 'prospect' ? 'prospect' : 'ganho',
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
           partialSalesValue: valorVendaParcial
         });
         
@@ -409,10 +392,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           taskId: taskId,
           salesValue: valorTotalOportunidade,
           salesType: formDataToProcess.status,
-          valorVendaParcial,
-          statusDetectado: formDataToProcess.status,
-          isVendaPerdida: formDataToProcess.status === 'venda_perdida',
-          isProspect: formDataToProcess.status === 'prospect'
+          valorVendaParcial
         });
         
         const opportunityId = await ensureOpportunity({
@@ -420,12 +400,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
           salesValue: valorTotalOportunidade,
-          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
-                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
-                     formDataToProcess.status === 'venda_perdida' ? 'perdido' : 
-                     formDataToProcess.status === 'prospect' ? 'prospect' : 'ganho',
+          salesType: formDataToProcess.status === 'venda_total' ? 'total' :
+                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'total',
           partialSalesValue: valorVendaParcial,
-          salesConfirmed: formDataToProcess.status !== 'prospect' && formDataToProcess.status !== 'venda_perdida',
+          salesConfirmed: formDataToProcess.status !== 'prospect',
           items: formDataToProcess.products.map(product => {
             const qtdVendida = formDataToProcess.status === 'venda_total' 
               ? product.qtd_ofertada  // Para venda total, vendido = ofertado
@@ -437,9 +416,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
               qtd_vendida: qtdVendida,
               qtd_ofertada: product.qtd_ofertada,
               preco_unit: product.preco_unit,
-              isVendaTotal: formDataToProcess.status === 'venda_total',
-              isVendaPerdida: formDataToProcess.status === 'venda_perdida',
-              isProspect: formDataToProcess.status === 'prospect'
+              isVendaTotal: formDataToProcess.status === 'venda_total'
             });
             
             return {
@@ -466,24 +443,10 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       }
 
       const success = await updateTaskData(updatedData);
-      
-      console.log('🔧 LOG FINAL - STATUS E DADOS ENVIADOS:', {
-        statusFormData: formDataToProcess.status,
-        salesType: updatedData.sales_type,
-        salesConfirmed: updatedData.sales_confirmed,
-        partialSalesValue: updatedData.partial_sales_value,
-        opportunityData: {
-          status: updatedData.opportunity.status,
-          valor_venda_fechada: updatedData.opportunity.valor_venda_fechada,
-          valor_total_oportunidade: updatedData.opportunity.valor_total_oportunidade
-        }
-      });
-      
       console.log('🔧 RESULTADO updateTaskData:', success);
       
       if (success) {
         console.log('✅ SUCESSO: Task atualizada, invalidando cache');
-        toast.success('Status atualizado com sucesso');
         await invalidateAll();
         onTaskUpdate();
         onClose();

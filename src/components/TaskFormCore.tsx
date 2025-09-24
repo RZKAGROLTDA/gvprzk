@@ -66,7 +66,7 @@ export interface TaskFormData {
   prospectNotes?: string;
   salesValue?: number | string;
   salesConfirmed?: boolean;
-  salesType?: 'ganho' | 'parcial' | 'perdido' | 'prospect';
+  salesType?: 'total' | 'parcial' | 'perdido' | 'ganho' | 'prospect';
 }
 
 // Regras de validação específicas por tipo de tarefa

@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface StatusSelectionProps {
   taskId?: string; // Add taskId for automatic value calculation
   salesConfirmed?: boolean | null;
-  salesType?: 'ganho' | 'parcial' | 'perdido' | 'prospect';
+  salesType?: 'total' | 'parcial' | 'perdido' | 'prospect';
   prospectNotes?: string;
   prospectNotesJustification?: string; // For "Outros" option justification
   isProspect?: boolean;
@@ -20,7 +20,7 @@ export interface StatusSelectionProps {
   checklist?: ProductType[]; // Adicionar checklist para compatibilidade
   onStatusChange: (status: { 
     salesConfirmed?: boolean | null; 
-    salesType?: 'ganho' | 'parcial' | 'perdido' | 'prospect';
+    salesType?: 'total' | 'parcial' | 'perdido' | 'prospect';
     isProspect?: boolean; 
     prospectNotes?: string;
     prospectNotesJustification?: string; // For "Outros" option justification
@@ -169,14 +169,14 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
           {/* Vendas Total */}
           <div 
             className={`relative cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
-              salesConfirmed === true && salesType === 'ganho'
+              salesConfirmed === true && salesType === 'total'
                 ? 'border-green-500 bg-green-50 shadow-lg' 
                 : 'border-gray-200 bg-white hover:border-green-300'
             }`} 
             onClick={() => {
               onStatusChange({
                 salesConfirmed: true,
-                salesType: 'ganho',
+                salesType: 'total',
                 isProspect: true,
                 prospectNotes: '',
                 partialSalesValue: 0 // Limpar valor parcial para venda total
@@ -185,7 +185,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
           >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                salesConfirmed === true && salesType === 'ganho'
+                salesConfirmed === true && salesType === 'total'
                   ? 'bg-green-500 text-white' 
                   : 'bg-gray-100 text-gray-400'
               }`}>
@@ -196,7 +196,7 @@ export const StatusSelectionComponent: React.FC<StatusSelectionProps> = ({
                 <div className="text-xs text-muted-foreground">Valor total dos produtos oferecidos</div>
               </div>
             </div>
-            {salesConfirmed === true && salesType === 'ganho' && (
+            {salesConfirmed === true && salesType === 'total' && (
               <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                 <span className="text-white text-xs">✓</span>
               </div>

@@ -399,6 +399,7 @@ export const useTaskEditData = (taskId: string | null) => {
       }
 
       console.log('✅ useTaskEditData: Dados atualizados com sucesso');
+      toast.success('Dados atualizados com sucesso');
       return true;
 
     } catch (err: any) {
