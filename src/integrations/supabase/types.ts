@@ -406,7 +406,7 @@ export type Database = {
           created_at: string
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           risk_score: number | null
           session_id: string | null
@@ -419,7 +419,7 @@ export type Database = {
           created_at?: string
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           risk_score?: number | null
           session_id?: string | null
@@ -432,7 +432,7 @@ export type Database = {
           created_at?: string
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           risk_score?: number | null
           session_id?: string | null
@@ -839,10 +839,7 @@ export type Database = {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
       }
-      can_perform_admin_action: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      can_perform_admin_action: { Args: never; Returns: boolean }
       check_advanced_rate_limit: {
         Args: {
           max_attempts?: number
@@ -852,7 +849,7 @@ export type Database = {
         Returns: boolean
       }
       check_bi_security_alerts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           alert_type: string
           count: number
@@ -862,7 +859,7 @@ export type Database = {
         }[]
       }
       check_client_data_access_patterns: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_count: number
           alert_type: string
@@ -877,7 +874,7 @@ export type Database = {
         Returns: boolean
       }
       check_customer_data_access_alerts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           alert_type: string
           count: number
@@ -886,12 +883,9 @@ export type Database = {
           severity: string
         }[]
       }
-      check_data_access_rate_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      check_data_access_rate_limit: { Args: never; Returns: boolean }
       check_data_integrity: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           issue_count: number
           issue_type: string
@@ -900,7 +894,7 @@ export type Database = {
         }[]
       }
       check_function_security_status: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           function_name: string
           has_search_path: boolean
@@ -908,12 +902,9 @@ export type Database = {
           recommendation: string
         }[]
       }
-      check_login_rate_limit: {
-        Args: { user_email: string }
-        Returns: boolean
-      }
+      check_login_rate_limit: { Args: { user_email: string }; Returns: boolean }
       check_security_threats: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           event_count: number
           recommendation: string
@@ -921,16 +912,13 @@ export type Database = {
           threat_type: string
         }[]
       }
-      check_sensitive_data_rate_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      check_sensitive_data_rate_limit: { Args: never; Returns: boolean }
       check_suspicious_login_pattern: {
         Args: { ip_address?: unknown; user_email: string }
         Returns: boolean
       }
       clean_duplicate_tasks: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           action: string
           client: string
@@ -939,12 +927,9 @@ export type Database = {
           task_id: string
         }[]
       }
-      cleanup_old_security_logs: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      cleanup_old_security_logs: { Args: never; Returns: number }
       cleanup_orphaned_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           action: string
           count: number
@@ -962,7 +947,7 @@ export type Database = {
         Returns: string
       }
       detect_customer_data_theft_attempts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           alert_level: string
           event_count: number
@@ -971,7 +956,7 @@ export type Database = {
         }[]
       }
       get_completely_secure_tasks: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           check_in_location: Json
@@ -1013,14 +998,14 @@ export type Database = {
         }[]
       }
       get_filiais_for_registration: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           id: string
           nome: string
         }[]
       }
       get_filial_user_counts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           id: string
@@ -1040,8 +1025,18 @@ export type Database = {
           role: string
         }[]
       }
+      get_sales_funnel_counts: {
+        Args: never
+        Returns: {
+          contatos: number
+          prospects: number
+          vendas: number
+          vendas_parciais: number
+          vendas_perdidas: number
+        }[]
+      }
       get_secure_client_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           created_at: string
@@ -1056,7 +1051,7 @@ export type Database = {
         }[]
       }
       get_secure_clients: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           created_at: string
@@ -1072,7 +1067,7 @@ export type Database = {
         }[]
       }
       get_secure_clients_enhanced: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           archive_reason: string
@@ -1100,7 +1095,7 @@ export type Database = {
         }[]
       }
       get_secure_clients_with_masking: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           archive_reason: string
@@ -1128,7 +1123,7 @@ export type Database = {
         }[]
       }
       get_secure_customer_data_enhanced: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           check_in_location: Json
@@ -1170,7 +1165,7 @@ export type Database = {
         }[]
       }
       get_secure_customer_data_view: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           client: string
           created_at: string
@@ -1191,7 +1186,7 @@ export type Database = {
         }[]
       }
       get_secure_customer_data_with_rls: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           check_in_location: Json
@@ -1308,7 +1303,7 @@ export type Database = {
         }[]
       }
       get_secure_tasks_new_with_customer_protection: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           cliente_email: string
@@ -1325,7 +1320,7 @@ export type Database = {
         }[]
       }
       get_secure_tasks_with_customer_protection: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           check_in_location: Json
@@ -1367,7 +1362,7 @@ export type Database = {
         }[]
       }
       get_secure_user_directory: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           approval_status: string
           created_at: string
@@ -1383,7 +1378,7 @@ export type Database = {
         }[]
       }
       get_security_dashboard_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           alert_level: string
           description: string
@@ -1392,7 +1387,7 @@ export type Database = {
         }[]
       }
       get_supervisor_filial_tasks: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           check_in_location: Json
@@ -1446,7 +1441,7 @@ export type Database = {
         }[]
       }
       get_tasks_optimized: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           access_level: string
           client: string
@@ -1466,7 +1461,7 @@ export type Database = {
         }[]
       }
       get_user_directory_with_fallback: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           approval_status: string
           created_at: string
@@ -1481,18 +1476,9 @@ export type Database = {
           user_id: string
         }[]
       }
-      get_user_filial_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_security_level: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_user_filial_id: { Args: never; Returns: string }
+      get_user_role: { Args: never; Returns: string }
+      get_user_security_level: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1500,36 +1486,27 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin_by_email: {
-        Args: { check_email: string }
-        Returns: boolean
-      }
-      is_high_value_task: {
-        Args: { sales_value: number }
-        Returns: boolean
-      }
-      is_manager: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      is_user_admin: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      log_client_data_access: {
-        Args:
-          | {
+      is_admin_by_email: { Args: { check_email: string }; Returns: boolean }
+      is_high_value_task: { Args: { sales_value: number }; Returns: boolean }
+      is_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_user_admin: { Args: { _user_id: string }; Returns: boolean }
+      log_client_data_access:
+        | {
+            Args: {
               access_type?: string
               accessed_fields?: string[]
               client_id: string
             }
-          | {
+            Returns: undefined
+          }
+        | {
+            Args: {
               access_type?: string
               client_count?: number
               masked_count?: number
             }
-        Returns: undefined
-      }
+            Returns: undefined
+          }
       log_customer_contact_access: {
         Args: {
           access_type?: string
@@ -1538,20 +1515,23 @@ export type Database = {
         }
         Returns: undefined
       }
-      log_customer_data_access: {
-        Args:
-          | {
-              access_type?: string
-              additional_metadata?: Json
-              customer_count?: number
-            }
-          | {
+      log_customer_data_access:
+        | {
+            Args: {
               access_type?: string
               customer_count?: number
               masked_count?: number
             }
-        Returns: undefined
-      }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              access_type?: string
+              additional_metadata?: Json
+              customer_count?: number
+            }
+            Returns: undefined
+          }
       log_customer_data_access_enhanced: {
         Args: {
           has_sensitive_data?: boolean
@@ -1642,7 +1622,7 @@ export type Database = {
         Returns: string
       }
       migrate_tasks_to_new_structure: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           action: string
           client_name: string
@@ -1651,20 +1631,11 @@ export type Database = {
           status: string
         }[]
       }
-      monitor_bulk_client_access: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      monitor_customer_data_access: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      monitor_high_risk_customer_access: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      monitor_bulk_client_access: { Args: never; Returns: undefined }
+      monitor_customer_data_access: { Args: never; Returns: undefined }
+      monitor_high_risk_customer_access: { Args: never; Returns: undefined }
       monitor_high_value_access: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           event_type: string
           last_24h: number
@@ -1672,26 +1643,11 @@ export type Database = {
           user_count: number
         }[]
       }
-      monitor_high_value_sales_access: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      monitor_session_security: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      monitor_tasks_new_unauthorized_access: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      monitor_unauthorized_customer_access: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      secure_delete_task: {
-        Args: { task_id_param: string }
-        Returns: Json
-      }
+      monitor_high_value_sales_access: { Args: never; Returns: undefined }
+      monitor_session_security: { Args: never; Returns: undefined }
+      monitor_tasks_new_unauthorized_access: { Args: never; Returns: undefined }
+      monitor_unauthorized_customer_access: { Args: never; Returns: undefined }
+      secure_delete_task: { Args: { task_id_param: string }; Returns: Json }
       secure_log_security_event: {
         Args: {
           event_type_param: string
@@ -1705,18 +1661,9 @@ export type Database = {
         Args: { profile_id_param: string; updates: Json }
         Returns: Json
       }
-      simple_is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      simple_is_manager: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      simple_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      simple_is_admin: { Args: never; Returns: boolean }
+      simple_is_manager: { Args: never; Returns: boolean }
+      simple_user_role: { Args: never; Returns: string }
       update_user_filial_secure: {
         Args: { new_filial_id: string; target_user_id: string }
         Returns: Json
@@ -1725,10 +1672,7 @@ export type Database = {
         Args: { new_role: string; target_user_id: string }
         Returns: undefined
       }
-      user_same_filial: {
-        Args: { target_user_id: string }
-        Returns: boolean
-      }
+      user_same_filial: { Args: { target_user_id: string }; Returns: boolean }
       validate_and_sanitize_input: {
         Args: { input_data: Json; validation_rules?: Json }
         Returns: Json
@@ -1737,12 +1681,9 @@ export type Database = {
         Args: { input_data: Json }
         Returns: Json
       }
-      validate_client_input: {
-        Args: { input_data: Json }
-        Returns: boolean
-      }
+      validate_client_input: { Args: { input_data: Json }; Returns: boolean }
       validate_data_integrity: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           check_name: string
           count: number
@@ -1750,12 +1691,9 @@ export type Database = {
           status: string
         }[]
       }
-      validate_task_input: {
-        Args: { input_data: Json }
-        Returns: boolean
-      }
+      validate_task_input: { Args: { input_data: Json }; Returns: boolean }
       verify_customer_data_security: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           has_rls: boolean
           is_secure: boolean

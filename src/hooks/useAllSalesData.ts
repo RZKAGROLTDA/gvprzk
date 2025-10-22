@@ -28,151 +28,112 @@ export const useAllSalesData = () => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['sales-metrics'],
     queryFn: async () => {
-      console.log('🔄 Buscando métricas de vendas com agregações...');
+      console.log('🔄 Buscando métricas de vendas (Visão Geral)...');
       
-      // Query 1: Contatos (todas as tasks sem venda confirmada e sem prospect)
-      const { count: contactsCount, error: contactsError } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .not('sales_confirmed', 'eq', true)
-        .not('is_prospect', 'eq', true);
+      // Usar a mesma função RPC otimizada
+      const { data: counts, error: countsError } = await supabase
+        .rpc('get_sales_funnel_counts');
 
-      if (contactsError) throw contactsError;
+      if (countsError) {
+        console.error('❌ Erro ao buscar counts:', countsError);
+        throw countsError;
+      }
 
-      // Query 2: Contatos - Valor total
-      const { data: contactsValue, error: contactsValueError } = await supabase
-        .from('tasks')
-        .select('sales_value')
-        .not('sales_confirmed', 'eq', true)
-        .not('is_prospect', 'eq', true);
+      // Queries para valores
+      const [contactsValue, prospectsValue, salesValue, partialSalesValue, lostSalesValue] = await Promise.all([
+        // Contatos - valor
+        supabase.from('tasks')
+          .select('sales_value')
+          .or('sales_confirmed.is.null,sales_confirmed.eq.false')
+          .or('is_prospect.is.null,is_prospect.eq.false'),
+        
+        // Prospects - valor
+        supabase.from('tasks')
+          .select('sales_value')
+          .eq('is_prospect', true),
+        
+        // Vendas - valor
+        supabase.from('tasks')
+          .select('sales_value')
+          .eq('sales_confirmed', true)
+          .or('sales_type.is.null,sales_type.neq.parcial'),
+        
+        // Vendas parciais - valor
+        supabase.from('tasks')
+          .select('partial_sales_value')
+          .eq('sales_confirmed', true)
+          .eq('sales_type', 'parcial'),
+        
+        // Vendas perdidas - valor
+        supabase.from('tasks')
+          .select('sales_value')
+          .or('sales_type.eq.perdido,status.eq.lost')
+      ]);
 
-      if (contactsValueError) throw contactsValueError;
+      if (contactsValue.error) throw contactsValue.error;
+      if (prospectsValue.error) throw prospectsValue.error;
+      if (salesValue.error) throw salesValue.error;
+      if (partialSalesValue.error) throw partialSalesValue.error;
+      if (lostSalesValue.error) throw lostSalesValue.error;
 
-      const totalContactsValue = (contactsValue || []).reduce((sum, task) => {
+      // Calcular valores totais
+      const totalContactsValue = (contactsValue.data || []).reduce((sum, task) => {
         const value = typeof task.sales_value === 'number' 
           ? task.sales_value 
           : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
         return sum + value;
       }, 0);
 
-      // Query 3: Prospects (is_prospect = true)
-      const { count: prospectsCount, error: prospectsError } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_prospect', true);
-
-      if (prospectsError) throw prospectsError;
-
-      // Query 4: Prospects - Valor total
-      const { data: prospectsValue, error: prospectsValueError } = await supabase
-        .from('tasks')
-        .select('sales_value')
-        .eq('is_prospect', true);
-
-      if (prospectsValueError) throw prospectsValueError;
-
-      const totalProspectsValue = (prospectsValue || []).reduce((sum, task) => {
+      const totalProspectsValue = (prospectsValue.data || []).reduce((sum, task) => {
         const value = typeof task.sales_value === 'number' 
           ? task.sales_value 
           : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
         return sum + value;
       }, 0);
 
-      // Query 5: Vendas totais (sales_type = 'ganho' ou sales_confirmed = true e sales_type != 'parcial')
-      const { count: salesCount, error: salesError } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('sales_confirmed', true)
-        .neq('sales_type', 'parcial');
-
-      if (salesError) throw salesError;
-
-      // Query 6: Vendas totais - Valor
-      const { data: salesValue, error: salesValueError } = await supabase
-        .from('tasks')
-        .select('sales_value')
-        .eq('sales_confirmed', true)
-        .neq('sales_type', 'parcial');
-
-      if (salesValueError) throw salesValueError;
-
-      const totalSalesValue = (salesValue || []).reduce((sum, task) => {
+      const totalSalesValue = (salesValue.data || []).reduce((sum, task) => {
         const value = typeof task.sales_value === 'number' 
           ? task.sales_value 
           : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
         return sum + value;
       }, 0);
 
-      // Query 7: Vendas parciais (sales_type = 'parcial' e sales_confirmed = true)
-      const { count: partialSalesCount, error: partialSalesError } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('sales_confirmed', true)
-        .eq('sales_type', 'parcial');
-
-      if (partialSalesError) throw partialSalesError;
-
-      // Query 8: Vendas parciais - Valor (usar partial_sales_value)
-      const { data: partialSalesValue, error: partialSalesValueError } = await supabase
-        .from('tasks')
-        .select('partial_sales_value')
-        .eq('sales_confirmed', true)
-        .eq('sales_type', 'parcial');
-
-      if (partialSalesValueError) throw partialSalesValueError;
-
-      const totalPartialSalesValue = (partialSalesValue || []).reduce((sum, task) => {
+      const totalPartialSalesValue = (partialSalesValue.data || []).reduce((sum, task) => {
         return sum + (task.partial_sales_value || 0);
       }, 0);
 
-      // Query 9: Vendas perdidas (sales_type = 'perdido' ou sales_status = 'lost')
-      const { count: lostSalesCount, error: lostSalesError } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .or('sales_type.eq.perdido,sales_status.eq.lost');
-
-      if (lostSalesError) throw lostSalesError;
-
-      // Query 10: Vendas perdidas - Valor
-      const { data: lostSalesValue, error: lostSalesValueError } = await supabase
-        .from('tasks')
-        .select('sales_value')
-        .or('sales_type.eq.perdido,sales_status.eq.lost');
-
-      if (lostSalesValueError) throw lostSalesValueError;
-
-      const totalLostSalesValue = (lostSalesValue || []).reduce((sum, task) => {
+      const totalLostSalesValue = (lostSalesValue.data || []).reduce((sum, task) => {
         const value = typeof task.sales_value === 'number' 
           ? task.sales_value 
           : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
         return sum + value;
       }, 0);
 
-      const metrics: SalesMetrics = {
+      const result: SalesMetrics = {
         contacts: {
-          count: contactsCount || 0,
+          count: counts?.[0]?.contatos || 0,
           value: totalContactsValue
         },
         prospects: {
-          count: prospectsCount || 0,
+          count: counts?.[0]?.prospects || 0,
           value: totalProspectsValue
         },
         sales: {
-          count: salesCount || 0,
+          count: counts?.[0]?.vendas || 0,
           value: totalSalesValue
         },
         partialSales: {
-          count: partialSalesCount || 0,
+          count: counts?.[0]?.vendas_parciais || 0,
           value: totalPartialSalesValue
         },
         lostSales: {
-          count: lostSalesCount || 0,
+          count: counts?.[0]?.vendas_perdidas || 0,
           value: totalLostSalesValue
         }
       };
 
-      console.log('✅ Métricas carregadas:', metrics);
-      return metrics;
+      console.log('✅ Métricas carregadas (Visão Geral):', result);
+      return result;
     },
     staleTime: 30000, // 30 segundos
     gcTime: 300000 // 5 minutos
