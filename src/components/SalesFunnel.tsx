@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Database, Trash2 } from 'lucide-react';
+import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Database, Trash2, Loader2 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
 import { Task } from '@/types/task';
@@ -19,7 +19,7 @@ import { TaskEditModal } from '@/components/TaskEditModal';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
-import { useUnifiedSalesData } from '@/hooks/useUnifiedSalesData';
+import { useInfiniteSalesData } from '@/hooks/useInfiniteSalesData';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 import {
   AlertDialog,
@@ -136,8 +136,46 @@ export const SalesFunnel: React.FC = () => {
   const {
     tasks = [],
     loading,
-    refetch
+    refetch: refetchTasks
   } = useTasksOptimized();
+
+  // Usar hook com scroll infinito
+  const { 
+    data: salesData, 
+    metrics, 
+    isLoading: isLoadingData, 
+    error: salesError, 
+    refetch: refetchSales,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    totalCount
+  } = useInfiniteSalesData();
+
+  // Observer para scroll infinito
+  const observerTarget = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Fetch opportunities data to get valor_total_oportunidade and valor_venda_fechada
   const {
@@ -174,6 +212,9 @@ export const SalesFunnel: React.FC = () => {
         queryKey: ['tasks-optimized']
       });
       await queryClient.invalidateQueries({
+        queryKey: ['infinite-sales-data']
+      });
+      await queryClient.invalidateQueries({
         queryKey: ['consultants']
       });
       await queryClient.invalidateQueries({
@@ -185,8 +226,9 @@ export const SalesFunnel: React.FC = () => {
       console.log('♻️ FUNNEL: Todas as queries invalidadas');
     };
     await invalidateAll();
-    await refetch();
-  }, [queryClient, refetch]);
+    await refetchTasks();
+    await refetchSales();
+  }, [queryClient, refetchTasks, refetchSales]);
 
   // Utility functions for name matching
   const normalizeName = useCallback((name: string): string => {
@@ -462,8 +504,12 @@ export const SalesFunnel: React.FC = () => {
     await queryClient.invalidateQueries({
       queryKey: ['tasks-optimized']
     });
-    await refetch();
-  }, [queryClient, refetch]);
+    await queryClient.invalidateQueries({
+      queryKey: ['infinite-sales-data']
+    });
+    await refetchTasks();
+    await refetchSales();
+  }, [queryClient, refetchTasks, refetchSales]);
 
   // Handler para excluir tarefa (apenas ADMIN)
   const handleDeleteTask = async () => {
@@ -480,8 +526,10 @@ export const SalesFunnel: React.FC = () => {
       toast.success('Tarefa excluída com sucesso');
       setTaskToDelete(null);
       await queryClient.invalidateQueries({ queryKey: ['sales-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks-optimized'] });
-      await refetch();
+      await refetchTasks();
+      await refetchSales();
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
       toast.error(error.message || 'Erro ao excluir tarefa');
@@ -1246,7 +1294,8 @@ export const SalesFunnel: React.FC = () => {
     }} onTaskUpdated={updatedTask => {
       console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
       setSelectedTask(updatedTask);
-      refetch();
+      refetchTasks();
+      refetchSales();
     }} />}
       
       {selectedTask && <OpportunityReport task={selectedTask} isOpen={isVisualizationModalOpen} onClose={() => {
@@ -1288,5 +1337,20 @@ export const SalesFunnel: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Observador para scroll infinito */}
+      <div ref={observerTarget} className="h-10 flex items-center justify-center">
+        {isFetchingNextPage && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Carregando mais tarefas...</span>
+          </div>
+        )}
+        {!hasNextPage && salesData.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Todas as {totalCount} tarefas foram carregadas
+          </p>
+        )}
+      </div>
     </div>;
 };
