@@ -282,51 +282,58 @@ export const SalesFunnel: React.FC = () => {
 
   // Converter salesData para formato de tasks para compatibilidade
   const filteredTasks = useMemo(() => {
-    return filteredSalesData.map(sale => ({
-      id: sale.taskId,
-      name: sale.clientName,
-      client: sale.clientName,
-      responsible: sale.responsible,
-      filial: sale.filial,
-      taskType: (sale.taskType as "checklist" | "ligacao" | "prospection") || 'prospection',
-      status: sale.status || 'active',
-      isProspect: sale.isProspect,
-      salesConfirmed: sale.salesConfirmed,
-      salesType: sale.salesStatus,
-      salesValue: sale.totalValue,
-      partialSalesValue: sale.partialValue || 0,
-      createdAt: typeof sale.createdAt === 'string' ? sale.createdAt : sale.date,
-      updatedAt: typeof sale.updatedAt === 'string' ? sale.updatedAt : sale.date,
-      startDate: typeof sale.startDate === 'string' ? sale.startDate : sale.date,
-      endDate: typeof sale.endDate === 'string' ? sale.endDate : sale.date,
-      start_date: (typeof sale.startDate === 'string' ? sale.startDate : (sale.startDate instanceof Date ? sale.startDate.toISOString() : sale.date)).split('T')[0],
-      end_date: (typeof sale.endDate === 'string' ? sale.endDate : (sale.endDate instanceof Date ? sale.endDate.toISOString() : sale.date)).split('T')[0],
-      // Campos adicionais para compatibilidade
-      property: '',
-      observations: '',
-      priority: 'medium',
-      startTime: '08:00',
-      endTime: '18:00',
-      start_time: '08:00',
-      end_time: '18:00',
-      createdBy: '',
-      created_by: '',
-      photos: [],
-      documents: [],
-      reminders: [],
-      checklist: null,
-      prospectNotes: '',
-      clientcode: '',
-      email: '',
-      phone: '',
-      familyProduct: '',
-      propertyHectares: 0,
-      equipmentQuantity: 0,
-      equipmentList: [],
-      initialKm: 0,
-      finalKm: 0,
-      checkInLocation: null
-    } as Task));
+    return filteredSalesData.map(sale => {
+      const startDateStr = typeof sale.startDate === 'string' ? sale.startDate : sale.date;
+      const endDateStr = typeof sale.endDate === 'string' ? sale.endDate : sale.date;
+      const createdAtStr = typeof sale.createdAt === 'string' ? sale.createdAt : sale.date;
+      const updatedAtStr = typeof sale.updatedAt === 'string' ? sale.updatedAt : sale.date;
+      
+      return {
+        id: sale.taskId,
+        name: sale.clientName,
+        client: sale.clientName,
+        responsible: sale.responsible,
+        filial: sale.filial,
+        taskType: (sale.taskType as "checklist" | "ligacao" | "prospection") || 'prospection',
+        status: sale.status || 'active',
+        isProspect: sale.isProspect,
+        salesConfirmed: sale.salesConfirmed,
+        salesType: sale.salesStatus,
+        salesValue: sale.totalValue,
+        partialSalesValue: sale.partialValue || 0,
+        createdAt: new Date(createdAtStr),
+        updatedAt: new Date(updatedAtStr),
+        startDate: new Date(startDateStr),
+        endDate: new Date(endDateStr),
+        start_date: startDateStr.split('T')[0],
+        end_date: endDateStr.split('T')[0],
+        // Campos adicionais para compatibilidade
+        property: '',
+        observations: '',
+        priority: 'medium' as 'low' | 'medium' | 'high',
+        startTime: '08:00',
+        endTime: '18:00',
+        start_time: '08:00',
+        end_time: '18:00',
+        createdBy: '',
+        created_by: '',
+        photos: [],
+        documents: [],
+        reminders: [],
+        checklist: [],
+        prospectNotes: '',
+        clientcode: '',
+        email: '',
+        phone: '',
+        familyProduct: '',
+        propertyHectares: 0,
+        equipmentQuantity: 0,
+        equipmentList: [],
+        initialKm: 0,
+        finalKm: 0,
+        checkInLocation: null
+      } as Task;
+    });
   }, [filteredSalesData]);
 
   // Calculate hierarchical funnel data
