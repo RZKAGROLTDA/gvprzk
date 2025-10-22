@@ -76,7 +76,9 @@ export const SalesFunnel: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, isLoading: isLoadingRole } = useUserRole();
+
+  console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isLoadingRole });
 
   // Fetch all users
   const {

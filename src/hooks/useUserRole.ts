@@ -6,30 +6,53 @@ export const useUserRole = () => {
     queryKey: ['user-role'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) {
+        console.log('🔒 useUserRole: Nenhum usuário autenticado');
+        return null;
+      }
+
+      console.log('🔒 useUserRole: Verificando papéis para usuário:', user.id);
 
       // Check if user has admin role
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id);
 
+      if (rolesError) {
+        console.error('❌ useUserRole: Erro ao buscar roles:', rolesError);
+      }
+
       const isAdmin = roles?.some(r => r.role === 'admin') ?? false;
 
+      console.log('🔒 useUserRole: Roles encontrados:', {
+        roles: roles?.map(r => r.role),
+        isAdmin
+      });
+
       // Also check profile for manager role (for compatibility)
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('user_id', user.id)
         .single();
 
-      return {
+      if (profileError) {
+        console.error('❌ useUserRole: Erro ao buscar profile:', profileError);
+      }
+
+      const result = {
         isAdmin,
         isManager: profile?.role === 'manager',
         role: profile?.role || 'none'
       };
+
+      console.log('✅ useUserRole: Resultado final:', result);
+
+      return result;
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 1000, // Reduzir cache para 1 segundo para testar
+    gcTime: 1000,
   });
 
   return {
