@@ -795,80 +795,36 @@ export type Database = {
         }
         Relationships: []
       }
-    }
-    Views: {
-      secure_clients_view: {
+      user_roles: {
         Row: {
-          archive_reason: string | null
-          archived: boolean | null
-          archived_at: string | null
-          attachments: string[] | null
-          budget_date: string | null
-          created_at: string | null
+          created_at: string
           created_by: string | null
-          email: string | null
-          gallery_date: string | null
-          id: string | null
-          name: string | null
-          notes: string | null
-          phone: string | null
-          preview_date: string | null
-          return_date: string | null
-          session_date: string | null
-          session_type: string | null
-          stage: string | null
-          updated_at: string | null
-          voucher_date: string | null
-          workflow_status: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          archive_reason?: string | null
-          archived?: boolean | null
-          archived_at?: string | null
-          attachments?: string[] | null
-          budget_date?: string | null
-          created_at?: string | null
+          created_at?: string
           created_by?: string | null
-          email?: never
-          gallery_date?: string | null
-          id?: string | null
-          name?: string | null
-          notes?: never
-          phone?: never
-          preview_date?: string | null
-          return_date?: string | null
-          session_date?: string | null
-          session_type?: string | null
-          stage?: string | null
-          updated_at?: string | null
-          voucher_date?: string | null
-          workflow_status?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          archive_reason?: string | null
-          archived?: boolean | null
-          archived_at?: string | null
-          attachments?: string[] | null
-          budget_date?: string | null
-          created_at?: string | null
+          created_at?: string
           created_by?: string | null
-          email?: never
-          gallery_date?: string | null
-          id?: string | null
-          name?: string | null
-          notes?: never
-          phone?: never
-          preview_date?: string | null
-          return_date?: string | null
-          session_date?: string | null
-          session_type?: string | null
-          stage?: string | null
-          updated_at?: string | null
-          voucher_date?: string | null
-          workflow_status?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
+    }
+    Views: {
+      [_ in never]: never
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -1537,12 +1493,23 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_admin_by_email: {
         Args: { check_email: string }
         Returns: boolean
       }
       is_high_value_task: {
         Args: { sales_value: number }
+        Returns: boolean
+      }
+      is_manager: {
+        Args: { _user_id: string }
         Returns: boolean
       }
       log_client_data_access: {
@@ -1752,7 +1719,7 @@ export type Database = {
       }
       update_user_role_secure: {
         Args: { new_role: string; target_user_id: string }
-        Returns: Json
+        Returns: undefined
       }
       user_same_filial: {
         Args: { target_user_id: string }
@@ -1795,7 +1762,14 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "manager"
+        | "supervisor"
+        | "rac"
+        | "consultant"
+        | "sales_consultant"
+        | "technical_consultant"
+        | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1922,6 +1896,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "manager",
+        "supervisor",
+        "rac",
+        "consultant",
+        "sales_consultant",
+        "technical_consultant",
+        "admin",
+      ],
+    },
   },
 } as const
