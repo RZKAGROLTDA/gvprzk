@@ -25,12 +25,23 @@ import { FormVisualization } from '@/components/FormVisualization';
 import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const TaskManager: React.FC = () => {
   const { getOfflineTasks, isOnline, isSyncing } = useOffline();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; name: string } | null>(null);
   const { invalidateAll } = useSecurityCache();
   const { isAdmin } = useUserRole();
   
@@ -107,25 +118,27 @@ export const TaskManager: React.FC = () => {
     }
   };
 
-  const handleDeleteTask = async (taskId: string, taskName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir a tarefa "${taskName}"?`)) {
-      return;
-    }
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
 
     try {
       const { error } = await supabase
         .from('tasks')
         .delete()
-        .eq('id', taskId);
+        .eq('id', taskToDelete.id);
 
       if (error) throw error;
 
+      // Atualizar estado local imediatamente
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskToDelete.id));
+      
       toast.success('Tarefa excluída com sucesso');
       await invalidateAll();
-      loadTasks();
+      setTaskToDelete(null);
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
       toast.error(error.message || 'Erro ao excluir tarefa');
+      setTaskToDelete(null);
     }
   };
 
@@ -242,7 +255,7 @@ export const TaskManager: React.FC = () => {
                       <Button 
                         size="sm" 
                         variant="destructive"
-                        onClick={() => handleDeleteTask(task.id, task.name)}
+                        onClick={() => setTaskToDelete({ id: task.id, name: task.name })}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Excluir
@@ -271,6 +284,24 @@ export const TaskManager: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a tarefa "{taskToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

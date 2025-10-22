@@ -27,6 +27,16 @@ import { PhotoGallery } from '@/components/PhotoGallery';
 import { TaskLocationInfo } from '@/components/TaskLocationInfo';
 import { FormVisualization } from '@/components/FormVisualization';
 import { SecureTaskDisplay } from '@/components/SecureTaskDisplay';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TaskCardProps {
   task: Task;
@@ -37,13 +47,11 @@ interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDelete }) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { isAdmin } = useUserRole();
+  const { invalidateAll } = useSecurityCache();
 
   const handleDeleteTask = async () => {
-    if (!confirm(`Tem certeza que deseja excluir a tarefa "${task.name}"?`)) {
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('tasks')
@@ -53,13 +61,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDele
       if (error) throw error;
 
       toast.success('Tarefa excluída com sucesso');
+      await invalidateAll();
       onDelete?.(task.id);
+      setShowDeleteDialog(false);
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
       toast.error(error.message || 'Erro ao excluir tarefa');
+      setShowDeleteDialog(false);
     }
   };
-  const { invalidateAll } = useSecurityCache();
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'destructive';
@@ -244,7 +254,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDele
             <Button 
               variant="destructive" 
               size="sm" 
-              onClick={handleDeleteTask}
+              onClick={() => setShowDeleteDialog(true)}
               className="flex-1"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -264,6 +274,24 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDele
           await invalidateAll();
         }}
       />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a tarefa "{task.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
