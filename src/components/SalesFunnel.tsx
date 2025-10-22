@@ -20,6 +20,7 @@ import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
 import { useInfiniteSalesData } from '@/hooks/useInfiniteSalesData';
+import { useAllSalesData } from '@/hooks/useAllSalesData';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 import {
   AlertDialog,
@@ -134,18 +135,31 @@ export const SalesFunnel: React.FC = () => {
 
   // Removed useTasksOptimized() - using useInfiniteSalesData instead
 
-  // Usar hook com scroll infinito
+  // Hook para carregar TODOS os dados (usado na Visão Geral)
+  const {
+    data: allSalesData = [],
+    isLoading: isLoadingAllData,
+    refetch: refetchAllData,
+    totalCount: allDataCount
+  } = useAllSalesData();
+
+  // Usar hook com scroll infinito (usado na aba Relatório)
   const { 
-    data: salesData, 
+    data: infiniteSalesData, 
     metrics, 
-    isLoading: isLoadingData, 
+    isLoading: isLoadingInfiniteData, 
     error: salesError, 
     refetch: refetchSales,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    totalCount
+    totalCount: infiniteDataCount
   } = useInfiniteSalesData();
+
+  // Decidir qual fonte de dados usar baseado na view ativa
+  const isLoadingData = activeView === 'overview' ? isLoadingAllData : isLoadingInfiniteData;
+  const currentDataSource = activeView === 'overview' ? allSalesData : (infiniteSalesData || []);
+  const totalCount = activeView === 'overview' ? allDataCount : infiniteDataCount;
 
   // Observer para scroll infinito
   const observerTarget = React.useRef<HTMLDivElement>(null);
@@ -221,8 +235,9 @@ export const SalesFunnel: React.FC = () => {
       console.log('♻️ FUNNEL: Todas as queries invalidadas');
     };
     await invalidateAll();
+    await refetchAllData();
     await refetchSales();
-  }, [queryClient, refetchSales]);
+  }, [queryClient, refetchAllData, refetchSales]);
 
   // Utility functions for name matching
   const normalizeName = useCallback((name: string): string => {
@@ -234,10 +249,10 @@ export const SalesFunnel: React.FC = () => {
 
   // Filter sales data based on selected criteria
   const filteredSalesData = useMemo(() => {
-    return salesData.filter(sale => {
+    return currentDataSource.filter(sale => {
       // Period filter
       if (selectedPeriod !== 'all') {
-        const saleDate = new Date(sale.createdAt);
+        const saleDate = new Date(sale.date);
         const now = new Date();
         const daysAgo = parseInt(selectedPeriod);
         const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
@@ -263,7 +278,7 @@ export const SalesFunnel: React.FC = () => {
       }
       return true;
     });
-  }, [salesData, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, isNameMatch]);
+  }, [currentDataSource, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, isNameMatch]);
 
   // Converter salesData para formato de tasks para compatibilidade
   const filteredTasks = useMemo(() => {
@@ -274,18 +289,18 @@ export const SalesFunnel: React.FC = () => {
       responsible: sale.responsible,
       filial: sale.filial,
       taskType: (sale.taskType as "checklist" | "ligacao" | "prospection") || 'prospection',
-      status: sale.status,
+      status: sale.status || 'active',
       isProspect: sale.isProspect,
       salesConfirmed: sale.salesConfirmed,
       salesType: sale.salesStatus,
       salesValue: sale.totalValue,
-      partialSalesValue: sale.partialValue,
-      createdAt: sale.createdAt,
-      updatedAt: sale.updatedAt,
-      startDate: sale.startDate,
-      endDate: sale.endDate,
-      start_date: sale.startDate.toISOString().split('T')[0],
-      end_date: sale.endDate.toISOString().split('T')[0],
+      partialSalesValue: sale.partialValue || 0,
+      createdAt: typeof sale.createdAt === 'string' ? sale.createdAt : sale.date,
+      updatedAt: typeof sale.updatedAt === 'string' ? sale.updatedAt : sale.date,
+      startDate: typeof sale.startDate === 'string' ? sale.startDate : sale.date,
+      endDate: typeof sale.endDate === 'string' ? sale.endDate : sale.date,
+      start_date: (typeof sale.startDate === 'string' ? sale.startDate : (sale.startDate instanceof Date ? sale.startDate.toISOString() : sale.date)).split('T')[0],
+      end_date: (typeof sale.endDate === 'string' ? sale.endDate : (sale.endDate instanceof Date ? sale.endDate.toISOString() : sale.date)).split('T')[0],
       // Campos adicionais para compatibilidade
       property: '',
       observations: '',
@@ -550,8 +565,12 @@ export const SalesFunnel: React.FC = () => {
     await queryClient.invalidateQueries({
       queryKey: ['infinite-sales-data']
     });
+    await queryClient.invalidateQueries({
+      queryKey: ['all-sales-data']
+    });
+    await refetchAllData();
     await refetchSales();
-  }, [queryClient, refetchSales]);
+  }, [queryClient, refetchAllData, refetchSales]);
 
   // Handler para excluir tarefa (apenas ADMIN)
   const handleDeleteTask = async () => {
@@ -569,7 +588,9 @@ export const SalesFunnel: React.FC = () => {
       setTaskToDelete(null);
       await queryClient.invalidateQueries({ queryKey: ['sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['all-sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks-optimized'] });
+      await refetchAllData();
       await refetchSales();
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
@@ -1386,7 +1407,7 @@ export const SalesFunnel: React.FC = () => {
             <span>Carregando mais tarefas...</span>
           </div>
         )}
-        {!hasNextPage && salesData.length > 0 && (
+        {!hasNextPage && currentDataSource.length > 0 && (
           <p className="text-sm text-muted-foreground">
             Todas as {totalCount} tarefas foram carregadas
           </p>

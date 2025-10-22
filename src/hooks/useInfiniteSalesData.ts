@@ -21,8 +21,11 @@ interface UnifiedSalesData {
   endDate: Date;
   createdAt: Date;
   updatedAt: Date;
+  date: string;
+  salesType?: string;
   hasOpportunity: boolean;
   hasTaskData: boolean;
+  prospectValue?: number;
 }
 
 const PAGE_SIZE = 50;
@@ -109,6 +112,9 @@ export const useInfiniteSalesData = () => {
             endDate: new Date(task.end_date),
             createdAt: new Date(task.created_at),
             updatedAt: new Date(task.updated_at),
+            date: task.start_date || task.created_at,
+            salesType: task.sales_type,
+            prospectValue: task.is_prospect ? totalValue : 0,
             hasOpportunity: !!opportunity,
             hasTaskData: !!task.sales_value
           };
