@@ -1262,8 +1262,8 @@ export const SalesFunnel: React.FC = () => {
             
             <div className="mt-4 text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Mostrando {clientDetails.length} {clientDetails.length === 1 ? 'cliente único' : 'clientes únicos'} de {clientDetailsTotalCount} registros totais.
-                {hasNextClientDetailsPage && ' Carregando mais dados...'}
+                Mostrando {clientDetails.length} {clientDetails.length === 1 ? 'registro' : 'registros'} de {clientDetailsTotalCount} registros totais
+                {hasNextClientDetailsPage && ' (carregando mais dados...)'}
               </p>
               {hasNextClientDetailsPage && itemsPerPage === 'all' && (
                 <Button
