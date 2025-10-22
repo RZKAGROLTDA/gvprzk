@@ -797,7 +797,78 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      secure_clients_view: {
+        Row: {
+          archive_reason: string | null
+          archived: boolean | null
+          archived_at: string | null
+          attachments: string[] | null
+          budget_date: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          gallery_date: string | null
+          id: string | null
+          name: string | null
+          notes: string | null
+          phone: string | null
+          preview_date: string | null
+          return_date: string | null
+          session_date: string | null
+          session_type: string | null
+          stage: string | null
+          updated_at: string | null
+          voucher_date: string | null
+          workflow_status: string | null
+        }
+        Insert: {
+          archive_reason?: string | null
+          archived?: boolean | null
+          archived_at?: string | null
+          attachments?: string[] | null
+          budget_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: never
+          gallery_date?: string | null
+          id?: string | null
+          name?: string | null
+          notes?: never
+          phone?: never
+          preview_date?: string | null
+          return_date?: string | null
+          session_date?: string | null
+          session_type?: string | null
+          stage?: string | null
+          updated_at?: string | null
+          voucher_date?: string | null
+          workflow_status?: string | null
+        }
+        Update: {
+          archive_reason?: string | null
+          archived?: boolean | null
+          archived_at?: string | null
+          attachments?: string[] | null
+          budget_date?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email?: never
+          gallery_date?: string | null
+          id?: string | null
+          name?: string | null
+          notes?: never
+          phone?: never
+          preview_date?: string | null
+          return_date?: string | null
+          session_date?: string | null
+          session_type?: string | null
+          stage?: string | null
+          updated_at?: string | null
+          voucher_date?: string | null
+          workflow_status?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -1048,16 +1119,28 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           access_level: string
+          archive_reason: string
+          archived: boolean
+          archived_at: string
+          attachments: string[]
+          budget_date: string
           created_at: string
           created_by: string
           email: string
+          gallery_date: string
           id: string
-          is_masked: boolean
+          is_contact_masked: boolean
           name: string
           notes: string
           phone: string
+          preview_date: string
+          return_date: string
           session_date: string
+          session_type: string
           stage: string
+          updated_at: string
+          voucher_date: string
+          workflow_status: string
         }[]
       }
       get_secure_clients_with_masking: {
@@ -1305,7 +1388,7 @@ export type Database = {
           final_km: number
           id: string
           initial_km: number
-          is_customer_data_masked: boolean
+          is_customer_data_protected: boolean
           is_prospect: boolean
           name: string
           observations: string
@@ -1392,6 +1475,38 @@ export type Database = {
           status: string
           task_type: string
           updated_at: string
+        }[]
+      }
+      get_task_details: {
+        Args: { task_id_param: string }
+        Returns: {
+          check_in_location: Json
+          documents: string[]
+          email: string
+          equipment_list: Json
+          observations: string
+          phone: string
+          photos: string[]
+        }[]
+      }
+      get_tasks_optimized: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          access_level: string
+          client: string
+          created_at: string
+          created_by: string
+          end_date: string
+          filial: string
+          id: string
+          name: string
+          priority: string
+          property: string
+          responsible: string
+          sales_value: number
+          start_date: string
+          status: string
+          task_type: string
         }[]
       }
       get_user_directory_with_fallback: {
@@ -1564,6 +1679,10 @@ export type Database = {
           old_task_id: string
           status: string
         }[]
+      }
+      monitor_bulk_client_access: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       monitor_customer_data_access: {
         Args: Record<PropertyKey, never>
