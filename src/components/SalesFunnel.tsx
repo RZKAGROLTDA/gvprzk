@@ -238,38 +238,87 @@ export const SalesFunnel: React.FC = () => {
     return normalizeName(taskName) === normalizeName(consultantName);
   }, [normalizeName]);
 
-  // Filter tasks based on selected criteria
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
+  // Filter sales data based on selected criteria
+  const filteredSalesData = useMemo(() => {
+    return salesData.filter(sale => {
       // Period filter
       if (selectedPeriod !== 'all') {
-        const taskDate = new Date(task.createdAt);
+        const saleDate = new Date(sale.createdAt);
         const now = new Date();
         const daysAgo = parseInt(selectedPeriod);
         const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-        if (taskDate < cutoffDate) return false;
+        if (saleDate < cutoffDate) return false;
       }
 
       // Consultant filter
       if (selectedConsultant !== 'all') {
         const selectedConsultantData = consultants.find(c => c.id === selectedConsultant);
-        if (selectedConsultantData && !isNameMatch(task.responsible, selectedConsultantData.name)) {
+        if (selectedConsultantData && !isNameMatch(sale.responsible, selectedConsultantData.name)) {
           return false;
         }
       }
 
       // Filial filter
-      if (selectedFilial !== 'all' && task.filial !== selectedFilial) return false;
+      if (selectedFilial !== 'all' && sale.filial !== selectedFilial) return false;
 
       // Activity filter
       if (selectedActivity !== 'all') {
-        if (selectedActivity === 'prospection' && task.taskType !== 'prospection') return false;
-        if (selectedActivity === 'ligacao' && task.taskType !== 'ligacao') return false;
-        if (selectedActivity === 'checklist' && task.taskType !== 'checklist') return false;
+        if (selectedActivity === 'prospection' && sale.taskType !== 'prospection') return false;
+        if (selectedActivity === 'ligacao' && sale.taskType !== 'ligacao') return false;
+        if (selectedActivity === 'checklist' && sale.taskType !== 'checklist') return false;
       }
       return true;
     });
-  }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, isNameMatch]);
+  }, [salesData, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, isNameMatch]);
+
+  // Converter salesData para formato de tasks para compatibilidade
+  const filteredTasks = useMemo(() => {
+    return filteredSalesData.map(sale => ({
+      id: sale.taskId,
+      name: sale.clientName,
+      client: sale.clientName,
+      responsible: sale.responsible,
+      filial: sale.filial,
+      taskType: (sale.taskType as "checklist" | "ligacao" | "prospection") || 'prospection',
+      status: sale.status,
+      isProspect: sale.isProspect,
+      salesConfirmed: sale.salesConfirmed,
+      salesType: sale.salesStatus,
+      salesValue: sale.totalValue,
+      partialSalesValue: sale.partialValue,
+      createdAt: sale.createdAt,
+      updatedAt: sale.updatedAt,
+      startDate: sale.startDate,
+      endDate: sale.endDate,
+      start_date: sale.startDate.toISOString().split('T')[0],
+      end_date: sale.endDate.toISOString().split('T')[0],
+      // Campos adicionais para compatibilidade
+      property: '',
+      observations: '',
+      priority: 'medium',
+      startTime: '08:00',
+      endTime: '18:00',
+      start_time: '08:00',
+      end_time: '18:00',
+      createdBy: '',
+      created_by: '',
+      photos: [],
+      documents: [],
+      reminders: [],
+      checklist: null,
+      prospectNotes: '',
+      clientcode: '',
+      email: '',
+      phone: '',
+      familyProduct: '',
+      propertyHectares: 0,
+      equipmentQuantity: 0,
+      equipmentList: [],
+      initialKm: 0,
+      finalKm: 0,
+      checkInLocation: null
+    } as Task));
+  }, [filteredSalesData]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
@@ -537,10 +586,10 @@ export const SalesFunnel: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoadingData) {
     return <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <span className="ml-2">Carregando todos os dados...</span>
+        <span className="ml-2">Carregando dados de vendas...</span>
       </div>;
   }
 
@@ -805,7 +854,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
                               {task.status === 'completed' ? 'Concluída' : 'Pendente'}
@@ -843,7 +892,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
                               {task.status === 'completed' ? 'Concluído' : 'Pendente'}
@@ -881,7 +930,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell>
                             <Badge variant={task.status === 'completed' ? 'default' : 'secondary'}>
                               {task.status === 'completed' ? 'Realizada' : 'Pendente'}
@@ -951,7 +1000,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -983,7 +1032,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -1015,7 +1064,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -1072,7 +1121,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -1104,7 +1153,7 @@ export const SalesFunnel: React.FC = () => {
                           <TableCell>{task.client}</TableCell>
                           <TableCell>{task.responsible}</TableCell>
                           <TableCell>{getFilialName(task.filial)}</TableCell>
-                          <TableCell>{new Date(task.start_date).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell>{new Date(task.startDate).toLocaleDateString('pt-BR')}</TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
