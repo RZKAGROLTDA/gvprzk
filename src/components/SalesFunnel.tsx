@@ -275,7 +275,7 @@ export const SalesFunnel: React.FC = () => {
   const currentDataSource = infiniteSalesData || [];
   const totalCount = infiniteDataCount;
 
-  // Observer para scroll infinito - somente na aba 'coverage' (Relatório)
+  // Observer para scroll infinito - aba 'coverage' (Relatório)
   const observerTarget = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -303,6 +303,35 @@ export const SalesFunnel: React.FC = () => {
       }
     };
   }, [activeView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Observer para scroll infinito - aba 'details' (Detalhes dos Clientes)
+  const clientDetailsObserverTarget = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    // Somente aplicar infinite scroll na aba 'details'
+    if (activeView !== 'details') return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasNextClientDetailsPage && !isFetchingNextClientDetailsPage) {
+          console.log('🔄 Carregando próxima página de clientes...');
+          fetchNextClientDetailsPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = clientDetailsObserverTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [activeView, hasNextClientDetailsPage, isFetchingNextClientDetailsPage, fetchNextClientDetailsPage]);
 
   // Fetch opportunities data to get valor_total_oportunidade and valor_venda_fechada
   const {
@@ -1233,8 +1262,9 @@ export const SalesFunnel: React.FC = () => {
             
             <div className="mt-4 text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Mostrando {itemsPerPage === 'all' ? clientDetails.length : Math.min(parseInt(itemsPerPage), clientDetails.length)} de {clientDetailsTotalCount} clientes totais.
-                {clientDetails.length < clientDetailsTotalCount && " Use os filtros para refinar a busca."}
+                {clientDetails.length} {clientDetails.length === 1 ? 'cliente identificado' : 'clientes únicos identificados'} 
+                {hasNextClientDetailsPage && ' (carregando mais dados...)'}
+                {!hasNextClientDetailsPage && clientDetailsTotalCount > clientDetailsData.length && ` de ${clientDetailsTotalCount} registros totais`}
               </p>
               {hasNextClientDetailsPage && itemsPerPage === 'all' && (
                 <Button
@@ -1249,11 +1279,14 @@ export const SalesFunnel: React.FC = () => {
                       Carregando mais...
                     </>
                   ) : (
-                    'Carregar mais clientes'
+                    'Carregar mais dados'
                   )}
                 </Button>
               )}
             </div>
+            
+            {/* Observer para scroll infinito */}
+            <div ref={clientDetailsObserverTarget} className="h-4" />
           </CardContent>
         </Card>}
 
