@@ -160,13 +160,17 @@ export const SalesFunnel: React.FC = () => {
   const currentDataSource = infiniteSalesData || [];
   const totalCount = infiniteDataCount;
 
-  // Observer para scroll infinito
+  // Observer para scroll infinito - somente na aba 'coverage' (Relatório)
   const observerTarget = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    // Somente aplicar infinite scroll na aba 'coverage'
+    if (activeView !== 'coverage') return;
+
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          console.log('🔄 Carregando próxima página...');
           fetchNextPage();
         }
       },
@@ -183,7 +187,7 @@ export const SalesFunnel: React.FC = () => {
         observer.unobserve(currentTarget);
       }
     };
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [activeView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Fetch opportunities data to get valor_total_oportunidade and valor_venda_fechada
   const {
