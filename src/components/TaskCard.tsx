@@ -14,8 +14,12 @@ import {
   FileText,
   TrendingUp,
   Eye,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,10 +32,33 @@ interface TaskCardProps {
   task: Task;
   onView?: (taskId: string) => void;
   onEdit?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDelete }) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const { isAdmin } = useUserRole();
+
+  const handleDeleteTask = async () => {
+    if (!confirm(`Tem certeza que deseja excluir a tarefa "${task.name}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', task.id);
+
+      if (error) throw error;
+
+      toast.success('Tarefa excluída com sucesso');
+      onDelete?.(task.id);
+    } catch (error: any) {
+      console.error('Erro ao excluir tarefa:', error);
+      toast.error(error.message || 'Erro ao excluir tarefa');
+    }
+  };
   const { invalidateAll } = useSecurityCache();
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -213,6 +240,17 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit }) => {
             <Edit className="h-4 w-4 mr-2" />
             Editar
           </Button>
+          {isAdmin && (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={handleDeleteTask}
+              className="flex-1"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
+            </Button>
+          )}
         </div>
       </CardContent>
 

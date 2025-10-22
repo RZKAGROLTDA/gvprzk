@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Database } from 'lucide-react';
+import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Database, Trash2 } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { toast } from 'sonner';
 import { Task } from '@/types/task';
 import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,6 +76,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const queryClient = useQueryClient();
+  const { isAdmin } = useUserRole();
 
   // Fetch all users
   const {
@@ -448,6 +451,30 @@ export const SalesFunnel: React.FC = () => {
     });
     await refetch();
   }, [queryClient, refetch]);
+
+  // Handler para excluir tarefa (apenas ADMIN)
+  const handleDeleteTask = async (taskId: string, taskName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a tarefa "${taskName}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      toast.success('Tarefa excluída com sucesso');
+      await queryClient.invalidateQueries({ queryKey: ['sales-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['tasks-optimized'] });
+      await refetch();
+    } catch (error: any) {
+      console.error('Erro ao excluir tarefa:', error);
+      toast.error(error.message || 'Erro ao excluir tarefa');
+    }
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center p-8">
@@ -1123,6 +1150,17 @@ export const SalesFunnel: React.FC = () => {
                             <Edit className="h-4 w-4" />
                             <span>Editar</span>
                           </Button>
+                          {isAdmin && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteTask(task.id, task.client)}
+                              className="flex items-center space-x-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Excluir</span>
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

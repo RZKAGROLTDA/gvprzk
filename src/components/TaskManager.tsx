@@ -18,9 +18,13 @@ import {
   WifiOff,
   RefreshCw,
   Eye,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { FormVisualization } from '@/components/FormVisualization';
+import { useUserRole } from '@/hooks/useUserRole';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export const TaskManager: React.FC = () => {
   const { getOfflineTasks, isOnline, isSyncing } = useOffline();
@@ -28,6 +32,7 @@ export const TaskManager: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const { invalidateAll } = useSecurityCache();
+  const { isAdmin } = useUserRole();
   
   // Cache e debounce para otimização
   const lastLoadTime = useRef<number>(0);
@@ -98,7 +103,29 @@ export const TaskManager: React.FC = () => {
       case 'in_progress': return 'Em Andamento';
       case 'pending': return 'Pendente';
       case 'closed': return 'Fechada';
-      default: return 'Não definido';
+    default: return 'Não definido';
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string, taskName: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a tarefa "${taskName}"?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      toast.success('Tarefa excluída com sucesso');
+      await invalidateAll();
+      loadTasks();
+    } catch (error: any) {
+      console.error('Erro ao excluir tarefa:', error);
+      toast.error(error.message || 'Erro ao excluir tarefa');
     }
   };
 
@@ -211,6 +238,16 @@ export const TaskManager: React.FC = () => {
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </Button>
+                    {isAdmin && (
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => handleDeleteTask(task.id, task.name)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
