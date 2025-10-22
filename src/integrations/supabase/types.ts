@@ -1512,6 +1512,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      is_user_admin: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       log_client_data_access: {
         Args:
           | {
