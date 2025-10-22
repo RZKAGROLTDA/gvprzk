@@ -841,63 +841,136 @@ export const SalesFunnel: React.FC = () => {
 
       {/* Hierarchical Funnel View */}
       {activeView === 'funnel' && <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Contatos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{funnelMetrics.contacts.count}</div>
-                <p className="text-xs text-muted-foreground">
-                  {formatSalesValue(funnelMetrics.contacts.value)}
-                </p>
-              </CardContent>
-            </Card>
+          {/* CONTATOS COM CLIENTES */}
+          <div>
+            <h2 className="text-2xl font-bold text-center mb-6 text-primary">
+              CONTATOS COM CLIENTES ({funnelData.totalContatos})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.visitas.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Visitas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.visitas.value)}
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Prospects</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{funnelMetrics.prospects.count}</div>
-                <p className="text-xs text-muted-foreground">
-                  {formatSalesValue(funnelMetrics.prospects.value)}
-                </p>
-              </CardContent>
-            </Card>
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.checklists.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Checklists</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.checklists.value)}
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Vendas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{funnelMetrics.sales.count}</div>
-                <p className="text-xs text-muted-foreground">
-                  {formatSalesValue(funnelMetrics.sales.value)}
-                </p>
-              </CardContent>
-            </Card>
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.ligacoes.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Ligações</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.ligacoes.value)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Vendas Parciais</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{funnelMetrics.partialSales.count}</div>
-                <p className="text-xs text-muted-foreground">
-                  {formatSalesValue(funnelMetrics.partialSales.value)}
-                </p>
-              </CardContent>
-            </Card>
+          {/* PROSPECÇÃO */}
+          <div>
+            <h2 className="text-2xl font-bold text-center mb-6 text-primary">
+              PROSPECÇÃO ({funnelData.totalProspeccoes})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.prospeccoesAbertas.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Abertas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.prospeccoesAbertas.value)}
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Vendas Perdidas</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{funnelMetrics.lostSales.count}</div>
-                <p className="text-xs text-muted-foreground">
-                  {formatSalesValue(funnelMetrics.lostSales.value)}
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.prospeccoesFechadas.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Fechadas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.prospeccoesFechadas.value)}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.prospeccoesPerdidas.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Perdidas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.prospeccoesPerdidas.value)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* VENDAS */}
+          <div>
+            <h2 className="text-2xl font-bold text-center mb-6 text-primary">
+              VENDAS ({funnelData.totalVendas})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.vendasTotal.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Total</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.vendasTotal.value)}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                    {funnelData.vendasParcial.count}
+                  </div>
+                  <p className="text-lg font-semibold mb-2">Parcial</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatSalesValue(funnelData.vendasParcial.value)}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* TAXA DE CONVERSÃO */}
+          <div className="flex justify-center">
+            <Card className="bg-gradient-to-br from-purple-500 to-purple-700 text-white border-0 max-w-md w-full">
+              <CardContent className="p-8 text-center">
+                <div className="text-5xl font-bold mb-2">
+                  {funnelData.taxaConversao.toFixed(1)}%
+                </div>
+                <p className="text-xl font-semibold mb-1">Taxa de Conversão</p>
+                <p className="text-sm opacity-90">
+                  {funnelData.totalVendas} vendas de {funnelData.totalContatos} contatos
                 </p>
               </CardContent>
             </Card>
