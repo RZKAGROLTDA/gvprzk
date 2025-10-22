@@ -34,8 +34,8 @@ export const useAllSalesData = () => {
       const { count: contactsCount, error: contactsError } = await supabase
         .from('tasks')
         .select('*', { count: 'exact', head: true })
-        .or('sales_confirmed.is.null,sales_confirmed.eq.false')
-        .or('is_prospect.is.null,is_prospect.eq.false');
+        .not('sales_confirmed', 'eq', true)
+        .not('is_prospect', 'eq', true);
 
       if (contactsError) throw contactsError;
 
@@ -43,8 +43,8 @@ export const useAllSalesData = () => {
       const { data: contactsValue, error: contactsValueError } = await supabase
         .from('tasks')
         .select('sales_value')
-        .or('sales_confirmed.is.null,sales_confirmed.eq.false')
-        .or('is_prospect.is.null,is_prospect.eq.false');
+        .not('sales_confirmed', 'eq', true)
+        .not('is_prospect', 'eq', true);
 
       if (contactsValueError) throw contactsValueError;
 
