@@ -324,16 +324,31 @@ export const useTasksOptimized = (includeDetails = false) => {
       // Criar products e reminders com tratamento de erro adequado
       if (taskData.checklist?.length) {
         console.log('🔄 Preparando para salvar produtos:', taskData.checklist.length);
-        const products = taskData.checklist.map(product => ({
-          task_id: task.id,
-          name: product.name,
-          category: product.category,
-          selected: product.selected,
-          quantity: product.quantity || 0,
-          price: product.price || 0,
-          observations: product.observations || '',
-          photos: product.photos || []
-        }));
+        
+        // Categorias válidas permitidas pela constraint do banco
+        const validCategories = ['tires', 'lubricants', 'oils', 'greases', 'batteries', 'other'];
+        
+        const products = taskData.checklist.map(product => {
+          // Validar e corrigir categoria se necessário
+          const category = validCategories.includes(product.category) 
+            ? product.category 
+            : 'other';
+          
+          if (product.category && !validCategories.includes(product.category)) {
+            console.warn(`⚠️ Categoria inválida "${product.category}" convertida para "other"`);
+          }
+          
+          return {
+            task_id: task.id,
+            name: product.name,
+            category: category,
+            selected: product.selected,
+            quantity: product.quantity || 0,
+            price: product.price || 0,
+            observations: product.observations || '',
+            photos: product.photos || []
+          };
+        });
         
         console.log('📤 Enviando produtos para Supabase:', products);
         const { data: insertedProducts, error: productsError } = await supabase
