@@ -1186,18 +1186,6 @@ export const SalesFunnel: React.FC = () => {
       </AlertDialog>
 
       {/* Observador para scroll infinito */}
-      <div ref={observerTarget} className="h-10 flex items-center justify-center">
-        {isFetchingNextPage && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Carregando mais tarefas...</span>
-          </div>
-        )}
-        {!hasNextPage && currentDataSource.length > 0 && (
-          <p className="text-sm text-muted-foreground">
-            Todas as {totalCount} tarefas foram carregadas
-          </p>
-        )}
-      </div>
+      <div ref={observerTarget} className="h-4" />
     </div>;
 };
