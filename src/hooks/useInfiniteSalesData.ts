@@ -3,6 +3,13 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
+export interface SalesFilters {
+  period?: string;
+  consultantId?: string;
+  filial?: string;
+  activity?: string;
+}
+
 interface UnifiedSalesData {
   id: string;
   taskId: string;
@@ -34,7 +41,7 @@ const PAGE_SIZE = 50;
  * Hook com scroll infinito para dados de vendas
  * Carrega dados em páginas para melhorar performance
  */
-export const useInfiniteSalesData = () => {
+export const useInfiniteSalesData = (filters?: SalesFilters) => {
   const {
     data,
     isLoading,
@@ -44,16 +51,38 @@ export const useInfiniteSalesData = () => {
     isFetchingNextPage,
     refetch
   } = useInfiniteQuery({
-    queryKey: ['infinite-sales-data'],
+    queryKey: ['infinite-sales-data', filters],
     queryFn: async ({ pageParam = 0 }) => {
       try {
         const from = pageParam * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        // Buscar tasks paginadas
-        const { data: tasks, error: tasksError, count } = await supabase
+        // Buscar tasks paginadas com filtros
+        let query = supabase
           .from('tasks')
-          .select('*', { count: 'exact' })
+          .select('*', { count: 'exact' });
+
+        // Aplicar filtros
+        if (filters?.period && filters.period !== 'all') {
+          const daysAgo = parseInt(filters.period);
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+          query = query.gte('created_at', cutoffDate.toISOString());
+        }
+
+        if (filters?.consultantId && filters.consultantId !== 'all') {
+          query = query.eq('created_by', filters.consultantId);
+        }
+
+        if (filters?.filial && filters.filial !== 'all') {
+          query = query.eq('filial', filters.filial);
+        }
+
+        if (filters?.activity && filters.activity !== 'all') {
+          query = query.eq('task_type', filters.activity);
+        }
+
+        const { data: tasks, error: tasksError, count } = await query
           .order('created_at', { ascending: false })
           .range(from, to);
 

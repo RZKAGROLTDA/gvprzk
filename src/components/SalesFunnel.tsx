@@ -136,19 +136,27 @@ export const SalesFunnel: React.FC = () => {
 
   // Removed useTasksOptimized() - using useInfiniteSalesData instead
 
+  // Criar objeto de filtros para passar aos hooks
+  const filters = useMemo(() => ({
+    period: selectedPeriod,
+    consultantId: selectedConsultant,
+    filial: selectedFilial,
+    activity: selectedActivity
+  }), [selectedPeriod, selectedConsultant, selectedFilial, selectedActivity]);
+
   // Hook para carregar métricas agregadas (usado na Visão Geral)
   const {
     metrics: overviewMetrics,
     isLoading: isLoadingOverview,
     refetch: refetchOverview
-  } = useAllSalesData();
+  } = useAllSalesData(filters);
 
   // Hook para carregar métricas do funil (usado na aba Funil de Vendas)
   const {
     metrics: funnelMetrics,
     isLoading: isLoadingFunnel,
     refetch: refetchFunnel
-  } = useSalesFunnelMetrics();
+  } = useSalesFunnelMetrics(filters);
 
   // Usar hook com scroll infinito (usado na aba Relatório)
   const { 
@@ -161,7 +169,7 @@ export const SalesFunnel: React.FC = () => {
     hasNextPage,
     isFetchingNextPage,
     totalCount: infiniteDataCount
-  } = useInfiniteSalesData();
+  } = useInfiniteSalesData(filters);
 
   // Decidir qual fonte de dados usar baseado na view ativa
   const isLoadingData = activeView === 'overview' 

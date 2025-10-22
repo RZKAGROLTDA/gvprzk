@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface SalesFilters {
+  period?: string;
+  consultantId?: string;
+  filial?: string;
+  activity?: string;
+}
+
 export interface SalesMetrics {
   contacts: {
     count: number;
@@ -24,50 +31,109 @@ export interface SalesMetrics {
   };
 }
 
-export const useAllSalesData = () => {
+export const useAllSalesData = (filters?: SalesFilters) => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
-    queryKey: ['sales-metrics'],
+    queryKey: ['sales-metrics', filters],
     queryFn: async () => {
-      console.log('🔄 Buscando métricas de vendas (Visão Geral)...');
+      console.log('🔄 Buscando métricas de vendas (Visão Geral)...', filters);
       
-      // Usar a mesma função RPC otimizada
-      const { data: counts, error: countsError } = await supabase
-        .rpc('get_sales_funnel_counts');
+      // Helper para aplicar filtros
+      const applyFilters = (query: any) => {
+        // Filtro de período
+        if (filters?.period && filters.period !== 'all') {
+          const daysAgo = parseInt(filters.period);
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+          query = query.gte('created_at', cutoffDate.toISOString());
+        }
 
-      if (countsError) {
-        console.error('❌ Erro ao buscar counts:', countsError);
-        throw countsError;
-      }
+        // Filtro de consultor - buscar pelo created_by
+        if (filters?.consultantId && filters.consultantId !== 'all') {
+          query = query.eq('created_by', filters.consultantId);
+        }
+
+        // Filtro de filial
+        if (filters?.filial && filters.filial !== 'all') {
+          query = query.eq('filial', filters.filial);
+        }
+
+        // Filtro de atividade
+        if (filters?.activity && filters.activity !== 'all') {
+          query = query.eq('task_type', filters.activity);
+        }
+
+        return query;
+      };
+
+      // Buscar counts com filtros
+      let contactsQuery = supabase.from('tasks')
+        .select('id', { count: 'exact', head: true })
+        .or('sales_confirmed.is.null,sales_confirmed.eq.false')
+        .or('is_prospect.is.null,is_prospect.eq.false');
+      contactsQuery = applyFilters(contactsQuery);
+      
+      let prospectsQuery = supabase.from('tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_prospect', true);
+      prospectsQuery = applyFilters(prospectsQuery);
+      
+      let salesQuery = supabase.from('tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('sales_confirmed', true)
+        .or('sales_type.is.null,sales_type.neq.parcial');
+      salesQuery = applyFilters(salesQuery);
+      
+      let partialSalesQuery = supabase.from('tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('sales_confirmed', true)
+        .eq('sales_type', 'parcial');
+      partialSalesQuery = applyFilters(partialSalesQuery);
+      
+      let lostSalesQuery = supabase.from('tasks')
+        .select('id', { count: 'exact', head: true })
+        .or('sales_type.eq.perdido,status.eq.lost');
+      lostSalesQuery = applyFilters(lostSalesQuery);
 
       // Queries para valores
-      const [contactsValue, prospectsValue, salesValue, partialSalesValue, lostSalesValue] = await Promise.all([
-        // Contatos - valor
-        supabase.from('tasks')
-          .select('sales_value')
-          .or('sales_confirmed.is.null,sales_confirmed.eq.false')
-          .or('is_prospect.is.null,is_prospect.eq.false'),
-        
-        // Prospects - valor
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('is_prospect', true),
-        
-        // Vendas - valor
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('sales_confirmed', true)
-          .or('sales_type.is.null,sales_type.neq.parcial'),
-        
-        // Vendas parciais - valor
-        supabase.from('tasks')
-          .select('partial_sales_value')
-          .eq('sales_confirmed', true)
-          .eq('sales_type', 'parcial'),
-        
-        // Vendas perdidas - valor
-        supabase.from('tasks')
-          .select('sales_value')
-          .or('sales_type.eq.perdido,status.eq.lost')
+      let contactsValueQuery = supabase.from('tasks')
+        .select('sales_value')
+        .or('sales_confirmed.is.null,sales_confirmed.eq.false')
+        .or('is_prospect.is.null,is_prospect.eq.false');
+      contactsValueQuery = applyFilters(contactsValueQuery);
+      
+      let prospectsValueQuery = supabase.from('tasks')
+        .select('sales_value')
+        .eq('is_prospect', true);
+      prospectsValueQuery = applyFilters(prospectsValueQuery);
+      
+      let salesValueQuery = supabase.from('tasks')
+        .select('sales_value')
+        .eq('sales_confirmed', true)
+        .or('sales_type.is.null,sales_type.neq.parcial');
+      salesValueQuery = applyFilters(salesValueQuery);
+      
+      let partialSalesValueQuery = supabase.from('tasks')
+        .select('partial_sales_value')
+        .eq('sales_confirmed', true)
+        .eq('sales_type', 'parcial');
+      partialSalesValueQuery = applyFilters(partialSalesValueQuery);
+      
+      let lostSalesValueQuery = supabase.from('tasks')
+        .select('sales_value')
+        .or('sales_type.eq.perdido,status.eq.lost');
+      lostSalesValueQuery = applyFilters(lostSalesValueQuery);
+
+      const [contactsCount, prospectsCount, salesCount, partialSalesCount, lostSalesCount, contactsValue, prospectsValue, salesValue, partialSalesValue, lostSalesValue] = await Promise.all([
+        contactsQuery,
+        prospectsQuery,
+        salesQuery,
+        partialSalesQuery,
+        lostSalesQuery,
+        contactsValueQuery,
+        prospectsValueQuery,
+        salesValueQuery,
+        partialSalesValueQuery,
+        lostSalesValueQuery
       ]);
 
       if (contactsValue.error) throw contactsValue.error;
@@ -111,23 +177,23 @@ export const useAllSalesData = () => {
 
       const result: SalesMetrics = {
         contacts: {
-          count: counts?.[0]?.contatos || 0,
+          count: contactsCount.count || 0,
           value: totalContactsValue
         },
         prospects: {
-          count: counts?.[0]?.prospects || 0,
+          count: prospectsCount.count || 0,
           value: totalProspectsValue
         },
         sales: {
-          count: counts?.[0]?.vendas || 0,
+          count: salesCount.count || 0,
           value: totalSalesValue
         },
         partialSales: {
-          count: counts?.[0]?.vendas_parciais || 0,
+          count: partialSalesCount.count || 0,
           value: totalPartialSalesValue
         },
         lostSales: {
-          count: counts?.[0]?.vendas_perdidas || 0,
+          count: lostSalesCount.count || 0,
           value: totalLostSalesValue
         }
       };

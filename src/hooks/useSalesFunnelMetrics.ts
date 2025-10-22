@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface SalesFilters {
+  period?: string;
+  consultantId?: string;
+  filial?: string;
+  activity?: string;
+}
+
 export interface SalesFunnelMetrics {
   // Contatos com clientes
   visitas: { count: number; value: number };
@@ -34,28 +41,50 @@ export interface SalesFunnelMetrics {
  * Hook para buscar métricas do funil de vendas de forma independente
  * Usa queries otimizadas com COUNT e SUM em uma única consulta
  */
-export const useSalesFunnelMetrics = () => {
+export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
-    queryKey: ['sales-funnel-metrics'],
+    queryKey: ['sales-funnel-metrics', filters],
     queryFn: async () => {
-      console.log('🔄 Buscando métricas detalhadas do funil de vendas...');
+      console.log('🔄 Buscando métricas detalhadas do funil de vendas...', filters);
+      
+      // Helper para aplicar filtros
+      const applyFilters = (query: any) => {
+        if (filters?.period && filters.period !== 'all') {
+          const daysAgo = parseInt(filters.period);
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+          query = query.gte('created_at', cutoffDate.toISOString());
+        }
+
+        if (filters?.consultantId && filters.consultantId !== 'all') {
+          query = query.eq('created_by', filters.consultantId);
+        }
+
+        if (filters?.filial && filters.filial !== 'all') {
+          query = query.eq('filial', filters.filial);
+        }
+
+        if (filters?.activity && filters.activity !== 'all') {
+          query = query.eq('task_type', filters.activity);
+        }
+
+        return query;
+      };
       
       // Queries para contatos com clientes (visitas, checklists, ligações)
+      let visitasQuery = supabase.from('tasks').select('sales_value').eq('task_type', 'prospection');
+      visitasQuery = applyFilters(visitasQuery);
+
+      let checklistsQuery = supabase.from('tasks').select('sales_value').eq('task_type', 'checklist');
+      checklistsQuery = applyFilters(checklistsQuery);
+
+      let ligacoesQuery = supabase.from('tasks').select('sales_value').eq('task_type', 'ligacao');
+      ligacoesQuery = applyFilters(ligacoesQuery);
+
       const [visitasData, checklistsData, ligacoesData] = await Promise.all([
-        // Visitas
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('task_type', 'prospection'),
-        
-        // Checklists
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('task_type', 'checklist'),
-        
-        // Ligações
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('task_type', 'ligacao')
+        visitasQuery,
+        checklistsQuery,
+        ligacoesQuery
       ]);
 
       if (visitasData.error) throw visitasData.error;
@@ -63,24 +92,28 @@ export const useSalesFunnelMetrics = () => {
       if (ligacoesData.error) throw ligacoesData.error;
 
       // Queries para prospecções
+      let prospeccoesAbertasQuery = supabase.from('tasks')
+        .select('sales_value')
+        .eq('is_prospect', true)
+        .or('sales_confirmed.is.null,sales_confirmed.eq.false');
+      prospeccoesAbertasQuery = applyFilters(prospeccoesAbertasQuery);
+
+      let prospeccoesDechadasQuery = supabase.from('tasks')
+        .select('sales_value')
+        .eq('is_prospect', true)
+        .eq('sales_type', 'ganho');
+      prospeccoesDechadasQuery = applyFilters(prospeccoesDechadasQuery);
+
+      let prospeccoesPerdidasQuery = supabase.from('tasks')
+        .select('sales_value')
+        .eq('is_prospect', true)
+        .eq('sales_type', 'perdido');
+      prospeccoesPerdidasQuery = applyFilters(prospeccoesPerdidasQuery);
+
       const [prospeccoesAbertasData, prospeccoesDechadasData, prospeccoesPerdidasData] = await Promise.all([
-        // Prospecções abertas
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('is_prospect', true)
-          .or('sales_confirmed.is.null,sales_confirmed.eq.false'),
-        
-        // Prospecções fechadas (ganhas)
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('is_prospect', true)
-          .eq('sales_type', 'ganho'),
-        
-        // Prospecções perdidas
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('is_prospect', true)
-          .eq('sales_type', 'perdido')
+        prospeccoesAbertasQuery,
+        prospeccoesDechadasQuery,
+        prospeccoesPerdidasQuery
       ]);
 
       if (prospeccoesAbertasData.error) throw prospeccoesAbertasData.error;
@@ -88,18 +121,21 @@ export const useSalesFunnelMetrics = () => {
       if (prospeccoesPerdidasData.error) throw prospeccoesPerdidasData.error;
 
       // Queries para vendas
+      let vendasTotalQuery = supabase.from('tasks')
+        .select('sales_value')
+        .eq('sales_confirmed', true)
+        .eq('sales_type', 'ganho');
+      vendasTotalQuery = applyFilters(vendasTotalQuery);
+
+      let vendasParcialQuery = supabase.from('tasks')
+        .select('partial_sales_value')
+        .eq('sales_confirmed', true)
+        .eq('sales_type', 'parcial');
+      vendasParcialQuery = applyFilters(vendasParcialQuery);
+
       const [vendasTotalData, vendasParcialData] = await Promise.all([
-        // Vendas totais
-        supabase.from('tasks')
-          .select('sales_value')
-          .eq('sales_confirmed', true)
-          .eq('sales_type', 'ganho'),
-        
-        // Vendas parciais
-        supabase.from('tasks')
-          .select('partial_sales_value')
-          .eq('sales_confirmed', true)
-          .eq('sales_type', 'parcial')
+        vendasTotalQuery,
+        vendasParcialQuery
       ]);
 
       if (vendasTotalData.error) throw vendasTotalData.error;
