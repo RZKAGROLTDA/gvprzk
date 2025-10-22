@@ -2,6 +2,27 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SalesFunnelMetrics {
+  // Contatos com clientes
+  visitas: { count: number; value: number };
+  checklists: { count: number; value: number };
+  ligacoes: { count: number; value: number };
+  totalContatos: number;
+  
+  // Prospecções
+  prospeccoesAbertas: { count: number; value: number };
+  prospeccoesFechadas: { count: number; value: number };
+  prospeccoesPerdidas: { count: number; value: number };
+  totalProspeccoes: number;
+  
+  // Vendas
+  vendasTotal: { count: number; value: number };
+  vendasParcial: { count: number; value: number };
+  totalVendas: number;
+  
+  // Taxa de conversão
+  taxaConversao: number;
+  
+  // Legacy para compatibilidade
   contacts: { count: number; value: number };
   prospects: { count: number; value: number };
   sales: { count: number; value: number };
@@ -17,111 +38,178 @@ export const useSalesFunnelMetrics = () => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['sales-funnel-metrics'],
     queryFn: async () => {
-      console.log('🔄 Buscando métricas do funil de vendas...');
+      console.log('🔄 Buscando métricas detalhadas do funil de vendas...');
       
-      // Query unificada para contar registros
-      const { data: counts, error: countsError } = await supabase
-        .rpc('get_sales_funnel_counts');
-
-      if (countsError) {
-        console.error('❌ Erro ao buscar counts:', countsError);
-        throw countsError;
-      }
-
-      // Queries para valores
-      const [contactsValue, prospectsValue, salesValue, partialSalesValue, lostSalesValue] = await Promise.all([
-        // Contatos - valor
+      // Queries para contatos com clientes (visitas, checklists, ligações)
+      const [visitasData, checklistsData, ligacoesData] = await Promise.all([
+        // Visitas
         supabase.from('tasks')
           .select('sales_value')
-          .or('sales_confirmed.is.null,sales_confirmed.eq.false')
-          .or('is_prospect.is.null,is_prospect.eq.false'),
+          .eq('task_type', 'prospection'),
         
-        // Prospects - valor
+        // Checklists
         supabase.from('tasks')
           .select('sales_value')
-          .eq('is_prospect', true),
+          .eq('task_type', 'checklist'),
         
-        // Vendas - valor
+        // Ligações
+        supabase.from('tasks')
+          .select('sales_value')
+          .eq('task_type', 'ligacao')
+      ]);
+
+      if (visitasData.error) throw visitasData.error;
+      if (checklistsData.error) throw checklistsData.error;
+      if (ligacoesData.error) throw ligacoesData.error;
+
+      // Queries para prospecções
+      const [prospeccoesAbertasData, prospeccoesDechadasData, prospeccoesPerdidasData] = await Promise.all([
+        // Prospecções abertas
+        supabase.from('tasks')
+          .select('sales_value')
+          .eq('is_prospect', true)
+          .or('sales_confirmed.is.null,sales_confirmed.eq.false'),
+        
+        // Prospecções fechadas (ganhas)
+        supabase.from('tasks')
+          .select('sales_value')
+          .eq('is_prospect', true)
+          .eq('sales_type', 'ganho'),
+        
+        // Prospecções perdidas
+        supabase.from('tasks')
+          .select('sales_value')
+          .eq('is_prospect', true)
+          .eq('sales_type', 'perdido')
+      ]);
+
+      if (prospeccoesAbertasData.error) throw prospeccoesAbertasData.error;
+      if (prospeccoesDechadasData.error) throw prospeccoesDechadasData.error;
+      if (prospeccoesPerdidasData.error) throw prospeccoesPerdidasData.error;
+
+      // Queries para vendas
+      const [vendasTotalData, vendasParcialData] = await Promise.all([
+        // Vendas totais
         supabase.from('tasks')
           .select('sales_value')
           .eq('sales_confirmed', true)
-          .or('sales_type.is.null,sales_type.neq.parcial'),
+          .eq('sales_type', 'ganho'),
         
-        // Vendas parciais - valor
+        // Vendas parciais
         supabase.from('tasks')
           .select('partial_sales_value')
           .eq('sales_confirmed', true)
-          .eq('sales_type', 'parcial'),
-        
-        // Vendas perdidas - valor
-        supabase.from('tasks')
-          .select('sales_value')
-          .or('sales_type.eq.perdido,status.eq.lost')
+          .eq('sales_type', 'parcial')
       ]);
 
-      if (contactsValue.error) throw contactsValue.error;
-      if (prospectsValue.error) throw prospectsValue.error;
-      if (salesValue.error) throw salesValue.error;
-      if (partialSalesValue.error) throw partialSalesValue.error;
-      if (lostSalesValue.error) throw lostSalesValue.error;
+      if (vendasTotalData.error) throw vendasTotalData.error;
+      if (vendasParcialData.error) throw vendasParcialData.error;
 
-      // Calcular valores totais
-      const totalContactsValue = (contactsValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
+      // Calcular valores
+      const calcularValor = (data: any[]) => {
+        return data.reduce((sum, task) => {
+          const value = typeof task.sales_value === 'number' 
+            ? task.sales_value 
+            : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
+          return sum + value;
+        }, 0);
+      };
 
-      const totalProspectsValue = (prospectsValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
+      const visitasValue = calcularValor(visitasData.data || []);
+      const checklistsValue = calcularValor(checklistsData.data || []);
+      const ligacoesValue = calcularValor(ligacoesData.data || []);
+      
+      const prospeccoesAbertasValue = calcularValor(prospeccoesAbertasData.data || []);
+      const prospeccoesDechadasValue = calcularValor(prospeccoesDechadasData.data || []);
+      const prospeccoesPerdidasValue = calcularValor(prospeccoesPerdidasData.data || []);
+      
+      const vendasTotalValue = calcularValor(vendasTotalData.data || []);
+      const vendasParcialValue = (vendasParcialData.data || []).reduce((sum, task) => 
+        sum + (task.partial_sales_value || 0), 0);
 
-      const totalSalesValue = (salesValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
+      // Totalizadores
+      const totalContatos = (visitasData.data?.length || 0) + 
+                           (checklistsData.data?.length || 0) + 
+                           (ligacoesData.data?.length || 0);
+      
+      const totalProspeccoes = (prospeccoesAbertasData.data?.length || 0) + 
+                              (prospeccoesDechadasData.data?.length || 0) + 
+                              (prospeccoesPerdidasData.data?.length || 0);
+      
+      const totalVendas = (vendasTotalData.data?.length || 0) + 
+                         (vendasParcialData.data?.length || 0);
 
-      const totalPartialSalesValue = (partialSalesValue.data || []).reduce((sum, task) => {
-        return sum + (task.partial_sales_value || 0);
-      }, 0);
-
-      const totalLostSalesValue = (lostSalesValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
+      const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
       const result: SalesFunnelMetrics = {
+        // Contatos com clientes
+        visitas: {
+          count: visitasData.data?.length || 0,
+          value: visitasValue
+        },
+        checklists: {
+          count: checklistsData.data?.length || 0,
+          value: checklistsValue
+        },
+        ligacoes: {
+          count: ligacoesData.data?.length || 0,
+          value: ligacoesValue
+        },
+        totalContatos,
+        
+        // Prospecções
+        prospeccoesAbertas: {
+          count: prospeccoesAbertasData.data?.length || 0,
+          value: prospeccoesAbertasValue
+        },
+        prospeccoesFechadas: {
+          count: prospeccoesDechadasData.data?.length || 0,
+          value: prospeccoesDechadasValue
+        },
+        prospeccoesPerdidas: {
+          count: prospeccoesPerdidasData.data?.length || 0,
+          value: prospeccoesPerdidasValue
+        },
+        totalProspeccoes,
+        
+        // Vendas
+        vendasTotal: {
+          count: vendasTotalData.data?.length || 0,
+          value: vendasTotalValue
+        },
+        vendasParcial: {
+          count: vendasParcialData.data?.length || 0,
+          value: vendasParcialValue
+        },
+        totalVendas,
+        
+        // Taxa de conversão
+        taxaConversao,
+        
+        // Legacy para compatibilidade
         contacts: {
-          count: counts?.[0]?.contatos || 0,
-          value: totalContactsValue
+          count: totalContatos,
+          value: visitasValue + checklistsValue + ligacoesValue
         },
         prospects: {
-          count: counts?.[0]?.prospects || 0,
-          value: totalProspectsValue
+          count: prospeccoesAbertasData.data?.length || 0,
+          value: prospeccoesAbertasValue
         },
         sales: {
-          count: counts?.[0]?.vendas || 0,
-          value: totalSalesValue
+          count: vendasTotalData.data?.length || 0,
+          value: vendasTotalValue
         },
         partialSales: {
-          count: counts?.[0]?.vendas_parciais || 0,
-          value: totalPartialSalesValue
+          count: vendasParcialData.data?.length || 0,
+          value: vendasParcialValue
         },
         lostSales: {
-          count: counts?.[0]?.vendas_perdidas || 0,
-          value: totalLostSalesValue
+          count: prospeccoesPerdidasData.data?.length || 0,
+          value: prospeccoesPerdidasValue
         }
       };
 
-      console.log('✅ Métricas do funil carregadas:', result);
+      console.log('✅ Métricas detalhadas do funil carregadas:', result);
       return result;
     },
     staleTime: 30000,
@@ -130,6 +218,18 @@ export const useSalesFunnelMetrics = () => {
 
   return {
     metrics: metrics || {
+      visitas: { count: 0, value: 0 },
+      checklists: { count: 0, value: 0 },
+      ligacoes: { count: 0, value: 0 },
+      totalContatos: 0,
+      prospeccoesAbertas: { count: 0, value: 0 },
+      prospeccoesFechadas: { count: 0, value: 0 },
+      prospeccoesPerdidas: { count: 0, value: 0 },
+      totalProspeccoes: 0,
+      vendasTotal: { count: 0, value: 0 },
+      vendasParcial: { count: 0, value: 0 },
+      totalVendas: 0,
+      taxaConversao: 0,
       contacts: { count: 0, value: 0 },
       prospects: { count: 0, value: 0 },
       sales: { count: 0, value: 0 },
