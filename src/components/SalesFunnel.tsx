@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Task } from '@/types/task';
 
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { TaskFormVisualization } from '@/components/TaskFormVisualization';
 import { OpportunityReport } from '@/components/OpportunityReport';
@@ -171,44 +171,65 @@ export const SalesFunnel: React.FC = () => {
     totalCount: infiniteDataCount
   } = useInfiniteSalesData(filters);
 
-  // Query independente para a aba Detalhes dos Clientes
+  // Query com infinite scroll para a aba Detalhes dos Clientes
   const {
-    data: clientDetailsData,
+    data: clientDetailsPages,
     isLoading: isLoadingClientDetails,
-    refetch: refetchClientDetails
-  } = useQuery({
+    refetch: refetchClientDetails,
+    fetchNextPage: fetchNextClientDetailsPage,
+    hasNextPage: hasNextClientDetailsPage,
+    isFetchingNextPage: isFetchingNextClientDetailsPage,
+  } = useInfiniteQuery({
     queryKey: ['client-details', filters],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
+      const PAGE_SIZE = 50;
+      const from = pageParam * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      let countQuery = supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true });
+
       let query = supabase
         .from('tasks')
-        .select('*');
+        .select('*')
+        .range(from, to)
+        .order('created_at', { ascending: false });
 
-      // Aplicar filtros
+      // Aplicar filtros em ambas as queries
       if (filters?.period && filters.period !== 'all') {
         const daysAgo = parseInt(filters.period);
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-        query = query.gte('created_at', cutoffDate.toISOString());
+        const isoDate = cutoffDate.toISOString();
+        query = query.gte('created_at', isoDate);
+        countQuery = countQuery.gte('created_at', isoDate);
       }
 
       if (filters?.consultantId && filters.consultantId !== 'all') {
         query = query.eq('created_by', filters.consultantId);
+        countQuery = countQuery.eq('created_by', filters.consultantId);
       }
 
       if (filters?.filial && filters.filial !== 'all') {
         query = query.eq('filial', filters.filial);
+        countQuery = countQuery.eq('filial', filters.filial);
       }
 
       if (filters?.activity && filters.activity !== 'all') {
         query = query.eq('task_type', filters.activity);
+        countQuery = countQuery.eq('task_type', filters.activity);
       }
 
-      const { data: tasks, error } = await query.order('created_at', { ascending: false });
+      const [{ data: tasks, error }, { count }] = await Promise.all([
+        query,
+        countQuery
+      ]);
 
       if (error) throw error;
 
       // Converter para formato compatível
-      return (tasks || []).map(task => ({
+      const formattedTasks = (tasks || []).map(task => ({
         id: task.id,
         client: task.client,
         responsible: task.responsible,
@@ -221,10 +242,27 @@ export const SalesFunnel: React.FC = () => {
         partialSalesValue: task.partial_sales_value || 0,
         createdAt: new Date(task.created_at)
       }));
+
+      return {
+        data: formattedTasks,
+        totalCount: count || 0,
+        nextPage: formattedTasks.length === PAGE_SIZE ? pageParam + 1 : undefined
+      };
     },
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 0,
     enabled: activeView === 'details',
     staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
+
+  // Flatten client details data
+  const clientDetailsData = useMemo(() => {
+    return clientDetailsPages?.pages.flatMap(page => page.data) || [];
+  }, [clientDetailsPages]);
+
+  // Total count for client details
+  const clientDetailsTotalCount = clientDetailsPages?.pages[0]?.totalCount || 0;
 
   // Decidir qual fonte de dados usar baseado na view ativa
   const isLoadingData = activeView === 'overview' 
@@ -327,8 +365,10 @@ export const SalesFunnel: React.FC = () => {
     await refetchOverview();
     await refetchFunnel();
     await refetchSales();
-    await refetchClientDetails();
-  }, [queryClient, refetchOverview, refetchFunnel, refetchSales, refetchClientDetails]);
+    if (activeView === 'details') {
+      await refetchClientDetails();
+    }
+  }, [queryClient, refetchOverview, refetchFunnel, refetchSales, refetchClientDetails, activeView]);
 
   // Utility functions for name matching
   const normalizeName = useCallback((name: string): string => {
@@ -1191,10 +1231,28 @@ export const SalesFunnel: React.FC = () => {
               </TableBody>
             </Table>
             
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Mostrando {itemsPerPage === 'all' ? clientDetails.length : Math.min(parseInt(itemsPerPage || '10'), clientDetails.length)} de {clientDetails.length} clientes. Use os filtros para refinar a busca.
+                Mostrando {itemsPerPage === 'all' ? clientDetails.length : Math.min(parseInt(itemsPerPage), clientDetails.length)} de {clientDetailsTotalCount} clientes totais.
+                {clientDetails.length < clientDetailsTotalCount && " Use os filtros para refinar a busca."}
               </p>
+              {hasNextClientDetailsPage && itemsPerPage === 'all' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchNextClientDetailsPage()}
+                  disabled={isFetchingNextClientDetailsPage}
+                >
+                  {isFetchingNextClientDetailsPage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Carregando mais...
+                    </>
+                  ) : (
+                    'Carregar mais clientes'
+                  )}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>}
