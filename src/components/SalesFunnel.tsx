@@ -21,6 +21,16 @@ import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
 import { useUnifiedSalesData } from '@/hooks/useUnifiedSalesData';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SalesFunnelData {
   contacts: {
@@ -75,6 +85,7 @@ export const SalesFunnel: React.FC = () => {
   const [isTaskVisualizationOpen, setIsTaskVisualizationOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [taskToDelete, setTaskToDelete] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
   const { isAdmin, isLoading: isLoadingRole } = useUserRole();
 
@@ -455,26 +466,26 @@ export const SalesFunnel: React.FC = () => {
   }, [queryClient, refetch]);
 
   // Handler para excluir tarefa (apenas ADMIN)
-  const handleDeleteTask = async (taskId: string, taskName: string) => {
-    if (!confirm(`Tem certeza que deseja excluir a tarefa "${taskName}"?`)) {
-      return;
-    }
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
 
     try {
       const { error } = await supabase
         .from('tasks')
         .delete()
-        .eq('id', taskId);
+        .eq('id', taskToDelete.id);
 
       if (error) throw error;
 
       toast.success('Tarefa excluída com sucesso');
+      setTaskToDelete(null);
       await queryClient.invalidateQueries({ queryKey: ['sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks-optimized'] });
       await refetch();
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
       toast.error(error.message || 'Erro ao excluir tarefa');
+      setTaskToDelete(null);
     }
   };
 
@@ -1156,7 +1167,7 @@ export const SalesFunnel: React.FC = () => {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => handleDeleteTask(task.id, task.client)}
+                              onClick={() => setTaskToDelete({ id: task.id, name: task.client })}
                               className="flex items-center space-x-1"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1259,5 +1270,23 @@ export const SalesFunnel: React.FC = () => {
           setSelectedTask(null);
         }}
       />
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a tarefa "{taskToDelete?.name}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 };
