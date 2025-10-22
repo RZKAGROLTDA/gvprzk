@@ -47,43 +47,27 @@ export const useInfiniteSalesData = () => {
         const from = pageParam * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        const { data: tasksWithOpportunities, error: tasksError, count } = await supabase
+        // Buscar tasks paginadas
+        const { data: tasks, error: tasksError, count } = await supabase
           .from('tasks')
-          .select(`
-            id,
-            name,
-            responsible,
-            client,
-            property,
-            filial,
-            task_type,
-            status,
-            sales_value,
-            partial_sales_value,
-            sales_type,
-            sales_confirmed,
-            is_prospect,
-            start_date,
-            end_date,
-            created_at,
-            updated_at,
-            created_by,
-            opportunities (
-              id,
-              status,
-              valor_total_oportunidade,
-              valor_venda_fechada,
-              data_criacao,
-              data_fechamento
-            )
-          `, { count: 'exact' })
+          .select('*', { count: 'exact' })
           .order('created_at', { ascending: false })
           .range(from, to);
 
         if (tasksError) throw tasksError;
 
-        const unified: UnifiedSalesData[] = (tasksWithOpportunities || []).map(task => {
-          const opportunity = task.opportunities?.[0];
+        // Buscar todas as opportunities
+        const { data: opportunities } = await supabase
+          .from('opportunities')
+          .select('task_id, status, valor_total_oportunidade, valor_venda_fechada');
+
+        // Criar mapa de opportunities por task_id
+        const opportunitiesMap = new Map(
+          (opportunities || []).map(opp => [opp.task_id, opp])
+        );
+
+        const unified: UnifiedSalesData[] = (tasks || []).map(task => {
+          const opportunity = opportunitiesMap.get(task.id);
           
           let salesStatus: 'prospect' | 'ganho' | 'perdido' | 'parcial' = 'prospect';
           
@@ -108,7 +92,7 @@ export const useInfiniteSalesData = () => {
           const partialValue = salesStatus === 'parcial' ? closedValue : 0;
 
           return {
-            id: opportunity?.id || `task-${task.id}`,
+            id: opportunity ? `opp-${task.id}` : `task-${task.id}`,
             taskId: task.id,
             clientName: task.client,
             filial: task.filial || 'Não informado',
