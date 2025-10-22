@@ -9,7 +9,7 @@ import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, Trendin
 import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
 import { Task } from '@/types/task';
-import { useTasksOptimized } from '@/hooks/useTasksOptimized';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
@@ -132,12 +132,7 @@ export const SalesFunnel: React.FC = () => {
     initializeCache();
   }, []);
 
-  // Use optimized task hook
-  const {
-    tasks = [],
-    loading,
-    refetch: refetchTasks
-  } = useTasksOptimized();
+  // Removed useTasksOptimized() - using useInfiniteSalesData instead
 
   // Usar hook com scroll infinito
   const { 
@@ -226,9 +221,8 @@ export const SalesFunnel: React.FC = () => {
       console.log('♻️ FUNNEL: Todas as queries invalidadas');
     };
     await invalidateAll();
-    await refetchTasks();
     await refetchSales();
-  }, [queryClient, refetchTasks, refetchSales]);
+  }, [queryClient, refetchSales]);
 
   // Utility functions for name matching
   const normalizeName = useCallback((name: string): string => {
@@ -556,9 +550,8 @@ export const SalesFunnel: React.FC = () => {
     await queryClient.invalidateQueries({
       queryKey: ['infinite-sales-data']
     });
-    await refetchTasks();
     await refetchSales();
-  }, [queryClient, refetchTasks, refetchSales]);
+  }, [queryClient, refetchSales]);
 
   // Handler para excluir tarefa (apenas ADMIN)
   const handleDeleteTask = async () => {
@@ -577,7 +570,6 @@ export const SalesFunnel: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: ['sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks-optimized'] });
-      await refetchTasks();
       await refetchSales();
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
@@ -586,7 +578,7 @@ export const SalesFunnel: React.FC = () => {
     }
   };
 
-  if (loading || isLoadingData) {
+  if (isLoadingData) {
     return <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         <span className="ml-2">Carregando dados de vendas...</span>
@@ -600,13 +592,13 @@ export const SalesFunnel: React.FC = () => {
           <h1 className="text-3xl font-bold">Análise Gerencial</h1>
           <p className="text-muted-foreground">Análise de performance comercial e cobertura de carteira</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Total de registros carregados: {tasks.length} | Filtrados: {filteredTasks.length} | Filiais: {filiais.length}
+            Total de registros carregados: {totalCount} | Filtrados: {filteredTasks.length} | Filiais: {filiais.length}
           </p>
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={forceRefresh} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={forceRefresh} disabled={isLoadingData}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingData ? 'animate-spin' : ''}`} />
             Recarregar Dados
           </Button>
         </div>
@@ -1343,7 +1335,6 @@ export const SalesFunnel: React.FC = () => {
     }} onTaskUpdated={updatedTask => {
       console.log('📋 FUNNEL: Task atualizada recebida:', updatedTask);
       setSelectedTask(updatedTask);
-      refetchTasks();
       refetchSales();
     }} />}
       
