@@ -290,6 +290,13 @@ export const useTasksOptimized = (includeDetails = false) => {
 
       if (taskError) throw taskError;
 
+      console.log('✅ Task criada com sucesso:', task.id);
+      console.log('📦 Verificando produtos para salvar:', {
+        hasChecklist: !!taskData.checklist,
+        checklistLength: taskData.checklist?.length || 0,
+        checklist: taskData.checklist
+      });
+
       // Auto-criar opportunity se task tem valor de venda
       if (standardizedTaskData.salesValue && standardizedTaskData.salesValue > 0) {
         try {
@@ -316,6 +323,7 @@ export const useTasksOptimized = (includeDetails = false) => {
 
       // Criar products e reminders com tratamento de erro adequado
       if (taskData.checklist?.length) {
+        console.log('🔄 Preparando para salvar produtos:', taskData.checklist.length);
         const products = taskData.checklist.map(product => ({
           task_id: task.id,
           name: product.name,
@@ -327,12 +335,21 @@ export const useTasksOptimized = (includeDetails = false) => {
           photos: product.photos || []
         }));
         
-        const { error: productsError } = await supabase.from('products').insert(products);
+        console.log('📤 Enviando produtos para Supabase:', products);
+        const { data: insertedProducts, error: productsError } = await supabase
+          .from('products')
+          .insert(products)
+          .select();
+        
         if (productsError) {
           console.error('❌ Erro ao salvar produtos:', productsError);
+          console.error('❌ Detalhes completos do erro:', JSON.stringify(productsError, null, 2));
           throw new Error(`Falha ao salvar produtos: ${productsError.message}`);
         }
-        console.log('✅ Produtos salvos com sucesso:', products.length);
+        console.log('✅ Produtos salvos com sucesso:', insertedProducts?.length || products.length);
+        console.log('✅ Dados dos produtos salvos:', insertedProducts);
+      } else {
+        console.log('⚠️ Nenhum produto na checklist para salvar');
       }
 
       if (taskData.reminders?.length) {
