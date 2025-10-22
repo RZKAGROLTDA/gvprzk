@@ -314,9 +314,7 @@ export const useTasksOptimized = (includeDetails = false) => {
         }
       }
 
-      // Criar products e reminders em paralelo se necessário
-      const promises = [];
-      
+      // Criar products e reminders com tratamento de erro adequado
       if (taskData.checklist?.length) {
         const products = taskData.checklist.map(product => ({
           task_id: task.id,
@@ -328,7 +326,13 @@ export const useTasksOptimized = (includeDetails = false) => {
           observations: product.observations || '',
           photos: product.photos || []
         }));
-        promises.push(supabase.from('products').insert(products));
+        
+        const { error: productsError } = await supabase.from('products').insert(products);
+        if (productsError) {
+          console.error('❌ Erro ao salvar produtos:', productsError);
+          throw new Error(`Falha ao salvar produtos: ${productsError.message}`);
+        }
+        console.log('✅ Produtos salvos com sucesso:', products.length);
       }
 
       if (taskData.reminders?.length) {
@@ -340,11 +344,12 @@ export const useTasksOptimized = (includeDetails = false) => {
           time: reminder.time,
           completed: reminder.completed || false
         }));
-        promises.push(supabase.from('reminders').insert(reminders));
-      }
-
-      if (promises.length) {
-        await Promise.all(promises);
+        
+        const { error: remindersError } = await supabase.from('reminders').insert(reminders);
+        if (remindersError) {
+          console.error('❌ Erro ao salvar lembretes:', remindersError);
+          throw new Error(`Falha ao salvar lembretes: ${remindersError.message}`);
+        }
       }
 
       return task;
