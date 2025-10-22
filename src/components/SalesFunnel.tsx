@@ -171,12 +171,69 @@ export const SalesFunnel: React.FC = () => {
     totalCount: infiniteDataCount
   } = useInfiniteSalesData(filters);
 
+  // Query independente para a aba Detalhes dos Clientes
+  const {
+    data: clientDetailsData,
+    isLoading: isLoadingClientDetails,
+    refetch: refetchClientDetails
+  } = useQuery({
+    queryKey: ['client-details', filters],
+    queryFn: async () => {
+      let query = supabase
+        .from('tasks')
+        .select('*');
+
+      // Aplicar filtros
+      if (filters?.period && filters.period !== 'all') {
+        const daysAgo = parseInt(filters.period);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+        query = query.gte('created_at', cutoffDate.toISOString());
+      }
+
+      if (filters?.consultantId && filters.consultantId !== 'all') {
+        query = query.eq('created_by', filters.consultantId);
+      }
+
+      if (filters?.filial && filters.filial !== 'all') {
+        query = query.eq('filial', filters.filial);
+      }
+
+      if (filters?.activity && filters.activity !== 'all') {
+        query = query.eq('task_type', filters.activity);
+      }
+
+      const { data: tasks, error } = await query.order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Converter para formato compatível
+      return (tasks || []).map(task => ({
+        id: task.id,
+        client: task.client,
+        responsible: task.responsible,
+        filial: task.filial || 'Sem Filial',
+        taskType: task.task_type,
+        isProspect: task.is_prospect || false,
+        salesConfirmed: task.sales_confirmed || false,
+        salesType: task.sales_type as 'ganho' | 'perdido' | 'parcial' | undefined,
+        salesValue: getSalesValueAsNumber(task.sales_value) || 0,
+        partialSalesValue: task.partial_sales_value || 0,
+        createdAt: new Date(task.created_at)
+      }));
+    },
+    enabled: activeView === 'details',
+    staleTime: 2 * 60 * 1000,
+  });
+
   // Decidir qual fonte de dados usar baseado na view ativa
   const isLoadingData = activeView === 'overview' 
     ? isLoadingOverview 
     : activeView === 'funnel'
       ? isLoadingFunnel
-      : isLoadingInfiniteData;
+      : activeView === 'details'
+        ? isLoadingClientDetails
+        : isLoadingInfiniteData;
   const currentDataSource = infiniteSalesData || [];
   const totalCount = infiniteDataCount;
 
@@ -253,6 +310,9 @@ export const SalesFunnel: React.FC = () => {
         queryKey: ['sales-funnel-metrics']
       });
       await queryClient.invalidateQueries({
+        queryKey: ['client-details']
+      });
+      await queryClient.invalidateQueries({
         queryKey: ['consultants']
       });
       await queryClient.invalidateQueries({
@@ -267,7 +327,8 @@ export const SalesFunnel: React.FC = () => {
     await refetchOverview();
     await refetchFunnel();
     await refetchSales();
-  }, [queryClient, refetchOverview, refetchFunnel, refetchSales]);
+    await refetchClientDetails();
+  }, [queryClient, refetchOverview, refetchFunnel, refetchSales, refetchClientDetails]);
 
   // Utility functions for name matching
   const normalizeName = useCallback((name: string): string => {
@@ -463,17 +524,21 @@ export const SalesFunnel: React.FC = () => {
     });
   }, [filteredTasks, getFilialName]);
 
-  // Calculate client details
+  // Calculate client details - usa dados independentes quando na aba details
   const clientDetails = useMemo((): ClientDetails[] => {
+    // Usar dados da query independente quando na aba details
+    const dataSource = activeView === 'details' ? (clientDetailsData || []) : filteredTasks;
+    
     const clientStats = new Map<string, {
       filial: string;
       consultant: string;
-      activities: Task[];
+      activities: any[];
       lastActivity: Date;
       salesValue: number;
       status: string;
     }>();
-    filteredTasks.forEach(task => {
+    
+    dataSource.forEach(task => {
       const key = `${task.client}-${task.filial || 'Sem Filial'}`;
       if (!clientStats.has(key)) {
         clientStats.set(key, {
@@ -492,7 +557,7 @@ export const SalesFunnel: React.FC = () => {
         stats.lastActivity = taskDate;
       }
       if (task.salesConfirmed) {
-        stats.salesValue += calculateTaskSalesValue(task);
+        stats.salesValue += typeof task.salesValue === 'number' ? task.salesValue : calculateTaskSalesValue(task);
         if (task.salesType === 'ganho') {
           stats.status = 'Venda Total';
         } else if (task.salesType === 'parcial') {
@@ -512,8 +577,8 @@ export const SalesFunnel: React.FC = () => {
       lastActivity: stats.lastActivity,
       salesValue: stats.salesValue,
       status: stats.status
-    })).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime()); // Show all clients, will be filtered by itemsPerPage in render
-  }, [filteredTasks, getFilialName]);
+    })).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
+  }, [activeView, clientDetailsData, filteredTasks, getFilialName]);
 
   // Get detailed data for tables
   const getDetailedData = useCallback((section: string) => {
@@ -1093,7 +1158,7 @@ export const SalesFunnel: React.FC = () => {
           <CardHeader>
             <CardTitle>Detalhes dos Clientes</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Top 10 clientes com mais atividades recentes
+              Visualizar atividades e vendas por cliente
             </p>
           </CardHeader>
           <CardContent>
@@ -1126,11 +1191,11 @@ export const SalesFunnel: React.FC = () => {
               </TableBody>
             </Table>
             
-            {clientDetails.length > 10 && <div className="mt-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Mostrando 10 de {clientDetails.length} clientes. Use os filtros para refinar a busca.
-                </p>
-              </div>}
+            <div className="mt-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {itemsPerPage === 'all' ? clientDetails.length : Math.min(parseInt(itemsPerPage || '10'), clientDetails.length)} de {clientDetails.length} clientes. Use os filtros para refinar a busca.
+              </p>
+            </div>
           </CardContent>
         </Card>}
 
