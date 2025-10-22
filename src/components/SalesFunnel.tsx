@@ -135,12 +135,11 @@ export const SalesFunnel: React.FC = () => {
 
   // Removed useTasksOptimized() - using useInfiniteSalesData instead
 
-  // Hook para carregar TODOS os dados (usado na Visão Geral)
+  // Hook para carregar métricas agregadas (usado na Visão Geral)
   const {
-    data: allSalesData = [],
-    isLoading: isLoadingAllData,
-    refetch: refetchAllData,
-    totalCount: allDataCount
+    metrics: overviewMetrics,
+    isLoading: isLoadingMetrics,
+    refetch: refetchMetrics
   } = useAllSalesData();
 
   // Usar hook com scroll infinito (usado na aba Relatório)
@@ -157,9 +156,9 @@ export const SalesFunnel: React.FC = () => {
   } = useInfiniteSalesData();
 
   // Decidir qual fonte de dados usar baseado na view ativa
-  const isLoadingData = activeView === 'overview' ? isLoadingAllData : isLoadingInfiniteData;
-  const currentDataSource = activeView === 'overview' ? allSalesData : (infiniteSalesData || []);
-  const totalCount = activeView === 'overview' ? allDataCount : infiniteDataCount;
+  const isLoadingData = activeView === 'overview' ? isLoadingMetrics : isLoadingInfiniteData;
+  const currentDataSource = infiniteSalesData || [];
+  const totalCount = infiniteDataCount;
 
   // Observer para scroll infinito
   const observerTarget = React.useRef<HTMLDivElement>(null);
@@ -235,9 +234,9 @@ export const SalesFunnel: React.FC = () => {
       console.log('♻️ FUNNEL: Todas as queries invalidadas');
     };
     await invalidateAll();
-    await refetchAllData();
+    await refetchMetrics();
     await refetchSales();
-  }, [queryClient, refetchAllData, refetchSales]);
+  }, [queryClient, refetchMetrics, refetchSales]);
 
   // Utility functions for name matching
   const normalizeName = useCallback((name: string): string => {
@@ -573,11 +572,11 @@ export const SalesFunnel: React.FC = () => {
       queryKey: ['infinite-sales-data']
     });
     await queryClient.invalidateQueries({
-      queryKey: ['all-sales-data']
+      queryKey: ['sales-metrics']
     });
-    await refetchAllData();
+    await refetchMetrics();
     await refetchSales();
-  }, [queryClient, refetchAllData, refetchSales]);
+  }, [queryClient, refetchMetrics, refetchSales]);
 
   // Handler para excluir tarefa (apenas ADMIN)
   const handleDeleteTask = async () => {
@@ -595,9 +594,9 @@ export const SalesFunnel: React.FC = () => {
       setTaskToDelete(null);
       await queryClient.invalidateQueries({ queryKey: ['sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
-      await queryClient.invalidateQueries({ queryKey: ['all-sales-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['sales-metrics'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks-optimized'] });
-      await refetchAllData();
+      await refetchMetrics();
       await refetchSales();
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
@@ -758,9 +757,9 @@ export const SalesFunnel: React.FC = () => {
               <CardTitle className="text-sm font-medium">Contatos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{funnelData.contacts.count}</div>
+              <div className="text-2xl font-bold">{overviewMetrics.contacts.count}</div>
               <p className="text-xs text-muted-foreground">
-                {formatSalesValue(funnelData.contacts.value)}
+                {formatSalesValue(overviewMetrics.contacts.value)}
               </p>
             </CardContent>
           </Card>
@@ -770,9 +769,9 @@ export const SalesFunnel: React.FC = () => {
               <CardTitle className="text-sm font-medium">Prospects</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{funnelData.prospects.count}</div>
+              <div className="text-2xl font-bold">{overviewMetrics.prospects.count}</div>
               <p className="text-xs text-muted-foreground">
-                {formatSalesValue(funnelData.prospects.value)}
+                {formatSalesValue(overviewMetrics.prospects.value)}
               </p>
             </CardContent>
           </Card>
@@ -782,9 +781,9 @@ export const SalesFunnel: React.FC = () => {
               <CardTitle className="text-sm font-medium">Vendas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{funnelData.sales.count}</div>
+              <div className="text-2xl font-bold">{overviewMetrics.sales.count}</div>
               <p className="text-xs text-muted-foreground">
-                {formatSalesValue(funnelData.sales.value)}
+                {formatSalesValue(overviewMetrics.sales.value)}
               </p>
             </CardContent>
           </Card>
@@ -794,9 +793,9 @@ export const SalesFunnel: React.FC = () => {
               <CardTitle className="text-sm font-medium">Vendas Parciais</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{funnelData.partialSales.count}</div>
+              <div className="text-2xl font-bold">{overviewMetrics.partialSales.count}</div>
               <p className="text-xs text-muted-foreground">
-                {formatSalesValue(funnelData.partialSales.value)}
+                {formatSalesValue(overviewMetrics.partialSales.value)}
               </p>
             </CardContent>
           </Card>
@@ -806,9 +805,9 @@ export const SalesFunnel: React.FC = () => {
               <CardTitle className="text-sm font-medium">Vendas Perdidas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{funnelData.lostSales.count}</div>
+              <div className="text-2xl font-bold">{overviewMetrics.lostSales.count}</div>
               <p className="text-xs text-muted-foreground">
-                {formatSalesValue(funnelData.lostSales.value)}
+                {formatSalesValue(overviewMetrics.lostSales.value)}
               </p>
             </CardContent>
           </Card>
