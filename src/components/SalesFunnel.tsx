@@ -277,38 +277,8 @@ export const SalesFunnel: React.FC = () => {
     return normalizeName(taskName) === normalizeName(consultantName);
   }, [normalizeName]);
 
-  // Filter sales data based on selected criteria
-  const filteredSalesData = useMemo(() => {
-    return currentDataSource.filter(sale => {
-      // Period filter
-      if (selectedPeriod !== 'all') {
-        const saleDate = new Date(sale.date);
-        const now = new Date();
-        const daysAgo = parseInt(selectedPeriod);
-        const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-        if (saleDate < cutoffDate) return false;
-      }
-
-      // Consultant filter
-      if (selectedConsultant !== 'all') {
-        const selectedConsultantData = consultants.find(c => c.id === selectedConsultant);
-        if (selectedConsultantData && !isNameMatch(sale.responsible, selectedConsultantData.name)) {
-          return false;
-        }
-      }
-
-      // Filial filter
-      if (selectedFilial !== 'all' && sale.filial !== selectedFilial) return false;
-
-      // Activity filter
-      if (selectedActivity !== 'all') {
-        if (selectedActivity === 'prospection' && sale.taskType !== 'prospection') return false;
-        if (selectedActivity === 'ligacao' && sale.taskType !== 'ligacao') return false;
-        if (selectedActivity === 'checklist' && sale.taskType !== 'checklist') return false;
-      }
-      return true;
-    });
-  }, [currentDataSource, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants, isNameMatch]);
+  // Os filtros já são aplicados nos hooks, então usamos os dados diretamente
+  const filteredSalesData = currentDataSource;
 
   // Converter salesData para formato de tasks para compatibilidade
   const filteredTasks = useMemo(() => {
@@ -1089,13 +1059,32 @@ export const SalesFunnel: React.FC = () => {
               </TableBody>
             </Table>
             
-            {filteredTasks.length > 50 && (
-              <div className="mt-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Mostrando 50 de {filteredTasks.length} oportunidades. Use os filtros para refinar a busca.
-                </p>
-              </div>
-            )}
+            <div className="mt-4 text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {itemsPerPage === 'all' ? filteredTasks.length : Math.min(parseInt(itemsPerPage), filteredTasks.length)} de {totalCount} oportunidades totais.
+                {filteredTasks.length < totalCount && " Use os filtros para refinar a busca."}
+              </p>
+              {hasNextPage && itemsPerPage === 'all' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Carregando mais...
+                    </>
+                  ) : (
+                    'Carregar mais oportunidades'
+                  )}
+                </Button>
+              )}
+            </div>
+            
+            {/* Observer para scroll infinito */}
+            <div ref={observerTarget} className="h-4" />
           </CardContent>
         </Card>}
 
