@@ -366,8 +366,8 @@ export const useTasks = () => {
           description: "Tarefa salva com sucesso no banco de dados!",
         });
 
-        // Recarregar tarefas para atualizar a lista (reduced frequency)
-        setTimeout(() => loadTasks(true), 1000);
+        // OTIMIZAÇÃO: Usar cache otimista ao invés de reload
+        setTasks(prev => [mapSupabaseTaskToTask({ ...task, products: [], reminders: [] }), ...prev]);
         
         return task;
       } catch (error: any) {
@@ -446,18 +446,12 @@ export const useTasks = () => {
 
       console.log('✅ useTasks: Task updated successfully');
 
-      // Atualizar state local imediatamente
+      // OTIMIZAÇÃO: Atualizar state local imediatamente (cache otimista)
       setTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, ...finalUpdates } : task
       ));
 
-      console.log('🔄 useTasks: Local state updated, scheduling reload...');
-      
-      // Recarregar dados do servidor para garantir sincronização (reduced frequency)
-      setTimeout(() => {
-        console.log('🔄 useTasks: Reloading tasks from server...');
-        loadTasks(true);
-      }, 2000);
+      console.log('✅ useTasks: Task updated (usando cache otimista)');
 
       return true;
     } catch (error: any) {

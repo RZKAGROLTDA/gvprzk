@@ -31,9 +31,9 @@ export const useSecureCustomerMonitoring = () => {
         return [];
       }
     },
-    enabled: true,
-    refetchInterval: 5 * 60 * 1000, // Check every 5 minutes
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: false, // OTIMIZAÇÃO: Desabilitado polling automático
+    staleTime: 10 * 60 * 1000, // 10 minutos
+    gcTime: 30 * 60 * 1000, // 30 minutos
   });
 
   const logCustomerDataExport = async (exportType: string, recordCount: number) => {

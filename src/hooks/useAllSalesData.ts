@@ -37,172 +37,79 @@ export const useAllSalesData = (filters?: SalesFilters) => {
     queryFn: async () => {
       console.log('🔄 Buscando métricas de vendas (Visão Geral)...', filters);
       
-      // Helper para aplicar filtros
-      const applyFilters = (query: any) => {
-        // Filtro de período
-        if (filters?.period && filters.period !== 'all') {
-          const daysAgo = parseInt(filters.period);
-          const cutoffDate = new Date();
-          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-          query = query.gte('created_at', cutoffDate.toISOString());
-        }
+      // Construir filtros uma vez
+      const periodFilter = filters?.period && filters.period !== 'all' 
+        ? new Date(Date.now() - parseInt(filters.period) * 24 * 60 * 60 * 1000).toISOString()
+        : null;
 
-        // Filtro de consultor - buscar pelo created_by
-        if (filters?.consultantId && filters.consultantId !== 'all') {
-          query = query.eq('created_by', filters.consultantId);
-        }
+      // OTIMIZAÇÃO: Query única ao invés de 10 queries separadas
+      let query = supabase
+        .from('tasks')
+        .select('sales_value, partial_sales_value, sales_confirmed, is_prospect, sales_type, status, created_by, task_type, filial, created_at');
 
-        // Filtro de filial
-        if (filters?.filial && filters.filial !== 'all') {
-          query = query.eq('filial', filters.filial);
-        }
+      // Aplicar filtros globais
+      if (periodFilter) {
+        query = query.gte('created_at', periodFilter);
+      }
+      if (filters?.consultantId && filters.consultantId !== 'all') {
+        query = query.eq('created_by', filters.consultantId);
+      }
+      if (filters?.filial && filters.filial !== 'all') {
+        query = query.eq('filial', filters.filial);
+      }
+      if (filters?.activity && filters.activity !== 'all') {
+        query = query.eq('task_type', filters.activity);
+      }
 
-        // Filtro de atividade
-        if (filters?.activity && filters.activity !== 'all') {
-          query = query.eq('task_type', filters.activity);
-        }
-
-        return query;
-      };
-
-      // Buscar counts com filtros
-      let contactsQuery = supabase.from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .or('sales_confirmed.is.null,sales_confirmed.eq.false')
-        .or('is_prospect.is.null,is_prospect.eq.false');
-      contactsQuery = applyFilters(contactsQuery);
+      const { data, error: queryError } = await query;
       
-      let prospectsQuery = supabase.from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_prospect', true);
-      prospectsQuery = applyFilters(prospectsQuery);
-      
-      let salesQuery = supabase.from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .eq('sales_confirmed', true)
-        .or('sales_type.is.null,sales_type.neq.parcial');
-      salesQuery = applyFilters(salesQuery);
-      
-      let partialSalesQuery = supabase.from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .eq('sales_confirmed', true)
-        .eq('sales_type', 'parcial');
-      partialSalesQuery = applyFilters(partialSalesQuery);
-      
-      let lostSalesQuery = supabase.from('tasks')
-        .select('id', { count: 'exact', head: true })
-        .or('sales_type.eq.perdido,status.eq.lost');
-      lostSalesQuery = applyFilters(lostSalesQuery);
+      if (queryError) throw queryError;
 
-      // Queries para valores
-      let contactsValueQuery = supabase.from('tasks')
-        .select('sales_value')
-        .or('sales_confirmed.is.null,sales_confirmed.eq.false')
-        .or('is_prospect.is.null,is_prospect.eq.false');
-      contactsValueQuery = applyFilters(contactsValueQuery);
-      
-      let prospectsValueQuery = supabase.from('tasks')
-        .select('sales_value')
-        .eq('is_prospect', true);
-      prospectsValueQuery = applyFilters(prospectsValueQuery);
-      
-      let salesValueQuery = supabase.from('tasks')
-        .select('sales_value')
-        .eq('sales_confirmed', true)
-        .or('sales_type.is.null,sales_type.neq.parcial');
-      salesValueQuery = applyFilters(salesValueQuery);
-      
-      let partialSalesValueQuery = supabase.from('tasks')
-        .select('partial_sales_value')
-        .eq('sales_confirmed', true)
-        .eq('sales_type', 'parcial');
-      partialSalesValueQuery = applyFilters(partialSalesValueQuery);
-      
-      let lostSalesValueQuery = supabase.from('tasks')
-        .select('sales_value')
-        .or('sales_type.eq.perdido,status.eq.lost');
-      lostSalesValueQuery = applyFilters(lostSalesValueQuery);
-
-      const [contactsCount, prospectsCount, salesCount, partialSalesCount, lostSalesCount, contactsValue, prospectsValue, salesValue, partialSalesValue, lostSalesValue] = await Promise.all([
-        contactsQuery,
-        prospectsQuery,
-        salesQuery,
-        partialSalesQuery,
-        lostSalesQuery,
-        contactsValueQuery,
-        prospectsValueQuery,
-        salesValueQuery,
-        partialSalesValueQuery,
-        lostSalesValueQuery
-      ]);
-
-      if (contactsValue.error) throw contactsValue.error;
-      if (prospectsValue.error) throw prospectsValue.error;
-      if (salesValue.error) throw salesValue.error;
-      if (partialSalesValue.error) throw partialSalesValue.error;
-      if (lostSalesValue.error) throw lostSalesValue.error;
-
-      // Calcular valores totais
-      const totalContactsValue = (contactsValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
-
-      const totalProspectsValue = (prospectsValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
-
-      const totalSalesValue = (salesValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
-
-      const totalPartialSalesValue = (partialSalesValue.data || []).reduce((sum, task) => {
-        return sum + (task.partial_sales_value || 0);
-      }, 0);
-
-      const totalLostSalesValue = (lostSalesValue.data || []).reduce((sum, task) => {
-        const value = typeof task.sales_value === 'number' 
-          ? task.sales_value 
-          : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
-        return sum + value;
-      }, 0);
-
+      // Processar dados localmente (mais eficiente que múltiplas queries)
       const result: SalesMetrics = {
-        contacts: {
-          count: contactsCount.count || 0,
-          value: totalContactsValue
-        },
-        prospects: {
-          count: prospectsCount.count || 0,
-          value: totalProspectsValue
-        },
-        sales: {
-          count: salesCount.count || 0,
-          value: totalSalesValue
-        },
-        partialSales: {
-          count: partialSalesCount.count || 0,
-          value: totalPartialSalesValue
-        },
-        lostSales: {
-          count: lostSalesCount.count || 0,
-          value: totalLostSalesValue
-        }
+        contacts: { count: 0, value: 0 },
+        prospects: { count: 0, value: 0 },
+        sales: { count: 0, value: 0 },
+        partialSales: { count: 0, value: 0 },
+        lostSales: { count: 0, value: 0 }
       };
 
-      console.log('✅ Métricas carregadas (Visão Geral):', result);
+      data?.forEach(task => {
+        const salesValue = typeof task.sales_value === 'number' 
+          ? task.sales_value 
+          : parseFloat(task.sales_value || '0');
+        
+        const isLost = task.sales_type === 'perdido' || task.status === 'lost';
+        const isPartial = task.sales_confirmed === true && task.sales_type === 'parcial';
+        const isSale = task.sales_confirmed === true && task.sales_type !== 'parcial' && !isLost;
+        const isProspect = task.is_prospect === true && !task.sales_confirmed;
+        const isContact = !task.sales_confirmed && !task.is_prospect;
+
+        if (isLost) {
+          result.lostSales.count++;
+          result.lostSales.value += salesValue;
+        } else if (isPartial) {
+          result.partialSales.count++;
+          result.partialSales.value += (task.partial_sales_value || 0);
+        } else if (isSale) {
+          result.sales.count++;
+          result.sales.value += salesValue;
+        } else if (isProspect) {
+          result.prospects.count++;
+          result.prospects.value += salesValue;
+        } else if (isContact) {
+          result.contacts.count++;
+          result.contacts.value += salesValue;
+        }
+      });
+
+      console.log('✅ Métricas carregadas (1 query ao invés de 10):', result);
       return result;
     },
-    staleTime: 30000, // 30 segundos
-    gcTime: 300000 // 5 minutos
+    staleTime: 2 * 60 * 1000, // 2 minutos (aumentado)
+    gcTime: 10 * 60 * 1000, // 10 minutos (aumentado)
+    refetchOnMount: false, // Não recarregar automaticamente
+    refetchOnWindowFocus: false // Não recarregar ao focar janela
   });
 
   return {

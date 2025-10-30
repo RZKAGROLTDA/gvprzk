@@ -1,30 +1,32 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Configuração super otimizada do QueryClient para performance
+// Configuração ULTRA otimizada do QueryClient para prevenir sobrecarga no Supabase
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10 * 60 * 1000, // 10 minutos - cache mais longo
-      gcTime: 15 * 60 * 1000, // 15 minutos no cache
-      refetchOnWindowFocus: false,
-      refetchOnMount: false, // Não refetch automático no mount
-      refetchOnReconnect: 'always',
+      staleTime: 5 * 60 * 1000, // 5 minutos - dados permanecem "frescos"
+      gcTime: 30 * 60 * 1000, // 30 minutos no garbage collector
+      refetchOnWindowFocus: false, // Não recarregar ao focar janela
+      refetchOnMount: false, // Não recarregar automaticamente no mount
+      refetchOnReconnect: false, // CRÍTICO: Não recarregar tudo ao reconectar
       retry: (failureCount, error) => {
         // Não retry em erros de autenticação
         if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
           return false;
         }
-        return failureCount < 1; // Reduzido para 1 tentativa
+        // Backoff exponencial para evitar sobrecarga
+        return failureCount < 2;
       },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Backoff: 1s, 2s, 4s, 8s...
       networkMode: 'online',
-      // Cache específico por tipo de query
       meta: {
         errorMessage: 'Erro ao carregar dados'
       }
     },
     mutations: {
-      retry: false,
+      retry: 1, // 1 retry para mutations
+      retryDelay: 1000,
       networkMode: 'online'
     },
   },
