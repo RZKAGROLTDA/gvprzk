@@ -155,21 +155,7 @@ serve(async (req) => {
       // Continue anyway, logs are not critical
     }
 
-    // Step 5: Delete the user from auth.users using admin client
-    // This MUST come before profile deletion since profile references auth.users
-    const { error: userDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
-      targetProfile.user_id
-    );
-
-    if (userDeleteError) {
-      console.error('Error deleting auth user:', userDeleteError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to delete user from authentication system' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Step 6: Delete the profile last (after auth user is deleted)
+    // Step 5: Delete the profile (must be before auth.users deletion)
     const { error: profileDeleteError } = await supabaseAdmin
       .from('profiles')
       .delete()
@@ -179,6 +165,19 @@ serve(async (req) => {
       console.error('Error deleting profile:', profileDeleteError);
       return new Response(
         JSON.stringify({ error: 'Failed to delete user profile' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 6: Delete the user from auth.users (must be last)
+    const { error: userDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
+      targetProfile.user_id
+    );
+
+    if (userDeleteError) {
+      console.error('Error deleting auth user:', userDeleteError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete user from authentication system' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
