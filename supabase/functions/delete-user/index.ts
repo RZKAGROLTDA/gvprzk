@@ -104,7 +104,72 @@ serve(async (req) => {
       risk_score: 4
     });
 
-    // Delete the profile first (due to foreign key constraints)
+    // Step 1: Delete user_roles first
+    const { error: rolesDeleteError } = await supabaseAdmin
+      .from('user_roles')
+      .delete()
+      .eq('user_id', targetProfile.user_id);
+
+    if (rolesDeleteError) {
+      console.error('Error deleting user roles:', rolesDeleteError);
+      // Continue anyway, roles might not exist
+    }
+
+    // Step 2: Delete or reassign tasks created by this user
+    // For now, we'll transfer ownership to the manager performing the deletion
+    const { error: tasksUpdateError } = await supabaseAdmin
+      .from('tasks')
+      .update({ created_by: user.id })
+      .eq('created_by', targetProfile.user_id);
+
+    if (tasksUpdateError) {
+      console.error('Error updating tasks ownership:', tasksUpdateError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to transfer task ownership' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 3: Delete or reassign clients created by this user
+    const { error: clientsUpdateError } = await supabaseAdmin
+      .from('clients')
+      .update({ created_by: user.id })
+      .eq('created_by', targetProfile.user_id);
+
+    if (clientsUpdateError) {
+      console.error('Error updating clients ownership:', clientsUpdateError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to transfer client ownership' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 4: Delete audit logs for this user
+    const { error: auditDeleteError } = await supabaseAdmin
+      .from('security_audit_log')
+      .delete()
+      .eq('user_id', targetProfile.user_id);
+
+    if (auditDeleteError) {
+      console.error('Error deleting audit logs:', auditDeleteError);
+      // Continue anyway, logs are not critical
+    }
+
+    // Step 5: Delete the user from auth.users using admin client
+    // This MUST come before profile deletion since profile references auth.users
+    const { error: userDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
+      targetProfile.user_id
+    );
+
+    if (userDeleteError) {
+      console.error('Error deleting auth user:', userDeleteError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete user from authentication system' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 6: Delete the profile last (after auth user is deleted)
     const { error: profileDeleteError } = await supabaseAdmin
       .from('profiles')
       .delete()
@@ -114,19 +179,6 @@ serve(async (req) => {
       console.error('Error deleting profile:', profileDeleteError);
       return new Response(
         JSON.stringify({ error: 'Failed to delete user profile' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Delete the user from auth.users using admin client
-    const { error: userDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
-      targetProfile.user_id
-    );
-
-    if (userDeleteError) {
-      console.error('Error deleting auth user:', userDeleteError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to delete user from authentication system' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
