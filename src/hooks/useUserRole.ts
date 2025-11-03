@@ -24,10 +24,12 @@ export const useUserRole = () => {
       }
 
       const isAdmin = roles?.some(r => r.role === 'admin') ?? false;
+      const isSupervisor = roles?.some(r => r.role === 'supervisor') ?? false;
 
       console.log('🔒 useUserRole: Roles encontrados:', {
         roles: roles?.map(r => r.role),
-        isAdmin
+        isAdmin,
+        isSupervisor
       });
 
       // Also check profile for manager role (for compatibility)
@@ -43,6 +45,7 @@ export const useUserRole = () => {
 
       const result = {
         isAdmin,
+        isSupervisor,
         isManager: profile?.role === 'manager',
         role: profile?.role || 'none'
       };
@@ -57,6 +60,7 @@ export const useUserRole = () => {
 
   return {
     isAdmin: userRole?.isAdmin ?? false,
+    isSupervisor: userRole?.isSupervisor ?? false,
     isManager: userRole?.isManager ?? false,
     role: userRole?.role || 'none',
     isLoading
