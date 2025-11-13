@@ -480,10 +480,33 @@ export const SalesFunnel: React.FC = () => {
       } as Task;
     });
 
-    // Adicionar opportunities standalone (sem task correspondente)
+    // Adicionar opportunities standalone (sem task correspondente), aplicando os mesmos filtros
     const taskIds = new Set(tasksFromSales.map(t => t.id));
     const standaloneOpportunities = opportunitiesData
-      .filter(opp => !opp.task_id || !taskIds.has(opp.task_id))
+      .filter(opp => {
+        // Filtrar opportunities que não têm task correspondente
+        if (opp.task_id && taskIds.has(opp.task_id)) return false;
+        
+        // Aplicar filtro de filial
+        if (selectedFilial !== 'all') {
+          const oppFilial = getFilialNameRobust(opp.filial || '');
+          if (oppFilial !== selectedFilial) return false;
+        }
+        
+        // Aplicar filtro de período
+        if (selectedPeriod !== 'all') {
+          const oppDate = new Date(opp.data_criacao || opp.created_at);
+          const now = new Date();
+          const diffDays = Math.floor((now.getTime() - oppDate.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (selectedPeriod === '7' && diffDays > 7) return false;
+          if (selectedPeriod === '15' && diffDays > 15) return false;
+          if (selectedPeriod === '30' && diffDays > 30) return false;
+          if (selectedPeriod === '90' && diffDays > 90) return false;
+        }
+        
+        return true;
+      })
       .map(opp => {
         const createdAtStr = opp.data_criacao || opp.created_at;
         const createdAt = new Date(createdAtStr);
