@@ -121,6 +121,12 @@ export const useTasksOptimized = (includeDetails = false) => {
             tasksData = result.data;
             error = result.error;
             console.log('✅ Tasks carregadas via função segura:', tasksData?.length || 0);
+            console.log('🔍 DEBUG - Primeiras 3 tasks:', tasksData?.slice(0, 3).map((t: any) => ({
+              id: t.id?.slice(0, 8),
+              client: t.client,
+              filial: t.filial,
+              access_level: t.access_level
+            })));
           } catch (rpcError: any) {
             console.log('⚠️ Função segura falhou, bloqueando acesso direto por segurança');
             
