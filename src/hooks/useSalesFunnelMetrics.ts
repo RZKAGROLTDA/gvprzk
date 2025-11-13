@@ -141,6 +141,21 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
       if (vendasTotalData.error) throw vendasTotalData.error;
       if (vendasParcialData.error) throw vendasParcialData.error;
 
+      // Buscar opportunities para somar às métricas
+      let opportunitiesQuery = supabase
+        .from('opportunities')
+        .select('status, valor_total_oportunidade, valor_venda_fechada, filial, created_at');
+      opportunitiesQuery = applyFilters(opportunitiesQuery);
+      
+      const { data: opportunitiesData, error: oppError } = await opportunitiesQuery;
+      if (oppError) throw oppError;
+
+      // Separar opportunities por status
+      const oppsProspect = opportunitiesData?.filter(o => o.status === 'Prospect') || [];
+      const oppsGanho = opportunitiesData?.filter(o => o.status === 'Venda Total') || [];
+      const oppsParcial = opportunitiesData?.filter(o => o.status === 'Venda Parcial') || [];
+      const oppsPerdido = opportunitiesData?.filter(o => o.status === 'Perdido') || [];
+
       // Calcular valores
       const calcularValor = (data: any[]) => {
         return data.reduce((sum, task) => {
@@ -155,25 +170,35 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
       const checklistsValue = calcularValor(checklistsData.data || []);
       const ligacoesValue = calcularValor(ligacoesData.data || []);
       
-      const prospeccoesAbertasValue = calcularValor(prospeccoesAbertasData.data || []);
-      const prospeccoesDechadasValue = calcularValor(prospeccoesDechadasData.data || []);
-      const prospeccoesPerdidasValue = calcularValor(prospeccoesPerdidasData.data || []);
+      // Somar valores de opportunities às prospecções
+      const prospeccoesAbertasValue = calcularValor(prospeccoesAbertasData.data || []) +
+        oppsProspect.reduce((sum, opp) => sum + (opp.valor_total_oportunidade || 0), 0);
       
-      const vendasTotalValue = calcularValor(vendasTotalData.data || []);
+      const prospeccoesDechadasValue = calcularValor(prospeccoesDechadasData.data || []);
+      const prospeccoesPerdidasValue = calcularValor(prospeccoesPerdidasData.data || []) +
+        oppsPerdido.reduce((sum, opp) => sum + (opp.valor_total_oportunidade || 0), 0);
+      
+      // Somar valores de opportunities às vendas
+      const vendasTotalValue = calcularValor(vendasTotalData.data || []) +
+        oppsGanho.reduce((sum, opp) => sum + (opp.valor_venda_fechada || opp.valor_total_oportunidade || 0), 0);
+      
       const vendasParcialValue = (vendasParcialData.data || []).reduce((sum, task) => 
-        sum + (task.partial_sales_value || 0), 0);
+        sum + (task.partial_sales_value || 0), 0) +
+        oppsParcial.reduce((sum, opp) => sum + (opp.valor_venda_fechada || 0), 0);
 
-      // Totalizadores
+      // Totalizadores (incluindo opportunities)
       const totalContatos = (visitasData.data?.length || 0) + 
                            (checklistsData.data?.length || 0) + 
                            (ligacoesData.data?.length || 0);
       
       const totalProspeccoes = (prospeccoesAbertasData.data?.length || 0) + 
                               (prospeccoesDechadasData.data?.length || 0) + 
-                              (prospeccoesPerdidasData.data?.length || 0);
+                              (prospeccoesPerdidasData.data?.length || 0) +
+                              oppsProspect.length + oppsPerdido.length;
       
       const totalVendas = (vendasTotalData.data?.length || 0) + 
-                         (vendasParcialData.data?.length || 0);
+                         (vendasParcialData.data?.length || 0) +
+                         oppsGanho.length + oppsParcial.length;
 
       const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
@@ -195,7 +220,7 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
         
         // Prospecções
         prospeccoesAbertas: {
-          count: prospeccoesAbertasData.data?.length || 0,
+          count: (prospeccoesAbertasData.data?.length || 0) + oppsProspect.length,
           value: prospeccoesAbertasValue
         },
         prospeccoesFechadas: {
@@ -203,18 +228,18 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
           value: prospeccoesDechadasValue
         },
         prospeccoesPerdidas: {
-          count: prospeccoesPerdidasData.data?.length || 0,
+          count: (prospeccoesPerdidasData.data?.length || 0) + oppsPerdido.length,
           value: prospeccoesPerdidasValue
         },
         totalProspeccoes,
         
         // Vendas
         vendasTotal: {
-          count: vendasTotalData.data?.length || 0,
+          count: (vendasTotalData.data?.length || 0) + oppsGanho.length,
           value: vendasTotalValue
         },
         vendasParcial: {
-          count: vendasParcialData.data?.length || 0,
+          count: (vendasParcialData.data?.length || 0) + oppsParcial.length,
           value: vendasParcialValue
         },
         totalVendas,
@@ -228,19 +253,19 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
           value: visitasValue + checklistsValue + ligacoesValue
         },
         prospects: {
-          count: prospeccoesAbertasData.data?.length || 0,
+          count: (prospeccoesAbertasData.data?.length || 0) + oppsProspect.length,
           value: prospeccoesAbertasValue
         },
         sales: {
-          count: vendasTotalData.data?.length || 0,
+          count: (vendasTotalData.data?.length || 0) + oppsGanho.length,
           value: vendasTotalValue
         },
         partialSales: {
-          count: vendasParcialData.data?.length || 0,
+          count: (vendasParcialData.data?.length || 0) + oppsParcial.length,
           value: vendasParcialValue
         },
         lostSales: {
-          count: prospeccoesPerdidasData.data?.length || 0,
+          count: (prospeccoesPerdidasData.data?.length || 0) + oppsPerdido.length,
           value: prospeccoesPerdidasValue
         }
       };

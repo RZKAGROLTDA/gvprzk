@@ -42,28 +42,45 @@ export const useAllSalesData = (filters?: SalesFilters) => {
         ? new Date(Date.now() - parseInt(filters.period) * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-      // OTIMIZAÇÃO: Query única ao invés de 10 queries separadas
-      let query = supabase
+      // Buscar tasks
+      let tasksQuery = supabase
         .from('tasks')
-        .select('sales_value, partial_sales_value, sales_confirmed, is_prospect, sales_type, status, created_by, task_type, filial, created_at');
+        .select('id, sales_value, partial_sales_value, sales_confirmed, is_prospect, sales_type, status, created_by, task_type, filial, created_at');
 
-      // Aplicar filtros globais
+      // Aplicar filtros nas tasks
       if (periodFilter) {
-        query = query.gte('created_at', periodFilter);
+        tasksQuery = tasksQuery.gte('created_at', periodFilter);
       }
       if (filters?.consultantId && filters.consultantId !== 'all') {
-        query = query.eq('created_by', filters.consultantId);
+        tasksQuery = tasksQuery.eq('created_by', filters.consultantId);
       }
       if (filters?.filial && filters.filial !== 'all') {
-        query = query.eq('filial', filters.filial);
+        tasksQuery = tasksQuery.eq('filial', filters.filial);
       }
       if (filters?.activity && filters.activity !== 'all') {
-        query = query.eq('task_type', filters.activity);
+        tasksQuery = tasksQuery.eq('task_type', filters.activity);
       }
 
-      const { data, error: queryError } = await query;
+      // Buscar opportunities
+      let opportunitiesQuery = supabase
+        .from('opportunities')
+        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at');
+
+      // Aplicar filtros nas opportunities
+      if (periodFilter) {
+        opportunitiesQuery = opportunitiesQuery.gte('created_at', periodFilter);
+      }
+      if (filters?.filial && filters.filial !== 'all') {
+        opportunitiesQuery = opportunitiesQuery.eq('filial', filters.filial);
+      }
+
+      const [{ data: tasksData, error: tasksError }, { data: opportunitiesData, error: oppError }] = await Promise.all([
+        tasksQuery,
+        opportunitiesQuery
+      ]);
       
-      if (queryError) throw queryError;
+      if (tasksError) throw tasksError;
+      if (oppError) throw oppError;
 
       // Processar dados localmente (mais eficiente que múltiplas queries)
       const result: SalesMetrics = {
@@ -74,7 +91,10 @@ export const useAllSalesData = (filters?: SalesFilters) => {
         lostSales: { count: 0, value: 0 }
       };
 
-      data?.forEach(task => {
+      // Processar tasks
+      const taskIds = new Set<string>();
+      tasksData?.forEach(task => {
+        taskIds.add(task.id);
         const salesValue = typeof task.sales_value === 'number' 
           ? task.sales_value 
           : parseFloat(task.sales_value || '0');
@@ -100,6 +120,32 @@ export const useAllSalesData = (filters?: SalesFilters) => {
         } else if (isContact) {
           result.contacts.count++;
           result.contacts.value += salesValue;
+        }
+      });
+
+      // Processar opportunities que NÃO têm task correspondente (ou somar independentemente)
+      opportunitiesData?.forEach(opp => {
+        // Se a opportunity não tem task_id nas tasks carregadas, contar separadamente
+        if (!opp.task_id || !taskIds.has(opp.task_id)) {
+          const oppValue = opp.valor_total_oportunidade || 0;
+          
+          if (opp.status === 'Venda Total') {
+            result.sales.count++;
+            result.sales.value += (opp.valor_venda_fechada || oppValue);
+          } else if (opp.status === 'Venda Parcial') {
+            result.partialSales.count++;
+            result.partialSales.value += (opp.valor_venda_fechada || 0);
+          } else if (opp.status === 'Perdido') {
+            result.lostSales.count++;
+            result.lostSales.value += oppValue;
+          } else if (opp.status === 'Prospect') {
+            result.prospects.count++;
+            result.prospects.value += oppValue;
+          } else {
+            // Default: contato
+            result.contacts.count++;
+            result.contacts.value += oppValue;
+          }
         }
       });
 
