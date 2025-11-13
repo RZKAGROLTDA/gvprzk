@@ -54,6 +54,13 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
     queryKey: ['infinite-sales-data', filters],
     queryFn: async ({ pageParam = 0 }) => {
       try {
+        // Verificar estado de autenticação
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('👤 Usuário autenticado:', {
+          userId: user?.id,
+          email: user?.email
+        });
+        
         const from = pageParam * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
@@ -89,9 +96,24 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         if (tasksError) throw tasksError;
 
         // Buscar todas as opportunities
-        const { data: opportunities } = await supabase
+        console.log('🔍 Buscando opportunities como usuário autenticado...');
+        const { data: opportunities, error: oppError } = await supabase
           .from('opportunities')
-          .select('task_id, status, valor_total_oportunidade, valor_venda_fechada');
+          .select('task_id, status, valor_total_oportunidade, valor_venda_fechada, cliente_nome, filial');
+        
+        console.log('✅ Opportunities carregadas:', {
+          total: opportunities?.length || 0,
+          error: oppError?.message,
+          amostras: opportunities?.slice(0, 5).map(o => ({
+            cliente: o.cliente_nome,
+            filial: o.filial,
+            status: o.status
+          }))
+        });
+        
+        if (oppError) {
+          console.error('❌ Erro ao buscar opportunities:', oppError);
+        }
 
         // Criar mapa de opportunities por task_id
         const opportunitiesMap = new Map(
