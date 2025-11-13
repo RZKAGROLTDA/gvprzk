@@ -123,7 +123,7 @@ export const useTaskEditData = (taskId: string | null) => {
         console.log('🔍 Task not found via direct query, trying secure function...');
         
         const { data: secureData, error: secureError } = await supabase.rpc(
-          'get_supervisor_filial_tasks'
+          'get_secure_tasks_with_customer_protection'
         );
         
         if (!secureError && secureData) {
