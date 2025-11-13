@@ -560,31 +560,48 @@ export const SalesFunnel: React.FC = () => {
     return [...tasksFromSales, ...standaloneOpportunities];
   }, [filteredSalesData, opportunitiesData]);
 
-  // Calcular total count baseado nos totais reais do banco (com RLS e filtros aplicados)
-  // infiniteDataCount = total de tasks que o usuário pode ver
-  // opportunitiesQueryResult.count = total de opportunities que o usuário pode ver
-  // Precisamos contar quantas tasks têm opportunities associadas para não duplicar
+  // Calcular total usando os dados reais no banco
+  // Como filteredTasks já combina tasks + standalone opportunities com filtros aplicados,
+  // precisamos calcular o total baseado nos dados reais do banco
   const totalCount = useMemo(() => {
-    const tasksCount = infiniteDataCount;
-    // Usar o tamanho real dos dados carregados já filtrados pela query
-    const allOppsCount = opportunitiesData?.length || 0;
-    const oppsWithTask = opportunitiesData?.filter(opp => opp.task_id).length || 0;
-    const standaloneOppsCount = Math.max(0, allOppsCount - oppsWithTask);
-    const total = tasksCount + standaloneOppsCount;
+    // Para calcular o total real no banco, precisamos:
+    // 1. Total de tasks que passam pelos filtros (já temos em infiniteDataCount quando usa RLS)
+    // 2. Total de standalone opportunities que passam pelos filtros
+    
+    // Como o infiniteDataCount pode não refletir os filtros corretamente para supervisores,
+    // vamos usar uma abordagem diferente: contar baseado nos dados carregados
+    const tasksInData = filteredSalesData?.filter(sale => sale.hasTaskData).length || 0;
+    const standaloneOppsInData = filteredSalesData?.filter(sale => !sale.hasTaskData).length || 0;
+    
+    // Se estamos paginando e há mais dados, usar infiniteDataCount + standalone opportunities
+    const hasMoreData = hasNextPage || isFetchingNextPage;
+    
+    let total: number;
+    if (hasMoreData) {
+      // Há paginação: usar contagem do banco
+      const allOppsCount = opportunitiesData?.length || 0;
+      const oppsWithTask = opportunitiesData?.filter(opp => opp.task_id).length || 0;
+      const standaloneOppsCount = Math.max(0, allOppsCount - oppsWithTask);
+      total = infiniteDataCount + standaloneOppsCount;
+    } else {
+      // Sem paginação: usar o que está carregado
+      total = filteredTasks.length;
+    }
     
     console.log('📊 Total Count Calculation:', {
-      'infiniteDataCount (tasks no banco)': tasksCount,
-      'opportunitiesData.length (todas opps carregadas)': allOppsCount,
-      'oppsWithTask (opps com task_id)': oppsWithTask,
-      'standaloneOppsCount (opps sem task)': standaloneOppsCount,
-      'total calculado': total,
-      'filteredTasks.length (exibidos)': filteredTasks.length,
+      'infiniteDataCount': infiniteDataCount,
+      'opportunitiesData.length': opportunitiesData?.length || 0,
+      'tasksInData': tasksInData,
+      'standaloneOppsInData': standaloneOppsInData,
+      'filteredTasks.length': filteredTasks.length,
+      'hasMoreData': hasMoreData,
+      'total': total,
       'selectedFilial': selectedFilial,
       'selectedPeriod': selectedPeriod
     });
     
     return total;
-  }, [infiniteDataCount, opportunitiesData, filteredTasks.length, selectedFilial, selectedPeriod]);
+  }, [infiniteDataCount, opportunitiesData, filteredSalesData, filteredTasks.length, hasNextPage, isFetchingNextPage, selectedFilial, selectedPeriod]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
