@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Download, Search, Filter } from 'lucide-react';
 import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { useOpportunities } from '@/hooks/useOpportunities';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -24,6 +25,7 @@ interface ClientData {
 
 export const FunnelClientsOptimized: React.FC = () => {
   const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
+  const { data: opportunities = [], isLoading: opportunitiesLoading } = useOpportunities();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   const { invalidateAll } = useSecurityCache();
@@ -36,7 +38,7 @@ export const FunnelClientsOptimized: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const clientsData = useMemo(() => {
-    if (!tasks.length) return [];
+    if (!tasks.length && !opportunities.length) return [];
 
     const clientMap = new Map<string, ClientData>();
     const now = new Date();
@@ -44,11 +46,10 @@ export const FunnelClientsOptimized: React.FC = () => {
     const periodStart = daysAgo >= 9999 ? new Date(0) : subDays(now, daysAgo);
     const searchLower = searchTerm.toLowerCase();
 
-    // Super otimizado: processamento em um único loop
+    // Processar tasks
     for (const task of tasks) {
       const taskDate = new Date(task.createdAt);
       
-      // Early exits
       if (daysAgo < 9999 && taskDate < periodStart) continue;
       
       if (selectedConsultant !== 'all') {
@@ -76,13 +77,40 @@ export const FunnelClientsOptimized: React.FC = () => {
       const client = clientMap.get(clientKey)!;
       client.hasActivity = true;
 
-      // Atualizar datas de forma otimizada
       if (task.taskType === 'prospection' && (!client.lastVisit || taskDate > client.lastVisit)) {
         client.lastVisit = taskDate;
       }
 
       if (task.isProspect && (!client.lastOpportunity || taskDate > client.lastOpportunity)) {
         client.lastOpportunity = taskDate;
+      }
+    }
+
+    // Processar opportunities
+    for (const opp of opportunities) {
+      const oppDate = new Date(opp.data_criacao);
+      
+      if (daysAgo < 9999 && oppDate < periodStart) continue;
+      if (selectedFilial !== 'all' && opp.filial !== selectedFilial) continue;
+
+      const clientKey = opp.cliente_nome;
+      
+      if (!clientMap.has(clientKey)) {
+        clientMap.set(clientKey, {
+          name: opp.cliente_nome,
+          classification: 'A',
+          city: '',
+          filial: opp.filial || '',
+          responsible: '',
+          lastVisit: null,
+          lastOpportunity: oppDate,
+          hasActivity: true
+        });
+      } else {
+        const client = clientMap.get(clientKey)!;
+        if (!client.lastOpportunity || oppDate > client.lastOpportunity) {
+          client.lastOpportunity = oppDate;
+        }
       }
     }
 
@@ -111,7 +139,7 @@ export const FunnelClientsOptimized: React.FC = () => {
     });
 
     return clientsArray.slice(0, 50); // Limitar para performance
-  }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortField, sortDirection, consultants]);
+  }, [tasks, opportunities, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortField, sortDirection, consultants]);
 
   const handleSort = (field: keyof ClientData) => {
     if (sortField === field) {
@@ -138,7 +166,7 @@ export const FunnelClientsOptimized: React.FC = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [refetch]);
 
-  const isLoading = loading || consultantsLoading || filiaisLoading;
+  const isLoading = loading || opportunitiesLoading || consultantsLoading || filiaisLoading;
 
   if (isLoading) {
     return (
