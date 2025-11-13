@@ -121,118 +121,120 @@ const Reports: React.FC = () => {
     setIsFiltering(true);
     
     try {
-      let query = supabase.from('tasks').select(`
+      // Buscar tasks
+      let tasksQuery = supabase.from('tasks').select(`
         *,
         products (*),
         reminders (*)
       `);
 
-      // Aplicar filtros de data se definidos
+      // Aplicar filtros de data nas tasks
       if (dateFrom) {
         const dateFilter = dateFrom.toISOString().split('T')[0];
-        query = query.gte('start_date', dateFilter);
+        tasksQuery = tasksQuery.gte('start_date', dateFilter);
         console.log('🗓️ REPORTS DEBUG: Aplicando filtro dateFrom:', dateFilter);
       }
       if (dateTo) {
         const dateFilter = dateTo.toISOString().split('T')[0];
-        query = query.lte('end_date', dateFilter);
+        tasksQuery = tasksQuery.lte('end_date', dateFilter);
         console.log('🗓️ REPORTS DEBUG: Aplicando filtro dateTo:', dateFilter);
       }
 
-      // Aplicar filtro de usuário se definido
+      // Aplicar filtro de usuário nas tasks
       if (selectedUser !== 'all') {
-        query = query.eq('created_by', selectedUser);
+        tasksQuery = tasksQuery.eq('created_by', selectedUser);
         console.log('👤 REPORTS DEBUG: Aplicando filtro de usuário:', selectedUser);
       }
 
-      // Aplicar filtro de filial se definido - FIXED EXACT MATCH
+      // Aplicar filtro de filial nas tasks
       if (selectedFilial !== 'all') {
-        // Debug antes do filtro
-        console.log('🏢 REPORTS DEBUG: Preparando filtro de filial:', {
-          selectedFilial,
-          type: typeof selectedFilial,
-          length: selectedFilial.length,
-          trimmed: selectedFilial.trim(),
-          charCodes: selectedFilial.split('').map(c => c.charCodeAt(0))
-        });
-        
-        query = query.eq('filial', selectedFilial);
-        console.log('🏢 REPORTS DEBUG: Filtro de filial aplicado com eq() filter');
+        console.log('🏢 REPORTS DEBUG: Preparando filtro de filial:', selectedFilial);
+        tasksQuery = tasksQuery.eq('filial', selectedFilial);
       }
 
-      console.log('🚀 REPORTS DEBUG: Executando query...');
-      const { data: supabaseTasks, error } = await query;
+      // Buscar opportunities
+      let opportunitiesQuery = supabase
+        .from('opportunities')
+        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at, data_criacao');
 
-      if (error) {
-        console.error('❌ REPORTS DEBUG: Erro na query:', error);
-        throw error;
+      // Aplicar filtros de data nas opportunities (usar data_criacao)
+      if (dateFrom) {
+        const dateFilter = dateFrom.toISOString().split('T')[0];
+        opportunitiesQuery = opportunitiesQuery.gte('data_criacao', dateFilter);
+      }
+      if (dateTo) {
+        const dateFilter = dateTo.toISOString().split('T')[0];
+        opportunitiesQuery = opportunitiesQuery.lte('data_criacao', dateFilter);
       }
 
-      console.log('✅ REPORTS DEBUG: Query executada com sucesso. Total de tasks retornadas:', supabaseTasks?.length || 0);
-      
-      // Debug específico para filtro de filial
+      // Aplicar filtro de filial nas opportunities
       if (selectedFilial !== 'all') {
-        console.log('🎯 REPORTS DEBUG: Resultado com filtro de filial aplicado:', {
-          filtroFilial: selectedFilial,
-          totalResultados: supabaseTasks?.length || 0,
-          primeiraTaskFilial: supabaseTasks?.[0]?.filial,
-          todasFiliaisDoResultado: [...new Set(supabaseTasks?.map(task => task.filial) || [])]
-        });
-      }
-      
-      // Log das primeiras 3 tasks para debug (se existirem)
-      if (supabaseTasks && supabaseTasks.length > 0) {
-        console.log('📋 REPORTS DEBUG: Primeiras 3 tasks retornadas:', 
-          supabaseTasks.slice(0, 3).map(task => ({
-            id: task.id,
-            filial: task.filial,
-            task_type: task.task_type,
-            created_by: task.created_by
-          }))
-        );
-        
-        // NEW: Log all unique filials in the result
-        const uniqueFilials = [...new Set(supabaseTasks.map(task => task.filial))];
-        console.log('🏢 REPORTS DEBUG: Filiais únicas no resultado:', uniqueFilials);
-      } else if (selectedFilial !== 'all') {
-        console.log('❌ REPORTS DEBUG: NENHUM RESULTADO para filial:', selectedFilial);
+        opportunitiesQuery = opportunitiesQuery.eq('filial', selectedFilial);
       }
 
+      console.log('🚀 REPORTS DEBUG: Executando queries em paralelo...');
+      const [{ data: supabaseTasks, error: tasksError }, { data: opportunitiesData, error: oppError }] = await Promise.all([
+        tasksQuery,
+        opportunitiesQuery
+      ]);
+
+      if (tasksError) {
+        console.error('❌ REPORTS DEBUG: Erro na query de tasks:', tasksError);
+        throw tasksError;
+      }
+      if (oppError) {
+        console.error('❌ REPORTS DEBUG: Erro na query de opportunities:', oppError);
+        throw oppError;
+      }
+
+      console.log('✅ REPORTS DEBUG: Queries executadas. Tasks:', supabaseTasks?.length || 0, 'Opportunities:', opportunitiesData?.length || 0);
+      
       // Mapear tasks do Supabase para o formato da aplicação
       const tasks = supabaseTasks?.map(mapSupabaseTaskToTask) || [];
 
-      // Calcular estatísticas agregadas usando as funções unificadas
+      // Calcular estatísticas das tasks
       const visitas = tasks.filter(task => task.taskType === 'prospection').length;
       const checklist = tasks.filter(task => task.taskType === 'checklist').length;
       const ligacoes = tasks.filter(task => task.taskType === 'ligacao').length;
-      const prospects = tasks.filter(task => task.isProspect === true).length;
       
-      // Usar função unificada para calcular valor de prospects
-      const prospectsValue = tasks
-        .filter(task => task.isProspect === true)
+      // Contar prospects das tasks
+      let prospectsCount = tasks.filter(task => task.isProspect === true && !task.salesConfirmed).length;
+      let prospectsValue = tasks
+        .filter(task => task.isProspect === true && !task.salesConfirmed)
         .reduce((sum, task) => sum + calculateProspectValue(task), 0);
       
-      // Usar função unificada para calcular valor de vendas
-      const salesValue = tasks
-        .filter(task => task.salesConfirmed === true || task.salesType === 'parcial')
+      // Adicionar opportunities do tipo Prospect
+      const oppsProspect = opportunitiesData?.filter(o => o.status === 'Prospect') || [];
+      prospectsCount += oppsProspect.length;
+      prospectsValue += oppsProspect.reduce((sum, opp) => sum + (opp.valor_total_oportunidade || 0), 0);
+      
+      // Calcular valor de vendas das tasks
+      let salesValue = tasks
+        .filter(task => task.salesConfirmed === true)
         .reduce((sum, task) => sum + calculateTaskSalesValue(task), 0);
+      
+      // Adicionar vendas das opportunities
+      const oppsVendasTotal = opportunitiesData?.filter(o => o.status === 'Venda Total') || [];
+      const oppsVendasParcial = opportunitiesData?.filter(o => o.status === 'Venda Parcial') || [];
+      salesValue += oppsVendasTotal.reduce((sum, opp) => sum + (opp.valor_venda_fechada || opp.valor_total_oportunidade || 0), 0);
+      salesValue += oppsVendasParcial.reduce((sum, opp) => sum + (opp.valor_venda_fechada || 0), 0);
 
-      // 📊 REPORTS DEBUG: Log das estatísticas calculadas
-      console.log('📊 REPORTS DEBUG: Estatísticas calculadas:', {
+      console.log('📊 REPORTS DEBUG: Estatísticas calculadas (com opportunities):', {
         totalTasks: visitas + checklist + ligacoes,
         visitas,
         checklist,
         ligacoes,
-        prospects,
+        prospects: prospectsCount,
         prospectsValue,
-        salesValue
+        salesValue,
+        opportunitiesIncluded: opportunitiesData?.length || 0
       });
 
       setTotalTasks(visitas + checklist + ligacoes);
       setTotalVisitas(visitas);
       setTotalChecklist(checklist);
       setTotalLigacoes(ligacoes);
-      setTotalProspects(prospects);
+      setTotalProspects(prospectsCount);
       setTotalProspectsValue(prospectsValue);
       setTotalSalesValue(salesValue);
       
