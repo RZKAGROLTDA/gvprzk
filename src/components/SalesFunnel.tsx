@@ -334,27 +334,45 @@ export const SalesFunnel: React.FC = () => {
 
   // Fetch opportunities data to get valor_total_oportunidade and valor_venda_fechada
   const {
-    data: opportunitiesData = []
+    data: opportunitiesQueryResult
   } = useQuery({
-    queryKey: ['opportunities-data'],
+    queryKey: ['opportunities-data', selectedFilial, selectedPeriod],
     queryFn: async () => {
-      console.log('🔄 Carregando opportunities...');
-      const { data, error } = await supabase
+      console.log('🔄 Carregando opportunities com filtros...');
+      
+      let query = supabase
         .from('opportunities')
-        .select('*');
+        .select('*', { count: 'exact' });
+
+      // Aplicar filtro de filial
+      if (selectedFilial !== 'all') {
+        query = query.eq('filial', selectedFilial);
+      }
+
+      // Aplicar filtro de período
+      if (selectedPeriod !== 'all') {
+        const daysAgo = parseInt(selectedPeriod);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+        query = query.gte('data_criacao', cutoffDate.toISOString());
+      }
+
+      const { data, error, count } = await query.order('data_criacao', { ascending: false });
+      
       if (error) {
         console.error('❌ Erro ao carregar opportunities:', error);
         throw error;
       }
       console.log('✅ Opportunities carregadas:', {
         total: data?.length || 0,
+        count: count,
         amostras: data?.slice(0, 3).map(o => ({
           cliente: o.cliente_nome,
           filial: o.filial,
           status: o.status
         }))
       });
-      return data || [];
+      return { data: data || [], count: count || 0 };
     },
     staleTime: 0, // Sempre buscar dados frescos
     gcTime: 0, // Não manter em cache
@@ -362,36 +380,7 @@ export const SalesFunnel: React.FC = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Calcular total de opportunities standalone (sem task correspondente) aplicando os mesmos filtros
-  // Este cálculo é usado para o totalCount, não para exibição
-  const standaloneOpportunitiesCount = useMemo(() => {
-    if (!opportunitiesData) return 0;
-    
-    return opportunitiesData.filter(opp => {
-      // Contar apenas opportunities que não têm task_id
-      if (opp.task_id) return false;
-      
-      // Aplicar filtro de filial
-      if (selectedFilial !== 'all') {
-        const oppFilial = getFilialNameRobust(opp.filial || '');
-        if (oppFilial !== selectedFilial) return false;
-      }
-      
-      // Aplicar filtro de período
-      if (selectedPeriod !== 'all') {
-        const oppDate = new Date(opp.data_criacao || opp.created_at);
-        const now = new Date();
-        const diffDays = Math.floor((now.getTime() - oppDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (selectedPeriod === '7' && diffDays > 7) return false;
-        if (selectedPeriod === '15' && diffDays > 15) return false;
-        if (selectedPeriod === '30' && diffDays > 30) return false;
-        if (selectedPeriod === '90' && diffDays > 90) return false;
-      }
-      
-      return true;
-    }).length;
-  }, [opportunitiesData, selectedFilial, selectedPeriod]);
+  const opportunitiesData = opportunitiesQueryResult?.data || [];
 
   // Create a map for quick lookup of opportunity values
   const opportunityValues = useMemo(() => {
@@ -510,32 +499,12 @@ export const SalesFunnel: React.FC = () => {
       } as Task;
     });
 
-    // Adicionar opportunities standalone (sem task correspondente), aplicando os mesmos filtros
+    // Adicionar opportunities standalone (sem task correspondente)
     const taskIds = new Set(tasksFromSales.map(t => t.id));
-    const standaloneOpportunities = opportunitiesData
+    const standaloneOpportunities = (opportunitiesData || [])
       .filter(opp => {
-        // Filtrar opportunities que não têm task correspondente
-        if (opp.task_id && taskIds.has(opp.task_id)) return false;
-        
-        // Aplicar filtro de filial
-        if (selectedFilial !== 'all') {
-          const oppFilial = getFilialNameRobust(opp.filial || '');
-          if (oppFilial !== selectedFilial) return false;
-        }
-        
-        // Aplicar filtro de período
-        if (selectedPeriod !== 'all') {
-          const oppDate = new Date(opp.data_criacao || opp.created_at);
-          const now = new Date();
-          const diffDays = Math.floor((now.getTime() - oppDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          if (selectedPeriod === '7' && diffDays > 7) return false;
-          if (selectedPeriod === '15' && diffDays > 15) return false;
-          if (selectedPeriod === '30' && diffDays > 30) return false;
-          if (selectedPeriod === '90' && diffDays > 90) return false;
-        }
-        
-        return true;
+        // Filtrar opportunities que não têm task correspondente ou cuja task não está nos dados carregados
+        return !opp.task_id || !taskIds.has(opp.task_id);
       })
       .map(opp => {
         const createdAtStr = opp.data_criacao || opp.created_at;
@@ -589,12 +558,34 @@ export const SalesFunnel: React.FC = () => {
 
     console.log('🔧 filteredTasks: Tasks:', tasksFromSales.length, 'Standalone opportunities:', standaloneOpportunities.length);
     return [...tasksFromSales, ...standaloneOpportunities];
-  }, [filteredSalesData, opportunitiesData, selectedFilial, selectedPeriod]);
+  }, [filteredSalesData, opportunitiesData]);
 
-  // Total count = total de tasks no banco + total de opportunities standalone (ambos com filtros)
-  // infiniteDataCount vem do hook e representa o total de TASKS no banco
-  // standaloneOpportunitiesCount é calculado acima e representa o total de OPPORTUNITIES standalone
-  const totalCount = infiniteDataCount + standaloneOpportunitiesCount;
+  // Calcular total count baseado nos totais reais do banco (com RLS e filtros aplicados)
+  // infiniteDataCount = total de tasks que o usuário pode ver
+  // opportunitiesQueryResult.count = total de opportunities que o usuário pode ver
+  // Precisamos contar quantas tasks têm opportunities associadas para não duplicar
+  const totalCount = useMemo(() => {
+    const oppsCount = opportunitiesQueryResult?.count || 0;
+    const tasksCount = infiniteDataCount;
+    
+    // Contar quantas opportunities têm task_id (para evitar contar em duplicidade)
+    const oppsWithTask = (opportunitiesData || []).filter(opp => opp.task_id).length;
+    
+    // Total = tasks + opportunities sem task (standalone)
+    const standaloneOppsCount = oppsCount - oppsWithTask;
+    const total = tasksCount + standaloneOppsCount;
+    
+    console.log('📊 Total Count Calculation:', {
+      tasksCount,
+      oppsCount,
+      oppsWithTask,
+      standaloneOppsCount,
+      total,
+      filteredTasksLength: filteredTasks.length
+    });
+    
+    return total;
+  }, [infiniteDataCount, opportunitiesQueryResult, opportunitiesData, filteredTasks.length]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
