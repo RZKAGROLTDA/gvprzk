@@ -565,20 +565,16 @@ export const SalesFunnel: React.FC = () => {
   // opportunitiesQueryResult.count = total de opportunities que o usuário pode ver
   // Precisamos contar quantas tasks têm opportunities associadas para não duplicar
   const totalCount = useMemo(() => {
-    const oppsCount = opportunitiesQueryResult?.count || 0;
     const tasksCount = infiniteDataCount;
-    
-    // Contar quantas opportunities têm task_id (para evitar contar em duplicidade)
-    const oppsWithTask = (opportunitiesData || []).filter(opp => opp.task_id).length;
-    
-    // Total = tasks + opportunities sem task (standalone)
-    const standaloneOppsCount = oppsCount - oppsWithTask;
+    // Usar o tamanho real dos dados carregados já filtrados pela query
+    const allOppsCount = opportunitiesData?.length || 0;
+    const oppsWithTask = opportunitiesData?.filter(opp => opp.task_id).length || 0;
+    const standaloneOppsCount = Math.max(0, allOppsCount - oppsWithTask);
     const total = tasksCount + standaloneOppsCount;
     
     console.log('📊 Total Count Calculation:', {
       'infiniteDataCount (tasks no banco)': tasksCount,
-      'opportunitiesQueryResult.count (opps no banco)': oppsCount,
-      'opportunitiesData.length (opps carregadas)': opportunitiesData?.length || 0,
+      'opportunitiesData.length (todas opps carregadas)': allOppsCount,
       'oppsWithTask (opps com task_id)': oppsWithTask,
       'standaloneOppsCount (opps sem task)': standaloneOppsCount,
       'total calculado': total,
@@ -588,7 +584,7 @@ export const SalesFunnel: React.FC = () => {
     });
     
     return total;
-  }, [infiniteDataCount, opportunitiesQueryResult, opportunitiesData, filteredTasks.length, selectedFilial, selectedPeriod]);
+  }, [infiniteDataCount, opportunitiesData, filteredTasks.length, selectedFilial, selectedPeriod]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
