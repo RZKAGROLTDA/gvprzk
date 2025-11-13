@@ -342,13 +342,25 @@ export const SalesFunnel: React.FC = () => {
       console.log('🔄 Carregando opportunities...');
       const { data, error } = await supabase
         .from('opportunities')
-        .select('task_id, valor_total_oportunidade, valor_venda_fechada, status');
-      if (error) throw error;
-      console.log('✅ Opportunities carregadas:', data?.length || 0);
+        .select('task_id, valor_total_oportunidade, valor_venda_fechada, status, cliente_nome, filial');
+      if (error) {
+        console.error('❌ Erro ao carregar opportunities:', error);
+        throw error;
+      }
+      console.log('✅ Opportunities carregadas:', {
+        total: data?.length || 0,
+        amostras: data?.slice(0, 3).map(o => ({
+          cliente: o.cliente_nome,
+          filial: o.filial,
+          status: o.status
+        }))
+      });
       return data || [];
     },
     staleTime: 0, // Sempre buscar dados frescos
-    gcTime: 1000 * 60 * 5, // Manter em cache por 5 minutos
+    gcTime: 0, // Não manter em cache
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Create a map for quick lookup of opportunity values
