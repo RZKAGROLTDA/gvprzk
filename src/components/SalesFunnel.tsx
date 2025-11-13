@@ -362,14 +362,37 @@ export const SalesFunnel: React.FC = () => {
     refetchOnWindowFocus: true,
   });
 
-  // Calcular total de opportunities standalone (sem task correspondente)
+  // Calcular total de opportunities standalone (sem task correspondente) aplicando os mesmos filtros
   const standaloneOpportunitiesCount = useMemo(() => {
     if (!opportunitiesData) return 0;
-    // Contar apenas opportunities que não têm task_id
-    return opportunitiesData.filter(opp => !opp.task_id).length;
-  }, [opportunitiesData]);
+    
+    return opportunitiesData.filter(opp => {
+      // Contar apenas opportunities que não têm task_id
+      if (opp.task_id) return false;
+      
+      // Aplicar filtro de filial
+      if (selectedFilial !== 'all') {
+        const oppFilial = getFilialNameRobust(opp.filial || '');
+        if (oppFilial !== selectedFilial) return false;
+      }
+      
+      // Aplicar filtro de período
+      if (selectedPeriod !== 'all') {
+        const oppDate = new Date(opp.data_criacao || opp.created_at);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - oppDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (selectedPeriod === '7' && diffDays > 7) return false;
+        if (selectedPeriod === '15' && diffDays > 15) return false;
+        if (selectedPeriod === '30' && diffDays > 30) return false;
+        if (selectedPeriod === '90' && diffDays > 90) return false;
+      }
+      
+      return true;
+    }).length;
+  }, [opportunitiesData, selectedFilial, selectedPeriod]);
 
-  // Total count inclui tasks + opportunities standalone
+  // Total count inclui tasks + opportunities standalone (ambos com filtros aplicados)
   const totalCount = infiniteDataCount + standaloneOpportunitiesCount;
 
   // Create a map for quick lookup of opportunity values
