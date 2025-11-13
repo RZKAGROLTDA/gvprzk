@@ -273,7 +273,6 @@ export const SalesFunnel: React.FC = () => {
         ? isLoadingClientDetails
         : isLoadingInfiniteData;
   const currentDataSource = infiniteSalesData || [];
-  const totalCount = infiniteDataCount;
 
   // Observer para scroll infinito - aba 'coverage' (Relatório)
   const observerTarget = React.useRef<HTMLDivElement>(null);
@@ -362,6 +361,16 @@ export const SalesFunnel: React.FC = () => {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
+
+  // Calcular total de opportunities standalone (sem task correspondente)
+  const standaloneOpportunitiesCount = useMemo(() => {
+    if (!opportunitiesData) return 0;
+    // Contar apenas opportunities que não têm task_id
+    return opportunitiesData.filter(opp => !opp.task_id).length;
+  }, [opportunitiesData]);
+
+  // Total count inclui tasks + opportunities standalone
+  const totalCount = infiniteDataCount + standaloneOpportunitiesCount;
 
   // Create a map for quick lookup of opportunity values
   const opportunityValues = useMemo(() => {
