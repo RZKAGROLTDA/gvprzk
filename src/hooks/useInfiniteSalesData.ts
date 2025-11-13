@@ -95,16 +95,19 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
 
         if (tasksError) throw tasksError;
 
-        // Buscar todas as opportunities
-        console.log('🔍 Buscando opportunities como usuário autenticado...');
+        // Buscar opportunities com RLS aplicado
+        console.log('🔍 [SALES DATA] Usuário:', user?.id, user?.email);
+        console.log('🔍 [SALES DATA] Iniciando busca de opportunities...');
+        
         const { data: opportunities, error: oppError } = await supabase
           .from('opportunities')
           .select('task_id, status, valor_total_oportunidade, valor_venda_fechada, cliente_nome, filial');
         
-        console.log('✅ Opportunities carregadas:', {
+        console.log('✅ [SALES DATA] Opportunities retornadas pela RLS:', {
           total: opportunities?.length || 0,
           error: oppError?.message,
-          amostras: opportunities?.slice(0, 5).map(o => ({
+          errorDetails: oppError,
+          primeirasCinco: opportunities?.slice(0, 5).map(o => ({
             cliente: o.cliente_nome,
             filial: o.filial,
             status: o.status
@@ -112,7 +115,15 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         });
         
         if (oppError) {
-          console.error('❌ Erro ao buscar opportunities:', oppError);
+          console.error('❌ [SALES DATA] ERRO ao buscar opportunities:', oppError);
+          throw oppError;
+        }
+        
+        if ((opportunities?.length || 0) < 5) {
+          console.warn('⚠️ [SALES DATA] ALERTA: Poucas opportunities retornadas!', {
+            esperado: 'Supervisores deveriam ver opportunities da sua filial',
+            retornado: opportunities?.length || 0
+          });
         }
 
         // Criar mapa de opportunities por task_id
@@ -184,8 +195,8 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
-    staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false
+    staleTime: 0, // Desabilitar cache temporariamente para debug
+    refetchOnWindowFocus: true
   });
 
   // Combinar todas as páginas
