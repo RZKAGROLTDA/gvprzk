@@ -342,7 +342,7 @@ export const SalesFunnel: React.FC = () => {
       console.log('🔄 Carregando opportunities...');
       const { data, error } = await supabase
         .from('opportunities')
-        .select('task_id, valor_total_oportunidade, valor_venda_fechada, status, cliente_nome, filial');
+        .select('*');
       if (error) {
         console.error('❌ Erro ao carregar opportunities:', error);
         throw error;
@@ -426,9 +426,9 @@ export const SalesFunnel: React.FC = () => {
   // Os filtros já são aplicados nos hooks, então usamos os dados diretamente
   const filteredSalesData = currentDataSource;
 
-  // Converter salesData para formato de tasks para compatibilidade
+  // Converter salesData para formato de tasks para compatibilidade, incluindo opportunities standalone
   const filteredTasks = useMemo(() => {
-    return filteredSalesData.map(sale => {
+    const tasksFromSales = filteredSalesData.map(sale => {
       const startDateStr = typeof sale.startDate === 'string' ? sale.startDate : sale.date;
       const endDateStr = typeof sale.endDate === 'string' ? sale.endDate : sale.date;
       const createdAtStr = typeof sale.createdAt === 'string' ? sale.createdAt : sale.date;
@@ -453,7 +453,6 @@ export const SalesFunnel: React.FC = () => {
         endDate: new Date(endDateStr),
         start_date: startDateStr.split('T')[0],
         end_date: endDateStr.split('T')[0],
-        // Campos adicionais para compatibilidade
         property: '',
         observations: '',
         priority: 'medium' as 'low' | 'medium' | 'high',
@@ -480,7 +479,64 @@ export const SalesFunnel: React.FC = () => {
         checkInLocation: null
       } as Task;
     });
-  }, [filteredSalesData]);
+
+    // Adicionar opportunities standalone (sem task correspondente)
+    const taskIds = new Set(tasksFromSales.map(t => t.id));
+    const standaloneOpportunities = opportunitiesData
+      .filter(opp => !opp.task_id || !taskIds.has(opp.task_id))
+      .map(opp => {
+        const createdAtStr = opp.data_criacao || opp.created_at;
+        const createdAt = new Date(createdAtStr);
+        
+        return {
+          id: opp.id,
+          name: opp.cliente_nome,
+          client: opp.cliente_nome,
+          responsible: '-',
+          filial: opp.filial || '',
+          taskType: 'prospection' as "checklist" | "ligacao" | "prospection",
+          status: 'pending' as 'closed' | 'completed' | 'in_progress' | 'pending',
+          isProspect: opp.status === 'Prospect',
+          salesConfirmed: opp.status === 'Venda Total' || opp.status === 'Venda Parcial',
+          salesType: opp.status === 'Venda Total' ? 'ganho' : opp.status === 'Venda Parcial' ? 'parcial' : opp.status === 'Venda Perdida' ? 'perdido' : null,
+          salesValue: opp.valor_total_oportunidade || 0,
+          partialSalesValue: opp.status === 'Venda Parcial' ? opp.valor_venda_fechada || 0 : 0,
+          createdAt: createdAt,
+          updatedAt: new Date(opp.updated_at || createdAtStr),
+          startDate: createdAt,
+          endDate: createdAt,
+          start_date: createdAtStr.split('T')[0],
+          end_date: createdAtStr.split('T')[0],
+          property: '',
+          observations: `Opportunity - ${opp.status}`,
+          priority: 'medium' as 'low' | 'medium' | 'high',
+          startTime: '08:00',
+          endTime: '18:00',
+          start_time: '08:00',
+          end_time: '18:00',
+          createdBy: '',
+          created_by: '',
+          photos: [],
+          documents: [],
+          reminders: [],
+          checklist: [],
+          prospectNotes: '',
+          clientcode: '',
+          email: '',
+          phone: '',
+          familyProduct: '',
+          propertyHectares: 0,
+          equipmentQuantity: 0,
+          equipmentList: [],
+          initialKm: 0,
+          finalKm: 0,
+          checkInLocation: null
+        } as Task;
+      });
+
+    console.log('🔧 filteredTasks: Tasks:', tasksFromSales.length, 'Standalone opportunities:', standaloneOpportunities.length);
+    return [...tasksFromSales, ...standaloneOpportunities];
+  }, [filteredSalesData, opportunitiesData]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
