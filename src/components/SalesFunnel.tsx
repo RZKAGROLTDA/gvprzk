@@ -560,48 +560,20 @@ export const SalesFunnel: React.FC = () => {
     return [...tasksFromSales, ...standaloneOpportunities];
   }, [filteredSalesData, opportunitiesData]);
 
-  // Calcular total usando os dados reais no banco
-  // Como filteredTasks já combina tasks + standalone opportunities com filtros aplicados,
-  // precisamos calcular o total baseado nos dados reais do banco
   const totalCount = useMemo(() => {
-    // Para calcular o total real no banco, precisamos:
-    // 1. Total de tasks que passam pelos filtros (já temos em infiniteDataCount quando usa RLS)
-    // 2. Total de standalone opportunities que passam pelos filtros
-    
-    // Como o infiniteDataCount pode não refletir os filtros corretamente para supervisores,
-    // vamos usar uma abordagem diferente: contar baseado nos dados carregados
-    const tasksInData = filteredSalesData?.filter(sale => sale.hasTaskData).length || 0;
-    const standaloneOppsInData = filteredSalesData?.filter(sale => !sale.hasTaskData).length || 0;
-    
-    // Se estamos paginando e há mais dados, usar infiniteDataCount + standalone opportunities
     const hasMoreData = hasNextPage || isFetchingNextPage;
     
-    let total: number;
     if (hasMoreData) {
       // Há paginação: usar contagem do banco
       const allOppsCount = opportunitiesData?.length || 0;
       const oppsWithTask = opportunitiesData?.filter(opp => opp.task_id).length || 0;
       const standaloneOppsCount = Math.max(0, allOppsCount - oppsWithTask);
-      total = infiniteDataCount + standaloneOppsCount;
+      return infiniteDataCount + standaloneOppsCount;
     } else {
       // Sem paginação: usar o que está carregado
-      total = filteredTasks.length;
+      return filteredTasks.length;
     }
-    
-    console.log('📊 Total Count Calculation:', {
-      'infiniteDataCount': infiniteDataCount,
-      'opportunitiesData.length': opportunitiesData?.length || 0,
-      'tasksInData': tasksInData,
-      'standaloneOppsInData': standaloneOppsInData,
-      'filteredTasks.length': filteredTasks.length,
-      'hasMoreData': hasMoreData,
-      'total': total,
-      'selectedFilial': selectedFilial,
-      'selectedPeriod': selectedPeriod
-    });
-    
-    return total;
-  }, [infiniteDataCount, opportunitiesData, filteredSalesData, filteredTasks.length, hasNextPage, isFetchingNextPage, selectedFilial, selectedPeriod]);
+  }, [infiniteDataCount, opportunitiesData, filteredTasks.length, hasNextPage, isFetchingNextPage]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
