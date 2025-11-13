@@ -339,12 +339,16 @@ export const SalesFunnel: React.FC = () => {
   } = useQuery({
     queryKey: ['opportunities-data'],
     queryFn: async () => {
+      console.log('🔄 Carregando opportunities...');
       const { data, error } = await supabase
         .from('opportunities')
         .select('task_id, valor_total_oportunidade, valor_venda_fechada, status');
       if (error) throw error;
+      console.log('✅ Opportunities carregadas:', data?.length || 0);
       return data || [];
-    }
+    },
+    staleTime: 0, // Sempre buscar dados frescos
+    gcTime: 1000 * 60 * 5, // Manter em cache por 5 minutos
   });
 
   // Create a map for quick lookup of opportunity values
