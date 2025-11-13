@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckSquare, Download, Search, Filter, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
+import { useOpportunities } from '@/hooks/useOpportunities';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getFilialNameRobust } from '@/lib/taskStandardization';
@@ -26,6 +27,7 @@ interface TaskData {
 export const FunnelTasksOptimized: React.FC = () => {
   console.log('🔧 FunnelTasksOptimized: Componente carregado');
   const { tasks, loading, refetch, forceRefresh, resetAndRefresh, error } = useTasksOptimized();
+  const { data: opportunities = [], isLoading: opportunitiesLoading } = useOpportunities();
   const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   const { invalidateAll } = useSecurityCache();
@@ -41,23 +43,22 @@ export const FunnelTasksOptimized: React.FC = () => {
   const tasksData = useMemo(() => {
     console.log('🔧 FILTRO DEBUG - selectedFilial:', selectedFilial);
     console.log('🔧 FILTRO DEBUG - tasks.length:', tasks.length);
-    console.log('🔧 FILTRO DEBUG - primeira task:', tasks[0]);
+    console.log('🔧 FILTRO DEBUG - opportunities.length:', opportunities.length);
     
-    if (!tasks.length) return [];
+    if (!tasks.length && !opportunities.length) return [];
 
     const now = new Date();
     const daysAgo = parseInt(selectedPeriod);
     const periodStart = daysAgo >= 9999 ? new Date(0) : subDays(now, daysAgo);
     const searchLower = searchTerm.toLowerCase();
 
-    // Super otimizado: filtro, mapeamento e ordenação em um loop
     const result: TaskData[] = [];
     
+    // Processar tasks
     for (const task of tasks) {
       if (!task || !task.created_at) continue;
       const taskDate = new Date(task.created_at);
       
-      // Early exits para máxima performance
       if (daysAgo < 9999 && taskDate < periodStart) continue;
       
       if (selectedConsultant !== 'all') {
@@ -65,19 +66,9 @@ export const FunnelTasksOptimized: React.FC = () => {
         if (!consultant || task.responsible !== consultant.name) continue;
       }
 
-      if (selectedFilial !== 'all' && task.filial !== selectedFilial) {
-        console.log('🚫 FILTRANDO TASK:', { 
-          taskId: task.id.slice(0,8), 
-          taskFilial: task.filial, 
-          selectedFilial,
-          match: task.filial === selectedFilial 
-        });
-        continue;
-      }
-      
+      if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
       if (searchTerm && !task.client.toLowerCase().includes(searchLower)) continue;
 
-      // Mapear diretamente
       result.push({
         date: new Date(task.created_at),
         client: task.client,
@@ -88,6 +79,24 @@ export const FunnelTasksOptimized: React.FC = () => {
       });
     }
 
+    // Processar opportunities
+    for (const opp of opportunities) {
+      const oppDate = new Date(opp.data_criacao);
+      
+      if (daysAgo < 9999 && oppDate < periodStart) continue;
+      if (selectedFilial !== 'all' && opp.filial !== selectedFilial) continue;
+      if (searchTerm && !opp.cliente_nome.toLowerCase().includes(searchLower)) continue;
+
+      result.push({
+        date: oppDate,
+        client: opp.cliente_nome,
+        responsible: '-',
+        taskType: `Opportunity (${opp.status})`,
+        observation: `Valor: R$ ${opp.valor_total_oportunidade.toFixed(2)}`,
+        filial: opp.filial || ''
+      });
+    }
+
     // Ordenação otimizada
     result.sort((a, b) => {
       const diff = a.date.getTime() - b.date.getTime();
@@ -95,7 +104,7 @@ export const FunnelTasksOptimized: React.FC = () => {
     });
 
     return result.slice(0, 100); // Limitar para performance
-  }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
+  }, [tasks, opportunities, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
 
   const getTaskTypeLabel = (taskType: string) => {
     switch (taskType) {
@@ -135,7 +144,7 @@ export const FunnelTasksOptimized: React.FC = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [refetch]);
 
-  const isLoading = loading || consultantsLoading || filiaisLoading;
+  const isLoading = loading || opportunitiesLoading || consultantsLoading || filiaisLoading;
 
   // Função para force refresh com feedback visual
   const handleForceRefresh = async () => {
