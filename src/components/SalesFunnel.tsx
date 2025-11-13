@@ -576,16 +576,19 @@ export const SalesFunnel: React.FC = () => {
     const total = tasksCount + standaloneOppsCount;
     
     console.log('📊 Total Count Calculation:', {
-      tasksCount,
-      oppsCount,
-      oppsWithTask,
-      standaloneOppsCount,
-      total,
-      filteredTasksLength: filteredTasks.length
+      'infiniteDataCount (tasks no banco)': tasksCount,
+      'opportunitiesQueryResult.count (opps no banco)': oppsCount,
+      'opportunitiesData.length (opps carregadas)': opportunitiesData?.length || 0,
+      'oppsWithTask (opps com task_id)': oppsWithTask,
+      'standaloneOppsCount (opps sem task)': standaloneOppsCount,
+      'total calculado': total,
+      'filteredTasks.length (exibidos)': filteredTasks.length,
+      'selectedFilial': selectedFilial,
+      'selectedPeriod': selectedPeriod
     });
     
     return total;
-  }, [infiniteDataCount, opportunitiesQueryResult, opportunitiesData, filteredTasks.length]);
+  }, [infiniteDataCount, opportunitiesQueryResult, opportunitiesData, filteredTasks.length, selectedFilial, selectedPeriod]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
