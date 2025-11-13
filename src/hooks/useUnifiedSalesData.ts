@@ -72,6 +72,12 @@ export const useUnifiedSalesData = () => {
 
         if (tasksError) throw tasksError;
 
+        console.log('[useUnifiedSalesData] Total tasks retornadas:', tasksWithOpportunities?.length);
+        console.log('[useUnifiedSalesData] Tasks com opportunities:', 
+          tasksWithOpportunities?.filter(t => t.opportunities && t.opportunities.length > 0).length);
+        console.log('[useUnifiedSalesData] Total opportunities:', 
+          tasksWithOpportunities?.reduce((sum, t) => sum + (t.opportunities?.length || 0), 0));
+
         const unified: UnifiedSalesData[] = (tasksWithOpportunities || []).map(task => {
           const opportunity = task.opportunities?.[0]; // Assume uma oportunidade por task
           
