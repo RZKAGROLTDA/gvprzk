@@ -442,6 +442,48 @@ export type Database = {
         }
         Relationships: []
       }
+      task_access_metadata: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          creator_approval_status: string | null
+          creator_filial_id: string | null
+          task_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          creator_approval_status?: string | null
+          creator_filial_id?: string | null
+          task_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          creator_approval_status?: string | null
+          creator_filial_id?: string | null
+          task_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_access_metadata_creator_filial_id_fkey"
+            columns: ["creator_filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_access_metadata_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_creation_log: {
         Row: {
           client: string | null
@@ -840,6 +882,10 @@ export type Database = {
         Returns: boolean
       }
       can_perform_admin_action: { Args: never; Returns: boolean }
+      can_view_opportunity: {
+        Args: { p_opportunity_id: string }
+        Returns: boolean
+      }
       check_advanced_rate_limit: {
         Args: {
           max_attempts?: number
@@ -945,6 +991,18 @@ export type Database = {
           user_id_param: string
         }
         Returns: string
+      }
+      debug_user_security_info: {
+        Args: never
+        Returns: {
+          current_user_id: string
+          filial_id: string
+          filial_name: string
+          has_supervisor_role: boolean
+          profile_approved: boolean
+          profile_role: string
+          security_level: string
+        }[]
       }
       detect_customer_data_theft_attempts: {
         Args: never
@@ -1319,6 +1377,48 @@ export type Database = {
           vendedor_id: string
         }[]
       }
+      get_secure_tasks_with_customer_protection: {
+        Args: never
+        Returns: {
+          access_level: string
+          check_in_location: Json
+          client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
+          email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
+          filial: string
+          final_km: number
+          id: string
+          initial_km: number
+          is_customer_data_protected: boolean
+          is_prospect: boolean
+          name: string
+          observations: string
+          partial_sales_value: number
+          phone: string
+          photos: string[]
+          priority: string
+          property: string
+          propertyhectares: number
+          prospect_notes: string
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
+        }[]
+      }
       get_secure_user_directory: {
         Args: never
         Returns: {
@@ -1622,6 +1722,22 @@ export type Database = {
       simple_is_admin: { Args: never; Returns: boolean }
       simple_is_manager: { Args: never; Returns: boolean }
       simple_user_role: { Args: never; Returns: string }
+      test_supervisor_opportunity_access: {
+        Args: { p_supervisor_id: string }
+        Returns: {
+          both_approved: boolean
+          cliente_nome: string
+          filial: string
+          filials_match: boolean
+          has_role_supervisor: boolean
+          opportunity_id: string
+          should_see: boolean
+          supervisor_filial: string
+          task_creator_filial: string
+          task_creator_id: string
+          task_creator_name: string
+        }[]
+      }
       update_user_filial_secure: {
         Args: { new_filial_id: string; target_user_id: string }
         Returns: Json
