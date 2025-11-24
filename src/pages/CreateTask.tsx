@@ -5996,40 +5996,18 @@ const CreateTask: React.FC<CreateTaskProps> = ({
           title: "📋 Dados encontrados",
           description: "Informações do CPF foram preenchidas automaticamente"
         });
-      } else {
-        // Buscar no localStorage como fallback
-        const savedData = localStorage.getItem(`cpf_data_${cpf}`);
-        if (savedData) {
-          const data = JSON.parse(savedData);
-          setTask(prev => ({
-            ...prev,
-            client: data.client || '',
-            responsible: profile?.name || data.responsible || '',
-            property: data.property || '',
-            observations: data.hectares ? `Hectares: ${data.hectares}` : ''
-          }));
-          toast({
-            title: "📋 Dados encontrados",
-            description: "Informações do CPF foram preenchidas automaticamente"
-          });
-        }
       }
+      // SECURITY FIX: Removed localStorage fallback for CPF data
+      // Previously stored sensitive customer data unencrypted in localStorage
+      // This violated LGPD compliance and exposed data to XSS attacks
     } catch (error) {
       console.error('Erro ao buscar dados anteriores:', error);
     }
   };
 
-  // Função para salvar dados do CPF no localStorage
-  const saveCPFData = (cpf: string, data: {
-    client: string;
-    responsible: string;
-    property: string;
-    hectares?: string;
-  }) => {
-    if (cpf && (data.client || data.responsible || data.property || data.hectares)) {
-      localStorage.setItem(`cpf_data_${cpf}`, JSON.stringify(data));
-    }
-  };
+  // SECURITY FIX: Removed saveCPFData function
+  // Previously stored sensitive customer CPF data in unencrypted localStorage
+  // This violated LGPD compliance and exposed sensitive PII to XSS attacks
 
   // Função para resetar todos os campos do formulário
   const resetAllFields = () => {
@@ -6458,7 +6436,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       setIsSubmitting(false);
     }
   };
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     const draftData = {
       ...task,
       taskType: getTaskTypeFromCategory(taskCategory),
@@ -6468,39 +6446,39 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       isDraft: true
     };
 
-    // Salvar dados do CPF para reutilização futura
-    if (task.cpf) {
-      // Extrair hectares das observações se existir
-      let hectares = '';
-      if (task.observations) {
-        const hectaresMatch = task.observations.match(/hectares?\s*:?\s*(\d+(?:[.,]\d+)?)/i);
-        if (hectaresMatch) {
-          hectares = hectaresMatch[1];
+    // SECURITY FIX: Removed CPF data storage from localStorage
+    // Previously stored sensitive customer data in unencrypted localStorage
+
+    // SECURITY FIX: Save drafts to Supabase instead of localStorage
+    // This uses the task_drafts table with proper RLS and auto-expiry
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error: draftError } = await supabase
+          .from('task_drafts')
+          .insert({
+            user_id: user.id,
+            draft_data: draftData,
+            category: taskCategory
+          });
+        
+        if (draftError) {
+          console.error('Erro ao salvar rascunho:', draftError);
+          toast({
+            title: "⚠️ Erro ao Salvar",
+            description: "Não foi possível salvar o rascunho. Tente novamente.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "💾 Rascunho Salvo",
+            description: "Suas alterações foram salvas com segurança!"
+          });
         }
       }
-      saveCPFData(task.cpf.replace(/\D/g, ''), {
-        client: task.client || '',
-        responsible: task.responsible || '',
-        property: task.property || '',
-        hectares: hectares || ''
-      });
+    } catch (error) {
+      console.error('Erro ao salvar rascunho:', error);
     }
-
-    // Salvar no localStorage como rascunho
-    const existingDrafts = JSON.parse(localStorage.getItem('task_drafts') || '[]');
-    const draftId = `draft_${crypto.randomUUID()}`;
-    const newDraft = {
-      id: draftId,
-      ...draftData,
-      savedAt: new Date(),
-      category: taskCategory
-    };
-    existingDrafts.push(newDraft);
-    localStorage.setItem('task_drafts', JSON.stringify(existingDrafts));
-    toast({
-      title: "💾 Rascunho Salvo",
-      description: "Suas alterações foram salvas como rascunho!"
-    });
   };
 
   // Componente para renderizar campos de valor unitário e total

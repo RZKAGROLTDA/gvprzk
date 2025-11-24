@@ -13,7 +13,7 @@ export const useUserRole = () => {
 
       console.log('🔒 useUserRole: Verificando papéis para usuário:', user.id);
 
-      // Check if user has admin role
+      // SECURITY FIX: Only use user_roles table as single source of truth
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
@@ -21,41 +21,41 @@ export const useUserRole = () => {
 
       if (rolesError) {
         console.error('❌ useUserRole: Erro ao buscar roles:', rolesError);
+        return {
+          isAdmin: false,
+          isSupervisor: false,
+          isManager: false,
+          role: 'none'
+        };
       }
 
       const isAdmin = roles?.some(r => r.role === 'admin') ?? false;
       const isSupervisor = roles?.some(r => r.role === 'supervisor') ?? false;
+      const isManager = isAdmin; // Admin has manager privileges
 
-      console.log('🔒 useUserRole: Roles encontrados:', {
-        roles: roles?.map(r => r.role),
-        isAdmin,
-        isSupervisor
-      });
-
-      // Also check profile for manager role (for compatibility)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('❌ useUserRole: Erro ao buscar profile:', profileError);
+      // Determine primary role for display
+      let primaryRole = 'none';
+      if (roles && roles.length > 0) {
+        // Priority: admin > supervisor > rac > consultant
+        if (roles.some(r => r.role === 'admin')) primaryRole = 'admin';
+        else if (roles.some(r => r.role === 'supervisor')) primaryRole = 'supervisor';
+        else if (roles.some(r => r.role === 'rac')) primaryRole = 'rac';
+        else primaryRole = 'consultant';
       }
 
       const result = {
         isAdmin,
         isSupervisor,
-        isManager: profile?.role === 'manager',
-        role: profile?.role || 'none'
+        isManager,
+        role: primaryRole
       };
 
       console.log('✅ useUserRole: Resultado final:', result);
 
       return result;
     },
-    staleTime: 1000, // Reduzir cache para 1 segundo para testar
-    gcTime: 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
   });
 
   return {
