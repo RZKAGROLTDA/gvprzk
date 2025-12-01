@@ -374,10 +374,10 @@ export const SalesFunnel: React.FC = () => {
       });
       return { data: data || [], count: count || 0 };
     },
-    staleTime: 0, // Sempre buscar dados frescos
-    gcTime: 0, // Não manter em cache
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO: evitar queries excessivas
+    gcTime: 30 * 60 * 1000, // 30 minutos no cache
+    refetchOnMount: false, // OTIMIZAÇÃO: usar cache
+    refetchOnWindowFocus: false, // OTIMIZAÇÃO: não recarregar ao focar janela
   });
 
   const opportunitiesData = opportunitiesQueryResult?.data || [];

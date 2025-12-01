@@ -74,8 +74,8 @@ export const TaskManager: React.FC = () => {
   useEffect(() => {
     loadTasks();
     
-    // Reduzir frequência de refresh para 15 segundos
-    const interval = setInterval(loadTasks, 15000);
+    // OTIMIZAÇÃO: Reduzir frequência de refresh para 2 minutos
+    const interval = setInterval(loadTasks, 120000);
     
     return () => clearInterval(interval);
   }, [loadTasks]);
