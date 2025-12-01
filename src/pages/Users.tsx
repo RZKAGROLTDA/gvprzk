@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Users as UsersIcon, Shield, Building, Trash2, AlertTriangle } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface Profile {
   id: string;
@@ -32,8 +33,10 @@ export const Users: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [filiais, setFiliais] = useState<Filial[]>([]);
-  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // SECURITY FIX: Use user_roles table as single source of truth for authorization
+  const { isManager, isLoading: isLoadingRole } = useUserRole();
   
   // Use secure user directory with data masking
   const { data: secureUserData, isLoading: isLoadingUsers, error: userError } = useSecureUserDirectory();
@@ -45,21 +48,7 @@ export const Users: React.FC = () => {
   const loadData = async () => {
     try {
       // Note: User data is now loaded via useSecureUserDirectory hook
-
-      // Carregar perfil do usuário atual
-      if (user) {
-        const { data: currentProfile, error: currentProfileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (currentProfileError) {
-          console.error('Erro ao carregar perfil atual:', currentProfileError);
-        } else {
-          setCurrentUserProfile(currentProfile);
-        }
-      }
+      // SECURITY FIX: User role is now loaded via useUserRole hook (user_roles table)
 
       // Carregar filiais
       const { data: filiaisData, error: filiaisError } = await supabase
@@ -290,7 +279,8 @@ export const Users: React.FC = () => {
   const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
   const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
   
-  const isAdmin = currentUserProfile?.role === 'manager';
+  // SECURITY FIX: Use isManager from useUserRole hook (user_roles table) instead of profiles.role
+  const isAdmin = isManager;
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -395,7 +385,7 @@ export const Users: React.FC = () => {
                 <TableHead>Permissão</TableHead>
                 <TableHead>Filial</TableHead>
                 <TableHead>Cargo</TableHead>
-                {currentUserProfile?.role === 'manager' && <TableHead>Ações</TableHead>}
+                {isManager && <TableHead>Ações</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -432,7 +422,7 @@ export const Users: React.FC = () => {
                   <TableCell>
                      <div className="flex gap-2">
                        {/* Só permitir alteração de permissão se o usuário atual for administrador */}
-                       {currentUserProfile?.role === 'manager' ? (
+                       {isManager ? (
                          <Select
                            value={profile.role}
                            onValueChange={(value) => updateUserRole(profile.user_id, value)}
@@ -456,7 +446,7 @@ export const Users: React.FC = () => {
                        )}
 
                        {/* Só permitir alteração de filial se o usuário atual for administrador */}
-                       {currentUserProfile?.role === 'manager' ? (
+                       {isManager ? (
                          <Select
                            value={profile.filial_id || "none"}
                            onValueChange={(value) => updateUserFilial(profile.user_id, value)}
@@ -487,7 +477,7 @@ export const Users: React.FC = () => {
                        )}
                       </div>
                    </TableCell>
-                   {currentUserProfile?.role === 'manager' && (
+                   {isManager && (
                      <TableCell>
                        <Button
                          size="sm"
