@@ -10,7 +10,7 @@ interface SupabaseHealthState {
   retryCount: number;
 }
 
-const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds
+const HEALTH_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos - OTIMIZAÇÃO: reduzir queries
 const MAX_RETRIES = 3;
 const RETRY_DELAY_BASE = 2000; // 2 seconds base delay
 

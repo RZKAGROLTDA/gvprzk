@@ -92,7 +92,7 @@ export const AuthenticationHealthCheck: React.FC = () => {
     };
 
     checkAuthStatus();
-    const interval = setInterval(checkAuthStatus, 60000); // Check every minute
+    const interval = setInterval(checkAuthStatus, 5 * 60 * 1000); // OTIMIZAÇÃO: Check every 5 minutes
 
     return () => clearInterval(interval);
   }, [user, session]);
