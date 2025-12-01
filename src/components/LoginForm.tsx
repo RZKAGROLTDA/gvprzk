@@ -7,13 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Settings, Trash, Eye, EyeOff, Building } from 'lucide-react';
+import { Loader2, Settings, Trash, Eye, EyeOff, Building, WifiOff, RefreshCw } from 'lucide-react';
 import { SessionRefresh } from '@/components/SessionRefresh';
 import { useInputValidation } from '@/hooks/useInputValidation';
 import { useSecurityMonitor } from '@/hooks/useSecurityMonitor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicator';
 import { getVersionInfo, formatVersion, formatDetailedVersion, storeCurrentVersion } from '@/config/version';
+import { isConnectionError, getConnectionErrorMessage } from '@/lib/retryWithBackoff';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const LoginForm: React.FC = () => {
   const { signIn, signUp } = useAuth();
@@ -25,6 +27,8 @@ export const LoginForm: React.FC = () => {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockTimeLeft, setBlockTimeLeft] = useState(0);
   const [isAdminEmail, setIsAdminEmail] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -56,36 +60,41 @@ export const LoginForm: React.FC = () => {
       const { data, error } = await supabase.rpc('get_filiais_for_registration');
       
       if (error) {
-        console.error('❌ LoginForm: Erro RLS ao carregar filiais:', error);
-        // Set fallback filials instead of throwing error
+        console.error('❌ LoginForm: Erro ao carregar filiais:', error);
+        
+        // Check if it's a connection error
+        if (isConnectionError(error)) {
+          setConnectionError(true);
+          setFiliaisError('Serviço indisponível');
+        } else {
+          setFiliaisError('Usando filiais padrão');
+        }
+        
+        // Set fallback filials
         setFiliais([
           { id: 'fallback-1', nome: 'Filial Central' },
           { id: 'fallback-2', nome: 'Filial Norte' },
           { id: 'fallback-3', nome: 'Filial Sul' }
         ]);
-        toast({
-          title: "Erro ao carregar filiais",
-          description: "Usando lista padrão de filiais.",
-          variant: "destructive",
-        });
-        setFiliaisError('Usando filiais padrão');
       } else {
         console.log('✅ LoginForm: Filiais carregadas:', data?.length || 0);
         setFiliais(data || []);
+        setConnectionError(false);
         
         if (!data || data.length === 0) {
           setFiliaisError('Nenhuma filial encontrada');
-        } else {
-          toast({
-            title: "Filiais carregadas",
-            description: `${data.length} filiais disponíveis para seleção.`,
-          });
         }
       }
     } catch (error: any) {
       const errorMessage = error.message || 'Erro ao carregar filiais';
       console.error('💥 LoginForm: Erro crítico ao carregar filiais:', errorMessage);
-      setFiliaisError(errorMessage);
+      
+      if (isConnectionError(error)) {
+        setConnectionError(true);
+        setFiliaisError('Serviço indisponível');
+      } else {
+        setFiliaisError(errorMessage);
+      }
       
       // Set fallback filials
       setFiliais([
@@ -93,12 +102,6 @@ export const LoginForm: React.FC = () => {
         { id: 'fallback-2', nome: 'Filial Norte' },
         { id: 'fallback-3', nome: 'Filial Sul' }
       ]);
-      
-      toast({
-        title: "Erro de conexão",
-        description: "Usando lista padrão de filiais. Tente novamente em alguns minutos.",
-        variant: "destructive",
-      });
     } finally {
       setFiliaisLoading(false);
     }
@@ -215,10 +218,23 @@ export const LoginForm: React.FC = () => {
     }
 
     setLoading(true);
+    setConnectionError(false);
     
     const { error } = await signIn(formData.email, formData.password);
     
     if (error) {
+      // Check for connection errors first
+      if (isConnectionError(error)) {
+        setConnectionError(true);
+        toast({
+          title: "Serviço indisponível",
+          description: getConnectionErrorMessage(error),
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      
       // Incrementar contador de tentativas
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
@@ -255,6 +271,7 @@ export const LoginForm: React.FC = () => {
       });
     } else {
       setLoginAttempts(0); // Reset contador em caso de sucesso
+      setConnectionError(false);
       monitorLoginAttempt(formData.email, true);
       storeCurrentVersion(); // Store version after successful login
       toast({
@@ -319,6 +336,7 @@ export const LoginForm: React.FC = () => {
     }
     
     setLoading(true);
+    setConnectionError(false);
     console.log('📱 Mobile Signup: Chamando função signUp...');
 
     try {
@@ -332,6 +350,19 @@ export const LoginForm: React.FC = () => {
       
       if (error) {
         console.error('❌ Mobile Signup Error:', error);
+        
+        // Check for connection errors first
+        if (isConnectionError(error)) {
+          setConnectionError(true);
+          toast({
+            title: "Serviço indisponível",
+            description: getConnectionErrorMessage(error),
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        
         let errorMessage = "Erro no cadastro";
         
         if (error.message.includes('already_registered')) {
@@ -353,6 +384,7 @@ export const LoginForm: React.FC = () => {
         });
       } else {
         console.log('✅ Mobile Signup: Cadastro realizado com sucesso');
+        setConnectionError(false);
         storeCurrentVersion(); // Store version after successful signup
         toast({
           title: "Cadastro realizado com sucesso!",
@@ -370,11 +402,21 @@ export const LoginForm: React.FC = () => {
       }
     } catch (error: any) {
       console.error('💥 Mobile Signup: Erro crítico:', error);
-      toast({
-        title: "Erro crítico",
-        description: "Erro interno do sistema. Tente novamente em alguns minutos.",
-        variant: "destructive",
-      });
+      
+      if (isConnectionError(error)) {
+        setConnectionError(true);
+        toast({
+          title: "Serviço indisponível",
+          description: getConnectionErrorMessage(error),
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro crítico",
+          description: "Erro interno do sistema. Tente novamente em alguns minutos.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
       console.log('📱 Mobile Signup: Processo finalizado');
@@ -435,6 +477,35 @@ export const LoginForm: React.FC = () => {
     }
   };
 
+  const handleRetryConnection = async () => {
+    setIsRetrying(true);
+    try {
+      const { error } = await supabase.from('filiais').select('id').limit(1);
+      if (!error) {
+        setConnectionError(false);
+        toast({
+          title: "Conexão restaurada",
+          description: "O serviço está disponível novamente.",
+        });
+        await loadFiliais();
+      } else if (isConnectionError(error)) {
+        toast({
+          title: "Ainda indisponível",
+          description: "O serviço continua indisponível. Tente novamente em alguns instantes.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro na verificação",
+        description: "Não foi possível verificar a conexão.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-4xl flex flex-col lg:flex-row gap-6">
@@ -457,6 +528,28 @@ export const LoginForm: React.FC = () => {
             )}
           </CardHeader>
         <CardContent>
+          {/* Connection Error Alert */}
+          {connectionError && (
+            <Alert variant="destructive" className="mb-4">
+              <WifiOff className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>Serviço temporariamente indisponível.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetryConnection}
+                  disabled={isRetrying}
+                  className="ml-2"
+                >
+                  {isRetrying ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Entrar</TabsTrigger>
