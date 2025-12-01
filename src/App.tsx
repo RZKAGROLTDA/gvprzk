@@ -10,7 +10,9 @@ import { AuthProvider } from '@/components/AuthProvider';
 import { ProfileAutoCreator } from '@/components/ProfileAutoCreator';
 import { LoginForm } from '@/components/LoginForm';
 import { SecurityHeaders } from '@/components/SecurityHeaders';
+import { ServiceUnavailable } from '@/components/ServiceUnavailable';
 import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseHealth } from '@/hooks/useSupabaseHealth';
 import Dashboard from "./pages/Dashboard";
 import { SalesFunnel } from "./components/SalesFunnel";
 import CreateTask from "./pages/CreateTask";
@@ -107,6 +109,7 @@ const AppContent: React.FC = () => {
 const AuthAwareWrapper: React.FC = () => {
   const { user, loading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
+  const { isUnhealthy, isChecking, retryWithBackoff, errorMessage, retryCount } = useSupabaseHealth();
   const [showProfileCreator, setShowProfileCreator] = React.useState(false);
 
   // Show profile creator if user exists but no profile
@@ -118,7 +121,18 @@ const AuthAwareWrapper: React.FC = () => {
     }
   }, [user, profile, loading, profileLoading]);
 
-  if (loading || profileLoading) {
+  // Show service unavailable screen if Supabase is unhealthy and not loading user
+  if (isUnhealthy && !loading && !user) {
+    return (
+      <ServiceUnavailable 
+        onRetry={retryWithBackoff}
+        errorMessage={errorMessage || undefined}
+        retryCount={retryCount}
+      />
+    );
+  }
+
+  if (loading || profileLoading || isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
