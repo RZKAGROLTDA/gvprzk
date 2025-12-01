@@ -46,14 +46,24 @@ serve(async (req) => {
       );
     }
 
-    // Check if current user is a manager
-    const { data: currentUserProfile, error: profileError } = await supabaseAdmin
-      .from('profiles')
+    // SECURITY FIX: Check if current user is a manager using user_roles table (single source of truth)
+    const { data: userRoles, error: rolesError } = await supabaseAdmin
+      .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', user.id);
 
-    if (profileError || currentUserProfile?.role !== 'manager') {
+    const isManager = userRoles?.some(r => r.role === 'admin' || r.role === 'manager') ?? false;
+
+    if (rolesError || !isManager) {
+      console.error('❌ Authorization check failed:', rolesError);
+      
+      // Log unauthorized access attempt
+      await supabaseAdmin.rpc('secure_log_security_event', {
+        event_type_param: 'unauthorized_delete_attempt',
+        metadata_param: { attempted_by: user.id },
+        risk_score_param: 8
+      });
+
       return new Response(
         JSON.stringify({ error: 'Access denied: Only managers can delete users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
