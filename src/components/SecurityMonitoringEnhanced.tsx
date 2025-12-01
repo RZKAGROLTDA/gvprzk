@@ -68,7 +68,8 @@ export const SecurityMonitoringEnhanced = () => {
         };
       }
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: false, // OTIMIZAÇÃO: polling desabilitado - usar refetch manual
+    staleTime: 10 * 60 * 1000, // 10 minutos de cache
   });
 
   const metrics: SecurityMetric[] = [

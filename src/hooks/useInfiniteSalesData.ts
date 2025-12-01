@@ -195,8 +195,8 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
-    staleTime: 0, // Desabilitar cache temporariamente para debug
-    refetchOnWindowFocus: true
+    staleTime: 3 * 60 * 1000, // 3 minutos - OTIMIZAÇÃO: reduzir queries
+    refetchOnWindowFocus: false // OTIMIZAÇÃO: não recarregar ao focar janela
   });
 
   // Combinar todas as páginas
