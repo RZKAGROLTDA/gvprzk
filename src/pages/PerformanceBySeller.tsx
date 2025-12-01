@@ -259,13 +259,29 @@ const PerformanceBySeller: React.FC = () => {
 
   const loadCollaborators = async () => {
     try {
-      const { data: profiles, error } = await supabase
+      // SECURITY FIX: Fetch roles from user_roles table
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, name, role, user_id')
+        .select('id, name, user_id')
         .order('name');
 
-      if (error) throw error;
-      setCollaborators(profiles || []);
+      if (profilesError) throw profilesError;
+
+      // Fetch roles from user_roles table
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Merge profiles with roles
+      const rolesMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
+      const collaboratorsWithRoles = profiles?.map(p => ({
+        ...p,
+        role: rolesMap.get(p.user_id) || 'consultant'
+      })) || [];
+
+      setCollaborators(collaboratorsWithRoles);
     } catch (error) {
       console.error('Erro ao carregar colaboradores:', error);
     }
@@ -276,10 +292,10 @@ const PerformanceBySeller: React.FC = () => {
     
     setLoading(true);
     try {
+      // SECURITY FIX: Fetch roles from user_roles table
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, name, role, id')
-        .in('role', ['consultant', 'manager', 'admin'])
+        .select('user_id, name, id')
         .eq('approval_status', 'approved')
         .order('name');
 
@@ -290,7 +306,22 @@ const PerformanceBySeller: React.FC = () => {
         return;
       }
 
-      const userStatsPromises = profiles.map(async (profile) => {
+      // Fetch roles from user_roles table
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['consultant', 'manager', 'admin']);
+
+      if (rolesError) throw rolesError;
+
+      // Create a map of user_id to role
+      const rolesMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
+      
+      // Filter profiles to only include those with valid roles
+      const profilesWithRoles = profiles.filter(p => rolesMap.has(p.user_id));
+
+      const userStatsPromises = profilesWithRoles.map(async (profile) => {
+        const userRole = rolesMap.get(profile.user_id) || 'consultant';
         let query = supabase
           .from('tasks')
           .select('*')
@@ -308,7 +339,7 @@ const PerformanceBySeller: React.FC = () => {
         if (tasksError) {
           return {
             name: profile.name,
-            role: profile.role,
+            role: userRole,
             user_id: profile.user_id,
             visits: 0,
             prospects: 0,
@@ -333,7 +364,7 @@ const PerformanceBySeller: React.FC = () => {
 
         return {
           name: profile.name,
-          role: profile.role,
+          role: userRole,
           user_id: profile.user_id,
           visits: totalActivities,
           prospects,

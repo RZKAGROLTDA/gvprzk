@@ -64,16 +64,51 @@ export const SecurityAdmin: React.FC = () => {
         setSecurityLogs(logsData);
       }
 
-      // Load user profiles
+      // SECURITY FIX: Load user profiles and roles from user_roles table
       const { data: profilesData, error: profilesError } = await supabase
-        .rpc('get_user_directory');
+        .from('profiles')
+        .select('id, name, email, approval_status, user_id');
 
-      if (!profilesError && profilesData) {
-        setProfiles(profilesData);
+      if (profilesError) throw profilesError;
+
+      // Fetch roles from user_roles table
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Fetch filiais
+      const { data: filiaisData, error: filiaisError } = await supabase
+        .from('profiles')
+        .select('user_id, filial_id')
+        .not('filial_id', 'is', null);
+
+      const { data: filialNames, error: filialNamesError } = await supabase
+        .from('filiais')
+        .select('id, nome');
+
+      // Create maps
+      const rolesMap = new Map(rolesData?.map(r => [r.user_id, r.role]) || []);
+      const filiaisMap = new Map(filiaisData?.map(f => [f.user_id, f.filial_id]) || []);
+      const filialNamesMap = new Map(filialNames?.map(f => [f.id, f.nome]) || []);
+
+      // Merge data
+      const mergedProfiles = profilesData?.map(p => {
+        const filialId = filiaisMap.get(p.user_id);
+        return {
+          ...p,
+          role: rolesMap.get(p.user_id) || 'consultant',
+          filial_nome: filialId ? filialNamesMap.get(filialId) : undefined
+        };
+      }) || [];
+
+      if (mergedProfiles) {
+        setProfiles(mergedProfiles);
         
         // Calculate stats
-        const totalUsers = profilesData.length;
-        const pendingApprovals = profilesData.filter(p => p.approval_status === 'pending').length;
+        const totalUsers = mergedProfiles.length;
+        const pendingApprovals = mergedProfiles.filter(p => p.approval_status === 'pending').length;
         const highRiskEvents = logsData?.filter(log => log.risk_score > 3).length || 0;
         const blockedAttempts = logsData?.filter(log => log.blocked).length || 0;
 
