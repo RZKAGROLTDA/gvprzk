@@ -27,9 +27,9 @@ export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   
-  // Cache e debounce para reduzir chamadas desnecessárias
+  // Cache e debounce para reduzir chamadas desnecessárias - OTIMIZAÇÃO Disk IO
   const lastLoadTime = useRef<number>(0);
-  const loadCooldown = 3000; // 3 segundos entre carregamentos
+  const loadCooldown = 60000; // 60 segundos entre carregamentos - OTIMIZAÇÃO Disk IO
   const lastErrorTime = useRef<Record<string, number>>({});
   const errorCooldown = 10000; // 10 segundos entre toasts de erro similares
 

@@ -54,8 +54,10 @@ export const useUserRole = () => {
 
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
-    gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+    staleTime: 15 * 60 * 1000, // 15 minutos - OTIMIZAÇÃO Disk IO (dados estáticos)
+    gcTime: 30 * 60 * 1000, // 30 minutos
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   return {
