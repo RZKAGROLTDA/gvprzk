@@ -39,8 +39,9 @@ export const useOpportunities = () => {
       console.log('✅ [OPPORTUNITIES] Carregadas:', data?.length || 0);
       return (data || []) as Opportunity[];
     },
-    staleTime: 2 * 60 * 1000, // 2 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
+    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO Disk IO
+    gcTime: 15 * 60 * 1000, // 15 minutos
+    refetchOnWindowFocus: false, // OTIMIZAÇÃO: reduzir queries
     enabled: !!user,
   });
 };

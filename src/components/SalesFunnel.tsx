@@ -105,7 +105,9 @@ export const SalesFunnel: React.FC = () => {
       } = await supabase.from('profiles').select('id, name').order('name');
       if (error) throw error;
       return data || [];
-    }
+    },
+    staleTime: 15 * 60 * 1000, // 15 min - dados estáticos
+    gcTime: 60 * 60 * 1000, // 1 hora
   });
 
   // Fetch filiais
@@ -120,7 +122,9 @@ export const SalesFunnel: React.FC = () => {
       } = await supabase.from('filiais').select('id, nome');
       if (error) throw error;
       return data || [];
-    }
+    },
+    staleTime: 15 * 60 * 1000, // 15 min - dados estáticos
+    gcTime: 60 * 60 * 1000, // 1 hora
   });
   
 

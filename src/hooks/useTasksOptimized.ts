@@ -223,9 +223,9 @@ export const useTasksOptimized = (includeDetails = false) => {
       }
     },
     enabled: !!user,
-    staleTime: 1 * 60 * 1000, // 1 minuto - menor tempo para dados mais frescos
-    refetchOnWindowFocus: true, // Reabilitar para sincronização
-    refetchOnMount: true, 
+    staleTime: 3 * 60 * 1000, // 3 minutos - OTIMIZAÇÃO: reduzir Disk IO
+    refetchOnWindowFocus: false, // OTIMIZAÇÃO: desabilitado para reduzir queries
+    refetchOnMount: false, // OTIMIZAÇÃO: usar cache existente
     retry: (failureCount, error) => {
       // Retry mais inteligente
       if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
