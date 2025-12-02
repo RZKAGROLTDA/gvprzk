@@ -34,7 +34,9 @@ export const SecurityStatusOverview: React.FC = () => {
         audit: audit.data || []
       };
     },
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO Disk IO
+    refetchInterval: false, // OTIMIZAÇÃO: polling desabilitado para reduzir Disk IO
+    refetchOnWindowFocus: false,
   });
 
   const criticalAlerts = getCriticalAlerts();
