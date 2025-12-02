@@ -138,9 +138,10 @@ export const useUnifiedSalesData = () => {
         throw error;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO Disk IO
-    gcTime: 15 * 60 * 1000, // 15 minutos
-    refetchOnWindowFocus: false
+    staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO: slow queries opportunities
+    gcTime: 30 * 60 * 1000, // 30 minutos
+    refetchOnWindowFocus: false,
+    refetchOnMount: false // OTIMIZAÇÃO: usar cache existente
   });
 
   // Métricas calculadas

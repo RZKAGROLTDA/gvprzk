@@ -152,8 +152,8 @@ export const useAllSalesData = (filters?: SalesFilters) => {
       console.log('✅ Métricas carregadas (1 query ao invés de 10):', result);
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO Disk IO
-    gcTime: 15 * 60 * 1000, // 15 minutos
+    staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO: slow queries opportunities
+    gcTime: 30 * 60 * 1000, // 30 minutos
     refetchOnMount: false, // Não recarregar automaticamente
     refetchOnWindowFocus: false // Não recarregar ao focar janela
   });
