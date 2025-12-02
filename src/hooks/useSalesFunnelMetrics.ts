@@ -38,234 +38,189 @@ export interface SalesFunnelMetrics {
 }
 
 /**
- * Hook para buscar métricas do funil de vendas de forma independente
- * Usa queries otimizadas com COUNT e SUM em uma única consulta
+ * Hook OTIMIZADO para métricas do funil de vendas
+ * ANTES: 9 queries separadas
+ * AGORA: 2 queries (tasks + opportunities) com processamento local
  */
 export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['sales-funnel-metrics', filters],
     queryFn: async () => {
-      console.log('🔄 Buscando métricas detalhadas do funil de vendas...', filters);
-      
-      // Helper para aplicar filtros
-      const applyFilters = (query: any) => {
+      // Helper para aplicar filtros de data
+      const getDateFilter = () => {
         if (filters?.period && filters.period !== 'all') {
           const daysAgo = parseInt(filters.period);
           const cutoffDate = new Date();
           cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-          query = query.gte('created_at', cutoffDate.toISOString());
+          return cutoffDate.toISOString();
         }
-
-        if (filters?.consultantId && filters.consultantId !== 'all') {
-          query = query.eq('created_by', filters.consultantId);
-        }
-
-        if (filters?.filial && filters.filial !== 'all') {
-          query = query.eq('filial', filters.filial);
-        }
-
-        if (filters?.activity && filters.activity !== 'all') {
-          query = query.eq('task_type', filters.activity);
-        }
-
-        return query;
+        return null;
       };
+
+      const dateFilter = getDateFilter();
+
+      // QUERY 1: Buscar TODAS as tasks necessárias em UMA única query
+      let tasksQuery = supabase
+        .from('tasks')
+        .select('task_type, is_prospect, sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at');
       
-      // Queries para contatos com clientes (visitas, checklists, ligações)
-      let visitasQuery = supabase.from('tasks').select('sales_value').eq('task_type', 'prospection');
-      visitasQuery = applyFilters(visitasQuery);
+      if (dateFilter) {
+        tasksQuery = tasksQuery.gte('created_at', dateFilter);
+      }
+      if (filters?.consultantId && filters.consultantId !== 'all') {
+        tasksQuery = tasksQuery.eq('created_by', filters.consultantId);
+      }
+      if (filters?.filial && filters.filial !== 'all') {
+        tasksQuery = tasksQuery.eq('filial', filters.filial);
+      }
+      if (filters?.activity && filters.activity !== 'all') {
+        tasksQuery = tasksQuery.eq('task_type', filters.activity);
+      }
 
-      let checklistsQuery = supabase.from('tasks').select('sales_value').eq('task_type', 'checklist');
-      checklistsQuery = applyFilters(checklistsQuery);
-
-      let ligacoesQuery = supabase.from('tasks').select('sales_value').eq('task_type', 'ligacao');
-      ligacoesQuery = applyFilters(ligacoesQuery);
-
-      const [visitasData, checklistsData, ligacoesData] = await Promise.all([
-        visitasQuery,
-        checklistsQuery,
-        ligacoesQuery
-      ]);
-
-      if (visitasData.error) throw visitasData.error;
-      if (checklistsData.error) throw checklistsData.error;
-      if (ligacoesData.error) throw ligacoesData.error;
-
-      // Queries para prospecções
-      let prospeccoesAbertasQuery = supabase.from('tasks')
-        .select('sales_value')
-        .eq('is_prospect', true)
-        .or('sales_confirmed.is.null,sales_confirmed.eq.false');
-      prospeccoesAbertasQuery = applyFilters(prospeccoesAbertasQuery);
-
-      let prospeccoesDechadasQuery = supabase.from('tasks')
-        .select('sales_value')
-        .eq('is_prospect', true)
-        .eq('sales_type', 'ganho');
-      prospeccoesDechadasQuery = applyFilters(prospeccoesDechadasQuery);
-
-      let prospeccoesPerdidasQuery = supabase.from('tasks')
-        .select('sales_value')
-        .eq('is_prospect', true)
-        .eq('sales_type', 'perdido');
-      prospeccoesPerdidasQuery = applyFilters(prospeccoesPerdidasQuery);
-
-      const [prospeccoesAbertasData, prospeccoesDechadasData, prospeccoesPerdidasData] = await Promise.all([
-        prospeccoesAbertasQuery,
-        prospeccoesDechadasQuery,
-        prospeccoesPerdidasQuery
-      ]);
-
-      if (prospeccoesAbertasData.error) throw prospeccoesAbertasData.error;
-      if (prospeccoesDechadasData.error) throw prospeccoesDechadasData.error;
-      if (prospeccoesPerdidasData.error) throw prospeccoesPerdidasData.error;
-
-      // Queries para vendas
-      let vendasTotalQuery = supabase.from('tasks')
-        .select('sales_value')
-        .eq('sales_confirmed', true)
-        .eq('sales_type', 'ganho');
-      vendasTotalQuery = applyFilters(vendasTotalQuery);
-
-      let vendasParcialQuery = supabase.from('tasks')
-        .select('partial_sales_value')
-        .eq('sales_confirmed', true)
-        .eq('sales_type', 'parcial');
-      vendasParcialQuery = applyFilters(vendasParcialQuery);
-
-      const [vendasTotalData, vendasParcialData] = await Promise.all([
-        vendasTotalQuery,
-        vendasParcialQuery
-      ]);
-
-      if (vendasTotalData.error) throw vendasTotalData.error;
-      if (vendasParcialData.error) throw vendasParcialData.error;
-
-      // Buscar opportunities para somar às métricas
+      // QUERY 2: Buscar opportunities em UMA única query
       let opportunitiesQuery = supabase
         .from('opportunities')
         .select('status, valor_total_oportunidade, valor_venda_fechada, filial, created_at');
-      opportunitiesQuery = applyFilters(opportunitiesQuery);
       
-      const { data: opportunitiesData, error: oppError } = await opportunitiesQuery;
-      if (oppError) throw oppError;
+      if (dateFilter) {
+        opportunitiesQuery = opportunitiesQuery.gte('created_at', dateFilter);
+      }
+      if (filters?.filial && filters.filial !== 'all') {
+        opportunitiesQuery = opportunitiesQuery.eq('filial', filters.filial);
+      }
+
+      // Executar APENAS 2 queries em paralelo
+      const [tasksResult, opportunitiesResult] = await Promise.all([
+        tasksQuery,
+        opportunitiesQuery
+      ]);
+
+      if (tasksResult.error) throw tasksResult.error;
+      if (opportunitiesResult.error) throw opportunitiesResult.error;
+
+      const tasks = tasksResult.data || [];
+      const opportunities = opportunitiesResult.data || [];
+
+      // PROCESSAMENTO LOCAL - sem mais queries
+
+      // Filtrar tasks por tipo
+      const visitas = tasks.filter(t => t.task_type === 'prospection');
+      const checklists = tasks.filter(t => t.task_type === 'checklist');
+      const ligacoes = tasks.filter(t => t.task_type === 'ligacao');
+
+      // Filtrar prospecções
+      const prospeccoesAbertas = tasks.filter(t => 
+        t.is_prospect === true && (t.sales_confirmed === null || t.sales_confirmed === false)
+      );
+      const prospeccoesFechadas = tasks.filter(t => 
+        t.is_prospect === true && t.sales_type === 'ganho'
+      );
+      const prospeccoesPerdidas = tasks.filter(t => 
+        t.is_prospect === true && t.sales_type === 'perdido'
+      );
+
+      // Filtrar vendas
+      const vendasTotal = tasks.filter(t => 
+        t.sales_confirmed === true && t.sales_type === 'ganho'
+      );
+      const vendasParcial = tasks.filter(t => 
+        t.sales_confirmed === true && t.sales_type === 'parcial'
+      );
 
       // Separar opportunities por status
-      const oppsProspect = opportunitiesData?.filter(o => o.status === 'Prospect') || [];
-      const oppsGanho = opportunitiesData?.filter(o => o.status === 'Venda Total') || [];
-      const oppsParcial = opportunitiesData?.filter(o => o.status === 'Venda Parcial') || [];
-      const oppsPerdido = opportunitiesData?.filter(o => o.status === 'Perdido') || [];
+      const oppsProspect = opportunities.filter(o => o.status === 'Prospect');
+      const oppsGanho = opportunities.filter(o => o.status === 'Venda Total');
+      const oppsParcial = opportunities.filter(o => o.status === 'Venda Parcial');
+      const oppsPerdido = opportunities.filter(o => o.status === 'Venda Perdida' || o.status === 'Perdido');
 
-      // Calcular valores
-      const calcularValor = (data: any[]) => {
-        return data.reduce((sum, task) => {
-          const value = typeof task.sales_value === 'number' 
-            ? task.sales_value 
-            : (typeof task.sales_value === 'string' ? parseFloat(task.sales_value) || 0 : 0);
+      // Helper para calcular valor
+      const calcularValor = (data: any[], field = 'sales_value') => {
+        return data.reduce((sum, item) => {
+          const value = typeof item[field] === 'number' 
+            ? item[field] 
+            : (typeof item[field] === 'string' ? parseFloat(item[field]) || 0 : 0);
           return sum + value;
         }, 0);
       };
 
-      const visitasValue = calcularValor(visitasData.data || []);
-      const checklistsValue = calcularValor(checklistsData.data || []);
-      const ligacoesValue = calcularValor(ligacoesData.data || []);
+      // Calcular valores
+      const visitasValue = calcularValor(visitas);
+      const checklistsValue = calcularValor(checklists);
+      const ligacoesValue = calcularValor(ligacoes);
       
-      // Somar valores de opportunities às prospecções
-      const prospeccoesAbertasValue = calcularValor(prospeccoesAbertasData.data || []) +
+      const prospeccoesAbertasValue = calcularValor(prospeccoesAbertas) +
         oppsProspect.reduce((sum, opp) => sum + (opp.valor_total_oportunidade || 0), 0);
       
-      const prospeccoesDechadasValue = calcularValor(prospeccoesDechadasData.data || []);
-      const prospeccoesPerdidasValue = calcularValor(prospeccoesPerdidasData.data || []) +
+      const prospeccoesDechadasValue = calcularValor(prospeccoesFechadas);
+      const prospeccoesPerdidasValue = calcularValor(prospeccoesPerdidas) +
         oppsPerdido.reduce((sum, opp) => sum + (opp.valor_total_oportunidade || 0), 0);
       
-      // Somar valores de opportunities às vendas
-      const vendasTotalValue = calcularValor(vendasTotalData.data || []) +
+      const vendasTotalValue = calcularValor(vendasTotal) +
         oppsGanho.reduce((sum, opp) => sum + (opp.valor_venda_fechada || opp.valor_total_oportunidade || 0), 0);
       
-      const vendasParcialValue = (vendasParcialData.data || []).reduce((sum, task) => 
-        sum + (task.partial_sales_value || 0), 0) +
+      const vendasParcialValue = calcularValor(vendasParcial, 'partial_sales_value') +
         oppsParcial.reduce((sum, opp) => sum + (opp.valor_venda_fechada || 0), 0);
 
-      // Totalizadores (incluindo opportunities)
-      const totalContatos = (visitasData.data?.length || 0) + 
-                           (checklistsData.data?.length || 0) + 
-                           (ligacoesData.data?.length || 0);
+      // Totalizadores
+      const totalContatos = visitas.length + checklists.length + ligacoes.length;
       
-      const totalProspeccoes = (prospeccoesAbertasData.data?.length || 0) + 
-                              (prospeccoesDechadasData.data?.length || 0) + 
-                              (prospeccoesPerdidasData.data?.length || 0) +
-                              oppsProspect.length + oppsPerdido.length;
+      const totalProspeccoes = prospeccoesAbertas.length + prospeccoesFechadas.length + 
+                              prospeccoesPerdidas.length + oppsProspect.length + oppsPerdido.length;
       
-      const totalVendas = (vendasTotalData.data?.length || 0) + 
-                         (vendasParcialData.data?.length || 0) +
-                         oppsGanho.length + oppsParcial.length;
+      const totalVendas = vendasTotal.length + vendasParcial.length + oppsGanho.length + oppsParcial.length;
 
       const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
       const result: SalesFunnelMetrics = {
-        // Contatos com clientes
-        visitas: {
-          count: visitasData.data?.length || 0,
-          value: visitasValue
-        },
-        checklists: {
-          count: checklistsData.data?.length || 0,
-          value: checklistsValue
-        },
-        ligacoes: {
-          count: ligacoesData.data?.length || 0,
-          value: ligacoesValue
-        },
+        visitas: { count: visitas.length, value: visitasValue },
+        checklists: { count: checklists.length, value: checklistsValue },
+        ligacoes: { count: ligacoes.length, value: ligacoesValue },
         totalContatos,
         
-        // Prospecções
         prospeccoesAbertas: {
-          count: (prospeccoesAbertasData.data?.length || 0) + oppsProspect.length,
+          count: prospeccoesAbertas.length + oppsProspect.length,
           value: prospeccoesAbertasValue
         },
         prospeccoesFechadas: {
-          count: prospeccoesDechadasData.data?.length || 0,
+          count: prospeccoesFechadas.length,
           value: prospeccoesDechadasValue
         },
         prospeccoesPerdidas: {
-          count: (prospeccoesPerdidasData.data?.length || 0) + oppsPerdido.length,
+          count: prospeccoesPerdidas.length + oppsPerdido.length,
           value: prospeccoesPerdidasValue
         },
         totalProspeccoes,
         
-        // Vendas
         vendasTotal: {
-          count: (vendasTotalData.data?.length || 0) + oppsGanho.length,
+          count: vendasTotal.length + oppsGanho.length,
           value: vendasTotalValue
         },
         vendasParcial: {
-          count: (vendasParcialData.data?.length || 0) + oppsParcial.length,
+          count: vendasParcial.length + oppsParcial.length,
           value: vendasParcialValue
         },
         totalVendas,
-        
-        // Taxa de conversão
         taxaConversao,
         
-        // Legacy para compatibilidade
+        // Legacy
         contacts: {
           count: totalContatos,
           value: visitasValue + checklistsValue + ligacoesValue
         },
         prospects: {
-          count: (prospeccoesAbertasData.data?.length || 0) + oppsProspect.length,
+          count: prospeccoesAbertas.length + oppsProspect.length,
           value: prospeccoesAbertasValue
         },
         sales: {
-          count: (vendasTotalData.data?.length || 0) + oppsGanho.length,
+          count: vendasTotal.length + oppsGanho.length,
           value: vendasTotalValue
         },
         partialSales: {
-          count: (vendasParcialData.data?.length || 0) + oppsParcial.length,
+          count: vendasParcial.length + oppsParcial.length,
           value: vendasParcialValue
         },
         lostSales: {
-          count: (prospeccoesPerdidasData.data?.length || 0) + oppsPerdido.length,
+          count: prospeccoesPerdidas.length + oppsPerdido.length,
           value: prospeccoesPerdidasValue
         }
       };
@@ -273,10 +228,10 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
       console.log('✅ Métricas detalhadas do funil carregadas:', result);
       return result;
     },
-    staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO: slow queries opportunities
+    staleTime: 10 * 60 * 1000, // 10 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos no cache
-    refetchOnMount: false, // OTIMIZAÇÃO: usar cache
-    refetchOnWindowFocus: false // OTIMIZAÇÃO: não recarregar ao focar janela
+    refetchOnMount: false,
+    refetchOnWindowFocus: false
   });
 
   return {
