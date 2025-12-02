@@ -20,8 +20,7 @@ import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
 import { useInfiniteSalesData } from '@/hooks/useInfiniteSalesData';
-import { useAllSalesData } from '@/hooks/useAllSalesData';
-import { useSalesFunnelMetrics } from '@/hooks/useSalesFunnelMetrics';
+import { useConsolidatedSalesMetrics } from '@/hooks/useConsolidatedSalesMetrics';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 import {
   AlertDialog,
@@ -148,19 +147,18 @@ export const SalesFunnel: React.FC = () => {
     activity: selectedActivity
   }), [selectedPeriod, selectedConsultant, selectedFilial, selectedActivity]);
 
-  // Hook para carregar métricas agregadas (usado na Visão Geral)
+  // Hook CONSOLIDADO para métricas (substitui useAllSalesData + useSalesFunnelMetrics)
   const {
-    metrics: overviewMetrics,
-    isLoading: isLoadingOverview,
-    refetch: refetchOverview
-  } = useAllSalesData(filters);
+    metrics: consolidatedMetrics,
+    isLoading: isLoadingMetrics,
+    refetch: refetchMetrics
+  } = useConsolidatedSalesMetrics(filters);
 
-  // Hook para carregar métricas do funil (usado na aba Funil de Vendas)
-  const {
-    metrics: funnelMetrics,
-    isLoading: isLoadingFunnel,
-    refetch: refetchFunnel
-  } = useSalesFunnelMetrics(filters);
+  // Extrair métricas para compatibilidade
+  const overviewMetrics = consolidatedMetrics.overview;
+  const funnelMetrics = consolidatedMetrics.funnel;
+  const isLoadingOverview = isLoadingMetrics;
+  const isLoadingFunnel = isLoadingMetrics;
 
   // Usar hook com scroll infinito (usado na aba Relatório)
   const { 
@@ -411,10 +409,7 @@ export const SalesFunnel: React.FC = () => {
         queryKey: ['infinite-sales-data']
       });
       await queryClient.invalidateQueries({
-        queryKey: ['sales-metrics']
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ['sales-funnel-metrics']
+        queryKey: ['consolidated-sales-metrics']
       });
       await queryClient.invalidateQueries({
         queryKey: ['client-details']
@@ -431,13 +426,12 @@ export const SalesFunnel: React.FC = () => {
       console.log('♻️ FUNNEL: Todas as queries invalidadas');
     };
     await invalidateAll();
-    await refetchOverview();
-    await refetchFunnel();
+    await refetchMetrics();
     await refetchSales();
     if (activeView === 'details') {
       await refetchClientDetails();
     }
-  }, [queryClient, refetchOverview, refetchFunnel, refetchSales, refetchClientDetails, activeView]);
+  }, [queryClient, refetchMetrics, refetchSales, refetchClientDetails, activeView]);
 
   // Utility functions for name matching
   const normalizeName = useCallback((name: string): string => {
@@ -823,10 +817,9 @@ export const SalesFunnel: React.FC = () => {
     await queryClient.invalidateQueries({
       queryKey: ['sales-metrics']
     });
-    await refetchOverview();
-    await refetchFunnel();
+    await refetchMetrics();
     await refetchSales();
-  }, [queryClient, refetchOverview, refetchFunnel, refetchSales]);
+  }, [queryClient, refetchMetrics, refetchSales]);
 
   // Handler para excluir tarefa (apenas ADMIN)
   const handleDeleteTask = async () => {
@@ -844,11 +837,9 @@ export const SalesFunnel: React.FC = () => {
       setTaskToDelete(null);
       await queryClient.invalidateQueries({ queryKey: ['sales-data'] });
       await queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
-      await queryClient.invalidateQueries({ queryKey: ['sales-metrics'] });
-      await queryClient.invalidateQueries({ queryKey: ['sales-funnel-metrics'] });
+      await queryClient.invalidateQueries({ queryKey: ['consolidated-sales-metrics'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks-optimized'] });
-      await refetchOverview();
-      await refetchFunnel();
+      await refetchMetrics();
       await refetchSales();
     } catch (error: any) {
       console.error('Erro ao excluir tarefa:', error);
