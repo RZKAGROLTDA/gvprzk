@@ -379,7 +379,7 @@ export const SalesFunnel: React.FC = () => {
       });
       return { data: data || [], count: count || 0 };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO: evitar queries excessivas
+    staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO: slow queries
     gcTime: 30 * 60 * 1000, // 30 minutos no cache
     refetchOnMount: false, // OTIMIZAÇÃO: usar cache
     refetchOnWindowFocus: false, // OTIMIZAÇÃO: não recarregar ao focar janela

@@ -273,7 +273,7 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
       console.log('✅ Métricas detalhadas do funil carregadas:', result);
       return result;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO: reduzir queries
+    staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO: slow queries opportunities
     gcTime: 30 * 60 * 1000, // 30 minutos no cache
     refetchOnMount: false, // OTIMIZAÇÃO: usar cache
     refetchOnWindowFocus: false // OTIMIZAÇÃO: não recarregar ao focar janela
