@@ -37,6 +37,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   }>({});
   const [partialValue, setPartialValue] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [initialStatusRef, setInitialStatusRef] = useState<string | null>(null);
   
   // Add opportunity manager
   const { ensureOpportunity } = useOpportunityManager();
@@ -52,14 +53,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     isLoading: loadingProducts
   } = useTaskDetails(needsProductsLoading ? task.id : null);
   React.useEffect(() => {
+    // Skip if products are still loading
+    if (needsProductsLoading && loadingProducts) return;
+    
     const currentTask = taskWithProducts || task;
     if (currentTask) {
       const currentStatus = mapSalesStatus(currentTask);
       setSelectedStatus(currentStatus);
-      
-      // Mark as initialized after setting initial status
-      // Use setTimeout to ensure state is set before enabling auto-save
-      setTimeout(() => setIsInitialized(true), 100);
+      setInitialStatusRef(currentStatus); // Track initial status
 
       // Initialize selected items and quantities based on current checklist
       if (currentTask.checklist && currentTask.checklist.length > 0) {
@@ -86,25 +87,33 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         setItemQuantities({});
         setPartialValue(0);
       }
+      
+      // Mark as initialized ONLY after all data is loaded and state is set
+      // Use requestAnimationFrame to ensure React has processed all state updates
+      requestAnimationFrame(() => {
+        setIsInitialized(true);
+      });
     }
-  }, [task, taskWithProducts, loadingProducts]);
+  }, [task, taskWithProducts, loadingProducts, needsProductsLoading]);
 
-  // Reset initialization flag when modal closes
+  // Reset initialization flag when modal closes or task changes
   React.useEffect(() => {
     if (!isOpen) {
       setIsInitialized(false);
+      setInitialStatusRef(null);
     }
   }, [isOpen]);
 
-  // Auto-save when status changes - ONLY after initialization
+  // Auto-save when status changes - ONLY after user interaction
   useEffect(() => {
-    // Don't auto-save during initialization or if task is not set
-    if (!isInitialized || !task) return;
+    // Don't auto-save if not initialized, no task, or status matches initial
+    if (!isInitialized || !task || !initialStatusRef) return;
     
-    const currentMappedStatus = mapSalesStatus(task);
-    if (selectedStatus && selectedStatus !== currentMappedStatus) {
-      console.log('🚨 STATUS MUDOU - SALVAMENTO AUTOMÁTICO:', {
-        oldStatus: currentMappedStatus,
+    // Only trigger auto-save if status is DIFFERENT from the initial status
+    // This prevents auto-save on initialization
+    if (selectedStatus && selectedStatus !== initialStatusRef) {
+      console.log('🚨 STATUS MUDOU PELO USUÁRIO - SALVAMENTO AUTOMÁTICO:', {
+        initialStatus: initialStatusRef,
         newStatus: selectedStatus,
         taskId: task.id
       });
@@ -116,7 +125,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedStatus, isInitialized]);
+  }, [selectedStatus, isInitialized, initialStatusRef]);
 
   const handleItemSelection = (itemId: string, selected: boolean) => {
     const currentTask = taskWithProducts || task;
