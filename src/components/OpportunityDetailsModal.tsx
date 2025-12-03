@@ -36,6 +36,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     [key: string]: number;
   }>({});
   const [partialValue, setPartialValue] = useState<number>(0);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Add opportunity manager
   const { ensureOpportunity } = useOpportunityManager();
@@ -55,16 +56,10 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     if (currentTask) {
       const currentStatus = mapSalesStatus(currentTask);
       setSelectedStatus(currentStatus);
-      console.log('🔧 MODAL INIT DEBUG:', {
-        taskId: currentTask.id,
-        originalSalesType: currentTask.salesType,
-        mappedStatus: currentStatus,
-        hasChecklist: !!currentTask.checklist,
-        checklistLength: currentTask.checklist?.length || 0,
-        salesValue: currentTask.salesValue,
-        salesConfirmed: currentTask.salesConfirmed,
-        loadingProducts
-      });
+      
+      // Mark as initialized after setting initial status
+      // Use setTimeout to ensure state is set before enabling auto-save
+      setTimeout(() => setIsInitialized(true), 100);
 
       // Initialize selected items and quantities based on current checklist
       if (currentTask.checklist && currentTask.checklist.length > 0) {
@@ -85,33 +80,31 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
         setSelectedItems(initialSelected);
         setItemQuantities(initialQuantities);
         setPartialValue(calculatedPartialValue);
-        console.log('📋 CHECKLIST INIT:', {
-          initialSelected,
-          initialQuantities,
-          calculatedPartialValue,
-          checklistItems: currentTask.checklist.map(item => ({
-            id: item.id,
-            name: item.name,
-            selected: item.selected,
-            price: item.price,
-            quantity: item.quantity
-          }))
-        });
       } else {
         // Reset states for tasks without products
         setSelectedItems({});
         setItemQuantities({});
         setPartialValue(0);
-        console.log('⚠️ No checklist found for task:', currentTask.id);
       }
     }
   }, [task, taskWithProducts, loadingProducts]);
 
-  // Auto-save when status changes
+  // Reset initialization flag when modal closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setIsInitialized(false);
+    }
+  }, [isOpen]);
+
+  // Auto-save when status changes - ONLY after initialization
   useEffect(() => {
-    if (selectedStatus && selectedStatus !== mapSalesStatus(task)) {
+    // Don't auto-save during initialization or if task is not set
+    if (!isInitialized || !task) return;
+    
+    const currentMappedStatus = mapSalesStatus(task);
+    if (selectedStatus && selectedStatus !== currentMappedStatus) {
       console.log('🚨 STATUS MUDOU - SALVAMENTO AUTOMÁTICO:', {
-        oldStatus: mapSalesStatus(task),
+        oldStatus: currentMappedStatus,
         newStatus: selectedStatus,
         taskId: task.id
       });
@@ -123,7 +116,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
       
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedStatus]);
+  }, [selectedStatus, isInitialized]);
 
   const handleItemSelection = (itemId: string, selected: boolean) => {
     const currentTask = taskWithProducts || task;

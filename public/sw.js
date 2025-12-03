@@ -2,22 +2,11 @@
 // Use timestamp para invalidar cache quando há nova versão
 const VERSION = '__BUILD_TIME__'; // Será substituído na build
 const CACHE_NAME = `visitapp-${VERSION}`;
-const urlsToCache = [
-  '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json'
-];
 
-// Instalar Service Worker
+// Instalar Service Worker - skip precaching to avoid errors with dynamic Vite assets
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Cache aberto');
-        return cache.addAll(urlsToCache);
-      })
-  );
+  // Skip waiting to activate immediately
+  self.skipWaiting();
 });
 
 // Buscar recursos
