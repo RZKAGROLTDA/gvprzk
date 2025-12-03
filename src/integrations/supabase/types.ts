@@ -204,7 +204,15 @@ export type Database = {
           valor_total_oportunidade?: number
           valor_venda_fechada?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_opportunities_task"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       opportunity_items: {
         Row: {
