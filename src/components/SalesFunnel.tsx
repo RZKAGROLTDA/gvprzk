@@ -509,8 +509,11 @@ export const SalesFunnel: React.FC = () => {
         const createdAtStr = opp.data_criacao || opp.created_at;
         const createdAt = new Date(createdAtStr);
         
+        // CRITICAL FIX: Use task_id when available, not opportunity id
+        // The modal expects a task ID, not an opportunity ID
         return {
-          id: opp.id,
+          id: opp.task_id || opp.id, // Use task_id if available
+          opportunityId: opp.id, // Keep opportunity ID for reference
           name: opp.cliente_nome,
           client: opp.cliente_nome,
           responsible: '-',
