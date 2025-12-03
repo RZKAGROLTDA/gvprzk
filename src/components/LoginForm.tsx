@@ -39,6 +39,7 @@ export const LoginForm: React.FC = () => {
   const [filiais, setFiliais] = useState<Array<{id: string, nome: string}>>([]);
   const [filiaisLoading, setFiliaisLoading] = useState(true);
   const [filiaisError, setFiliaisError] = useState('');
+  const filiaisLoadedRef = React.useRef(false);
   
   // Version info
   const versionInfo = getVersionInfo();
@@ -46,64 +47,84 @@ export const LoginForm: React.FC = () => {
   const { validateField, getFieldErrors, hasErrors, validationRules } = useInputValidation();
   const { monitorLoginAttempt, monitorPasswordReset, checkRateLimit } = useSecurityMonitor();
 
-  // Load filiais on component mount
+  // Load filiais on component mount - with dedup protection
   useEffect(() => {
-    loadFiliais();
-  }, []);
-
-  const loadFiliais = async () => {
-    setFiliaisLoading(true);
-    setFiliaisError('');
+    if (filiaisLoadedRef.current) return;
+    filiaisLoadedRef.current = true;
     
-    try {
-      console.log('🔄 LoginForm: Carregando filiais via função segura...');
-      const { data, error } = await supabase.rpc('get_filiais_for_registration');
+    const loadFiliais = async () => {
+      setFiliaisLoading(true);
+      setFiliaisError('');
       
-      if (error) {
-        console.error('❌ LoginForm: Erro ao carregar filiais:', error);
+      try {
+        console.log('🔄 LoginForm: Carregando filiais...');
+        const { data, error } = await supabase.rpc('get_filiais_for_registration');
         
-        // Check if it's a connection error
+        if (error) {
+          console.error('❌ LoginForm: Erro ao carregar filiais:', error);
+          
+          if (isConnectionError(error)) {
+            setConnectionError(true);
+            setFiliaisError('Serviço indisponível');
+          } else {
+            setFiliaisError('Usando filiais padrão');
+          }
+          
+          setFiliais([
+            { id: 'fallback-1', nome: 'Filial Central' },
+            { id: 'fallback-2', nome: 'Filial Norte' },
+            { id: 'fallback-3', nome: 'Filial Sul' }
+          ]);
+        } else {
+          console.log('✅ LoginForm: Filiais carregadas:', data?.length || 0);
+          setFiliais(data || []);
+          setConnectionError(false);
+          
+          if (!data || data.length === 0) {
+            setFiliaisError('Nenhuma filial encontrada');
+          }
+        }
+      } catch (error: any) {
+        const errorMessage = error.message || 'Erro ao carregar filiais';
+        console.error('💥 LoginForm: Erro crítico:', errorMessage);
+        
         if (isConnectionError(error)) {
           setConnectionError(true);
           setFiliaisError('Serviço indisponível');
         } else {
-          setFiliaisError('Usando filiais padrão');
+          setFiliaisError(errorMessage);
         }
         
-        // Set fallback filials
         setFiliais([
           { id: 'fallback-1', nome: 'Filial Central' },
           { id: 'fallback-2', nome: 'Filial Norte' },
           { id: 'fallback-3', nome: 'Filial Sul' }
         ]);
-      } else {
-        console.log('✅ LoginForm: Filiais carregadas:', data?.length || 0);
-        setFiliais(data || []);
+      } finally {
+        setFiliaisLoading(false);
+      }
+    };
+    
+    loadFiliais();
+  }, []);
+
+  const reloadFiliais = async () => {
+    filiaisLoadedRef.current = false;
+    setFiliaisLoading(true);
+    
+    try {
+      const { data, error } = await supabase.rpc('get_filiais_for_registration');
+      
+      if (!error && data) {
+        setFiliais(data);
+        setFiliaisError('');
         setConnectionError(false);
-        
-        if (!data || data.length === 0) {
-          setFiliaisError('Nenhuma filial encontrada');
-        }
       }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Erro ao carregar filiais';
-      console.error('💥 LoginForm: Erro crítico ao carregar filiais:', errorMessage);
-      
-      if (isConnectionError(error)) {
-        setConnectionError(true);
-        setFiliaisError('Serviço indisponível');
-      } else {
-        setFiliaisError(errorMessage);
-      }
-      
-      // Set fallback filials
-      setFiliais([
-        { id: 'fallback-1', nome: 'Filial Central' },
-        { id: 'fallback-2', nome: 'Filial Norte' },
-        { id: 'fallback-3', nome: 'Filial Sul' }
-      ]);
+    } catch (e) {
+      // Keep existing data on error
     } finally {
       setFiliaisLoading(false);
+      filiaisLoadedRef.current = true;
     }
   };
 
@@ -487,7 +508,7 @@ export const LoginForm: React.FC = () => {
           title: "Conexão restaurada",
           description: "O serviço está disponível novamente.",
         });
-        await loadFiliais();
+        await reloadFiliais();
       } else if (isConnectionError(error)) {
         toast({
           title: "Ainda indisponível",
@@ -786,7 +807,7 @@ export const LoginForm: React.FC = () => {
                       <span>Erro ao carregar filiais.</span>
                       <button
                         type="button"
-                        onClick={loadFiliais}
+                        onClick={reloadFiliais}
                         className="text-primary hover:underline"
                         disabled={filiaisLoading}
                       >
