@@ -500,31 +500,60 @@ export const LoginForm: React.FC = () => {
 
   const handleRetryConnection = async () => {
     setIsRetrying(true);
-    try {
-      const { error } = await supabase.from('filiais').select('id').limit(1);
-      if (!error) {
-        setConnectionError(false);
-        toast({
-          title: "Conexão restaurada",
-          description: "O serviço está disponível novamente.",
-        });
-        await reloadFiliais();
-      } else if (isConnectionError(error)) {
-        toast({
-          title: "Ainda indisponível",
-          description: "O serviço continua indisponível. Tente novamente em alguns instantes.",
-          variant: "destructive",
-        });
+    
+    // Tentar 3 vezes com backoff exponencial
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        // Timeout de 15 segundos para cada tentativa
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const { error } = await supabase
+          .from('filiais')
+          .select('id')
+          .limit(1)
+          .abortSignal(controller.signal);
+        
+        clearTimeout(timeoutId);
+        
+        if (!error) {
+          setConnectionError(false);
+          toast({
+            title: "Conexão restaurada",
+            description: "O serviço está disponível novamente.",
+          });
+          await reloadFiliais();
+          setIsRetrying(false);
+          return;
+        }
+        
+        // Se não é erro de conexão, sair do loop
+        if (!isConnectionError(error)) {
+          setConnectionError(false);
+          await reloadFiliais();
+          setIsRetrying(false);
+          return;
+        }
+        
+        // Esperar antes de tentar novamente (2s, 4s, 8s)
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt - 1)));
+        }
+      } catch (error: any) {
+        // Timeout ou erro de rede, tentar novamente
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt - 1)));
+        }
       }
-    } catch (error) {
-      toast({
-        title: "Erro na verificação",
-        description: "Não foi possível verificar a conexão.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRetrying(false);
     }
+    
+    // Todas as tentativas falharam
+    toast({
+      title: "Ainda indisponível",
+      description: "O serviço continua indisponível. Tente novamente em alguns minutos.",
+      variant: "destructive",
+    });
+    setIsRetrying(false);
   };
 
   return (

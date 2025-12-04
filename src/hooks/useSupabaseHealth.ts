@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase, getCachedSession } from '@/integrations/supabase/client';
 
 export type SupabaseHealthStatus = 'checking' | 'healthy' | 'unhealthy' | 'unknown';
 
@@ -10,9 +10,11 @@ interface SupabaseHealthState {
   retryCount: number;
 }
 
-const HEALTH_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos - OTIMIZAÇÃO: reduzir queries
-const MAX_RETRIES = 3;
-const RETRY_DELAY_BASE = 2000; // 2 seconds base delay
+const HEALTH_CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutos - reduzido para menos carga
+const MAX_RETRIES = 5; // Aumentado para mais tolerância
+const RETRY_DELAY_BASE = 3000; // 3 seconds base delay
+const HEALTH_CHECK_TIMEOUT = 30000; // 30 segundos timeout (aumentado de 10s)
+const MIN_TIME_BETWEEN_CHECKS = 5000; // Mínimo 5s entre checks
 
 export const useSupabaseHealth = () => {
   const [state, setState] = useState<SupabaseHealthState>({
@@ -21,12 +23,44 @@ export const useSupabaseHealth = () => {
     errorMessage: null,
     retryCount: 0
   });
+  
+  const lastCheckTime = useRef<number>(0);
+  const isCheckingRef = useRef<boolean>(false);
 
   const checkHealth = useCallback(async (): Promise<boolean> => {
+    // Evitar checks muito frequentes
+    const now = Date.now();
+    if (now - lastCheckTime.current < MIN_TIME_BETWEEN_CHECKS) {
+      return state.status === 'healthy';
+    }
+    
+    // Evitar checks simultâneos
+    if (isCheckingRef.current) {
+      return state.status === 'healthy';
+    }
+    
+    isCheckingRef.current = true;
+    lastCheckTime.current = now;
+
     try {
-      // Simple health check - try to execute a lightweight query
+      // Primeiro tentar usar sessão em cache (não faz request)
+      const cachedSession = await getCachedSession();
+      
+      // Se temos sessão em cache, considerar saudável
+      if (cachedSession) {
+        setState({
+          status: 'healthy',
+          lastCheck: new Date(),
+          errorMessage: null,
+          retryCount: 0
+        });
+        isCheckingRef.current = false;
+        return true;
+      }
+
+      // Health check com timeout aumentado
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
 
       const { error } = await supabase
         .from('filiais')
@@ -43,15 +77,17 @@ export const useSupabaseHealth = () => {
           error.message?.includes('NetworkError') ||
           error.message?.includes('timeout') ||
           error.message?.includes('Connection') ||
+          error.message?.includes('aborted') ||
           error.code === '544';
 
         if (isConnectionError) {
           setState(prev => ({
-            status: 'unhealthy',
+            status: prev.retryCount >= MAX_RETRIES ? 'unhealthy' : 'checking',
             lastCheck: new Date(),
-            errorMessage: 'Serviço temporariamente indisponível',
+            errorMessage: 'Verificando conexão...',
             retryCount: prev.retryCount + 1
           }));
+          isCheckingRef.current = false;
           return false;
         }
 
@@ -62,6 +98,7 @@ export const useSupabaseHealth = () => {
           errorMessage: null,
           retryCount: 0
         });
+        isCheckingRef.current = false;
         return true;
       }
 
@@ -71,24 +108,30 @@ export const useSupabaseHealth = () => {
         errorMessage: null,
         retryCount: 0
       });
+      isCheckingRef.current = false;
       return true;
     } catch (error: any) {
-      const errorMessage = error.name === 'AbortError' 
-        ? 'Tempo limite de conexão excedido'
-        : error.message || 'Erro de conexão desconhecido';
-
+      // Não marcar como unhealthy imediatamente - dar mais chances
+      const currentRetryCount = state.retryCount + 1;
+      
       setState(prev => ({
-        status: 'unhealthy',
+        status: currentRetryCount >= MAX_RETRIES ? 'unhealthy' : 'checking',
         lastCheck: new Date(),
-        errorMessage,
-        retryCount: prev.retryCount + 1
+        errorMessage: currentRetryCount >= MAX_RETRIES 
+          ? 'Serviço temporariamente indisponível'
+          : 'Verificando conexão...',
+        retryCount: currentRetryCount
       }));
+      isCheckingRef.current = false;
       return false;
     }
-  }, []);
+  }, [state.status, state.retryCount]);
 
   const retryWithBackoff = useCallback(async () => {
     let attempts = 0;
+    
+    // Reset retry count para nova tentativa
+    setState(prev => ({ ...prev, retryCount: 0, status: 'checking' }));
     
     while (attempts < MAX_RETRIES) {
       const isHealthy = await checkHealth();
@@ -96,8 +139,8 @@ export const useSupabaseHealth = () => {
 
       attempts++;
       if (attempts < MAX_RETRIES) {
-        // Exponential backoff: 2s, 4s, 8s
-        const delay = RETRY_DELAY_BASE * Math.pow(2, attempts - 1);
+        // Exponential backoff com jitter: 3s, 6s, 12s, 24s, 48s
+        const delay = RETRY_DELAY_BASE * Math.pow(2, attempts - 1) + Math.random() * 1000;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -105,9 +148,12 @@ export const useSupabaseHealth = () => {
     return false;
   }, [checkHealth]);
 
-  // Initial health check
+  // Initial health check com delay para não bloquear renderização
   useEffect(() => {
-    checkHealth();
+    const timer = setTimeout(() => {
+      checkHealth();
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [checkHealth]);
 
   // Periodic health check (only when healthy or unknown)
@@ -118,11 +164,11 @@ export const useSupabaseHealth = () => {
     return () => clearInterval(interval);
   }, [state.status, checkHealth]);
 
-  // Retry when unhealthy (with exponential backoff)
+  // Retry when checking (with exponential backoff)
   useEffect(() => {
-    if (state.status !== 'unhealthy' || state.retryCount >= MAX_RETRIES) return;
+    if (state.status !== 'checking' || state.retryCount === 0 || state.retryCount >= MAX_RETRIES) return;
 
-    const delay = RETRY_DELAY_BASE * Math.pow(2, state.retryCount);
+    const delay = RETRY_DELAY_BASE * Math.pow(2, state.retryCount - 1) + Math.random() * 1000;
     const timeout = setTimeout(checkHealth, delay);
     
     return () => clearTimeout(timeout);

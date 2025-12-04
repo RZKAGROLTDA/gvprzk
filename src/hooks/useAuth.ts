@@ -1,5 +1,5 @@
-import { useState, useEffect, createContext, useContext } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, createContext, useContext, useRef } from 'react';
+import { supabase, getCachedSession } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -25,6 +25,7 @@ export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const initRef = useRef(false);
 
   // Função para criar perfil automaticamente usando função segura
   const createUserProfile = async (authUser: User) => {
@@ -67,6 +68,10 @@ export const useAuthProvider = () => {
   };
 
   useEffect(() => {
+    // Evitar inicialização dupla
+    if (initRef.current) return;
+    initRef.current = true;
+    
     let mounted = true;
 
     // Set up auth state listener FIRST
@@ -87,14 +92,15 @@ export const useAuthProvider = () => {
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session usando cache
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Usar sessão em cache primeiro para resposta mais rápida
+        const cachedSession = await getCachedSession();
         
         if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
+          setSession(cachedSession);
+          setUser(cachedSession?.user ?? null);
           setLoading(false);
         }
       } catch (error) {
