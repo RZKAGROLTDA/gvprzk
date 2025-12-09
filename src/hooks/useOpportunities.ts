@@ -24,12 +24,12 @@ export const useOpportunities = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      console.log('🔍 [OPPORTUNITIES] Buscando opportunities...');
-      
+      // OTIMIZAÇÃO: Selecionar apenas campos necessários + limitar resultados
       const { data, error } = await supabase
         .from('opportunities')
-        .select('*')
-        .order('data_criacao', { ascending: false });
+        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, data_fechamento, created_at, updated_at')
+        .order('data_criacao', { ascending: false })
+        .limit(500); // OTIMIZAÇÃO Disk IO: Limitar registros
 
       if (error) {
         console.error('❌ [OPPORTUNITIES] Erro ao buscar:', error);

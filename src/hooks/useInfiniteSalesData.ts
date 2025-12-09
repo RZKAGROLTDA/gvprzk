@@ -95,36 +95,25 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
 
         if (tasksError) throw tasksError;
 
-        // Buscar opportunities com RLS aplicado
-        console.log('🔍 [SALES DATA] Usuário:', user?.id, user?.email);
-        console.log('🔍 [SALES DATA] Iniciando busca de opportunities...');
+        // OTIMIZAÇÃO: Buscar APENAS opportunities dos task_ids desta página
+        // ao invés de buscar TODAS opportunities (reduz Disk IO drasticamente)
+        const taskIds = (tasks || []).map(t => t.id);
         
-        const { data: opportunities, error: oppError } = await supabase
-          .from('opportunities')
-          .select('task_id, status, valor_total_oportunidade, valor_venda_fechada, cliente_nome, filial');
-        
-        console.log('✅ [SALES DATA] Opportunities retornadas pela RLS:', {
-          total: opportunities?.length || 0,
-          error: oppError?.message,
-          errorDetails: oppError,
-          primeirasCinco: opportunities?.slice(0, 5).map(o => ({
-            cliente: o.cliente_nome,
-            filial: o.filial,
-            status: o.status
-          }))
-        });
-        
-        if (oppError) {
-          console.error('❌ [SALES DATA] ERRO ao buscar opportunities:', oppError);
-          throw oppError;
+        let opportunities: any[] = [];
+        if (taskIds.length > 0) {
+          const { data: oppData, error: oppError } = await supabase
+            .from('opportunities')
+            .select('task_id, status, valor_total_oportunidade, valor_venda_fechada, cliente_nome, filial')
+            .in('task_id', taskIds);
+          
+          if (oppError) {
+            console.error('❌ [SALES DATA] ERRO ao buscar opportunities:', oppError);
+            throw oppError;
+          }
+          opportunities = oppData || [];
         }
         
-        if ((opportunities?.length || 0) < 5) {
-          console.warn('⚠️ [SALES DATA] ALERTA: Poucas opportunities retornadas!', {
-            esperado: 'Supervisores deveriam ver opportunities da sua filial',
-            retornado: opportunities?.length || 0
-          });
-        }
+        console.log('✅ [SALES DATA] Opportunities carregadas (otimizado):', opportunities.length);
 
         // Criar mapa de opportunities por task_id
         const opportunitiesMap = new Map(

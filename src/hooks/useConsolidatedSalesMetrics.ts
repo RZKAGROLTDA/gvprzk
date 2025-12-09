@@ -75,10 +75,11 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         tasksQuery = tasksQuery.eq('task_type', filters.activity);
       }
 
-      // QUERY 2: Buscar opportunities
+      // OTIMIZAÇÃO Disk IO: Adicionar limite com filtros
       let opportunitiesQuery = supabase
         .from('opportunities')
-        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at');
+        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at')
+        .limit(500);
       
       if (dateFilter) {
         opportunitiesQuery = opportunitiesQuery.gte('created_at', dateFilter);
