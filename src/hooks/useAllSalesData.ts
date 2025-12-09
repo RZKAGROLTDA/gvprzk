@@ -61,10 +61,11 @@ export const useAllSalesData = (filters?: SalesFilters) => {
         tasksQuery = tasksQuery.eq('task_type', filters.activity);
       }
 
-      // Buscar opportunities
+      // OTIMIZAÇÃO Disk IO: Adicionar limite
       let opportunitiesQuery = supabase
         .from('opportunities')
-        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at');
+        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at')
+        .limit(500);
 
       // Aplicar filtros nas opportunities
       if (periodFilter) {

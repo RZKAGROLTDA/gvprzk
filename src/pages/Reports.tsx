@@ -121,12 +121,12 @@ const Reports: React.FC = () => {
     setIsFiltering(true);
     
     try {
-      // Buscar tasks
+      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let tasksQuery = supabase.from('tasks').select(`
-        *,
-        products (*),
-        reminders (*)
-      `);
+        id, task_type, client, filial, status, is_prospect, sales_confirmed, sales_type,
+        sales_value, partial_sales_value, start_date, end_date, created_at, created_by,
+        products (id, name, price, selected)
+      `).limit(1000);
 
       // Aplicar filtros de data nas tasks
       if (dateFrom) {
@@ -152,10 +152,11 @@ const Reports: React.FC = () => {
         tasksQuery = tasksQuery.eq('filial', selectedFilial);
       }
 
-      // Buscar opportunities
+      // OTIMIZAÇÃO Disk IO: Limitar opportunities também
       let opportunitiesQuery = supabase
         .from('opportunities')
-        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at, data_criacao');
+        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at, data_criacao')
+        .limit(1000);
 
       // Aplicar filtros de data nas opportunities (usar data_criacao)
       if (dateFrom) {
