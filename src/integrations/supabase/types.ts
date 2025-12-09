@@ -1560,16 +1560,16 @@ export type Database = {
         | {
             Args: {
               access_type?: string
-              accessed_fields?: string[]
-              client_id: string
+              client_count?: number
+              masked_count?: number
             }
             Returns: undefined
           }
         | {
             Args: {
               access_type?: string
-              client_count?: number
-              masked_count?: number
+              accessed_fields?: string[]
+              client_id: string
             }
             Returns: undefined
           }
