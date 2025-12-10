@@ -57,10 +57,12 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       const dateFilter = getDateFilter();
 
-      // QUERY 1: Buscar tasks
+      // QUERY 1: Buscar tasks - OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
       let tasksQuery = supabase
         .from('tasks')
-        .select('id, task_type, is_prospect, sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at, status');
+        .select('id, task_type, is_prospect, sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at, status')
+        .order('created_at', { ascending: false })
+        .limit(1000);
       
       if (dateFilter) {
         tasksQuery = tasksQuery.gte('created_at', dateFilter);
