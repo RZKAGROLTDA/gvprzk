@@ -154,17 +154,7 @@ export const FunnelClientsOptimized: React.FC = () => {
   const clientsWithActivity = clientsData.filter(c => c.hasActivity).length;
   const coveragePercentage = totalClients > 0 ? Math.round((clientsWithActivity / totalClients) * 100) : 0;
 
-  // Auto-refresh when window gains focus to sync changes
-  useEffect(() => {
-    const handleFocus = () => {
-      if (document.hasFocus()) {
-        refetch();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [refetch]);
+  // OTIMIZAÇÃO Disk IO: Removido auto-refresh no focus para reduzir queries duplicadas
 
   const isLoading = loading || opportunitiesLoading || consultantsLoading || filiaisLoading;
 
