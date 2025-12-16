@@ -337,6 +337,7 @@ export const SalesFunnel: React.FC = () => {
   }, [activeView, hasNextClientDetailsPage, isFetchingNextClientDetailsPage, fetchNextClientDetailsPage]);
 
   // Fetch opportunities data to get valor_total_oportunidade and valor_venda_fechada
+  // OTIMIZAÇÃO Disk IO: só carregar na aba Relatório e sem COUNT exact
   const {
     data: opportunitiesQueryResult
   } = useQuery({
@@ -347,7 +348,7 @@ export const SalesFunnel: React.FC = () => {
       // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let query = supabase
         .from('opportunities')
-        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at', { count: 'exact' });
+        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at');
 
       // Aplicar filtro de filial
       if (selectedFilial !== 'all') {
@@ -362,7 +363,7 @@ export const SalesFunnel: React.FC = () => {
         query = query.gte('data_criacao', cutoffDate.toISOString());
       }
 
-      const { data, error, count } = await query.order('data_criacao', { ascending: false });
+      const { data, error } = await query.order('data_criacao', { ascending: false });
       
       if (error) {
         console.error('❌ Erro ao carregar opportunities:', error);
@@ -370,15 +371,15 @@ export const SalesFunnel: React.FC = () => {
       }
       console.log('✅ Opportunities carregadas:', {
         total: data?.length || 0,
-        count: count,
         amostras: data?.slice(0, 3).map(o => ({
           cliente: o.cliente_nome,
           filial: o.filial,
           status: o.status
         }))
       });
-      return { data: data || [], count: count || 0 };
+      return { data: data || [] };
     },
+    enabled: activeView === 'coverage',
     staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO: slow queries
     gcTime: 30 * 60 * 1000, // 30 minutos no cache
     refetchOnMount: false, // OTIMIZAÇÃO: usar cache
