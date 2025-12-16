@@ -114,14 +114,16 @@ export const useTasks = () => {
         // Carregar produtos e lembretes apenas se necessário
         let tasksWithRelations = tasksData;
         if (tasksData && tasksData.length > 0) {
+          // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
           const { data: productsData } = await supabase
             .from('products')
-            .select('*')
+            .select('id, task_id, name, category, selected, quantity, price, observations, photos')
             .in('task_id', tasksData.map(t => t.id));
 
+          // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
           const { data: remindersData } = await supabase
             .from('reminders')
-            .select('*')
+            .select('id, task_id, title, description, date, time, completed')
             .in('task_id', tasksData.map(t => t.id));
 
           // Associar dados relacionados

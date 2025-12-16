@@ -104,9 +104,10 @@ export const useTaskEditData = (taskId: string | null) => {
       
       console.log('🔍 Session verified for user:', session.user.id);
       
+      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity')
         .eq('id', taskId)
         .maybeSingle();
 
@@ -183,9 +184,10 @@ export const useTaskEditData = (taskId: string | null) => {
        };
 
       // Fetch opportunity data
+      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       const { data: opportunityData, error: opportunityError } = await supabase
         .from('opportunities')
-        .select('*')
+        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, cliente_nome')
         .eq('task_id', taskId)
         .maybeSingle();
 
@@ -195,9 +197,10 @@ export const useTaskEditData = (taskId: string | null) => {
       let itemsData = [];
       
       if (opportunityData?.id) {
+        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
         const { data: fetchedItems, error: itemsError } = await supabase
           .from('opportunity_items')
-          .select('*')
+          .select('id, opportunity_id, produto, sku, qtd_ofertada, qtd_vendida, preco_unit, subtotal_ofertado, subtotal_vendido')
           .eq('opportunity_id', opportunityData.id)
           .order('produto');
 
@@ -207,9 +210,10 @@ export const useTaskEditData = (taskId: string | null) => {
 
       // If no opportunity items, try products table for this task
       if (itemsData.length === 0) {
+        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
         const { data: productsData, error: productsError } = await supabase
           .from('products')
-          .select('*')
+          .select('id, task_id, name, category, selected, quantity, price')
           .eq('task_id', taskId)
           .order('name');
 
