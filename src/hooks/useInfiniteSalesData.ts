@@ -65,9 +65,13 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         const to = from + PAGE_SIZE - 1;
 
         // Buscar tasks paginadas com filtros
-        let query = supabase
-          .from('tasks')
-          .select('*', { count: 'exact' });
+        // OTIMIZAÇÃO Disk IO: selecionar apenas campos usados + evitar COUNT em todas as páginas
+        const taskSelectFields = 'id, client, filial, responsible, task_type, status, is_prospect, sales_confirmed, sales_type, sales_value, partial_sales_value, start_date, end_date, created_at, updated_at, created_by' as const;
+
+        // Importante: inicializar já como FilterBuilder para permitir gte/eq/order
+        let query = pageParam === 0
+          ? supabase.from('tasks').select(taskSelectFields, { count: 'exact' })
+          : supabase.from('tasks').select(taskSelectFields);
 
         // Aplicar filtros
         if (filters?.period && filters.period !== 'all') {
@@ -173,8 +177,8 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
 
         return {
           data: unified,
-          nextPage: to < (count || 0) - 1 ? pageParam + 1 : undefined,
-          totalCount: count || 0
+          nextPage: (tasks || []).length === PAGE_SIZE ? pageParam + 1 : undefined,
+          totalCount: pageParam === 0 ? (count || 0) : 0
         };
         
       } catch (error) {
