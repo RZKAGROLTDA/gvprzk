@@ -188,13 +188,14 @@ export const SalesFunnel: React.FC = () => {
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
+      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let countQuery = supabase
         .from('tasks')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
 
       let query = supabase
         .from('tasks')
-        .select('*')
+        .select('id, client, responsible, filial, task_type, is_prospect, sales_confirmed, sales_type, sales_value, partial_sales_value, created_at')
         .range(from, to)
         .order('created_at', { ascending: false });
 
@@ -343,9 +344,10 @@ export const SalesFunnel: React.FC = () => {
     queryFn: async () => {
       console.log('🔄 Carregando opportunities com filtros...');
       
+      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let query = supabase
         .from('opportunities')
-        .select('*', { count: 'exact' });
+        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at', { count: 'exact' });
 
       // Aplicar filtro de filial
       if (selectedFilial !== 'all') {
