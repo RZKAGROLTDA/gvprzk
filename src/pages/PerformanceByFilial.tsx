@@ -106,10 +106,12 @@ const PerformanceByFilial: React.FC = () => {
           };
         }
         
+        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
         let query = supabase
           .from('tasks')
-          .select('*')
-          .in('created_by', userIds);
+          .select('id, task_type, is_prospect, sales_value, sales_confirmed')
+          .in('created_by', userIds)
+          .limit(1000);
 
         if (dateFrom) {
           query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);

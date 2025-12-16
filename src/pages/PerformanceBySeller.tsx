@@ -45,11 +45,13 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
         return;
       }
 
+      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
       let query = supabase
         .from('tasks')
-        .select('*')
+        .select('id, name, client, property, task_type, is_prospect, sales_value, sales_confirmed, start_date, end_date')
         .eq('created_by', profile.user_id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (dateFrom) {
         query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
@@ -322,10 +324,12 @@ const PerformanceBySeller: React.FC = () => {
 
       const userStatsPromises = profilesWithRoles.map(async (profile) => {
         const userRole = rolesMap.get(profile.user_id) || 'consultant';
+        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
         let query = supabase
           .from('tasks')
-          .select('*')
-          .eq('created_by', profile.user_id);
+          .select('id, task_type, is_prospect, sales_value, sales_confirmed')
+          .eq('created_by', profile.user_id)
+          .limit(1000);
 
         if (dateFrom) {
           query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
