@@ -127,9 +127,9 @@ export const SalesFunnelOptimized: React.FC = () => {
 
       // Vendas - CORRIGIDO para usar sales_type
       const salesStatus = mapSalesStatus(task);
-      if (salesStatus === 'total' || salesStatus === 'parcial') {
+      if (salesStatus === 'ganho' || salesStatus === 'parcial') {
         closedWon++;
-        if (salesStatus === 'total') {
+        if (salesStatus === 'ganho') {
           confirmadas++;
         } else if (salesStatus === 'parcial') {
           parciais++;

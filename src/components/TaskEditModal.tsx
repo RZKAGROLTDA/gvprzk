@@ -310,8 +310,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         // CRÍTICO: NÃO incluir sales_value no update - deve preservar valor original
         // sales_value: NÃO ATUALIZAR
         partial_sales_value: valorVendaParcial,
-        // Sales type based on status
-        sales_type: formDataToProcess.status === 'venda_total' ? 'total' :
+        // Sales type based on status - DEVE usar 'ganho' para venda total (constraint do banco)
+        sales_type: formDataToProcess.status === 'venda_total' ? 'ganho' :
                    formDataToProcess.status === 'venda_parcial' ? 'parcial' :
                    formDataToProcess.status === 'venda_perdida' ? 'perdido' :
                    formDataToProcess.status === 'prospect' ? 'prospect' : null,
@@ -400,9 +400,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
           salesValue: valorTotalOportunidade,
-          salesType: formDataToProcess.status === 'venda_total' ? 'total' :
+          salesType: formDataToProcess.status === 'venda_total' ? 'ganho' :
                     formDataToProcess.status === 'venda_parcial' ? 'parcial' :
-                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'total',
+                    formDataToProcess.status === 'venda_perdida' ? 'perdido' : 'ganho',
           partialSalesValue: valorVendaParcial,
           salesConfirmed: formDataToProcess.status !== 'prospect',
           items: formDataToProcess.products.map(product => {

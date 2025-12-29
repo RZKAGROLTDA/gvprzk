@@ -6,7 +6,7 @@ interface CreateOpportunityParams {
   clientName: string;
   filial: string;
   salesValue: number;
-  salesType: 'total' | 'parcial' | 'perdido' | 'prospect';
+  salesType: 'ganho' | 'parcial' | 'perdido' | 'prospect';
   partialSalesValue?: number;
   salesConfirmed?: boolean;
   items?: Array<{
@@ -86,7 +86,7 @@ export const useOpportunityManager = () => {
       // CRÍTICO: Determinar status correto baseado no salesType
       const isVendaPerdida = salesType === 'perdido';
       const isPartialSale = salesType === 'parcial';
-      const isVendaTotal = salesType === 'total';
+      const isVendaTotal = salesType === 'ganho';
       const isProspect = salesType === 'prospect';
       
       console.log('🔥 ENSURE OPPORTUNITY - Status Logic:', {
@@ -146,7 +146,7 @@ export const useOpportunityManager = () => {
         // CRÍTICO: Usar a mesma lógica de status correto para update
         const isVendaPerdidaUpdate = salesType === 'perdido';
         const isPartialSaleUpdate = salesType === 'parcial';
-        const isVendaTotalUpdate = salesType === 'total';
+        const isVendaTotalUpdate = salesType === 'ganho';
         const isProspectUpdate = salesType === 'prospect';
         
         console.log('🔥 UPDATE OPPORTUNITY - Status Logic:', {
