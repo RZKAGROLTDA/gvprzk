@@ -160,6 +160,9 @@ const SecureRegistration: React.FC = () => {
           description: "Aguarde a aprovação do administrador para acessar o sistema.",
         });
 
+        // Importante: garantir que o usuário não fique logado antes da aprovação
+        await supabase.auth.signOut();
+
         // Redirecionar para página de sucesso
         window.location.href = '/registration-success';
       }
