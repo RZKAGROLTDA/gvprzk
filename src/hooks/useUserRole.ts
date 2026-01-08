@@ -31,7 +31,8 @@ export const useUserRole = () => {
 
       const isAdmin = roles?.some(r => r.role === 'admin') ?? false;
       const isSupervisor = roles?.some(r => r.role === 'supervisor') ?? false;
-      const isManager = isAdmin; // Admin has manager privileges
+      // Check for admin, manager, or supervisor role for manager privileges
+      const isManager = roles?.some(r => r.role === 'admin' || r.role === 'manager') ?? false;
 
       // Determine primary role for display
       let primaryRole = 'none';
