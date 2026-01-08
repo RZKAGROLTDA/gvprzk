@@ -142,7 +142,12 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
 
     } catch (error: any) {
       console.error('❌ Erro ao criar perfil:', error);
-      toast.error(`❌ Erro ao criar perfil: ${error.message || 'Erro desconhecido'}`);
+      const errorMsg = error.message || 'Erro desconhecido';
+      if (errorMsg.includes('Filial')) {
+        toast.error('❌ Selecione uma filial válida para criar o perfil.');
+      } else {
+        toast.error(`❌ Erro ao criar perfil. Aguarde aprovação do administrador.`);
+      }
       setStatus('missing');
     } finally {
       setIsCreating(false);
