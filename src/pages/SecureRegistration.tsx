@@ -144,17 +144,14 @@ const SecureRegistration: React.FC = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Criar perfil com status pendente
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: authData.user.id,
-            name: formData.name,
-            email: formData.email,
-            role: 'consultant', // Role padrão
-            filial_id: formData.filial_id,
-            approval_status: 'pending' // Status pendente
-          });
+        // Criar perfil usando RPC segura (SECURITY DEFINER para bypass RLS)
+        const { error: profileError } = await supabase.rpc('create_secure_profile', {
+          user_id_param: authData.user.id,
+          name_param: formData.name,
+          email_param: formData.email,
+          role_param: 'consultant',
+          filial_id_param: formData.filial_id
+        });
 
         if (profileError) throw profileError;
 
