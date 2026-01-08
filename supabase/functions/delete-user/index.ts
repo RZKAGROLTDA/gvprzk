@@ -104,14 +104,14 @@ serve(async (req) => {
 
     // Log the deletion attempt for audit
     await supabaseAdmin.rpc('secure_log_security_event', {
-      event_type: 'user_deletion',
-      target_user_id: targetProfile.user_id,
-      metadata: {
+      event_type_param: 'user_deletion',
+      user_id_param: user.id,
+      metadata_param: {
         deleted_user_name: targetProfile.name,
-        deleted_by: user.id,
+        deleted_user_id: targetProfile.user_id,
         timestamp: new Date().toISOString()
       },
-      risk_score: 4
+      risk_score_param: 4
     });
 
     // Step 1: Delete user_roles first
