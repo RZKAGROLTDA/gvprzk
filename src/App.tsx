@@ -50,13 +50,23 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
     return <LoginForm />;
   }
 
-  // If user exists but no profile found, show profile setup (auto-approved after creation)
+  // If user exists but no profile found, show profile setup
   if (!profile) {
     return <ProfileSetup />;
   }
 
+  // Block access until approved
+  if (profile?.approval_status && profile.approval_status !== 'approved') {
+    return (
+      <ProfileAutoCreator
+        onProfileCreated={() => {
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
-  // If everything is approved, show main app routes
+  // Approved: show main app routes
   return (
     <Routes>
       <Route path="/" element={<Layout><SalesFunnel /></Layout>} />
