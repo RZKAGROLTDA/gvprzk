@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Loader2, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, User, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 interface ProfileAutoCreatorProps {
@@ -30,7 +30,7 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
   }
 
   const [isCreating, setIsCreating] = useState(false);
-  const [status, setStatus] = useState<'checking' | 'missing' | 'creating' | 'done'>('checking');
+  const [status, setStatus] = useState<'checking' | 'missing' | 'creating' | 'done' | 'pending' | 'rejected'>('checking');
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [selectedFilial, setSelectedFilial] = useState<string>('');
   const [loadingFiliais, setLoadingFiliais] = useState(true);
@@ -97,8 +97,11 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
       } else if (profile.approval_status === 'approved') {
         setStatus('done');
         setTimeout(onProfileCreated, 500);
+      } else if (profile.approval_status === 'pending') {
+        // Perfil já existe, apenas aguarda aprovação (não pedir filial de novo)
+        setStatus('pending');
       } else {
-        setStatus('missing');
+        setStatus('rejected');
       }
     } catch (error) {
       console.error('❌ Erro na verificação do perfil:', error);
@@ -154,6 +157,14 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } finally {
+      window.location.reload();
+    }
+  };
+
   if (authError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -197,6 +208,48 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
               Redirecionando para o dashboard...
             </CardDescription>
           </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  if (status === 'pending') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <Clock className="h-8 w-8 text-primary mx-auto mb-4" />
+            <CardTitle>Cadastro em análise</CardTitle>
+            <CardDescription>
+              Seu perfil já foi criado e está aguardando aprovação do administrador.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button onClick={handleSignOut} className="w-full" variant="outline">
+              Sair
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (status === 'rejected') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <XCircle className="h-8 w-8 text-destructive mx-auto mb-4" />
+            <CardTitle>Cadastro rejeitado</CardTitle>
+            <CardDescription>
+              Seu cadastro foi rejeitado. Fale com um administrador para mais detalhes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button onClick={handleSignOut} className="w-full" variant="outline">
+              Sair
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
