@@ -341,16 +341,17 @@ export const LoginForm: React.FC = () => {
     }
     
     // Check required fields manually for mobile debugging
-    if (!formData.name || !formData.email || !formData.password || !formData.role) {
+    if (!formData.name || !formData.email || !formData.password || !formData.role || !formData.filial_id || formData.filial_id === 'none') {
       console.log('❌ Mobile Signup: Campos obrigatórios faltando', {
         name: !!formData.name,
         email: !!formData.email,
         password: !!formData.password,
-        role: !!formData.role
+        role: !!formData.role,
+        filial_id: !!formData.filial_id && formData.filial_id !== 'none'
       });
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios, incluindo a filial",
         variant: "destructive",
       });
       return;
@@ -364,7 +365,7 @@ export const LoginForm: React.FC = () => {
       const { error } = await signUp(formData.email, formData.password, {
         name: formData.name,
         role: formData.role,
-        filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
+        filial_id: formData.filial_id
       });
       
       console.log('📱 Mobile Signup Result:', { error: error?.message || 'success' });
@@ -783,20 +784,21 @@ export const LoginForm: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-filial">Filial</Label>
+                  <Label htmlFor="signup-filial">Filial *</Label>
                   <Select 
                     value={formData.filial_id} 
                     onValueChange={(value) => handleInputChange('filial_id', value)}
                     disabled={filiaisLoading}
+                    required
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={!formData.filial_id || formData.filial_id === 'none' ? 'border-muted' : ''}>
                       <SelectValue 
                         placeholder={
                           filiaisLoading 
                             ? "Carregando filiais..." 
                             : filiaisError 
                               ? "Erro ao carregar filiais" 
-                              : "Selecione sua filial"
+                              : "Selecione sua filial (obrigatório)"
                         } 
                       />
                       {filiaisLoading && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
@@ -818,7 +820,6 @@ export const LoginForm: React.FC = () => {
                         </SelectItem>
                       ) : (
                         <>
-                          <SelectItem value="none">Sem filial</SelectItem>
                           {filiais.map((filial) => (
                             <SelectItem key={filial.id} value={filial.id}>
                               <div className="flex items-center gap-2">
@@ -854,7 +855,7 @@ export const LoginForm: React.FC = () => {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={loading || !formData.name || !formData.email || !formData.password}
+                  disabled={loading || !formData.name || !formData.email || !formData.password || !formData.filial_id || formData.filial_id === 'none'}
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Cadastrar
@@ -862,7 +863,7 @@ export const LoginForm: React.FC = () => {
                 
                 {/* Debug info for mobile */}
                 <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/20 rounded">
-                  Status: Nome({formData.name ? '✓' : '✗'}) Email({formData.email ? '✓' : '✗'}) Senha({formData.password ? '✓' : '✗'}) Cargo({formData.role ? '✓' : '✗'})
+                  Status: Nome({formData.name ? '✓' : '✗'}) Email({formData.email ? '✓' : '✗'}) Senha({formData.password ? '✓' : '✗'}) Cargo({formData.role ? '✓' : '✗'}) Filial({formData.filial_id && formData.filial_id !== 'none' ? '✓' : '✗'})
                 </div>
               </form>
             </TabsContent>
