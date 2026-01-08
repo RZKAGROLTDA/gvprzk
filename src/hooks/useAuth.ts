@@ -27,10 +27,11 @@ export const useAuthProvider = () => {
   const [loading, setLoading] = useState(true);
   const initRef = useRef(false);
 
-  // Função para criar perfil automaticamente usando função segura
-  const createUserProfile = async (authUser: User) => {
+  // Função para verificar se perfil já existe (não cria automaticamente)
+  // O perfil deve ser criado pelos formulários de registro com filial obrigatória
+  const checkUserProfile = async (authUser: User) => {
     try {
-      console.log('🔄 Criando perfil automático para usuário...');
+      console.log('🔄 Verificando perfil do usuário...');
       
       const { data: existingProfile, error: checkError } = await supabase
         .from('profiles')
@@ -44,26 +45,12 @@ export const useAuthProvider = () => {
       }
 
       if (existingProfile) {
-        console.log('✅ Perfil já existe com status:', existingProfile.approval_status);
-        return;
-      }
-
-      // Use secure profile creation function (creates with pending status)
-      const { error: createError } = await supabase.rpc('create_secure_profile', {
-        user_id_param: authUser.id,
-        name_param: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'Usuário',
-        email_param: authUser.email || '',
-        role_param: 'consultant', // Role padrão seguro
-        filial_id_param: null // Let function use default
-      });
-
-      if (createError) {
-        console.error('❌ Erro ao criar perfil seguro:', createError);
+        console.log('✅ Perfil existe com status:', existingProfile.approval_status);
       } else {
-        console.log('✅ Perfil criado automaticamente (aguardando aprovação)');
+        console.log('⚠️ Usuário sem perfil - deve se cadastrar pelo formulário de registro');
       }
     } catch (error) {
-      console.error('❌ Erro crítico na criação do perfil:', error);
+      console.error('❌ Erro crítico na verificação do perfil:', error);
     }
   };
 
@@ -82,10 +69,10 @@ export const useAuthProvider = () => {
           setUser(session?.user ?? null);
           setLoading(false);
 
-          // Criar perfil automaticamente quando usuário faz login
+          // Verificar perfil quando usuário faz login
           if (session?.user && event === 'SIGNED_IN') {
             setTimeout(() => {
-              createUserProfile(session.user);
+              checkUserProfile(session.user);
             }, 0);
           }
         }
