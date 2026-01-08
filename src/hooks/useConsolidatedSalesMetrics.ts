@@ -38,7 +38,7 @@ export interface ConsolidatedMetrics {
 /**
  * Hook CONSOLIDADO para métricas de vendas
  * Substitui useAllSalesData + useSalesFunnelMetrics
- * APENAS 2 queries ao invés de 4
+ * USA FUNÇÃO SEGURA para respeitar permissões do usuário
  */
 export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
@@ -57,27 +57,48 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       const dateFilter = getDateFilter();
 
-      // QUERY 1: Buscar tasks - OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
-      let tasksQuery = supabase
-        .from('tasks')
-        .select('id, task_type, is_prospect, sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at, status')
-        .order('created_at', { ascending: false })
-        .limit(1000);
+      // QUERY 1: Buscar tasks via FUNÇÃO SEGURA (respeita RLS/permissões)
+      const { data: tasksRaw, error: tasksError } = await supabase
+        .rpc('get_secure_tasks_with_customer_protection');
       
-      if (dateFilter) {
-        tasksQuery = tasksQuery.gte('created_at', dateFilter);
-      }
-      if (filters?.consultantId && filters.consultantId !== 'all') {
-        tasksQuery = tasksQuery.eq('created_by', filters.consultantId);
-      }
-      if (filters?.filial && filters.filial !== 'all') {
-        tasksQuery = tasksQuery.eq('filial', filters.filial);
-      }
-      if (filters?.activity && filters.activity !== 'all') {
-        tasksQuery = tasksQuery.eq('task_type', filters.activity);
+      if (tasksError) {
+        console.error('❌ Erro ao buscar tasks seguras:', tasksError);
+        throw tasksError;
       }
 
-      // OTIMIZAÇÃO Disk IO: Adicionar limite com filtros
+      // Aplicar filtros localmente após buscar dados seguros
+      let tasks = (tasksRaw || []).map((t: any) => ({
+        id: t.id,
+        task_type: t.task_type,
+        is_prospect: t.is_prospect,
+        sales_type: t.sales_type,
+        sales_confirmed: t.sales_confirmed,
+        sales_value: t.sales_value,
+        partial_sales_value: t.partial_sales_value,
+        created_by: t.created_by,
+        filial: t.filial,
+        created_at: t.created_at,
+        status: t.status
+      }));
+
+      // Aplicar filtros
+      if (dateFilter) {
+        tasks = tasks.filter((t: any) => new Date(t.created_at) >= new Date(dateFilter));
+      }
+      if (filters?.consultantId && filters.consultantId !== 'all') {
+        tasks = tasks.filter((t: any) => t.created_by === filters.consultantId);
+      }
+      if (filters?.filial && filters.filial !== 'all') {
+        tasks = tasks.filter((t: any) => t.filial === filters.filial);
+      }
+      if (filters?.activity && filters.activity !== 'all') {
+        tasks = tasks.filter((t: any) => t.task_type === filters.activity);
+      }
+
+      // Limitar para performance
+      tasks = tasks.slice(0, 1000);
+
+      // QUERY 2: Opportunities (já tem RLS configurado)
       let opportunitiesQuery = supabase
         .from('opportunities')
         .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at')
@@ -90,17 +111,11 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         opportunitiesQuery = opportunitiesQuery.eq('filial', filters.filial);
       }
 
-      // Executar APENAS 2 queries em paralelo
-      const [tasksResult, opportunitiesResult] = await Promise.all([
-        tasksQuery,
-        opportunitiesQuery
-      ]);
+      const { data: opportunitiesData, error: opportunitiesError } = await opportunitiesQuery;
 
-      if (tasksResult.error) throw tasksResult.error;
-      if (opportunitiesResult.error) throw opportunitiesResult.error;
+      if (opportunitiesError) throw opportunitiesError;
 
-      const tasks = tasksResult.data || [];
-      const opportunities = opportunitiesResult.data || [];
+      const opportunities = opportunitiesData || [];
 
       // =====================
       // PROCESSAMENTO LOCAL
