@@ -174,6 +174,7 @@ export const SalesFunnel: React.FC = () => {
   } = useInfiniteSalesData(filters);
 
   // Query com infinite scroll para a aba Detalhes dos Clientes
+  // USA FUNÇÃO SEGURA para respeitar permissões do usuário
   const {
     data: clientDetailsPages,
     isLoading: isLoadingClientDetails,
@@ -188,51 +189,17 @@ export const SalesFunnel: React.FC = () => {
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
-      let countQuery = supabase
-        .from('tasks')
-        .select('id', { count: 'exact', head: true });
+      // BUSCAR VIA FUNÇÃO SEGURA (respeita RLS/permissões)
+      const { data: tasksRaw, error } = await supabase
+        .rpc('get_secure_tasks_with_customer_protection');
 
-      let query = supabase
-        .from('tasks')
-        .select('id, client, responsible, filial, task_type, is_prospect, sales_confirmed, sales_type, sales_value, partial_sales_value, created_at')
-        .range(from, to)
-        .order('created_at', { ascending: false });
-
-      // Aplicar filtros em ambas as queries
-      if (filters?.period && filters.period !== 'all') {
-        const daysAgo = parseInt(filters.period);
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-        const isoDate = cutoffDate.toISOString();
-        query = query.gte('created_at', isoDate);
-        countQuery = countQuery.gte('created_at', isoDate);
+      if (error) {
+        console.error('❌ Erro ao buscar tasks seguras:', error);
+        throw error;
       }
 
-      if (filters?.consultantId && filters.consultantId !== 'all') {
-        query = query.eq('created_by', filters.consultantId);
-        countQuery = countQuery.eq('created_by', filters.consultantId);
-      }
-
-      if (filters?.filial && filters.filial !== 'all') {
-        query = query.eq('filial', filters.filial);
-        countQuery = countQuery.eq('filial', filters.filial);
-      }
-
-      if (filters?.activity && filters.activity !== 'all') {
-        query = query.eq('task_type', filters.activity);
-        countQuery = countQuery.eq('task_type', filters.activity);
-      }
-
-      const [{ data: tasks, error }, { count }] = await Promise.all([
-        query,
-        countQuery
-      ]);
-
-      if (error) throw error;
-
-      // Converter para formato compatível
-      const formattedTasks = (tasks || []).map(task => ({
+      // Mapear e aplicar filtros localmente
+      let allTasks = (tasksRaw || []).map((task: any) => ({
         id: task.id,
         client: task.client,
         responsible: task.responsible,
@@ -243,22 +210,51 @@ export const SalesFunnel: React.FC = () => {
         salesType: task.sales_type as 'ganho' | 'perdido' | 'parcial' | undefined,
         salesValue: getSalesValueAsNumber(task.sales_value) || 0,
         partialSalesValue: task.partial_sales_value || 0,
-        createdAt: new Date(task.created_at)
+        createdAt: new Date(task.created_at),
+        created_by: task.created_by
       }));
+
+      // Aplicar filtros
+      if (filters?.period && filters.period !== 'all') {
+        const daysAgo = parseInt(filters.period);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+        allTasks = allTasks.filter((t: any) => t.createdAt >= cutoffDate);
+      }
+
+      if (filters?.consultantId && filters.consultantId !== 'all') {
+        allTasks = allTasks.filter((t: any) => t.created_by === filters.consultantId);
+      }
+
+      if (filters?.filial && filters.filial !== 'all') {
+        allTasks = allTasks.filter((t: any) => t.filial === filters.filial);
+      }
+
+      if (filters?.activity && filters.activity !== 'all') {
+        allTasks = allTasks.filter((t: any) => t.taskType === filters.activity);
+      }
+
+      // Ordenar por data
+      allTasks.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime());
+
+      // Aplicar paginação
+      const formattedTasks = allTasks.slice(from, to + 1);
+      const count = pageParam === 0 ? allTasks.length : 0;
 
       return {
         data: formattedTasks,
-        totalCount: count || 0,
+        totalCount: count,
         nextPage: formattedTasks.length === PAGE_SIZE ? pageParam + 1 : undefined
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
     enabled: activeView === 'details',
-    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO Disk IO
-    gcTime: 15 * 60 * 1000, // 15 minutos
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
 
   // Flatten client details data
   const clientDetailsData = useMemo(() => {

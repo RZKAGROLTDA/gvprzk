@@ -39,7 +39,7 @@ const PAGE_SIZE = 50;
 
 /**
  * Hook com scroll infinito para dados de vendas
- * Carrega dados em páginas para melhorar performance
+ * USA FUNÇÃO SEGURA para respeitar permissões do usuário
  */
 export const useInfiniteSalesData = (filters?: SalesFilters) => {
   const {
@@ -64,40 +64,61 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         const from = pageParam * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        // Buscar tasks paginadas com filtros
-        // OTIMIZAÇÃO Disk IO: selecionar apenas campos usados + evitar COUNT em todas as páginas
-        const taskSelectFields = 'id, client, filial, responsible, task_type, status, is_prospect, sales_confirmed, sales_type, sales_value, partial_sales_value, start_date, end_date, created_at, updated_at, created_by' as const;
+        // BUSCAR TASKS VIA FUNÇÃO SEGURA (respeita RLS/permissões)
+        const { data: tasksRaw, error: tasksError } = await supabase
+          .rpc('get_secure_tasks_with_customer_protection');
 
-        // Importante: inicializar já como FilterBuilder para permitir gte/eq/order
-        let query = pageParam === 0
-          ? supabase.from('tasks').select(taskSelectFields, { count: 'exact' })
-          : supabase.from('tasks').select(taskSelectFields);
+        if (tasksError) {
+          console.error('❌ Erro ao buscar tasks seguras:', tasksError);
+          throw tasksError;
+        }
 
-        // Aplicar filtros
+        // Mapear dados da função segura
+        let allTasks = (tasksRaw || []).map((t: any) => ({
+          id: t.id,
+          client: t.client,
+          filial: t.filial,
+          responsible: t.responsible,
+          task_type: t.task_type,
+          status: t.status,
+          is_prospect: t.is_prospect,
+          sales_confirmed: t.sales_confirmed,
+          sales_type: t.sales_type,
+          sales_value: t.sales_value,
+          partial_sales_value: t.partial_sales_value,
+          start_date: t.start_date,
+          end_date: t.end_date,
+          created_at: t.created_at,
+          updated_at: t.updated_at,
+          created_by: t.created_by
+        }));
+
+        // Aplicar filtros localmente
         if (filters?.period && filters.period !== 'all') {
           const daysAgo = parseInt(filters.period);
           const cutoffDate = new Date();
           cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-          query = query.gte('created_at', cutoffDate.toISOString());
+          allTasks = allTasks.filter((t: any) => new Date(t.created_at) >= cutoffDate);
         }
 
         if (filters?.consultantId && filters.consultantId !== 'all') {
-          query = query.eq('created_by', filters.consultantId);
+          allTasks = allTasks.filter((t: any) => t.created_by === filters.consultantId);
         }
 
         if (filters?.filial && filters.filial !== 'all') {
-          query = query.eq('filial', filters.filial);
+          allTasks = allTasks.filter((t: any) => t.filial === filters.filial);
         }
 
         if (filters?.activity && filters.activity !== 'all') {
-          query = query.eq('task_type', filters.activity);
+          allTasks = allTasks.filter((t: any) => t.task_type === filters.activity);
         }
 
-        const { data: tasks, error: tasksError, count } = await query
-          .order('created_at', { ascending: false })
-          .range(from, to);
+        // Ordenar por data
+        allTasks.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-        if (tasksError) throw tasksError;
+        // Aplicar paginação
+        const tasks = allTasks.slice(from, to + 1);
+        const count = pageParam === 0 ? allTasks.length : 0;
 
         // OTIMIZAÇÃO: Buscar APENAS opportunities dos task_ids desta página
         // ao invés de buscar TODAS opportunities (reduz Disk IO drasticamente)
