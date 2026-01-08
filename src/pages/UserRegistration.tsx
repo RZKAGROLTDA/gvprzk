@@ -150,6 +150,15 @@ const UserRegistration: React.FC = () => {
       return;
     }
 
+    if (!formData.filial_id) {
+      toast({
+        title: "Filial obrigatória",
+        description: "Por favor, selecione sua filial",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -177,7 +186,7 @@ const UserRegistration: React.FC = () => {
             name: formData.name,
             email: formData.email,
             role: formData.role,
-            filial_id: formData.filial_id || null,
+            filial_id: formData.filial_id,
             approval_status: 'pending'
           });
 
@@ -350,13 +359,12 @@ const UserRegistration: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="filial" className="text-sm font-semibold">Filial</Label>
-                <Select value={formData.filial_id} onValueChange={(value) => handleInputChange('filial_id', value)}>
+                <Label htmlFor="filial" className="text-sm font-semibold">Filial *</Label>
+                <Select value={formData.filial_id} onValueChange={(value) => handleInputChange('filial_id', value)} required>
                   <SelectTrigger className="h-11 bg-background">
                     <SelectValue placeholder="Selecione sua filial" />
                   </SelectTrigger>
                   <SelectContent className="bg-background border shadow-lg z-[100]">
-                    <SelectItem value="">Nenhuma filial específica</SelectItem>
                     {filiais.length === 0 ? (
                       <SelectItem value="loading" disabled>
                         <div className="flex items-center gap-2">
@@ -393,7 +401,7 @@ const UserRegistration: React.FC = () => {
                 type="submit" 
                 className="w-full h-12 text-lg font-semibold" 
                 variant="gradient"
-                disabled={loading || !formData.name || !formData.email || !formData.password || !formData.role || !validatePassword(formData.password)}
+                disabled={loading || !formData.name || !formData.email || !formData.password || !formData.role || !formData.filial_id || !validatePassword(formData.password)}
               >
                 {loading ? 'Criando conta...' : 'Criar Conta'}
               </Button>
