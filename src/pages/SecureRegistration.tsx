@@ -1,20 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthLayout } from '@/components/AuthLayout';
-import { Building2, User, Eye, EyeOff } from 'lucide-react';
+import { User, Eye, EyeOff } from 'lucide-react';
 import { useInputSecurity } from '@/hooks/useInputSecurity';
 import { usePasswordValidation } from '@/hooks/usePasswordValidation';
-
-interface Filial {
-  id: string;
-  nome: string;
-}
 
 const SecureRegistration: React.FC = () => {
   const { toast } = useToast();
@@ -22,89 +16,11 @@ const SecureRegistration: React.FC = () => {
   const { validatePassword: validatePasswordSecurity, getPasswordErrorMessage } = usePasswordValidation();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [filiais, setFiliais] = useState<Filial[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    filial_id: ''
+    password: ''
   });
-
-  useEffect(() => {
-    const loadFiliais = async () => {
-      try {
-        console.log('🔄 SecureRegistration: Carregando filiais (sem autenticação)...');
-        const { data, error } = await supabase
-          .from('filiais')
-          .select('id, nome')
-          .order('nome');
-        
-        if (error) {
-          console.error('❌ SecureRegistration: Erro ao buscar filiais:', error);
-          // Don't throw error, set fallback instead
-          const fallbackFiliais = [
-            { id: 'fallback-1', nome: 'Querência' },
-            { id: 'fallback-2', nome: 'Canarana' },
-            { id: 'fallback-3', nome: 'Barra do Garças' },
-            { id: 'fallback-4', nome: 'Porto Alegre do Norte' },
-            { id: 'fallback-5', nome: 'Gaúcha do Norte' },
-            { id: 'fallback-6', nome: 'Espigão do Leste' },
-            { id: 'fallback-7', nome: 'Água Boa' },
-            { id: 'fallback-8', nome: 'Vila Rica' },
-            { id: 'fallback-9', nome: 'Mineiros' },
-            { id: 'fallback-10', nome: 'Alto Taquari' },
-            { id: 'fallback-11', nome: 'Planalto Verde' },
-            { id: 'fallback-12', nome: 'Caiapônia' },
-            { id: 'fallback-13', nome: 'São Jose do Xingu' },
-            { id: 'fallback-14', nome: 'Tele Vendas' }
-          ];
-          setFiliais(fallbackFiliais);
-          toast({
-            title: "Filiais carregadas",
-            description: "Usando lista padrão de filiais. RLS foi corrigido.",
-          });
-        } else {
-          console.log('✅ SecureRegistration: Filiais carregadas com sucesso:', data?.length || 0);
-          setFiliais(data || []);
-          if (data && data.length > 0) {
-            toast({
-              title: "Filiais carregadas",
-              description: `${data.length} filiais carregadas com sucesso!`,
-            });
-          }
-        }
-      } catch (error) {
-        console.error('💥 SecureRegistration: Erro crítico ao carregar filiais:', error);
-        
-        // Fallback: Set manual list if database fails
-        const fallbackFiliais = [
-          { id: 'fallback-1', nome: 'Querência' },
-          { id: 'fallback-2', nome: 'Canarana' },
-          { id: 'fallback-3', nome: 'Barra do Garças' },
-          { id: 'fallback-4', nome: 'Porto Alegre do Norte' },
-          { id: 'fallback-5', nome: 'Gaúcha do Norte' },
-          { id: 'fallback-6', nome: 'Espigão do Leste' },
-          { id: 'fallback-7', nome: 'Água Boa' },
-          { id: 'fallback-8', nome: 'Vila Rica' },
-          { id: 'fallback-9', nome: 'Mineiros' },
-          { id: 'fallback-10', nome: 'Alto Taquari' },
-          { id: 'fallback-11', nome: 'Planalto Verde' },
-          { id: 'fallback-12', nome: 'Caiapônia' },
-          { id: 'fallback-13', nome: 'São Jose do Xingu' },
-          { id: 'fallback-14', nome: 'Tele Vendas' }
-        ];
-        setFiliais(fallbackFiliais);
-        toast({
-          title: "Erro de conexão",
-          description: "Usando lista padrão de filiais.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadFiliais();
-  }, [toast]);
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,12 +40,8 @@ const SecureRegistration: React.FC = () => {
       if (!passwordValidation.isValid) {
         throw new Error(getPasswordErrorMessage(passwordValidation) || 'Senha inválida');
       }
-      
-      if (!formData.filial_id) {
-        throw new Error('Filial é obrigatória');
-      }
 
-      // Criar usuário no Supabase Auth
+      // Criar usuário no Supabase Auth (perfil será criado no segundo passo com filial)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -144,27 +56,13 @@ const SecureRegistration: React.FC = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Criar perfil usando RPC segura (SECURITY DEFINER para bypass RLS)
-        const { error: profileError } = await supabase.rpc('create_secure_profile', {
-          user_id_param: authData.user.id,
-          name_param: formData.name,
-          email_param: formData.email,
-          role_param: 'consultant',
-          filial_id_param: formData.filial_id
-        });
-
-        if (profileError) throw profileError;
-
         toast({
-          title: "Cadastro realizado com sucesso!",
-          description: "Aguarde a aprovação do administrador para acessar o sistema.",
+          title: "Conta criada com sucesso!",
+          description: "Agora selecione sua filial para completar o cadastro.",
         });
 
-        // Importante: garantir que o usuário não fique logado antes da aprovação
-        await supabase.auth.signOut();
-
-        // Redirecionar para página de sucesso
-        window.location.href = '/registration-success';
+        // Redirecionar para home onde o ProfileAutoCreator irá solicitar a filial
+        window.location.href = '/';
       }
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
@@ -261,44 +159,11 @@ const SecureRegistration: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="filial" className="text-sm font-semibold">Filial *</Label>
-                  <Select value={formData.filial_id} onValueChange={(value) => handleInputChange('filial_id', value)}>
-                    <SelectTrigger className="h-12 border-2 focus:border-primary transition-colors bg-background">
-                      <SelectValue placeholder="Selecione sua filial" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border shadow-lg z-[100]">
-                      {filiais.length === 0 ? (
-                        <SelectItem value="loading" disabled>
-                          <div className="flex items-center gap-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                            Carregando filiais...
-                          </div>
-                        </SelectItem>
-                      ) : (
-                        filiais.map(filial => (
-                          <SelectItem key={filial.id} value={filial.id}>
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-4 w-4" />
-                              {filial.nome}
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {filiais.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {filiais.length} filiais disponíveis
-                    </p>
-                  )}
-                </div>
-
                 <div className="pt-4">
                   <Button 
                     type="submit" 
                     className="w-full h-12 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]" 
-                    disabled={loading || !formData.name || !formData.email || !formData.password || !formData.filial_id}
+                    disabled={loading || !formData.name || !formData.email || !formData.password}
                   >
                     {loading ? (
                       <div className="flex items-center gap-2">
@@ -306,7 +171,7 @@ const SecureRegistration: React.FC = () => {
                         Cadastrando...
                       </div>
                     ) : (
-                      'Solicitar Cadastro'
+                      'Continuar'
                     )}
                   </Button>
                 </div>
@@ -314,8 +179,8 @@ const SecureRegistration: React.FC = () => {
 
               <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                 <p className="text-sm text-muted-foreground text-center">
-                  Após o cadastro, sua solicitação será analisada por um administrador. 
-                  Você receberá um email quando sua conta for aprovada.
+                  Na próxima etapa você selecionará sua filial. 
+                  Após o cadastro, aguarde a aprovação do administrador.
                 </p>
               </div>
             </CardContent>
