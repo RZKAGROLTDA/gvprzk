@@ -341,17 +341,16 @@ export const LoginForm: React.FC = () => {
     }
     
     // Check required fields manually for mobile debugging
-    if (!formData.name || !formData.email || !formData.password || !formData.role || !formData.filial_id || formData.filial_id === 'none') {
+    if (!formData.name || !formData.email || !formData.password || !formData.role) {
       console.log('❌ Mobile Signup: Campos obrigatórios faltando', {
         name: !!formData.name,
         email: !!formData.email,
         password: !!formData.password,
         role: !!formData.role,
-        filial_id: !!formData.filial_id && formData.filial_id !== 'none'
       });
       toast({
         title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios, incluindo a filial",
+        description: "Por favor, preencha todos os campos obrigatórios",
         variant: "destructive",
       });
       return;
@@ -365,7 +364,6 @@ export const LoginForm: React.FC = () => {
       const { error } = await signUp(formData.email, formData.password, {
         name: formData.name,
         role: formData.role,
-        filial_id: formData.filial_id
       });
       
       console.log('📱 Mobile Signup Result:', { error: error?.message || 'success' });
@@ -783,88 +781,21 @@ export const LoginForm: React.FC = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-filial">Filial *</Label>
-                  <Select 
-                    value={formData.filial_id} 
-                    onValueChange={(value) => handleInputChange('filial_id', value)}
-                    disabled={filiaisLoading}
-                    required
-                  >
-                    <SelectTrigger className={!formData.filial_id || formData.filial_id === 'none' ? 'border-muted' : ''}>
-                      <SelectValue 
-                        placeholder={
-                          filiaisLoading 
-                            ? "Carregando filiais..." 
-                            : filiaisError 
-                              ? "Erro ao carregar filiais" 
-                              : "Selecione sua filial (obrigatório)"
-                        } 
-                      />
-                      {filiaisLoading && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filiaisLoading ? (
-                        <SelectItem value="loading" disabled>
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Carregando filiais...
-                          </div>
-                        </SelectItem>
-                      ) : filiaisError ? (
-                        <SelectItem value="error" disabled>
-                          <div className="flex items-center gap-2 text-destructive">
-                            <Building className="h-4 w-4" />
-                            {filiaisError}
-                          </div>
-                        </SelectItem>
-                      ) : (
-                        <>
-                          {filiais.map((filial) => (
-                            <SelectItem key={filial.id} value={filial.id}>
-                              <div className="flex items-center gap-2">
-                                <Building className="h-4 w-4" />
-                                {filial.nome}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {filiaisError && (
-                    <div className="text-xs text-destructive flex items-center gap-1">
-                      <span>Erro ao carregar filiais.</span>
-                      <button
-                        type="button"
-                        onClick={reloadFiliais}
-                        className="text-primary hover:underline"
-                        disabled={filiaisLoading}
-                      >
-                        Tentar novamente
-                      </button>
-                    </div>
-                  )}
-                  {!filiaisLoading && !filiaisError && filiais.length === 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      Nenhuma filial disponível no momento.
-                    </div>
-                  )}
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={loading || !formData.name || !formData.email || !formData.password || !formData.filial_id || formData.filial_id === 'none'}
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Cadastrar
-                </Button>
-                
-                {/* Debug info for mobile */}
-                <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/20 rounded">
-                  Status: Nome({formData.name ? '✓' : '✗'}) Email({formData.email ? '✓' : '✗'}) Senha({formData.password ? '✓' : '✗'}) Cargo({formData.role ? '✓' : '✗'}) Filial({formData.filial_id && formData.filial_id !== 'none' ? '✓' : '✗'})
-                </div>
+                 {/* Filial será selecionada na próxima etapa (ProfileAutoCreator) */}
+                 
+                 <Button 
+                   type="submit" 
+                   className="w-full" 
+                   disabled={loading || !formData.name || !formData.email || !formData.password || !formData.role}
+                 >
+                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                   Cadastrar
+                 </Button>
+                 
+                 {/* Debug info for mobile */}
+                 <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/20 rounded">
+                   Status: Nome({formData.name ? '✓' : '✗'}) Email({formData.email ? '✓' : '✗'}) Senha({formData.password ? '✓' : '✗'}) Cargo({formData.role ? '✓' : '✗'})
+                 </div>
               </form>
             </TabsContent>
           </Tabs>
