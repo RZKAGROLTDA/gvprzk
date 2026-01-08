@@ -3,6 +3,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Loader2, User, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -10,8 +12,12 @@ interface ProfileAutoCreatorProps {
   onProfileCreated: () => void;
 }
 
+interface Filial {
+  id: string;
+  nome: string;
+}
+
 export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfileCreated }) => {
-  // Verificação robusta do contexto de autenticação
   let user = null;
   let authError = false;
   
@@ -22,8 +28,12 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
     console.warn('ProfileAutoCreator: AuthProvider context not available:', error);
     authError = true;
   }
+
   const [isCreating, setIsCreating] = useState(false);
   const [status, setStatus] = useState<'checking' | 'missing' | 'creating' | 'done'>('checking');
+  const [filiais, setFiliais] = useState<Filial[]>([]);
+  const [selectedFilial, setSelectedFilial] = useState<string>('');
+  const [loadingFiliais, setLoadingFiliais] = useState(true);
 
   useEffect(() => {
     if (authError) {
@@ -34,8 +44,35 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
     
     if (user) {
       checkProfile();
+      loadFiliais();
     }
   }, [user, authError]);
+
+  const loadFiliais = async () => {
+    try {
+      setLoadingFiliais(true);
+      const { data, error } = await supabase.rpc('get_filiais_for_registration');
+      
+      if (error) {
+        console.error('Erro ao carregar filiais:', error);
+        // Fallback to direct query
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('filiais')
+          .select('id, nome')
+          .order('nome');
+        
+        if (fallbackError) throw fallbackError;
+        setFiliais(fallbackData || []);
+      } else {
+        setFiliais(data || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar filiais:', error);
+      toast.error('Erro ao carregar filiais');
+    } finally {
+      setLoadingFiliais(false);
+    }
+  };
 
   const checkProfile = async () => {
     if (!user) return;
@@ -75,17 +112,21 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
       return;
     }
 
+    if (!selectedFilial) {
+      toast.error('❌ Selecione uma filial para continuar.');
+      return;
+    }
+
     try {
       setIsCreating(true);
       setStatus('creating');
 
-      // Use secure profile creation function
       const { error } = await supabase.rpc('create_secure_profile', {
         user_id_param: user.id,
         name_param: user.user_metadata?.name || user.email?.split('@')[0] || 'Usuário',
         email_param: user.email || '',
         role_param: 'consultant',
-        filial_id_param: null // Let function use default
+        filial_id_param: selectedFilial
       });
 
       if (error) {
@@ -101,20 +142,19 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
 
     } catch (error: any) {
       console.error('❌ Erro ao criar perfil:', error);
-      toast.error('❌ Erro ao criar perfil. Aguarde aprovação do administrador.');
+      toast.error(`❌ Erro ao criar perfil: ${error.message || 'Erro desconhecido'}`);
       setStatus('missing');
     } finally {
       setIsCreating(false);
     }
   };
 
-  // Se há erro de autenticação, mostrar erro
   if (authError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+            <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-4" />
             <CardTitle>Erro de Autenticação</CardTitle>
             <CardDescription>
               Não foi possível acessar o contexto de autenticação. Recarregando...
@@ -125,7 +165,7 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
     );
   }
 
-  if (status === 'checking') {
+  if (status === 'checking' || loadingFiliais) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="w-full max-w-md">
@@ -170,12 +210,27 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
         <CardContent className="space-y-4">
           <div className="text-center text-sm text-muted-foreground">
             <p><strong>Email:</strong> {user?.email}</p>
-            <p>Seu perfil será configurado automaticamente</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="filial">Selecione sua Filial *</Label>
+            <Select value={selectedFilial} onValueChange={setSelectedFilial}>
+              <SelectTrigger id="filial">
+                <SelectValue placeholder="Escolha uma filial" />
+              </SelectTrigger>
+              <SelectContent>
+                {filiais.map((filial) => (
+                  <SelectItem key={filial.id} value={filial.id}>
+                    {filial.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <Button 
             onClick={createProfile} 
-            disabled={isCreating}
+            disabled={isCreating || !selectedFilial}
             className="w-full"
             size="lg"
           >
@@ -195,7 +250,6 @@ export const ProfileAutoCreator: React.FC<ProfileAutoCreatorProps> = ({ onProfil
           <div className="text-xs text-center text-muted-foreground">
             <p>• Role: Consultor (padrão)</p>
             <p>• Status: Aguardando aprovação</p>
-            <p>• Filial: Primeira disponível</p>
           </div>
         </CardContent>
       </Card>
