@@ -71,7 +71,8 @@ export const Users: React.FC = () => {
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
       // Use RPC function for secure role updates with server-side authorization
-      const { data, error } = await supabase.rpc('update_user_role_secure', {
+      // Note: update_user_role_secure returns void, so we check for errors only
+      const { error } = await supabase.rpc('update_user_role_secure', {
         target_user_id: userId,
         new_role: newRole
       });
@@ -82,19 +83,10 @@ export const Users: React.FC = () => {
         return;
       }
 
-      // A função retorna JSON, então verificamos o resultado
-      if (data && data.error) {
-        toast.error(data.error);
-        return;
-      }
-
-      if (data && data.success) {
-        toast.success(data.message || 'Permissão atualizada com sucesso');
-        // Invalidate cache to trigger fresh data fetch
-        await queryClient.invalidateQueries({ queryKey: ['secure-user-directory'] });
-      } else {
-        toast.error('Erro inesperado ao atualizar permissão');
-      }
+      // Function returned without error, update was successful
+      toast.success('Permissão atualizada com sucesso');
+      // Invalidate cache to trigger fresh data fetch
+      await queryClient.invalidateQueries({ queryKey: ['secure-user-directory'] });
     } catch (error: any) {
       console.error('Erro ao atualizar permissão:', error);
       toast.error(error?.message || 'Erro ao atualizar permissão');
