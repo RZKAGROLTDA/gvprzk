@@ -6919,10 +6919,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                 <Textarea id={`obs-${item.id}`} value={item.observations || ''} onChange={e => handleProductChange(item.id, 'observations', e.target.value)} placeholder="Observações sobre este produto..." className="min-h-[80px]" />
                               </div>
                               
-                              <div className="space-y-2">
-                                <Label>Fotos do Produto</Label>
-                                <PhotoUpload photos={item.photos || []} onPhotosChange={photos => handleProductPhotoChange(item.id, photos)} maxPhotos={5} />
-                              </div>
                             </div>}
                         </div>
                       </CardContent>
@@ -6986,11 +6982,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                               <div className="space-y-2">
                                 <Label htmlFor={`obs-${item.id}`}>Observações</Label>
                                 <Textarea id={`obs-${item.id}`} value={item.observations || ''} onChange={e => handleProductChange(item.id, 'observations', e.target.value)} placeholder="Observações sobre este produto..." className="min-h-[80px]" />
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label>Fotos do Produto</Label>
-                                <PhotoUpload photos={item.photos || []} onPhotosChange={photos => handleProductPhotoChange(item.id, photos)} maxPhotos={5} />
                               </div>
                             </div>}
                         </div>
