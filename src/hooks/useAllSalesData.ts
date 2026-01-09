@@ -35,39 +35,41 @@ export const useAllSalesData = (filters?: SalesFilters) => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['sales-metrics', filters],
     queryFn: async () => {
-      console.log('🔄 Buscando métricas de vendas (Visão Geral)...', filters);
+      console.log('🔄 Buscando métricas de vendas (Visão Geral) com RLS...', filters);
       
       // Construir filtros uma vez
       const periodFilter = filters?.period && filters.period !== 'all' 
         ? new Date(Date.now() - parseInt(filters.period) * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-      // Buscar tasks
-      let tasksQuery = supabase
-        .from('tasks')
-        .select('id, sales_value, partial_sales_value, sales_confirmed, is_prospect, sales_type, status, created_by, task_type, filial, created_at');
+      // Usar função RPC segura para tasks (respeita RLS)
+      const { data: allTasks, error: tasksError } = await supabase
+        .rpc('get_secure_tasks_with_customer_protection');
+      
+      if (tasksError) throw tasksError;
 
-      // Aplicar filtros nas tasks
+      // Aplicar filtros localmente
+      let tasksData = allTasks || [];
+      
       if (periodFilter) {
-        tasksQuery = tasksQuery.gte('created_at', periodFilter);
+        tasksData = tasksData.filter(task => task.created_at >= periodFilter);
       }
       if (filters?.consultantId && filters.consultantId !== 'all') {
-        tasksQuery = tasksQuery.eq('created_by', filters.consultantId);
+        tasksData = tasksData.filter(task => task.created_by === filters.consultantId);
       }
       if (filters?.filial && filters.filial !== 'all') {
-        tasksQuery = tasksQuery.eq('filial', filters.filial);
+        tasksData = tasksData.filter(task => task.filial === filters.filial);
       }
       if (filters?.activity && filters.activity !== 'all') {
-        tasksQuery = tasksQuery.eq('task_type', filters.activity);
+        tasksData = tasksData.filter(task => task.task_type === filters.activity);
       }
 
-      // OTIMIZAÇÃO Disk IO: Adicionar limite
+      // Buscar opportunities (já tem RLS configurado)
       let opportunitiesQuery = supabase
         .from('opportunities')
         .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at')
         .limit(500);
 
-      // Aplicar filtros nas opportunities
       if (periodFilter) {
         opportunitiesQuery = opportunitiesQuery.gte('created_at', periodFilter);
       }
@@ -75,12 +77,8 @@ export const useAllSalesData = (filters?: SalesFilters) => {
         opportunitiesQuery = opportunitiesQuery.eq('filial', filters.filial);
       }
 
-      const [{ data: tasksData, error: tasksError }, { data: opportunitiesData, error: oppError }] = await Promise.all([
-        tasksQuery,
-        opportunitiesQuery
-      ]);
+      const { data: opportunitiesData, error: oppError } = await opportunitiesQuery;
       
-      if (tasksError) throw tasksError;
       if (oppError) throw oppError;
 
       // Processar dados localmente (mais eficiente que múltiplas queries)
