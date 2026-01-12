@@ -341,10 +341,10 @@ export const SalesFunnel: React.FC = () => {
     queryFn: async () => {
       console.log('🔄 Carregando opportunities com filtros...');
       
-      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
+      // OTIMIZAÇÃO Disk IO: Selecionar campos necessários + JOIN com task para pegar responsible
       let query = supabase
         .from('opportunities')
-        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at');
+        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at, tasks!fk_opportunities_task(responsible)');
 
       // Aplicar filtro de filial
       if (selectedFilial !== 'all') {
@@ -510,12 +510,16 @@ export const SalesFunnel: React.FC = () => {
         
         // CRITICAL FIX: Use task_id when available, not opportunity id
         // The modal expects a task ID, not an opportunity ID
+        // Get responsible from joined task data
+        const taskData = (opp as any).tasks;
+        const responsible = taskData?.responsible || '-';
+        
         return {
           id: opp.task_id || opp.id, // Use task_id if available
           opportunityId: opp.id, // Keep opportunity ID for reference
           name: opp.cliente_nome,
           client: opp.cliente_nome,
-          responsible: '-',
+          responsible: responsible,
           filial: opp.filial || '',
           taskType: 'prospection' as "checklist" | "ligacao" | "prospection",
           status: 'pending' as 'closed' | 'completed' | 'in_progress' | 'pending',
@@ -1302,8 +1306,8 @@ export const SalesFunnel: React.FC = () => {
             
             <div className="mt-4 text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Mostrando {itemsPerPage === 'all' ? filteredTasks.length : Math.min(parseInt(itemsPerPage), filteredTasks.length)} de {totalCount} oportunidades totais.
-                {filteredTasks.length < totalCount && " Use os filtros para refinar a busca."}
+                Mostrando {itemsPerPage === 'all' ? filteredTasks.length : Math.min(parseInt(itemsPerPage), filteredTasks.length)} de {filteredTasks.length} oportunidades{hasNextPage ? ` (${totalCount} disponíveis)` : ''}.
+                {hasNextPage && " Use os filtros para refinar a busca."}
               </p>
               {hasNextPage && itemsPerPage === 'all' && (
                 <Button
