@@ -1091,6 +1091,23 @@ export type Database = {
           role: string
         }[]
       }
+      get_reports_aggregated_stats: {
+        Args: {
+          p_end_date?: string
+          p_filial?: string
+          p_start_date?: string
+          p_user_id?: string
+        }
+        Returns: {
+          checklist: number
+          ligacoes: number
+          prospects: number
+          prospects_value: number
+          sales_value: number
+          total_tasks: number
+          visitas: number
+        }[]
+      }
       get_sales_funnel_counts: {
         Args: never
         Returns: {
