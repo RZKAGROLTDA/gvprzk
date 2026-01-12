@@ -64,17 +64,18 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         const from = pageParam * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        // BUSCAR TASKS VIA FUNÇÃO SEGURA (respeita RLS/permissões)
+        // BUSCAR TASKS VIA FUNÇÃO PAGINADA (respeita RLS/permissões)
+        // Paginação real no backend para evitar timeout
         const { data: tasksRaw, error: tasksError } = await supabase
-          .rpc('get_secure_tasks_with_customer_protection');
+          .rpc('get_secure_tasks_paginated', { p_limit: PAGE_SIZE, p_offset: from });
 
         if (tasksError) {
           console.error('❌ Erro ao buscar tasks seguras:', tasksError);
           throw tasksError;
         }
 
-        // Mapear dados da função segura
-        let allTasks = (tasksRaw || []).map((t: any) => ({
+        // Dados já vêm paginados do backend - mapear diretamente
+        let tasks = (tasksRaw || []).map((t: any) => ({
           id: t.id,
           client: t.client,
           filial: t.filial,
@@ -93,36 +94,31 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           created_by: t.created_by
         }));
 
-        // Aplicar filtros localmente
+        // Aplicar filtros locais (filtros já aplicados no backend apenas para período/consultor)
         if (filters?.period && filters.period !== 'all') {
           const daysAgo = parseInt(filters.period);
           const cutoffDate = new Date();
           cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-          allTasks = allTasks.filter((t: any) => new Date(t.created_at) >= cutoffDate);
+          tasks = tasks.filter((t: any) => new Date(t.created_at) >= cutoffDate);
         }
 
         if (filters?.consultantId && filters.consultantId !== 'all') {
-          allTasks = allTasks.filter((t: any) => t.created_by === filters.consultantId);
+          tasks = tasks.filter((t: any) => t.created_by === filters.consultantId);
         }
 
         if (filters?.filial && filters.filial !== 'all') {
-          allTasks = allTasks.filter((t: any) => t.filial === filters.filial);
+          tasks = tasks.filter((t: any) => t.filial === filters.filial);
         }
 
         if (filters?.activity && filters.activity !== 'all') {
-          allTasks = allTasks.filter((t: any) => t.task_type === filters.activity);
+          tasks = tasks.filter((t: any) => t.task_type === filters.activity);
         }
 
-        // Ordenar por data
-        allTasks.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-        // Aplicar paginação
-        const tasks = allTasks.slice(from, to + 1);
-        const count = pageParam === 0 ? allTasks.length : 0;
+        // Dados já paginados no backend - não aplicar slice
+        const count = tasks.length;
 
         // OTIMIZAÇÃO: Buscar APENAS opportunities dos task_ids desta página
-        // ao invés de buscar TODAS opportunities (reduz Disk IO drasticamente)
-        const taskIds = (tasks || []).map(t => t.id);
+        const taskIds = tasks.map((t: any) => t.id);
         
         let opportunities: any[] = [];
         if (taskIds.length > 0) {
@@ -140,12 +136,11 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         
         console.log('✅ [SALES DATA] Opportunities carregadas (otimizado):', opportunities.length);
 
-        // Criar mapa de opportunities por task_id
         const opportunitiesMap = new Map(
-          (opportunities || []).map(opp => [opp.task_id, opp])
+          opportunities.map(opp => [opp.task_id, opp])
         );
 
-        const unified: UnifiedSalesData[] = (tasks || []).map(task => {
+        const unified: UnifiedSalesData[] = tasks.map((task: any) => {
           const opportunity = opportunitiesMap.get(task.id);
           
           let salesStatus: 'prospect' | 'ganho' | 'perdido' | 'parcial' = 'prospect';
@@ -198,8 +193,8 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
 
         return {
           data: unified,
-          nextPage: (tasks || []).length === PAGE_SIZE ? pageParam + 1 : undefined,
-          totalCount: pageParam === 0 ? (count || 0) : 0
+          nextPage: tasks.length === PAGE_SIZE ? pageParam + 1 : undefined,
+          totalCount: count
         };
         
       } catch (error) {
