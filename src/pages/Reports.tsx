@@ -108,140 +108,58 @@ const Reports: React.FC = () => {
   const loadAggregatedStats = useCallback(async () => {
     if (!user) return;
     
-    // 🐛 DEBUG: Log do estado atual dos filtros
-    console.log('🔍 REPORTS DEBUG: Carregando estatísticas com filtros:', {
-      dateFrom: dateFrom?.toISOString().split('T')[0],
-      dateTo: dateTo?.toISOString().split('T')[0],
-      selectedUser,
-      selectedFilial,
-      timestamp: new Date().toISOString()
-    });
+    console.log('🔍 REPORTS DEBUG: Carregando estatísticas via RPC agregada');
     
     setLoading(true);
     setIsFiltering(true);
     
     try {
-      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
-      let tasksQuery = supabase.from('tasks').select(`
-        id, task_type, client, filial, status, is_prospect, sales_confirmed, sales_type,
-        sales_value, partial_sales_value, start_date, end_date, created_at, created_by,
-        products (id, name, price, selected)
-      `).limit(1000);
-
-      // Aplicar filtros de data nas tasks
-      if (dateFrom) {
-        const dateFilter = dateFrom.toISOString().split('T')[0];
-        tasksQuery = tasksQuery.gte('start_date', dateFilter);
-        console.log('🗓️ REPORTS DEBUG: Aplicando filtro dateFrom:', dateFilter);
-      }
-      if (dateTo) {
-        const dateFilter = dateTo.toISOString().split('T')[0];
-        tasksQuery = tasksQuery.lte('end_date', dateFilter);
-        console.log('🗓️ REPORTS DEBUG: Aplicando filtro dateTo:', dateFilter);
-      }
-
-      // Aplicar filtro de usuário nas tasks
-      if (selectedUser !== 'all') {
-        tasksQuery = tasksQuery.eq('created_by', selectedUser);
-        console.log('👤 REPORTS DEBUG: Aplicando filtro de usuário:', selectedUser);
-      }
-
-      // Aplicar filtro de filial nas tasks
-      if (selectedFilial !== 'all') {
-        console.log('🏢 REPORTS DEBUG: Preparando filtro de filial:', selectedFilial);
-        tasksQuery = tasksQuery.eq('filial', selectedFilial);
-      }
-
-      // OTIMIZAÇÃO Disk IO: Limitar opportunities também
-      let opportunitiesQuery = supabase
-        .from('opportunities')
-        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, filial, created_at, data_criacao')
-        .limit(1000);
-
-      // Aplicar filtros de data nas opportunities (usar data_criacao)
-      if (dateFrom) {
-        const dateFilter = dateFrom.toISOString().split('T')[0];
-        opportunitiesQuery = opportunitiesQuery.gte('data_criacao', dateFilter);
-      }
-      if (dateTo) {
-        const dateFilter = dateTo.toISOString().split('T')[0];
-        opportunitiesQuery = opportunitiesQuery.lte('data_criacao', dateFilter);
-      }
-
-      // Aplicar filtro de filial nas opportunities
-      if (selectedFilial !== 'all') {
-        opportunitiesQuery = opportunitiesQuery.eq('filial', selectedFilial);
-      }
-
-      console.log('🚀 REPORTS DEBUG: Executando queries em paralelo...');
-      const [{ data: supabaseTasks, error: tasksError }, { data: opportunitiesData, error: oppError }] = await Promise.all([
-        tasksQuery,
-        opportunitiesQuery
-      ]);
-
-      if (tasksError) {
-        console.error('❌ REPORTS DEBUG: Erro na query de tasks:', tasksError);
-        throw tasksError;
-      }
-      if (oppError) {
-        console.error('❌ REPORTS DEBUG: Erro na query de opportunities:', oppError);
-        throw oppError;
-      }
-
-      console.log('✅ REPORTS DEBUG: Queries executadas. Tasks:', supabaseTasks?.length || 0, 'Opportunities:', opportunitiesData?.length || 0);
-      
-      // Mapear tasks do Supabase para o formato da aplicação
-      const tasks = supabaseTasks?.map(mapSupabaseTaskToTask) || [];
-
-      // Calcular estatísticas das tasks
-      const visitas = tasks.filter(task => task.taskType === 'prospection').length;
-      const checklist = tasks.filter(task => task.taskType === 'checklist').length;
-      const ligacoes = tasks.filter(task => task.taskType === 'ligacao').length;
-      
-      // Contar prospects das tasks
-      let prospectsCount = tasks.filter(task => task.isProspect === true && !task.salesConfirmed).length;
-      let prospectsValue = tasks
-        .filter(task => task.isProspect === true && !task.salesConfirmed)
-        .reduce((sum, task) => sum + calculateProspectValue(task), 0);
-      
-      // Adicionar opportunities do tipo Prospect
-      const oppsProspect = opportunitiesData?.filter(o => o.status === 'Prospect') || [];
-      prospectsCount += oppsProspect.length;
-      prospectsValue += oppsProspect.reduce((sum, opp) => sum + (opp.valor_total_oportunidade || 0), 0);
-      
-      // Calcular valor de vendas das tasks
-      let salesValue = tasks
-        .filter(task => task.salesConfirmed === true)
-        .reduce((sum, task) => sum + calculateTaskSalesValue(task), 0);
-      
-      // Adicionar vendas das opportunities
-      const oppsVendasTotal = opportunitiesData?.filter(o => o.status === 'Venda Total') || [];
-      const oppsVendasParcial = opportunitiesData?.filter(o => o.status === 'Venda Parcial') || [];
-      salesValue += oppsVendasTotal.reduce((sum, opp) => sum + (opp.valor_venda_fechada || opp.valor_total_oportunidade || 0), 0);
-      salesValue += oppsVendasParcial.reduce((sum, opp) => sum + (opp.valor_venda_fechada || 0), 0);
-
-      console.log('📊 REPORTS DEBUG: Estatísticas calculadas (com opportunities):', {
-        totalTasks: visitas + checklist + ligacoes,
-        visitas,
-        checklist,
-        ligacoes,
-        prospects: prospectsCount,
-        prospectsValue,
-        salesValue,
-        opportunitiesIncluded: opportunitiesData?.length || 0
+      // USAR RPC AGREGADA PARA PERFORMANCE
+      const { data: stats, error: statsError } = await supabase.rpc('get_reports_aggregated_stats', {
+        p_start_date: dateFrom ? dateFrom.toISOString().split('T')[0] : null,
+        p_end_date: dateTo ? dateTo.toISOString().split('T')[0] : null,
+        p_user_id: selectedUser !== 'all' ? selectedUser : null,
+        p_filial: selectedFilial !== 'all' ? selectedFilial : null
       });
 
-      setTotalTasks(visitas + checklist + ligacoes);
-      setTotalVisitas(visitas);
-      setTotalChecklist(checklist);
-      setTotalLigacoes(ligacoes);
-      setTotalProspects(prospectsCount);
-      setTotalProspectsValue(prospectsValue);
-      setTotalSalesValue(salesValue);
+      if (statsError) {
+        console.error('❌ REPORTS DEBUG: Erro na RPC agregada:', statsError);
+        throw statsError;
+      }
+
+      if (stats && stats.length > 0) {
+        const result = stats[0];
+        console.log('✅ REPORTS DEBUG: Estatísticas recebidas:', result);
+        
+        setTotalTasks(result.total_tasks || 0);
+        setTotalVisitas(result.visitas || 0);
+        setTotalChecklist(result.checklist || 0);
+        setTotalLigacoes(result.ligacoes || 0);
+        setTotalProspects(result.prospects || 0);
+        setTotalProspectsValue(result.prospects_value || 0);
+        setTotalSalesValue(result.sales_value || 0);
+      } else {
+        console.log('⚠️ REPORTS DEBUG: Nenhuma estatística retornada, usando zeros');
+        setTotalTasks(0);
+        setTotalVisitas(0);
+        setTotalChecklist(0);
+        setTotalLigacoes(0);
+        setTotalProspects(0);
+        setTotalProspectsValue(0);
+        setTotalSalesValue(0);
+      }
       
       console.log('✅ REPORTS DEBUG: Estados atualizados com sucesso');
     } catch (error) {
       console.error('❌ REPORTS DEBUG: Erro ao carregar estatísticas agregadas:', error);
+      // Reset to zeros on error
+      setTotalTasks(0);
+      setTotalVisitas(0);
+      setTotalChecklist(0);
+      setTotalLigacoes(0);
+      setTotalProspects(0);
+      setTotalProspectsValue(0);
+      setTotalSalesValue(0);
     } finally {
       setLoading(false);
       setIsFiltering(false);
