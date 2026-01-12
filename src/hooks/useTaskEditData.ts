@@ -206,10 +206,15 @@ export const useTaskEditData = (taskId: string | null) => {
 
         if (itemsError) throw itemsError;
         itemsData = fetchedItems || [];
+        
+        console.log('🔍 useTaskEditData: opportunity_items encontrados:', itemsData.length);
       }
 
-      // If no opportunity items, try products table for this task
+      // CRITICAL FIX: If no opportunity items, ALWAYS try products table for this task
+      // This handles cases where opportunity exists but items weren't migrated
       if (itemsData.length === 0) {
+        console.log('🔍 useTaskEditData: Nenhum item em opportunity_items, buscando products...');
+        
         // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
         const { data: productsData, error: productsError } = await supabase
           .from('products')
@@ -220,24 +225,38 @@ export const useTaskEditData = (taskId: string | null) => {
         if (productsError) {
           console.error('Erro buscando produtos:', productsError);
         } else if (productsData && productsData.length > 0) {
+          console.log('🔍 useTaskEditData: products encontrados:', productsData.length);
+          
           // Convert products to opportunity items format
           itemsData = productsData.map(product => {
             const preco = product.price || 0;
-            let qtdOfertada = 0;
-            let qtdVendida = product.selected ? (product.quantity || 0) : 0;
+            const qtdOfertada = product.quantity || 0;
             
-            // Calcular qtd_ofertada baseado no valor total da oportunidade
-            if (preco > 0 && opportunityData?.valor_total_oportunidade) {
-              qtdOfertada = Math.round(opportunityData.valor_total_oportunidade / preco);
-            } else {
-              qtdOfertada = product.quantity || 0;
+            // Determinar qtd_vendida baseado no status da task
+            let qtdVendida = 0;
+            
+            // Se product.selected = true, significa que foi vendido
+            if (product.selected) {
+              qtdVendida = product.quantity || 0;
             }
             
-            // Se não está selecionado, a quantidade atual é ofertada mas não vendida
-            if (!product.selected) {
-              qtdOfertada = product.quantity || 0;
-              qtdVendida = 0;
+            // Para venda total (sales_type='ganho'), vendido = ofertado
+            if (taskData.sales_type === 'ganho' && taskData.sales_confirmed) {
+              qtdVendida = qtdOfertada;
             }
+            // Para venda parcial, usar selected
+            else if (taskData.sales_type === 'parcial' && product.selected) {
+              qtdVendida = product.quantity || 0;
+            }
+            
+            console.log('🔍 useTaskEditData: Mapeando produto:', {
+              name: product.name,
+              qtdOfertada,
+              qtdVendida,
+              preco,
+              selected: product.selected,
+              sales_type: taskData.sales_type
+            });
             
             return {
               id: product.id,
