@@ -57,9 +57,10 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       const dateFilter = getDateFilter();
 
-      // QUERY 1: Buscar tasks via FUNÇÃO SEGURA (respeita RLS/permissões)
+      // QUERY 1: Buscar tasks via FUNÇÃO PAGINADA (respeita RLS/permissões)
+      // Usar limite de 300 para métricas - performance otimizada
       const { data: tasksRaw, error: tasksError } = await supabase
-        .rpc('get_secure_tasks_with_customer_protection');
+        .rpc('get_secure_tasks_paginated', { p_limit: 300, p_offset: 0 });
       
       if (tasksError) {
         console.error('❌ Erro ao buscar tasks seguras:', tasksError);
