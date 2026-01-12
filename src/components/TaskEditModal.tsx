@@ -230,18 +230,18 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       const opportunityStatus = statusMapping[formDataToProcess.status as keyof typeof statusMapping];
 
       // CRÍTICO: Calcular valores corretos
-      // Para venda parcial: valor total = valor original do prospect, valor parcial = soma dos produtos vendidos
+      // Para venda parcial: valor total = valor original do prospect (não deve mudar), valor parcial = soma dos produtos vendidos
       // Para venda total: valor total = valor parcial = soma de todos os produtos
       const valorVendaParcial = formDataToProcess.partialSalesValue || 0;
       
-      // CRÍTICO: Para determinar valor total correto da oportunidade
+      // CRÍTICO: valor_total_oportunidade NUNCA deve mudar após criação
+      // Deve ser o valor original da oportunidade existente OU o valor total dos produtos se for nova
       const valorTotalOriginal = taskData?.opportunity?.valor_total_oportunidade || 0;
+      const prospectValue = formDataToProcess.salesValue || 0; // Valor total dos produtos atualmente
       
-      // CORREÇÃO: O valor total da oportunidade deve ser sempre o valor total dos produtos (salesValue)
-      // Para venda parcial: valor total da oportunidade = salesValue (valor total dos produtos)
-      // Para venda total: valor total da oportunidade = salesValue (valor total dos produtos)
-      const prospectValue = formDataToProcess.salesValue || 0;
-      const valorTotalOportunidade = prospectValue; // Sempre usar o valor total dos produtos
+      // CORREÇÃO: Usar valor original se existir, senão usar valor dos produtos
+      // Isso garante que venda parcial não altere o valor_total_oportunidade
+      const valorTotalOportunidade = valorTotalOriginal > 0 ? valorTotalOriginal : prospectValue;
       
       console.log('🔧 TaskEditModal: Valores para ensureOpportunity:', {
         valorTotalOriginal,
