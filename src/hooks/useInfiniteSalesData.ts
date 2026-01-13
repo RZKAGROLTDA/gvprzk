@@ -111,7 +111,11 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         }
 
         if (filters?.activity && filters.activity !== 'all') {
-          tasks = tasks.filter((t: any) => t.task_type === filters.activity);
+          // UI usa "field_visit" para Visita, mas no banco existem registros como "prospection" (e legados "visita")
+          const activityTypes = filters.activity === 'field_visit'
+            ? ['prospection', 'visita']
+            : [filters.activity];
+          tasks = tasks.filter((t: any) => activityTypes.includes(t.task_type));
         }
 
         // Dados já paginados no backend - não aplicar slice
