@@ -77,6 +77,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
+  const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
   const [itemsPerPage, setItemsPerPage] = useState<string>('all');
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'migration'>('overview');
@@ -913,7 +914,7 @@ export const SalesFunnel: React.FC = () => {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <div>
           <label className="text-sm font-medium mb-2 block">Período</label>
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -953,6 +954,21 @@ export const SalesFunnel: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as filiais</SelectItem>
+              {filiais.map(filial => <SelectItem key={filial.id} value={filial.nome}>
+                  {filial.nome}
+                </SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium mb-2 block">Filial Atendida</label>
+          <Select value={selectedFilialAtendida} onValueChange={setSelectedFilialAtendida}>
+            <SelectTrigger className={selectedFilialAtendida !== 'all' ? 'border-primary' : ''}>
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
               {filiais.map(filial => <SelectItem key={filial.id} value={filial.nome}>
                   {filial.nome}
                 </SelectItem>)}

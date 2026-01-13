@@ -34,6 +34,7 @@ export const FunnelClientsOptimized: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('365');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
+  const [selectedFilialAtendida, setSelectedFilialAtendida] = useState('all');
   const [sortField, setSortField] = useState<keyof ClientData>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -214,7 +215,7 @@ export const FunnelClientsOptimized: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Buscar Cliente</label>
               <div className="relative">
@@ -269,6 +270,23 @@ export const FunnelClientsOptimized: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as filiais</SelectItem>
+                  {filiais.map(filial => (
+                    <SelectItem key={filial.id} value={filial.nome}>
+                      {filial.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Filial Atendida</label>
+              <Select value={selectedFilialAtendida} onValueChange={setSelectedFilialAtendida}>
+                <SelectTrigger className={selectedFilialAtendida !== 'all' ? 'border-primary' : ''}>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
                   {filiais.map(filial => (
                     <SelectItem key={filial.id} value={filial.nome}>
                       {filial.nome}
