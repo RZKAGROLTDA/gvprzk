@@ -271,6 +271,7 @@ export const useTasksOptimized = (includeDetails = false) => {
           email: taskData.email || '',
           propertyhectares: taskData.propertyHectares || 0,
           filial: standardizedTaskData.filial || '',
+          filial_atendida: taskData.filialAtendida || null,
           task_type: standardizedTaskData.taskType || 'prospection',
           start_date: standardizedTaskData.startDate?.toISOString().split('T')[0],
           end_date: standardizedTaskData.endDate?.toISOString().split('T')[0],

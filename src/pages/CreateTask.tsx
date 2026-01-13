@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { CheckInLocation } from '@/components/CheckInLocation';
 import { useOffline } from '@/hooks/useOffline';
-import { useTasksOptimized } from '@/hooks/useTasksOptimized';
+import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 import { ReportExporter } from '@/components/ReportExporter';
@@ -5579,6 +5579,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const {
     createTask
   } = useTasksOptimized();
+  const { data: filiais = [] } = useFiliais();
   // Mapear taskCategory para taskType
   const getTaskTypeFromCategory = (category: 'field-visit' | 'call' | 'workshop-checklist'): 'prospection' | 'ligacao' | 'checklist' => {
     switch (category) {
@@ -6782,6 +6783,31 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 <Label htmlFor="filial">Filial</Label>
                 <Input id="filial" value={profile?.filial_nome || 'Não informado'} disabled placeholder="Filial" className="bg-muted" />
               </div>
+
+              {/* Campo Filial Atendida - apenas para ligações */}
+              {taskCategory === 'call' && (
+                <div className="space-y-2">
+                  <Label htmlFor="filialAtendida">Filial Atendida</Label>
+                  <Select 
+                    value={task.filialAtendida || ''} 
+                    onValueChange={(value) => setTask(prev => ({ ...prev, filialAtendida: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a filial atendida (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filiais.map((filial) => (
+                        <SelectItem key={filial.id} value={filial.nome}>
+                          {filial.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione se a ligação foi para atender outra filial
+                  </p>
+                </div>
+              )}
 
             </CardContent>
           </Card>
