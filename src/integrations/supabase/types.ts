@@ -551,6 +551,7 @@ export type Database = {
           equipment_quantity: number | null
           family_product: string | null
           filial: string | null
+          filial_atendida: string | null
           final_km: number | null
           id: string
           initial_km: number | null
@@ -589,6 +590,7 @@ export type Database = {
           equipment_quantity?: number | null
           family_product?: string | null
           filial?: string | null
+          filial_atendida?: string | null
           final_km?: number | null
           id?: string
           initial_km?: number | null
@@ -627,6 +629,7 @@ export type Database = {
           equipment_quantity?: number | null
           family_product?: string | null
           filial?: string | null
+          filial_atendida?: string | null
           final_km?: number | null
           id?: string
           initial_km?: number | null

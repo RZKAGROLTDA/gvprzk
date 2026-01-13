@@ -46,6 +46,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     clientCode: supabaseTask.clientcode || '',
     property: customerData?.property || supabaseTask.property || '',
     filial: supabaseTask.filial || '',
+    filialAtendida: supabaseTask.filial_atendida || undefined,
     email: customerData?.email || supabaseTask.email || '',
     taskType: supabaseTask.task_type || 'prospection',
     checklist: checklist,

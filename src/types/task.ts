@@ -11,6 +11,7 @@ export interface Task {
   function?: string;
   functionOther?: string;
   filial?: string;
+  filialAtendida?: string; // Filial atendida durante a ligação (pode ser diferente da filial do usuário)
   taskType: 'prospection' | 'ligacao' | 'checklist';
   checklist: ProductType[];
   startDate: Date;
