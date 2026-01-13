@@ -9,6 +9,7 @@ export interface TaskEditData {
   cliente_nome: string;
   cliente_email: string;
   filial: string;
+  filialAtendida?: string;
   notas: string;
   observations?: string;
   vendedor_id: string;
@@ -107,7 +108,7 @@ export const useTaskEditData = (taskId: string | null) => {
       // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity')
+        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity')
         .eq('id', taskId)
         .maybeSingle();
 
@@ -155,6 +156,7 @@ export const useTaskEditData = (taskId: string | null) => {
         cliente_nome: taskData.client,
         cliente_email: taskData.email,
         filial: taskData.filial,
+        filialAtendida: taskData.filial_atendida,
         notas: taskData.observations,
         vendedor_id: taskData.created_by,
         data: taskData.start_date,
