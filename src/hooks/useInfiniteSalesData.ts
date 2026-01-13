@@ -257,6 +257,10 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
     };
   }, [allData]);
 
+  // CORREÇÃO: totalCount deve ser o tamanho REAL dos dados carregados (allData)
+  // Não usar totalCount da página, pois é inconsistente entre filtros
+  const totalCount = allData.length;
+
   return {
     data: allData,
     metrics,
@@ -266,6 +270,6 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    totalCount: data?.pages[0]?.totalCount || 0
+    totalCount
   };
 };
