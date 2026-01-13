@@ -146,8 +146,9 @@ export const SalesFunnel: React.FC = () => {
     period: selectedPeriod,
     consultantId: selectedConsultant,
     filial: selectedFilial,
+    filialAtendida: selectedFilialAtendida,
     activity: selectedActivity
-  }), [selectedPeriod, selectedConsultant, selectedFilial, selectedActivity]);
+  }), [selectedPeriod, selectedConsultant, selectedFilial, selectedFilialAtendida, selectedActivity]);
 
   // Hook CONSOLIDADO para métricas (substitui useAllSalesData + useSalesFunnelMetrics)
   const {
