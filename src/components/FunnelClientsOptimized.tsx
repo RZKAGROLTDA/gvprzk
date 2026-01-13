@@ -59,6 +59,9 @@ export const FunnelClientsOptimized: React.FC = () => {
       }
 
       if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
+      
+      // Filtro de Filial Atendida
+      if (selectedFilialAtendida !== 'all' && (task as any).filialAtendida !== selectedFilialAtendida) continue;
 
       const clientKey = task.client;
       
@@ -140,7 +143,7 @@ export const FunnelClientsOptimized: React.FC = () => {
     });
 
     return clientsArray.slice(0, 50); // Limitar para performance
-  }, [tasks, opportunities, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortField, sortDirection, consultants]);
+  }, [tasks, opportunities, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, selectedFilialAtendida, sortField, sortDirection, consultants]);
 
   const handleSort = (field: keyof ClientData) => {
     if (sortField === field) {

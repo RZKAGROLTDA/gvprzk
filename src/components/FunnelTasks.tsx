@@ -29,6 +29,7 @@ export const FunnelTasks: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('30');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
+  const [selectedFilialAtendida, setSelectedFilialAtendida] = useState('all');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
@@ -68,6 +69,9 @@ export const FunnelTasks: React.FC = () => {
       }
 
       if (selectedFilial !== 'all' && task.filial !== selectedFilial) return false;
+      
+      // Filtro de Filial Atendida
+      if (selectedFilialAtendida !== 'all' && (task as any).filialAtendida !== selectedFilialAtendida) return false;
 
       if (searchTerm && !task.client.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
@@ -92,7 +96,7 @@ export const FunnelTasks: React.FC = () => {
     });
 
     return mappedTasks;
-  }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
+  }, [tasks, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, selectedFilialAtendida, sortDirection, consultants]);
 
   const getTaskTypeLabel = (taskType: string) => {
     switch (taskType) {
@@ -131,7 +135,7 @@ export const FunnelTasks: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Buscar Cliente</label>
               <div className="relative">
@@ -185,6 +189,23 @@ export const FunnelTasks: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as filiais</SelectItem>
+                  {filiais.map(filial => (
+                    <SelectItem key={filial.id} value={filial.nome}>
+                      {filial.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Filial Atendida</label>
+              <Select value={selectedFilialAtendida} onValueChange={setSelectedFilialAtendida}>
+                <SelectTrigger className={selectedFilialAtendida !== 'all' ? 'border-primary' : ''}>
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
                   {filiais.map(filial => (
                     <SelectItem key={filial.id} value={filial.nome}>
                       {filial.nome}

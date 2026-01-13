@@ -5,6 +5,7 @@ export interface SalesFilters {
   period?: string;
   consultantId?: string;
   filial?: string;
+  filialAtendida?: string;
   activity?: string;
 }
 
@@ -91,7 +92,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       // Esta query é leve pois usa agregação no banco
       let salesQuery = supabase
         .from('tasks')
-        .select('sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at, task_type')
+        .select('sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, filial_atendida, created_at, task_type')
         .eq('sales_confirmed', true);
 
       // Aplicar filtros
@@ -104,6 +105,10 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       }
       if (filters?.filial && filters.filial !== 'all') {
         salesQuery = salesQuery.eq('filial', filters.filial);
+      }
+      // Filtro de Filial Atendida
+      if (filters?.filialAtendida && filters.filialAtendida !== 'all') {
+        salesQuery = salesQuery.eq('filial_atendida', filters.filialAtendida);
       }
       // Helper: mapear filtro de atividade (UI) para task_type no banco
       const getActivityTaskTypes = (activity?: string): string[] | null => {
@@ -180,6 +185,10 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         }
         if (filters?.filial && filters.filial !== 'all') {
           countQuery = countQuery.eq('filial', filters.filial);
+        }
+        // Filtro de Filial Atendida
+        if (filters?.filialAtendida && filters.filialAtendida !== 'all') {
+          countQuery = countQuery.eq('filial_atendida', filters.filialAtendida);
         }
 
         const { count } = await countQuery;

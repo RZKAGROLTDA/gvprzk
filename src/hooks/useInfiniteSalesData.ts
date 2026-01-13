@@ -7,6 +7,7 @@ export interface SalesFilters {
   period?: string;
   consultantId?: string;
   filial?: string;
+  filialAtendida?: string;
   activity?: string;
 }
 
@@ -15,6 +16,7 @@ interface UnifiedSalesData {
   taskId: string;
   clientName: string;
   filial: string;
+  filialAtendida: string | null;
   responsible: string;
   taskType: string;
   status: string;
@@ -124,6 +126,7 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           id: t.id,
           client: t.client,
           filial: t.filial,
+          filial_atendida: t.filial_atendida,
           responsible: t.responsible,
           task_type: normalizeTaskType(t.task_type),
           status: t.status,
@@ -139,8 +142,13 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           created_by: t.created_by
         }));
 
+        // Aplicar filtro de filial_atendida localmente (não disponível na RPC)
+        const filteredTasks = filters?.filialAtendida && filters.filialAtendida !== 'all'
+          ? tasks.filter((t: any) => t.filial_atendida === filters.filialAtendida)
+          : tasks;
+
         // OTIMIZAÇÃO: Buscar APENAS opportunities dos task_ids desta página
-        const taskIds = tasks.map((t: any) => t.id);
+        const taskIds = filteredTasks.map((t: any) => t.id);
         
         let opportunities: any[] = [];
         if (taskIds.length > 0) {
@@ -162,7 +170,7 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           opportunities.map(opp => [opp.task_id, opp])
         );
 
-        const unified: UnifiedSalesData[] = tasks.map((task: any) => {
+        const unified: UnifiedSalesData[] = filteredTasks.map((task: any) => {
           const opportunity = opportunitiesMap.get(task.id);
           
           let salesStatus: 'prospect' | 'ganho' | 'perdido' | 'parcial' = 'prospect';
@@ -192,6 +200,7 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
             taskId: task.id,
             clientName: task.client,
             filial: task.filial || 'Não informado',
+            filialAtendida: task.filial_atendida || null,
             responsible: task.responsible,
             taskType: task.task_type,
             status: task.status,

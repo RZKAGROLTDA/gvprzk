@@ -43,6 +43,7 @@ export const FunnelTasksOptimized: React.FC = () => {
 
   const tasksData = useMemo(() => {
     console.log('🔧 FILTRO DEBUG - selectedFilial:', selectedFilial);
+    console.log('🔧 FILTRO DEBUG - selectedFilialAtendida:', selectedFilialAtendida);
     console.log('🔧 FILTRO DEBUG - tasks.length:', tasks.length);
     console.log('🔧 FILTRO DEBUG - opportunities.length:', opportunities.length);
     
@@ -68,6 +69,10 @@ export const FunnelTasksOptimized: React.FC = () => {
       }
 
       if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
+      
+      // Filtro de Filial Atendida
+      if (selectedFilialAtendida !== 'all' && (task as any).filialAtendida !== selectedFilialAtendida) continue;
+      
       if (searchTerm && !task.client.toLowerCase().includes(searchLower)) continue;
 
       result.push({
@@ -105,7 +110,7 @@ export const FunnelTasksOptimized: React.FC = () => {
     });
 
     return result.slice(0, 100); // Limitar para performance
-  }, [tasks, opportunities, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, sortDirection, consultants]);
+  }, [tasks, opportunities, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, selectedFilialAtendida, sortDirection, consultants]);
 
   const getTaskTypeLabel = (taskType: string) => {
     switch (taskType) {
