@@ -160,6 +160,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDele
           <span className="font-medium">{task.client}</span>
           <span className="text-muted-foreground">-</span>
           <span className="text-muted-foreground">{task.property}</span>
+          {task.filialAtendida && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <Badge variant="outline" className="text-xs">
+                Filial Atendida: {task.filialAtendida}
+              </Badge>
+            </>
+          )}
         </div>
 
         {/* Progresso */}

@@ -7,6 +7,7 @@ import { useOpportunityManager } from '@/hooks/useOpportunityManager';
 import { StandardTaskForm } from './StandardTaskForm';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface TaskEditModalProps {
   taskId: string | null;
@@ -39,6 +40,17 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
   const { data: taskData, loading, error, updateTaskData } = useTaskEditData(taskId);
   const { invalidateAll } = useSecurityCache();
   const { ensureOpportunity } = useOpportunityManager();
+  
+  // Buscar lista de filiais para o campo Filial Atendida
+  const { data: filiais = [] } = useQuery({
+    queryKey: ['filiais'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 10 // 10 minutos
+  });
   
   console.log('🔧 TaskEditModal: Estado dos dados:', { taskData: !!taskData, loading, error });
   
@@ -100,6 +112,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     customerName: '',
     customerEmail: '',
     filial: '',
+    filialAtendida: '',
     observacoes: '',
     status: 'prospect',
     prospectNotes: '',
@@ -136,6 +149,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       customerName: taskData.cliente_nome || '',
       customerEmail: taskData.cliente_email || '',
       filial: taskData.filial || '',
+      filialAtendida: taskData.filialAtendida || '',
       observacoes: taskData.notas || '',
       status: getInitialStatus(),
       prospectNotes: taskData.notas || '',
@@ -547,6 +561,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           isSubmitting={isSubmitting}
           showProductsSection={true}
           title="Editar Tarefa"
+          filiais={filiais}
         />
       </DialogContent>
     </Dialog>

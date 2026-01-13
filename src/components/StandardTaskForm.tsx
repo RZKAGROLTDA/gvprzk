@@ -30,6 +30,7 @@ interface StandardTaskFormProps {
     customerName: string;
     customerEmail: string;
     filial: string;
+    filialAtendida?: string;
     observacoes: string;
     status: string;
     prospectNotes: string;
@@ -52,6 +53,7 @@ interface StandardTaskFormProps {
     // Valor de fallback para casos sem items
     fallbackTotalValue?: number;
   };
+  filiais?: { id: string; nome: string }[];
   onFormDataChange: (data: any) => void;
   onSubmit: (data: any) => void;
   isSubmitting: boolean;
@@ -65,7 +67,8 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
   onSubmit,
   isSubmitting,
   showProductsSection = true,
-  title
+  title,
+  filiais = []
 }) => {
   // Converter produtos pré-definidos para opções do autocomplete
   const productOptions: AutocompleteOption[] = predefinedProducts.map(product => ({
@@ -412,6 +415,31 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               />
             </div>
           </div>
+
+          {/* Filial Atendida - apenas para ligações */}
+          {formData.taskType === 'ligacao' && (
+            <div className="space-y-2">
+              <Label htmlFor="filialAtendida">Filial Atendida</Label>
+              <Select 
+                value={formData.filialAtendida || ''} 
+                onValueChange={(value) => onFormDataChange({ ...formData, filialAtendida: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a filial atendida" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filiais.map((filial) => (
+                    <SelectItem key={filial.id} value={filial.nome}>
+                      {filial.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Selecione a filial que está sendo atendida nesta ligação
+              </p>
+            </div>
+          )}
 
           {formData.taskType !== 'ligacao' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

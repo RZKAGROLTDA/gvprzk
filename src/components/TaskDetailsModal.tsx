@@ -258,6 +258,15 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <span>{resolveFilialName(currentTask.filial) || 'Não informado'}</span>
                   </div>
 
+                  {/* Filial Atendida - exibir apenas quando preenchido */}
+                  {currentTask.filialAtendida && (
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Filial Atendida:</span>
+                      <Badge variant="outline">{currentTask.filialAtendida}</Badge>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Tipo:</span>
