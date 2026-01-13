@@ -936,7 +936,7 @@ export const SalesFunnel: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as atividades</SelectItem>
-              <SelectItem value="prospection">Prospecção</SelectItem>
+              <SelectItem value="field_visit">Visita</SelectItem>
               <SelectItem value="ligacao">Ligação</SelectItem>
               <SelectItem value="checklist">Checklist</SelectItem>
             </SelectContent>
