@@ -38,8 +38,18 @@ interface UnifiedSalesData {
 const PAGE_SIZE = 50;
 
 /**
+ * Mapeia task_type para os tipos aceitos pelo filtro
+ * Normaliza legado (visita -> prospection)
+ */
+function normalizeTaskType(taskType: string): string {
+  if (taskType === 'visita') return 'prospection';
+  return taskType;
+}
+
+/**
  * Hook com scroll infinito para dados de vendas
- * USA FUNÇÃO SEGURA para respeitar permissões do usuário
+ * USA RPC COM FILTROS NO BACKEND para performance + paginação real
+ * RLS continua valendo (função INVOKER)
  */
 export const useInfiniteSalesData = (filters?: SalesFilters) => {
   const {
@@ -56,33 +66,66 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
       try {
         // Verificar estado de autenticação
         const { data: { user } } = await supabase.auth.getUser();
-        console.log('👤 Usuário autenticado:', {
-          userId: user?.id,
-          email: user?.email
-        });
+        console.log('👤 [useInfiniteSalesData] Usuário:', user?.id?.substring(0, 8));
         
-        const from = pageParam * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
+        const offset = pageParam * PAGE_SIZE;
 
-        // BUSCAR TASKS VIA FUNÇÃO PAGINADA (respeita RLS/permissões)
-        // Paginação real no backend para evitar timeout
-        const { data: tasksRaw, error: tasksError } = await supabase
-          .rpc('get_secure_tasks_paginated', { p_limit: PAGE_SIZE, p_offset: from });
+        // Calcular datas de corte para filtro de período
+        let startDate: string | null = null;
+        if (filters?.period && filters.period !== 'all') {
+          const daysAgo = parseInt(filters.period);
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+          startDate = cutoffDate.toISOString();
+        }
+
+        // Mapear activity para array de task_types
+        let taskTypes: string[] | null = null;
+        if (filters?.activity && filters.activity !== 'all') {
+          // UI usa "field_visit" para Visita, mas no banco existem registros como "prospection" (e legados "visita")
+          if (filters.activity === 'field_visit') {
+            taskTypes = ['prospection', 'visita'];
+          } else {
+            taskTypes = [filters.activity];
+          }
+        }
+
+        // CHAMAR RPC COM FILTROS NO BACKEND
+        const { data: tasksRaw, error: tasksError } = await supabase.rpc(
+          'get_secure_tasks_paginated_filtered',
+          {
+            p_limit: PAGE_SIZE,
+            p_offset: offset,
+            p_start_date: startDate,
+            p_end_date: null,
+            p_created_by: filters?.consultantId && filters.consultantId !== 'all' 
+              ? filters.consultantId 
+              : null,
+            p_filial: filters?.filial && filters.filial !== 'all' 
+              ? filters.filial 
+              : null,
+            p_task_types: taskTypes
+          }
+        );
 
         if (tasksError) {
-          console.error('❌ Erro ao buscar tasks seguras:', tasksError);
+          console.error('❌ Erro ao buscar tasks filtradas:', tasksError);
           throw tasksError;
         }
 
-        // Dados já vêm paginados do backend - mapear diretamente
-        const tasksRawCount = tasksRaw?.length || 0; // Contagem BRUTA para decidir nextPage
-        
-        let tasks = (tasksRaw || []).map((t: any) => ({
+        // Total vem do window function (todas as linhas que passaram pelos filtros)
+        const totalCount = tasksRaw?.[0]?.total_count ?? 0;
+        const tasksRawCount = tasksRaw?.length || 0;
+
+        console.log(`📊 [useInfiniteSalesData] Página ${pageParam}: ${tasksRawCount} tasks, total filtrado: ${totalCount}`);
+
+        // Mapear tasks
+        const tasks = (tasksRaw || []).map((t: any) => ({
           id: t.id,
           client: t.client,
           filial: t.filial,
           responsible: t.responsible,
-          task_type: t.task_type,
+          task_type: normalizeTaskType(t.task_type),
           status: t.status,
           is_prospect: t.is_prospect,
           sales_confirmed: t.sales_confirmed,
@@ -95,34 +138,6 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           updated_at: t.updated_at,
           created_by: t.created_by
         }));
-
-        // Aplicar filtros locais (filtros já aplicados no backend apenas para período/consultor)
-        if (filters?.period && filters.period !== 'all') {
-          const daysAgo = parseInt(filters.period);
-          const cutoffDate = new Date();
-          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-          tasks = tasks.filter((t: any) => new Date(t.created_at) >= cutoffDate);
-        }
-
-        if (filters?.consultantId && filters.consultantId !== 'all') {
-          tasks = tasks.filter((t: any) => t.created_by === filters.consultantId);
-        }
-
-        if (filters?.filial && filters.filial !== 'all') {
-          tasks = tasks.filter((t: any) => t.filial === filters.filial);
-        }
-
-        if (filters?.activity && filters.activity !== 'all') {
-          // UI usa "field_visit" para Visita, mas no banco existem registros como "prospection" (e legados "visita")
-          const activityTypes = filters.activity === 'field_visit'
-            ? ['prospection', 'visita']
-            : [filters.activity];
-          tasks = tasks.filter((t: any) => activityTypes.includes(t.task_type));
-        }
-
-        // CRÍTICO: usar contagem BRUTA para nextPage (antes dos filtros locais)
-        // Isso garante que a paginação continue mesmo se filtros locais reduzirem a página atual
-        const count = tasks.length;
 
         // OTIMIZAÇÃO: Buscar APENAS opportunities dos task_ids desta página
         const taskIds = tasks.map((t: any) => t.id);
@@ -141,7 +156,7 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           opportunities = oppData || [];
         }
         
-        console.log('✅ [SALES DATA] Opportunities carregadas (otimizado):', opportunities.length);
+        console.log('✅ [SALES DATA] Opportunities carregadas:', opportunities.length);
 
         const opportunitiesMap = new Map(
           opportunities.map(opp => [opp.task_id, opp])
@@ -200,10 +215,11 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
 
         return {
           data: unified,
-          // CRÍTICO: usar contagem BRUTA para decidir se há próxima página
-          // Isso evita parar a paginação quando filtros locais reduzem o tamanho
-          nextPage: tasksRawCount === PAGE_SIZE ? pageParam + 1 : undefined,
-          totalCount: count
+          // Há próxima página se retornamos PAGE_SIZE registros E ainda não carregamos tudo
+          nextPage: tasksRawCount === PAGE_SIZE && (offset + tasksRawCount) < Number(totalCount)
+            ? pageParam + 1 
+            : undefined,
+          totalCount: Number(totalCount)
         };
         
       } catch (error) {
@@ -213,16 +229,19 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
-    staleTime: 5 * 60 * 1000, // 5 minutos - OTIMIZAÇÃO Disk IO
+    staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 15 * 60 * 1000, // 15 minutos
-    refetchOnWindowFocus: false, // OTIMIZAÇÃO: não recarregar ao focar janela
-    refetchOnMount: false // OTIMIZAÇÃO: usar cache existente
+    refetchOnWindowFocus: false,
+    refetchOnMount: false
   });
 
   // Combinar todas as páginas
   const allData = useMemo(() => {
     return data?.pages.flatMap(page => page.data) || [];
   }, [data]);
+
+  // totalCount vem do backend (count real com filtros aplicados)
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   // Métricas calculadas
   const metrics = useMemo(() => {
@@ -256,10 +275,6 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
       }
     };
   }, [allData]);
-
-  // CORREÇÃO: totalCount deve ser o tamanho REAL dos dados carregados (allData)
-  // Não usar totalCount da página, pois é inconsistente entre filtros
-  const totalCount = allData.length;
 
   return {
     data: allData,
