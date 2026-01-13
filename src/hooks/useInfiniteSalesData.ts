@@ -92,7 +92,7 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           }
         }
 
-        // CHAMAR RPC COM FILTROS NO BACKEND
+        // CHAMAR RPC COM FILTROS NO BACKEND (incluindo p_filial_atendida)
         const { data: tasksRaw, error: tasksError } = await supabase.rpc(
           'get_secure_tasks_paginated_filtered',
           {
@@ -105,6 +105,9 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
               : null,
             p_filial: filters?.filial && filters.filial !== 'all' 
               ? filters.filial 
+              : null,
+            p_filial_atendida: filters?.filialAtendida && filters.filialAtendida !== 'all'
+              ? filters.filialAtendida
               : null,
             p_task_types: taskTypes
           }
@@ -121,8 +124,8 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
 
         console.log(`📊 [useInfiniteSalesData] Página ${pageParam}: ${tasksRawCount} tasks, total filtrado: ${totalCount}`);
 
-        // Mapear tasks
-        const tasks = (tasksRaw || []).map((t: any) => ({
+        // Mapear tasks (filialAtendida já filtrada no backend)
+        const filteredTasks = (tasksRaw || []).map((t: any) => ({
           id: t.id,
           client: t.client,
           filial: t.filial,
@@ -141,11 +144,6 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           updated_at: t.updated_at,
           created_by: t.created_by
         }));
-
-        // Aplicar filtro de filial_atendida localmente (não disponível na RPC)
-        const filteredTasks = filters?.filialAtendida && filters.filialAtendida !== 'all'
-          ? tasks.filter((t: any) => t.filial_atendida === filters.filialAtendida)
-          : tasks;
 
         // OTIMIZAÇÃO: Buscar APENAS opportunities dos task_ids desta página
         const taskIds = filteredTasks.map((t: any) => t.id);

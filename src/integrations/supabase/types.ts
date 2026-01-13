@@ -1447,68 +1447,38 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_secure_tasks_paginated_filtered:
-        | {
-            Args: {
-              p_created_by?: string
-              p_end_date?: string
-              p_filial?: string
-              p_limit?: number
-              p_offset?: number
-              p_start_date?: string
-              p_task_types?: string[]
-            }
-            Returns: {
-              client: string
-              created_at: string
-              created_by: string
-              end_date: string
-              filial: string
-              filial_atendida: string
-              id: string
-              is_prospect: boolean
-              partial_sales_value: number
-              responsible: string
-              sales_confirmed: boolean
-              sales_type: string
-              sales_value: number
-              start_date: string
-              status: string
-              task_type: string
-              total_count: number
-              updated_at: string
-            }[]
-          }
-        | {
-            Args: {
-              p_created_by?: string
-              p_end_date?: string
-              p_filial?: string
-              p_limit?: number
-              p_offset?: number
-              p_start_date?: string
-              p_task_types?: string[]
-            }
-            Returns: {
-              client: string
-              created_at: string
-              created_by: string
-              end_date: string
-              filial: string
-              id: string
-              is_prospect: boolean
-              partial_sales_value: number
-              responsible: string
-              sales_confirmed: boolean
-              sales_type: string
-              sales_value: number
-              start_date: string
-              status: string
-              task_type: string
-              total_count: number
-              updated_at: string
-            }[]
-          }
+      get_secure_tasks_paginated_filtered: {
+        Args: {
+          p_created_by?: string
+          p_end_date?: string
+          p_filial?: string
+          p_filial_atendida?: string
+          p_limit?: number
+          p_offset?: number
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          client: string
+          created_at: string
+          created_by: string
+          end_date: string
+          filial: string
+          filial_atendida: string
+          id: string
+          is_prospect: boolean
+          partial_sales_value: number
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          status: string
+          task_type: string
+          total_count: number
+          updated_at: string
+        }[]
+      }
       get_secure_tasks_with_customer_protection: {
         Args: never
         Returns: {
