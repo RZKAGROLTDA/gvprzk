@@ -75,6 +75,8 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         }
 
         // Dados já vêm paginados do backend - mapear diretamente
+        const tasksRawCount = tasksRaw?.length || 0; // Contagem BRUTA para decidir nextPage
+        
         let tasks = (tasksRaw || []).map((t: any) => ({
           id: t.id,
           client: t.client,
@@ -118,7 +120,8 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           tasks = tasks.filter((t: any) => activityTypes.includes(t.task_type));
         }
 
-        // Dados já paginados no backend - não aplicar slice
+        // CRÍTICO: usar contagem BRUTA para nextPage (antes dos filtros locais)
+        // Isso garante que a paginação continue mesmo se filtros locais reduzirem a página atual
         const count = tasks.length;
 
         // OTIMIZAÇÃO: Buscar APENAS opportunities dos task_ids desta página
@@ -197,7 +200,9 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
 
         return {
           data: unified,
-          nextPage: tasks.length === PAGE_SIZE ? pageParam + 1 : undefined,
+          // CRÍTICO: usar contagem BRUTA para decidir se há próxima página
+          // Isso evita parar a paginação quando filtros locais reduzem o tamanho
+          nextPage: tasksRawCount === PAGE_SIZE ? pageParam + 1 : undefined,
           totalCount: count
         };
         

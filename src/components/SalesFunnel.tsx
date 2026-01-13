@@ -92,7 +92,7 @@ export const SalesFunnel: React.FC = () => {
 
   console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isLoadingRole });
 
-  // Fetch all users
+  // Fetch all users - IMPORTANTE: usar user_id como value (para bater com tasks.created_by)
   const {
     data: consultants = []
   } = useQuery({
@@ -101,9 +101,10 @@ export const SalesFunnel: React.FC = () => {
       const {
         data,
         error
-      } = await supabase.from('profiles').select('id, name').order('name');
+      } = await supabase.from('profiles').select('user_id, name').order('name');
       if (error) throw error;
-      return data || [];
+      // Mapear para formato esperado: id = user_id (auth uid)
+      return (data || []).map(p => ({ id: p.user_id, name: p.name }));
     },
     staleTime: 15 * 60 * 1000, // 15 min - dados estáticos
     gcTime: 60 * 60 * 1000, // 1 hora
