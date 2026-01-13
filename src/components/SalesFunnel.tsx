@@ -344,7 +344,7 @@ export const SalesFunnel: React.FC = () => {
       // OTIMIZAÇÃO Disk IO: Selecionar campos necessários + JOIN com task para pegar responsible
       let query = supabase
         .from('opportunities')
-        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at, tasks!fk_opportunities_task(responsible)');
+        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at, tasks!fk_opportunities_task(responsible, task_type)');
 
       // Aplicar filtro de filial
       if (selectedFilial !== 'all') {
@@ -450,14 +450,17 @@ export const SalesFunnel: React.FC = () => {
       const endDateStr = typeof sale.endDate === 'string' ? sale.endDate : sale.date;
       const createdAtStr = typeof sale.createdAt === 'string' ? sale.createdAt : sale.date;
       const updatedAtStr = typeof sale.updatedAt === 'string' ? sale.updatedAt : sale.date;
-      
+
+      // Normalizar legado: algumas tasks antigas podem ter task_type = "visita"
+      const normalizedSaleTaskType = (sale.taskType === 'visita' ? 'prospection' : sale.taskType) as string;
+
       return {
         id: sale.taskId,
         name: sale.clientName,
         client: sale.clientName,
         responsible: sale.responsible,
         filial: sale.filial,
-        taskType: (sale.taskType as "checklist" | "ligacao" | "prospection") || 'prospection',
+        taskType: (normalizedSaleTaskType as "checklist" | "ligacao" | "prospection") || 'prospection',
         status: sale.status || 'active',
         isProspect: sale.isProspect,
         salesConfirmed: sale.salesConfirmed,
@@ -499,21 +502,41 @@ export const SalesFunnel: React.FC = () => {
 
     // Adicionar opportunities standalone (sem task correspondente)
     const taskIds = new Set(tasksFromSales.map(t => t.id));
+
+    // Atividade selecionada deve filtrar opportunities standalone também (senão "vaza" visita quando seleciona ligação)
+    const activityMap: Record<string, string[]> = {
+      field_visit: ['prospection'],
+      ligacao: ['ligacao'],
+      checklist: ['checklist'],
+    };
+    const allowedActivityTypes = selectedActivity !== 'all'
+      ? (activityMap[selectedActivity] || [selectedActivity])
+      : null;
+
     const standaloneOpportunities = (opportunitiesData || [])
       .filter(opp => {
         // Filtrar opportunities que não têm task correspondente ou cuja task não está nos dados carregados
-        return !opp.task_id || !taskIds.has(opp.task_id);
+        const isStandalone = !opp.task_id || !taskIds.has(opp.task_id);
+        if (!isStandalone) return false;
+
+        if (!allowedActivityTypes) return true;
+
+        const oppTaskTypeRaw = ((opp as any).tasks?.task_type as string | undefined);
+        const oppTaskType = oppTaskTypeRaw === 'visita' ? 'prospection' : oppTaskTypeRaw;
+        return oppTaskType ? allowedActivityTypes.includes(oppTaskType) : false;
       })
       .map(opp => {
         const createdAtStr = opp.data_criacao || opp.created_at;
         const createdAt = new Date(createdAtStr);
-        
+
         // CRITICAL FIX: Use task_id when available, not opportunity id
         // The modal expects a task ID, not an opportunity ID
-        // Get responsible from joined task data
+        // Get responsible + task_type from joined task data
         const taskData = (opp as any).tasks;
         const responsible = taskData?.responsible || '-';
-        
+        const oppTaskTypeRaw = (taskData?.task_type as string | undefined);
+        const oppTaskType = oppTaskTypeRaw === 'visita' ? 'prospection' : oppTaskTypeRaw;
+
         return {
           id: opp.task_id || opp.id, // Use task_id if available
           opportunityId: opp.id, // Keep opportunity ID for reference
@@ -521,7 +544,7 @@ export const SalesFunnel: React.FC = () => {
           client: opp.cliente_nome,
           responsible: responsible,
           filial: opp.filial || '',
-          taskType: 'prospection' as "checklist" | "ligacao" | "prospection",
+          taskType: (oppTaskType as "checklist" | "ligacao" | "prospection") || 'prospection',
           status: 'pending' as 'closed' | 'completed' | 'in_progress' | 'pending',
           isProspect: opp.status === 'Prospect',
           salesConfirmed: opp.status === 'Venda Total' || opp.status === 'Venda Parcial',
@@ -563,7 +586,7 @@ export const SalesFunnel: React.FC = () => {
 
     console.log('🔧 filteredTasks: Tasks:', tasksFromSales.length, 'Standalone opportunities:', standaloneOpportunities.length);
     return [...tasksFromSales, ...standaloneOpportunities];
-  }, [filteredSalesData, opportunitiesData]);
+  }, [filteredSalesData, opportunitiesData, selectedActivity]);
 
   const totalCount = useMemo(() => {
     const hasMoreData = hasNextPage || isFetchingNextPage;
@@ -582,19 +605,32 @@ export const SalesFunnel: React.FC = () => {
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
+    // FILTRAR POR ATIVIDADE PRIMEIRO (básico mas crítico)
+    let tasksToAnalyze = filteredTasks;
+    
+    if (selectedActivity && selectedActivity !== 'all') {
+      const activityMap: Record<string, string[]> = {
+        field_visit: ['prospection'],
+        ligacao: ['ligacao'],
+        checklist: ['checklist'],
+      };
+      const allowedTypes = activityMap[selectedActivity] || [selectedActivity];
+      tasksToAnalyze = filteredTasks.filter(t => allowedTypes.includes(t.taskType));
+    }
+
     // PROSPECÇÕES (primeira seção)
-    const prospeccoesAbertas = filteredTasks.filter(task => task.isProspect && !task.salesConfirmed);
-    const prospeccoesFechadas = filteredTasks.filter(task => task.isProspect && task.salesType === 'ganho');
-    const prospeccoesPerdidas = filteredTasks.filter(task => task.isProspect && task.salesType === 'perdido');
+    const prospeccoesAbertas = tasksToAnalyze.filter(task => task.isProspect && !task.salesConfirmed);
+    const prospeccoesFechadas = tasksToAnalyze.filter(task => task.isProspect && task.salesType === 'ganho');
+    const prospeccoesPerdidas = tasksToAnalyze.filter(task => task.isProspect && task.salesType === 'perdido');
 
     // CONTATOS COM CLIENTES (segunda seção)
-    const visitas = filteredTasks.filter(task => task.taskType === 'prospection');
-    const checklists = filteredTasks.filter(task => task.taskType === 'checklist');
-    const ligacoes = filteredTasks.filter(task => task.taskType === 'ligacao');
+    const visitas = tasksToAnalyze.filter(task => task.taskType === 'prospection');
+    const checklists = tasksToAnalyze.filter(task => task.taskType === 'checklist');
+    const ligacoes = tasksToAnalyze.filter(task => task.taskType === 'ligacao');
 
     // VENDAS (terceira seção)
-    const vendasTotal = filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'ganho');
-    const vendasParcial = filteredTasks.filter(task => task.salesConfirmed && task.salesType === 'parcial');
+    const vendasTotal = tasksToAnalyze.filter(task => task.salesConfirmed && task.salesType === 'ganho');
+    const vendasParcial = tasksToAnalyze.filter(task => task.salesConfirmed && task.salesType === 'parcial');
     const totalProspeccoes = prospeccoesAbertas.length + prospeccoesFechadas.length + prospeccoesPerdidas.length;
     const totalContatos = visitas.length + checklists.length + ligacoes.length;
     const totalVendas = vendasTotal.length + vendasParcial.length;
@@ -664,7 +700,7 @@ export const SalesFunnel: React.FC = () => {
         value: prospeccoesPerdidas.reduce((sum, task) => sum + calculateTaskSalesValue(task), 0)
       }
     };
-  }, [filteredTasks]);
+  }, [filteredTasks, selectedActivity]);
 
   // Memoized function to get filial name to prevent excessive recalculations
   const getFilialName = useCallback((filialValue: string | null | undefined) => {
