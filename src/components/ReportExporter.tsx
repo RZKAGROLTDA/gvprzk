@@ -92,22 +92,23 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
           visit.responsible || 'N/A',
           visit.client || 'N/A',
           visit.property || 'N/A',
+          visit.filial || 'N/A',
+          (visit as any).filial_atendida || '-',
           visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
           `R$ ${salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           getStatusLabel(salesStatus),
           visit.status === 'completed' ? 'Concluída' : 
           visit.status === 'in_progress' ? 'Em Andamento' : 
-          visit.status === 'pending' ? 'Pendente' : 'Fechada',
-          visit.observations || 'Sem observações'
+          visit.status === 'pending' ? 'Pendente' : 'Fechada'
         ];
       });
 
       // Adicionar tabela
       doc.autoTable({
-        head: [['Responsável', 'Cliente', 'Propriedade', 'Data', 'Valor Oportunidade', 'Status Venda', 'Status Tarefa', 'Observações']],
+        head: [['Responsável', 'Cliente', 'Propriedade', 'Filial', 'Filial Atendida', 'Data', 'Valor', 'Status Venda', 'Status Tarefa']],
         body: tableData,
         startY: 50,
-        styles: { fontSize: 8 },
+        styles: { fontSize: 7 },
         headStyles: { fillColor: [22, 160, 133] },
         margin: { top: 50 }
       });
@@ -183,6 +184,8 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
           'Responsável': visit.responsible || 'N/A',
           'Cliente': visit.client || 'N/A',
           'Propriedade': visit.property || 'N/A',
+          'Filial': visit.filial || 'N/A',
+          'Filial Atendida': (visit as any).filial_atendida || 'N/A',
           'Data da Visita': visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
           'Horário Início': visit.start_time || 'N/A',
           'Horário Fim': visit.end_time || 'N/A',

@@ -50,6 +50,7 @@ export const generateTaskPDF = async (
     ['Hectares:', task?.propertyHectares ? `${task.propertyHectares} ha` : 'Não informado'],
     ['Responsável:', task?.responsible || 'Não informado'],
     ['Filial:', task?.filial || 'Não informado'],
+    ...(task?.filialAtendida ? [['Filial Atendida:', task.filialAtendida]] : []),
     ['Data:', task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'Não informado'],
     ['Horário:', `${task?.startTime || ''} - ${task?.endTime || ''}`],
   ];

@@ -214,6 +214,14 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       doc.text(resolveFilialName(task.filial) || 'Não informado', 45, yPosition);
       yPosition += 8;
 
+      if (task.filialAtendida) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Filial Atendida:', 20, yPosition);
+        doc.setFont('helvetica', 'normal');
+        doc.text(task.filialAtendida, 70, yPosition);
+        yPosition += 8;
+      }
+
       doc.setFont('helvetica', 'bold');
       doc.text('Prioridade:', 20, yPosition);
       doc.setFont('helvetica', 'normal');
