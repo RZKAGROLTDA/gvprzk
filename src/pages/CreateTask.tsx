@@ -6319,7 +6319,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     if (taskCategory === 'field-visit') {
       // Campos opcionais removidos - email e hectares não são mais obrigatórios
     } else if (taskCategory === 'call') {
-      // Campos opcionais removidos - observações não são mais obrigatórias
+      // Filial Atendida é obrigatória para ligações
+      requiredFields.push({
+        field: task.filialAtendida?.trim(),
+        name: 'Filial Atendida'
+      });
     }
 
     // Verificar se algum campo obrigatório está vazio
@@ -6774,26 +6778,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               }))} placeholder="Nome da propriedade" />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vendor">Vendedor</Label>
-                <Input id="vendor" value={profile?.name || ''} disabled placeholder="Nome do vendedor" className="bg-muted" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="filial">Filial</Label>
-                <Input id="filial" value={profile?.filial_nome || 'Não informado'} disabled placeholder="Filial" className="bg-muted" />
-              </div>
-
-              {/* Campo Filial Atendida - apenas para ligações */}
+              {/* Campo Filial Atendida - obrigatório para ligações */}
               {taskCategory === 'call' && (
                 <div className="space-y-2">
-                  <Label htmlFor="filialAtendida">Filial Atendida</Label>
+                  <Label htmlFor="filialAtendida">
+                    Filial Atendida <span className="text-destructive">*</span>
+                  </Label>
                   <Select 
                     value={task.filialAtendida || ''} 
                     onValueChange={(value) => setTask(prev => ({ ...prev, filialAtendida: value }))}
+                    required
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a filial atendida (opcional)" />
+                    <SelectTrigger className={!task.filialAtendida ? 'border-destructive/50' : ''}>
+                      <SelectValue placeholder="Selecione a filial atendida" />
                     </SelectTrigger>
                     <SelectContent>
                       {filiais.map((filial) => (
@@ -6804,10 +6801,20 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Selecione se a ligação foi para atender outra filial
+                    Selecione a filial que está sendo atendida nesta ligação
                   </p>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label htmlFor="vendor">Vendedor</Label>
+                <Input id="vendor" value={profile?.name || ''} disabled placeholder="Nome do vendedor" className="bg-muted" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="filial">Filial</Label>
+                <Input id="filial" value={profile?.filial_nome || 'Não informado'} disabled placeholder="Filial" className="bg-muted" />
+              </div>
 
             </CardContent>
           </Card>
