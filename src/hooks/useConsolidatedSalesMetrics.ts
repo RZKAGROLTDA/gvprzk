@@ -105,16 +105,21 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       if (filters?.filial && filters.filial !== 'all') {
         salesQuery = salesQuery.eq('filial', filters.filial);
       }
+      // Helper: mapear filtro de atividade (UI) para task_type no banco
+      const getActivityTaskTypes = (activity?: string): string[] | null => {
+        if (!activity || activity === 'all') return null;
+        if (activity === 'field_visit') return ['prospection', 'visita'];
+        // suporte a valor direto vindo do banco (legado)
+        if (activity === 'prospection') return ['prospection', 'visita'];
+        if (activity === 'visita') return ['visita', 'prospection'];
+        return [activity];
+      };
+
+      const activityTaskTypes = getActivityTaskTypes(filters?.activity);
+
       // CRÍTICO: Filtrar por tipo de tarefa (atividade)
-      if (filters?.activity && filters.activity !== 'all') {
-        // Mapear valores do filtro para task_type no banco
-        const taskTypeMap: Record<string, string> = {
-          'field_visit': 'prospection', // Visita = prospection no banco
-          'ligacao': 'ligacao',
-          'checklist': 'checklist'
-        };
-        const dbTaskType = taskTypeMap[filters.activity] || filters.activity;
-        salesQuery = salesQuery.eq('task_type', dbTaskType);
+      if (activityTaskTypes) {
+        salesQuery = salesQuery.in('task_type', activityTaskTypes);
       }
 
       const { data: salesData, error: salesError } = await salesQuery;
@@ -158,22 +163,14 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       let visitasCount = stats.visitas;
       let checklistsCount = stats.checklist;
       let ligacoesCount = stats.ligacoes;
-      
-      if (filters?.activity && filters.activity !== 'all') {
-        // Quando filtrando por atividade, zerar os outros tipos
-        const taskTypeMap: Record<string, string> = {
-          'field_visit': 'prospection',
-          'ligacao': 'ligacao',
-          'checklist': 'checklist'
-        };
-        const dbTaskType = taskTypeMap[filters.activity] || filters.activity;
-        
-        // Query leve para contar apenas o tipo filtrado
+
+      if (activityTaskTypes) {
+        // Query leve para contar apenas o(s) tipo(s) filtrado(s)
         let countQuery = supabase
           .from('tasks')
           .select('id', { count: 'exact', head: true })
-          .eq('task_type', dbTaskType);
-          
+          .in('task_type', activityTaskTypes);
+
         if (dateParams.p_start_date && dateParams.p_end_date) {
           countQuery = countQuery.gte('created_at', dateParams.p_start_date)
             .lte('created_at', `${dateParams.p_end_date}T23:59:59`);
@@ -184,14 +181,18 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         if (filters?.filial && filters.filial !== 'all') {
           countQuery = countQuery.eq('filial', filters.filial);
         }
-        
+
         const { count } = await countQuery;
         const filteredCount = count || 0;
-        
+
         // Zerar outros e usar apenas o filtrado
-        visitasCount = filters.activity === 'field_visit' ? filteredCount : 0;
-        ligacoesCount = filters.activity === 'ligacao' ? filteredCount : 0;
-        checklistsCount = filters.activity === 'checklist' ? filteredCount : 0;
+        const normalizedActivity = (filters?.activity === 'field_visit' || filters?.activity === 'prospection' || filters?.activity === 'visita')
+          ? 'field_visit'
+          : filters?.activity;
+
+        visitasCount = normalizedActivity === 'field_visit' ? filteredCount : 0;
+        ligacoesCount = normalizedActivity === 'ligacao' ? filteredCount : 0;
+        checklistsCount = normalizedActivity === 'checklist' ? filteredCount : 0;
       }
 
       // Calcular métricas baseadas nos dados agregados
