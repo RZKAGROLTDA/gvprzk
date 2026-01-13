@@ -61,7 +61,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       const dateParams = getDateParams();
 
-      // QUERY LEVE: Usar RPC agregado (não chama get_secure_tasks_paginated)
+      // QUERY LEVE: Usar RPC agregado para stats básicas
       const { data: statsRaw, error: statsError } = await supabase
         .rpc('get_reports_aggregated_stats', {
           p_start_date: dateParams.p_start_date,
@@ -87,19 +87,74 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       console.log('✅ Stats agregadas carregadas (RPC leve):', stats);
 
+      // QUERY ADICIONAL: Buscar contagens detalhadas de vendas por tipo
+      // Esta query é leve pois usa agregação no banco
+      let salesQuery = supabase
+        .from('tasks')
+        .select('sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at')
+        .eq('sales_confirmed', true);
+
+      // Aplicar filtros
+      if (dateParams.p_start_date && dateParams.p_end_date) {
+        salesQuery = salesQuery.gte('created_at', dateParams.p_start_date)
+          .lte('created_at', `${dateParams.p_end_date}T23:59:59`);
+      }
+      if (filters?.consultantId && filters.consultantId !== 'all') {
+        salesQuery = salesQuery.eq('created_by', filters.consultantId);
+      }
+      if (filters?.filial && filters.filial !== 'all') {
+        salesQuery = salesQuery.eq('filial', filters.filial);
+      }
+
+      const { data: salesData, error: salesError } = await salesQuery;
+
+      if (salesError) {
+        console.error('❌ Erro ao buscar dados de vendas:', salesError);
+        // Continuar sem os dados detalhados de vendas
+      }
+
+      // Calcular métricas detalhadas de vendas
+      let vendasGanhas = 0, valorGanhas = 0;
+      let vendasParciais = 0, valorParciais = 0;
+      let vendasPerdidas = 0, valorPerdidas = 0;
+
+      if (salesData) {
+        for (const task of salesData) {
+          const salesType = task.sales_type;
+          const salesValue = Number(task.sales_value) || 0;
+          const partialValue = Number(task.partial_sales_value) || 0;
+
+          if (salesType === 'ganho') {
+            vendasGanhas++;
+            valorGanhas += salesValue;
+          } else if (salesType === 'parcial') {
+            vendasParciais++;
+            valorParciais += partialValue; // Usar valor da venda parcial
+          } else if (salesType === 'perdido') {
+            vendasPerdidas++;
+            valorPerdidas += salesValue;
+          }
+        }
+      }
+
+      console.log('✅ Vendas detalhadas:', {
+        ganhas: { count: vendasGanhas, value: valorGanhas },
+        parciais: { count: vendasParciais, value: valorParciais },
+        perdidas: { count: vendasPerdidas, value: valorPerdidas }
+      });
+
       // Calcular métricas baseadas nos dados agregados
       const totalContatos = stats.visitas + stats.checklist + stats.ligacoes;
-      const totalVendas = stats.total_tasks > 0 ? 
-        Math.floor(stats.total_tasks * 0.15) : 0; // Estimativa de 15% conversão
+      const totalVendas = vendasGanhas + vendasParciais; // Vendas = ganhas + parciais
       const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
       const result: ConsolidatedMetrics = {
         overview: {
           contacts: { count: totalContatos, value: 0 },
           prospects: { count: stats.prospects, value: Number(stats.prospects_value) || 0 },
-          sales: { count: totalVendas, value: Number(stats.sales_value) || 0 },
-          partialSales: { count: 0, value: 0 },
-          lostSales: { count: 0, value: 0 }
+          sales: { count: vendasGanhas, value: valorGanhas },
+          partialSales: { count: vendasParciais, value: valorParciais },
+          lostSales: { count: vendasPerdidas, value: valorPerdidas }
         },
         funnel: {
           visitas: { count: stats.visitas, value: 0 },
@@ -107,11 +162,11 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           ligacoes: { count: stats.ligacoes, value: 0 },
           totalContatos,
           prospeccoesAbertas: { count: stats.prospects, value: Number(stats.prospects_value) || 0 },
-          prospeccoesFechadas: { count: 0, value: 0 },
-          prospeccoesPerdidas: { count: 0, value: 0 },
+          prospeccoesFechadas: { count: vendasGanhas + vendasParciais, value: valorGanhas + valorParciais },
+          prospeccoesPerdidas: { count: vendasPerdidas, value: valorPerdidas },
           totalProspeccoes: stats.prospects,
-          vendasTotal: { count: totalVendas, value: Number(stats.sales_value) || 0 },
-          vendasParcial: { count: 0, value: 0 },
+          vendasTotal: { count: vendasGanhas, value: valorGanhas },
+          vendasParcial: { count: vendasParciais, value: valorParciais },
           totalVendas,
           taxaConversao
         }
