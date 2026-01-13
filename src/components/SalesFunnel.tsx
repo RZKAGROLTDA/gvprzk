@@ -589,20 +589,15 @@ export const SalesFunnel: React.FC = () => {
     return [...tasksFromSales, ...standaloneOpportunities];
   }, [filteredSalesData, opportunitiesData, selectedActivity]);
 
+  // totalCount agora vem direto do backend (count real com filtros aplicados)
+  // infiniteDataCount já contém o total correto da query paginada com filtros
   const totalCount = useMemo(() => {
-    const hasMoreData = hasNextPage || isFetchingNextPage;
-    
-    if (hasMoreData) {
-      // Há paginação: usar contagem do banco
-      const allOppsCount = opportunitiesData?.length || 0;
-      const oppsWithTask = opportunitiesData?.filter(opp => opp.task_id).length || 0;
-      const standaloneOppsCount = Math.max(0, allOppsCount - oppsWithTask);
-      return infiniteDataCount + standaloneOppsCount;
-    } else {
-      // Sem paginação: usar o que está carregado
-      return filteredTasks.length;
-    }
-  }, [infiniteDataCount, opportunitiesData, filteredTasks.length, hasNextPage, isFetchingNextPage]);
+    // Adicionar opportunities standalone que não estão vinculadas a tasks
+    const allOppsCount = opportunitiesData?.length || 0;
+    const oppsWithTask = opportunitiesData?.filter(opp => opp.task_id).length || 0;
+    const standaloneOppsCount = Math.max(0, allOppsCount - oppsWithTask);
+    return infiniteDataCount + standaloneOppsCount;
+  }, [infiniteDataCount, opportunitiesData]);
 
   // Calculate hierarchical funnel data
   const funnelData = useMemo(() => {
