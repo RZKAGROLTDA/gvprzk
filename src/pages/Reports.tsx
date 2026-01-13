@@ -41,6 +41,7 @@ const Reports: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedUser, setSelectedUser] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
+  const [selectedFilialAtendida, setSelectedFilialAtendida] = useState('all');
   const [collaborators, setCollaborators] = useState<any[]>([]);
   const [filiais, setFiliais] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -172,6 +173,7 @@ const Reports: React.FC = () => {
     setDateTo(undefined);
     setSelectedUser('all');
     setSelectedFilial('all');
+    setSelectedFilialAtendida('all');
     
     toast({
       title: "✨ Filtros limpos",
@@ -280,7 +282,7 @@ const Reports: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Data Inicial</label>
                 <Popover>
@@ -364,6 +366,23 @@ const Reports: React.FC = () => {
                       </SelectItem>
                     ))}
                   </SelectContent>
+              </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Filial Atendida</label>
+                <Select value={selectedFilialAtendida} onValueChange={setSelectedFilialAtendida}>
+                  <SelectTrigger className={selectedFilialAtendida !== 'all' ? 'border-primary' : ''}>
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {filiais.map((filial) => (
+                      <SelectItem key={filial.id} value={filial.nome}>
+                        {filial.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
 
@@ -422,8 +441,8 @@ const Reports: React.FC = () => {
               </div>
             </div>
 
-            {(dateFrom || dateTo || selectedUser !== 'all' || selectedFilial !== 'all') && (
-              <div className="flex items-center gap-2 pt-2 border-t">
+            {(dateFrom || dateTo || selectedUser !== 'all' || selectedFilial !== 'all' || selectedFilialAtendida !== 'all') && (
+              <div className="flex items-center gap-2 pt-2 border-t flex-wrap">
                 <p className="text-sm text-muted-foreground">Filtros ativos:</p>
                 {dateFrom && (
                   <Badge variant="secondary" className="gap-1">
@@ -438,6 +457,11 @@ const Reports: React.FC = () => {
                 {selectedFilial !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
                     Filial: {selectedFilial}
+                  </Badge>
+                )}
+                {selectedFilialAtendida !== 'all' && (
+                  <Badge variant="secondary" className="gap-1">
+                    Filial Atendida: {selectedFilialAtendida}
                   </Badge>
                 )}
                 {selectedUser !== 'all' && (
