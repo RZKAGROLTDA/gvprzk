@@ -91,7 +91,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       // Esta query é leve pois usa agregação no banco
       let salesQuery = supabase
         .from('tasks')
-        .select('sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at')
+        .select('sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at, task_type')
         .eq('sales_confirmed', true);
 
       // Aplicar filtros
@@ -104,6 +104,17 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       }
       if (filters?.filial && filters.filial !== 'all') {
         salesQuery = salesQuery.eq('filial', filters.filial);
+      }
+      // CRÍTICO: Filtrar por tipo de tarefa (atividade)
+      if (filters?.activity && filters.activity !== 'all') {
+        // Mapear valores do filtro para task_type no banco
+        const taskTypeMap: Record<string, string> = {
+          'field_visit': 'prospection', // Visita = prospection no banco
+          'ligacao': 'ligacao',
+          'checklist': 'checklist'
+        };
+        const dbTaskType = taskTypeMap[filters.activity] || filters.activity;
+        salesQuery = salesQuery.eq('task_type', dbTaskType);
       }
 
       const { data: salesData, error: salesError } = await salesQuery;
@@ -143,8 +154,48 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         perdidas: { count: vendasPerdidas, value: valorPerdidas }
       });
 
+      // Se filtro de atividade está ativo, recalcular contatos baseado apenas nesse tipo
+      let visitasCount = stats.visitas;
+      let checklistsCount = stats.checklist;
+      let ligacoesCount = stats.ligacoes;
+      
+      if (filters?.activity && filters.activity !== 'all') {
+        // Quando filtrando por atividade, zerar os outros tipos
+        const taskTypeMap: Record<string, string> = {
+          'field_visit': 'prospection',
+          'ligacao': 'ligacao',
+          'checklist': 'checklist'
+        };
+        const dbTaskType = taskTypeMap[filters.activity] || filters.activity;
+        
+        // Query leve para contar apenas o tipo filtrado
+        let countQuery = supabase
+          .from('tasks')
+          .select('id', { count: 'exact', head: true })
+          .eq('task_type', dbTaskType);
+          
+        if (dateParams.p_start_date && dateParams.p_end_date) {
+          countQuery = countQuery.gte('created_at', dateParams.p_start_date)
+            .lte('created_at', `${dateParams.p_end_date}T23:59:59`);
+        }
+        if (filters?.consultantId && filters.consultantId !== 'all') {
+          countQuery = countQuery.eq('created_by', filters.consultantId);
+        }
+        if (filters?.filial && filters.filial !== 'all') {
+          countQuery = countQuery.eq('filial', filters.filial);
+        }
+        
+        const { count } = await countQuery;
+        const filteredCount = count || 0;
+        
+        // Zerar outros e usar apenas o filtrado
+        visitasCount = filters.activity === 'field_visit' ? filteredCount : 0;
+        ligacoesCount = filters.activity === 'ligacao' ? filteredCount : 0;
+        checklistsCount = filters.activity === 'checklist' ? filteredCount : 0;
+      }
+
       // Calcular métricas baseadas nos dados agregados
-      const totalContatos = stats.visitas + stats.checklist + stats.ligacoes;
+      const totalContatos = visitasCount + checklistsCount + ligacoesCount;
       const totalVendas = vendasGanhas + vendasParciais; // Vendas = ganhas + parciais
       const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
@@ -157,9 +208,9 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           lostSales: { count: vendasPerdidas, value: valorPerdidas }
         },
         funnel: {
-          visitas: { count: stats.visitas, value: 0 },
-          checklists: { count: stats.checklist, value: 0 },
-          ligacoes: { count: stats.ligacoes, value: 0 },
+          visitas: { count: visitasCount, value: 0 },
+          checklists: { count: checklistsCount, value: 0 },
+          ligacoes: { count: ligacoesCount, value: 0 },
           totalContatos,
           prospeccoesAbertas: { count: stats.prospects, value: Number(stats.prospects_value) || 0 },
           prospeccoesFechadas: { count: vendasGanhas + vendasParciais, value: valorGanhas + valorParciais },
