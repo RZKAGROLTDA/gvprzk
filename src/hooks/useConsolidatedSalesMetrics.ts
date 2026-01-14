@@ -204,6 +204,43 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         checklistsCount = normalizedActivity === 'checklist' ? filteredCount : 0;
       }
 
+      // PROSPECTS: O RPC get_reports_aggregated_stats NÃO filtra por filial_atendida
+      // Quando esse filtro está ativo, precisamos contar manualmente
+      let prospectsCount = stats.prospects;
+      let prospectsValue = Number(stats.prospects_value) || 0;
+
+      if (filters?.filialAtendida && filters.filialAtendida !== 'all') {
+        // Query específica para contar prospects com filial_atendida
+        let prospectsQuery = supabase
+          .from('tasks')
+          .select('id, sales_value', { count: 'exact' })
+          .eq('is_prospect', true)
+          .eq('filial_atendida', filters.filialAtendida);
+
+        // Aplicar demais filtros para consistência
+        if (dateParams.p_start_date && dateParams.p_end_date) {
+          prospectsQuery = prospectsQuery.gte('created_at', dateParams.p_start_date)
+            .lte('created_at', `${dateParams.p_end_date}T23:59:59`);
+        }
+        if (filters?.consultantId && filters.consultantId !== 'all') {
+          prospectsQuery = prospectsQuery.eq('created_by', filters.consultantId);
+        }
+        if (filters?.filial && filters.filial !== 'all') {
+          prospectsQuery = prospectsQuery.eq('filial', filters.filial);
+        }
+        if (activityTaskTypes) {
+          prospectsQuery = prospectsQuery.in('task_type', activityTaskTypes);
+        }
+
+        const { data: prospectsData, count: prospectsCountResult, error: prospectsError } = await prospectsQuery;
+
+        if (!prospectsError) {
+          prospectsCount = prospectsCountResult || 0;
+          prospectsValue = (prospectsData || []).reduce((sum, t) => sum + (Number(t.sales_value) || 0), 0);
+          console.log('✅ Prospects filtrados por filial_atendida:', { count: prospectsCount, value: prospectsValue });
+        }
+      }
+
       // Calcular métricas baseadas nos dados agregados
       const totalContatos = visitasCount + checklistsCount + ligacoesCount;
       const totalVendas = vendasGanhas + vendasParciais; // Vendas = ganhas + parciais
@@ -212,7 +249,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       const result: ConsolidatedMetrics = {
         overview: {
           contacts: { count: totalContatos, value: 0 },
-          prospects: { count: stats.prospects, value: Number(stats.prospects_value) || 0 },
+          prospects: { count: prospectsCount, value: prospectsValue },
           sales: { count: vendasGanhas, value: valorGanhas },
           partialSales: { count: vendasParciais, value: valorParciais },
           lostSales: { count: vendasPerdidas, value: valorPerdidas }
@@ -222,10 +259,10 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           checklists: { count: checklistsCount, value: 0 },
           ligacoes: { count: ligacoesCount, value: 0 },
           totalContatos,
-          prospeccoesAbertas: { count: stats.prospects, value: Number(stats.prospects_value) || 0 },
+          prospeccoesAbertas: { count: prospectsCount, value: prospectsValue },
           prospeccoesFechadas: { count: vendasGanhas + vendasParciais, value: valorGanhas + valorParciais },
           prospeccoesPerdidas: { count: vendasPerdidas, value: valorPerdidas },
-          totalProspeccoes: stats.prospects,
+          totalProspeccoes: prospectsCount,
           vendasTotal: { count: vendasGanhas, value: valorGanhas },
           vendasParcial: { count: vendasParciais, value: valorParciais },
           totalVendas,
