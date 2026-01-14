@@ -720,38 +720,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Informações de Deslocamento */}
-          {(fullTask.initialKm || fullTask.finalKm) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Car className="w-5 h-5" />
-                  Informações de Deslocamento
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">KM Inicial</label>
-                    <p className="font-medium text-lg">{fullTask.initialKm || 'Não informado'} km</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">KM Final</label>
-                    <p className="font-medium text-lg">{fullTask.finalKm || 'Não informado'} km</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Total Percorrido</label>
-                    <p className="font-bold text-lg text-primary">
-                      {fullTask.initialKm && fullTask.finalKm 
-                        ? `${fullTask.finalKm - fullTask.initialKm} km` 
-                        : 'Não calculado'
-                      }
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Seção de Deslocamento removida conforme solicitação do usuário */}
 
           {/* Status da Oportunidade - Componente Padronizado */}
           <SalesStatusDisplay 
