@@ -639,15 +639,15 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Nome</p>
+                    <p className="text-xs text-muted-foreground mb-2">Nome</p>
                     <p className="font-medium text-sm">{currentTask.client || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Código</p>
+                    <p className="text-xs text-muted-foreground mb-2">Código</p>
                     <p className="font-medium text-sm">{currentTask.clientCode || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Email</p>
+                    <p className="text-xs text-muted-foreground mb-2">Email</p>
                     <p className="font-medium text-sm flex items-center gap-1">
                       {currentTask.email ? (
                         <>
@@ -658,7 +658,7 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Telefone</p>
+                    <p className="text-xs text-muted-foreground mb-2">Telefone</p>
                     <p className="font-medium text-sm flex items-center gap-1">
                       {currentTask.phone ? (
                         <>
@@ -669,11 +669,11 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Propriedade</p>
+                    <p className="text-xs text-muted-foreground mb-2">Propriedade</p>
                     <p className="font-medium text-sm">{currentTask.property || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Hectares</p>
+                    <p className="text-xs text-muted-foreground mb-2">Hectares</p>
                     <p className="font-medium text-sm">
                       {currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : 'N/A'}
                     </p>
@@ -681,25 +681,25 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
                 </div>
               </div>
 
-              {/* Filial e Responsável */}
+            {/* Filial e Responsável */}
               <div className="bg-white rounded-xl border p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Building2 className="w-5 h-5 text-blue-600" />
                   <h3 className="font-semibold text-gray-900">Filial e Responsável</h3>
                 </div>
                 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Responsável</p>
+                    <p className="text-xs text-muted-foreground mb-2">Responsável</p>
                     <p className="font-medium text-sm">{currentTask.responsible || 'N/A'}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Filial do Responsável</p>
+                      <p className="text-xs text-muted-foreground mb-2">Filial do Responsável</p>
                       <p className="font-medium text-sm">{getFilialNameRobust(currentTask.filial, filiais)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Filial Atendida</p>
+                      <p className="text-xs text-muted-foreground mb-2">Filial Atendida</p>
                       <p className="font-medium text-sm italic">
                         {currentTask.filialAtendida 
                           ? getFilialNameRobust(currentTask.filialAtendida, filiais) 
@@ -709,13 +709,13 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Tipo de Atividade</p>
+                      <p className="text-xs text-muted-foreground mb-2">Tipo de Atividade</p>
                       <Badge variant="outline" className="text-xs">
                         {getTaskTypeLabel(currentTask.taskType)}
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Prioridade</p>
+                      <p className="text-xs text-muted-foreground mb-2">Prioridade</p>
                       <Badge 
                         variant="outline" 
                         className={`text-xs ${
@@ -733,174 +733,112 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
               </div>
             </div>
 
-            {/* Agendamento e Deslocamento */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl border p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Agendamento</h3>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Data Início</p>
-                    <p className="font-medium text-sm">
-                      {format(new Date(currentTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Data Fim</p>
-                    <p className="font-medium text-sm">
-                      {currentTask.endDate 
-                        ? format(new Date(currentTask.endDate), 'dd/MM/yyyy', { locale: ptBR }) 
-                        : 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Horário Início</p>
-                    <p className="font-medium text-sm">{currentTask.startTime || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Horário Fim</p>
-                    <p className="font-medium text-sm">{currentTask.endTime || 'N/A'}</p>
-                  </div>
-                </div>
+            {/* Produtos Oferecidos - Layout similar ao editar */}
+            <div className="bg-white rounded-xl border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Package className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Produtos Oferecidos</h3>
               </div>
-
-              <div className="bg-white rounded-xl border p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Car className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Deslocamento</h3>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">KM Inicial</p>
-                    <p className="font-medium text-sm">{currentTask.initialKm || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">KM Final</p>
-                    <p className="font-medium text-sm">{currentTask.finalKm || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Percorrido</p>
-                    <p className="font-medium text-sm text-blue-600">
-                      {currentTask.initialKm && currentTask.finalKm 
-                        ? `${currentTask.finalKm - currentTask.initialKm} km` 
-                        : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-                
-                {currentTask.checkInLocation && (
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="w-4 h-4 text-green-600" />
-                      <p className="text-xs text-muted-foreground">Check-in realizado</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Lat: {currentTask.checkInLocation.lat.toFixed(6)}, Lng: {currentTask.checkInLocation.lng.toFixed(6)}
-                      <br />
-                      {format(new Date(currentTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Produtos/Serviços */}
-            {currentTask.checklist && currentTask.checklist.length > 0 && (
-              <div className="bg-white rounded-xl border p-5">
-                <button 
-                  onClick={() => setShowProducts(!showProducts)}
-                  className="flex items-center justify-between w-full"
-                >
-                  <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-blue-600" />
-                    <h3 className="font-semibold text-gray-900">
-                      Produtos/Serviços ({currentTask.checklist.length})
-                    </h3>
-                  </div>
-                  {showProducts ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                </button>
-                
-                {showProducts && (
-                  <div className="mt-4 space-y-3">
-                    {currentTask.checklist.map((item, index) => (
-                      <div 
-                        key={index} 
-                        className={`border rounded-lg p-4 ${
-                          selectedStatus === 'parcial' ? 'hover:border-blue-300' : ''
-                        } ${item.selected ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-start gap-3 flex-1">
-                            {selectedStatus === 'parcial' && (
+              
+              {currentTask.checklist && currentTask.checklist.length > 0 ? (
+                <div className="space-y-4">
+                  {currentTask.checklist.map((item, index) => (
+                    <div 
+                      key={index} 
+                      className={`border rounded-lg p-4 ${
+                        item.selected ? 'bg-green-50 border-green-200' : 'bg-gray-50'
+                      }`}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2">Nome do Produto</p>
+                          <div className="bg-white border rounded-md p-2.5">
+                            <p className="font-medium text-sm">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">{item.category}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2">SKU/Código</p>
+                          <div className="bg-white border rounded-md p-2.5 h-[52px] flex items-center">
+                            <p className="text-sm">{item.id?.slice(0, 8) || 'N/A'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2">Quantidade</p>
+                          {selectedStatus === 'parcial' ? (
+                            <div className="flex items-center gap-2">
                               <Checkbox 
                                 checked={selectedItems[item.id] || false} 
                                 onCheckedChange={(checked) => handleItemSelection(item.id, checked as boolean)} 
-                                className="mt-1" 
                               />
-                            )}
-                            <div className="flex-1">
-                              <p className="font-medium">{item.name}</p>
-                              <p className="text-sm text-muted-foreground">Categoria: {item.category}</p>
-                              
-                              <div className="flex items-center gap-4 mt-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm text-muted-foreground">Qtd:</span>
-                                  {selectedStatus === 'parcial' ? (
-                                    <Input 
-                                      type="number" 
-                                      min="1" 
-                                      value={itemQuantities[item.id] || item.quantity || 1}
-                                      onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
-                                      className="w-16 h-7 text-sm"
-                                      disabled={!selectedItems[item.id]}
-                                    />
-                                  ) : (
-                                    <span className="font-medium">{item.quantity || 1}</span>
-                                  )}
-                                </div>
-                                <div>
-                                  <span className="text-sm text-muted-foreground">Preço: </span>
-                                  <span className="font-medium">
-                                    R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-sm text-muted-foreground">Total: </span>
-                                  <span className="font-bold text-blue-600">
-                                    R$ {((item.price || 0) * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {item.observations && (
-                                <p className="text-sm text-muted-foreground mt-2 italic">{item.observations}</p>
-                              )}
+                              <Input 
+                                type="number" 
+                                min="1" 
+                                value={itemQuantities[item.id] || item.quantity || 1}
+                                onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                                className="h-9 text-sm"
+                                disabled={!selectedItems[item.id]}
+                              />
                             </div>
+                          ) : (
+                            <div className="bg-white border rounded-md p-2.5 h-9 flex items-center">
+                              <p className="text-sm">{item.quantity || 0}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2">Preço Unitário (R$)</p>
+                          <div className="bg-white border rounded-md p-2.5 h-9 flex items-center">
+                            <p className="text-sm">
+                              {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
                           </div>
-                          <Badge variant={item.selected ? 'default' : 'secondary'}>
-                            {item.selected ? 'Vendido' : 'Ofertado'}
-                          </Badge>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-2">Subtotal</p>
+                          <div className="bg-blue-50 border border-blue-200 rounded-md p-2.5 h-9 flex items-center justify-between">
+                            <p className="text-sm font-semibold text-blue-700">
+                              R$ {((item.price || 0) * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                            <Badge variant={item.selected ? 'default' : 'secondary'} className="text-xs">
+                              {item.selected ? 'Vendido' : 'Ofertado'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                    
-                    {/* Resumo dos produtos */}
-                    <div className="border-t pt-4 mt-4 flex justify-end">
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Total dos Produtos</p>
-                        <p className="text-xl font-bold text-blue-600">
-                          R$ {totalOpportunityValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
+                      
+                      {item.observations && (
+                        <div className="mt-3 pt-3 border-t">
+                          <p className="text-xs text-muted-foreground mb-1">Observações do Produto</p>
+                          <p className="text-sm italic text-muted-foreground">{item.observations}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Resumo dos produtos */}
+                  <div className="border-t pt-4 mt-4 flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      {currentTask.checklist.length} produto(s) oferecido(s)
+                    </p>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Total</p>
+                      <p className="text-xl font-bold text-blue-600">
+                        R$ {totalOpportunityValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p>Nenhum produto oferecido</p>
+                </div>
+              )}
+            </div>
 
             {/* Observações */}
             {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) && (
