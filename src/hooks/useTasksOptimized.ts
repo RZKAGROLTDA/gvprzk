@@ -599,7 +599,9 @@ export const useTaskDetails = (taskId: string | null) => {
       return mapSupabaseTaskToTask(taskWithProducts);
     },
     enabled: !!taskId,
-    staleTime: 5 * 60 * 1000, // 5 minutos para dados específicos
+    staleTime: 0, // sempre buscar dados atualizados ao abrir detalhes
+    refetchOnMount: true,
+    refetchOnReconnect: true,
     refetchOnWindowFocus: false,
   });
 };

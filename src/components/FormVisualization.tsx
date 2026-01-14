@@ -47,12 +47,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
   // SEMPRE carregar detalhes completos da task para garantir que produtos sejam carregados
-  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
+  const { data: taskDetails, isLoading: loadingDetails, isFetching: fetchingDetails } = useTaskDetails(
     isOpen && task?.id ? task.id : null
   );
   
   // Usar task completa (com detalhes carregados) ou task original
   const fullTask = taskDetails || task;
+  const showProductsLoading = fetchingDetails && (fullTask.checklist?.length || 0) === 0;
 
   // Enhanced debug logging for equipment and products
   console.log('FormVisualization - Dados recebidos:', {
@@ -436,7 +437,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </p>
             </CardHeader>
             <CardContent>
-              {loadingDetails ? (
+              {showProductsLoading ? (
                 <div className="flex items-center justify-center py-10 text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Carregando produtos...
