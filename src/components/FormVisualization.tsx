@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
@@ -13,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Task } from "@/types/task";
+import { supabase } from '@/integrations/supabase/client';
+import { Task, ProductType } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useTaskDetails, useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
@@ -50,21 +52,59 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const { data: taskDetails, isLoading: loadingDetails, isFetching: fetchingDetails } = useTaskDetails(
     isOpen && task?.id ? task.id : null
   );
+
+  // Fallback extra: buscar produtos diretamente (caso taskDetails não venha por algum motivo)
+  const { data: productsRows = [], isFetching: fetchingProducts } = useQuery({
+    queryKey: isOpen && task?.id ? ['task-products', task.id] : ['task-products-empty'],
+    enabled: isOpen && !!task?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('task_id', task.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+  });
   
   // Usar task completa (com detalhes carregados) ou task original
   const fullTask = taskDetails || task;
-  const showProductsLoading = fetchingDetails && (fullTask.checklist?.length || 0) === 0;
+
+  const productsFromDb: ProductType[] = (productsRows as any[]).map((product: any) => ({
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    selected: Boolean(product.selected),
+    quantity: product.quantity ?? 0,
+    price: product.price ?? 0,
+    observations: product.observations ?? '',
+    photos: product.photos ?? [],
+  }));
+
+  const displayChecklist =
+    (taskDetails?.checklist?.length ? taskDetails.checklist : null) ||
+    (productsFromDb.length ? productsFromDb : null) ||
+    fullTask.checklist ||
+    [];
+
+  const showProductsLoading = (fetchingDetails || fetchingProducts) && displayChecklist.length === 0;
 
   // Enhanced debug logging for equipment and products
   console.log('FormVisualization - Dados recebidos:', {
     taskId: task?.id,
     checklistFromTask: task?.checklist?.length || 0,
     checklistFromDetails: taskDetails?.checklist?.length || 0,
-    finalChecklist: fullTask?.checklist?.length || 0,
+    productsFromDb: productsFromDb.length,
+    finalChecklist: displayChecklist.length,
     loadingDetails,
     hasTaskDetails: !!taskDetails
   });
-
 
   // Usar função padronizada do TaskFormCore
 
@@ -423,7 +463,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="w-5 h-5" />
-                  {fullTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos e Serviços'} ({fullTask.checklist?.length || 0})
+                  {fullTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos e Serviços'} ({displayChecklist.length})
                 </CardTitle>
                 <Badge variant="outline" className="text-sm">
                   Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTaskTotalValue(fullTask as any))}
@@ -442,9 +482,9 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Carregando produtos...
                 </div>
-              ) : fullTask.checklist && fullTask.checklist.length > 0 ? (
+              ) : displayChecklist.length > 0 ? (
                 <div className="space-y-4">
-                  {fullTask.checklist.map((item, index) => {
+                  {displayChecklist.map((item, index) => {
                     const itemTotal = (item.price || 0) * (item.quantity || 1);
                     
                     return (
@@ -542,7 +582,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                           {fullTask.taskType === 'ligacao' ? 'Produtos Ofertados' : 'Produtos Selecionados'}
                         </p>
                         <p className="text-2xl font-bold text-primary">
-                          {fullTask.checklist?.filter(item => item.selected).length || 0}
+                          {displayChecklist.filter(item => item.selected).length}
                         </p>
                       </div>
                       <div className="text-center">
