@@ -888,6 +888,10 @@ export type Database = {
         Args: { task_owner_id: string }
         Returns: boolean
       }
+      can_access_task_related_data: {
+        Args: { p_task_id: string }
+        Returns: boolean
+      }
       can_modify_user_role: {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
