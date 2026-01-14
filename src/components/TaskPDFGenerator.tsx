@@ -181,44 +181,6 @@ export const generateTaskPDF = async (
     yPosition += 60;
   }
   
-  // ===== DATAS E HORÁRIOS =====
-  pdf.setFontSize(12);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('AGENDAMENTO', 20, yPosition);
-  yPosition += 8;
-  
-  const dateInfo = [
-    ['Data Início:', task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'],
-    ['Data Fim:', task?.endDate ? format(new Date(task.endDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'],
-    ['Horário:', `${task?.startTime || ''} - ${task?.endTime || ''}`],
-    ['KM Inicial:', `${task?.initialKm || 0} km`],
-    ['KM Final:', `${task?.finalKm || 0} km`],
-    ['KM Percorrido:', `${Math.max(0, (task?.finalKm || 0) - (task?.initialKm || 0))} km`],
-  ];
-  
-  try {
-    pdf.autoTable({
-      startY: yPosition,
-      body: dateInfo,
-      columns: [
-        { header: 'Campo', dataKey: 0 },
-        { header: 'Valor', dataKey: 1 }
-      ],
-      margin: { left: 20, right: 20 },
-      styles: { fontSize: 9, cellPadding: 3 },
-      columnStyles: { 
-        0: { fontStyle: 'bold', cellWidth: 40 },
-        1: { cellWidth: 'auto' }
-      },
-      theme: 'grid'
-    });
-    
-    yPosition = pdf.lastAutoTable.finalY + 10;
-  } catch (error) {
-    console.error('Erro na tabela de datas:', error);
-    yPosition += 50;
-  }
-  
   // ===== EQUIPAMENTOS (se existirem) =====
   if (task?.familyProduct || task?.equipmentQuantity || (task?.equipmentList && task.equipmentList.length > 0)) {
     if (yPosition > 200) {

@@ -20,9 +20,9 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Task } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
-import { useFiliais } from '@/hooks/useTasksOptimized';
+import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
-import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
+import { getTaskTypeLabel as getTaskTypeLabelCore, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
@@ -34,7 +34,7 @@ interface TaskFormVisualizationProps {
 }
 
 export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
-  task,
+  task: taskProp,
   isOpen,
   onClose,
   onTaskUpdated
@@ -43,9 +43,34 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { data: filiais = [] } = useFiliais();
 
+  const needsDetailsLoading =
+    !!taskProp && (!taskProp.checklist || taskProp.checklist.length === 0);
+
+  const { data: taskDetails, isLoading: isLoadingDetails } = useTaskDetails(
+    isOpen && needsDetailsLoading ? taskProp.id : null
+  );
+
+  const task = taskDetails || taskProp;
+
+  const getTaskTypeLabel = (type: string): string => {
+    const normalized = (type || '').toLowerCase();
+    const labels: Record<string, string> = {
+      prospection: 'Visita',
+      visita: 'Visita',
+      field_visit: 'Visita de Campo',
+      'field-visit': 'Visita de Campo',
+      ligacao: 'Ligação',
+      call: 'Ligação',
+      checklist: 'Checklist de Oficina',
+      workshop_checklist: 'Checklist de Oficina',
+      'workshop-checklist': 'Checklist de Oficina',
+    };
+    return labels[normalized] || getTaskTypeLabelCore(type);
+  };
+
   // Calculate sales status and values
   const salesStatus = task ? mapSalesStatus(task) : 'prospect';
-  
+
   const calculatedValues = useMemo(() => {
     if (!task) return { total: 0, closed: 0, partial: 0, products: 0 };
     
@@ -361,88 +386,108 @@ ${task?.responsible || 'Equipe Comercial'}`;
             </Card>
           </div>
 
-          {/* PRODUTOS/CHECKLIST - Tabela Detalhada */}
-          {task?.checklist && task.checklist.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center justify-between text-base">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5 text-primary" />
-                    Produtos ({task.checklist.length})
-                  </div>
-                  <Badge variant="outline" className="text-sm">
-                    Total: {formatCurrency(calculatedValues.products)}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-muted p-3 grid grid-cols-12 gap-2 font-medium text-xs">
-                    <div className="col-span-1">Status</div>
-                    <div className="col-span-4">Produto</div>
-                    <div className="col-span-2">Categoria</div>
-                    <div className="col-span-1 text-center">Qtd</div>
-                    <div className="col-span-2 text-right">Preço Unit.</div>
-                    <div className="col-span-2 text-right">Total</div>
-                  </div>
-                  {task.checklist.map((item, index) => {
-                    const itemTotal = (item.price || 0) * (item.quantity || 1);
-                    return (
-                      <div 
-                        key={index} 
-                        className={`p-3 grid grid-cols-12 gap-2 border-t text-sm items-center ${
-                          item.selected ? 'bg-green-50' : ''
-                        }`}
-                      >
-                        <div className="col-span-1">
-                          {item.selected ? (
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
-                          )}
-                        </div>
-                        <div className="col-span-4 font-medium">{item.name}</div>
-                        <div className="col-span-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {item.category}
-                          </Badge>
-                        </div>
-                        <div className="col-span-1 text-center">{item.quantity || 1}</div>
-                        <div className="col-span-2 text-right">{formatCurrency(item.price || 0)}</div>
-                        <div className={`col-span-2 text-right font-medium ${item.selected ? 'text-green-600' : ''}`}>
-                          {formatCurrency(itemTotal)}
-                        </div>
-                      </div>
-                    );
-                  })}
+          {/* PRODUTOS E SERVIÇOS */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-base">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5 text-primary" />
+                  Produtos e Serviços ({task?.checklist?.length || 0})
                 </div>
-                
-                {/* Resumo de Produtos */}
-                <div className="mt-4 p-4 bg-muted/50 rounded-lg grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <span className="text-xs text-muted-foreground">Selecionados</span>
-                    <p className="font-bold text-green-600">
-                      {task.checklist.filter(i => i.selected).length} de {task.checklist.length}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">Valor Selecionado</span>
-                    <p className="font-bold text-green-600">
-                      {formatCurrency(task.checklist.reduce((sum, i) => 
-                        i.selected ? sum + ((i.price || 0) * (i.quantity || 1)) : sum, 0
-                      ))}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground">Valor Total</span>
-                    <p className="font-bold">
-                      {formatCurrency(calculatedValues.products)}
-                    </p>
-                  </div>
+                <Badge variant="outline" className="text-sm">
+                  Total: {formatCurrency(calculatedValues.products)}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingDetails ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Carregando produtos e serviços...
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : task?.checklist && task.checklist.length > 0 ? (
+                <>
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-muted p-3 grid grid-cols-12 gap-2 font-medium text-xs">
+                      <div className="col-span-1">Status</div>
+                      <div className="col-span-4">Produto / Serviço</div>
+                      <div className="col-span-2">Categoria</div>
+                      <div className="col-span-1 text-center">Qtd</div>
+                      <div className="col-span-2 text-right">Preço Unit.</div>
+                      <div className="col-span-2 text-right">Subtotal</div>
+                    </div>
+                    {task.checklist.map((item, index) => {
+                      const itemTotal = (item.price || 0) * (item.quantity || 1);
+                      return (
+                        <div
+                          key={index}
+                          className={`p-3 grid grid-cols-12 gap-2 border-t text-sm items-start ${
+                            item.selected ? 'bg-primary/5' : ''
+                          }`}
+                        >
+                          <div className="col-span-1 pt-0.5">
+                            {item.selected ? (
+                              <CheckCircle className="w-5 h-5 text-primary" />
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
+                            )}
+                          </div>
+                          <div className="col-span-4">
+                            <p className="font-medium leading-5">{item.name}</p>
+                            {item.observations ? (
+                              <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">
+                                {item.observations}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="col-span-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {item.category}
+                            </Badge>
+                          </div>
+                          <div className="col-span-1 text-center pt-0.5">{item.quantity || 1}</div>
+                          <div className="col-span-2 text-right pt-0.5">{formatCurrency(item.price || 0)}</div>
+                          <div className={`col-span-2 text-right font-medium pt-0.5 ${item.selected ? 'text-primary' : ''}`}>
+                            {formatCurrency(itemTotal)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Resumo de Produtos */}
+                  <div className="mt-4 p-4 bg-muted/50 rounded-lg grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <span className="text-xs text-muted-foreground">Selecionados</span>
+                      <p className="font-bold text-primary">
+                        {task.checklist.filter(i => i.selected).length} de {task.checklist.length}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Valor Selecionado</span>
+                      <p className="font-bold text-primary">
+                        {formatCurrency(
+                          task.checklist.reduce(
+                            (sum, i) =>
+                              i.selected ? sum + ((i.price || 0) * (i.quantity || 1)) : sum,
+                            0
+                          )
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground">Valor Total</span>
+                      <p className="font-bold">{formatCurrency(calculatedValues.products)}</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhum produto/serviço cadastrado nesta atividade.
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* EQUIPAMENTOS (se existirem) */}
           {(task?.familyProduct || task?.equipmentQuantity || (task?.equipmentList && task.equipmentList.length > 0)) && (
@@ -488,103 +533,6 @@ ${task?.responsible || 'Equipe Comercial'}`;
               </CardContent>
             </Card>
           )}
-
-          {/* DATAS E HORÁRIOS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Agendamento */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  Agendamento
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Data Início</Label>
-                    <p className="font-medium">
-                      {task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Data Fim</Label>
-                    <p className="font-medium">
-                      {task?.endDate ? format(new Date(task.endDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Horário</Label>
-                    <p className="font-medium">{task?.startTime || 'N/A'} - {task?.endTime || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Status da Tarefa</Label>
-                    <Badge className="mt-1" variant={
-                      task?.status === 'completed' ? 'default' : 
-                      task?.status === 'in_progress' ? 'secondary' : 
-                      'outline'
-                    }>
-                      {task?.status === 'completed' ? 'Concluída' : 
-                       task?.status === 'in_progress' ? 'Em Andamento' : 
-                       task?.status === 'closed' ? 'Fechada' : 'Pendente'}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Deslocamento e Localização */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Car className="w-5 h-5 text-primary" />
-                  Deslocamento
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">KM Inicial</Label>
-                    <p className="font-medium">{task?.initialKm || 0} km</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">KM Final</Label>
-                    <p className="font-medium">{task?.finalKm || 0} km</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Percorrido</Label>
-                    <p className="font-medium text-primary">
-                      {Math.max(0, (task?.finalKm || 0) - (task?.initialKm || 0))} km
-                    </p>
-                  </div>
-                </div>
-                
-                {task?.checkInLocation && (
-                  <>
-                    <Separator />
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Check-in</Label>
-                      <p className="font-medium text-xs">
-                        {format(new Date(task.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                      </p>
-                      <Button variant="outline" size="sm" asChild className="mt-2 w-full">
-                        <a 
-                          href={`https://www.google.com/maps?q=${task.checkInLocation.lat},${task.checkInLocation.lng}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          <MapPin className="w-4 h-4 mr-2" />
-                          Ver no Mapa
-                        </a>
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
 
           {/* OBSERVAÇÕES E NOTAS */}
           {(task?.observations || task?.prospectNotes) && (
