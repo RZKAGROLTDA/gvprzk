@@ -189,20 +189,57 @@ export const SalesFunnel: React.FC = () => {
     queryKey: ['client-details', filters],
     queryFn: async ({ pageParam = 0 }) => {
       const PAGE_SIZE = 50;
-      const from = pageParam * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const offset = pageParam * PAGE_SIZE;
 
-      // BUSCAR VIA FUNÇÃO SEGURA (respeita RLS/permissões)
-      const { data: tasksRaw, error } = await supabase
-        .rpc('get_secure_tasks_with_customer_protection');
+      // Calcular datas de corte para filtro de período (igual ao Relatório)
+      let startDate: string | null = null;
+      if (filters?.period && filters.period !== 'all') {
+        const daysAgo = parseInt(filters.period);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+        startDate = cutoffDate.toISOString();
+      }
+
+      // Mapear activity para array de task_types (igual ao Relatório)
+      let taskTypes: string[] | null = null;
+      if (filters?.activity && filters.activity !== 'all') {
+        if (filters.activity === 'field_visit') {
+          taskTypes = ['prospection', 'visita'];
+        } else {
+          taskTypes = [filters.activity];
+        }
+      }
+
+      // BUSCAR VIA FUNÇÃO PAGINADA E FILTRADA (inclui p_filial_atendida)
+      const { data: tasksRaw, error } = await supabase.rpc(
+        'get_secure_tasks_paginated_filtered',
+        {
+          p_limit: PAGE_SIZE,
+          p_offset: offset,
+          p_start_date: startDate,
+          p_end_date: null,
+          p_created_by:
+            filters?.consultantId && filters.consultantId !== 'all'
+              ? filters.consultantId
+              : null,
+          p_filial: filters?.filial && filters.filial !== 'all' ? filters.filial : null,
+          p_filial_atendida:
+            filters?.filialAtendida && filters.filialAtendida !== 'all'
+              ? filters.filialAtendida
+              : null,
+          p_task_types: taskTypes,
+        }
+      );
 
       if (error) {
-        console.error('❌ Erro ao buscar tasks seguras:', error);
+        console.error('❌ Erro ao buscar tasks filtradas (details):', error);
         throw error;
       }
 
-      // Mapear e aplicar filtros localmente
-      let allTasks = (tasksRaw || []).map((task: any) => ({
+      const tasksRawCount = tasksRaw?.length || 0;
+      const totalCount = Number(tasksRaw?.[0]?.total_count ?? 0);
+
+      const formattedTasks = (tasksRaw || []).map((task: any) => ({
         id: task.id,
         client: task.client,
         responsible: task.responsible,
@@ -214,40 +251,16 @@ export const SalesFunnel: React.FC = () => {
         salesValue: getSalesValueAsNumber(task.sales_value) || 0,
         partialSalesValue: task.partial_sales_value || 0,
         createdAt: new Date(task.created_at),
-        created_by: task.created_by
+        created_by: task.created_by,
       }));
-
-      // Aplicar filtros
-      if (filters?.period && filters.period !== 'all') {
-        const daysAgo = parseInt(filters.period);
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-        allTasks = allTasks.filter((t: any) => t.createdAt >= cutoffDate);
-      }
-
-      if (filters?.consultantId && filters.consultantId !== 'all') {
-        allTasks = allTasks.filter((t: any) => t.created_by === filters.consultantId);
-      }
-
-      if (filters?.filial && filters.filial !== 'all') {
-        allTasks = allTasks.filter((t: any) => t.filial === filters.filial);
-      }
-
-      if (filters?.activity && filters.activity !== 'all') {
-        allTasks = allTasks.filter((t: any) => t.taskType === filters.activity);
-      }
-
-      // Ordenar por data
-      allTasks.sort((a: any, b: any) => b.createdAt.getTime() - a.createdAt.getTime());
-
-      // Aplicar paginação
-      const formattedTasks = allTasks.slice(from, to + 1);
-      const count = pageParam === 0 ? allTasks.length : 0;
 
       return {
         data: formattedTasks,
-        totalCount: count,
-        nextPage: formattedTasks.length === PAGE_SIZE ? pageParam + 1 : undefined
+        totalCount,
+        nextPage:
+          tasksRawCount === PAGE_SIZE && offset + tasksRawCount < totalCount
+            ? pageParam + 1
+            : undefined,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
@@ -340,18 +353,24 @@ export const SalesFunnel: React.FC = () => {
   const {
     data: opportunitiesQueryResult
   } = useQuery({
-    queryKey: ['opportunities-data', selectedFilial, selectedPeriod],
+    queryKey: ['opportunities-data', selectedFilial, selectedFilialAtendida, selectedPeriod],
     queryFn: async () => {
       console.log('🔄 Carregando opportunities com filtros...');
       
-      // OTIMIZAÇÃO Disk IO: Selecionar campos necessários + JOIN com task para pegar responsible
+      // OTIMIZAÇÃO Disk IO: Selecionar campos necessários + JOIN com task para pegar responsible + filial_atendida
+      // !inner para permitir filtro no relacionamento
       let query = supabase
         .from('opportunities')
-        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at, tasks!fk_opportunities_task(responsible, task_type)');
+        .select('id, task_id, cliente_nome, filial, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, created_at, updated_at, tasks!fk_opportunities_task!inner(responsible, task_type, filial_atendida)');
 
       // Aplicar filtro de filial
       if (selectedFilial !== 'all') {
         query = query.eq('filial', selectedFilial);
+      }
+
+      // Aplicar filtro de filial atendida (via task relacionada)
+      if (selectedFilialAtendida !== 'all') {
+        query = query.eq('tasks.filial_atendida', selectedFilialAtendida);
       }
 
       // Aplicar filtro de período
