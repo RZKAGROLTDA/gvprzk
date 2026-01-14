@@ -530,11 +530,12 @@ export const useTaskDetails = (taskId: string | null) => {
     queryFn: async () => {
       if (!taskId) return null;
 
+      console.log('🔍 useTaskDetails: Carregando detalhes para task:', taskId);
+
+      // Buscar a task via RPC e filtrar o resultado
       const [taskResult, productsResult, remindersResult] = await Promise.all([
         supabase
-          .rpc('get_secure_tasks_with_customer_protection')
-          .eq('id', taskId)
-          .single(),
+          .rpc('get_secure_tasks_with_customer_protection'),
         supabase
           .from('products')
           .select('*')
@@ -547,14 +548,53 @@ export const useTaskDetails = (taskId: string | null) => {
 
       if (taskResult.error) throw taskResult.error;
 
-      const taskData = taskResult.data;
-      if (!taskData) return null;
+      // Filtrar para encontrar a task específica
+      const taskData = taskResult.data?.find((t: any) => t.id === taskId);
+      
+      console.log('🔍 useTaskDetails: Task encontrada:', !!taskData);
+      console.log('🔍 useTaskDetails: Products encontrados:', productsResult.data?.length || 0);
+
+      if (!taskData) {
+        console.log('⚠️ useTaskDetails: Task não encontrada, tentando buscar via get_task_details');
+        
+        // Fallback: usar a função específica para detalhes
+        const { data: detailsData, error: detailsError } = await supabase
+          .rpc('get_task_details', { task_id_param: taskId });
+        
+        if (detailsError) {
+          console.error('❌ useTaskDetails: Erro ao buscar detalhes:', detailsError);
+          return null;
+        }
+        
+        if (detailsData && detailsData.length > 0) {
+          // Buscar dados básicos da task
+          const { data: basicTask } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('id', taskId)
+            .single();
+          
+          if (basicTask) {
+            const fullTask = {
+              ...basicTask,
+              ...detailsData[0],
+              products: productsResult.data || [],
+              reminders: remindersResult.data || []
+            };
+            return mapSupabaseTaskToTask(fullTask);
+          }
+        }
+        return null;
+      }
       
       // Ensure taskData is an object before spreading
-      const taskWithProducts = Object.assign({}, taskData, {
+      const taskWithProducts = {
+        ...taskData,
         products: productsResult.data || [],
         reminders: remindersResult.data || []
-      });
+      };
+      
+      console.log('🔍 useTaskDetails: Task mapeada com products:', taskWithProducts.products?.length);
       
       return mapSupabaseTaskToTask(taskWithProducts);
     },
