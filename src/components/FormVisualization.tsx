@@ -46,27 +46,22 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
-  // Carregar detalhes completos da task se necessário
-  const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
+  // SEMPRE carregar detalhes completos da task para garantir que produtos sejam carregados
   const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
-    needsDetailsLoading ? task.id : null
+    isOpen && task?.id ? task.id : null
   );
-  
-  
   
   // Usar task completa (com detalhes carregados) ou task original
   const fullTask = taskDetails || task;
 
   // Enhanced debug logging for equipment and products
   console.log('FormVisualization - Dados recebidos:', {
-    taskId: task.id,
-    checklist: fullTask?.checklist?.length || 0,
-    hasEquipmentData: !!fullTask?.equipmentList,
-    equipmentCount: fullTask?.equipmentList?.length || 0,
-    familyProduct: fullTask?.familyProduct,
-    equipmentQuantity: fullTask?.equipmentQuantity,
-    equipmentList: fullTask?.equipmentList,
-    propertyHectares: fullTask?.propertyHectares
+    taskId: task?.id,
+    checklistFromTask: task?.checklist?.length || 0,
+    checklistFromDetails: taskDetails?.checklist?.length || 0,
+    finalChecklist: fullTask?.checklist?.length || 0,
+    loadingDetails,
+    hasTaskDetails: !!taskDetails
   });
 
 
@@ -421,25 +416,34 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             </Card>
           )}
 
-          {/* Produtos/Serviços - Visualização */}
-          {((fullTask.checklist && fullTask.checklist.length > 0) || (fullTask.prospectItems && fullTask.prospectItems.length > 0)) && (
-            <Card>
-              <CardHeader className="pb-4">
+          {/* Produtos/Serviços - Visualização - SEMPRE EXIBIR */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="w-5 h-5" />
-                  {fullTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos e Serviços'}
+                  {fullTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos e Serviços'} ({fullTask.checklist?.length || 0})
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {fullTask.taskType === 'ligacao' 
-                    ? 'Lista de produtos ofertados durante a ligação'
-                    : 'Lista de produtos e serviços da oportunidade'
-                  }
-                </p>
-              </CardHeader>
-              <CardContent>
+                <Badge variant="outline" className="text-sm">
+                  Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTaskTotalValue(fullTask as any))}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {fullTask.taskType === 'ligacao' 
+                  ? 'Lista de produtos ofertados durante a ligação'
+                  : 'Lista de produtos e serviços da oportunidade'
+                }
+              </p>
+            </CardHeader>
+            <CardContent>
+              {loadingDetails ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  Carregando produtos...
+                </div>
+              ) : fullTask.checklist && fullTask.checklist.length > 0 ? (
                 <div className="space-y-4">
-                  {/* Renderizar produtos do checklist (para visitas e checklists) */}
-                  {fullTask.checklist && fullTask.checklist.map((item, index) => {
+                  {fullTask.checklist.map((item, index) => {
                     const itemTotal = (item.price || 0) * (item.quantity || 1);
                     
                     return (
@@ -470,7 +474,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                               </Badge>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div className="flex flex-col space-y-1">
                                 <label className="text-xs font-medium text-muted-foreground">Quantidade</label>
                                 <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
@@ -491,7 +495,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                                 </div>
                               </div>
                               <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Total</label>
+                                <label className="text-xs font-medium text-muted-foreground">Subtotal</label>
                                 <div className={`h-8 px-2 rounded-md border flex items-center justify-end ${
                                   item.selected 
                                     ? 'bg-green-100 border-green-300 text-green-700 font-bold' 
@@ -517,7 +521,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                             
                             {item.observations && (
                               <div className="mt-4 p-3 bg-muted/50 rounded-md">
-                                <label className="text-sm font-medium text-muted-foreground">Observações</label>
+                                <label className="text-sm font-medium text-muted-foreground">Observações do Produto</label>
                                 <p className="text-sm mt-1 text-foreground">{item.observations}</p>
                               </div>
                             )}
@@ -526,114 +530,37 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                       </div>
                     );
                   })}
-
-                  {/* Renderizar produtos prospect (para ligações) */}
-                  {fullTask.prospectItems && fullTask.prospectItems.map((item, index) => {
-                    const itemTotal = (item.price || 0) * (item.quantity || 1);
-                    
-                    return (
-                      <div 
-                        key={item.id || `prospect-${index}`} 
-                        className={`border rounded-lg p-4 ${
-                          item.selected 
-                            ? 'bg-primary/5 border-primary/30 shadow-sm' 
-                            : 'bg-muted/20 border-border'
-                        }`}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-lg">
-                                  {item.name}
-                                </h4>
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  Categoria: <span className="font-medium">{item.category}</span>
-                                </p>
-                              </div>
-                              <Badge 
-                                variant={item.selected ? "default" : "outline"}
-                                className={item.selected ? "bg-success text-success-foreground" : ""}
-                              >
-                                {item.selected ? '✓ Ofertado' : 'Não Ofertado'}
-                              </Badge>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Quantidade</label>
-                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
-                                  <span className="text-sm font-medium">
-                                    {item.quantity || 1}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Preço Unitário</label>
-                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
-                                  <span className="text-sm font-medium">
-                                    {new Intl.NumberFormat('pt-BR', { 
-                                      style: 'currency', 
-                                      currency: 'BRL' 
-                                    }).format(item.price || 0)}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Total</label>
-                                <div className={`h-8 px-2 rounded-md border flex items-center justify-end ${
-                                  item.selected 
-                                    ? 'bg-green-100 border-green-300 text-green-700 font-bold' 
-                                    : 'bg-gray-50 border-gray-200 text-gray-500'
-                                }`}>
-                                  <span className="text-sm font-medium">
-                                    {new Intl.NumberFormat('pt-BR', { 
-                                      style: 'currency', 
-                                      currency: 'BRL' 
-                                    }).format(itemTotal)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {item.observations && (
-                              <div className="mt-4 p-3 bg-muted/50 rounded-md">
-                                <label className="text-sm font-medium text-muted-foreground">Observações</label>
-                                <p className="text-sm mt-1 text-foreground">{item.observations}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                  
+                  <Separator className="my-6" />
+                  
+                  {/* Resumo dos Produtos */}
+                  <div className="bg-gradient-card rounded-lg p-6 border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {fullTask.taskType === 'ligacao' ? 'Produtos Ofertados' : 'Produtos Selecionados'}
+                        </p>
+                        <p className="text-2xl font-bold text-primary">
+                          {fullTask.checklist?.filter(item => item.selected).length || 0}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-                
-                <Separator className="my-6" />
-                
-                {/* Resumo dos Produtos */}
-                <div className="bg-gradient-card rounded-lg p-6 border">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">
-                        {fullTask.taskType === 'ligacao' ? 'Produtos Ofertados' : 'Produtos Selecionados'}
-                      </p>
-                      <p className="text-2xl font-bold text-primary">
-                        {(fullTask.checklist?.filter(item => item.selected).length || 0) + 
-                         (fullTask.prospectItems?.filter(item => item.selected).length || 0)}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-1">Valor Total</p>
-                      <p className="text-3xl font-bold text-success">
-                        R$ {calculateTaskTotalValue(fullTask as any).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-1">Valor Total</p>
+                        <p className="text-3xl font-bold text-success">
+                          R$ {calculateTaskTotalValue(fullTask as any).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center py-10 text-muted-foreground">
+                  <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Nenhum produto/serviço cadastrado nesta atividade.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Fotos */}
           {fullTask.photos && fullTask.photos.length > 0 && (
