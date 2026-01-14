@@ -164,17 +164,25 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         perdidas: { count: vendasPerdidas, value: valorPerdidas }
       });
 
-      // Se filtro de atividade está ativo, recalcular contatos baseado apenas nesse tipo
+      // CONTATOS: O RPC get_reports_aggregated_stats NÃO filtra por filial_atendida
+      // Quando esse filtro está ativo OU filtro de atividade, precisamos recalcular
       let visitasCount = stats.visitas;
       let checklistsCount = stats.checklist;
       let ligacoesCount = stats.ligacoes;
 
-      if (activityTaskTypes) {
-        // Query leve para contar apenas o(s) tipo(s) filtrado(s)
+      const needsManualContactCount = 
+        (filters?.filialAtendida && filters.filialAtendida !== 'all') || 
+        activityTaskTypes;
+
+      if (needsManualContactCount) {
+        // Determinar quais tipos contar
+        const typesToCount = activityTaskTypes || ['prospection', 'visita', 'ligacao', 'checklist'];
+        
+        // Query leve para contar por tipo
         let countQuery = supabase
           .from('tasks')
-          .select('id', { count: 'exact', head: true })
-          .in('task_type', activityTaskTypes);
+          .select('task_type', { count: 'exact' })
+          .in('task_type', typesToCount);
 
         if (dateParams.p_start_date && dateParams.p_end_date) {
           countQuery = countQuery.gte('created_at', dateParams.p_start_date)
@@ -191,17 +199,33 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           countQuery = countQuery.eq('filial_atendida', filters.filialAtendida);
         }
 
-        const { count } = await countQuery;
-        const filteredCount = count || 0;
+        const { data: taskTypeData, error: countError } = await countQuery;
+        
+        if (!countError && taskTypeData) {
+          // Contar por tipo
+          const counts = taskTypeData.reduce((acc: Record<string, number>, t: any) => {
+            const type = t.task_type;
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {});
 
-        // Zerar outros e usar apenas o filtrado
-        const normalizedActivity = (filters?.activity === 'field_visit' || filters?.activity === 'prospection' || filters?.activity === 'visita')
-          ? 'field_visit'
-          : filters?.activity;
+          visitasCount = (counts['prospection'] || 0) + (counts['visita'] || 0);
+          ligacoesCount = counts['ligacao'] || 0;
+          checklistsCount = counts['checklist'] || 0;
 
-        visitasCount = normalizedActivity === 'field_visit' ? filteredCount : 0;
-        ligacoesCount = normalizedActivity === 'ligacao' ? filteredCount : 0;
-        checklistsCount = normalizedActivity === 'checklist' ? filteredCount : 0;
+          // Se filtro de atividade está ativo, zerar os outros tipos
+          if (activityTaskTypes) {
+            const normalizedActivity = (filters?.activity === 'field_visit' || filters?.activity === 'prospection' || filters?.activity === 'visita')
+              ? 'field_visit'
+              : filters?.activity;
+
+            if (normalizedActivity !== 'field_visit') visitasCount = 0;
+            if (normalizedActivity !== 'ligacao') ligacoesCount = 0;
+            if (normalizedActivity !== 'checklist') checklistsCount = 0;
+          }
+
+          console.log('✅ Contatos filtrados:', { visitasCount, ligacoesCount, checklistsCount });
+        }
       }
 
       // PROSPECTS: O RPC get_reports_aggregated_stats NÃO filtra por filial_atendida
