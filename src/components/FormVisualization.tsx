@@ -224,29 +224,45 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     });
   }, [isOpen, taskEditData, loading, fullTaskSnapshot, task]);
 
-  // Ocultar o dialog INTEIRO até os produtos/detalhes estarem carregados
+  // Mostrar loading dentro do modal enquanto carrega os dados
   if (isOpen && (!detailsReady || !fullTaskSnapshot)) {
-    if (error) {
-      return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Erro ao carregar detalhes</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-destructive">{error}</p>
-              <div className="flex justify-end">
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader className="pb-6 border-b">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-primary rounded-lg shadow-lg">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  Relatório Completo de Oportunidade
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Carregando informações...
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          {error ? (
+            <div className="space-y-4 py-8">
+              <p className="text-sm text-destructive text-center">{error}</p>
+              <div className="flex justify-center">
                 <Button variant="outline" onClick={onClose}>
                   Fechar
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      );
-    }
-
-    return null;
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 space-y-4">
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              <p className="text-muted-foreground">Carregando detalhes da oportunidade...</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    );
   }
 
 
