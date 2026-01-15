@@ -235,7 +235,8 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
     
     setIsGeneratingPDF(true);
     try {
-      await generateTaskPDF(task, calculateTaskTotalValue, getTaskTypeLabel);
+      // Passar filiais para resolver nomes corretamente (igual ao modal)
+      await generateTaskPDF(task, calculateTaskTotalValue, getTaskTypeLabel, filiais);
       
       toast({
         title: "PDF gerado com sucesso!",
@@ -259,43 +260,106 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
 
   const handleEmail = () => {
     const statusLabel = getStatusLabel(salesStatus);
-    const valorFormatado = calculatedValues.closed > 0 
-      ? `R$ ${calculatedValues.closed.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-      : calculatedValues.total > 0 
-        ? `R$ ${calculatedValues.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (potencial)`
-        : 'N/A';
+    const valorPotencial = formatCurrency(calculatedValues.total);
+    const valorFechado = calculatedValues.closed > 0 ? formatCurrency(calculatedValues.closed) : '-';
+    const taxaConversao = calculatedValues.total > 0 && calculatedValues.closed > 0 
+      ? `${((calculatedValues.closed / calculatedValues.total) * 100).toFixed(0)}%`
+      : '-';
+
+    // Montar lista de produtos se existir
+    let produtosSection = '';
+    if (task?.checklist && task.checklist.length > 0) {
+      const selectedCount = task.checklist.filter(i => i.selected).length;
+      const selectedValue = task.checklist.reduce((sum, i) => i.selected ? sum + ((i.price || 0) * (i.quantity || 1)) : sum, 0);
+      
+      produtosSection = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛒 PRODUTOS E SERVIÇOS (${task.checklist.length} itens)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${task.checklist.map(item => {
+  const subtotal = (item.price || 0) * (item.quantity || 1);
+  return `${item.selected ? '✓' : '○'} ${item.name} - Qtd: ${item.quantity || 1} - ${formatCurrency(subtotal)}`;
+}).join('\n')}
+
+Resumo: ${selectedCount}/${task.checklist.length} selecionados | Valor Selecionado: ${formatCurrency(selectedValue)} | Total: ${formatCurrency(calculatedValues.products)}
+`;
+    }
+
+    // Montar seção de equipamentos se existir
+    let equipamentosSection = '';
+    if (task?.familyProduct || task?.equipmentQuantity || (task?.equipmentList && task.equipmentList.length > 0)) {
+      equipamentosSection = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 EQUIPAMENTOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      if (task.familyProduct) equipamentosSection += `\n• Família Principal: ${task.familyProduct}`;
+      if (task.equipmentQuantity) equipamentosSection += `\n• Quantidade Total: ${task.equipmentQuantity}`;
+      if (task.equipmentList && task.equipmentList.length > 0) {
+        equipamentosSection += '\n' + task.equipmentList.map(eq => `• ${eq.familyProduct || 'N/A'} - Qtd: ${eq.quantity || 0}`).join('\n');
+      }
+      equipamentosSection += '\n';
+    }
+
+    // Montar seção de observações
+    let observacoesSection = '';
+    if (task?.observations || task?.prospectNotes || task?.prospectNotesJustification) {
+      observacoesSection = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 OBSERVAÇÕES E NOTAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      if (task.observations) observacoesSection += `\nObservações Gerais:\n${task.observations}\n`;
+      if (task.prospectNotes) observacoesSection += `\nNotas de Prospecção:\n${task.prospectNotes}\n`;
+      if (task.prospectNotesJustification) observacoesSection += `\nJustificativa:\n${task.prospectNotesJustification}\n`;
+    }
+
+    // Montar seção de localização
+    let localizacaoSection = '';
+    if (task?.checkInLocation) {
+      localizacaoSection = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 LOCALIZAÇÃO DO CHECK-IN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Coordenadas: ${task.checkInLocation.lat}, ${task.checkInLocation.lng}
+• Data/Hora: ${format(new Date(task.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+• Link: https://www.google.com/maps?q=${task.checkInLocation.lat},${task.checkInLocation.lng}
+`;
+    }
     
     const subject = `Relatório de Oportunidade - ${task?.client || 'Cliente'} - ${statusLabel}`;
     const body = `Olá,
 
-Segue o relatório da oportunidade:
+Segue o relatório completo da oportunidade:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 INFORMAÇÕES GERAIS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Cliente: ${task?.client || 'N/A'}
-• Código: ${task?.clientCode || 'N/A'}
-• Propriedade: ${task?.property || 'N/A'}
-• Tipo: ${getTaskTypeLabel(task?.taskType || 'prospection')}
-• Data: ${task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💰 STATUS DA VENDA
+📊 RESUMO DA OPORTUNIDADE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 • Status: ${statusLabel}
-• Valor: ${valorFormatado}
+• Valor Potencial: ${valorPotencial}
+• Valor Fechado: ${valorFechado}
+• Taxa de Conversão: ${taxaConversao}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏢 FILIAIS
+👤 DADOS DO CLIENTE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Nome: ${task?.client || 'N/A'}
+• Código: ${task?.clientCode || 'N/A'}
+• Email: ${task?.email || 'N/A'}
+• Telefone: ${task?.phone || 'N/A'}
+• Propriedade: ${task?.property || 'N/A'}
+• Hectares: ${task?.propertyHectares ? `${task.propertyHectares} ha` : 'N/A'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏢 FILIAL E RESPONSÁVEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Responsável: ${task?.responsible || 'N/A'}
 • Filial do Responsável: ${getFilialNameRobust(task?.filial, filiais)}
 • Filial Atendida: ${task?.filialAtendida ? getFilialNameRobust(task.filialAtendida, filiais) : 'Mesma do responsável'}
-• Responsável: ${task?.responsible || 'N/A'}
-
+• Tipo de Atividade: ${getTaskTypeLabel(task?.taskType || 'prospection')}
+• Prioridade: ${task?.priority === 'high' ? 'Alta' : task?.priority === 'medium' ? 'Média' : 'Baixa'}
+• Data: ${task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
+${produtosSection}${equipamentosSection}${observacoesSection}${localizacaoSection}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 OBSERVAÇÕES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${task?.observations || task?.prospectNotes || 'Nenhuma observação'}
+Relatório gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
 
 Atenciosamente,
 ${task?.responsible || 'Equipe Comercial'}`;
