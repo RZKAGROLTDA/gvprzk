@@ -49,49 +49,74 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   // MESMA fonte de dados do "Editar" (useTaskEditData) — e congelar em snapshot para não "mudar" depois de carregar
   const { data: taskEditData, loading, error } = useTaskEditData(isOpen ? task?.id : null);
   const [fullTaskSnapshot, setFullTaskSnapshot] = useState<Task | null>(null);
+  const [snapshotSalesStatus, setSnapshotSalesStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
+  const [snapshotOpportunityValue, setSnapshotOpportunityValue] = useState<number>(0);
 
   useEffect(() => {
     // ao fechar, limpar snapshot
     if (!isOpen) {
       setFullTaskSnapshot(null);
+      setSnapshotSalesStatus('prospect');
+      setSnapshotOpportunityValue(0);
     }
   }, [isOpen]);
 
-  const mappedChecklist: ProductType[] = useMemo(() => {
-    if (!taskEditData?.items?.length) return [];
-    return taskEditData.items.map((item) => ({
+  // Criar snapshot UMA VEZ quando taskEditData carrega
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!taskEditData) return;
+    if (fullTaskSnapshot) return; // já congelou — não atualizar mais
+
+    // Mapear checklist
+    const checklist: ProductType[] = (taskEditData.items || []).map((item) => ({
       id: item.id,
       name: item.produto,
       category: (item.sku || 'other') as ProductType['category'],
-      // vendido quando qtd_vendida > 0
       selected: (item.qtd_vendida || 0) > 0,
-      // manter a quantidade ofertada como referência no "ver" (qtd vendida entra como selected)
       quantity: item.qtd_ofertada || 0,
       price: item.preco_unit || 0,
       observations: '',
       photos: [],
     }));
-  }, [taskEditData?.items]);
 
-  const opportunityTotalValue = useMemo(() => {
-    if (!taskEditData) return 0;
-
+    // Calcular valor da oportunidade
+    let totalValue = 0;
     const fromOpportunity = taskEditData.opportunity?.valor_total_oportunidade;
-    if (typeof fromOpportunity === 'number' && fromOpportunity > 0) return fromOpportunity;
+    if (typeof fromOpportunity === 'number' && fromOpportunity > 0) {
+      totalValue = fromOpportunity;
+    } else {
+      const fromTask = taskEditData.sales_value;
+      if (typeof fromTask === 'number' && fromTask > 0) {
+        totalValue = fromTask;
+      } else {
+        totalValue = (taskEditData.items || []).reduce((sum, i) => {
+          return sum + (i.preco_unit || 0) * (i.qtd_ofertada || 0);
+        }, 0);
+      }
+    }
 
-    const fromTask = taskEditData.sales_value;
-    if (typeof fromTask === 'number' && fromTask > 0) return fromTask;
-
-    // fallback: somar ofertado (não depende de "selected")
-    return (taskEditData.items || []).reduce((sum, i) => {
-      return sum + (i.preco_unit || 0) * (i.qtd_ofertada || 0);
-    }, 0);
-  }, [taskEditData]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    if (!taskEditData) return;
-    if (fullTaskSnapshot) return; // já congelou
+    // Calcular status de vendas DIRETAMENTE dos dados do banco
+    const salesConfirmed = taskEditData.sales_confirmed;
+    const salesType = taskEditData.sales_type;
+    
+    let calculatedStatus: 'prospect' | 'ganho' | 'perdido' | 'parcial' = 'prospect';
+    
+    // Se não há informação explícita de confirmação, é prospect
+    if (salesConfirmed === undefined || salesConfirmed === null) {
+      calculatedStatus = 'prospect';
+    } else if (salesConfirmed === false) {
+      // Venda perdida
+      calculatedStatus = 'perdido';
+    } else if (salesConfirmed === true) {
+      // Venda confirmada
+      if (salesType === 'parcial') {
+        calculatedStatus = 'parcial';
+      } else if (salesType === 'perdido') {
+        calculatedStatus = 'perdido';
+      } else {
+        calculatedStatus = 'ganho';
+      }
+    }
 
     const startDate = taskEditData.startDate || taskEditData.data;
     const endDate = taskEditData.endDate || taskEditData.data;
@@ -108,7 +133,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       filial: taskEditData.filial || undefined,
       filialAtendida: taskEditData.filialAtendida,
       taskType: (taskEditData.taskType || taskEditData.tipo || 'prospection') as Task['taskType'],
-      checklist: mappedChecklist,
+      checklist: checklist,
       startDate: startDate ? new Date(startDate as any) : new Date(),
       endDate: endDate ? new Date(endDate as any) : new Date(),
       startTime: taskEditData.startTime || '',
@@ -125,10 +150,10 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       createdBy: taskEditData.vendedor_id,
       createdAt: new Date(),
       updatedAt: new Date(),
-      isProspect: true,
+      isProspect: taskEditData.is_prospect ?? true,
       prospectNotes: undefined,
-      salesConfirmed: taskEditData.sales_confirmed,
-      salesType: taskEditData.sales_type as any,
+      salesConfirmed: salesConfirmed,
+      salesType: salesType as any,
       salesValue: taskEditData.sales_value,
       partialSalesValue: taskEditData.partial_sales_value || undefined,
       familyProduct: taskEditData.familyProduct,
@@ -136,12 +161,22 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       propertyHectares: taskEditData.propertyHectares,
       equipmentList: Array.isArray(taskEditData.equipment_list) ? (taskEditData.equipment_list as any) : undefined,
       prospectItems: undefined,
-      // Security metadata
       isMasked: (task as any).isMasked,
     };
 
+    // CONGELAR todos os valores calculados
     setFullTaskSnapshot(snapshot);
-  }, [isOpen, taskEditData, fullTaskSnapshot, mappedChecklist, task]);
+    setSnapshotSalesStatus(calculatedStatus);
+    setSnapshotOpportunityValue(totalValue);
+    
+    console.log('📸 FormVisualization: Snapshot criado', {
+      id: snapshot.id,
+      salesConfirmed,
+      salesType,
+      calculatedStatus,
+      totalValue
+    });
+  }, [isOpen, taskEditData, fullTaskSnapshot, task]);
 
   // enquanto carrega, não renderizar dados "parciais" (evita status/valor mudarem)
   if (isOpen && (loading || !fullTaskSnapshot)) {
@@ -163,8 +198,9 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     );
   }
 
-  const fullTask = fullTaskSnapshot || task;
-  const salesStatus = mapSalesStatus(fullTask);
+  const fullTask = fullTaskSnapshot!;
+  const salesStatus = snapshotSalesStatus;
+  const opportunityTotalValue = snapshotOpportunityValue;
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
