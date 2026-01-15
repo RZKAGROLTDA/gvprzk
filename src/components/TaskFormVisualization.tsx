@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFiliais } from '@/hooks/useTasksOptimized';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
-import { getTaskTypeLabel as getTaskTypeLabelCore, calculateTaskTotalValue } from './TaskFormCore';
+import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 
