@@ -109,6 +109,31 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
     };
   }, [taskEditData, taskProp]);
 
+  // Enquanto os produtos/itens (taskEditData.items) não terminaram de carregar,
+  // não renderizar o dialog (evita o status “piscar” com dados do taskProp).
+  if (isOpen && taskProp && (!taskEditData || isLoadingDetails) && !error) {
+    return null;
+  }
+
+  // Em caso de erro, exibir um dialog simples para permitir fechar.
+  if (isOpen && taskProp && error) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Erro ao carregar detalhes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-destructive">{error}</p>
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={onClose}>Fechar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   console.log('TaskFormVisualization - Dados carregados via useTaskEditData:', {
     taskId: taskProp?.id,
     hasTaskEditData: !!taskEditData,
