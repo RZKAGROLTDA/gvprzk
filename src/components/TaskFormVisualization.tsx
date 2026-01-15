@@ -149,11 +149,39 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
   }, [task, salesStatus]);
 
   // Enquanto os produtos/itens (taskEditData.items) não terminaram de carregar,
-  // não renderizar o dialog (evita o status “piscar” com dados do taskProp).
-  const isWaitingForProducts = isOpen && taskProp && (!taskEditData || isLoadingDetails) && !error;
+  // manter o modal aberto e mostrar um loading *dentro* dele (mesma UX do Editar).
+  const isWaitingForProducts = isOpen && !!taskProp && (!taskEditData || isLoadingDetails) && !error;
   if (isWaitingForProducts) {
-    return null;
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader className="pb-4 border-b">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-semibold">
+                  Detalhes da Oportunidade
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Carregando informações…
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-14 space-y-4">
+            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">
+              Carregando produtos e valores…
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   }
+
 
   // Em caso de erro, exibir um dialog simples para permitir fechar.
   if (isOpen && taskProp && error) {
