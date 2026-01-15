@@ -1,6 +1,5 @@
 
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
@@ -14,9 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from '@/integrations/supabase/client';
 import { Task, ProductType } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
+import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
@@ -47,134 +46,82 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
-  // Buscar dados da task diretamente (mesma lógica do TaskEditModal - query direta rápida)
-  const { data: taskData, isLoading: loadingTask } = useQuery({
-    queryKey: ['task-view-direct', task?.id],
-    enabled: isOpen && !!task?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('id', task.id)
-        .maybeSingle();
-      
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 0,
-    refetchOnMount: true,
-  });
+  // USAR EXATAMENTE A MESMA LÓGICA DO TaskEditModal - hook useTaskEditData
+  const { data: taskEditData, loading: loadingDetails, error } = useTaskEditData(
+    isOpen ? task?.id : null
+  );
 
-  // Buscar produtos diretamente (query direta rápida)
-  const { data: productsRows = [], isLoading: loadingProducts } = useQuery({
-    queryKey: ['task-products-view', task?.id],
-    enabled: isOpen && !!task?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('task_id', task.id)
-        .order('created_at', { ascending: true });
+  // Montar fullTask a partir dos dados do hook (mesma lógica do TaskEditModal)
+  const fullTask = useMemo((): Task => {
+    if (!taskEditData) {
+      return task;
+    }
 
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 0,
-    refetchOnMount: true,
-  });
+    // Mapear items para checklist (ProductType[])
+    const mappedChecklist: ProductType[] = (taskEditData.items || []).map((item) => ({
+      id: item.id,
+      name: item.produto,
+      category: (item.sku || 'other') as ProductType['category'],
+      selected: item.qtd_vendida > 0,
+      quantity: item.qtd_ofertada,
+      price: item.preco_unit,
+      observations: '',
+      photos: [],
+    }));
 
-  // Buscar reminders diretamente
-  const { data: remindersRows = [] } = useQuery({
-    queryKey: ['task-reminders-view', task?.id],
-    enabled: isOpen && !!task?.id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('task_id', task.id)
-        .order('date', { ascending: true });
+    return {
+      id: taskEditData.id,
+      name: taskEditData.name || '',
+      client: taskEditData.cliente_nome,
+      clientCode: taskEditData.clientCode,
+      property: taskEditData.property || '',
+      propertyHectares: taskEditData.propertyHectares,
+      responsible: taskEditData.responsible || '',
+      startDate: taskEditData.startDate ? new Date(taskEditData.startDate) : new Date(),
+      endDate: taskEditData.endDate ? new Date(taskEditData.endDate) : new Date(),
+      startTime: taskEditData.startTime || '',
+      endTime: taskEditData.endTime || '',
+      priority: (taskEditData.priority || 'medium') as Task['priority'],
+      status: (task?.status || 'pending') as Task['status'],
+      taskType: (taskEditData.taskType || taskEditData.tipo || 'prospection') as Task['taskType'],
+      observations: taskEditData.notas || taskEditData.observations || '',
+      photos: task?.photos || [],
+      documents: task?.documents || [],
+      initialKm: task?.initialKm || 0,
+      finalKm: task?.finalKm || 0,
+      equipmentQuantity: taskEditData.equipmentQuantity,
+      equipmentList: task?.equipmentList,
+      familyProduct: taskEditData.familyProduct,
+      email: taskEditData.cliente_email,
+      phone: taskEditData.phone,
+      filial: taskEditData.filial,
+      filialAtendida: taskEditData.filialAtendida,
+      isProspect: !taskEditData.sales_confirmed,
+      prospectNotes: task?.prospectNotes,
+      salesConfirmed: taskEditData.sales_confirmed,
+      salesType: taskEditData.sales_type as Task['salesType'],
+      salesValue: taskEditData.sales_value,
+      partialSalesValue: taskEditData.partial_sales_value,
+      checkInLocation: task?.checkInLocation,
+      createdAt: task?.createdAt || new Date(),
+      updatedAt: task?.updatedAt || new Date(),
+      createdBy: taskEditData.vendedor_id,
+      checklist: mappedChecklist,
+      reminders: task?.reminders || [],
+    };
+  }, [taskEditData, task]);
 
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 0,
-  });
+  // Checklist para exibição
+  const displayChecklist = fullTask.checklist || [];
 
-  // Loading só bloqueia se task principal não carregou ainda
-  const loadingDetails = loadingTask;
-  
-  // Mapear produtos sempre que disponíveis
-  const mappedProducts = (productsRows || []).map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    category: p.category,
-    selected: Boolean(p.selected),
-    quantity: p.quantity ?? 0,
-    price: p.price ?? 0,
-    observations: p.observations ?? '',
-    photos: p.photos ?? [],
-  }));
-  
-  // Montar task completa a partir dos dados diretos
-  const fullTask: Task = taskData ? {
-    id: taskData.id,
-    name: taskData.name,
-    client: taskData.client,
-    clientCode: taskData.clientcode,
-    property: taskData.property,
-    propertyHectares: taskData.propertyhectares,
-    responsible: taskData.responsible,
-    startDate: taskData.start_date,
-    endDate: taskData.end_date,
-    startTime: taskData.start_time,
-    endTime: taskData.end_time,
-    priority: taskData.priority as any,
-    status: taskData.status as any,
-    taskType: taskData.task_type,
-    observations: taskData.observations,
-    photos: taskData.photos || [],
-    documents: taskData.documents || [],
-    initialKm: taskData.initial_km,
-    finalKm: taskData.final_km,
-    equipmentQuantity: taskData.equipment_quantity,
-    equipmentList: taskData.equipment_list as any,
-    familyProduct: taskData.family_product,
-    email: taskData.email,
-    phone: taskData.phone,
-    filial: taskData.filial,
-    isProspect: taskData.is_prospect,
-    prospectNotes: taskData.prospect_notes,
-    salesConfirmed: taskData.sales_confirmed,
-    salesType: taskData.sales_type,
-    salesValue: taskData.sales_value,
-    partialSalesValue: taskData.partial_sales_value,
-    checkInLocation: taskData.check_in_location as any,
-    createdAt: taskData.created_at,
-    updatedAt: taskData.updated_at,
-    createdBy: taskData.created_by,
-    checklist: mappedProducts,
-    reminders: remindersRows.map((r: any) => ({
-      id: r.id,
-      title: r.title,
-      description: r.description,
-      date: r.date,
-      time: r.time,
-      completed: r.completed,
-    })),
-  } : {
-    ...task,
-    checklist: mappedProducts.length > 0 ? mappedProducts : task.checklist,
-  };
-
-  // Usar produtos mapeados se disponíveis, senão checklist da task
-  const displayChecklist = mappedProducts.length > 0 ? mappedProducts : (fullTask.checklist || []);
-
-  console.log('FormVisualization - Dados carregados:', {
+  console.log('FormVisualization - Dados carregados via useTaskEditData:', {
     taskId: task?.id,
-    hasTaskData: !!taskData,
-    productsCount: productsRows.length,
-    remindersCount: remindersRows.length,
-    loadingDetails
+    hasTaskEditData: !!taskEditData,
+    itemsCount: taskEditData?.items?.length || 0,
+    salesType: taskEditData?.sales_type,
+    salesConfirmed: taskEditData?.sales_confirmed,
+    loadingDetails,
+    error
   });
 
   // Usar função padronizada do TaskFormCore
