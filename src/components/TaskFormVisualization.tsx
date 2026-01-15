@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -23,11 +21,11 @@ import { Label } from "@/components/ui/label";
 import { Task, ProductType } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useFiliais } from '@/hooks/useTasksOptimized';
+import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel as getTaskTypeLabelCore, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
-import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 
 interface TaskFormVisualizationProps {
   task: Task | null;
@@ -46,102 +44,80 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { data: filiais = [] } = useFiliais();
 
-  const taskId = taskProp?.id;
-
-  const { data: taskRow } = useQuery({
-    queryKey: ['taskformvis-task', taskId],
-    enabled: isOpen && !!taskId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('id', taskId as string)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 0,
-    refetchOnMount: true,
-  });
-
-  const {
-    data: productsRows = [],
-    isLoading: isLoadingProducts,
-    error: productsError,
-  } = useQuery({
-    queryKey: ['taskformvis-products', taskId],
-    enabled: isOpen && !!taskId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('task_id', taskId as string)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 0,
-    refetchOnMount: true,
-  });
-
-  const { data: remindersRows = [] } = useQuery({
-    queryKey: ['taskformvis-reminders', taskId],
-    enabled: isOpen && !!taskId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('task_id', taskId as string)
-        .order('date', { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 0,
-  });
-
-  const mappedProducts: ProductType[] = useMemo(
-    () =>
-      (productsRows as any[]).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        category: p.category,
-        selected: Boolean(p.selected),
-        quantity: p.quantity ?? 0,
-        price: p.price ?? 0,
-        observations: p.observations ?? '',
-        photos: p.photos ?? [],
-      })),
-    [productsRows]
+  // USAR EXATAMENTE A MESMA LÓGICA DO TaskEditModal - hook useTaskEditData
+  const { data: taskEditData, loading: isLoadingDetails, error } = useTaskEditData(
+    isOpen ? taskProp?.id || null : null
   );
 
-  const task = useMemo(() => {
-    if (taskRow) {
-      return mapSupabaseTaskToTask({
-        ...taskRow,
-        products: productsRows,
-        reminders: remindersRows,
-      });
+  // Montar task a partir dos dados do hook (mesma lógica do TaskEditModal)
+  const task = useMemo((): Task | null => {
+    if (!taskEditData) {
+      return taskProp;
     }
 
-    if (!taskProp) return null;
+    // Mapear items para checklist (ProductType[])
+    const mappedChecklist: ProductType[] = (taskEditData.items || []).map((item) => ({
+      id: item.id,
+      name: item.produto,
+      category: (item.sku || 'other') as ProductType['category'],
+      selected: item.qtd_vendida > 0,
+      quantity: item.qtd_ofertada,
+      price: item.preco_unit,
+      observations: '',
+      photos: [],
+    }));
 
-    // Se a task veio sem checklist (ex.: lista resumida), injeta produtos já carregados
-    if (mappedProducts.length > 0) {
-      return { ...taskProp, checklist: mappedProducts };
-    }
+    return {
+      id: taskEditData.id,
+      name: taskEditData.name || '',
+      client: taskEditData.cliente_nome,
+      clientCode: taskEditData.clientCode,
+      property: taskEditData.property || '',
+      propertyHectares: taskEditData.propertyHectares,
+      responsible: taskEditData.responsible || '',
+      startDate: taskEditData.startDate ? new Date(taskEditData.startDate) : new Date(),
+      endDate: taskEditData.endDate ? new Date(taskEditData.endDate) : new Date(),
+      startTime: taskEditData.startTime || '',
+      endTime: taskEditData.endTime || '',
+      priority: (taskEditData.priority || 'medium') as Task['priority'],
+      status: (taskProp?.status || 'pending') as Task['status'],
+      taskType: (taskEditData.taskType || taskEditData.tipo || 'prospection') as Task['taskType'],
+      observations: taskEditData.notas || taskEditData.observations || '',
+      photos: taskProp?.photos || [],
+      documents: taskProp?.documents || [],
+      initialKm: taskProp?.initialKm || 0,
+      finalKm: taskProp?.finalKm || 0,
+      equipmentQuantity: taskEditData.equipmentQuantity,
+      equipmentList: taskProp?.equipmentList,
+      familyProduct: taskEditData.familyProduct,
+      email: taskEditData.cliente_email,
+      phone: taskEditData.phone,
+      filial: taskEditData.filial,
+      filialAtendida: taskEditData.filialAtendida,
+      isProspect: !taskEditData.sales_confirmed,
+      prospectNotes: taskProp?.prospectNotes,
+      salesConfirmed: taskEditData.sales_confirmed,
+      salesType: taskEditData.sales_type as Task['salesType'],
+      salesValue: taskEditData.sales_value,
+      partialSalesValue: taskEditData.partial_sales_value,
+      checkInLocation: taskProp?.checkInLocation,
+      createdAt: taskProp?.createdAt || new Date(),
+      updatedAt: taskProp?.updatedAt || new Date(),
+      createdBy: taskEditData.vendedor_id,
+      checklist: mappedChecklist,
+      reminders: taskProp?.reminders || [],
+    };
+  }, [taskEditData, taskProp]);
 
-    return taskProp;
-  }, [taskRow, taskProp, productsRows, remindersRows, mappedProducts]);
-
-  // Manter nome usado no JSX existente: aqui significa "carregando produtos"
-  const isLoadingDetails = isLoadingProducts;
-
-  if (productsError) {
-    console.error('❌ TaskFormVisualization: erro carregando produtos', productsError);
-  }
+  console.log('TaskFormVisualization - Dados carregados via useTaskEditData:', {
+    taskId: taskProp?.id,
+    hasTaskEditData: !!taskEditData,
+    itemsCount: taskEditData?.items?.length || 0,
+    salesType: taskEditData?.sales_type,
+    salesConfirmed: taskEditData?.sales_confirmed,
+    isLoadingDetails,
+    error
+  });
 
   const getTaskTypeLabel = (type: string): string => {
     const normalized = (type || '').toLowerCase();
