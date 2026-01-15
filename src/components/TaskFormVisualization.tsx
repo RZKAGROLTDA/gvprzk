@@ -109,9 +109,49 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
     };
   }, [taskEditData, taskProp]);
 
+  // IMPORTANTE: hooks (ex.: useMemo) não podem ficar depois de returns condicionais.
+  // Então, todos os cálculos com hooks ficam ANTES de qualquer early-return.
+  const salesStatus = task ? mapSalesStatus(task) : 'prospect';
+
+  const calculatedValues = useMemo(() => {
+    if (!task) return { total: 0, closed: 0, partial: 0, products: 0 };
+
+    const total = getSalesValueAsNumber(task.salesValue) || 0;
+    const partial = task.partialSalesValue || 0;
+
+    // Calculate from products if available
+    let productsTotal = 0;
+    let productsSelected = 0;
+
+    if (task.checklist && task.checklist.length > 0) {
+      task.checklist.forEach((item) => {
+        const itemTotal = (item.price || 0) * (item.quantity || 1);
+        productsTotal += itemTotal;
+        if (item.selected) {
+          productsSelected += itemTotal;
+        }
+      });
+    }
+
+    const closed =
+      salesStatus === 'ganho'
+        ? total || productsTotal
+        : salesStatus === 'parcial'
+          ? partial || productsSelected
+          : 0;
+
+    return {
+      total: total || productsTotal,
+      closed,
+      partial: partial || productsSelected,
+      products: productsTotal,
+    };
+  }, [task, salesStatus]);
+
   // Enquanto os produtos/itens (taskEditData.items) não terminaram de carregar,
   // não renderizar o dialog (evita o status “piscar” com dados do taskProp).
-  if (isOpen && taskProp && (!taskEditData || isLoadingDetails) && !error) {
+  const isWaitingForProducts = isOpen && taskProp && (!taskEditData || isLoadingDetails) && !error;
+  if (isWaitingForProducts) {
     return null;
   }
 
@@ -126,7 +166,9 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
           <div className="space-y-4">
             <p className="text-sm text-destructive">{error}</p>
             <div className="flex justify-end">
-              <Button variant="outline" onClick={onClose}>Fechar</Button>
+              <Button variant="outline" onClick={onClose}>
+                Fechar
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -141,58 +183,8 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
     salesType: taskEditData?.sales_type,
     salesConfirmed: taskEditData?.sales_confirmed,
     isLoadingDetails,
-    error
+    error,
   });
-
-  const getTaskTypeLabel = (type: string): string => {
-    const normalized = (type || '').toLowerCase();
-    const labels: Record<string, string> = {
-      prospection: 'Visita',
-      visita: 'Visita',
-      field_visit: 'Visita de Campo',
-      'field-visit': 'Visita de Campo',
-      ligacao: 'Ligação',
-      call: 'Ligação',
-      checklist: 'Checklist de Oficina',
-      workshop_checklist: 'Checklist de Oficina',
-      'workshop-checklist': 'Checklist de Oficina',
-    };
-    return labels[normalized] || getTaskTypeLabelCore(type);
-  };
-
-  // Calculate sales status and values
-  const salesStatus = task ? mapSalesStatus(task) : 'prospect';
-
-  const calculatedValues = useMemo(() => {
-    if (!task) return { total: 0, closed: 0, partial: 0, products: 0 };
-    
-    const total = getSalesValueAsNumber(task.salesValue) || 0;
-    const partial = task.partialSalesValue || 0;
-    
-    // Calculate from products if available
-    let productsTotal = 0;
-    let productsSelected = 0;
-    
-    if (task.checklist && task.checklist.length > 0) {
-      task.checklist.forEach(item => {
-        const itemTotal = (item.price || 0) * (item.quantity || 1);
-        productsTotal += itemTotal;
-        if (item.selected) {
-          productsSelected += itemTotal;
-        }
-      });
-    }
-    
-    const closed = salesStatus === 'ganho' ? (total || productsTotal) : 
-                   salesStatus === 'parcial' ? (partial || productsSelected) : 0;
-    
-    return { 
-      total: total || productsTotal, 
-      closed, 
-      partial: partial || productsSelected,
-      products: productsTotal 
-    };
-  }, [task, salesStatus]);
 
   // Early return if no task is provided
   if (!task) {

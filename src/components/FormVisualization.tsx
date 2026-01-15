@@ -51,12 +51,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const [fullTaskSnapshot, setFullTaskSnapshot] = useState<Task | null>(null);
   const [snapshotSalesStatus, setSnapshotSalesStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
   const [snapshotOpportunityValue, setSnapshotOpportunityValue] = useState<number>(0);
-  const [forceShowAfterDelay, setForceShowAfterDelay] = useState(false);
 
-  const productsReady =
-    forceShowAfterDelay ||
-    (taskEditData?.items?.length ?? 0) > 0 ||
-    (taskEditData?.originalProducts?.length ?? 0) > 0;
+  const detailsReady = isOpen && !loading && !!taskEditData;
 
   useEffect(() => {
     // ao fechar OU ao trocar a task com o modal aberto, limpar snapshot
@@ -65,7 +61,6 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       setFullTaskSnapshot(null);
       setSnapshotSalesStatus('prospect');
       setSnapshotOpportunityValue(0);
-      setForceShowAfterDelay(false);
       return;
     }
 
@@ -73,25 +68,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     setFullTaskSnapshot(null);
     setSnapshotSalesStatus('prospect');
     setSnapshotOpportunityValue(0);
-    setForceShowAfterDelay(false);
   }, [isOpen, task?.id]);
 
-  // Se os produtos/itens ainda não chegaram, segurar a UI por um curto período
-  // (evita mostrar status "errado" antes do checklist estar pronto)
-  useEffect(() => {
-    if (!isOpen) return;
-    if (loading) return;
-    if (productsReady) return;
-
-    const t = window.setTimeout(() => setForceShowAfterDelay(true), 800);
-    return () => window.clearTimeout(t);
-  }, [isOpen, loading, productsReady, task?.id]);
-
-  // Criar snapshot UMA VEZ quando taskEditData carrega
+  // Criar snapshot UMA VEZ quando taskEditData carrega (inclui itens/produtos)
   useEffect(() => {
     if (!isOpen) return;
     if (!taskEditData) return;
-    if (!productsReady) return;
+    if (loading) return;
     if (fullTaskSnapshot) return; // já congelou — não atualizar mais
 
     // Mapear checklist
@@ -216,7 +199,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       prospectNotes: undefined,
       salesConfirmed: normalizedSalesConfirmed ?? undefined,
       salesType: normalizedSalesType as any,
-      // Para exibição, usar o mesmo valor calculado/fixado (igual ao topo do popup)
+      // Para exibição, usar o mesmo valor calculado/fixado
       salesValue: totalValue,
       partialSalesValue: taskEditData.partial_sales_value || undefined,
       familyProduct: taskEditData.familyProduct,
@@ -231,35 +214,41 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     setFullTaskSnapshot(snapshot);
     setSnapshotSalesStatus(calculatedStatus);
     setSnapshotOpportunityValue(totalValue);
-    
+
     console.log('📸 FormVisualization: Snapshot criado', {
       id: snapshot.id,
       salesConfirmed,
       salesType,
       calculatedStatus,
-      totalValue
+      totalValue,
     });
-  }, [isOpen, taskEditData, fullTaskSnapshot, task]);
+  }, [isOpen, taskEditData, loading, fullTaskSnapshot, task]);
 
-  // enquanto carrega, não renderizar dados "parciais" (evita status/valor mudarem)
-  if (isOpen && (loading || !productsReady || !fullTaskSnapshot)) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Carregando detalhes...</DialogTitle>
-          </DialogHeader>
-          <div className="flex items-center justify-center py-10 text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            Carregando produtos e oportunidade
-          </div>
-          {error && (
-            <div className="text-sm text-destructive">{error}</div>
-          )}
-        </DialogContent>
-      </Dialog>
-    );
+  // Ocultar o dialog INTEIRO até os produtos/detalhes estarem carregados
+  if (isOpen && (!detailsReady || !fullTaskSnapshot)) {
+    if (error) {
+      return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Erro ao carregar detalhes</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-destructive">{error}</p>
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={onClose}>
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+
+    return null;
   }
+
 
   const fullTask = fullTaskSnapshot!;
   const salesStatus = snapshotSalesStatus;
