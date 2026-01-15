@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
@@ -53,13 +53,20 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const [snapshotOpportunityValue, setSnapshotOpportunityValue] = useState<number>(0);
 
   useEffect(() => {
-    // ao fechar, limpar snapshot
+    // ao fechar OU ao trocar a task com o modal aberto, limpar snapshot
+    // (evita mostrar status/dados "da task anterior" enquanto carrega a atual)
     if (!isOpen) {
       setFullTaskSnapshot(null);
       setSnapshotSalesStatus('prospect');
       setSnapshotOpportunityValue(0);
+      return;
     }
-  }, [isOpen]);
+
+    // Se abriu/trocou de task, garantir que não existe snapshot antigo
+    setFullTaskSnapshot(null);
+    setSnapshotSalesStatus('prospect');
+    setSnapshotOpportunityValue(0);
+  }, [isOpen, task?.id]);
 
   // Criar snapshot UMA VEZ quando taskEditData carrega
   useEffect(() => {
@@ -95,28 +102,63 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       }
     }
 
-    // Calcular status de vendas DIRETAMENTE dos dados do banco
+    // Calcular status exatamente como no modal de editar:
+    // 1) Se existir opportunity.status, ele manda.
+    // 2) Se NÃO existir, só considera venda quando sales_confirmed === true; caso contrário é prospect.
     const salesConfirmed = taskEditData.sales_confirmed;
     const salesType = taskEditData.sales_type;
-    
+
     let calculatedStatus: 'prospect' | 'ganho' | 'perdido' | 'parcial' = 'prospect';
-    
-    // Se não há informação explícita de confirmação, é prospect
-    if (salesConfirmed === undefined || salesConfirmed === null) {
-      calculatedStatus = 'prospect';
-    } else if (salesConfirmed === false) {
-      // Venda perdida
-      calculatedStatus = 'perdido';
-    } else if (salesConfirmed === true) {
-      // Venda confirmada
-      if (salesType === 'parcial') {
-        calculatedStatus = 'parcial';
-      } else if (salesType === 'perdido') {
-        calculatedStatus = 'perdido';
-      } else {
-        calculatedStatus = 'ganho';
+
+    const opportunityStatus = taskEditData.opportunity?.status;
+    if (opportunityStatus) {
+      switch (opportunityStatus) {
+        case 'Prospect':
+          calculatedStatus = 'prospect';
+          break;
+        case 'Venda Total':
+          calculatedStatus = 'ganho';
+          break;
+        case 'Venda Parcial':
+          calculatedStatus = 'parcial';
+          break;
+        case 'Venda Perdida':
+          calculatedStatus = 'perdido';
+          break;
+        default:
+          calculatedStatus = 'prospect';
       }
+    } else if (salesConfirmed === true) {
+      switch (salesType) {
+        case 'ganho':
+          calculatedStatus = 'ganho';
+          break;
+        case 'parcial':
+          calculatedStatus = 'parcial';
+          break;
+        case 'perdido':
+          calculatedStatus = 'perdido';
+          break;
+        default:
+          calculatedStatus = 'prospect';
+      }
+    } else {
+      calculatedStatus = 'prospect';
     }
+
+    // Normalizar os campos para que componentes que usam mapSalesStatus (ex.: SalesStatusDisplay)
+    // fiquem 100% consistentes com o status do "Editar".
+    const normalizedSalesConfirmed: boolean | null =
+      calculatedStatus === 'prospect' ? null : calculatedStatus === 'perdido' ? false : true;
+
+    const normalizedSalesType: 'prospect' | 'ganho' | 'parcial' | 'perdido' =
+      calculatedStatus === 'prospect'
+        ? 'prospect'
+        : calculatedStatus === 'parcial'
+          ? 'parcial'
+          : calculatedStatus === 'perdido'
+            ? 'perdido'
+            : 'ganho';
 
     const startDate = taskEditData.startDate || taskEditData.data;
     const endDate = taskEditData.endDate || taskEditData.data;
@@ -150,11 +192,12 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       createdBy: taskEditData.vendedor_id,
       createdAt: new Date(),
       updatedAt: new Date(),
-      isProspect: taskEditData.is_prospect ?? true,
+      isProspect: calculatedStatus === 'prospect',
       prospectNotes: undefined,
-      salesConfirmed: salesConfirmed,
-      salesType: salesType as any,
-      salesValue: taskEditData.sales_value,
+      salesConfirmed: normalizedSalesConfirmed ?? undefined,
+      salesType: normalizedSalesType as any,
+      // Para exibição, usar o mesmo valor calculado/fixado (igual ao topo do popup)
+      salesValue: totalValue,
       partialSalesValue: taskEditData.partial_sales_value || undefined,
       familyProduct: taskEditData.familyProduct,
       equipmentQuantity: taskEditData.equipmentQuantity,
