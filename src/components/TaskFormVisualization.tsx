@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -18,13 +20,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Task } from "@/types/task";
+import { Task, ProductType } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
-import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
+import { useFiliais } from '@/hooks/useTasksOptimized';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel as getTaskTypeLabelCore, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 
 interface TaskFormVisualizationProps {
   task: Task | null;
@@ -43,14 +46,102 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { data: filiais = [] } = useFiliais();
 
-  const needsDetailsLoading =
-    !!taskProp && (!taskProp.checklist || taskProp.checklist.length === 0);
+  const taskId = taskProp?.id;
 
-  const { data: taskDetails, isLoading: isLoadingDetails } = useTaskDetails(
-    isOpen && needsDetailsLoading ? taskProp.id : null
+  const { data: taskRow } = useQuery({
+    queryKey: ['taskformvis-task', taskId],
+    enabled: isOpen && !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId as string)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  const {
+    data: productsRows = [],
+    isLoading: isLoadingProducts,
+    error: productsError,
+  } = useQuery({
+    queryKey: ['taskformvis-products', taskId],
+    enabled: isOpen && !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('task_id', taskId as string)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  const { data: remindersRows = [] } = useQuery({
+    queryKey: ['taskformvis-reminders', taskId],
+    enabled: isOpen && !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('task_id', taskId as string)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 0,
+  });
+
+  const mappedProducts: ProductType[] = useMemo(
+    () =>
+      (productsRows as any[]).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        selected: Boolean(p.selected),
+        quantity: p.quantity ?? 0,
+        price: p.price ?? 0,
+        observations: p.observations ?? '',
+        photos: p.photos ?? [],
+      })),
+    [productsRows]
   );
 
-  const task = taskDetails || taskProp;
+  const task = useMemo(() => {
+    if (taskRow) {
+      return mapSupabaseTaskToTask({
+        ...taskRow,
+        products: productsRows,
+        reminders: remindersRows,
+      });
+    }
+
+    if (!taskProp) return null;
+
+    // Se a task veio sem checklist (ex.: lista resumida), injeta produtos já carregados
+    if (mappedProducts.length > 0) {
+      return { ...taskProp, checklist: mappedProducts };
+    }
+
+    return taskProp;
+  }, [taskRow, taskProp, productsRows, remindersRows, mappedProducts]);
+
+  // Manter nome usado no JSX existente: aqui significa "carregando produtos"
+  const isLoadingDetails = isLoadingProducts;
+
+  if (productsError) {
+    console.error('❌ TaskFormVisualization: erro carregando produtos', productsError);
+  }
 
   const getTaskTypeLabel = (type: string): string => {
     const normalized = (type || '').toLowerCase();
