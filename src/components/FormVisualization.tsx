@@ -46,19 +46,17 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
-  // USAR EXATAMENTE A MESMA LÓGICA DO TaskEditModal - hook useTaskEditData
-  const { data: taskEditData, loading: loadingDetails, error } = useTaskEditData(
+  // Buscar apenas os produtos/items via hook - task já vem com todos os dados
+  const { data: taskEditData, loading: loadingProducts } = useTaskEditData(
     isOpen ? task?.id : null
   );
 
-  // Montar fullTask a partir dos dados do hook (mesma lógica do TaskEditModal)
-  const fullTask = useMemo((): Task => {
-    if (!taskEditData) {
-      return task;
+  // Mapear produtos apenas uma vez quando carregarem
+  const mappedChecklist: ProductType[] = useMemo(() => {
+    if (!taskEditData?.items?.length) {
+      return task?.checklist || [];
     }
-
-    // Mapear items para checklist (ProductType[])
-    const mappedChecklist: ProductType[] = (taskEditData.items || []).map((item) => ({
+    return taskEditData.items.map((item) => ({
       id: item.id,
       name: item.produto,
       category: (item.sku || 'other') as ProductType['category'],
@@ -68,66 +66,16 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       observations: '',
       photos: [],
     }));
+  }, [taskEditData?.items, task?.checklist]);
 
-    return {
-      id: taskEditData.id,
-      name: taskEditData.name || '',
-      client: taskEditData.cliente_nome,
-      clientCode: taskEditData.clientCode,
-      property: taskEditData.property || '',
-      propertyHectares: taskEditData.propertyHectares,
-      responsible: taskEditData.responsible || '',
-      startDate: taskEditData.startDate ? new Date(taskEditData.startDate) : new Date(),
-      endDate: taskEditData.endDate ? new Date(taskEditData.endDate) : new Date(),
-      startTime: taskEditData.startTime || '',
-      endTime: taskEditData.endTime || '',
-      priority: (taskEditData.priority || 'medium') as Task['priority'],
-      status: (task?.status || 'pending') as Task['status'],
-      taskType: (taskEditData.taskType || taskEditData.tipo || 'prospection') as Task['taskType'],
-      observations: taskEditData.notas || taskEditData.observations || '',
-      photos: task?.photos || [],
-      documents: task?.documents || [],
-      initialKm: task?.initialKm || 0,
-      finalKm: task?.finalKm || 0,
-      equipmentQuantity: taskEditData.equipmentQuantity,
-      equipmentList: task?.equipmentList,
-      familyProduct: taskEditData.familyProduct,
-      email: taskEditData.cliente_email,
-      phone: taskEditData.phone,
-      filial: taskEditData.filial,
-      filialAtendida: taskEditData.filialAtendida,
-      isProspect: !taskEditData.sales_confirmed,
-      prospectNotes: task?.prospectNotes,
-      salesConfirmed: taskEditData.sales_confirmed,
-      salesType: taskEditData.sales_type as Task['salesType'],
-      salesValue: taskEditData.sales_value,
-      partialSalesValue: taskEditData.partial_sales_value,
-      checkInLocation: task?.checkInLocation,
-      createdAt: task?.createdAt || new Date(),
-      updatedAt: task?.updatedAt || new Date(),
-      createdBy: taskEditData.vendedor_id,
-      checklist: mappedChecklist,
-      reminders: task?.reminders || [],
-    };
-  }, [taskEditData, task]);
+  // Task completa = task original + checklist carregado
+  const fullTask: Task = useMemo(() => ({
+    ...task,
+    checklist: mappedChecklist,
+  }), [task, mappedChecklist]);
 
-  // Checklist para exibição
-  const displayChecklist = fullTask.checklist || [];
-
-  console.log('FormVisualization - Dados carregados via useTaskEditData:', {
-    taskId: task?.id,
-    hasTaskEditData: !!taskEditData,
-    itemsCount: taskEditData?.items?.length || 0,
-    salesType: taskEditData?.sales_type,
-    salesConfirmed: taskEditData?.sales_confirmed,
-    loadingDetails,
-    error
-  });
-
-  // Usar função padronizada do TaskFormCore
-
-  // Calculate sales status for display
-  const salesStatus = mapSalesStatus(fullTask);
+  // Status de vendas vem direto da task original (já está correto)
+  const salesStatus = mapSalesStatus(task);
 
   // Usar função padronizada do TaskFormCore
 
@@ -164,18 +112,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     window.open(mailtoLink);
   };
 
-  if (loadingDetails) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-md">
-          <div className="flex items-center justify-center p-8">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <span className="ml-2">Carregando detalhes...</span>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  // Não bloquear o dialog inteiro - mostrar conteúdo imediatamente
+  const displayChecklist = fullTask.checklist || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -495,7 +433,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </p>
             </CardHeader>
             <CardContent>
-              {loadingDetails ? (
+              {loadingProducts && displayChecklist.length === 0 ? (
                 <div className="flex items-center justify-center py-10 text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Carregando produtos...
