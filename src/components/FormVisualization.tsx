@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
@@ -45,45 +45,132 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  
-  // Buscar apenas os produtos/items via hook - task já vem com todos os dados
-  const { data: taskEditData, loading: loadingProducts } = useTaskEditData(
-    isOpen ? task?.id : null
-  );
 
-  // Mapear produtos apenas uma vez quando carregarem
-  const mappedChecklist: ProductType[] = useMemo(() => {
-    if (!taskEditData?.items?.length) {
-      return task?.checklist || [];
+  // MESMA fonte de dados do "Editar" (useTaskEditData) — e congelar em snapshot para não "mudar" depois de carregar
+  const { data: taskEditData, loading, error } = useTaskEditData(isOpen ? task?.id : null);
+  const [fullTaskSnapshot, setFullTaskSnapshot] = useState<Task | null>(null);
+
+  useEffect(() => {
+    // ao fechar, limpar snapshot
+    if (!isOpen) {
+      setFullTaskSnapshot(null);
     }
+  }, [isOpen]);
+
+  const mappedChecklist: ProductType[] = useMemo(() => {
+    if (!taskEditData?.items?.length) return [];
     return taskEditData.items.map((item) => ({
       id: item.id,
       name: item.produto,
       category: (item.sku || 'other') as ProductType['category'],
-      selected: item.qtd_vendida > 0,
-      quantity: item.qtd_ofertada,
-      price: item.preco_unit,
+      // vendido quando qtd_vendida > 0
+      selected: (item.qtd_vendida || 0) > 0,
+      // manter a quantidade ofertada como referência no "ver" (qtd vendida entra como selected)
+      quantity: item.qtd_ofertada || 0,
+      price: item.preco_unit || 0,
       observations: '',
       photos: [],
     }));
-  }, [taskEditData?.items, task?.checklist]);
+  }, [taskEditData?.items]);
 
-  // Task completa = task original + checklist carregado
-  const fullTask: Task = useMemo(() => ({
-    ...task,
-    checklist: mappedChecklist,
-  }), [task, mappedChecklist]);
+  const opportunityTotalValue = useMemo(() => {
+    if (!taskEditData) return 0;
 
-  // Status de vendas vem direto da task original (já está correto)
-  const salesStatus = mapSalesStatus(task);
+    const fromOpportunity = taskEditData.opportunity?.valor_total_oportunidade;
+    if (typeof fromOpportunity === 'number' && fromOpportunity > 0) return fromOpportunity;
 
-  // Usar função padronizada do TaskFormCore
+    const fromTask = taskEditData.sales_value;
+    if (typeof fromTask === 'number' && fromTask > 0) return fromTask;
+
+    // fallback: somar ofertado (não depende de "selected")
+    return (taskEditData.items || []).reduce((sum, i) => {
+      return sum + (i.preco_unit || 0) * (i.qtd_ofertada || 0);
+    }, 0);
+  }, [taskEditData]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!taskEditData) return;
+    if (fullTaskSnapshot) return; // já congelou
+
+    const startDate = taskEditData.startDate || taskEditData.data;
+    const endDate = taskEditData.endDate || taskEditData.data;
+
+    const snapshot: Task = {
+      id: taskEditData.id,
+      name: taskEditData.name || '',
+      responsible: taskEditData.responsible || '',
+      client: taskEditData.cliente_nome || '',
+      clientCode: taskEditData.clientCode,
+      property: taskEditData.property || '',
+      email: taskEditData.cliente_email || undefined,
+      phone: taskEditData.phone || undefined,
+      filial: taskEditData.filial || undefined,
+      filialAtendida: taskEditData.filialAtendida,
+      taskType: (taskEditData.taskType || taskEditData.tipo || 'prospection') as Task['taskType'],
+      checklist: mappedChecklist,
+      startDate: startDate ? new Date(startDate as any) : new Date(),
+      endDate: endDate ? new Date(endDate as any) : new Date(),
+      startTime: taskEditData.startTime || '',
+      endTime: taskEditData.endTime || '',
+      observations: taskEditData.notas || taskEditData.observations || '',
+      priority: (taskEditData.priority || 'medium') as Task['priority'],
+      reminders: [],
+      photos: taskEditData.photos || [],
+      documents: taskEditData.documents || [],
+      checkInLocation: taskEditData.check_in_location as any,
+      initialKm: (taskEditData.initialKm as any) || 0,
+      finalKm: (taskEditData.finalKm as any) || 0,
+      status: (taskEditData.status as any) || 'pending',
+      createdBy: taskEditData.vendedor_id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isProspect: true,
+      prospectNotes: undefined,
+      salesConfirmed: taskEditData.sales_confirmed,
+      salesType: taskEditData.sales_type as any,
+      salesValue: taskEditData.sales_value,
+      partialSalesValue: taskEditData.partial_sales_value || undefined,
+      familyProduct: taskEditData.familyProduct,
+      equipmentQuantity: taskEditData.equipmentQuantity,
+      propertyHectares: taskEditData.propertyHectares,
+      equipmentList: Array.isArray(taskEditData.equipment_list) ? (taskEditData.equipment_list as any) : undefined,
+      prospectItems: undefined,
+      // Security metadata
+      isMasked: (task as any).isMasked,
+    };
+
+    setFullTaskSnapshot(snapshot);
+  }, [isOpen, taskEditData, fullTaskSnapshot, mappedChecklist, task]);
+
+  // enquanto carrega, não renderizar dados "parciais" (evita status/valor mudarem)
+  if (isOpen && (loading || !fullTaskSnapshot)) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Carregando detalhes...</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-10 text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            Buscando dados da oportunidade
+          </div>
+          {error && (
+            <div className="text-sm text-destructive">{error}</div>
+          )}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const fullTask = fullTaskSnapshot || task;
+  const salesStatus = mapSalesStatus(fullTask);
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
       await generateTaskPDF(fullTask, calculateTaskTotalValue, getTaskTypeLabel);
-      
+
       toast({
         title: "PDF gerado com sucesso!",
         description: "O arquivo foi baixado automaticamente.",
@@ -107,13 +194,14 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const handleEmail = () => {
     const subject = `Relatório de Oportunidade - ${fullTask?.client || 'Cliente'}`;
     const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável: ${fullTask?.responsible || 'N/A'}\n- Data: ${fullTask?.startDate ? format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
-    
+
     const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoLink);
   };
 
-  // Não bloquear o dialog inteiro - mostrar conteúdo imediatamente
+  // Não bloquear o dialog inteiro - dados já estão congelados no snapshot
   const displayChecklist = fullTask.checklist || [];
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -180,7 +268,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <div className="mt-3">
                     <p className="text-sm text-muted-foreground">Valor da Oportunidade</p>
                     <p className="text-2xl font-bold text-primary">
-                      R$ {calculateTaskTotalValue(fullTask as any).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {opportunityTotalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
