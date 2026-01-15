@@ -100,7 +100,20 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     staleTime: 0,
   });
 
-  const loadingDetails = loadingTask || loadingProducts;
+  // Loading só bloqueia se task principal não carregou ainda
+  const loadingDetails = loadingTask;
+  
+  // Mapear produtos sempre que disponíveis
+  const mappedProducts = (productsRows || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    selected: Boolean(p.selected),
+    quantity: p.quantity ?? 0,
+    price: p.price ?? 0,
+    observations: p.observations ?? '',
+    photos: p.photos ?? [],
+  }));
   
   // Montar task completa a partir dos dados diretos
   const fullTask: Task = taskData ? {
@@ -139,16 +152,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     createdAt: taskData.created_at,
     updatedAt: taskData.updated_at,
     createdBy: taskData.created_by,
-    checklist: productsRows.map((p: any) => ({
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      selected: Boolean(p.selected),
-      quantity: p.quantity ?? 0,
-      price: p.price ?? 0,
-      observations: p.observations ?? '',
-      photos: p.photos ?? [],
-    })),
+    checklist: mappedProducts,
     reminders: remindersRows.map((r: any) => ({
       id: r.id,
       title: r.title,
@@ -157,9 +161,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       time: r.time,
       completed: r.completed,
     })),
-  } : task;
+  } : {
+    ...task,
+    checklist: mappedProducts.length > 0 ? mappedProducts : task.checklist,
+  };
 
-  const displayChecklist = fullTask.checklist || [];
+  // Usar produtos mapeados se disponíveis, senão checklist da task
+  const displayChecklist = mappedProducts.length > 0 ? mappedProducts : (fullTask.checklist || []);
 
   console.log('FormVisualization - Dados carregados:', {
     taskId: task?.id,
