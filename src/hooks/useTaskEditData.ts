@@ -16,7 +16,7 @@ export interface TaskEditData {
   data: Date;
   tipo: string;
   task_type?: string;
-  
+
   // Additional task data
   name?: string;
   responsible?: string;
@@ -32,13 +32,23 @@ export interface TaskEditData {
   familyProduct?: string;
   equipmentQuantity?: number;
   propertyHectares?: number;
-  
+
+  // Extra fields needed by "visualizar" modal (keeps same load source as editar)
+  status?: string;
+  is_prospect?: boolean | null;
+  photos?: string[];
+  documents?: string[];
+  check_in_location?: any;
+  initialKm?: number | null;
+  finalKm?: number | null;
+  equipment_list?: any;
+
   // Sales data
   sales_confirmed?: boolean;
   sales_type?: string;
   sales_value?: number;
   partial_sales_value?: number;
-  
+
   // Opportunity data
   opportunity?: {
     id: string;
@@ -46,7 +56,7 @@ export interface TaskEditData {
     valor_total_oportunidade: number;
     valor_venda_fechada: number;
   };
-  
+
   // Opportunity items
   items: Array<{
     id: string;
@@ -58,7 +68,7 @@ export interface TaskEditData {
     subtotal_ofertado: number;
     subtotal_vendido: number;
   }>;
-  
+
   // Original products for name mapping
   originalProducts?: Array<{
     id: string;
@@ -108,7 +118,7 @@ export const useTaskEditData = (taskId: string | null) => {
       // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity')
+        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list')
         .eq('id', taskId)
         .maybeSingle();
 
@@ -163,21 +173,29 @@ export const useTaskEditData = (taskId: string | null) => {
         tipo: taskData.task_type,
         created_at: taskData.created_at,
         updated_at: taskData.updated_at,
-        // Include all additional task data
-        name: taskData.name,
-        responsible: taskData.responsible,
-        property: taskData.property,
-        phone: taskData.phone,
-        clientCode: taskData.clientcode,
-        taskType: taskData.task_type,
-        priority: taskData.priority,
-        startDate: taskData.start_date,
-        endDate: taskData.end_date,
-        startTime: taskData.start_time,
-        endTime: taskData.end_time,
+         // Include all additional task data
+         name: taskData.name,
+         responsible: taskData.responsible,
+         property: taskData.property,
+         phone: taskData.phone,
+         clientCode: taskData.clientcode,
+         taskType: taskData.task_type,
+         priority: taskData.priority,
+         startDate: taskData.start_date,
+         endDate: taskData.end_date,
+         startTime: taskData.start_time,
+         endTime: taskData.end_time,
          familyProduct: taskData.family_product,
          equipmentQuantity: taskData.equipment_quantity,
          propertyHectares: taskData.propertyhectares,
+         status: taskData.status,
+         is_prospect: taskData.is_prospect,
+         photos: taskData.photos || [],
+         documents: taskData.documents || [],
+         check_in_location: taskData.check_in_location,
+         initialKm: taskData.initial_km,
+         finalKm: taskData.final_km,
+         equipment_list: taskData.equipment_list,
          // Sales data
          sales_confirmed: taskData.sales_confirmed,
          sales_type: taskData.sales_type,

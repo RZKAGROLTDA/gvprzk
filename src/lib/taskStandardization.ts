@@ -165,46 +165,60 @@ export const createTaskWithFilialSnapshot = async (taskData: any): Promise<any> 
   };
 };
 
-export const mapSalesStatus = (task: Task | null): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
-  // Handle null or undefined task
+export const mapSalesStatus = (
+  task: Task | null
+): 'prospect' | 'ganho' | 'perdido' | 'parcial' => {
   if (!task) return 'prospect';
-  
-  // Se não é um prospect, retorna prospect
-  if (!task.isProspect) return 'prospect';
-  
-  // Se salesConfirmed é undefined ou null, é um prospect em andamento
-  if (task.salesConfirmed === undefined || task.salesConfirmed === null) return 'prospect';
-  
-  // Se salesConfirmed é true, verificar se é ganho ou parcial
+
+  // Se não há informação explícita de confirmação, é prospect (em andamento)
+  if (task.salesConfirmed === undefined || task.salesConfirmed === null) {
+    return 'prospect';
+  }
+
+  // Venda perdida
+  if (task.salesConfirmed === false) {
+    return 'perdido';
+  }
+
+  // Venda confirmada
   if (task.salesConfirmed === true) {
     if (task.salesType === 'parcial') return 'parcial';
-    if (task.salesType === 'ganho') return 'ganho';
-    return 'ganho'; // default para vendas confirmadas
+    if (task.salesType === 'perdido') return 'perdido';
+    // 'ganho' (venda total) é o padrão para vendas confirmadas
+    return 'ganho';
   }
-  
-  // Se salesConfirmed é false, é perdido
-  if (task.salesConfirmed === false) return 'perdido';
-  
+
   return 'prospect';
 };
 
 export const getStatusLabel = (status: string): string => {
   switch (status) {
-    case 'prospect': return 'Prospect';
-    case 'total': return 'Venda Total';
-    case 'perdido': return 'Venda Perdida';
-    case 'parcial': return 'Venda Parcial';
-    default: return 'Prospect';
+    case 'prospect':
+      return 'Prospect';
+    case 'ganho':
+    case 'total':
+      return 'Venda Total';
+    case 'perdido':
+      return 'Venda Perdida';
+    case 'parcial':
+      return 'Venda Parcial';
+    default:
+      return 'Prospect';
   }
 };
 
 export const getStatusColor = (status: string): string => {
   switch (status) {
-    case 'total': return 'bg-green-100 text-green-800';
-    case 'perdido': return 'bg-red-100 text-red-800';
-    case 'parcial': return 'bg-yellow-100 text-yellow-800';
-    case 'prospect': return 'bg-blue-100 text-blue-800';
-    default: return 'bg-blue-100 text-blue-800';
+    case 'ganho':
+    case 'total':
+      return 'bg-green-100 text-green-800';
+    case 'perdido':
+      return 'bg-red-100 text-red-800';
+    case 'parcial':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'prospect':
+    default:
+      return 'bg-blue-100 text-blue-800';
   }
 };
 
