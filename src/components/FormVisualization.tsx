@@ -292,7 +292,91 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const productsRows = (fullTask.checklist || [])
+      .map((item) => {
+        const subtotal = (item.price || 0) * (item.quantity || 1);
+        return `
+          <tr>
+            <td style="text-align:center;">${item.selected ? '✓' : ''}</td>
+            <td>${escapeHtml(String(item.name || 'N/A'))}</td>
+            <td>${escapeHtml(String(item.category || 'N/A'))}</td>
+            <td style="text-align:center;">${item.quantity || 1}</td>
+            <td style="text-align:right;">R$ ${(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+            <td style="text-align:right; font-weight:600;">R$ ${subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+          </tr>`;
+      })
+      .join('');
+
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=980,height=720');
+    if (!printWindow) return;
+
+    const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Relatório de Oportunidade</title>
+  <style>
+    @page { margin: 12mm; }
+    body { font-family: Arial, sans-serif; color: #111; }
+    h1 { font-size: 18px; margin: 0 0 6px; }
+    .sub { color: #555; font-size: 12px; margin: 0 0 14px; }
+    h2 { font-size: 14px; margin: 16px 0 8px; }
+    .box { border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
+    .row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; margin: 2px 0; }
+    .label { color: #666; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
+    th { background: #f5f5f5; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Relatório Completo de Oportunidade</h1>
+  <p class="sub">${escapeHtml(getTaskTypeLabel(fullTask.taskType || 'prospection'))} • ${escapeHtml(format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR }))}</p>
+
+  <div class="box">
+    <h2>Cliente</h2>
+    <div class="row"><span class="label">Nome</span><span>${escapeHtml(fullTask.client || 'N/A')}</span></div>
+    <div class="row"><span class="label">Propriedade</span><span>${escapeHtml(fullTask.property || 'N/A')}</span></div>
+    <div class="row"><span class="label">Responsável</span><span>${escapeHtml(fullTask.responsible || 'N/A')}</span></div>
+    <div class="row"><span class="label">Filial</span><span>${escapeHtml(resolveFilialName(fullTask.filial) || 'Não informado')}</span></div>
+  </div>
+
+  <h2>Produtos e Serviços (${(fullTask.checklist || []).length})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:28px; text-align:center;">✓</th>
+        <th>Produto / Serviço</th>
+        <th style="width:120px;">Categoria</th>
+        <th style="width:44px; text-align:center;">Qtd</th>
+        <th style="width:90px; text-align:right;">Preço</th>
+        <th style="width:90px; text-align:right;">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${productsRows || '<tr><td colspan="6" style="text-align:center; color:#666;">Nenhum produto/serviço cadastrado.</td></tr>'}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   };
 
   const handleEmail = () => {
