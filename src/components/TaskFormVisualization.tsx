@@ -404,25 +404,27 @@ ID: ${task.id ? task.id.substring(0, 8) : 'N/A'}...
     iframeDoc.write(html);
     iframeDoc.close();
 
-    // Aguardar carregamento e imprimir
-    iframe.onload = () => {
+    // Flag para evitar impressão duplicada
+    let printed = false;
+
+    const doPrint = () => {
+      if (printed) return;
+      printed = true;
+      iframe.contentWindow?.print();
       setTimeout(() => {
-        iframe.contentWindow?.print();
-        setTimeout(() => document.body.removeChild(iframe), 1000);
-      }, 100);
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 500);
     };
 
-    // Fallback se onload não disparar
-    setTimeout(() => {
-      if (document.body.contains(iframe)) {
-        iframe.contentWindow?.print();
-        setTimeout(() => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-        }, 1000);
-      }
-    }, 500);
+    // Aguardar carregamento e imprimir
+    iframe.onload = () => {
+      setTimeout(doPrint, 100);
+    };
+
+    // Fallback caso onload não dispare (alguns browsers)
+    setTimeout(doPrint, 600);
   };
 
   const handleEmail = () => {
