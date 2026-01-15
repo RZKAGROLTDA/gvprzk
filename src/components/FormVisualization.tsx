@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -17,7 +17,6 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from '@/integrations/supabase/client';
 import { Task, ProductType } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
-import { useTaskDetails, useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
@@ -48,14 +47,27 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
-  // SEMPRE carregar detalhes completos da task para garantir que produtos sejam carregados
-  const { data: taskDetails, isLoading: loadingDetails, isFetching: fetchingDetails } = useTaskDetails(
-    isOpen && task?.id ? task.id : null
-  );
+  // Buscar dados da task diretamente (mesma lógica do TaskEditModal - query direta rápida)
+  const { data: taskData, isLoading: loadingTask } = useQuery({
+    queryKey: ['task-view-direct', task?.id],
+    enabled: isOpen && !!task?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', task.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+  });
 
-  // Fallback extra: buscar produtos diretamente (caso taskDetails não venha por algum motivo)
-  const { data: productsRows = [], isFetching: fetchingProducts } = useQuery({
-    queryKey: isOpen && task?.id ? ['task-products', task.id] : ['task-products-empty'],
+  // Buscar produtos diretamente (query direta rápida)
+  const { data: productsRows = [], isLoading: loadingProducts } = useQuery({
+    queryKey: ['task-products-view', task?.id],
     enabled: isOpen && !!task?.id,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -69,41 +81,92 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     },
     staleTime: 0,
     refetchOnMount: true,
-    refetchOnReconnect: true,
-    refetchOnWindowFocus: false,
   });
+
+  // Buscar reminders diretamente
+  const { data: remindersRows = [] } = useQuery({
+    queryKey: ['task-reminders-view', task?.id],
+    enabled: isOpen && !!task?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('task_id', task.id)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 0,
+  });
+
+  const loadingDetails = loadingTask || loadingProducts;
   
-  // Usar task completa (com detalhes carregados) ou task original
-  const fullTask = taskDetails || task;
+  // Montar task completa a partir dos dados diretos
+  const fullTask: Task = taskData ? {
+    id: taskData.id,
+    name: taskData.name,
+    client: taskData.client,
+    clientCode: taskData.clientcode,
+    property: taskData.property,
+    propertyHectares: taskData.propertyhectares,
+    responsible: taskData.responsible,
+    startDate: taskData.start_date,
+    endDate: taskData.end_date,
+    startTime: taskData.start_time,
+    endTime: taskData.end_time,
+    priority: taskData.priority as any,
+    status: taskData.status as any,
+    taskType: taskData.task_type,
+    observations: taskData.observations,
+    photos: taskData.photos || [],
+    documents: taskData.documents || [],
+    initialKm: taskData.initial_km,
+    finalKm: taskData.final_km,
+    equipmentQuantity: taskData.equipment_quantity,
+    equipmentList: taskData.equipment_list as any,
+    familyProduct: taskData.family_product,
+    email: taskData.email,
+    phone: taskData.phone,
+    filial: taskData.filial,
+    isProspect: taskData.is_prospect,
+    prospectNotes: taskData.prospect_notes,
+    salesConfirmed: taskData.sales_confirmed,
+    salesType: taskData.sales_type,
+    salesValue: taskData.sales_value,
+    partialSalesValue: taskData.partial_sales_value,
+    checkInLocation: taskData.check_in_location as any,
+    createdAt: taskData.created_at,
+    updatedAt: taskData.updated_at,
+    createdBy: taskData.created_by,
+    checklist: productsRows.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      selected: Boolean(p.selected),
+      quantity: p.quantity ?? 0,
+      price: p.price ?? 0,
+      observations: p.observations ?? '',
+      photos: p.photos ?? [],
+    })),
+    reminders: remindersRows.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      date: r.date,
+      time: r.time,
+      completed: r.completed,
+    })),
+  } : task;
 
-  const productsFromDb: ProductType[] = (productsRows as any[]).map((product: any) => ({
-    id: product.id,
-    name: product.name,
-    category: product.category,
-    selected: Boolean(product.selected),
-    quantity: product.quantity ?? 0,
-    price: product.price ?? 0,
-    observations: product.observations ?? '',
-    photos: product.photos ?? [],
-  }));
+  const displayChecklist = fullTask.checklist || [];
 
-  const displayChecklist =
-    (taskDetails?.checklist?.length ? taskDetails.checklist : null) ||
-    (productsFromDb.length ? productsFromDb : null) ||
-    fullTask.checklist ||
-    [];
-
-  const showProductsLoading = (fetchingDetails || fetchingProducts) && displayChecklist.length === 0;
-
-  // Enhanced debug logging for equipment and products
-  console.log('FormVisualization - Dados recebidos:', {
+  console.log('FormVisualization - Dados carregados:', {
     taskId: task?.id,
-    checklistFromTask: task?.checklist?.length || 0,
-    checklistFromDetails: taskDetails?.checklist?.length || 0,
-    productsFromDb: productsFromDb.length,
-    finalChecklist: displayChecklist.length,
-    loadingDetails,
-    hasTaskDetails: !!taskDetails
+    hasTaskData: !!taskData,
+    productsCount: productsRows.length,
+    remindersCount: remindersRows.length,
+    loadingDetails
   });
 
   // Usar função padronizada do TaskFormCore
@@ -477,7 +540,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               </p>
             </CardHeader>
             <CardContent>
-              {showProductsLoading ? (
+              {loadingDetails ? (
                 <div className="flex items-center justify-center py-10 text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   Carregando produtos...
