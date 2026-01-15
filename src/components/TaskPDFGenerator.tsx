@@ -21,6 +21,35 @@ const defaultGetTaskTypeLabel = (type: string) => {
   }
 };
 
+// Helper para carregar imagem como base64
+const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Erro ao carregar imagem:', error);
+    return null;
+  }
+};
+
+// Helper para obter dimensões da imagem
+const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = () => resolve({ width: 100, height: 100 });
+    img.src = base64;
+  });
+};
+
 export const generateTaskPDF = async (
   task: Task,
   calculateTotalValue?: (task: any) => number,
@@ -210,19 +239,94 @@ export const generateTaskPDF = async (
   writeTextBlock('Notas de Prospecção', (task as any)?.prospectNotes);
   writeTextBlock('Justificativa', (task as any)?.prospectNotesJustification);
 
-  // ===== FOTOS =====
+  // ===== FOTOS (com imagens reais) =====
   if (task?.photos?.length) {
-    writeSectionTitle(`Fotos (${task.photos.length})`);
-    pdf.setFont('helvetica', 'normal');
-    task.photos.slice(0, 5).forEach((url, idx) => {
-      ensureSpace(5);
-      pdf.text(`${idx + 1}. ${url.substring(0, 60)}...`, marginLeft, yPos);
-      yPos += 4;
-    });
-    if (task.photos.length > 5) {
+    writeSectionTitle(`Fotos da Visita (${task.photos.length})`);
+    
+    const maxPhotos = 6; // Limitar para não deixar PDF muito grande
+    const photosToProcess = task.photos.slice(0, maxPhotos);
+    
+    // Carregar imagens em paralelo
+    const imagePromises = photosToProcess.map(url => loadImageAsBase64(url));
+    const loadedImages = await Promise.all(imagePromises);
+    
+    const imageWidth = 80; // Largura máxima da imagem em mm
+    const imageHeight = 60; // Altura máxima da imagem em mm
+    const imagesPerRow = 2;
+    const gapX = 10;
+    
+    let currentX = marginLeft;
+    let imagesInRow = 0;
+    
+    for (let i = 0; i < loadedImages.length; i++) {
+      const base64 = loadedImages[i];
+      
+      if (base64) {
+        ensureSpace(imageHeight + 10);
+        
+        try {
+          // Obter dimensões para manter proporção
+          const dims = await getImageDimensions(base64);
+          const aspectRatio = dims.width / dims.height;
+          
+          let finalWidth = imageWidth;
+          let finalHeight = imageWidth / aspectRatio;
+          
+          if (finalHeight > imageHeight) {
+            finalHeight = imageHeight;
+            finalWidth = imageHeight * aspectRatio;
+          }
+          
+          // Adicionar imagem
+          pdf.addImage(base64, 'JPEG', currentX, yPos, finalWidth, finalHeight);
+          
+          // Legenda da foto
+          pdf.setFontSize(7);
+          pdf.setFont('helvetica', 'italic');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(`Foto ${i + 1}`, currentX + finalWidth / 2, yPos + finalHeight + 3, { align: 'center' });
+          pdf.setTextColor(0, 0, 0);
+          
+          imagesInRow++;
+          
+          if (imagesInRow >= imagesPerRow) {
+            // Nova linha
+            yPos += imageHeight + 8;
+            currentX = marginLeft;
+            imagesInRow = 0;
+          } else {
+            // Próxima coluna
+            currentX += imageWidth + gapX;
+          }
+        } catch (imgError) {
+          console.error('Erro ao adicionar imagem ao PDF:', imgError);
+          // Fallback: mostrar URL
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(8);
+          pdf.text(`${i + 1}. Erro ao carregar: ${photosToProcess[i].substring(0, 50)}...`, marginLeft, yPos);
+          yPos += 5;
+        }
+      } else {
+        // Imagem não carregou, mostrar URL como fallback
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.text(`${i + 1}. ${photosToProcess[i].substring(0, 60)}...`, marginLeft, yPos);
+        yPos += 5;
+      }
+    }
+    
+    // Ajustar yPos se terminou no meio de uma linha
+    if (imagesInRow > 0) {
+      yPos += imageHeight + 8;
+    }
+    
+    if (task.photos.length > maxPhotos) {
       pdf.setFont('helvetica', 'italic');
-      pdf.text(`(+${task.photos.length - 5} outras)`, marginLeft, yPos);
-      yPos += 4;
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`(+${task.photos.length - maxPhotos} outras fotos não incluídas)`, marginLeft, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 6;
     }
   }
 
