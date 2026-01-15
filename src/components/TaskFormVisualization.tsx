@@ -258,156 +258,171 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
     if (!task) return;
 
     const escapeHtml = (value: string) =>
-      value
+      String(value || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 
-    const productsRows = (task.checklist || [])
-      .map((item) => {
-        const subtotal = (item.price || 0) * (item.quantity || 1);
-        return `
-          <tr>
-            <td style="text-align:center;">${item.selected ? '✓' : ''}</td>
-            <td>${escapeHtml(String(item.name || 'N/A'))}</td>
-            <td>${escapeHtml(String(item.category || 'N/A'))}</td>
-            <td style="text-align:center;">${item.quantity || 1}</td>
-            <td style="text-align:right;">${formatCurrency(item.price || 0)}</td>
-            <td style="text-align:right; font-weight:600;">${formatCurrency(subtotal)}</td>
-          </tr>`;
-      })
-      .join('');
-
-    const photosList = (task.photos || [])
-      .map((url, idx) => `<li><a href="${url}" target="_blank" rel="noopener noreferrer">Foto ${idx + 1}</a></li>`)
-      .join('');
-
-    const docsList = (task.documents || [])
-      .map((url, idx) => `<li><a href="${url}" target="_blank" rel="noopener noreferrer">Documento ${idx + 1}</a></li>`)
-      .join('');
-
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=980,height=720');
-    if (!printWindow) return;
-
     const conversion =
       calculatedValues.total > 0 && calculatedValues.closed > 0
         ? `${((calculatedValues.closed / calculatedValues.total) * 100).toFixed(0)}%`
         : '-';
 
-    const html = `<!doctype html>
-<html>
+    const productsRows = (task.checklist || [])
+      .map((item) => {
+        const subtotal = (item.price || 0) * (item.quantity || 1);
+        return `<tr>
+          <td style="text-align:center;">${item.selected ? '✓' : ''}</td>
+          <td>${escapeHtml(item.name || 'N/A')}</td>
+          <td>${escapeHtml(item.category || 'N/A')}</td>
+          <td style="text-align:center;">${item.quantity || 1}</td>
+          <td style="text-align:right;">${formatCurrency(item.price || 0)}</td>
+          <td style="text-align:right; font-weight:600;">${formatCurrency(subtotal)}</td>
+        </tr>`;
+      })
+      .join('');
+
+    const photosList = (task.photos || [])
+      .map((url, idx) => `<li><a href="${url}" target="_blank">Foto ${idx + 1}</a></li>`)
+      .join('');
+
+    const docsList = (task.documents || [])
+      .map((url, idx) => `<li><a href="${url}" target="_blank">Documento ${idx + 1}</a></li>`)
+      .join('');
+
+    const observacoesHtml = [
+      task.observations ? `<p><strong>Observações Gerais:</strong><br/>${escapeHtml(task.observations).replace(/\n/g, '<br/>')}</p>` : '',
+      task.prospectNotes ? `<p><strong>Notas de Prospecção:</strong><br/>${escapeHtml(String(task.prospectNotes)).replace(/\n/g, '<br/>')}</p>` : '',
+      (task as any).prospectNotesJustification ? `<p><strong>Justificativa:</strong><br/>${escapeHtml(String((task as any).prospectNotesJustification)).replace(/\n/g, '<br/>')}</p>` : '',
+    ].filter(Boolean).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <title>Detalhes da Oportunidade</title>
-  <style>
-    @page { margin: 12mm; }
-    body { font-family: Arial, sans-serif; color: #111; }
-    h1 { font-size: 18px; margin: 0 0 4px; }
-    .sub { color: #555; font-size: 12px; margin: 0 0 14px; }
-    h2 { font-size: 14px; margin: 16px 0 8px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .box { border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
-    .row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; margin: 2px 0; }
-    .label { color: #666; }
-    table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    th, td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
-    th { background: #f5f5f5; text-align: left; }
-    ul { margin: 6px 0 0 18px; }
-    a { color: #0b57d0; text-decoration: none; }
-  </style>
+<meta charset="UTF-8">
+<title>Detalhes da Oportunidade</title>
+<style>
+@page{margin:12mm}
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;color:#111;margin:0;padding:20px}
+h1{font-size:18px;margin:0 0 4px}
+.sub{color:#555;font-size:12px;margin:0 0 14px}
+h2{font-size:14px;margin:16px 0 8px}
+.grid{display:flex;gap:12px}
+.grid>div{flex:1}
+.box{border:1px solid #ddd;padding:10px;border-radius:8px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0}
+.label{color:#666}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{border:1px solid #ddd;padding:6px}
+th{background:#f5f5f5;text-align:left}
+ul{margin:6px 0 0 18px}
+a{color:#0b57d0}
+</style>
 </head>
 <body>
-  <h1>Detalhes da Oportunidade</h1>
-  <p class="sub">${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))} • ${task.startDate ? escapeHtml(format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR })) : 'N/A'}</p>
+<h1>Detalhes da Oportunidade</h1>
+<p class="sub">${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))} • ${task.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}</p>
 
-  <div class="grid">
-    <div class="box">
-      <h2>Resumo</h2>
-      <div class="row"><span class="label">Status</span><span>${escapeHtml(getStatusLabel(salesStatus))}</span></div>
-      <div class="row"><span class="label">Valor Potencial</span><span>${formatCurrency(calculatedValues.total)}</span></div>
-      <div class="row"><span class="label">Valor Fechado</span><span>${calculatedValues.closed > 0 ? formatCurrency(calculatedValues.closed) : '-'}</span></div>
-      <div class="row"><span class="label">Conversão</span><span>${conversion}</span></div>
-    </div>
-    <div class="box">
-      <h2>Cliente</h2>
-      <div class="row"><span class="label">Nome</span><span>${escapeHtml(task.client || 'N/A')}</span></div>
-      <div class="row"><span class="label">Código</span><span>${escapeHtml(String(task.clientCode || 'N/A'))}</span></div>
-      <div class="row"><span class="label">Email</span><span>${escapeHtml(task.email || 'N/A')}</span></div>
-      <div class="row"><span class="label">Telefone</span><span>${escapeHtml(task.phone || 'N/A')}</span></div>
-      <div class="row"><span class="label">Propriedade</span><span>${escapeHtml(task.property || 'N/A')}</span></div>
-      <div class="row"><span class="label">Hectares</span><span>${task.propertyHectares ? `${task.propertyHectares} ha` : 'N/A'}</span></div>
-    </div>
-  </div>
+<div class="grid">
+<div class="box">
+<h2>Resumo</h2>
+<div class="row"><span class="label">Status</span><span>${escapeHtml(getStatusLabel(salesStatus))}</span></div>
+<div class="row"><span class="label">Valor Potencial</span><span>${formatCurrency(calculatedValues.total)}</span></div>
+<div class="row"><span class="label">Valor Fechado</span><span>${calculatedValues.closed > 0 ? formatCurrency(calculatedValues.closed) : '-'}</span></div>
+<div class="row"><span class="label">Conversão</span><span>${conversion}</span></div>
+</div>
+<div class="box">
+<h2>Cliente</h2>
+<div class="row"><span class="label">Nome</span><span>${escapeHtml(task.client || 'N/A')}</span></div>
+<div class="row"><span class="label">Código</span><span>${escapeHtml(task.clientCode || 'N/A')}</span></div>
+<div class="row"><span class="label">Email</span><span>${escapeHtml(task.email || 'N/A')}</span></div>
+<div class="row"><span class="label">Telefone</span><span>${escapeHtml(task.phone || 'N/A')}</span></div>
+<div class="row"><span class="label">Propriedade</span><span>${escapeHtml(task.property || 'N/A')}</span></div>
+<div class="row"><span class="label">Hectares</span><span>${task.propertyHectares ? task.propertyHectares + ' ha' : 'N/A'}</span></div>
+</div>
+</div>
 
-  <div class="box" style="margin-top: 12px;">
-    <h2>Filial e Responsável</h2>
-    <div class="row"><span class="label">Responsável</span><span>${escapeHtml(task.responsible || 'N/A')}</span></div>
-    <div class="row"><span class="label">Filial do Responsável</span><span>${escapeHtml(getFilialNameRobust(task.filial, filiais))}</span></div>
-    <div class="row"><span class="label">Filial Atendida</span><span>${task.filialAtendida ? escapeHtml(getFilialNameRobust(task.filialAtendida, filiais)) : 'Mesma do responsável'}</span></div>
-    <div class="row"><span class="label">Tipo de Atividade</span><span>${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))}</span></div>
-    <div class="row"><span class="label">Prioridade</span><span>${escapeHtml(task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa')}</span></div>
-  </div>
+<div class="box">
+<h2>Filial e Responsável</h2>
+<div class="row"><span class="label">Responsável</span><span>${escapeHtml(task.responsible || 'N/A')}</span></div>
+<div class="row"><span class="label">Filial do Responsável</span><span>${escapeHtml(getFilialNameRobust(task.filial, filiais))}</span></div>
+<div class="row"><span class="label">Filial Atendida</span><span>${task.filialAtendida ? escapeHtml(getFilialNameRobust(task.filialAtendida, filiais)) : 'Mesma do responsável'}</span></div>
+<div class="row"><span class="label">Tipo de Atividade</span><span>${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))}</span></div>
+<div class="row"><span class="label">Prioridade</span><span>${task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'}</span></div>
+</div>
 
-  <h2>Produtos e Serviços (${(task.checklist || []).length})</h2>
-  <table>
-    <thead>
-      <tr>
-        <th style="width:28px; text-align:center;">✓</th>
-        <th>Produto / Serviço</th>
-        <th style="width:120px;">Categoria</th>
-        <th style="width:44px; text-align:center;">Qtd</th>
-        <th style="width:90px; text-align:right;">Preço</th>
-        <th style="width:90px; text-align:right;">Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${productsRows || '<tr><td colspan="6" style="text-align:center; color:#666;">Nenhum produto/serviço cadastrado.</td></tr>'}
-    </tbody>
-  </table>
+<h2>Produtos e Serviços (${(task.checklist || []).length})</h2>
+<table>
+<thead><tr>
+<th style="width:28px;text-align:center">✓</th>
+<th>Produto / Serviço</th>
+<th style="width:120px">Categoria</th>
+<th style="width:44px;text-align:center">Qtd</th>
+<th style="width:90px;text-align:right">Preço</th>
+<th style="width:90px;text-align:right">Subtotal</th>
+</tr></thead>
+<tbody>${productsRows || '<tr><td colspan="6" style="text-align:center;color:#666">Nenhum produto/serviço cadastrado.</td></tr>'}</tbody>
+</table>
 
-  ${task.observations || task.prospectNotes || (task as any).prospectNotesJustification ? `
-    <div class="box" style="margin-top: 12px;">
-      <h2>Observações e Notas</h2>
-      ${task.observations ? `<p><strong>Observações Gerais:</strong><br/>${escapeHtml(task.observations).replace(/\n/g,'<br/>')}</p>` : ''}
-      ${(task as any).prospectNotes ? `<p><strong>Notas de Prospecção:</strong><br/>${escapeHtml(String((task as any).prospectNotes)).replace(/\n/g,'<br/>')}</p>` : ''}
-      ${(task as any).prospectNotesJustification ? `<p><strong>Justificativa:</strong><br/>${escapeHtml(String((task as any).prospectNotesJustification)).replace(/\n/g,'<br/>')}</p>` : ''}
-    </div>
-  ` : ''}
+${observacoesHtml ? '<div class="box"><h2>Observações e Notas</h2>' + observacoesHtml + '</div>' : ''}
 
-  ${(task.photos || []).length ? `
-    <div class="box" style="margin-top: 12px;">
-      <h2>Fotos (${task.photos.length})</h2>
-      <ul>${photosList}</ul>
-    </div>
-  ` : ''}
+${(task.photos || []).length ? '<div class="box"><h2>Fotos (' + task.photos.length + ')</h2><ul>' + photosList + '</ul></div>' : ''}
 
-  ${(task.documents || []).length ? `
-    <div class="box" style="margin-top: 12px;">
-      <h2>Documentos (${task.documents.length})</h2>
-      <ul>${docsList}</ul>
-    </div>
-  ` : ''}
+${(task.documents || []).length ? '<div class="box"><h2>Documentos (' + task.documents.length + ')</h2><ul>' + docsList + '</ul></div>' : ''}
 
-  <div class="box" style="margin-top: 12px; font-size: 11px; color:#666;">
-    Criado em: ${task.createdAt ? escapeHtml(format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })) : 'N/A'} | 
-    Atualizado em: ${task.updatedAt ? escapeHtml(format(new Date(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })) : 'N/A'} | 
-    ID: ${task.id ? escapeHtml(task.id.substring(0, 8)) : 'N/A'}...
-  </div>
+<div class="box" style="font-size:11px;color:#666">
+Criado em: ${task.createdAt ? format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
+Atualizado em: ${task.updatedAt ? format(new Date(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
+ID: ${task.id ? task.id.substring(0, 8) : 'N/A'}...
+</div>
 </body>
 </html>`;
 
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
+    // Criar iframe oculto para impressão (mais confiável que window.open)
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
 
-    // pequeno delay para o HTML renderizar antes do print
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      toast({
+        title: "Erro ao imprimir",
+        description: "Não foi possível criar a janela de impressão.",
+        variant: "destructive"
+      });
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    iframeDoc.open();
+    iframeDoc.write(html);
+    iframeDoc.close();
+
+    // Aguardar carregamento e imprimir
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 100);
+    };
+
+    // Fallback se onload não disparar
     setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+      if (document.body.contains(iframe)) {
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
+      }
+    }, 500);
   };
 
   const handleEmail = () => {
