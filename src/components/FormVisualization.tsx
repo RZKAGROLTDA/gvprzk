@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Task, ProductType } from "@/types/task";
 import { useToast } from "@/hooks/use-toast";
 import { useTaskEditData } from '@/hooks/useTaskEditData';
-import { mapSalesStatus, getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
+import { getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { SalesStatusDisplay } from './SalesStatusDisplay';
@@ -51,6 +51,12 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const [fullTaskSnapshot, setFullTaskSnapshot] = useState<Task | null>(null);
   const [snapshotSalesStatus, setSnapshotSalesStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
   const [snapshotOpportunityValue, setSnapshotOpportunityValue] = useState<number>(0);
+  const [forceShowAfterDelay, setForceShowAfterDelay] = useState(false);
+
+  const productsReady =
+    forceShowAfterDelay ||
+    (taskEditData?.items?.length ?? 0) > 0 ||
+    (taskEditData?.originalProducts?.length ?? 0) > 0;
 
   useEffect(() => {
     // ao fechar OU ao trocar a task com o modal aberto, limpar snapshot
@@ -59,6 +65,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       setFullTaskSnapshot(null);
       setSnapshotSalesStatus('prospect');
       setSnapshotOpportunityValue(0);
+      setForceShowAfterDelay(false);
       return;
     }
 
@@ -66,12 +73,25 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
     setFullTaskSnapshot(null);
     setSnapshotSalesStatus('prospect');
     setSnapshotOpportunityValue(0);
+    setForceShowAfterDelay(false);
   }, [isOpen, task?.id]);
+
+  // Se os produtos/itens ainda não chegaram, segurar a UI por um curto período
+  // (evita mostrar status "errado" antes do checklist estar pronto)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (loading) return;
+    if (productsReady) return;
+
+    const t = window.setTimeout(() => setForceShowAfterDelay(true), 800);
+    return () => window.clearTimeout(t);
+  }, [isOpen, loading, productsReady, task?.id]);
 
   // Criar snapshot UMA VEZ quando taskEditData carrega
   useEffect(() => {
     if (!isOpen) return;
     if (!taskEditData) return;
+    if (!productsReady) return;
     if (fullTaskSnapshot) return; // já congelou — não atualizar mais
 
     // Mapear checklist
@@ -222,7 +242,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   }, [isOpen, taskEditData, fullTaskSnapshot, task]);
 
   // enquanto carrega, não renderizar dados "parciais" (evita status/valor mudarem)
-  if (isOpen && (loading || !fullTaskSnapshot)) {
+  if (isOpen && (loading || !productsReady || !fullTaskSnapshot)) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-xl">
@@ -231,7 +251,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
           </DialogHeader>
           <div className="flex items-center justify-center py-10 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            Buscando dados da oportunidade
+            Carregando produtos e oportunidade
           </div>
           {error && (
             <div className="text-sm text-destructive">{error}</div>
