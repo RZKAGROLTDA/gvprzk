@@ -457,8 +457,14 @@ export const LoginForm: React.FC = () => {
 
     setLoading(true);
     
+    // Usar URL de produção para evitar redirecionamento para localhost
+    const productionUrl = 'https://gvprzk.lovable.app';
+    const redirectUrl = window.location.hostname === 'localhost' 
+      ? `${productionUrl}/reset-password`
+      : `${window.location.origin}/reset-password`;
+    
     const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: redirectUrl,
     });
 
     monitorPasswordReset(formData.email);
