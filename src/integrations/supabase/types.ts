@@ -214,6 +214,48 @@ export type Database = {
           },
         ]
       }
+      opportunities_backup_oct2025: {
+        Row: {
+          cliente_nome: string | null
+          created_at: string | null
+          data_criacao: string | null
+          data_fechamento: string | null
+          filial: string | null
+          id: string | null
+          status: string | null
+          task_id: string | null
+          updated_at: string | null
+          valor_total_oportunidade: number | null
+          valor_venda_fechada: number | null
+        }
+        Insert: {
+          cliente_nome?: string | null
+          created_at?: string | null
+          data_criacao?: string | null
+          data_fechamento?: string | null
+          filial?: string | null
+          id?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string | null
+          valor_total_oportunidade?: number | null
+          valor_venda_fechada?: number | null
+        }
+        Update: {
+          cliente_nome?: string | null
+          created_at?: string | null
+          data_criacao?: string | null
+          data_fechamento?: string | null
+          filial?: string | null
+          id?: string | null
+          status?: string | null
+          task_id?: string | null
+          updated_at?: string | null
+          valor_total_oportunidade?: number | null
+          valor_venda_fechada?: number | null
+        }
+        Relationships: []
+      }
       opportunity_items: {
         Row: {
           created_at: string
@@ -264,6 +306,48 @@ export type Database = {
           },
         ]
       }
+      opportunity_items_backup_oct2025: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          opportunity_id: string | null
+          preco_unit: number | null
+          produto: string | null
+          qtd_ofertada: number | null
+          qtd_vendida: number | null
+          sku: string | null
+          subtotal_ofertado: number | null
+          subtotal_vendido: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          opportunity_id?: string | null
+          preco_unit?: number | null
+          produto?: string | null
+          qtd_ofertada?: number | null
+          qtd_vendida?: number | null
+          sku?: string | null
+          subtotal_ofertado?: number | null
+          subtotal_vendido?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          opportunity_id?: string | null
+          preco_unit?: number | null
+          produto?: string | null
+          qtd_ofertada?: number | null
+          qtd_vendida?: number | null
+          sku?: string | null
+          subtotal_ofertado?: number | null
+          subtotal_vendido?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string
@@ -313,6 +397,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      products_backup_oct2025: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string | null
+          name: string | null
+          observations: string | null
+          photos: string[] | null
+          price: number | null
+          quantity: number | null
+          selected: boolean | null
+          task_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          observations?: string | null
+          photos?: string[] | null
+          price?: number | null
+          quantity?: number | null
+          selected?: boolean | null
+          task_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string | null
+          name?: string | null
+          observations?: string | null
+          photos?: string[] | null
+          price?: number | null
+          quantity?: number | null
+          selected?: boolean | null
+          task_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -747,6 +873,126 @@ export type Database = {
           equipment_quantity?: number | null
           family_product?: string | null
           filial?: string | null
+          final_km?: number | null
+          id?: string | null
+          initial_km?: number | null
+          is_prospect?: boolean | null
+          name?: string | null
+          observations?: string | null
+          partial_sales_value?: number | null
+          phone?: string | null
+          photos?: string[] | null
+          priority?: string | null
+          property?: string | null
+          propertyhectares?: number | null
+          prospect_notes?: string | null
+          prospect_notes_justification?: string | null
+          responsible?: string | null
+          sales_confirmed?: boolean | null
+          sales_type?: string | null
+          sales_value?: number | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tasks_backup_oct2025: {
+        Row: {
+          check_in_location: Json | null
+          client: string | null
+          clientcode: string | null
+          created_at: string | null
+          created_by: string | null
+          documents: string[] | null
+          email: string | null
+          end_date: string | null
+          end_time: string | null
+          equipment_list: Json | null
+          equipment_quantity: number | null
+          family_product: string | null
+          filial: string | null
+          filial_atendida: string | null
+          final_km: number | null
+          id: string | null
+          initial_km: number | null
+          is_prospect: boolean | null
+          name: string | null
+          observations: string | null
+          partial_sales_value: number | null
+          phone: string | null
+          photos: string[] | null
+          priority: string | null
+          property: string | null
+          propertyhectares: number | null
+          prospect_notes: string | null
+          prospect_notes_justification: string | null
+          responsible: string | null
+          sales_confirmed: boolean | null
+          sales_type: string | null
+          sales_value: number | null
+          start_date: string | null
+          start_time: string | null
+          status: string | null
+          task_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          check_in_location?: Json | null
+          client?: string | null
+          clientcode?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: string[] | null
+          email?: string | null
+          end_date?: string | null
+          end_time?: string | null
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
+          filial?: string | null
+          filial_atendida?: string | null
+          final_km?: number | null
+          id?: string | null
+          initial_km?: number | null
+          is_prospect?: boolean | null
+          name?: string | null
+          observations?: string | null
+          partial_sales_value?: number | null
+          phone?: string | null
+          photos?: string[] | null
+          priority?: string | null
+          property?: string | null
+          propertyhectares?: number | null
+          prospect_notes?: string | null
+          prospect_notes_justification?: string | null
+          responsible?: string | null
+          sales_confirmed?: boolean | null
+          sales_type?: string | null
+          sales_value?: number | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string | null
+          task_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          check_in_location?: Json | null
+          client?: string | null
+          clientcode?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documents?: string[] | null
+          email?: string | null
+          end_date?: string | null
+          end_time?: string | null
+          equipment_list?: Json | null
+          equipment_quantity?: number | null
+          family_product?: string | null
+          filial?: string | null
+          filial_atendida?: string | null
           final_km?: number | null
           id?: string | null
           initial_km?: number | null
