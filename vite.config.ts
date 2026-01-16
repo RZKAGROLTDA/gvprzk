@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
       manifest: false, // Usamos manifest.webmanifest manual
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
@@ -85,7 +86,7 @@ export default defineConfig(({ mode }) => {
         ],
       },
       devOptions: {
-        enabled: true, // Habilita PWA em dev para testes
+        enabled: false, // Desabilitar em dev para evitar problemas
       },
     }),
   ].filter(Boolean),
