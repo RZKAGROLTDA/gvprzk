@@ -759,7 +759,8 @@ ${task?.responsible || 'Equipe Comercial'}`;
                 </div>
               ) : task?.checklist && task.checklist.length > 0 ? (
                 <>
-                  <div className="border rounded-lg overflow-hidden">
+                  {/* Desktop: Tabela */}
+                  <div className="hidden md:block border rounded-lg overflow-hidden">
                     <div className="bg-muted p-3 grid grid-cols-12 gap-2 font-medium text-xs">
                       <div className="col-span-1">Status</div>
                       <div className="col-span-4">Produto / Serviço</div>
@@ -807,17 +808,71 @@ ${task?.responsible || 'Equipe Comercial'}`;
                     })}
                   </div>
 
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-3">
+                    {task.checklist.map((item, index) => {
+                      const itemTotal = (item.price || 0) * (item.quantity || 1);
+                      return (
+                        <div
+                          key={index}
+                          className={`border rounded-lg p-3 ${
+                            item.selected ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 mb-2">
+                            <div className="pt-0.5">
+                              {item.selected ? (
+                                <CheckCircle className="w-5 h-5 text-primary" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm leading-5">{item.name}</p>
+                              <Badge variant="secondary" className="text-xs mt-1">
+                                {item.category}
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-2 text-xs border-t pt-2 mt-2">
+                            <div>
+                              <span className="text-muted-foreground block">Qtd</span>
+                              <span className="font-medium">{item.quantity || 1}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground block">Preço Unit.</span>
+                              <span className="font-medium">{formatCurrency(item.price || 0)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground block">Subtotal</span>
+                              <span className={`font-bold ${item.selected ? 'text-primary' : ''}`}>
+                                {formatCurrency(itemTotal)}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {item.observations && (
+                            <p className="mt-2 text-xs text-muted-foreground italic border-t pt-2">
+                              {item.observations}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   {/* Resumo de Produtos */}
-                  <div className="mt-4 p-4 bg-muted/50 rounded-lg grid grid-cols-3 gap-4 text-center">
+                  <div className="mt-4 p-3 sm:p-4 bg-muted/50 rounded-lg grid grid-cols-3 gap-2 sm:gap-4 text-center">
                     <div>
-                      <span className="text-xs text-muted-foreground">Selecionados</span>
-                      <p className="font-bold text-primary">
+                      <span className="text-[10px] sm:text-xs text-muted-foreground block">Selecionados</span>
+                      <p className="font-bold text-primary text-sm sm:text-base">
                         {task.checklist.filter(i => i.selected).length} de {task.checklist.length}
                       </p>
                     </div>
                     <div>
-                      <span className="text-xs text-muted-foreground">Valor Selecionado</span>
-                      <p className="font-bold text-primary">
+                      <span className="text-[10px] sm:text-xs text-muted-foreground block">Valor Selecionado</span>
+                      <p className="font-bold text-primary text-sm sm:text-base">
                         {formatCurrency(
                           task.checklist.reduce(
                             (sum, i) =>
@@ -828,8 +883,8 @@ ${task?.responsible || 'Equipe Comercial'}`;
                       </p>
                     </div>
                     <div>
-                      <span className="text-xs text-muted-foreground">Valor Total</span>
-                      <p className="font-bold">{formatCurrency(calculatedValues.products)}</p>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground block">Valor Total</span>
+                      <p className="font-bold text-sm sm:text-base">{formatCurrency(calculatedValues.products)}</p>
                     </div>
                   </div>
                 </>
