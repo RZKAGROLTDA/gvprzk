@@ -554,10 +554,10 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto p-0 w-[95vw] sm:w-full">
+      <DialogContent className="max-h-[95vh] overflow-y-auto overflow-x-hidden p-0 w-[95vw] max-w-[95vw] sm:w-full sm:max-w-5xl">
         <div ref={printRef} className="print:p-4">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 pb-4 border-b bg-gradient-to-r from-blue-50 to-white gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 pb-4 border-b bg-gradient-to-r from-blue-50 to-white gap-3 overflow-hidden">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
                 <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
@@ -570,19 +570,24 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
               </div>
             </div>
             
-            <div className="flex gap-2 print:hidden flex-wrap justify-end">
-              <Button variant="default" size="sm" onClick={handlePDF} className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm">
-                <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                PDF
+            {/* Ações: grid no mobile para não estourar a largura */}
+            <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto sm:gap-2 print:hidden">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handlePDF}
+                className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm w-full"
+              >
+                <Download className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden sm:inline">PDF</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm">
-                <Printer className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Imprimir</span>
-                <span className="xs:hidden">Print</span>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm w-full">
+                <Printer className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Imprimir</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handleEmail} className="text-xs sm:text-sm">
-                <Mail className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden xs:inline">Email</span>
+              <Button variant="outline" size="sm" onClick={handleEmail} className="text-xs sm:text-sm w-full">
+                <Mail className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Email</span>
               </Button>
             </div>
           </div>
