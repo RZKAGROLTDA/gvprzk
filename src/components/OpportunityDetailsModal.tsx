@@ -564,15 +564,15 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
                 <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Detalhes da Oportunidade</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Detalhes da Oportunidade</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
                   {getTaskTypeLabel(currentTask.taskType)} • {format(new Date(currentTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
                 </p>
               </div>
             </div>
-            
+
             {/* Linha 2: Ações */}
-            <div className="flex gap-2 print:hidden">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-nowrap print:hidden">
               <Button
                 variant="default"
                 size="sm"
