@@ -220,190 +220,184 @@ export const useTasks = () => {
       // Create task with unique ID using crypto.randomUUID() if available
       const tempTask: Task = {
         id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: taskData.name || '',
-      responsible: taskData.responsible || '',
-      client: taskData.client || '',
-      property: taskData.property || '',
-      filial: taskData.filial || '',
-      taskType: taskData.taskType || 'prospection',
-      checklist: taskData.checklist || [],
-      startDate: taskData.startDate || new Date(),
-      endDate: taskData.endDate || new Date(),
-      startTime: taskData.startTime || '09:00',
-      endTime: taskData.endTime || '17:00',
-      observations: taskData.observations || '',
-      priority: taskData.priority || 'medium',
-      reminders: taskData.reminders || [],
-      photos: taskData.photos || [],
-      documents: taskData.documents || [],
-      checkInLocation: taskData.checkInLocation,
-      initialKm: taskData.initialKm || 0,
-      finalKm: taskData.finalKm || 0,
-      status: 'pending',
-      createdBy: user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isProspect: taskData.isProspect || false,
-      prospectNotes: taskData.prospectNotes || '',
-      prospectItems: [],
-      salesValue: taskData.salesValue || 0,
-      salesConfirmed: taskData.salesConfirmed
-    };
+        name: taskData.name || '',
+        responsible: taskData.responsible || '',
+        client: taskData.client || '',
+        property: taskData.property || '',
+        filial: taskData.filial || '',
+        taskType: taskData.taskType || 'prospection',
+        checklist: taskData.checklist || [],
+        startDate: taskData.startDate || new Date(),
+        endDate: taskData.endDate || new Date(),
+        startTime: taskData.startTime || '09:00',
+        endTime: taskData.endTime || '17:00',
+        observations: taskData.observations || '',
+        priority: taskData.priority || 'medium',
+        reminders: taskData.reminders || [],
+        photos: taskData.photos || [],
+        documents: taskData.documents || [],
+        checkInLocation: taskData.checkInLocation,
+        initialKm: taskData.initialKm || 0,
+        finalKm: taskData.finalKm || 0,
+        status: 'pending',
+        createdBy: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isProspect: taskData.isProspect || false,
+        prospectNotes: taskData.prospectNotes || '',
+        prospectItems: [],
+        salesValue: taskData.salesValue || 0,
+        salesConfirmed: taskData.salesConfirmed
+      };
 
-    if (isOnline) {
-      try {
-        // Criar dados padronizados com snapshot de filial
-        const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
-        
-        // Validação de campos obrigatórios
-        const requiredFields = {
-          name: standardizedTaskData.name || getDefaultTaskName(standardizedTaskData.taskType || 'prospection'),
-          responsible: standardizedTaskData.responsible || user.email || '',
-          client: standardizedTaskData.client
-        };
-
-        if (!requiredFields.client) {
-          throw new Error('Cliente é obrigatório');
-        }
-
-        // Tentar salvar online
-        const { data: task, error: taskError } = await supabase
-          .from('tasks')
-          .insert({
-            name: requiredFields.name,
-            responsible: requiredFields.responsible,
-            client: requiredFields.client,
-            clientcode: taskData.clientCode || '',
-            property: standardizedTaskData.property || '',
-            email: taskData.email || '',
-            propertyhectares: taskData.propertyHectares || 0,
-            filial: standardizedTaskData.filial || '',
-            task_type: standardizedTaskData.taskType || 'prospection',
-            start_date: standardizedTaskData.startDate?.toISOString().split('T')[0],
-            end_date: standardizedTaskData.endDate?.toISOString().split('T')[0],
-            start_time: standardizedTaskData.startTime,
-            end_time: standardizedTaskData.endTime,
-            observations: standardizedTaskData.observations || '',
-            priority: standardizedTaskData.priority,
-            photos: standardizedTaskData.photos || [],
-            documents: standardizedTaskData.documents || [],
-            check_in_location: standardizedTaskData.checkInLocation,
-            initial_km: standardizedTaskData.initialKm || 0,
-            final_km: standardizedTaskData.finalKm || 0,
-            created_by: user.id,
-            is_prospect: standardizedTaskData.isProspect || false,
-            prospect_notes: standardizedTaskData.prospectNotes || '',
-            sales_value: standardizedTaskData.salesValue || 0,
-            sales_confirmed: standardizedTaskData.salesConfirmed
-          })
-          .select()
-          .single();
-
-        if (taskError) throw taskError;
-
-        // Auto-criar opportunity se task tem valor de venda
-        if (standardizedTaskData.salesValue && standardizedTaskData.salesValue > 0) {
-          try {
-            // Importar dinamicamente para evitar circular dependency
-            const { useOpportunityManager } = await import('./useOpportunityManager');
-            const { ensureOpportunity } = useOpportunityManager();
-            
-            await ensureOpportunity({
-              taskId: task.id,
-              clientName: standardizedTaskData.client || '',
-              filial: standardizedTaskData.filial || '',
-              salesValue: standardizedTaskData.salesValue,
-              salesType: taskData.salesType || 'ganho',
-              partialSalesValue: taskData.partialSalesValue || 0,
-              salesConfirmed: standardizedTaskData.salesConfirmed || false
-            });
-            
-            console.log('✅ Opportunity criada automaticamente para task:', task.id);
-          } catch (opportunityError) {
-            console.error('❌ Erro ao criar opportunity automaticamente:', opportunityError);
-            // Não falhar a criação da task por causa disso
-          }
-        }
-
-        // Criar produtos (checklist)
-        if (taskData.checklist && taskData.checklist.length > 0) {
-          const products = taskData.checklist.map(product => ({
-            task_id: task.id,
-            name: product.name,
-            category: product.category,
-            selected: product.selected,
-            quantity: product.quantity || 0,
-            price: product.price || 0,
-            observations: product.observations || '',
-            photos: product.photos || []
-          }));
-
-          const { error: productsError } = await supabase
-            .from('products')
-            .insert(products);
-
-          if (productsError) throw productsError;
-        }
-
-        // Criar lembretes
-        if (taskData.reminders && taskData.reminders.length > 0) {
-          const reminders = taskData.reminders.map(reminder => ({
-            task_id: task.id,
-            title: reminder.title,
-            description: reminder.description || '',
-            date: reminder.date.toISOString().split('T')[0],
-            time: reminder.time,
-            completed: reminder.completed || false
-          }));
-
-          const { error: remindersError } = await supabase
-            .from('reminders')
-            .insert(reminders);
-
-          if (remindersError) throw remindersError;
-        }
-
-        toast({
-          title: "✅ Tarefa Criada",
-          description: "Tarefa salva com sucesso no banco de dados!",
-        });
-
-        // OTIMIZAÇÃO: Usar cache otimista ao invés de reload
-        setTasks(prev => [mapSupabaseTaskToTask({ ...task, products: [], reminders: [] }), ...prev]);
-        
-        return task;
-      } catch (error: any) {
-        console.error('❌ createTask: Erro ao criar tarefa:', error);
-        
-        // Melhor tratamento de erro com detalhes específicos
-        let errorMessage = "Erro ao criar tarefa";
-        if (error.message.includes('violates row-level security')) {
-          errorMessage = "Erro de permissão. Verifique se está logado corretamente.";
-        } else if (error.message.includes('null value')) {
-          errorMessage = "Campos obrigatórios não preenchidos. Verifique os dados.";
-        } else if (error.message.includes('Cliente é obrigatório')) {
-          errorMessage = "Cliente é obrigatório para criar a tarefa";
-        }
-        
-        toast({
-          title: "❌ Erro",
-          description: errorMessage,
-          variant: "destructive",
-        });
-
-        // Se falhar online, salvar offline como fallback
+      // Modo offline - salvar localmente
+      if (!isOnline) {
         saveTaskOffline(tempTask);
         setTasks(prev => [tempTask, ...prev]);
-        
         return tempTask;
       }
-    } else {
-      // Modo offline - salvar localmente
-      saveTaskOffline(tempTask);
-      setTasks(prev => [tempTask, ...prev]);
+
+      // Modo online - salvar no Supabase
+      // Criar dados padronizados com snapshot de filial
+      const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
       
-      return tempTask;
-    }
+      // Validação de campos obrigatórios
+      const requiredFields = {
+        name: standardizedTaskData.name || getDefaultTaskName(standardizedTaskData.taskType || 'prospection'),
+        responsible: standardizedTaskData.responsible || user.email || '',
+        client: standardizedTaskData.client
+      };
+
+      if (!requiredFields.client) {
+        throw new Error('Cliente é obrigatório');
+      }
+
+      // Tentar salvar online
+      const { data: task, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          name: requiredFields.name,
+          responsible: requiredFields.responsible,
+          client: requiredFields.client,
+          clientcode: taskData.clientCode || '',
+          property: standardizedTaskData.property || '',
+          email: taskData.email || '',
+          propertyhectares: taskData.propertyHectares || 0,
+          filial: standardizedTaskData.filial || '',
+          task_type: standardizedTaskData.taskType || 'prospection',
+          start_date: standardizedTaskData.startDate?.toISOString().split('T')[0],
+          end_date: standardizedTaskData.endDate?.toISOString().split('T')[0],
+          start_time: standardizedTaskData.startTime,
+          end_time: standardizedTaskData.endTime,
+          observations: standardizedTaskData.observations || '',
+          priority: standardizedTaskData.priority,
+          photos: standardizedTaskData.photos || [],
+          documents: standardizedTaskData.documents || [],
+          check_in_location: standardizedTaskData.checkInLocation,
+          initial_km: standardizedTaskData.initialKm || 0,
+          final_km: standardizedTaskData.finalKm || 0,
+          created_by: user.id,
+          is_prospect: standardizedTaskData.isProspect || false,
+          prospect_notes: standardizedTaskData.prospectNotes || '',
+          sales_value: standardizedTaskData.salesValue || 0,
+          sales_confirmed: standardizedTaskData.salesConfirmed
+        })
+        .select()
+        .single();
+
+      if (taskError) throw taskError;
+
+      // Auto-criar opportunity se task tem valor de venda
+      if (standardizedTaskData.salesValue && standardizedTaskData.salesValue > 0) {
+        try {
+          // Importar dinamicamente para evitar circular dependency
+          const { useOpportunityManager } = await import('./useOpportunityManager');
+          const { ensureOpportunity } = useOpportunityManager();
+          
+          await ensureOpportunity({
+            taskId: task.id,
+            clientName: standardizedTaskData.client || '',
+            filial: standardizedTaskData.filial || '',
+            salesValue: standardizedTaskData.salesValue,
+            salesType: taskData.salesType || 'ganho',
+            partialSalesValue: taskData.partialSalesValue || 0,
+            salesConfirmed: standardizedTaskData.salesConfirmed || false
+          });
+          
+          console.log('✅ Opportunity criada automaticamente para task:', task.id);
+        } catch (opportunityError) {
+          console.error('❌ Erro ao criar opportunity automaticamente:', opportunityError);
+          // Não falhar a criação da task por causa disso
+        }
+      }
+
+      // Criar produtos (checklist)
+      if (taskData.checklist && taskData.checklist.length > 0) {
+        const products = taskData.checklist.map(product => ({
+          task_id: task.id,
+          name: product.name,
+          category: product.category,
+          selected: product.selected,
+          quantity: product.quantity || 0,
+          price: product.price || 0,
+          observations: product.observations || '',
+          photos: product.photos || []
+        }));
+
+        const { error: productsError } = await supabase
+          .from('products')
+          .insert(products);
+
+        if (productsError) throw productsError;
+      }
+
+      // Criar lembretes
+      if (taskData.reminders && taskData.reminders.length > 0) {
+        const reminders = taskData.reminders.map(reminder => ({
+          task_id: task.id,
+          title: reminder.title,
+          description: reminder.description || '',
+          date: reminder.date.toISOString().split('T')[0],
+          time: reminder.time,
+          completed: reminder.completed || false
+        }));
+
+        const { error: remindersError } = await supabase
+          .from('reminders')
+          .insert(reminders);
+
+        if (remindersError) throw remindersError;
+      }
+
+      toast({
+        title: "✅ Tarefa Criada",
+        description: "Tarefa salva com sucesso no banco de dados!",
+      });
+
+      // OTIMIZAÇÃO: Usar cache otimista ao invés de reload
+      setTasks(prev => [mapSupabaseTaskToTask({ ...task, products: [], reminders: [] }), ...prev]);
+      
+      return task;
+    } catch (error: any) {
+      console.error('❌ createTask: Erro ao criar tarefa:', error);
+      
+      // Melhor tratamento de erro com detalhes específicos
+      let errorMessage = "Não foi possível criar a tarefa";
+      if (error.message?.includes('violates row-level security')) {
+        errorMessage = "Erro de permissão. Verifique se está logado corretamente.";
+      } else if (error.message?.includes('null value')) {
+        errorMessage = "Campos obrigatórios não preenchidos. Verifique os dados.";
+      } else if (error.message?.includes('Cliente é obrigatório')) {
+        errorMessage = "Cliente é obrigatório para criar a tarefa";
+      }
+      
+      toast({
+        title: "Erro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      return null;
     } finally {
       // Always release the lock after 2 seconds
       setTimeout(() => {
