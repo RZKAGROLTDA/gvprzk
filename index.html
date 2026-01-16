@@ -1,12 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Gestão de Visitas - RAC & Consultores</title>
     <meta name="description" content="Sistema de gestão de visitas para colaboradores RAC e Consultores de Pneus" />
     <meta name="author" content="Lovable" />
-
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="GVP" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+    
+    <!-- Open Graph -->
     <meta property="og:title" content="Gestão de Visitas - RAC & Consultores" />
     <meta property="og:description" content="Sistema de gestão de visitas para colaboradores RAC e Consultores de Pneus" />
     <meta property="og:type" content="website" />
@@ -20,19 +30,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Registrar Service Worker para funcionalidade offline
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('SW registrado com sucesso: ', registration);
-            })
-            .catch(registrationError => {
-              console.log('SW falhou: ', registrationError);
-            });
-        });
-      }
-    </script>
   </body>
 </html>
