@@ -559,30 +559,37 @@ ${task?.responsible || 'Equipe Comercial'}`;
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
         <DialogHeader className="pb-4 border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-primary rounded-lg shadow-lg">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="p-3 bg-gradient-primary rounded-lg shadow-lg flex-shrink-0">
                 <FileText className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              <div className="min-w-0">
+                <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
                   Detalhes da Oportunidade
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1 truncate">
                   {getTaskTypeLabel(task?.taskType || 'prospection')} • {task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="gradient" size="sm" onClick={handleGeneratePDF} disabled={isGeneratingPDF}>
+
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-nowrap">
+              <Button
+                variant="gradient"
+                size="sm"
+                onClick={handleGeneratePDF}
+                disabled={isGeneratingPDF}
+                className="flex-1 sm:flex-none"
+              >
                 <Download className="w-4 h-4 mr-2" />
                 {isGeneratingPDF ? 'Gerando...' : 'PDF'}
               </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="flex-1 sm:flex-none">
                 <Printer className="w-4 h-4 mr-2" />
                 Imprimir
               </Button>
-              <Button variant="outline" size="sm" onClick={handleEmail}>
+              <Button variant="outline" size="sm" onClick={handleEmail} className="flex-1 sm:flex-none">
                 <Mail className="w-4 h-4 mr-2" />
                 Email
               </Button>
