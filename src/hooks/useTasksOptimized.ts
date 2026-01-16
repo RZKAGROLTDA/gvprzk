@@ -19,7 +19,7 @@ export const QUERY_KEYS = {
 // Hook principal otimizado para carregar tasks com cache
 export const useTasksOptimized = (includeDetails = false) => {
   const { user } = useAuth();
-  const { isOnline, getOfflineTasks } = useOffline();
+  const { isOnline, getOfflineTasks, saveTaskOffline } = useOffline();
   const queryClient = useQueryClient();
 
   // Função para verificar e criar perfil se necessário
@@ -245,6 +245,61 @@ export const useTasksOptimized = (includeDetails = false) => {
       if (!user) throw new Error('User not authenticated');
 
       const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
+
+      // ✅ Suporte a criação OFFLINE
+      if (!isOnline) {
+        const startDate = standardizedTaskData.startDate ? new Date(standardizedTaskData.startDate) : new Date();
+        const endDate = standardizedTaskData.endDate ? new Date(standardizedTaskData.endDate) : startDate;
+
+        const offlineTask: Task = {
+          id:
+            globalThis.crypto?.randomUUID?.() ||
+            `offline_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          name: taskData.name || getDefaultTaskName(taskData.taskType || 'prospection'),
+          responsible: taskData.responsible || user.email || '',
+          client: taskData.client || '',
+          clientCode: taskData.clientCode || '',
+          property: standardizedTaskData.property || '',
+          cpf: taskData.cpf,
+          email: taskData.email,
+          phone: taskData.phone,
+          filial: standardizedTaskData.filial || '',
+          filialAtendida: taskData.filialAtendida,
+          taskType: (standardizedTaskData.taskType as any) || 'prospection',
+          checklist: taskData.checklist || [],
+          startDate,
+          endDate,
+          startTime: standardizedTaskData.startTime || '09:00',
+          endTime: standardizedTaskData.endTime || '17:00',
+          observations: standardizedTaskData.observations || '',
+          priority: (standardizedTaskData.priority as any) || 'medium',
+          reminders: taskData.reminders || [],
+          photos: standardizedTaskData.photos || [],
+          documents: standardizedTaskData.documents || [],
+          checkInLocation: standardizedTaskData.checkInLocation,
+          initialKm: standardizedTaskData.initialKm || 0,
+          finalKm: standardizedTaskData.finalKm || 0,
+          status: 'pending',
+          createdBy: user.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isProspect: standardizedTaskData.isProspect || false,
+          prospectNotes: standardizedTaskData.prospectNotes,
+          prospectNotesJustification: standardizedTaskData.prospectNotesJustification,
+          prospectItems: standardizedTaskData.prospectItems,
+          salesValue: standardizedTaskData.salesValue,
+          salesConfirmed: standardizedTaskData.salesConfirmed,
+          salesType: taskData.salesType,
+          partialSalesValue: taskData.partialSalesValue,
+          familyProduct: taskData.familyProduct,
+          equipmentQuantity: taskData.equipmentQuantity,
+          propertyHectares: taskData.propertyHectares,
+          equipmentList: taskData.equipmentList,
+        };
+
+        saveTaskOffline(offlineTask);
+        return offlineTask;
+      }
       
       // Process equipment data from equipmentList
       const equipmentData = Array.isArray(taskData.equipmentList) && taskData.equipmentList.length > 0 
