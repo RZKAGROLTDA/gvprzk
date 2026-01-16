@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -19,6 +20,74 @@ export default defineConfig(({ mode }) => {
     react(),
     mode === 'development' &&
     componentTagger(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'robots.txt'],
+      manifest: false, // Usamos manifest.webmanifest manual
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api/],
+        runtimeCaching: [
+          {
+            // Cache para API do Supabase
+            urlPattern: /^https:\/\/wuvbrkbhunifudaewhng\.supabase\.co/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24, // 24 horas
+              },
+              networkTimeoutSeconds: 10,
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Cache para imagens do Storage
+            urlPattern: /^https:\/\/wuvbrkbhunifudaewhng\.supabase\.co\/storage/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'supabase-images-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 dias
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Cache para fontes do Google
+            urlPattern: /^https:\/\/fonts\.googleapis\.com/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts',
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 ano
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
+      devOptions: {
+        enabled: true, // Habilita PWA em dev para testes
+      },
+    }),
   ].filter(Boolean),
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
@@ -44,12 +113,5 @@ export default defineConfig(({ mode }) => {
     },
     // Enable CSS code splitting for better loading performance
     cssCodeSplit: true,
-  },
-  // Replace version placeholders in service worker
-  transformIndexHtml: {
-    enforce: 'post',
-    transform(html: string) {
-      return html.replace(/__BUILD_TIME__/g, buildTime);
-    }
   },
 }});
