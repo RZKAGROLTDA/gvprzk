@@ -197,6 +197,7 @@ export const useOpportunityManager = () => {
           cliente_nome: clientName,
           filial: filial,
           status: correctStatusUpdate,
+          valor_total_oportunidade: salesValue, // CRÍTICO: Sempre atualizar com o valor total da oportunidade
           valor_venda_fechada: valorVendaFechada, // CRÍTICO: Agora atualizamos diretamente
           data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
