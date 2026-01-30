@@ -1293,18 +1293,30 @@ export const SalesFunnel: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage))).map((task) => {
-                  // Get opportunity values for this task or fallback to task values
-                  const oppValues = opportunityValues.get(task.id) || { 
-                    valor_total_oportunidade: getSalesValueAsNumber(task.salesValue) || 0, 
-                    valor_venda_fechada: task.salesType === 'parcial' 
-                      ? (task.partialSalesValue || 0) 
-                      : task.salesConfirmed && task.salesType === 'ganho' 
-                        ? getSalesValueAsNumber(task.salesValue) || 0 
+                  // Get opportunity values for this task.
+                  // FIX: se a opportunity estiver com valor_total_oportunidade = 0 (ex.: Venda Perdida),
+                  // usar o valor vindo dos dados da task/listagem (mesmo valor que aparece no modal).
+                  const fallbackOppValues = {
+                    valor_total_oportunidade: getSalesValueAsNumber(task.salesValue) || 0,
+                    valor_venda_fechada: task.salesType === 'parcial'
+                      ? (task.partialSalesValue || 0)
+                      : task.salesConfirmed && task.salesType === 'ganho'
+                        ? getSalesValueAsNumber(task.salesValue) || 0
                         : 0,
-                    status: task.salesConfirmed 
+                    status: task.salesConfirmed
                       ? (task.salesType === 'ganho' ? 'Ganho' : task.salesType === 'parcial' ? 'Parcial' : 'Perdido')
-                      : 'Prospect' 
+                      : 'Prospect'
                   };
+
+                  const oppFromMap = opportunityValues.get(task.id);
+                  const oppValues = oppFromMap
+                    ? {
+                        ...oppFromMap,
+                        valor_total_oportunidade:
+                          getSalesValueAsNumber((oppFromMap as any).valor_total_oportunidade) ||
+                          fallbackOppValues.valor_total_oportunidade,
+                      }
+                    : fallbackOppValues;
                   
                   return (
                     <TableRow key={task.id}>
