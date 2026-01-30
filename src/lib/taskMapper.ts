@@ -1,6 +1,7 @@
 
 import { Task } from '@/types/task';
 import { resolveFilialName, loadFiliaisCache } from './taskStandardization';
+import { parseLocalDate } from './utils';
 
 // Utility function to map Supabase task data to application Task format
 export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
@@ -50,8 +51,8 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     email: customerData?.email || supabaseTask.email || '',
     taskType: supabaseTask.task_type || 'prospection',
     checklist: checklist,
-    startDate: new Date(supabaseTask.start_date),
-    endDate: new Date(supabaseTask.end_date),
+    startDate: parseLocalDate(supabaseTask.start_date),
+    endDate: parseLocalDate(supabaseTask.end_date),
     startTime: supabaseTask.start_time,
     endTime: supabaseTask.end_time,
     observations: supabaseTask.observations || '',
@@ -60,7 +61,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
       id: reminder.id,
       title: reminder.title,
       description: reminder.description || '',
-      date: new Date(reminder.date),
+      date: parseLocalDate(reminder.date),
       time: reminder.time,
       completed: reminder.completed || false,
     })) : [],
@@ -69,14 +70,14 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     checkInLocation: supabaseTask.check_in_location ? {
       lat: supabaseTask.check_in_location.lat,
       lng: supabaseTask.check_in_location.lng,
-      timestamp: new Date(supabaseTask.check_in_location.timestamp),
+      timestamp: parseLocalDate(supabaseTask.check_in_location.timestamp),
     } : undefined,
     initialKm: supabaseTask.initial_km || 0,
     finalKm: supabaseTask.final_km || 0,
     status: supabaseTask.status,
     createdBy: supabaseTask.created_by,
-    createdAt: new Date(supabaseTask.created_at),
-    updatedAt: new Date(supabaseTask.updated_at),
+    createdAt: parseLocalDate(supabaseTask.created_at),
+    updatedAt: parseLocalDate(supabaseTask.updated_at),
     // Usar o valor direto do banco para isProspect
     isProspect: Boolean(supabaseTask.is_prospect),
     prospectNotes: supabaseTask.prospect_notes || '',

@@ -22,6 +22,7 @@ import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization
 import { useInfiniteSalesData } from '@/hooks/useInfiniteSalesData';
 import { useConsolidatedSalesMetrics } from '@/hooks/useConsolidatedSalesMetrics';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
+import { parseLocalDate, formatDateDisplay } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -489,10 +490,10 @@ export const SalesFunnel: React.FC = () => {
         salesType: sale.salesStatus,
         salesValue: sale.totalValue,
         partialSalesValue: sale.partialValue || 0,
-        createdAt: new Date(createdAtStr),
-        updatedAt: new Date(updatedAtStr),
-        startDate: new Date(startDateStr),
-        endDate: new Date(endDateStr),
+        createdAt: parseLocalDate(createdAtStr),
+        updatedAt: parseLocalDate(updatedAtStr),
+        startDate: parseLocalDate(startDateStr),
+        endDate: parseLocalDate(endDateStr),
         start_date: startDateStr.split('T')[0],
         end_date: endDateStr.split('T')[0],
         property: '',
@@ -549,7 +550,7 @@ export const SalesFunnel: React.FC = () => {
       })
       .map(opp => {
         const createdAtStr = opp.data_criacao || opp.created_at;
-        const createdAt = new Date(createdAtStr);
+        const createdAt = parseLocalDate(createdAtStr);
 
         // CRITICAL FIX: Use task_id when available, not opportunity id
         // The modal expects a task ID, not an opportunity ID
@@ -574,7 +575,7 @@ export const SalesFunnel: React.FC = () => {
           salesValue: opp.valor_total_oportunidade || 0,
           partialSalesValue: opp.status === 'Venda Parcial' ? opp.valor_venda_fechada || 0 : 0,
           createdAt: createdAt,
-          updatedAt: new Date(opp.updated_at || createdAtStr),
+          updatedAt: parseLocalDate(opp.updated_at || createdAtStr),
           startDate: createdAt,
           endDate: createdAt,
           start_date: createdAtStr.split('T')[0],
@@ -781,14 +782,14 @@ export const SalesFunnel: React.FC = () => {
           filial: task.filial || 'Sem Filial',
           consultant: task.responsible,
           activities: [],
-          lastActivity: new Date(task.createdAt),
+          lastActivity: parseLocalDate(task.createdAt),
           salesValue: 0,
           status: 'Sem venda'
         });
       }
       const stats = clientStats.get(key)!;
       stats.activities.push(task);
-      const taskDate = new Date(task.createdAt);
+      const taskDate = parseLocalDate(task.createdAt);
       if (taskDate > stats.lastActivity) {
         stats.lastActivity = taskDate;
       }
@@ -1341,7 +1342,7 @@ export const SalesFunnel: React.FC = () => {
                           {oppValues.status || (task.salesConfirmed ? 'Fechada' : 'Em andamento')}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(task.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell>{formatDateDisplay(task.createdAt)}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button

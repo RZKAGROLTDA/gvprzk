@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatDateDisplay } from '@/lib/utils';
 import { PhotoGallery } from '@/components/PhotoGallery';
 import { TaskLocationInfo } from '@/components/TaskLocationInfo';
 import { FormVisualization } from '@/components/FormVisualization';
@@ -133,7 +134,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDele
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {format(task.startDate, "dd/MM/yyyy", { locale: ptBR })}
+                  {formatDateDisplay(task.startDate)}
                 </div>
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
@@ -214,7 +215,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onView, onEdit, onDele
             )}
           </div>
           <div>
-            Criado em {format(task.createdAt, "dd/MM/yyyy", { locale: ptBR })}
+            Criado em {formatDateDisplay(task.createdAt)}
           </div>
         </div>
 

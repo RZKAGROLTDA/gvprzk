@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
+import { formatDateDisplay, parseLocalDate } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -339,7 +340,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 </head>
 <body>
   <h1>Relatório Completo de Oportunidade</h1>
-  <p class="sub">${escapeHtml(getTaskTypeLabel(fullTask.taskType || 'prospection'))} • ${escapeHtml(format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR }))}</p>
+  <p class="sub">${escapeHtml(getTaskTypeLabel(fullTask.taskType || 'prospection'))} • ${escapeHtml(formatDateDisplay(fullTask.startDate))}</p>
 
   <div class="box">
     <h2>Cliente</h2>
@@ -381,7 +382,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 
   const handleEmail = () => {
     const subject = `Relatório de Oportunidade - ${fullTask?.client || 'Cliente'}`;
-    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável: ${fullTask?.responsible || 'N/A'}\n- Data: ${fullTask?.startDate ? format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
+    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável: ${fullTask?.responsible || 'N/A'}\n- Data: ${fullTask?.startDate ? formatDateDisplay(fullTask.startDate) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
 
     const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoLink);
@@ -441,7 +442,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                     <div className="flex items-center gap-4 mt-2">
                       <span className="text-sm text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
+                        {formatDateDisplay(fullTask.startDate)}
                       </span>
                       <span className="text-sm text-muted-foreground">
                         {fullTask.startTime} - {fullTask.endTime}
@@ -496,7 +497,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <label className="text-sm font-medium text-muted-foreground">Data</label>
                   <p className="font-medium flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
-                    {format(new Date(fullTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
+                    {formatDateDisplay(fullTask.startDate)}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -876,7 +877,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                   <div className="md:col-span-2">
                     <label className="text-sm font-medium text-muted-foreground">Data/Hora do Check-in</label>
                     <p className="font-medium">
-                      {format(new Date(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      {format(parseLocalDate(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </p>
                   </div>
                 </div>
@@ -971,7 +972,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                           <div className="flex items-center gap-4 mt-3 text-sm">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
-                              <span>{format(new Date(reminder.date), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                              <span>{formatDateDisplay(reminder.date)}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <span>{reminder.time}</span>

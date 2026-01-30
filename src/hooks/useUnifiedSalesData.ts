@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { parseLocalDate } from '@/lib/utils';
 
 interface UnifiedSalesData {
   id: string;
@@ -121,10 +122,10 @@ export const useUnifiedSalesData = () => {
             partialValue,
             isProspect: task.is_prospect || false,
             salesConfirmed: task.sales_confirmed || false,
-            startDate: new Date(task.start_date),
-            endDate: new Date(task.end_date),
-            createdAt: new Date(task.created_at),
-            updatedAt: new Date(task.updated_at),
+            startDate: parseLocalDate(task.start_date),
+            endDate: parseLocalDate(task.end_date),
+            createdAt: parseLocalDate(task.created_at),
+            updatedAt: parseLocalDate(task.updated_at),
             hasOpportunity: !!opportunity,
             hasTaskData: !!task.sales_value
           };

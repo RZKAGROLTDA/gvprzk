@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatDateDisplay } from '@/lib/utils';
 import { useTasksOptimized, useTaskDetails } from '@/hooks/useTasksOptimized';
 import { useOpportunityManager } from '@/hooks/useOpportunityManager';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
@@ -357,7 +358,7 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`${getTaskTypeLabel(currentTask.taskType)} • ${format(new Date(currentTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}`, 14, 28);
+    doc.text(`${getTaskTypeLabel(currentTask.taskType)} • ${formatDateDisplay(currentTask.startDate)}`, 14, 28);
     
     // Status box
     const bgColor = getStatusBackgroundColor(selectedStatus);
@@ -503,7 +504,7 @@ Segue o resumo da oportunidade:
 • Código: ${currentTask.clientCode || 'N/A'}
 • Propriedade: ${currentTask.property || 'N/A'}
 • Tipo: ${getTaskTypeLabel(currentTask.taskType)}
-• Data: ${format(new Date(currentTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
+• Data: ${formatDateDisplay(currentTask.startDate)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💰 STATUS DA VENDA
@@ -566,7 +567,7 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Detalhes da Oportunidade</h2>
                 <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                  {getTaskTypeLabel(currentTask.taskType)} • {format(new Date(currentTask.startDate), 'dd/MM/yyyy', { locale: ptBR })}
+                  {getTaskTypeLabel(currentTask.taskType)} • {formatDateDisplay(currentTask.startDate)}
                 </p>
               </div>
             </div>

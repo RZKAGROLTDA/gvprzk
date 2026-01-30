@@ -13,6 +13,7 @@ import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { mapSalesStatus, getStatusLabel } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { useEnhancedSecurityMonitor } from '@/hooks/useEnhancedSecurityMonitor';
+import { formatDateDisplay } from '@/lib/utils';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -94,7 +95,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
           visit.property || 'N/A',
           visit.filial || 'N/A',
           (visit as any).filial_atendida || '-',
-          visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
+          visit.start_date ? formatDateDisplay(visit.start_date) : 'N/A',
           `R$ ${salesValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           getStatusLabel(salesStatus),
           visit.status === 'completed' ? 'Concluída' : 
@@ -186,7 +187,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
           'Propriedade': visit.property || 'N/A',
           'Filial': visit.filial || 'N/A',
           'Filial Atendida': (visit as any).filial_atendida || 'N/A',
-          'Data da Visita': visit.start_date ? format(new Date(visit.start_date), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A',
+          'Data da Visita': visit.start_date ? formatDateDisplay(visit.start_date) : 'N/A',
           'Horário Início': visit.start_time || 'N/A',
           'Horário Fim': visit.end_time || 'N/A',
           'Valor da Oportunidade': salesValue,

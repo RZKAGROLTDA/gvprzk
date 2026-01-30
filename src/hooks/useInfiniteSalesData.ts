@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { parseLocalDate } from '@/lib/utils';
 
 export interface SalesFilters {
   period?: string;
@@ -208,10 +209,10 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
             partialValue,
             isProspect: task.is_prospect || false,
             salesConfirmed: task.sales_confirmed || false,
-            startDate: new Date(task.start_date),
-            endDate: new Date(task.end_date),
-            createdAt: new Date(task.created_at),
-            updatedAt: new Date(task.updated_at),
+            startDate: parseLocalDate(task.start_date),
+            endDate: parseLocalDate(task.end_date),
+            createdAt: parseLocalDate(task.created_at),
+            updatedAt: parseLocalDate(task.updated_at),
             date: task.start_date || task.created_at,
             salesType: task.sales_type,
             prospectValue: task.is_prospect ? totalValue : 0,
