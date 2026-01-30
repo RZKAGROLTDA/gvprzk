@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { formatDateToLocal } from '@/lib/utils';
 
 // Função helper para gerar nome padrão da tarefa
 const getDefaultTaskName = (taskType: string): string => {
@@ -203,7 +204,7 @@ export const useTasks = () => {
           .select('id, created_at')
           .eq('client', taskData.client || '')
           .eq('responsible', taskData.responsible || '')
-          .eq('start_date', taskData.startDate?.toISOString().split('T')[0] || '')
+          .eq('start_date', taskData.startDate ? formatDateToLocal(taskData.startDate) : '')
           .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Last 5 minutes
 
         if (existingTasks && existingTasks.length > 0) {
@@ -285,8 +286,8 @@ export const useTasks = () => {
           propertyhectares: taskData.propertyHectares || 0,
           filial: standardizedTaskData.filial || '',
           task_type: standardizedTaskData.taskType || 'prospection',
-          start_date: standardizedTaskData.startDate?.toISOString().split('T')[0],
-          end_date: standardizedTaskData.endDate?.toISOString().split('T')[0],
+          start_date: formatDateToLocal(standardizedTaskData.startDate),
+          end_date: formatDateToLocal(standardizedTaskData.endDate),
           start_time: standardizedTaskData.startTime,
           end_time: standardizedTaskData.endTime,
           observations: standardizedTaskData.observations || '',
@@ -357,7 +358,7 @@ export const useTasks = () => {
           task_id: task.id,
           title: reminder.title,
           description: reminder.description || '',
-          date: reminder.date.toISOString().split('T')[0],
+          date: formatDateToLocal(reminder.date),
           time: reminder.time,
           completed: reminder.completed || false
         }));

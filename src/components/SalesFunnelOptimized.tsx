@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { mapSalesStatus, resolveFilialName } from '@/lib/taskStandardization';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { Task } from '@/types/task';
+import { parseLocalDate } from '@/lib/utils';
 
 interface SalesFunnelData {
   name: string;
@@ -69,7 +70,7 @@ export const SalesFunnelOptimized: React.FC = () => {
 
     // Um único loop de filtro para máxima performance
     return tasks.filter(task => {
-      const taskDate = new Date(task.createdAt);
+      const taskDate = parseLocalDate(task.createdAt);
       
       // Filtros aplicados sequencialmente para sair cedo
       if (daysAgo < 9999 && taskDate < periodStart) return false;

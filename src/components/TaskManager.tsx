@@ -8,6 +8,7 @@ import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { Task } from '@/types/task';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatDateDisplay } from '@/lib/utils';
 import { 
   Calendar, 
   Clock, 
@@ -212,7 +213,7 @@ export const TaskManager: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>
-                      {task.startDate ? format(new Date(task.startDate), "PPP", { locale: ptBR }) : 'Data não definida'}
+                      {task.startDate ? formatDateDisplay(task.startDate) : 'Data não definida'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

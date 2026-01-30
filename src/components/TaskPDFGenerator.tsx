@@ -4,6 +4,7 @@ import { Task } from '@/types/task';
 import jsPDF from 'jspdf';
 import { mapSalesStatus, getStatusLabel, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { formatDateDisplay } from '@/lib/utils';
 
 interface GenerateTaskPDFOptions {
   task: Task;
@@ -144,7 +145,7 @@ export const generateTaskPDF = async (
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(100, 100, 100);
   pdf.text(
-    `${getTaskTypeLabel(task?.taskType || 'prospection')} • ${task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}`,
+    `${getTaskTypeLabel(task?.taskType || 'prospection')} • ${task?.startDate ? formatDateDisplay(task.startDate) : 'N/A'}`,
     pageWidth / 2,
     yPos,
     { align: 'center' }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatDateDisplay, parseLocalDate } from '@/lib/utils';
 import { 
   Download, 
   Printer, 
@@ -370,8 +371,8 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
       yPosition += 15;
 
       const historyData = [
-        ['Data de Criação:', format(task.createdAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })],
-        ['Última Atualização:', format(task.updatedAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })],
+        ['Data de Criação:', format(parseLocalDate(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })],
+        ['Última Atualização:', format(parseLocalDate(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })],
         ['Valor da Oportunidade:', formatSalesValue(opportunityValue)],
         ['Valor de Venda Realizada:', formatSalesValue(salesValue)],
         ['Status da Venda:', statusInfo.label]
@@ -430,7 +431,7 @@ Detalhes:
 - Cliente: ${task.client}
 - Valor da Oportunidade: ${formatSalesValue(opportunityValue)}
 - Status: ${statusInfo.label}
-- Data de Criação: ${format(task.createdAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+- Data de Criação: ${format(parseLocalDate(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
 
 Atenciosamente,
 ${task.responsible}`;
@@ -811,14 +812,14 @@ ${task.responsible}`;
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Data de Criação:</span>
                     <span className="font-medium">
-                      {format(task.createdAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      {format(parseLocalDate(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Última Atualização:</span>
                     <span className="font-medium">
-                      {format(task.updatedAt, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      {format(parseLocalDate(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </span>
                   </div>
                 </div>

@@ -26,6 +26,7 @@ import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } f
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { parseLocalDate, formatDateDisplay } from '@/lib/utils';
 
 interface TaskFormVisualizationProps {
   task: Task | null;
@@ -75,8 +76,8 @@ export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
       property: taskEditData.property || '',
       propertyHectares: taskEditData.propertyHectares,
       responsible: taskEditData.responsible || '',
-      startDate: taskEditData.startDate ? new Date(taskEditData.startDate) : new Date(),
-      endDate: taskEditData.endDate ? new Date(taskEditData.endDate) : new Date(),
+      startDate: taskEditData.startDate ? parseLocalDate(taskEditData.startDate) : new Date(),
+      endDate: taskEditData.endDate ? parseLocalDate(taskEditData.endDate) : new Date(),
       startTime: taskEditData.startTime || '',
       endTime: taskEditData.endTime || '',
       priority: (taskEditData.priority || 'medium') as Task['priority'],
@@ -324,7 +325,7 @@ a{color:#0b57d0}
 </head>
 <body>
 <h1>Detalhes da Oportunidade</h1>
-<p class="sub">${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))} • ${task.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}</p>
+<p class="sub">${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))} • ${task.startDate ? formatDateDisplay(task.startDate) : 'N/A'}</p>
 
 <div class="grid">
 <div class="box">
@@ -374,8 +375,8 @@ ${(task.photos || []).length ? '<div class="box"><h2>Fotos (' + task.photos.leng
 ${(task.documents || []).length ? '<div class="box"><h2>Documentos (' + task.documents.length + ')</h2><ul>' + docsList + '</ul></div>' : ''}
 
 <div class="box" style="font-size:11px;color:#666">
-Criado em: ${task.createdAt ? format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
-Atualizado em: ${task.updatedAt ? format(new Date(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
+Criado em: ${task.createdAt ? format(parseLocalDate(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
+Atualizado em: ${task.updatedAt ? format(parseLocalDate(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
 ID: ${task.id ? task.id.substring(0, 8) : 'N/A'}...
 </div>
 </body>
@@ -525,7 +526,7 @@ Segue o relatório completo da oportunidade:
 • Filial Atendida: ${task?.filialAtendida ? getFilialNameRobust(task.filialAtendida, filiais) : 'Mesma do responsável'}
 • Tipo de Atividade: ${getTaskTypeLabel(task?.taskType || 'prospection')}
 • Prioridade: ${task?.priority === 'high' ? 'Alta' : task?.priority === 'medium' ? 'Média' : 'Baixa'}
-• Data: ${task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
+• Data: ${task?.startDate ? formatDateDisplay(task.startDate) : 'N/A'}
 ${produtosSection}${equipamentosSection}${observacoesSection}${localizacaoSection}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Relatório gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
@@ -569,7 +570,7 @@ ${task?.responsible || 'Equipe Comercial'}`;
                   Detalhes da Oportunidade
                 </DialogTitle>
                 <p className="text-sm text-muted-foreground mt-1 truncate">
-                  {getTaskTypeLabel(task?.taskType || 'prospection')} • {task?.startDate ? format(new Date(task.startDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}
+                  {getTaskTypeLabel(task?.taskType || 'prospection')} • {task?.startDate ? formatDateDisplay(task.startDate) : 'N/A'}
                 </p>
               </div>
             </div>
@@ -1037,8 +1038,8 @@ ${task?.responsible || 'Equipe Comercial'}`;
           <Card className="bg-muted/30">
             <CardContent className="pt-4">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Criado em: {task?.createdAt ? format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}</span>
-                <span>Atualizado em: {task?.updatedAt ? format(new Date(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}</span>
+                <span>Criado em: {task?.createdAt ? format(parseLocalDate(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}</span>
+                <span>Atualizado em: {task?.updatedAt ? format(parseLocalDate(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}</span>
                 <span>ID: {task?.id?.substring(0, 8)}...</span>
               </div>
             </CardContent>
