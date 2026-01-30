@@ -268,10 +268,13 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
       ? ((wins.length + partials.length) / (prospects.length + wins.length + partials.length)) * 100
       : 0;
 
+    // Vendas perdidas: usar totalValue (valor da oportunidade) ao invés de 0
+    const totalLostValue = losses.reduce((sum, d) => sum + d.totalValue, 0);
+
     return {
       prospects: { count: prospects.length, value: totalProspectValue },
       wins: { count: wins.length, value: totalWinValue },
-      losses: { count: losses.length, value: 0 },
+      losses: { count: losses.length, value: totalLostValue },
       partials: { count: partials.length, value: totalPartialValue },
       total: { count: allData.length, value: totalClosedValue },
       conversionRate,
