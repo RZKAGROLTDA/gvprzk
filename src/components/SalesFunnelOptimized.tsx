@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Calendar, TrendingUp, Users, DollarSign, Target, Filter, RefreshCw } from 'lucide-react';
-import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
+import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -41,7 +42,7 @@ interface ClientDetails {
 
 export const SalesFunnelOptimized: React.FC = () => {
   const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
-  const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
+  const { consultants, isLoading: consultantsLoading } = useFilteredConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   
   console.log('🔍 SalesFunnelOptimized - Estado atual:', { 

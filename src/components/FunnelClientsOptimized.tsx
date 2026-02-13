@@ -6,7 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Download, Search, Filter } from 'lucide-react';
-import { useTasksOptimized, useConsultants, useFiliais } from '@/hooks/useTasksOptimized';
+import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useSecurityCache } from '@/hooks/useSecurityCache';
 import { useOpportunities } from '@/hooks/useOpportunities';
 import { format, subDays } from 'date-fns';
@@ -26,7 +27,7 @@ interface ClientData {
 export const FunnelClientsOptimized: React.FC = () => {
   const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
   const { data: opportunities = [], isLoading: opportunitiesLoading } = useOpportunities();
-  const { data: consultants = [], isLoading: consultantsLoading } = useConsultants();
+  const { consultants, isLoading: consultantsLoading } = useFilteredConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   const { invalidateAll } = useSecurityCache();
 

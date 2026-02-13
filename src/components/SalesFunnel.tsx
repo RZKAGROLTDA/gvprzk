@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Eye, RefreshCw, ChevronDown, ChevronUp, Edit, BarChart3, Users, TrendingUp, MapPin, Database, Trash2, Loader2 } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { toast } from 'sonner';
 import { Task } from '@/types/task';
 
@@ -94,23 +95,8 @@ export const SalesFunnel: React.FC = () => {
 
   console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isLoadingRole });
 
-  // Fetch all users - IMPORTANTE: usar user_id como value (para bater com tasks.created_by)
-  const {
-    data: consultants = []
-  } = useQuery({
-    queryKey: ['consultants'],
-    queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from('profiles').select('user_id, name').order('name');
-      if (error) throw error;
-      // Mapear para formato esperado: id = user_id (auth uid)
-      return (data || []).map(p => ({ id: p.user_id, name: p.name }));
-    },
-    staleTime: 15 * 60 * 1000, // 15 min - dados estáticos
-    gcTime: 60 * 60 * 1000, // 1 hora
-  });
+  // Fetch users filtrados por filial para supervisores
+  const { consultants } = useFilteredConsultants();
 
   // Fetch filiais
   const {

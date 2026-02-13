@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Download, Search, Filter } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -24,7 +25,7 @@ interface ClientData {
 
 export const FunnelClients: React.FC = () => {
   const { tasks } = useTasks();
-  const [consultants, setConsultants] = useState<any[]>([]);
+  const { consultants } = useFilteredConsultants();
   const [filiais, setFiliais] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('30');
@@ -34,26 +35,20 @@ export const FunnelClients: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
-    const loadFilters = async () => {
+    const loadFiliais = async () => {
       try {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('approval_status', 'approved');
-        
         const { data: filiaisData } = await supabase
           .from('filiais')
           .select('*')
           .order('nome');
 
-        setConsultants(profilesData || []);
         setFiliais(filiaisData || []);
       } catch (error) {
-        console.error('Erro ao carregar filtros:', error);
+        console.error('Erro ao carregar filiais:', error);
       }
     };
 
-    loadFilters();
+    loadFiliais();
   }, []);
 
   const clientsData = useMemo(() => {
