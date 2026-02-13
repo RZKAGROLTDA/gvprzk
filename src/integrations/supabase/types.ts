@@ -1796,6 +1796,7 @@ export type Database = {
           metric_value: number
         }[]
       }
+      get_supervisor_filial_id: { Args: { p_user_id: string }; Returns: string }
       get_supervisor_filial_tasks: {
         Args: never
         Returns: {
