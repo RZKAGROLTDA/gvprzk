@@ -76,15 +76,14 @@ export const SalesFunnelOptimized: React.FC = () => {
       // Filtros aplicados sequencialmente para sair cedo
       if (daysAgo < 9999 && taskDate < periodStart) return false;
       if (selectedConsultant !== 'all') {
-        const consultant = consultants.find(c => c.id === selectedConsultant);
-        if (!consultant || task.responsible !== consultant.name) return false;
+        if (task.createdBy !== selectedConsultant) return false;
       }
       if (selectedFilial !== 'all' && task.filial !== selectedFilial) return false;
       if (selectedActivity !== 'all' && task.taskType !== selectedActivity) return false;
 
       return true;
     });
-  }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity, consultants]);
+  }, [tasks, selectedPeriod, selectedConsultant, selectedFilial, selectedActivity]);
 
   // Dados do funil - super otimizado com um único loop
   const funnelData = useMemo(() => {
