@@ -151,7 +151,7 @@ export const useTaskEditData = (taskId: string | null) => {
               // Map all fields properly
             };
             // Use the found task data
-            taskData = convertedTask;
+            taskData = convertedTask as any;
           }
         }
         
@@ -305,7 +305,7 @@ export const useTaskEditData = (taskId: string | null) => {
         originalProducts: originalProducts || []
       };
 
-      setData(fullData);
+      setData(fullData as any);
 
     } catch (err: any) {
       setError(err.message);

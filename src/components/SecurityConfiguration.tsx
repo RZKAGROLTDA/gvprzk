@@ -62,7 +62,7 @@ export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
 
     try {
       // 1. Run audit log cleanup
-      const { error: cleanupError } = await supabase.rpc('cleanup_old_audit_logs');
+      const { error: cleanupError } = await supabase.rpc('cleanup_old_security_logs');
       if (!cleanupError) {
         setOptimizationStatus(prev => ({ ...prev, auditLogCleanup: true }));
       }

@@ -112,7 +112,7 @@ export const useProfile = () => {
         };
 
         console.log('✅ Perfil carregado:', completeProfile);
-        setProfile(completeProfile);
+        setProfile(completeProfile as any);
       } else {
         setProfile(null);
       }

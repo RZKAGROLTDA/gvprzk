@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, useRef } from 'react';
-import { supabase, getCachedSession } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -82,8 +82,7 @@ export const useAuthProvider = () => {
     // THEN check for existing session usando cache
     const getInitialSession = async () => {
       try {
-        // Usar sessão em cache primeiro para resposta mais rápida
-        const cachedSession = await getCachedSession();
+        const { data: { session: cachedSession } } = await supabase.auth.getSession();
         
         if (mounted) {
           setSession(cachedSession);

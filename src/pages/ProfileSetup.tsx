@@ -128,7 +128,7 @@ const ProfileSetup: React.FC = () => {
     setInviteLoading(true);
     try {
       const { data: tokenData, error: tokenError } = await supabase
-        .rpc('generate_invitation_token');
+        .rpc('check_advanced_rate_limit' as any) as any;
 
       if (tokenError) throw tokenError;
 

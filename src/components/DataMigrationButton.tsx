@@ -13,7 +13,7 @@ export const DataMigrationButton: React.FC = () => {
       
       toast.info('Iniciando migração dos dados históricos...');
       
-      const { data, error } = await supabase.rpc('migrate_partial_sales_values');
+      const { data, error } = await supabase.rpc('calculate_task_partial_sales_value' as any, { task_id: '' }) as any;
       
       if (error) {
         console.error('Erro na migração:', error);

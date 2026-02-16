@@ -42,10 +42,7 @@ export const useSessionSecurity = () => {
         
         // Log the concurrent session activity
         try {
-          await supabase.rpc('log_session_activity', {
-            activity_type: 'concurrent_session_detected',
-            details: { concurrent_detected: true }
-          });
+          console.warn('[Security] Concurrent session detected');
         } catch (logError) {
           console.warn('Failed to log concurrent session:', logError);
         }
@@ -69,10 +66,7 @@ export const useSessionSecurity = () => {
         
         // Log successful refresh
         try {
-          await supabase.rpc('log_session_activity', {
-            activity_type: 'session_refreshed',
-            details: { time_to_expiry: timeToExpiry }
-          });
+          console.log('[Security] Session refreshed, time to expiry:', timeToExpiry);
         } catch (logError) {
           console.warn('Failed to log session refresh:', logError);
         }
@@ -98,13 +92,7 @@ export const useSessionSecurity = () => {
     
     // Enhanced session invalidation logging
     try {
-      await supabase.rpc('log_session_activity', {
-        activity_type: 'forced_logout_inactivity',
-        details: { 
-          session_duration: SESSION_TIMEOUT,
-          timestamp: new Date().toISOString()
-        }
-      });
+      console.warn('[Security] Forced logout due to inactivity');
     } catch (error) {
       console.warn('Failed to log session activity:', error);
     }
