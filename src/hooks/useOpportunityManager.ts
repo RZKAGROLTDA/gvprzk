@@ -483,7 +483,7 @@ export const useOpportunityManager = () => {
             clientName: task.client || 'Cliente',
             filial: task.filial || 'Não informado',
             salesValue: task.sales_value || 0,
-            salesType: task.sales_type || 'ganho',
+            salesType: (task.sales_type as 'ganho' | 'parcial' | 'perdido' | 'prospect') || 'ganho',
             partialSalesValue: task.partial_sales_value || 0,
             salesConfirmed: task.sales_confirmed || false
           });

@@ -62,7 +62,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         )
       `).eq('id', task.id).single();
       if (updatedTask) {
-        setCurrentTask(updatedTask);
+        setCurrentTask(updatedTask as any);
       }
     }).subscribe();
     return () => {

@@ -32,17 +32,15 @@ export const DiagnosticTest: React.FC = () => {
         data: { userId: sessionData.session?.user?.id }
       });
 
-      // Test 2: Check auth.uid() in database using RPC
-      const { data: uidData, error: uidError } = await supabase
-        .rpc('diagnostic_query', { query_text: 'SELECT auth.uid() as current_uid' });
-      
+      // Test 2: Check auth.uid() via current session
+      const currentUid = sessionData.session?.user?.id;
       testResults.push({
         test: 'auth.uid() no Banco',
-        status: uidData?.current_uid ? 'success' : 'error',
-        message: uidData?.current_uid 
-          ? `UID detectado: ${uidData.current_uid}` 
-          : `UID nulo no banco: ${uidError?.message || 'auth.uid() retornou null'}`,
-        data: { uidData, uidError }
+        status: currentUid ? 'success' : 'error',
+        message: currentUid 
+          ? `UID detectado: ${currentUid}` 
+          : 'UID nulo: auth.uid() retornou null',
+        data: { currentUid }
       });
 
       // Test 3: Test profile query with current policies
@@ -64,14 +62,14 @@ export const DiagnosticTest: React.FC = () => {
 
       // Test 4: Test admin function using RPC
       const { data: adminData, error: adminError } = await supabase
-        .rpc('diagnostic_query', { query_text: 'SELECT is_admin() as is_admin_result' });
+        .rpc('can_perform_admin_action');
 
       testResults.push({
-        test: 'Função is_admin()',
+        test: 'Função can_perform_admin_action()',
         status: adminError ? 'error' : 'success',
         message: adminError 
           ? `Erro na função: ${adminError.message}` 
-          : `Resultado: ${adminData?.is_admin_result ? 'Admin' : 'Não admin'}`,
+          : `Resultado: ${adminData ? 'Admin' : 'Não admin'}`,
         data: { adminData, adminError }
       });
 

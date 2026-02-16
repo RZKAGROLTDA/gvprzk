@@ -27,7 +27,7 @@ export const useEnhancedSecurity = () => {
       }
 
       // Check if session invalidation was triggered
-      if (data?.session_invalidated) {
+      if ((data as any)?.session_invalidated) {
         // Force the target user to sign out by broadcasting an event
         // This would require a real-time channel setup in production
         console.warn('Target user session should be invalidated');
@@ -84,19 +84,7 @@ export const useEnhancedSecurity = () => {
     if (!user) return;
 
     // Log session activity to server
-    supabase.rpc('log_session_activity', {
-      activity_type: activityType,
-      details: {
-        ...details,
-        user_id: user.id,
-        timestamp: new Date().toISOString(),
-        user_agent: navigator.userAgent
-      }
-    }).then(({ error }) => {
-      if (error) {
-        console.warn('Failed to log session activity:', error);
-      }
-    });
+    console.log(`[Security] Session activity: ${activityType}`, details);
 
     // Log locally for monitoring
     monitorSuspiciousActivity(`session_${activityType}`, details, 

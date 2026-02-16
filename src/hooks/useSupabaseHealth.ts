@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase, getCachedSession } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 export type SupabaseHealthStatus = 'checking' | 'healthy' | 'unhealthy' | 'unknown';
 
@@ -72,7 +72,7 @@ export const useSupabaseHealth = () => {
 
     try {
       // OTIMIZAÇÃO: Primeiro verificar sessão em cache (sem request)
-      const cachedSession = await getCachedSession();
+      const { data: { session: cachedSession } } = await supabase.auth.getSession();
       
       if (cachedSession) {
         // Se temos sessão válida, considerar saudável sem fazer request

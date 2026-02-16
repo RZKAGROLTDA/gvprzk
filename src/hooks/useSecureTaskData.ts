@@ -62,7 +62,7 @@ export const useSecureTaskData = () => {
           }
         }
 
-        return data as SecureTaskData[];
+        return data as unknown as SecureTaskData[];
       } catch (error) {
         console.error('🚨 Failed to fetch ultra-secure task data:', error);
         monitorSuspiciousActivity('ultra_secure_task_access_failure', { error: String(error) }, 5);

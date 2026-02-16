@@ -188,17 +188,17 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
           'Filial': visit.filial || 'N/A',
           'Filial Atendida': (visit as any).filial_atendida || 'N/A',
           'Data da Visita': visit.start_date ? formatDateDisplay(visit.start_date) : 'N/A',
-          'Horário Início': visit.start_time || 'N/A',
-          'Horário Fim': visit.end_time || 'N/A',
+          'Horário Início': (visit as any).start_time || 'N/A',
+          'Horário Fim': (visit as any).end_time || 'N/A',
           'Valor da Oportunidade': salesValue,
           'Status da Venda': getStatusLabel(salesStatus),
           'Status da Tarefa': visit.status === 'completed' ? 'Concluída' : 
                    visit.status === 'in_progress' ? 'Em Andamento' : 
                    visit.status === 'pending' ? 'Pendente' : 'Fechada',
-          'É Prospect': visit.is_prospect ? 'Sim' : 'Não',
-          'KM Inicial': visit.initial_km || 0,
-          'KM Final': visit.final_km || 0,
-          'Observações': visit.observations || 'Sem observações',
+          'É Prospect': (visit as any).is_prospect ? 'Sim' : 'Não',
+          'KM Inicial': (visit as any).initial_km || 0,
+          'KM Final': (visit as any).final_km || 0,
+          'Observações': (visit as any).observations || 'Sem observações',
           'Data de Criação': visit.created_at ? format(new Date(visit.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'
         };
       });

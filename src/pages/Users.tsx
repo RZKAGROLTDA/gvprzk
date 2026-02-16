@@ -109,9 +109,9 @@ export const Users: React.FC = () => {
         return;
       }
 
-      if (data && !data.success) {
-        console.error('Erro da função:', data.error);
-        toast.error(data.error || 'Erro ao atualizar filial');
+      if (data && !(data as any).success) {
+        console.error('Erro da função:', (data as any).error);
+        toast.error((data as any).error || 'Erro ao atualizar filial');
         return;
       }
 

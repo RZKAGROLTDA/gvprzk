@@ -57,7 +57,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       const {
         data: previousTasks,
         error
-      } = await supabase.from('tasks').select('property, email, propertyhectares').eq('clientCode', clientCode).order('created_at', {
+      } = await (supabase as any).from('tasks').select('property, email, propertyhectares').eq('clientCode', clientCode).order('created_at', {
         ascending: false
       }).limit(1);
       if (error) {
@@ -6459,7 +6459,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { error: draftError } = await supabase
+        const { error: draftError } = await (supabase as any)
           .from('task_drafts')
           .insert({
             user_id: user.id,
