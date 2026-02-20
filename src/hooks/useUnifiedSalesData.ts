@@ -38,7 +38,8 @@ export const useUnifiedSalesData = () => {
     queryKey: ['unified-sales-data'],
     queryFn: async () => {
       try {
-        // Buscar todas as tasks com joins para opportunities
+        // Buscar tasks com joins para opportunities (limitado para reduzir Disk I/O no Supabase)
+        const UNIFIED_SALES_LIMIT = 500;
         const { data: tasksWithOpportunities, error: tasksError } = await supabase
           .from('tasks')
           .select(`
@@ -69,7 +70,8 @@ export const useUnifiedSalesData = () => {
               data_fechamento
             )
           `)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(UNIFIED_SALES_LIMIT);
 
         if (tasksError) throw tasksError;
 

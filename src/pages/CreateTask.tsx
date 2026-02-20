@@ -5965,42 +5965,56 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     setCallProducts(fieldVisitProducts);
   }, [taskCategory]);
 
-  // Função para buscar informações anteriores pelo CPF
+  // Cache para busca por CPF (evita repetir full scan no Supabase para o mesmo CPF).
+  const cpfSearchCacheRef = useRef<Map<string, { client: string; responsible: string; property: string; observations: string; ts: number }>>(new Map());
+  const CPF_CACHE_TTL_MS = 5 * 60 * 1000;
+
   const searchPreviousDataByCPF = async (cpf: string) => {
-    if (!cpf || cpf.length < 11) return;
+    const normalized = cpf.replace(/\D/g, '');
+    if (!normalized || normalized.length < 11) return;
     try {
-      // Buscar no Supabase
-      const {
-        data: tasks
-      } = await supabase.from('tasks').select('*').ilike('observations', `%${cpf}%`).order('created_at', {
-        ascending: false
-      }).limit(1);
+      const cached = cpfSearchCacheRef.current.get(normalized);
+      if (cached && Date.now() - cached.ts < CPF_CACHE_TTL_MS) {
+        setTask(prev => ({
+          ...prev,
+          client: cached.client || prev.client,
+          responsible: profile?.name || cached.responsible || prev.responsible,
+          property: cached.property || prev.property,
+          observations: cached.observations || prev.observations
+        }));
+        toast({ title: "📋 Dados encontrados", description: "Informações do CPF (cache)." });
+        return;
+      }
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('client, responsible, property, observations')
+        .ilike('observations', `%${normalized}%`)
+        .order('created_at', { ascending: false })
+        .limit(1);
       if (tasks && tasks.length > 0) {
         const lastTask = tasks[0];
-
-        // Extrair hectares das observações se existir
         let hectares = '';
         if (lastTask.observations) {
           const hectaresMatch = lastTask.observations.match(/hectares?\s*:?\s*(\d+(?:[.,]\d+)?)/i);
-          if (hectaresMatch) {
-            hectares = hectaresMatch[1];
-          }
+          if (hectaresMatch) hectares = hectaresMatch[1];
         }
+        const observationsText = hectares ? `Hectares: ${hectares}` : '';
+        cpfSearchCacheRef.current.set(normalized, {
+          client: lastTask.client || '',
+          responsible: lastTask.responsible || '',
+          property: lastTask.property || '',
+          observations: observationsText,
+          ts: Date.now(),
+        });
         setTask(prev => ({
           ...prev,
           client: lastTask.client || '',
           responsible: profile?.name || lastTask.responsible || '',
           property: lastTask.property || '',
-          observations: hectares ? `Hectares: ${hectares}` : ''
+          observations: observationsText
         }));
-        toast({
-          title: "📋 Dados encontrados",
-          description: "Informações do CPF foram preenchidas automaticamente"
-        });
+        toast({ title: "📋 Dados encontrados", description: "Informações do CPF foram preenchidas automaticamente" });
       }
-      // SECURITY FIX: Removed localStorage fallback for CPF data
-      // Previously stored sensitive customer data unencrypted in localStorage
-      // This violated LGPD compliance and exposed data to XSS attacks
     } catch (error) {
       console.error('Erro ao buscar dados anteriores:', error);
     }
