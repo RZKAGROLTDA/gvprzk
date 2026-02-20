@@ -42,10 +42,10 @@ export const useAllSalesData = (filters?: SalesFilters) => {
         ? new Date(Date.now() - parseInt(filters.period) * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-      // Usar função RPC segura para tasks (respeita RLS)
+      // Usar RPC paginada para reduzir carga (evita get_secure_tasks_with_customer_protection = 500 linhas)
+      const SALES_TASKS_LIMIT = 300;
       const { data: allTasks, error: tasksError } = await supabase
-        .rpc('get_secure_tasks_with_customer_protection');
-      
+        .rpc('get_secure_tasks_paginated', { p_limit: SALES_TASKS_LIMIT, p_offset: 0 });
       if (tasksError) throw tasksError;
 
       // Aplicar filtros localmente

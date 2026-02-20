@@ -109,15 +109,13 @@ export const useTasksOptimized = (includeDetails = false) => {
             return getOfflineTasks();
           }
 
-          console.log('🔄 Carregando tasks via função segura...');
-          
-          // Use enhanced secure function that protects customer data
+          console.log('🔄 Carregando tasks via função segura (paginado)...');
+          const TASKS_PAGE_LIMIT = 100;
           let tasksData, error;
           try {
             const result = await supabase
-              .rpc('get_secure_tasks_with_customer_protection')
+              .rpc('get_secure_tasks_paginated', { p_limit: TASKS_PAGE_LIMIT, p_offset: 0 })
               .abortSignal(controller.signal);
-              
             tasksData = result.data;
             error = result.error;
             console.log('✅ Tasks carregadas via função segura:', tasksData?.length || 0);

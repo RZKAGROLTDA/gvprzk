@@ -131,30 +131,16 @@ export const useTaskEditData = (taskId: string | null) => {
       }
 
       if (!taskData) {
-        // FALLBACK: Try using the secure function as last resort
-        console.log('🔍 Task not found via direct query, trying secure function...');
-        
-        const { data: secureData, error: secureError } = await supabase.rpc(
-          'get_secure_tasks_with_customer_protection'
+        // FALLBACK: buscar uma única task pela RPC (evita carregar 500 tasks)
+        const { data: secureRow, error: secureError } = await supabase.rpc(
+          'get_secure_task_by_id',
+          { p_task_id: taskId }
         );
-        
-        if (!secureError && secureData) {
-          const foundTask = secureData.find((task: any) => task.id === taskId);
-          if (foundTask) {
-            console.log('🔍 Task found via secure function!', { taskId, client: foundTask.client });
-            // Convert the secure function result to our expected format
-            const convertedTask = {
-              ...foundTask,
-              task_type: foundTask.task_type,
-              start_date: foundTask.start_date,
-              end_date: foundTask.end_date,
-              // Map all fields properly
-            };
-            // Use the found task data
-            taskData = convertedTask as any;
-          }
+        const foundTask = secureRow?.[0];
+        if (!secureError && foundTask) {
+          console.log('🔍 Task encontrada via get_secure_task_by_id');
+          taskData = { ...foundTask, task_type: foundTask.task_type, start_date: foundTask.start_date, end_date: foundTask.end_date } as any;
         }
-        
         if (!taskData) {
           throw new Error('Task não encontrada. Verifique se o ID está correto e se você tem permissão para acessá-la.');
         }
