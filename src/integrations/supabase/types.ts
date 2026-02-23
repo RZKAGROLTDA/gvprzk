@@ -1597,6 +1597,49 @@ export type Database = {
           task_id: string
         }[]
       }
+      get_secure_task_by_id: {
+        Args: { p_task_id: string }
+        Returns: {
+          access_level: string
+          check_in_location: Json
+          client: string
+          clientcode: string
+          created_at: string
+          created_by: string
+          documents: string[]
+          email: string
+          end_date: string
+          end_time: string
+          equipment_list: Json
+          equipment_quantity: number
+          family_product: string
+          filial: string
+          filial_atendida: string
+          final_km: number
+          id: string
+          initial_km: number
+          is_customer_data_protected: boolean
+          is_prospect: boolean
+          name: string
+          observations: string
+          partial_sales_value: number
+          phone: string
+          photos: string[]
+          priority: string
+          property: string
+          propertyhectares: number
+          prospect_notes: string
+          responsible: string
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          start_date: string
+          start_time: string
+          status: string
+          task_type: string
+          updated_at: string
+        }[]
+      }
       get_secure_task_data: {
         Args: { task_id_param: string }
         Returns: {
@@ -1726,49 +1769,6 @@ export type Database = {
           status: string
           task_type: string
           total_count: number
-          updated_at: string
-        }[]
-      }
-      get_secure_task_by_id: {
-        Args: { p_task_id: string }
-        Returns: {
-          access_level: string
-          check_in_location: Json
-          client: string
-          clientcode: string
-          created_at: string
-          created_by: string
-          documents: string[]
-          email: string
-          end_date: string
-          end_time: string
-          equipment_list: Json
-          equipment_quantity: number
-          family_product: string
-          filial: string
-          filial_atendida: string | null
-          final_km: number
-          id: string
-          initial_km: number
-          is_customer_data_protected: boolean
-          is_prospect: boolean
-          name: string
-          observations: string
-          partial_sales_value: number
-          phone: string
-          photos: string[]
-          priority: string
-          property: string
-          propertyhectares: number
-          prospect_notes: string
-          responsible: string
-          sales_confirmed: boolean
-          sales_type: string
-          sales_value: number
-          start_date: string
-          start_time: string
-          status: string
-          task_type: string
           updated_at: string
         }[]
       }
@@ -2115,6 +2115,8 @@ export type Database = {
         Args: { profile_id_param: string; updates: Json }
         Returns: Json
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       simple_is_admin: { Args: never; Returns: boolean }
       simple_is_manager: { Args: never; Returns: boolean }
       simple_user_role: { Args: never; Returns: string }
