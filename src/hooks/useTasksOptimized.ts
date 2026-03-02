@@ -155,11 +155,11 @@ export const useTasksOptimized = (includeDetails = false) => {
             const [productsResult, remindersResult] = await Promise.all([
               supabase
                 .from('products')
-                .select('*')
+                .select('id, task_id, name, category, selected, quantity, price, observations, photos')
                 .in('task_id', taskIds),
               supabase
                 .from('reminders')
-                .select('*')
+                .select('id, task_id, title, description, date, time, completed')
                 .in('task_id', taskIds)
             ]);
 
@@ -586,8 +586,8 @@ export const useTaskDetails = (taskId: string | null) => {
 
       const [taskResult, productsResult, remindersResult] = await Promise.all([
         supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
-        supabase.from('products').select('*').eq('task_id', taskId),
-        supabase.from('reminders').select('*').eq('task_id', taskId),
+        supabase.from('products').select('id, task_id, name, category, selected, quantity, price, observations, photos').eq('task_id', taskId),
+        supabase.from('reminders').select('id, task_id, title, description, date, time, completed').eq('task_id', taskId),
       ]);
 
       if (taskResult.error) throw taskResult.error;

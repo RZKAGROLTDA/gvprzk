@@ -45,9 +45,10 @@ export const useOpportunityManager = () => {
       // Verificar se já existe uma oportunidade para esta task
       const { data: allOpportunities, error: checkError } = await supabase
         .from('opportunities')
-        .select('*')
+        .select('id, task_id, status, valor_total_oportunidade, valor_venda_fechada, created_at')
         .eq('task_id', taskId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
       
       if (checkError) {
         console.error('❌ Erro ao verificar oportunidade existente:', checkError);

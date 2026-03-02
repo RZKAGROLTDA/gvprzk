@@ -51,7 +51,7 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
         .select('id, name, client, property, task_type, is_prospect, sales_value, sales_confirmed, start_date, end_date')
         .eq('created_by', profile.user_id)
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(200);
 
       if (dateFrom) {
         query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
@@ -322,68 +322,58 @@ const PerformanceBySeller: React.FC = () => {
       // Filter profiles to only include those with valid roles
       const profilesWithRoles = profiles.filter(p => rolesMap.has(p.user_id));
 
-      const userStatsPromises = profilesWithRoles.map(async (profile) => {
+      const userIds = profilesWithRoles.map(p => p.user_id);
+      let tasksQuery = supabase
+        .from('tasks')
+        .select('created_by, task_type, is_prospect, sales_value, sales_confirmed')
+        .in('created_by', userIds)
+        .limit(3000);
+
+      if (dateFrom) tasksQuery = tasksQuery.gte('start_date', dateFrom.toISOString().split('T')[0]);
+      if (dateTo) tasksQuery = tasksQuery.lte('end_date', dateTo.toISOString().split('T')[0]);
+
+      const { data: allTasks, error: tasksError } = await tasksQuery;
+
+      const statsByUser = new Map<string, { visitas: number; checklist: number; ligacoes: number; prospects: number; prospectsValue: number; sales: number }>();
+      for (const p of profilesWithRoles) {
+        statsByUser.set(p.user_id, { visitas: 0, checklist: 0, ligacoes: 0, prospects: 0, prospectsValue: 0, sales: 0 });
+      }
+      if (!tasksError && allTasks) {
+        for (const task of allTasks) {
+          const s = statsByUser.get(task.created_by);
+          if (!s) continue;
+          if (task.task_type === 'prospection') s.visitas++;
+          else if (task.task_type === 'checklist') s.checklist++;
+          else if (task.task_type === 'ligacao') s.ligacoes++;
+          if (task.is_prospect) {
+            s.prospects++;
+            s.prospectsValue += Number(task.sales_value) || 0;
+          }
+          if (task.sales_confirmed) s.sales += Number(task.sales_value) || 0;
+        }
+      }
+
+      const userStatsResult = profilesWithRoles.map((profile) => {
         const userRole = rolesMap.get(profile.user_id) || 'consultant';
-        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
-        let query = supabase
-          .from('tasks')
-          .select('id, task_type, is_prospect, sales_value, sales_confirmed')
-          .eq('created_by', profile.user_id)
-          .limit(1000);
-
-        if (dateFrom) {
-          query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
-        }
-        if (dateTo) {
-          query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
-        }
-
-        const { data: tasks, error: tasksError } = await query;
-
-        if (tasksError) {
-          return {
-            name: profile.name,
-            role: userRole,
-            user_id: profile.user_id,
-            visits: 0,
-            prospects: 0,
-            sales: 0,
-            conversionRate: 0,
-            totalActivities: 0,
-            visitas: 0,
-            checklist: 0,
-            ligacoes: 0
-          };
-        }
-
-        const visitas = tasks?.filter(task => task.task_type === 'prospection').length || 0;
-        const checklist = tasks?.filter(task => task.task_type === 'checklist').length || 0;
-        const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
-        const totalActivities = tasks?.length || 0;
-        const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-        const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
-        const confirmedSales = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (Number(task.sales_value) || 0), 0) || 0;
-        
-        const conversionRate = prospectsValue > 0 ? (confirmedSales / prospectsValue) * 100 : 0;
-
+        const s = statsByUser.get(profile.user_id)!;
+        const totalActivities = s.visitas + s.checklist + s.ligacoes;
+        const conversionRate = s.prospectsValue > 0 ? (s.sales / s.prospectsValue) * 100 : 0;
         return {
           name: profile.name,
           role: userRole,
           user_id: profile.user_id,
           visits: totalActivities,
-          prospects,
-          sales: Number(confirmedSales),
+          prospects: s.prospects,
+          sales: s.sales,
           conversionRate: Math.round(conversionRate * 10) / 10,
           totalActivities,
-          visitas,
-          checklist,
-          ligacoes,
-          salesValue: Number(prospectsValue)
+          visitas: s.visitas,
+          checklist: s.checklist,
+          ligacoes: s.ligacoes
         };
       });
 
-      const results = await Promise.all(userStatsPromises);
-      const sortedResults = results.sort((a, b) => b.sales - a.sales);
+      const sortedResults = userStatsResult.sort((a, b) => b.sales - a.sales);
       setUserStats(sortedResults);
     } catch (error) {
       console.error('Erro ao carregar estatísticas dos usuários:', error);

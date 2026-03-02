@@ -53,7 +53,7 @@ export const Users: React.FC = () => {
       // Carregar filiais
       const { data: filiaisData, error: filiaisError } = await supabase
         .from('filiais')
-        .select('*')
+        .select('id, nome')
         .order('nome');
 
       if (filiaisError) throw filiaisError;

@@ -65,103 +65,89 @@ const PerformanceByFilial: React.FC = () => {
     try {
       const { data: filiais, error: filiaisError } = await supabase
         .from('filiais')
-        .select('*')
+        .select('id, nome')
         .order('nome');
 
       if (filiaisError) throw filiaisError;
+      if (!filiais?.length) {
+        setFilialStats([]);
+        return;
+      }
 
-      const filialStatsPromises = filiais?.map(async (filial) => {
-        const { data: profilesFromFilial, error: profilesError } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('filial_id', filial.id);
+      const filialIds = filiais.map(f => f.id);
+      const { data: allProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, filial_id')
+        .in('filial_id', filialIds);
 
-        if (profilesError) {
-          return {
-            id: filial.id,
-            nome: filial.nome,
-            visitas: 0,
-            checklist: 0,
-            ligacoes: 0,
-            prospects: 0,
-            prospectsValue: 0,
-            salesValue: 0,
-            conversionRate: 0
-          };
+      if (profilesError) {
+        setFilialStats(filiais.map(f => ({ id: f.id, nome: f.nome, visitas: 0, checklist: 0, ligacoes: 0, prospects: 0, prospectsValue: 0, salesValue: 0, conversionRate: 0 })));
+        return;
+      }
+
+      const userIds = [...new Set(allProfiles?.map(p => p.user_id) || [])];
+      const userToFilial = new Map(allProfiles?.map(p => [p.user_id, p.filial_id]) || []);
+
+      if (userIds.length === 0) {
+        setFilialStats(filiais.map(f => ({ id: f.id, nome: f.nome, visitas: 0, checklist: 0, ligacoes: 0, prospects: 0, prospectsValue: 0, salesValue: 0, conversionRate: 0 })));
+        return;
+      }
+
+      let tasksQuery = supabase
+        .from('tasks')
+        .select('created_by, task_type, is_prospect, sales_value, sales_confirmed')
+        .in('created_by', userIds)
+        .limit(2000);
+
+      if (dateFrom) tasksQuery = tasksQuery.gte('start_date', dateFrom.toISOString().split('T')[0]);
+      if (dateTo) tasksQuery = tasksQuery.lte('end_date', dateTo.toISOString().split('T')[0]);
+
+      const { data: allTasks, error: tasksError } = await tasksQuery;
+
+      if (tasksError) {
+        setFilialStats(filiais.map(f => ({ id: f.id, nome: f.nome, visitas: 0, checklist: 0, ligacoes: 0, prospects: 0, prospectsValue: 0, salesValue: 0, conversionRate: 0 })));
+        return;
+      }
+
+      const statsByFilial = new Map<string, { visitas: number; checklist: number; ligacoes: number; prospects: number; prospectsValue: number; salesValue: number }>();
+      for (const f of filiais) {
+        statsByFilial.set(f.id, { visitas: 0, checklist: 0, ligacoes: 0, prospects: 0, prospectsValue: 0, salesValue: 0 });
+      }
+      for (const task of allTasks || []) {
+        const filialId = userToFilial.get(task.created_by);
+        if (!filialId) continue;
+        const s = statsByFilial.get(filialId);
+        if (!s) continue;
+        if (task.task_type === 'prospection') s.visitas++;
+        else if (task.task_type === 'checklist') s.checklist++;
+        else if (task.task_type === 'ligacao') s.ligacoes++;
+        if (task.is_prospect) {
+          s.prospects++;
+          s.prospectsValue += task.sales_value || 0;
         }
+        if (task.sales_confirmed) s.salesValue += task.sales_value || 0;
+      }
 
-        const userIds = profilesFromFilial?.map(p => p.user_id) || [];
-        
-        if (userIds.length === 0) {
-          return {
-            id: filial.id,
-            nome: filial.nome,
-            visitas: 0,
-            checklist: 0,
-            ligacoes: 0,
-            prospects: 0,
-            prospectsValue: 0,
-            salesValue: 0,
-            conversionRate: 0
-          };
-        }
-        
-        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
-        let query = supabase
-          .from('tasks')
-          .select('id, task_type, is_prospect, sales_value, sales_confirmed')
-          .in('created_by', userIds)
-          .limit(1000);
-
-        if (dateFrom) {
-          query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
-        }
-        if (dateTo) {
-          query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
-        }
-
-        const { data: tasks, error: tasksError } = await query;
-
-        if (tasksError) {
-          return {
-            id: filial.id,
-            nome: filial.nome,
-            visitas: 0,
-            checklist: 0,
-            ligacoes: 0,
-            prospects: 0,
-            prospectsValue: 0,
-            salesValue: 0,
-            conversionRate: 0
-          };
-        }
-
-        const visitas = tasks?.filter(task => task.task_type === 'prospection').length || 0;
-        const checklist = tasks?.filter(task => task.task_type === 'checklist').length || 0;
-        const ligacoes = tasks?.filter(task => task.task_type === 'ligacao').length || 0;
-        const prospects = tasks?.filter(task => task.is_prospect === true).length || 0;
-        const prospectsValue = tasks?.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-        const salesValue = tasks?.filter(task => task.sales_confirmed === true).reduce((sum, task) => sum + (task.sales_value || 0), 0) || 0;
-        
-        const conversionRate = prospectsValue > 0 ? (salesValue / prospectsValue) * 100 : 0;
-
+      const filialStatsResult = filiais.map((filial) => {
+        const s = statsByFilial.get(filial.id)!;
+        const conversionRate = s.prospectsValue > 0 ? (s.salesValue / s.prospectsValue) * 100 : 0;
         return {
           id: filial.id,
           nome: filial.nome,
-          visitas,
-          checklist,
-          ligacoes,
-          prospects,
-          prospectsValue: Number(prospectsValue),
-          salesValue: Number(salesValue),
-          conversionRate: Math.round(conversionRate * 10) / 10
+          visitas: s.visitas,
+          checklist: s.checklist,
+          ligacoes: s.ligacoes,
+          prospects: s.prospects,
+          prospectsValue: s.prospectsValue,
+          salesValue: s.salesValue,
+          conversionRate
         };
-      }) || [];
+      });
 
-      const results = await Promise.all(filialStatsPromises);
-      setFilialStats(results);
+      setFilialStats(filialStatsResult);
     } catch (error) {
-      console.error('Erro ao carregar estatísticas por filial:', error);
+      console.error('Erro ao carregar stats por filial:', error);
+      setFilialStats([]);
     } finally {
       setLoading(false);
     }

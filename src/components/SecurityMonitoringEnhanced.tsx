@@ -35,7 +35,8 @@ export const SecurityMonitoringEnhanced = () => {
           .from('security_audit_log')
           .select('event_type, risk_score, created_at')
           .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(200);
 
         // Get customer data access events
         const customerAccessEvents = recentEvents?.filter(e => 

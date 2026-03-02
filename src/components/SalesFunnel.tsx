@@ -368,7 +368,7 @@ export const SalesFunnel: React.FC = () => {
         query = query.gte('data_criacao', cutoffDate.toISOString());
       }
 
-      const { data, error } = await query.order('data_criacao', { ascending: false });
+      const { data, error } = await query.order('data_criacao', { ascending: false }).limit(500);
       
       if (error) {
         console.error('❌ Erro ao carregar opportunities:', error);
