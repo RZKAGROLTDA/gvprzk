@@ -603,9 +603,9 @@ export const useTaskDetails = (taskId: string | null) => {
       return mapSupabaseTaskToTask(taskWithProducts);
     },
     enabled: !!taskId,
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
+    staleTime: 30 * 1000, // 30s — evita re-fetches ao reabrir o mesmo modal; invalidar via queryClient em mutations
+    refetchOnMount: false,
+    refetchOnReconnect: false,
     refetchOnWindowFocus: false,
   });
 };
