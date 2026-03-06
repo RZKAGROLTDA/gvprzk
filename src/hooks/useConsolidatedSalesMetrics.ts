@@ -101,6 +101,10 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         rpc('get_prospects_aggregate', sharedParams) as Promise<{ data: Array<{ count: number; total_value: number }> | null; error: unknown }>,
       ]);
 
+      console.log('[metrics] salesRes:', { data: salesRes.data, error: salesRes.error });
+      console.log('[metrics] countsRes:', { data: countsRes.data, error: countsRes.error });
+      console.log('[metrics] prospectsRes:', { data: prospectsRes.data, error: prospectsRes.error });
+
       if (salesRes.error)    throw salesRes.error;
       if (countsRes.error)   throw countsRes.error;
       if (prospectsRes.error) throw prospectsRes.error;
