@@ -82,33 +82,27 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       console.log('[metrics] queryFn executando com params:', sharedParams);
 
-      // Disparar as 3 queries em paralelo — cada uma retorna apenas linhas agrupadas.
       // Cast necessário até que `supabase gen types` seja executado após aplicar a migration.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rpc = supabase.rpc as any;
 
-      const [salesRes, countsRes, prospectsRes] = await Promise.all([
-        // RPC 1: vendas confirmadas agrupadas por tipo (máx. 3 linhas)
-        rpc('get_sales_breakdown', sharedParams) as Promise<{ data: Array<{ sales_type: string; count: number; total_value: number; total_partial_value: number }> | null; error: unknown }>,
-
-        // RPC 2: contagens por task_type (máx. ~10 linhas)
-        // Sempre buscado para ter totais precisos mesmo quando get_reports_aggregated_stats
-        // não suporta filial_atendida ou filtro de atividade.
-        rpc('get_task_type_counts', {
-          ...sharedParams,
-          p_task_types: activityTaskTypes || ['prospection', 'visita', 'ligacao', 'checklist'],
-        }) as Promise<{ data: Array<{ task_type: string; count: number }> | null; error: unknown }>,
-
-        // RPC 3: prospects agregados (1 linha)
-        rpc('get_prospects_aggregate', sharedParams) as Promise<{ data: Array<{ count: number; total_value: number }> | null; error: unknown }>,
-      ]);
-
+      // Executar cada RPC individualmente para isolar falhas
+      const salesRes = await rpc('get_sales_breakdown', sharedParams)
+        .catch((e: unknown) => { console.error('[metrics] get_sales_breakdown threw:', e); return { data: null, error: e }; });
       console.log('[metrics] salesRes:', { data: salesRes.data, error: salesRes.error });
+
+      const countsRes = await rpc('get_task_type_counts', {
+        ...sharedParams,
+        p_task_types: activityTaskTypes || ['prospection', 'visita', 'ligacao', 'checklist'],
+      }).catch((e: unknown) => { console.error('[metrics] get_task_type_counts threw:', e); return { data: null, error: e }; });
       console.log('[metrics] countsRes:', { data: countsRes.data, error: countsRes.error });
+
+      const prospectsRes = await rpc('get_prospects_aggregate', sharedParams)
+        .catch((e: unknown) => { console.error('[metrics] get_prospects_aggregate threw:', e); return { data: null, error: e }; });
       console.log('[metrics] prospectsRes:', { data: prospectsRes.data, error: prospectsRes.error });
 
-      if (salesRes.error)    throw salesRes.error;
-      if (countsRes.error)   throw countsRes.error;
+      if (salesRes.error)     throw salesRes.error;
+      if (countsRes.error)    throw countsRes.error;
       if (prospectsRes.error) throw prospectsRes.error;
 
       // --- Vendas ---
