@@ -71,27 +71,36 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       const dateParams = getDateParams();
       const activityTaskTypes = getActivityTaskTypes(filters?.activity);
 
-      const sharedParams = {
-        p_start_date:      dateParams.p_start_date,
-        p_end_date:        dateParams.p_end_date,
-        p_created_by:      filters?.consultantId && filters.consultantId !== 'all' ? filters.consultantId : null,
-        p_filial:          filters?.filial        && filters.filial        !== 'all' ? filters.filial        : null,
-        p_filial_atendida: filters?.filialAtendida && filters.filialAtendida !== 'all' ? filters.filialAtendida : null,
-        p_task_types:      activityTaskTypes,
+      // Helper para aplicar filtros comuns a uma query
+      const applyFilters = (q: ReturnType<typeof supabase.from>) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let query = q as any;
+        if (dateParams.p_start_date) query = query.gte('created_at', dateParams.p_start_date);
+        if (dateParams.p_end_date)   query = query.lte('created_at', dateParams.p_end_date);
+        if (filters?.consultantId && filters.consultantId !== 'all')
+          query = query.eq('created_by', filters.consultantId);
+        if (filters?.filial && filters.filial !== 'all')
+          query = query.eq('filial', filters.filial);
+        if (filters?.filialAtendida && filters.filialAtendida !== 'all')
+          query = query.eq('filial_atendida', filters.filialAtendida);
+        if (activityTaskTypes)
+          query = query.in('task_type', activityTaskTypes);
+        return query;
       };
 
-      // Cast necessário até que `supabase gen types` seja executado após aplicar a migration.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rpc = supabase.rpc as any;
+      const contactTypes = activityTaskTypes || ['prospection', 'visita', 'ligacao', 'checklist'];
 
-      // Executar cada RPC individualmente para isolar falhas
+      // 3 queries diretas em paralelo — sem depender de RPCs customizados
       const [salesRes, countsRes, prospectsRes] = await Promise.all([
-        rpc('get_sales_breakdown', sharedParams) as Promise<{ data: Array<{ sales_type: string; row_count: number; total_value: number; total_partial_value: number }> | null; error: unknown }>,
-        rpc('get_task_type_counts', {
-          ...sharedParams,
-          p_task_types: activityTaskTypes || ['prospection', 'visita', 'ligacao', 'checklist'],
-        }) as Promise<{ data: Array<{ task_type: string; row_count: number }> | null; error: unknown }>,
-        rpc('get_prospects_aggregate', sharedParams) as Promise<{ data: Array<{ row_count: number; total_value: number }> | null; error: unknown }>,
+        applyFilters(supabase.from('tasks').select('sales_type, sales_value, partial_sales_value'))
+          .eq('sales_confirmed', true)
+          .limit(2000),
+        applyFilters(supabase.from('tasks').select('task_type'))
+          .in('task_type', contactTypes)
+          .limit(2000),
+        applyFilters(supabase.from('tasks').select('sales_value'))
+          .eq('is_prospect', true)
+          .limit(2000),
       ]);
 
       if (salesRes.error)     throw salesRes.error;
@@ -103,23 +112,22 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       let vendasParciais = 0, valorParciais = 0;
       let vendasPerdidas = 0, valorPerdidas = 0;
 
-      for (const row of salesRes.data ?? []) {
-        const n = Number(row.row_count) || 0;
-        const value = Number(row.total_value) || 0;
-        const partialValue = Number(row.total_partial_value) || 0;
-        if (row.sales_type === 'ganho')   { vendasGanhas   += n; valorGanhas   += value; }
-        if (row.sales_type === 'parcial') { vendasParciais += n; valorParciais += partialValue; }
-        if (row.sales_type === 'perdido') { vendasPerdidas += n; valorPerdidas += value; }
+      for (const row of (salesRes.data ?? []) as Array<{ sales_type: string; sales_value: number; partial_sales_value: number }>) {
+        const value   = Number(row.sales_value)         || 0;
+        const partial = Number(row.partial_sales_value) || 0;
+        if (row.sales_type === 'ganho')   { vendasGanhas++;   valorGanhas   += value; }
+        if (row.sales_type === 'parcial') { vendasParciais++; valorParciais += partial; }
+        if (row.sales_type === 'perdido') { vendasPerdidas++; valorPerdidas += value; }
       }
 
       // --- Contatos por tipo ---
       const typeCounts: Record<string, number> = {};
-      for (const row of countsRes.data ?? []) {
-        typeCounts[row.task_type] = Number(row.row_count) || 0;
+      for (const row of (countsRes.data ?? []) as Array<{ task_type: string }>) {
+        typeCounts[row.task_type] = (typeCounts[row.task_type] || 0) + 1;
       }
 
-      let visitasCount = (typeCounts['prospection'] || 0) + (typeCounts['visita'] || 0);
-      let ligacoesCount = typeCounts['ligacao'] || 0;
+      let visitasCount    = (typeCounts['prospection'] || 0) + (typeCounts['visita'] || 0);
+      let ligacoesCount   = typeCounts['ligacao']   || 0;
       let checklistsCount = typeCounts['checklist'] || 0;
 
       // Zerar tipos não filtrados quando filtro de atividade está ativo
@@ -127,15 +135,15 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         const isFieldVisit = filters?.activity === 'field_visit'
           || filters?.activity === 'prospection'
           || filters?.activity === 'visita';
-        if (!isFieldVisit)  visitasCount    = 0;
+        if (!isFieldVisit)                     visitasCount    = 0;
         if (filters?.activity !== 'ligacao')   ligacoesCount   = 0;
         if (filters?.activity !== 'checklist') checklistsCount = 0;
       }
 
       // --- Prospects ---
-      const prospectsRow = prospectsRes.data?.[0];
-      const prospectsCount = Number(prospectsRow?.row_count) || 0;
-      const prospectsValue = Number(prospectsRow?.total_value) || 0;
+      const prospectsData = (prospectsRes.data ?? []) as Array<{ sales_value: number }>;
+      const prospectsCount = prospectsData.length;
+      const prospectsValue = prospectsData.reduce((s, r) => s + (Number(r.sales_value) || 0), 0);
 
       // --- Totais ---
       const totalContatos = visitasCount + checklistsCount + ligacoesCount;
