@@ -1,7 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
 import { useSecurityMonitor } from './useSecurityMonitor';
 import { useAuth } from './useAuth';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,6 +16,9 @@ interface SecurityAlert {
   metadata?: Record<string, any>;
 }
 
+// Janela de debounce: só escreve um evento de high-value a cada 30s por contexto
+const HIGH_VALUE_DEBOUNCE_MS = 30_000;
+
 export const useEnhancedSecurityMonitor = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -29,23 +31,32 @@ export const useEnhancedSecurityMonitor = () => {
     low: 0
   });
 
+  // Rastreia último log por contexto para evitar flood de writes
+  const highValueLastLogRef = useRef<Record<string, number>>({});
+
   const { 
     monitorSuspiciousActivity, 
     monitorCustomerDataAccess, 
     monitorBulkDataExport 
   } = useSecurityMonitor();
 
-  // Monitor high-value sales access with enhanced security
+  // Debounced: só grava um evento por contexto a cada HIGH_VALUE_DEBOUNCE_MS
   const monitorHighValueAccess = useCallback(async (salesValue: number, context: string) => {
-    if (salesValue > 15000) {
-      await supabase.rpc('monitor_high_value_sales_access');
-      
-      monitorSuspiciousActivity('high_value_sales_access', {
-        sales_value: salesValue,
-        context,
-        threshold_exceeded: true
-      }, 4);
-    }
+    if (salesValue <= 15000) return;
+
+    const now = Date.now();
+    const lastLog = highValueLastLogRef.current[context] ?? 0;
+    if (now - lastLog < HIGH_VALUE_DEBOUNCE_MS) return;
+
+    highValueLastLogRef.current[context] = now;
+
+    await supabase.rpc('monitor_high_value_sales_access');
+
+    monitorSuspiciousActivity('high_value_sales_access', {
+      sales_value: salesValue,
+      context,
+      threshold_exceeded: true
+    }, 4);
   }, [monitorSuspiciousActivity]);
 
   // Monitor data export activities with enhanced tracking

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { parseLocalDate } from '@/lib/utils';
 
@@ -55,6 +56,8 @@ function normalizeTaskType(taskType: string): string {
  * RLS continua valendo (função INVOKER)
  */
 export const useInfiniteSalesData = (filters?: SalesFilters) => {
+  const { user } = useAuth();
+
   const {
     data,
     isLoading,
@@ -64,14 +67,11 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
     isFetchingNextPage,
     refetch
   } = useInfiniteQuery({
-    queryKey: ['infinite-sales-data', filters],
+    queryKey: ['infinite-sales-data', filters, user?.id],
     queryFn: async ({ pageParam = 0 }) => {
       try {
-        // Verificar estado de autenticação
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('👤 [useInfiniteSalesData] Usuário:', user?.id?.substring(0, 8));
         
-        const offset = pageParam * PAGE_SIZE;
+        const offset = (pageParam as number) * PAGE_SIZE;
 
         // Calcular datas de corte para filtro de período
         let startDate: string | null = null;

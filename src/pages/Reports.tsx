@@ -108,52 +108,60 @@ const Reports: React.FC = () => {
 
   const loadAggregatedStats = useCallback(async () => {
     if (!user) return;
-    
-    console.log('🔍 REPORTS DEBUG: Carregando estatísticas via RPC agregada');
-    
+
     setLoading(true);
     setIsFiltering(true);
-    
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpc = supabase.rpc as any;
+
+    const sharedParams = {
+      p_start_date:      dateFrom ? dateFrom.toISOString() : null,
+      p_end_date:        dateTo   ? dateTo.toISOString()   : null,
+      p_created_by:      selectedUser          !== 'all' ? selectedUser          : null,
+      p_filial:          selectedFilial        !== 'all' ? selectedFilial        : null,
+      p_filial_atendida: selectedFilialAtendida !== 'all' ? selectedFilialAtendida : null,
+      p_task_types:      null,
+    };
+
     try {
-      // USAR RPC AGREGADA PARA PERFORMANCE
-      const { data: stats, error: statsError } = await supabase.rpc('get_reports_aggregated_stats', {
-        p_start_date: dateFrom ? dateFrom.toISOString().split('T')[0] : null,
-        p_end_date: dateTo ? dateTo.toISOString().split('T')[0] : null,
-        p_user_id: selectedUser !== 'all' ? selectedUser : null,
-        p_filial: selectedFilial !== 'all' ? selectedFilial : null
-      });
+      const [countsRes, prospectsRes, salesRes] = await Promise.all([
+        rpc('get_task_type_counts', sharedParams) as Promise<{ data: Array<{ task_type: string; count: number }> | null; error: unknown }>,
+        rpc('get_prospects_aggregate', sharedParams) as Promise<{ data: Array<{ count: number; total_value: number }> | null; error: unknown }>,
+        rpc('get_sales_breakdown', sharedParams) as Promise<{ data: Array<{ sales_type: string; count: number; total_value: number }> | null; error: unknown }>,
+      ]);
 
-      if (statsError) {
-        console.error('❌ REPORTS DEBUG: Erro na RPC agregada:', statsError);
-        throw statsError;
+      if (countsRes.error)   throw countsRes.error;
+      if (prospectsRes.error) throw prospectsRes.error;
+      if (salesRes.error)    throw salesRes.error;
+
+      const typeCounts: Record<string, number> = {};
+      for (const row of countsRes.data ?? []) {
+        typeCounts[row.task_type] = Number(row.count) || 0;
       }
 
-      if (stats && stats.length > 0) {
-        const result = stats[0];
-        console.log('✅ REPORTS DEBUG: Estatísticas recebidas:', result);
-        
-        setTotalTasks(result.total_tasks || 0);
-        setTotalVisitas(result.visitas || 0);
-        setTotalChecklist(result.checklist || 0);
-        setTotalLigacoes(result.ligacoes || 0);
-        setTotalProspects(result.prospects || 0);
-        setTotalProspectsValue(result.prospects_value || 0);
-        setTotalSalesValue(result.sales_value || 0);
-      } else {
-        console.log('⚠️ REPORTS DEBUG: Nenhuma estatística retornada, usando zeros');
-        setTotalTasks(0);
-        setTotalVisitas(0);
-        setTotalChecklist(0);
-        setTotalLigacoes(0);
-        setTotalProspects(0);
-        setTotalProspectsValue(0);
-        setTotalSalesValue(0);
-      }
-      
-      console.log('✅ REPORTS DEBUG: Estados atualizados com sucesso');
+      const visitas   = (typeCounts['prospection'] || 0) + (typeCounts['visita'] || 0);
+      const checklist = typeCounts['checklist'] || 0;
+      const ligacoes  = typeCounts['ligacao']   || 0;
+      const totalTasks = Object.values(typeCounts).reduce((s, v) => s + v, 0);
+
+      const prospectsRow = prospectsRes.data?.[0];
+      const prospects      = Number(prospectsRow?.count)       || 0;
+      const prospectsValue = Number(prospectsRow?.total_value) || 0;
+
+      const salesValue = (salesRes.data ?? [])
+        .filter(r => r.sales_type === 'ganho')
+        .reduce((s, r) => s + (Number(r.total_value) || 0), 0);
+
+      setTotalTasks(totalTasks);
+      setTotalVisitas(visitas);
+      setTotalChecklist(checklist);
+      setTotalLigacoes(ligacoes);
+      setTotalProspects(prospects);
+      setTotalProspectsValue(prospectsValue);
+      setTotalSalesValue(salesValue);
     } catch (error) {
-      console.error('❌ REPORTS DEBUG: Erro ao carregar estatísticas agregadas:', error);
-      // Reset to zeros on error
+      console.error('❌ Erro ao carregar estatísticas de relatório:', error);
       setTotalTasks(0);
       setTotalVisitas(0);
       setTotalChecklist(0);
@@ -164,9 +172,8 @@ const Reports: React.FC = () => {
     } finally {
       setLoading(false);
       setIsFiltering(false);
-      console.log('🏁 REPORTS DEBUG: Loading finalizado');
     }
-  }, [user, dateFrom, dateTo, selectedUser, selectedFilial]);
+  }, [user, dateFrom, dateTo, selectedUser, selectedFilial, selectedFilialAtendida]);
 
   const clearFilters = () => {
     setDateFrom(undefined);
