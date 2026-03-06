@@ -201,11 +201,11 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       familyProduct: taskData.familyProduct || '',
       equipmentQuantity: taskData.equipmentQuantity || 0,
       propertyHectares: taskData.propertyHectares || 0,
-      // Usar sales_value da tabela tasks como fallback quando não há produtos
       fallbackTotalValue: taskData.sales_value || 0,
-      // CRÍTICO: Adicionar valores calculados para que apareçam na interface
-      salesValue: taskData.opportunity?.valor_venda_fechada || 0,
-      prospectValue: taskData.opportunity?.valor_total_oportunidade || 0,
+      // salesValue deve refletir o TOTAL da oportunidade (todos os produtos ofertados),
+      // NUNCA o valor da venda fechada/parcial.
+      salesValue: taskData.opportunity?.valor_total_oportunidade || taskData.sales_value || 0,
+      prospectValue: taskData.opportunity?.valor_total_oportunidade || taskData.sales_value || 0,
       partialSalesValue: taskData.partial_sales_value || 0
     };
     

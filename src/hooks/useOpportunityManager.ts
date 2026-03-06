@@ -122,16 +122,33 @@ export const useOpportunityManager = () => {
         valorVendaFechadaCalculado: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0)
       });
 
-      // Para CREATE: usar salesValue (total de todos os produtos ofertados).
-      // salesValue vem de FormVisualization que usa qtd_ofertada × preco_unit,
-      // garantindo que reflita o valor total da oportunidade, não apenas os selecionados.
+      // valor_total_oportunidade = soma de TODOS os itens ofertados (qtd_ofertada × preco_unit).
+      // Esta é a única fonte de verdade: não depende de nenhum valor previamente salvo
+      // e nunca se confunde com o valor da venda parcial (que usa qtd_vendida).
+      const valorTotalFromItems = (items && items.length > 0)
+        ? items.reduce((sum, i) => sum + (i.preco_unit || 0) * (i.qtd_ofertada || 0), 0)
+        : 0;
+
+      // Para venda total, valor_venda_fechada = total de itens vendidos (qtd_vendida × preco_unit)
+      // Para venda parcial, valor_venda_fechada = partialSalesValue (soma dos itens selecionados)
+      const valorVendaFechadaFromItems = (items && items.length > 0)
+        ? items.reduce((sum, i) => sum + (i.preco_unit || 0) * (i.qtd_vendida || 0), 0)
+        : 0;
+
+      // Fallback em cascata: items > salesValue (total ofertado fornecido pelo caller)
+      const valorTotalDefinitivo = valorTotalFromItems > 0 ? valorTotalFromItems : salesValue;
+
       const opportunityData = {
         task_id: taskId,
         cliente_nome: clientName,
         filial: filial,
         status: correctStatus,
-        valor_total_oportunidade: salesValue,
-        valor_venda_fechada: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0),
+        valor_total_oportunidade: valorTotalDefinitivo,
+        valor_venda_fechada: isVendaTotal
+          ? (valorVendaFechadaFromItems > 0 ? valorVendaFechadaFromItems : salesValue)
+          : isPartialSale
+            ? (partialSalesValue > 0 ? partialSalesValue : valorVendaFechadaFromItems)
+            : 0,
         data_criacao: new Date().toISOString(),
         data_fechamento: (isVendaTotal || isPartialSale) ? new Date().toISOString() : null
       };
@@ -196,19 +213,25 @@ export const useOpportunityManager = () => {
           isPartialSaleUpdate
         });
 
-        // Para UPDATE: NUNCA sobrescrever valor_total_oportunidade com o valor da venda parcial.
-        // Preservar o valor registrado no banco (que reflete todos os produtos ofertados).
-        // Só usa salesValue como fallback se o registro não tiver valor ainda.
-        const valorTotalPreservado = (existingOpportunity.valor_total_oportunidade ?? 0) > 0
-          ? existingOpportunity.valor_total_oportunidade
-          : salesValue;
+        // Para UPDATE: prioridade é sempre items (fonte de verdade imutável).
+        // Isso corrige automaticamente valores corrompidos em saves anteriores.
+        // Cascata: items > salesValue (total ofertado do caller) > valor existente no banco.
+        const valorTotalUpdateFromItems = (items && items.length > 0)
+          ? items.reduce((sum, i) => sum + (i.preco_unit || 0) * (i.qtd_ofertada || 0), 0)
+          : 0;
+
+        const valorTotalUpdate = valorTotalUpdateFromItems > 0
+          ? valorTotalUpdateFromItems
+          : salesValue > 0
+            ? salesValue
+            : (existingOpportunity.valor_total_oportunidade ?? 0);
 
         const updateData = {
           task_id: taskId,
           cliente_nome: clientName,
           filial: filial,
           status: correctStatusUpdate,
-          valor_total_oportunidade: valorTotalPreservado,
+          valor_total_oportunidade: valorTotalUpdate,
           valor_venda_fechada: valorVendaFechada,
           data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
