@@ -80,26 +80,19 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         p_task_types:      activityTaskTypes,
       };
 
-      console.log('[metrics] queryFn executando com params:', sharedParams);
-
       // Cast necessário até que `supabase gen types` seja executado após aplicar a migration.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rpc = supabase.rpc as any;
 
       // Executar cada RPC individualmente para isolar falhas
-      const salesRes = await rpc('get_sales_breakdown', sharedParams)
-        .catch((e: unknown) => { console.error('[metrics] get_sales_breakdown threw:', e); return { data: null, error: e }; });
-      console.log('[metrics] salesRes:', { data: salesRes.data, error: salesRes.error });
-
-      const countsRes = await rpc('get_task_type_counts', {
-        ...sharedParams,
-        p_task_types: activityTaskTypes || ['prospection', 'visita', 'ligacao', 'checklist'],
-      }).catch((e: unknown) => { console.error('[metrics] get_task_type_counts threw:', e); return { data: null, error: e }; });
-      console.log('[metrics] countsRes:', { data: countsRes.data, error: countsRes.error });
-
-      const prospectsRes = await rpc('get_prospects_aggregate', sharedParams)
-        .catch((e: unknown) => { console.error('[metrics] get_prospects_aggregate threw:', e); return { data: null, error: e }; });
-      console.log('[metrics] prospectsRes:', { data: prospectsRes.data, error: prospectsRes.error });
+      const [salesRes, countsRes, prospectsRes] = await Promise.all([
+        rpc('get_sales_breakdown', sharedParams) as Promise<{ data: Array<{ sales_type: string; row_count: number; total_value: number; total_partial_value: number }> | null; error: unknown }>,
+        rpc('get_task_type_counts', {
+          ...sharedParams,
+          p_task_types: activityTaskTypes || ['prospection', 'visita', 'ligacao', 'checklist'],
+        }) as Promise<{ data: Array<{ task_type: string; row_count: number }> | null; error: unknown }>,
+        rpc('get_prospects_aggregate', sharedParams) as Promise<{ data: Array<{ row_count: number; total_value: number }> | null; error: unknown }>,
+      ]);
 
       if (salesRes.error)     throw salesRes.error;
       if (countsRes.error)    throw countsRes.error;
@@ -111,18 +104,18 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       let vendasPerdidas = 0, valorPerdidas = 0;
 
       for (const row of salesRes.data ?? []) {
-        const count = Number(row.count) || 0;
+        const n = Number(row.row_count) || 0;
         const value = Number(row.total_value) || 0;
         const partialValue = Number(row.total_partial_value) || 0;
-        if (row.sales_type === 'ganho')   { vendasGanhas   += count; valorGanhas   += value; }
-        if (row.sales_type === 'parcial') { vendasParciais += count; valorParciais += partialValue; }
-        if (row.sales_type === 'perdido') { vendasPerdidas += count; valorPerdidas += value; }
+        if (row.sales_type === 'ganho')   { vendasGanhas   += n; valorGanhas   += value; }
+        if (row.sales_type === 'parcial') { vendasParciais += n; valorParciais += partialValue; }
+        if (row.sales_type === 'perdido') { vendasPerdidas += n; valorPerdidas += value; }
       }
 
       // --- Contatos por tipo ---
       const typeCounts: Record<string, number> = {};
       for (const row of countsRes.data ?? []) {
-        typeCounts[row.task_type] = Number(row.count) || 0;
+        typeCounts[row.task_type] = Number(row.row_count) || 0;
       }
 
       let visitasCount = (typeCounts['prospection'] || 0) + (typeCounts['visita'] || 0);
@@ -141,7 +134,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       // --- Prospects ---
       const prospectsRow = prospectsRes.data?.[0];
-      const prospectsCount = Number(prospectsRow?.count) || 0;
+      const prospectsCount = Number(prospectsRow?.row_count) || 0;
       const prospectsValue = Number(prospectsRow?.total_value) || 0;
 
       // --- Totais ---
