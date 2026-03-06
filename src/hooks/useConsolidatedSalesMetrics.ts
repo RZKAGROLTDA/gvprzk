@@ -80,6 +80,8 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         p_task_types:      activityTaskTypes,
       };
 
+      console.log('[metrics] queryFn executando com params:', sharedParams);
+
       // Disparar as 3 queries em paralelo — cada uma retorna apenas linhas agrupadas.
       // Cast necessário até que `supabase gen types` seja executado após aplicar a migration.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,9 +181,9 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       return result;
     },
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 
