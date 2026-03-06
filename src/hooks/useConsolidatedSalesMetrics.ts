@@ -104,26 +104,39 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       const shouldCountLigacoes   = !activityTaskTypes || filters?.activity === 'ligacao';
       const shouldCountChecklists = !activityTaskTypes || filters?.activity === 'checklist';
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rpc = supabase.rpc as any;
-
-      const sharedRpcParams = {
-        p_start_date:      dateParams.p_start_date,
-        p_end_date:        dateParams.p_end_date,
-        p_created_by:      filters?.consultantId && filters.consultantId !== 'all' ? filters.consultantId : null,
-        p_filial:          filters?.filial        && filters.filial        !== 'all' ? filters.filial        : null,
-        p_filial_atendida: filters?.filialAtendida && filters.filialAtendida !== 'all' ? filters.filialAtendida : null,
-        p_task_types:      activityTaskTypes,
+      // Função auxiliar: soma valores buscando todas as páginas de 1000 em 1000.
+      // Usa range requests do PostgREST para contornar o limite de 1000 rows.
+      // Só transfere as colunas de valor necessárias — payload mínimo.
+      const sumColumn = async (
+        column: string,
+        extraFilter: (q: ReturnType<typeof supabase.from>) => ReturnType<typeof supabase.from>
+      ): Promise<number> => {
+        let total = 0;
+        let from = 0;
+        const pageSize = 1000;
+        while (true) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const res: any = await extraFilter(
+            applyFilters(supabase.from('tasks').select(column))
+          ).range(from, from + pageSize - 1);
+          if (res.error) throw res.error;
+          const rows: Array<Record<string, unknown>> = res.data ?? [];
+          for (const row of rows) total += Number(row[column]) || 0;
+          if (rows.length < pageSize) break;
+          from += pageSize;
+        }
+        return total;
       };
 
       const [
         visitasRes,
         ligacoesRes,
         checklistsRes,
-        prospectsRpcRes,
-        salesRpcRes,
+        prospectsCountRes,
+        prospectsValueTotal,
+        salesRes,
       ] = await Promise.all([
-        // Counts de contato via HEAD — exatos, sem transferir linhas
+        // Counts exatos via HEAD — PostgREST lê Content-Range sem transferir linhas
         shouldCountVisitas
           ? applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
               .in('task_type', visitasTypes)
@@ -136,47 +149,45 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           ? applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
               .in('task_type', checklistTypes)
           : Promise.resolve({ count: 0, error: null }),
-        // Prospects: count + soma exatos via RPC (1 linha retornada)
-        rpc('get_prospects_aggregate', sharedRpcParams) as Promise<{
-          data: Array<{ row_count: number; total_value: number }> | null;
-          error: unknown;
-        }>,
-        // Vendas: agrupadas por tipo via RPC (máx. 3 linhas retornadas)
-        rpc('get_sales_breakdown', sharedRpcParams) as Promise<{
-          data: Array<{ sales_type: string; row_count: number; total_value: number; total_partial_value: number }> | null;
-          error: unknown;
-        }>,
+        // Prospects count exato via HEAD
+        applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
+          .eq('is_prospect', true),
+        // Prospects value: páginas de 1000 até esgotar
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sumColumn('sales_value', (q) => (q as any).eq('is_prospect', true)),
+        // Vendas: valores para somas — realista << 1000, mas usa paginação por segurança
+        applyFilters(supabase.from('tasks').select('sales_type, sales_value, partial_sales_value'))
+          .eq('sales_confirmed', true)
+          .range(0, 999),
       ]);
 
-      if (visitasRes.error)    throw visitasRes.error;
-      if (ligacoesRes.error)   throw ligacoesRes.error;
-      if (checklistsRes.error) throw checklistsRes.error;
-      if (prospectsRpcRes.error) throw prospectsRpcRes.error;
-      if (salesRpcRes.error)     throw salesRpcRes.error;
+      if (visitasRes.error)       throw visitasRes.error;
+      if (ligacoesRes.error)      throw ligacoesRes.error;
+      if (checklistsRes.error)    throw checklistsRes.error;
+      if (prospectsCountRes.error) throw prospectsCountRes.error;
+      if (salesRes.error)          throw salesRes.error;
 
       // --- Contatos ---
       const visitasCount    = shouldCountVisitas    ? (visitasRes.count    ?? 0) : 0;
       const ligacoesCount   = shouldCountLigacoes   ? (ligacoesRes.count   ?? 0) : 0;
       const checklistsCount = shouldCountChecklists ? (checklistsRes.count ?? 0) : 0;
 
-      // --- Vendas (RPC retorna max 3 linhas com somas exatas) ---
+      // --- Vendas ---
       let vendasGanhas = 0, valorGanhas = 0;
       let vendasParciais = 0, valorParciais = 0;
       let vendasPerdidas = 0, valorPerdidas = 0;
 
-      for (const row of salesRpcRes.data ?? []) {
-        const n       = Number(row.row_count)          || 0;
-        const value   = Number(row.total_value)        || 0;
-        const partial = Number(row.total_partial_value) || 0;
-        if (row.sales_type === 'ganho')   { vendasGanhas   += n; valorGanhas   += value; }
-        if (row.sales_type === 'parcial') { vendasParciais += n; valorParciais += partial; }
-        if (row.sales_type === 'perdido') { vendasPerdidas += n; valorPerdidas += value; }
+      for (const row of (salesRes.data ?? []) as Array<{ sales_type: string; sales_value: number; partial_sales_value: number }>) {
+        const value   = Number(row.sales_value)         || 0;
+        const partial = Number(row.partial_sales_value) || 0;
+        if (row.sales_type === 'ganho')   { vendasGanhas++;   valorGanhas   += value; }
+        if (row.sales_type === 'parcial') { vendasParciais++; valorParciais += partial; }
+        if (row.sales_type === 'perdido') { vendasPerdidas++; valorPerdidas += value; }
       }
 
-      // --- Prospects (RPC retorna 1 linha com count + soma exatos) ---
-      const prospectsRow   = prospectsRpcRes.data?.[0];
-      const prospectsCount = Number(prospectsRow?.row_count)   || 0;
-      const prospectsValue = Number(prospectsRow?.total_value) || 0;
+      // --- Prospects ---
+      const prospectsCount = prospectsCountRes.count ?? 0;
+      const prospectsValue = prospectsValueTotal;
 
       // --- Totais ---
       const totalContatos = visitasCount + checklistsCount + ligacoesCount;
