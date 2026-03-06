@@ -122,12 +122,15 @@ export const useOpportunityManager = () => {
         valorVendaFechadaCalculado: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0)
       });
 
+      // Para CREATE: usar salesValue (total de todos os produtos ofertados).
+      // salesValue vem de FormVisualization que usa qtd_ofertada × preco_unit,
+      // garantindo que reflita o valor total da oportunidade, não apenas os selecionados.
       const opportunityData = {
         task_id: taskId,
         cliente_nome: clientName,
         filial: filial,
-        status: correctStatus, // CORRETO: usar status baseado nos valores
-        valor_total_oportunidade: salesValue, // CORREÇÃO: sempre usar salesValue como valor total da oportunidade
+        status: correctStatus,
+        valor_total_oportunidade: salesValue,
         valor_venda_fechada: isVendaTotal ? salesValue : (isPartialSale ? partialSalesValue : 0),
         data_criacao: new Date().toISOString(),
         data_fechamento: (isVendaTotal || isPartialSale) ? new Date().toISOString() : null
@@ -193,13 +196,20 @@ export const useOpportunityManager = () => {
           isPartialSaleUpdate
         });
 
+        // Para UPDATE: NUNCA sobrescrever valor_total_oportunidade com o valor da venda parcial.
+        // Preservar o valor registrado no banco (que reflete todos os produtos ofertados).
+        // Só usa salesValue como fallback se o registro não tiver valor ainda.
+        const valorTotalPreservado = (existingOpportunity.valor_total_oportunidade ?? 0) > 0
+          ? existingOpportunity.valor_total_oportunidade
+          : salesValue;
+
         const updateData = {
           task_id: taskId,
           cliente_nome: clientName,
           filial: filial,
           status: correctStatusUpdate,
-          valor_total_oportunidade: salesValue, // CRÍTICO: Sempre atualizar com o valor total da oportunidade
-          valor_venda_fechada: valorVendaFechada, // CRÍTICO: Agora atualizamos diretamente
+          valor_total_oportunidade: valorTotalPreservado,
+          valor_venda_fechada: valorVendaFechada,
           data_fechamento: (isVendaTotalUpdate || isPartialSaleUpdate) ? new Date().toISOString() : null,
           updated_at: new Date().toISOString()
         };

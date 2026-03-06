@@ -90,20 +90,25 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       photos: [],
     }));
 
-    // Calcular valor da oportunidade
-    let totalValue = 0;
+    // Calcular valor da oportunidade.
+    // Prioridade: (1) valor salvo na oportunidade existente → imutável após criação;
+    //             (2) soma de todos os itens ofertados (qtd_ofertada) → fonte da verdade;
+    //             (3) sales_value da task → fallback apenas quando não há itens.
+    // Nota: NÃO usar task.sales_value como segunda prioridade pois pode conter
+    // valor parcial salvo em edições anteriores e contaminar o total.
     const fromOpportunity = taskEditData.opportunity?.valor_total_oportunidade;
+    const fromItems = (taskEditData.items || []).reduce((sum, i) => {
+      return sum + (i.preco_unit || 0) * (i.qtd_ofertada || 0);
+    }, 0);
+
+    let totalValue = 0;
     if (typeof fromOpportunity === 'number' && fromOpportunity > 0) {
       totalValue = fromOpportunity;
+    } else if (fromItems > 0) {
+      totalValue = fromItems;
     } else {
       const fromTask = taskEditData.sales_value;
-      if (typeof fromTask === 'number' && fromTask > 0) {
-        totalValue = fromTask;
-      } else {
-        totalValue = (taskEditData.items || []).reduce((sum, i) => {
-          return sum + (i.preco_unit || 0) * (i.qtd_ofertada || 0);
-        }, 0);
-      }
+      totalValue = typeof fromTask === 'number' && fromTask > 0 ? fromTask : 0;
     }
 
     // Calcular status exatamente como no modal de editar:
