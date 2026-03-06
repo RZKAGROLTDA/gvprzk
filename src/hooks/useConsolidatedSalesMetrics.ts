@@ -104,39 +104,15 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       const shouldCountLigacoes   = !activityTaskTypes || filters?.activity === 'ligacao';
       const shouldCountChecklists = !activityTaskTypes || filters?.activity === 'checklist';
 
-      // Função auxiliar: soma valores buscando todas as páginas de 1000 em 1000.
-      // Usa range requests do PostgREST para contornar o limite de 1000 rows.
-      // Só transfere as colunas de valor necessárias — payload mínimo.
-      const sumColumn = async (
-        column: string,
-        extraFilter: (q: ReturnType<typeof supabase.from>) => ReturnType<typeof supabase.from>
-      ): Promise<number> => {
-        let total = 0;
-        let from = 0;
-        const pageSize = 1000;
-        while (true) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const res: any = await extraFilter(
-            applyFilters(supabase.from('tasks').select(column))
-          ).range(from, from + pageSize - 1);
-          if (res.error) throw res.error;
-          const rows: Array<Record<string, unknown>> = res.data ?? [];
-          for (const row of rows) total += Number(row[column]) || 0;
-          if (rows.length < pageSize) break;
-          from += pageSize;
-        }
-        return total;
-      };
-
       const [
         visitasRes,
         ligacoesRes,
         checklistsRes,
         prospectsCountRes,
-        prospectsValueTotal,
+        prospectsValueRes,
         salesRes,
       ] = await Promise.all([
-        // Counts exatos via HEAD — PostgREST lê Content-Range sem transferir linhas
+        // Counts exatos via HEAD — sem transferir linhas
         shouldCountVisitas
           ? applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
               .in('task_type', visitasTypes)
@@ -149,22 +125,22 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           ? applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
               .in('task_type', checklistTypes)
           : Promise.resolve({ count: 0, error: null }),
-        // Prospects count exato via HEAD
+        // Prospects: count exato via HEAD
         applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
           .eq('is_prospect', true),
-        // Prospects value: páginas de 1000 até esgotar
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        sumColumn('sales_value', (q) => (q as any).eq('is_prospect', true)),
-        // Vendas: valores para somas — realista << 1000, mas usa paginação por segurança
+        // Prospects: valores para soma (1ª página — ver nota abaixo)
+        applyFilters(supabase.from('tasks').select('sales_value'))
+          .eq('is_prospect', true),
+        // Vendas: valores para somas (tipicamente < 1000 registros)
         applyFilters(supabase.from('tasks').select('sales_type, sales_value, partial_sales_value'))
-          .eq('sales_confirmed', true)
-          .range(0, 999),
+          .eq('sales_confirmed', true),
       ]);
 
-      if (visitasRes.error)       throw visitasRes.error;
-      if (ligacoesRes.error)      throw ligacoesRes.error;
-      if (checklistsRes.error)    throw checklistsRes.error;
+      if (visitasRes.error)        throw visitasRes.error;
+      if (ligacoesRes.error)       throw ligacoesRes.error;
+      if (checklistsRes.error)     throw checklistsRes.error;
       if (prospectsCountRes.error) throw prospectsCountRes.error;
+      if (prospectsValueRes.error) throw prospectsValueRes.error;
       if (salesRes.error)          throw salesRes.error;
 
       // --- Contatos ---
@@ -186,8 +162,10 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       }
 
       // --- Prospects ---
+      // Nota: count é exato (HEAD). O valor soma até 1000 registros (PostgREST max-rows).
       const prospectsCount = prospectsCountRes.count ?? 0;
-      const prospectsValue = prospectsValueTotal;
+      const prospectsValue = ((prospectsValueRes.data ?? []) as Array<{ sales_value: number }>)
+        .reduce((s, r) => s + (Number(r.sales_value) || 0), 0);
 
       // --- Totais ---
       const totalContatos = visitasCount + checklistsCount + ligacoesCount;
@@ -222,7 +200,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
 
