@@ -250,108 +250,9 @@ export const useOpportunityManager = () => {
           throw error;
         }
 
-        // NOVO: Atualizar items se fornecidos
-        if (items && items.length > 0) {
-          console.log('🔧 PROCESSANDO ITEMS RECEBIDOS:', {
-            itemsCount: items.length,
-            salesType,
-            correctStatusUpdate,
-            items: items.map(i => ({
-              id: i.id,
-              qtd_vendida: i.qtd_vendida,
-              qtd_ofertada: i.qtd_ofertada,
-              preco_unit: i.preco_unit
-            }))
-          });
-
-          for (const item of items) {
-            console.log('🔧 ANTES DE ATUALIZAR ITEM:', {
-              id: item.id,
-              qtd_vendida_enviada: item.qtd_vendida,
-              qtd_ofertada: item.qtd_ofertada
-            });
-
-            const { error: itemError } = await supabase
-              .from('opportunity_items')
-              .update({
-                produto: item.produto, // Preservar o nome do produto
-                qtd_vendida: item.qtd_vendida,
-                qtd_ofertada: item.qtd_ofertada,
-                preco_unit: item.preco_unit,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', item.id);
-              
-            if (itemError) {
-              console.error('❌ Erro ao atualizar item:', itemError);
-            } else {
-              console.log('✅ Item atualizado via items array:', {
-                id: item.id,
-                qtd_vendida: item.qtd_vendida,
-                qtd_ofertada: item.qtd_ofertada
-              });
-            }
-          }
-        }
-
-        // CRÍTICO: Se é Venda Total, garantir que qtd_vendida = qtd_ofertada nos items
-        // para que o trigger de recálculo funcione corretamente
-        if (correctStatusUpdate === 'Venda Total') {
-          console.log('🔧 Atualizando qtd_vendida para Venda Total');
-          
-          // Primeiro buscar os items atuais
-          const { data: currentItems } = await supabase
-            .from('opportunity_items')
-            .select('id, qtd_ofertada, preco_unit')
-            .eq('opportunity_id', existingOpportunity.id);
-            
-          if (currentItems && currentItems.length > 0) {
-            // Atualizar cada item individualmente - qtd_vendida = qtd_ofertada para venda total
-            for (const item of currentItems) {
-              const { error: itemError } = await supabase
-                .from('opportunity_items')
-                .update({ 
-                  qtd_vendida: item.qtd_ofertada, // CRÍTICO: Para venda total, vendido = ofertado
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', item.id);
-                
-              if (itemError) {
-                console.error('❌ Erro ao atualizar item:', itemError);
-              } else {
-                console.log('✅ Item atualizado para Venda Total:', {
-                  id: item.id,
-                  qtd_vendida: item.qtd_ofertada,
-                  qtd_ofertada: item.qtd_ofertada
-                });
-              }
-            }
-            console.log('✅ Items atualizados para Venda Total');
-          }
-        } else if (correctStatusUpdate === 'Venda Parcial') {
-          // Para venda parcial, usar os valores de items fornecidos ou manter os existentes
-          console.log('🔧 Atualizando para Venda Parcial');
-          if (items && items.length > 0) {
-            for (const item of items) {
-              const { error: itemError } = await supabase
-                .from('opportunity_items')
-                .update({
-                  qtd_vendida: item.qtd_vendida, // Usar o valor específico fornecido
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', item.id);
-                
-              if (itemError) {
-                console.error('❌ Erro ao atualizar item parcial:', itemError);
-              }
-            }
-          }
-        }
-        
-        if (error) {
-          console.error('❌ Erro ao atualizar oportunidade:', error);
-          throw error;
-        }
+        // opportunity_items é gerenciado exclusivamente por useTaskEditData.updateTaskData.
+        // ensureOpportunity atualiza apenas a tabela opportunities (valores e status).
+        // Remover loops de items daqui evita conflitos com a lógica de INSERT/UPDATE do updateTaskData.
 
         console.log('🎯 APÓS A ATUALIZAÇÃO - Dados salvos no banco:', {
           id: updatedOpportunity.id,
@@ -418,34 +319,7 @@ export const useOpportunityManager = () => {
         if (error) throw error;
         console.log('✅ Nova oportunidade criada:', opportunityData);
         
-        // CRÍTICO: Se é Venda Total, garantir que qtd_vendida = qtd_ofertada nos items
-        if (correctStatus === 'Venda Total') {
-          console.log('🔧 Atualizando qtd_vendida para nova Venda Total');
-          
-          // Buscar items existentes (se houver)
-          const { data: existingItems } = await supabase
-            .from('opportunity_items')
-            .select('id, qtd_ofertada, preco_unit')
-            .eq('opportunity_id', data.id);
-            
-          if (existingItems && existingItems.length > 0) {
-            for (const item of existingItems) {
-              const { error: itemError } = await supabase
-                .from('opportunity_items')
-                .update({ 
-                  qtd_vendida: item.qtd_ofertada, // CRÍTICO: Para venda total, vendido = ofertado
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', item.id);
-                
-              if (itemError) {
-                console.error('❌ Erro ao atualizar item da nova oportunidade:', itemError);
-              }
-            }
-            console.log('✅ Items da nova oportunidade atualizados para Venda Total');
-          }
-        }
-        
+        // opportunity_items é gerenciado exclusivamente por useTaskEditData.updateTaskData.
         return data.id;
       }
     } catch (error) {
