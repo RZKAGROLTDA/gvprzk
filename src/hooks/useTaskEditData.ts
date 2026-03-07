@@ -275,7 +275,9 @@ export const useTaskEditData = (taskId: string | null) => {
     }
   };
 
-  const updateTaskData = async (updates: any) => {
+  // opportunityId: ID da oportunidade recém-criada pelo ensureOpportunity (primeiro save).
+  // Necessário porque data.opportunity é null quando carregado antes da oportunidade existir.
+  const updateTaskData = async (updates: any, opportunityId?: string) => {
     if (!taskId || !data) return false;
 
     setLoading(true);
@@ -343,36 +345,36 @@ export const useTaskEditData = (taskId: string | null) => {
           opportunityId: data.opportunity?.id
         });
         
-        // IDs dos itens já existentes em opportunity_items (carregados no estado atual)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const existingItemIds = new Set((data.items || []).map((i: any) => i.id));
+        // Usar o ID da oportunidade: o recém-criado (primeiro save) ou o já existente (edições)
+        const effectiveOpportunityId = opportunityId || data.opportunity?.id;
 
         for (const item of updates.items) {
-          if (data.opportunity?.id) {
+          if (effectiveOpportunityId) {
             const qtdOfertada = item.qtd_ofertada || 0;
             const qtdVendida  = item.qtd_vendida  || 0;
             const precoUnit   = item.preco_unit   || 0;
 
-            if (existingItemIds.has(item.id)) {
-              // UPDATE: apenas atualiza lado da venda — NUNCA sobrescreve qtd_ofertada.
-              // qtd_ofertada é imutável após a criação do item.
-              const { error: updateError } = await supabase
-                .from('opportunity_items')
-                .update({
-                  qtd_vendida:      qtdVendida,
-                  subtotal_vendido: qtdVendida * precoUnit,
-                  updated_at:       new Date().toISOString()
-                })
-                .eq('id', item.id);
+            // Tenta UPDATE primeiro (preserva qtd_ofertada — imutável após criação)
+            const { data: updatedRows, error: updateError } = await supabase
+              .from('opportunity_items')
+              .update({
+                qtd_vendida:      qtdVendida,
+                subtotal_vendido: qtdVendida * precoUnit,
+                updated_at:       new Date().toISOString()
+              })
+              .eq('id', item.id)
+              .eq('opportunity_id', effectiveOpportunityId)
+              .select('id');
 
-              if (updateError) console.warn('❌ Erro ao atualizar opportunity_item:', updateError);
-            } else {
-              // INSERT: novo item — define qtd_ofertada e demais campos pela primeira vez
+            if (updateError) console.warn('❌ Erro ao atualizar opportunity_item:', updateError);
+
+            // Se nenhuma linha foi atualizada, o item não existe ainda → INSERT
+            if (!updatedRows || updatedRows.length === 0) {
               const { error: insertError } = await supabase
                 .from('opportunity_items')
                 .insert({
                   id:                item.id,
-                  opportunity_id:    data.opportunity.id,
+                  opportunity_id:    effectiveOpportunityId,
                   produto:           item.produto || 'Produto',
                   sku:               item.sku || '',
                   qtd_ofertada:      qtdOfertada,

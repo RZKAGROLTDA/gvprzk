@@ -456,7 +456,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         console.log('✅ DEPOIS de chamar ensureOpportunity, ID:', opportunityId);
       }
 
-      const success = await updateTaskData(updatedData);
+      // Passa o opportunityId recém-criado para que updateTaskData possa criar
+      // opportunity_items mesmo quando data.opportunity era null no momento do carregamento.
+      const success = await updateTaskData(updatedData, opportunityId as string | undefined);
       console.log('🔧 RESULTADO updateTaskData:', success);
       
       if (success) {
