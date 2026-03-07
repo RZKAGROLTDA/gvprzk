@@ -212,8 +212,16 @@ export const useTaskEditData = (taskId: string | null) => {
 
         if (itemsError) throw itemsError;
         itemsData = fetchedItems || [];
-        
-        console.log('🔍 useTaskEditData: opportunity_items encontrados:', itemsData.length);
+
+        console.log('🔎 [DB] opportunity_items carregados:', itemsData.map((i: any) => ({
+          id: i.id,
+          opportunity_id: i.opportunity_id,
+          produto: i.produto,
+          qtd_ofertada: i.qtd_ofertada,
+          qtd_vendida: i.qtd_vendida,
+          subtotal_ofertado: i.subtotal_ofertado,
+          subtotal_vendido: i.subtotal_vendido
+        })));
       }
 
       // Fallback: quando não há opportunity_items, construir a partir de products
