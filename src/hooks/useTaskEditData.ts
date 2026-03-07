@@ -394,8 +394,6 @@ export const useTaskEditData = (taskId: string | null) => {
                   qtd_ofertada:      qtdOfertada,
                   qtd_vendida:       qtdVendida,
                   preco_unit:        precoUnit,
-                  subtotal_ofertado: qtdOfertada * precoUnit,
-                  subtotal_vendido:  qtdVendida  * precoUnit,
                   updated_at:        new Date().toISOString()
                 });
 
