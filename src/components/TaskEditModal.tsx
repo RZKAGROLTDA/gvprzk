@@ -388,6 +388,9 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         deveExecutarEnsureOpportunity: valorTotalOportunidade > 0 || formDataToProcess.status !== 'prospect'
       });
 
+      // opportunityId declarado fora do if para estar em scope no updateTaskData abaixo
+      let opportunityId: string | undefined;
+
       // CRÍTICO: Garantir que a oportunidade seja criada/atualizada usando o manager
       if (valorTotalOportunidade > 0 || formDataToProcess.status !== 'prospect') {
         console.log('🔧 CHAMANDO ensureOpportunity com:', {
@@ -409,7 +412,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
           valorVendaParcial
         });
         
-        const opportunityId = await ensureOpportunity({
+        opportunityId = await ensureOpportunity({
           taskId: taskId,
           clientName: formDataToProcess.customerName,
           filial: formDataToProcess.filial,
@@ -458,7 +461,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
       // Passa o opportunityId recém-criado para que updateTaskData possa criar
       // opportunity_items mesmo quando data.opportunity era null no momento do carregamento.
-      const success = await updateTaskData(updatedData, opportunityId as string | undefined);
+      const success = await updateTaskData(updatedData, opportunityId);
       console.log('🔧 RESULTADO updateTaskData:', success);
       
       if (success) {
