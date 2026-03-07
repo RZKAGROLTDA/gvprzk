@@ -216,54 +216,30 @@ export const useTaskEditData = (taskId: string | null) => {
         console.log('🔍 useTaskEditData: opportunity_items encontrados:', itemsData.length);
       }
 
-      // CRITICAL FIX: If no opportunity items, ALWAYS try products table for this task
-      // This handles cases where opportunity exists but items weren't migrated
-      if (itemsData.length === 0) {
-        console.log('🔍 useTaskEditData: Nenhum item em opportunity_items, buscando products...');
-        
-        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('id, task_id, name, category, selected, quantity, price')
-          .eq('task_id', taskId)
-          .order('name');
+      // Buscar produtos originais — fonte de verdade para qtd_ofertada e preco_unit.
+      // A tabela products nunca é alterada por vendas parciais, logo
+      // products.quantity = quantidade ofertada original (imutável para este cálculo).
+      const { data: originalProducts } = await supabase
+        .from('products')
+        .select('id, name, category, quantity, price')
+        .eq('task_id', taskId);
 
-        if (productsError) {
-          console.error('Erro buscando produtos:', productsError);
-        } else if (productsData && productsData.length > 0) {
-          console.log('🔍 useTaskEditData: products encontrados:', productsData.length);
-          
-          // Convert products to opportunity items format
+      // Índice por ID para lookup O(1)
+      const productById = new Map((originalProducts || []).map(p => [p.id, p]));
+
+      if (itemsData.length === 0) {
+        // Fallback: construir itens a partir de products quando opportunity_items está vazio
+        const productsData = originalProducts || [];
+        if (productsData.length > 0) {
           itemsData = productsData.map(product => {
             const preco = product.price || 0;
             const qtdOfertada = product.quantity || 0;
-            
-            // Determinar qtd_vendida baseado no status da task
             let qtdVendida = 0;
-            
-            // Se product.selected = true, significa que foi vendido
-            if (product.selected) {
-              qtdVendida = product.quantity || 0;
-            }
-            
-            // Para venda total (sales_type='ganho'), vendido = ofertado
             if (taskData.sales_type === 'ganho' && taskData.sales_confirmed) {
               qtdVendida = qtdOfertada;
+            } else if (taskData.sales_type === 'parcial' && (product as any).selected) {
+              qtdVendida = qtdOfertada;
             }
-            // Para venda parcial, usar selected
-            else if (taskData.sales_type === 'parcial' && product.selected) {
-              qtdVendida = product.quantity || 0;
-            }
-            
-            console.log('🔍 useTaskEditData: Mapeando produto:', {
-              name: product.name,
-              qtdOfertada,
-              qtdVendida,
-              preco,
-              selected: product.selected,
-              sales_type: taskData.sales_type
-            });
-            
             return {
               id: product.id,
               produto: product.name,
@@ -276,13 +252,25 @@ export const useTaskEditData = (taskId: string | null) => {
             };
           });
         }
+      } else {
+        // Normalizar qtd_ofertada e preco_unit usando products como fonte de verdade.
+        // opportunity_items.qtd_ofertada pode estar contaminado por saves parciais anteriores.
+        itemsData = itemsData.map((item: any) => {
+          const originalProduct = productById.get(item.id);
+          if (originalProduct) {
+            const qtdOfertada = originalProduct.quantity || item.qtd_ofertada || 0;
+            const preco = originalProduct.price || item.preco_unit || 0;
+            return {
+              ...item,
+              qtd_ofertada: qtdOfertada,
+              preco_unit: preco,
+              subtotal_ofertado: qtdOfertada * preco,
+              subtotal_vendido: (item.qtd_vendida || 0) * preco,
+            };
+          }
+          return item;
+        });
       }
-
-      // Buscar produtos originais para mapear nomes
-      const { data: originalProducts } = await supabase
-        .from('products')
-        .select('id, name, category')
-        .eq('task_id', taskId);
 
       const fullData = {
         ...unifiedTaskData,
@@ -382,16 +370,23 @@ export const useTaskEditData = (taskId: string | null) => {
           if (data.opportunity?.id) {
             console.log('🔍 useTaskEditData: Tentando upsert opportunity_items');
             
+            const qtdOfertada = item.qtd_ofertada || 0;
+            const qtdVendida  = item.qtd_vendida  || 0;
+            const precoUnit   = item.preco_unit   || 0;
+
             const { data: updateResult, error: itemError } = await supabase
               .from('opportunity_items')
               .upsert({
                 id: item.id,
                 opportunity_id: data.opportunity.id,
-                produto: item.produto || 'Produto', // Preservar nome do produto se disponível
+                produto: item.produto || 'Produto',
                 sku: item.sku || '',
-                qtd_vendida: item.qtd_vendida,
-                qtd_ofertada: item.qtd_ofertada,
-                preco_unit: item.preco_unit,
+                qtd_vendida:       qtdVendida,
+                qtd_ofertada:      qtdOfertada,
+                preco_unit:        precoUnit,
+                // Subtotais explícitos — necessários para o trigger calcular valor_venda_fechada
+                subtotal_ofertado: qtdOfertada * precoUnit,
+                subtotal_vendido:  qtdVendida  * precoUnit,
                 updated_at: new Date().toISOString()
               }, {
                 onConflict: 'id'
