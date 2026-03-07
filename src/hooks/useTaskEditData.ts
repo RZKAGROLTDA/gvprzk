@@ -352,8 +352,11 @@ export const useTaskEditData = (taskId: string | null) => {
               .from('opportunity_items')
               .update({
                 opportunity_id:   effectiveOpportunityId, // corrige opportunity_id se estiver errado
+                qtd_ofertada:     qtdOfertada,
                 qtd_vendida:      qtdVendida,
+                subtotal_ofertado: qtdOfertada * precoUnit,
                 subtotal_vendido: qtdVendida * precoUnit,
+                produto:          item.produto || 'Produto',
                 updated_at:       new Date().toISOString()
               })
               .eq('id', item.id)
@@ -383,7 +386,9 @@ export const useTaskEditData = (taskId: string | null) => {
                   .from('opportunity_items')
                   .update({
                     opportunity_id:   effectiveOpportunityId,
+                    qtd_ofertada:     qtdOfertada,
                     qtd_vendida:      qtdVendida,
+                    subtotal_ofertado: qtdOfertada * precoUnit,
                     subtotal_vendido: qtdVendida * precoUnit,
                     updated_at:       new Date().toISOString()
                   })

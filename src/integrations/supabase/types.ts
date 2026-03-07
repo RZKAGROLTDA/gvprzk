@@ -1151,7 +1151,7 @@ export type Database = {
         Args: {
           max_attempts?: number
           operation_type?: string
-          time_window?: unknown
+          time_window?: string
         }
         Returns: boolean
       }
@@ -1344,21 +1344,34 @@ export type Database = {
           role: string
         }[]
       }
-      get_reports_aggregated_stats: {
+      get_prospects_aggregate: {
         Args: {
+          p_created_by?: string
           p_end_date?: string
           p_filial?: string
+          p_filial_atendida?: string
           p_start_date?: string
-          p_user_id?: string
+          p_task_types?: string[]
         }
         Returns: {
-          checklist: number
-          ligacoes: number
-          prospects: number
-          prospects_value: number
-          sales_value: number
-          total_tasks: number
-          visitas: number
+          row_count: number
+          total_value: number
+        }[]
+      }
+      get_sales_breakdown: {
+        Args: {
+          p_created_by?: string
+          p_end_date?: string
+          p_filial?: string
+          p_filial_atendida?: string
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          row_count: number
+          sales_type: string
+          total_partial_value: number
+          total_value: number
         }[]
       }
       get_sales_funnel_counts: {
@@ -1772,48 +1785,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_secure_tasks_with_customer_protection: {
-        Args: never
-        Returns: {
-          access_level: string
-          check_in_location: Json
-          client: string
-          clientcode: string
-          created_at: string
-          created_by: string
-          documents: string[]
-          email: string
-          end_date: string
-          end_time: string
-          equipment_list: Json
-          equipment_quantity: number
-          family_product: string
-          filial: string
-          final_km: number
-          id: string
-          initial_km: number
-          is_customer_data_protected: boolean
-          is_prospect: boolean
-          name: string
-          observations: string
-          partial_sales_value: number
-          phone: string
-          photos: string[]
-          priority: string
-          property: string
-          propertyhectares: number
-          prospect_notes: string
-          responsible: string
-          sales_confirmed: boolean
-          sales_type: string
-          sales_value: number
-          start_date: string
-          start_time: string
-          status: string
-          task_type: string
-          updated_at: string
-        }[]
-      }
       get_secure_user_directory: {
         Args: never
         Returns: {
@@ -1894,6 +1865,20 @@ export type Database = {
           photos: string[]
         }[]
       }
+      get_task_type_counts: {
+        Args: {
+          p_created_by?: string
+          p_end_date?: string
+          p_filial?: string
+          p_filial_atendida?: string
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          row_count: number
+          task_type: string
+        }[]
+      }
       get_tasks_optimized: {
         Args: never
         Returns: {
@@ -1940,6 +1925,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      internal_cleanup_security_logs_cron: { Args: never; Returns: number }
       is_admin_by_email: { Args: { check_email: string }; Returns: boolean }
       is_high_value_task: { Args: { sales_value: number }; Returns: boolean }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
