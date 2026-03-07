@@ -386,7 +386,9 @@ export const useTaskEditData = (taskId: string | null) => {
                   .from('opportunity_items')
                   .update({
                     opportunity_id:   effectiveOpportunityId,
+                    qtd_ofertada:     qtdOfertada,
                     qtd_vendida:      qtdVendida,
+                    subtotal_ofertado: qtdOfertada * precoUnit,
                     subtotal_vendido: qtdVendida * precoUnit,
                     updated_at:       new Date().toISOString()
                   })
