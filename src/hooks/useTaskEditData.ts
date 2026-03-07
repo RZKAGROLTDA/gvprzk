@@ -247,8 +247,8 @@ export const useTaskEditData = (taskId: string | null) => {
               qtd_ofertada: qtdOfertada,
               qtd_vendida: qtdVendida,
               preco_unit: preco,
-              subtotal_ofertado: qtdOfertada * preco,
-              subtotal_vendido: qtdVendida * preco
+              subtotal_ofertado: qtdOfertada * preco,  // read-only (generated column)
+              subtotal_vendido: qtdVendida * preco      // read-only (generated column)
             };
           });
         }
