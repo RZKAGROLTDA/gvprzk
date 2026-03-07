@@ -211,6 +211,13 @@ export const useTaskEditData = (taskId: string | null) => {
 
         if (itemsError) throw itemsError;
         itemsData = fetchedItems || [];
+        console.log('📦 ITEMS CARREGADOS DO BANCO (opportunity_items):', itemsData.map(i => ({
+          id: i.id,
+          produto: i.produto,
+          qtd_ofertada: i.qtd_ofertada,
+          qtd_vendida: i.qtd_vendida,
+          preco_unit: i.preco_unit
+        })));
       }
 
       // Fallback: quando não há opportunity_items, construir a partir de products
