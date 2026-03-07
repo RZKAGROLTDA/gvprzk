@@ -199,30 +199,10 @@ export const useTaskEditData = (taskId: string | null) => {
 
       if (opportunityError) throw opportunityError;
 
-      console.log('🔎 [DB] opportunity carregada:', opportunityData
-        ? { id: opportunityData.id, status: opportunityData.status,
-            valor_total: opportunityData.valor_total_oportunidade,
-            valor_fechado: opportunityData.valor_venda_fechada }
-        : 'NENHUMA');
-
       // Fetch opportunity items and products
       let itemsData = [];
       
       if (opportunityData?.id) {
-        // Buscar TODOS os items com este opportunity_id (debug: sem filtro de opportunity_id extra)
-        const { data: allItemsForOpportunity, error: allItemsError } = await supabase
-          .from('opportunity_items')
-          .select('id, opportunity_id, produto, qtd_ofertada, qtd_vendida')
-          .eq('opportunity_id', opportunityData.id);
-        console.log('🔎 [DB] opportunity_items para id', opportunityData.id, ':', allItemsForOpportunity?.length ?? 0, 'rows', allItemsForOpportunity);
-
-        // Buscar todos os items independente de opportunity_id (para ver se existem com outro id)
-        const { data: allItemsAny } = await supabase
-          .from('opportunity_items')
-          .select('id, opportunity_id, produto, qtd_ofertada, qtd_vendida')
-          .limit(20);
-        console.log('🔎 [DB] TODOS opportunity_items (qualquer opp):', allItemsAny);
-
         const { data: fetchedItems, error: itemsError } = await supabase
           .from('opportunity_items')
           .select('id, opportunity_id, produto, sku, qtd_ofertada, qtd_vendida, preco_unit, subtotal_ofertado, subtotal_vendido')
@@ -231,16 +211,6 @@ export const useTaskEditData = (taskId: string | null) => {
 
         if (itemsError) throw itemsError;
         itemsData = fetchedItems || [];
-
-        console.log('🔎 [DB] opportunity_items carregados:', itemsData.map((i: any) => ({
-          id: i.id,
-          opportunity_id: i.opportunity_id,
-          produto: i.produto,
-          qtd_ofertada: i.qtd_ofertada,
-          qtd_vendida: i.qtd_vendida,
-          subtotal_ofertado: i.subtotal_ofertado,
-          subtotal_vendido: i.subtotal_vendido
-        })));
       }
 
       // Fallback: quando não há opportunity_items, construir a partir de products
@@ -365,17 +335,11 @@ export const useTaskEditData = (taskId: string | null) => {
       // REMOVIDO: Criação de nova oportunidade - isso é responsabilidade do ensureOpportunity no TaskEditModal
 
       // Update items - try both opportunity_items and products
-      console.log('🔎 [SAVE] updates.items:', updates.items?.length, '| opportunityId param:', opportunityId, '| data.opportunity?.id:', data.opportunity?.id);
-
       if (updates.items) {
-        console.log('🔎 [SAVE] ENTRANDO no bloco de items. Count:', updates.items.length);
-        
         // Usar o ID da oportunidade: o recém-criado (primeiro save) ou o já existente (edições)
         const effectiveOpportunityId = opportunityId || data.opportunity?.id;
-        console.log('🔎 [SAVE] effectiveOpportunityId:', effectiveOpportunityId);
 
         for (const item of updates.items) {
-          console.log('🔎 [SAVE] Processando item:', { id: item.id, qtd_vendida: item.qtd_vendida, qtd_ofertada: item.qtd_ofertada, effectiveOpportunityId });
           if (effectiveOpportunityId) {
             const qtdOfertada = item.qtd_ofertada || 0;
             const qtdVendida  = item.qtd_vendida  || 0;
@@ -395,11 +359,8 @@ export const useTaskEditData = (taskId: string | null) => {
               .eq('id', item.id)
               .select('id');
 
-            console.log('🔎 [SAVE] UPDATE resultado:', { rows: updatedRows?.length, error: updateError?.message });
-
             // Se nenhuma linha foi encontrada pelo id, o item não existe → INSERT
             if (!updatedRows || updatedRows.length === 0) {
-              console.log('🔎 [SAVE] 0 rows atualizadas → tentando INSERT');
               const { error: insertError } = await supabase
                 .from('opportunity_items')
                 .insert({
@@ -415,7 +376,6 @@ export const useTaskEditData = (taskId: string | null) => {
                   updated_at:        new Date().toISOString()
                 });
 
-              console.log('🔎 [SAVE] INSERT resultado:', { error: insertError?.message ?? 'OK' });
               if (insertError) {
                 // Se INSERT falhou por conflito de id, força UPDATE novamente sem filtro de id
                 console.warn('⚠️ INSERT falhou, tentando UPDATE forçado:', insertError.message);
