@@ -211,6 +211,13 @@ export const useTaskEditData = (taskId: string | null) => {
 
         if (itemsError) throw itemsError;
         itemsData = fetchedItems || [];
+        console.log('📦 ITEMS CARREGADOS DO BANCO (opportunity_items):', itemsData.map(i => ({
+          id: i.id,
+          produto: i.produto,
+          qtd_ofertada: i.qtd_ofertada,
+          qtd_vendida: i.qtd_vendida,
+          preco_unit: i.preco_unit
+        })));
       }
 
       // Fallback: quando não há opportunity_items, construir a partir de products
@@ -345,15 +352,23 @@ export const useTaskEditData = (taskId: string | null) => {
             const qtdVendida  = item.qtd_vendida  || 0;
             const precoUnit   = item.preco_unit   || 0;
 
+            console.log('💾 SALVANDO ITEM:', {
+              itemId: item.id,
+              opportunityId: effectiveOpportunityId,
+              qtdOfertada,
+              qtdVendida,
+              precoUnit,
+              produto: item.produto
+            });
+
             // UPDATE por id apenas (sem filtrar por opportunity_id).
-            // Filtrar por opportunity_id causava 0 rows quando o item foi criado
-            // com um opportunity_id diferente, travando em conflito de INSERT.
             const { data: updatedRows, error: updateError } = await supabase
               .from('opportunity_items')
               .update({
-                opportunity_id:   effectiveOpportunityId, // corrige opportunity_id se estiver errado
+                opportunity_id:   effectiveOpportunityId,
                 qtd_ofertada:     qtdOfertada,
                 qtd_vendida:      qtdVendida,
+                preco_unit:       precoUnit,
                 subtotal_ofertado: qtdOfertada * precoUnit,
                 subtotal_vendido: qtdVendida * precoUnit,
                 produto:          item.produto || 'Produto',
@@ -362,8 +377,15 @@ export const useTaskEditData = (taskId: string | null) => {
               .eq('id', item.id)
               .select('id');
 
+            console.log('💾 RESULTADO UPDATE:', {
+              itemId: item.id,
+              updatedRows: updatedRows?.length || 0,
+              updateError: updateError?.message
+            });
+
             // Se nenhuma linha foi encontrada pelo id, o item não existe → INSERT
             if (!updatedRows || updatedRows.length === 0) {
+              console.log('💾 UPDATE retornou 0 rows, tentando INSERT para item:', item.id);
               const { error: insertError } = await supabase
                 .from('opportunity_items')
                 .insert({
@@ -380,19 +402,29 @@ export const useTaskEditData = (taskId: string | null) => {
                 });
 
               if (insertError) {
-                // Se INSERT falhou por conflito de id, força UPDATE novamente sem filtro de id
                 console.warn('⚠️ INSERT falhou, tentando UPDATE forçado:', insertError.message);
-                await supabase
+                const { data: forceRows, error: forceError } = await supabase
                   .from('opportunity_items')
                   .update({
                     opportunity_id:   effectiveOpportunityId,
                     qtd_ofertada:     qtdOfertada,
                     qtd_vendida:      qtdVendida,
+                    preco_unit:       precoUnit,
                     subtotal_ofertado: qtdOfertada * precoUnit,
                     subtotal_vendido: qtdVendida * precoUnit,
+                    produto:          item.produto || 'Produto',
                     updated_at:       new Date().toISOString()
                   })
-                  .eq('id', item.id);
+                  .eq('id', item.id)
+                  .select('id');
+                  
+                console.log('💾 RESULTADO UPDATE FORÇADO:', {
+                  itemId: item.id,
+                  forceRows: forceRows?.length || 0,
+                  forceError: forceError?.message
+                });
+              } else {
+                console.log('✅ INSERT bem-sucedido para item:', item.id);
               }
             }
           } else {
@@ -401,7 +433,7 @@ export const useTaskEditData = (taskId: string | null) => {
               .from('products')
               .update({
                 selected: item.qtd_vendida > 0,
-                quantity: item.qtd_vendida > 0 ? item.qtd_vendida : item.qtd_ofertada, // CORRETO: salvar quantidade vendida se vendeu, senão ofertada
+                quantity: item.qtd_vendida > 0 ? item.qtd_vendida : item.qtd_ofertada,
                 price: item.preco_unit,
                 updated_at: new Date().toISOString()
               })
