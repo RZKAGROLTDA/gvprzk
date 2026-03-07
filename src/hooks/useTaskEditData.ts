@@ -199,11 +199,30 @@ export const useTaskEditData = (taskId: string | null) => {
 
       if (opportunityError) throw opportunityError;
 
+      console.log('🔎 [DB] opportunity carregada:', opportunityData
+        ? { id: opportunityData.id, status: opportunityData.status,
+            valor_total: opportunityData.valor_total_oportunidade,
+            valor_fechado: opportunityData.valor_venda_fechada }
+        : 'NENHUMA');
+
       // Fetch opportunity items and products
       let itemsData = [];
       
       if (opportunityData?.id) {
-        // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
+        // Buscar TODOS os items com este opportunity_id (debug: sem filtro de opportunity_id extra)
+        const { data: allItemsForOpportunity, error: allItemsError } = await supabase
+          .from('opportunity_items')
+          .select('id, opportunity_id, produto, qtd_ofertada, qtd_vendida')
+          .eq('opportunity_id', opportunityData.id);
+        console.log('🔎 [DB] opportunity_items para id', opportunityData.id, ':', allItemsForOpportunity?.length ?? 0, 'rows', allItemsForOpportunity);
+
+        // Buscar todos os items independente de opportunity_id (para ver se existem com outro id)
+        const { data: allItemsAny } = await supabase
+          .from('opportunity_items')
+          .select('id, opportunity_id, produto, qtd_ofertada, qtd_vendida')
+          .limit(20);
+        console.log('🔎 [DB] TODOS opportunity_items (qualquer opp):', allItemsAny);
+
         const { data: fetchedItems, error: itemsError } = await supabase
           .from('opportunity_items')
           .select('id, opportunity_id, produto, sku, qtd_ofertada, qtd_vendida, preco_unit, subtotal_ofertado, subtotal_vendido')
