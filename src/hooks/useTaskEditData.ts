@@ -354,21 +354,23 @@ export const useTaskEditData = (taskId: string | null) => {
             const qtdVendida  = item.qtd_vendida  || 0;
             const precoUnit   = item.preco_unit   || 0;
 
-            // Tenta UPDATE primeiro (preserva qtd_ofertada — imutável após criação)
+            // UPDATE por id apenas (sem filtrar por opportunity_id).
+            // Filtrar por opportunity_id causava 0 rows quando o item foi criado
+            // com um opportunity_id diferente, travando em conflito de INSERT.
             const { data: updatedRows, error: updateError } = await supabase
               .from('opportunity_items')
               .update({
+                opportunity_id:   effectiveOpportunityId, // corrige opportunity_id se estiver errado
                 qtd_vendida:      qtdVendida,
                 subtotal_vendido: qtdVendida * precoUnit,
                 updated_at:       new Date().toISOString()
               })
               .eq('id', item.id)
-              .eq('opportunity_id', effectiveOpportunityId)
               .select('id');
 
             if (updateError) console.warn('❌ Erro ao atualizar opportunity_item:', updateError);
 
-            // Se nenhuma linha foi atualizada, o item não existe ainda → INSERT
+            // Se nenhuma linha foi encontrada pelo id, o item não existe → INSERT
             if (!updatedRows || updatedRows.length === 0) {
               const { error: insertError } = await supabase
                 .from('opportunity_items')
@@ -385,7 +387,19 @@ export const useTaskEditData = (taskId: string | null) => {
                   updated_at:        new Date().toISOString()
                 });
 
-              if (insertError) console.warn('❌ Erro ao inserir opportunity_item:', insertError);
+              if (insertError) {
+                // Se INSERT falhou por conflito de id, força UPDATE novamente sem filtro de id
+                console.warn('⚠️ INSERT falhou, tentando UPDATE forçado:', insertError.message);
+                await supabase
+                  .from('opportunity_items')
+                  .update({
+                    opportunity_id:   effectiveOpportunityId,
+                    qtd_vendida:      qtdVendida,
+                    subtotal_vendido: qtdVendida * precoUnit,
+                    updated_at:       new Date().toISOString()
+                  })
+                  .eq('id', item.id);
+              }
             }
           } else {
             // Try products table
