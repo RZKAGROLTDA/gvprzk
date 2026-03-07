@@ -56,7 +56,7 @@ export const SecurityAdmin: React.FC = () => {
       // Load security logs
       const { data: logsData, error: logsError } = await supabase
         .from('security_audit_log')
-        .select('id, event_type, user_id, risk_score, created_at, metadata')
+        .select('id, event_type, user_id, risk_score, created_at, metadata, blocked')
         .order('created_at', { ascending: false })
         .limit(50);
 
