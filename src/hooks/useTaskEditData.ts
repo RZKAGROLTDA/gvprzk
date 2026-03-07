@@ -216,28 +216,24 @@ export const useTaskEditData = (taskId: string | null) => {
         console.log('🔍 useTaskEditData: opportunity_items encontrados:', itemsData.length);
       }
 
-      // Buscar produtos originais — fonte de verdade para qtd_ofertada e preco_unit.
-      // A tabela products nunca é alterada por vendas parciais, logo
-      // products.quantity = quantidade ofertada original (imutável para este cálculo).
-      const { data: originalProducts } = await supabase
-        .from('products')
-        .select('id, name, category, quantity, price')
-        .eq('task_id', taskId);
-
-      // Índice por ID para lookup O(1)
-      const productById = new Map((originalProducts || []).map(p => [p.id, p]));
-
+      // Fallback: quando não há opportunity_items, construir a partir de products
       if (itemsData.length === 0) {
-        // Fallback: construir itens a partir de products quando opportunity_items está vazio
-        const productsData = originalProducts || [];
-        if (productsData.length > 0) {
+        const { data: productsData, error: productsError } = await supabase
+          .from('products')
+          .select('id, task_id, name, category, selected, quantity, price')
+          .eq('task_id', taskId)
+          .order('name');
+
+        if (productsError) {
+          console.error('Erro buscando produtos:', productsError);
+        } else if (productsData && productsData.length > 0) {
           itemsData = productsData.map(product => {
             const preco = product.price || 0;
             const qtdOfertada = product.quantity || 0;
             let qtdVendida = 0;
             if (taskData.sales_type === 'ganho' && taskData.sales_confirmed) {
               qtdVendida = qtdOfertada;
-            } else if (taskData.sales_type === 'parcial' && (product as any).selected) {
+            } else if (taskData.sales_type === 'parcial' && product.selected) {
               qtdVendida = qtdOfertada;
             }
             return {
@@ -252,25 +248,15 @@ export const useTaskEditData = (taskId: string | null) => {
             };
           });
         }
-      } else {
-        // Normalizar qtd_ofertada e preco_unit usando products como fonte de verdade.
-        // opportunity_items.qtd_ofertada pode estar contaminado por saves parciais anteriores.
-        itemsData = itemsData.map((item: any) => {
-          const originalProduct = productById.get(item.id);
-          if (originalProduct) {
-            const qtdOfertada = originalProduct.quantity || item.qtd_ofertada || 0;
-            const preco = originalProduct.price || item.preco_unit || 0;
-            return {
-              ...item,
-              qtd_ofertada: qtdOfertada,
-              preco_unit: preco,
-              subtotal_ofertado: qtdOfertada * preco,
-              subtotal_vendido: (item.qtd_vendida || 0) * preco,
-            };
-          }
-          return item;
-        });
       }
+      // Quando opportunity_items existe, usa diretamente — qtd_ofertada e qtd_vendida
+      // são preservados como salvos (o save nunca mais sobrescreve qtd_ofertada).
+
+      // Buscar produtos originais para mapeamento de nomes
+      const { data: originalProducts } = await supabase
+        .from('products')
+        .select('id, name, category')
+        .eq('task_id', taskId);
 
       const fullData = {
         ...unifiedTaskData,
@@ -357,51 +343,47 @@ export const useTaskEditData = (taskId: string | null) => {
           opportunityId: data.opportunity?.id
         });
         
+        // IDs dos itens já existentes em opportunity_items (carregados no estado atual)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const existingItemIds = new Set((data.items || []).map((i: any) => i.id));
+
         for (const item of updates.items) {
-          console.log('🔍 useTaskEditData: Processando item:', {
-            id: item.id,
-            produto: item.produto,
-            qtd_vendida: item.qtd_vendida,
-            qtd_ofertada: item.qtd_ofertada,
-            preco_unit: item.preco_unit
-          });
-          
-          // Try opportunity_items first
           if (data.opportunity?.id) {
-            console.log('🔍 useTaskEditData: Tentando upsert opportunity_items');
-            
             const qtdOfertada = item.qtd_ofertada || 0;
             const qtdVendida  = item.qtd_vendida  || 0;
             const precoUnit   = item.preco_unit   || 0;
 
-            const { data: updateResult, error: itemError } = await supabase
-              .from('opportunity_items')
-              .upsert({
-                id: item.id,
-                opportunity_id: data.opportunity.id,
-                produto: item.produto || 'Produto',
-                sku: item.sku || '',
-                qtd_vendida:       qtdVendida,
-                qtd_ofertada:      qtdOfertada,
-                preco_unit:        precoUnit,
-                // Subtotais explícitos — necessários para o trigger calcular valor_venda_fechada
-                subtotal_ofertado: qtdOfertada * precoUnit,
-                subtotal_vendido:  qtdVendida  * precoUnit,
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'id'
-              })
-              .select();
+            if (existingItemIds.has(item.id)) {
+              // UPDATE: apenas atualiza lado da venda — NUNCA sobrescreve qtd_ofertada.
+              // qtd_ofertada é imutável após a criação do item.
+              const { error: updateError } = await supabase
+                .from('opportunity_items')
+                .update({
+                  qtd_vendida:      qtdVendida,
+                  subtotal_vendido: qtdVendida * precoUnit,
+                  updated_at:       new Date().toISOString()
+                })
+                .eq('id', item.id);
 
-            console.log('🔍 useTaskEditData: Resultado upsert opportunity_items:', {
-              itemId: item.id,
-              error: itemError,
-              updateResult,
-              rowsAffected: updateResult?.length || 0
-            });
+              if (updateError) console.warn('❌ Erro ao atualizar opportunity_item:', updateError);
+            } else {
+              // INSERT: novo item — define qtd_ofertada e demais campos pela primeira vez
+              const { error: insertError } = await supabase
+                .from('opportunity_items')
+                .insert({
+                  id:                item.id,
+                  opportunity_id:    data.opportunity.id,
+                  produto:           item.produto || 'Produto',
+                  sku:               item.sku || '',
+                  qtd_ofertada:      qtdOfertada,
+                  qtd_vendida:       qtdVendida,
+                  preco_unit:        precoUnit,
+                  subtotal_ofertado: qtdOfertada * precoUnit,
+                  subtotal_vendido:  qtdVendida  * precoUnit,
+                  updated_at:        new Date().toISOString()
+                });
 
-            if (itemError) {
-              console.warn('❌ Erro ao fazer upsert opportunity_items:', itemError);
+              if (insertError) console.warn('❌ Erro ao inserir opportunity_item:', insertError);
             }
           } else {
             // Try products table
