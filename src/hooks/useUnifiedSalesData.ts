@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { parseLocalDate } from '@/lib/utils';
 
@@ -38,52 +37,32 @@ export const useUnifiedSalesData = () => {
     queryKey: ['unified-sales-data'],
     queryFn: async () => {
       try {
-        // Buscar tasks com joins para opportunities (limitado para reduzir Disk I/O no Supabase)
+        // OTIMIZAÇÃO Disk IO: RPC em vez de direct table + join
         const UNIFIED_SALES_LIMIT = 500;
-        const { data: tasksWithOpportunities, error: tasksError } = await supabase
-          .from('tasks')
-          .select(`
-            id,
-            name,
-            responsible,
-            client,
-            property,
-            filial,
-            task_type,
-            status,
-            sales_value,
-            partial_sales_value,
-            sales_type,
-            sales_confirmed,
-            is_prospect,
-            start_date,
-            end_date,
-            created_at,
-            updated_at,
-            created_by,
-            opportunities (
-              id,
-              status,
-              valor_total_oportunidade,
-              valor_venda_fechada,
-              data_criacao,
-              data_fechamento
-            )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(UNIFIED_SALES_LIMIT);
+        const { data: tasksData, error: tasksError } = await supabase
+          .rpc('get_secure_tasks_paginated', { p_limit: UNIFIED_SALES_LIMIT, p_offset: 0 });
 
         if (tasksError) throw tasksError;
+        const tasks = (tasksData || []) as Array<Record<string, unknown>>;
 
-        console.log('[useUnifiedSalesData] Total tasks retornadas:', tasksWithOpportunities?.length);
-        console.log('[useUnifiedSalesData] Tasks com opportunities:', 
-          tasksWithOpportunities?.filter(t => t.opportunities && t.opportunities.length > 0).length);
-        console.log('[useUnifiedSalesData] Total opportunities:', 
-          tasksWithOpportunities?.reduce((sum, t) => sum + (t.opportunities?.length || 0), 0));
+        if (tasks.length === 0) return [];
 
-        const unified: UnifiedSalesData[] = (tasksWithOpportunities || []).map(task => {
-          const opportunity = task.opportunities?.[0]; // Assume uma oportunidade por task
-          
+        const taskIds = tasks.map(t => t.id as string);
+        const { data: opportunitiesData, error: oppError } = await supabase
+          .from('opportunities')
+          .select('task_id, id, status, valor_total_oportunidade, valor_venda_fechada, data_criacao, data_fechamento')
+          .in('task_id', taskIds);
+
+        if (oppError) throw oppError;
+        type OppRow = { task_id: string; id: string; status: string; valor_total_oportunidade?: number; valor_venda_fechada?: number; data_criacao?: string; data_fechamento?: string };
+        const oppByTask = ((opportunitiesData || []) as OppRow[]).reduce<Record<string, OppRow>>((acc, o) => {
+          acc[o.task_id] = o;
+          return acc;
+        }, {});
+
+        const unified: UnifiedSalesData[] = tasks.map(task => {
+          const opportunity = oppByTask[task.id as string];
+
           // Determinar status de venda unificado
           let salesStatus: 'prospect' | 'ganho' | 'perdido' | 'parcial' = 'prospect';
           
@@ -133,7 +112,6 @@ export const useUnifiedSalesData = () => {
           };
         });
 
-        console.log(`📊 Dados unificados carregados: ${unified.length} registros`);
         return unified;
         
       } catch (error) {
