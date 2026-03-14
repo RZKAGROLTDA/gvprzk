@@ -291,90 +291,46 @@ const PerformanceBySeller: React.FC = () => {
 
   const loadUserStats = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
-      // SECURITY FIX: Fetch roles from user_roles table
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, name, id')
-        .eq('approval_status', 'approved')
-        .order('name');
+      // OTIMIZAÇÃO Disk IO: RPC de agregação em vez de fetch de 1000 tasks
+      const { data: stats, error } = await supabase.rpc('get_performance_by_seller', {
+        p_date_from: dateFrom?.toISOString().split('T')[0] ?? null,
+        p_date_to: dateTo?.toISOString().split('T')[0] ?? null,
+      });
 
-      if (profilesError) throw profilesError;
+      if (error) throw error;
 
-      if (!profiles || profiles.length === 0) {
-        setUserStats([]);
-        return;
-      }
-
-      // Fetch roles from user_roles table
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('role', ['consultant', 'manager', 'admin']);
-
-      if (rolesError) throw rolesError;
-
-      // Create a map of user_id to role
-      const rolesMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
-      
-      // Filter profiles to only include those with valid roles
-      const profilesWithRoles = profiles.filter(p => rolesMap.has(p.user_id));
-
-      const userIds = profilesWithRoles.map(p => p.user_id);
-      let tasksQuery = supabase
-        .from('tasks')
-        .select('created_by, task_type, is_prospect, sales_value, sales_confirmed')
-        .in('created_by', userIds)
-        .limit(1000);
-
-      if (dateFrom) tasksQuery = tasksQuery.gte('start_date', dateFrom.toISOString().split('T')[0]);
-      if (dateTo) tasksQuery = tasksQuery.lte('end_date', dateTo.toISOString().split('T')[0]);
-
-      const { data: allTasks, error: tasksError } = await tasksQuery;
-
-      const statsByUser = new Map<string, { visitas: number; checklist: number; ligacoes: number; prospects: number; prospectsValue: number; sales: number }>();
-      for (const p of profilesWithRoles) {
-        statsByUser.set(p.user_id, { visitas: 0, checklist: 0, ligacoes: 0, prospects: 0, prospectsValue: 0, sales: 0 });
-      }
-      if (!tasksError && allTasks) {
-        for (const task of allTasks) {
-          const s = statsByUser.get(task.created_by);
-          if (!s) continue;
-          if (task.task_type === 'prospection') s.visitas++;
-          else if (task.task_type === 'checklist') s.checklist++;
-          else if (task.task_type === 'ligacao') s.ligacoes++;
-          if (task.is_prospect) {
-            s.prospects++;
-            s.prospectsValue += Number(task.sales_value) || 0;
-          }
-          if (task.sales_confirmed) s.sales += Number(task.sales_value) || 0;
-        }
-      }
-
-      const userStatsResult = profilesWithRoles.map((profile) => {
-        const userRole = rolesMap.get(profile.user_id) || 'consultant';
-        const s = statsByUser.get(profile.user_id)!;
-        const totalActivities = s.visitas + s.checklist + s.ligacoes;
-        const conversionRate = s.prospectsValue > 0 ? (s.sales / s.prospectsValue) * 100 : 0;
+      const userStatsResult = (stats || []).map((row: {
+        user_id: string;
+        user_name: string;
+        user_role: string;
+        visitas: number;
+        checklist: number;
+        ligacoes: number;
+        prospects: number;
+        prospects_value: number;
+        sales_value: number;
+        conversion_rate: number;
+      }) => {
+        const totalActivities = Number(row.visitas ?? 0) + Number(row.checklist ?? 0) + Number(row.ligacoes ?? 0);
         return {
-          name: profile.name,
-          role: userRole,
-          user_id: profile.user_id,
+          name: row.user_name,
+          role: row.user_role,
+          user_id: row.user_id,
           visits: totalActivities,
-          prospects: s.prospects,
-          sales: s.sales,
-          conversionRate: Math.round(conversionRate * 10) / 10,
+          prospects: Number(row.prospects ?? 0),
+          sales: Number(row.sales_value ?? 0),
+          conversionRate: Math.round(Number(row.conversion_rate ?? 0) * 10) / 10,
           totalActivities,
-          visitas: s.visitas,
-          checklist: s.checklist,
-          ligacoes: s.ligacoes
+          visitas: Number(row.visitas ?? 0),
+          checklist: Number(row.checklist ?? 0),
+          ligacoes: Number(row.ligacoes ?? 0),
         };
       });
 
-      const sortedResults = userStatsResult.sort((a, b) => b.sales - a.sales);
-      setUserStats(sortedResults);
+      setUserStats(userStatsResult);
     } catch (error) {
       console.error('Erro ao carregar estatísticas dos usuários:', error);
       setUserStats([]);
