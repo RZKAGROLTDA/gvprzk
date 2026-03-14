@@ -25,38 +25,47 @@ export const SecurityMonitoringEnhanced = () => {
     getAlertsByType 
   } = useEnhancedSecurityMonitor();
 
-  // Security metrics query
+  // Security metrics query - OTIMIZAÇÃO Disk IO: RPC para agregação no banco
+  // Evita fetch de 200 linhas + filtro client-side; usa índice em created_at
   const { data: securityMetrics, isLoading } = useQuery({
     queryKey: ['security-metrics'],
     queryFn: async () => {
       try {
-        // Get recent security events count
-        const { data: recentEvents } = await supabase
-          .from('security_audit_log')
-          .select('event_type, risk_score, created_at')
-          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-          .order('created_at', { ascending: false })
-          .limit(200);
+        const [metricsRes, recentRes] = await Promise.all([
+          supabase.rpc('get_security_metrics_24h'),
+          supabase
+            .from('security_audit_log')
+            .select('event_type, risk_score, created_at')
+            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order('created_at', { ascending: false })
+            .limit(10),
+        ]);
 
-        // Get customer data access events
-        const customerAccessEvents = recentEvents?.filter(e => 
-          e.event_type.includes('customer') || e.event_type.includes('data_access')
-        ) || [];
+        // Fallback se RPC não existir (migration pendente)
+        if (metricsRes.error) {
+          const { data: fallback } = await supabase
+            .from('security_audit_log')
+            .select('event_type, risk_score, created_at')
+            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order('created_at', { ascending: false })
+            .limit(50);
+          const recent = fallback ?? [];
+          return {
+            totalEvents: recent.length,
+            customerAccessEvents: recent.filter(e => e.event_type?.includes('customer') || e.event_type?.includes('data_access')).length,
+            highRiskEvents: recent.filter(e => (e.risk_score ?? 0) >= 4).length,
+            bulkExportEvents: recent.filter(e => e.event_type?.includes('bulk') || e.event_type?.includes('export')).length,
+            recentEvents: recent.slice(0, 10),
+          };
+        }
 
-        // Get high-risk events
-        const highRiskEvents = recentEvents?.filter(e => e.risk_score >= 4) || [];
-
-        // Get bulk export events
-        const bulkExportEvents = recentEvents?.filter(e => 
-          e.event_type.includes('bulk') || e.event_type.includes('export')
-        ) || [];
-
+        const row = metricsRes.data?.[0] as { total_events?: number; customer_access_events?: number; high_risk_events?: number; bulk_export_events?: number } | undefined;
         return {
-          totalEvents: recentEvents?.length || 0,
-          customerAccessEvents: customerAccessEvents.length,
-          highRiskEvents: highRiskEvents.length,
-          bulkExportEvents: bulkExportEvents.length,
-          recentEvents: recentEvents?.slice(0, 10) || []
+          totalEvents: Number(row?.total_events ?? 0),
+          customerAccessEvents: Number(row?.customer_access_events ?? 0),
+          highRiskEvents: Number(row?.high_risk_events ?? 0),
+          bulkExportEvents: Number(row?.bulk_export_events ?? 0),
+          recentEvents: recentRes.data ?? [],
         };
       } catch (error) {
         console.error('Failed to fetch security metrics:', error);
@@ -65,11 +74,11 @@ export const SecurityMonitoringEnhanced = () => {
           customerAccessEvents: 0,
           highRiskEvents: 0,
           bulkExportEvents: 0,
-          recentEvents: []
+          recentEvents: [],
         };
       }
     },
-    refetchInterval: false, // OTIMIZAÇÃO: polling desabilitado - usar refetch manual
+    refetchInterval: false,
     staleTime: 10 * 60 * 1000, // 10 minutos de cache
   });
 
