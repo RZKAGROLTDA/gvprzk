@@ -198,9 +198,9 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
 
       return result;
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    refetchOnMount: true,
+    staleTime: 10 * 60 * 1000, // 10 min - reduz refetch e Disk IO
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false, // usar cache existente
     refetchOnWindowFocus: false,
   });
 

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Users, Download, Search, Filter } from 'lucide-react';
-import { useTasks } from '@/hooks/useTasks';
+import { useTasksOptimized } from '@/hooks/useTasksOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { format, subDays } from 'date-fns';
@@ -24,7 +24,7 @@ interface ClientData {
 }
 
 export const FunnelClients: React.FC = () => {
-  const { tasks } = useTasks();
+  const { tasks = [] } = useTasksOptimized();
   const { consultants } = useFilteredConsultants();
   const [filiais, setFiliais] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
