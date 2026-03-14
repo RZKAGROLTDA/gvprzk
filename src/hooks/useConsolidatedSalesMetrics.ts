@@ -71,107 +71,46 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       const dateParams = getDateParams();
       const activityTaskTypes = getActivityTaskTypes(filters?.activity);
 
-      // Helper para aplicar filtros comuns a uma query
-      const applyFilters = (q: ReturnType<typeof supabase.from>) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let query = q as any;
-        if (dateParams.p_start_date) query = query.gte('created_at', dateParams.p_start_date);
-        if (dateParams.p_end_date)   query = query.lte('created_at', dateParams.p_end_date);
-        if (filters?.consultantId && filters.consultantId !== 'all')
-          query = query.eq('created_by', filters.consultantId);
-        if (filters?.filial && filters.filial !== 'all')
-          query = query.eq('filial', filters.filial);
-        if (filters?.filialAtendida && filters.filialAtendida !== 'all')
-          query = query.eq('filial_atendida', filters.filialAtendida);
-        if (activityTaskTypes)
-          query = query.in('task_type', activityTaskTypes);
-        return query;
+      // OTIMIZAÇÃO Disk IO: 1 RPC em vez de 6+ queries diretas em tasks
+      const { data: row, error: rpcError } = await supabase.rpc('get_consolidated_sales_counts', {
+        p_start_date: dateParams.p_start_date,
+        p_end_date: dateParams.p_end_date,
+        p_created_by: filters?.consultantId && filters.consultantId !== 'all' ? filters.consultantId : null,
+        p_filial: filters?.filial && filters.filial !== 'all' ? filters.filial : null,
+        p_filial_atendida: filters?.filialAtendida && filters.filialAtendida !== 'all' ? filters.filialAtendida : null,
+        p_task_types: activityTaskTypes,
+      });
+
+      if (rpcError) throw rpcError;
+
+      const r = (row?.[0] ?? {}) as {
+        visitas_count?: number;
+        ligacoes_count?: number;
+        checklists_count?: number;
+        prospects_count?: number;
+        prospects_value?: number;
+        vendas_ganhas_count?: number;
+        vendas_ganhas_value?: number;
+        vendas_parciais_count?: number;
+        vendas_parciais_value?: number;
+        vendas_perdidas_count?: number;
+        vendas_perdidas_value?: number;
       };
 
-      // Counts usam head:true → PostgREST retorna apenas o header Content-Range
-      // sem transferir linhas, contornando o limite de 1000 rows por resposta.
-      // Sums (vendas) usam fetch de linhas pois precisam agregar valores — o total
-      // de vendas confirmadas é tipicamente muito menor que o limite.
-      const isFieldVisit = filters?.activity === 'field_visit'
-        || filters?.activity === 'prospection'
-        || filters?.activity === 'visita';
+      const visitasCount = Number(r.visitas_count ?? 0);
+      const ligacoesCount = Number(r.ligacoes_count ?? 0);
+      const checklistsCount = Number(r.checklists_count ?? 0);
+      const prospectsCount = Number(r.prospects_count ?? 0);
+      const prospectsValue = Number(r.prospects_value ?? 0);
+      const vendasGanhas = Number(r.vendas_ganhas_count ?? 0);
+      const valorGanhas = Number(r.vendas_ganhas_value ?? 0);
+      const vendasParciais = Number(r.vendas_parciais_count ?? 0);
+      const valorParciais = Number(r.vendas_parciais_value ?? 0);
+      const vendasPerdidas = Number(r.vendas_perdidas_count ?? 0);
+      const valorPerdidas = Number(r.vendas_perdidas_value ?? 0);
 
-      const visitasTypes    = ['prospection', 'visita'];
-      const ligacaoTypes    = ['ligacao'];
-      const checklistTypes  = ['checklist'];
-
-      const shouldCountVisitas    = !activityTaskTypes || isFieldVisit;
-      const shouldCountLigacoes   = !activityTaskTypes || filters?.activity === 'ligacao';
-      const shouldCountChecklists = !activityTaskTypes || filters?.activity === 'checklist';
-
-      const [
-        visitasRes,
-        ligacoesRes,
-        checklistsRes,
-        prospectsCountRes,
-        prospectsValueRes,
-        salesRes,
-      ] = await Promise.all([
-        // Counts exatos via HEAD — sem transferir linhas
-        shouldCountVisitas
-          ? applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
-              .in('task_type', visitasTypes)
-          : Promise.resolve({ count: 0, error: null }),
-        shouldCountLigacoes
-          ? applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
-              .in('task_type', ligacaoTypes)
-          : Promise.resolve({ count: 0, error: null }),
-        shouldCountChecklists
-          ? applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
-              .in('task_type', checklistTypes)
-          : Promise.resolve({ count: 0, error: null }),
-        // Prospects: count exato via HEAD
-        applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
-          .eq('is_prospect', true),
-        // Prospects: valores para soma (limitado para Disk IO)
-        applyFilters(supabase.from('tasks').select('sales_value'))
-          .eq('is_prospect', true)
-          .limit(1000),
-        // Vendas: valores para somas
-        applyFilters(supabase.from('tasks').select('sales_type, sales_value, partial_sales_value'))
-          .eq('sales_confirmed', true)
-          .limit(1000),
-      ]);
-
-      if (visitasRes.error)        throw visitasRes.error;
-      if (ligacoesRes.error)       throw ligacoesRes.error;
-      if (checklistsRes.error)     throw checklistsRes.error;
-      if (prospectsCountRes.error) throw prospectsCountRes.error;
-      if (prospectsValueRes.error) throw prospectsValueRes.error;
-      if (salesRes.error)          throw salesRes.error;
-
-      // --- Contatos ---
-      const visitasCount    = shouldCountVisitas    ? (visitasRes.count    ?? 0) : 0;
-      const ligacoesCount   = shouldCountLigacoes   ? (ligacoesRes.count   ?? 0) : 0;
-      const checklistsCount = shouldCountChecklists ? (checklistsRes.count ?? 0) : 0;
-
-      // --- Vendas ---
-      let vendasGanhas = 0, valorGanhas = 0;
-      let vendasParciais = 0, valorParciais = 0;
-      let vendasPerdidas = 0, valorPerdidas = 0;
-
-      for (const row of (salesRes.data ?? []) as Array<{ sales_type: string; sales_value: number; partial_sales_value: number }>) {
-        const value   = Number(row.sales_value)         || 0;
-        const partial = Number(row.partial_sales_value) || 0;
-        if (row.sales_type === 'ganho')   { vendasGanhas++;   valorGanhas   += value; }
-        if (row.sales_type === 'parcial') { vendasParciais++; valorParciais += partial; }
-        if (row.sales_type === 'perdido') { vendasPerdidas++; valorPerdidas += value; }
-      }
-
-      // --- Prospects ---
-      // Nota: count é exato (HEAD). O valor soma até 1000 registros (PostgREST max-rows).
-      const prospectsCount = prospectsCountRes.count ?? 0;
-      const prospectsValue = ((prospectsValueRes.data ?? []) as Array<{ sales_value: number }>)
-        .reduce((s, r) => s + (Number(r.sales_value) || 0), 0);
-
-      // --- Totais ---
       const totalContatos = visitasCount + checklistsCount + ligacoesCount;
-      const totalVendas   = vendasGanhas + vendasParciais;
+      const totalVendas = vendasGanhas + vendasParciais;
       const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
       const result: ConsolidatedMetrics = {
