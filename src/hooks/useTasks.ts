@@ -205,7 +205,8 @@ export const useTasks = () => {
           .eq('client', taskData.client || '')
           .eq('responsible', taskData.responsible || '')
           .eq('start_date', taskData.startDate ? formatDateToLocal(taskData.startDate) : '')
-          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Last 5 minutes
+          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+          .limit(10);
 
         if (existingTasks && existingTasks.length > 0) {
           console.warn('🚫 createTask: Duplicate task found, preventing creation');

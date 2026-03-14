@@ -358,7 +358,8 @@ export const useOpportunityManager = () => {
           partial_sales_value, sales_confirmed, is_prospect
         `)
         .gt('sales_value', 0)
-        .not('sales_value', 'is', null);
+        .not('sales_value', 'is', null)
+        .limit(1000);
 
       if (tasksError) throw tasksError;
 

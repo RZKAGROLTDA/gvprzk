@@ -128,12 +128,14 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         // Prospects: count exato via HEAD
         applyFilters(supabase.from('tasks').select('*', { count: 'exact', head: true }))
           .eq('is_prospect', true),
-        // Prospects: valores para soma (1ª página — ver nota abaixo)
+        // Prospects: valores para soma (limitado para Disk IO)
         applyFilters(supabase.from('tasks').select('sales_value'))
-          .eq('is_prospect', true),
-        // Vendas: valores para somas (tipicamente < 1000 registros)
+          .eq('is_prospect', true)
+          .limit(1000),
+        // Vendas: valores para somas
         applyFilters(supabase.from('tasks').select('sales_type, sales_value, partial_sales_value'))
-          .eq('sales_confirmed', true),
+          .eq('sales_confirmed', true)
+          .limit(1000),
       ]);
 
       if (visitasRes.error)        throw visitasRes.error;

@@ -327,7 +327,7 @@ const PerformanceBySeller: React.FC = () => {
         .from('tasks')
         .select('created_by, task_type, is_prospect, sales_value, sales_confirmed')
         .in('created_by', userIds)
-        .limit(3000);
+        .limit(1000);
 
       if (dateFrom) tasksQuery = tasksQuery.gte('start_date', dateFrom.toISOString().split('T')[0]);
       if (dateTo) tasksQuery = tasksQuery.lte('end_date', dateTo.toISOString().split('T')[0]);

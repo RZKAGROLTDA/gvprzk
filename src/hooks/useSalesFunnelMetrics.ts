@@ -59,11 +59,12 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
 
       const dateFilter = getDateFilter();
 
-      // QUERY 1: Buscar TODAS as tasks necessárias em UMA única query
+      // QUERY 1: Tasks (limitado para Disk IO — hook legado, use useConsolidatedSalesMetrics)
       let tasksQuery = supabase
         .from('tasks')
-        .select('task_type, is_prospect, sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at');
-      
+        .select('task_type, is_prospect, sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at')
+        .limit(5000);
+
       if (dateFilter) {
         tasksQuery = tasksQuery.gte('created_at', dateFilter);
       }
@@ -77,11 +78,12 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
         tasksQuery = tasksQuery.eq('task_type', filters.activity);
       }
 
-      // QUERY 2: Buscar opportunities em UMA única query
+      // QUERY 2: Opportunities (limitado)
       let opportunitiesQuery = supabase
         .from('opportunities')
-        .select('status, valor_total_oportunidade, valor_venda_fechada, filial, created_at');
-      
+        .select('status, valor_total_oportunidade, valor_venda_fechada, filial, created_at')
+        .limit(5000);
+
       if (dateFilter) {
         opportunitiesQuery = opportunitiesQuery.gte('created_at', dateFilter);
       }
