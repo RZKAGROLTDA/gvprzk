@@ -43,6 +43,10 @@ export interface TaskEditData {
   finalKm?: number | null;
   equipment_list?: any;
 
+  // Prospect/loss reason data
+  prospectNotes?: string;
+  prospectNotesJustification?: string;
+
   // Sales data
   sales_confirmed?: boolean;
   sales_type?: string;
@@ -118,7 +122,7 @@ export const useTaskEditData = (taskId: string | null) => {
       // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list')
+        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification')
         .eq('id', taskId)
         .maybeSingle();
 
@@ -186,7 +190,10 @@ export const useTaskEditData = (taskId: string | null) => {
          sales_confirmed: taskData.sales_confirmed,
          sales_type: taskData.sales_type,
          sales_value: taskData.sales_value,
-         partial_sales_value: taskData.partial_sales_value
+         partial_sales_value: taskData.partial_sales_value,
+         // Prospect/loss reason data
+         prospectNotes: taskData.prospect_notes || '',
+         prospectNotesJustification: taskData.prospect_notes_justification || ''
        };
 
       // Fetch opportunity data
@@ -319,6 +326,12 @@ export const useTaskEditData = (taskId: string | null) => {
         }
         if (updates.status !== undefined) {
           taskUpdateData.status = updates.status;
+        }
+        if (updates.prospect_notes !== undefined) {
+          taskUpdateData.prospect_notes = updates.prospect_notes;
+        }
+        if (updates.prospect_notes_justification !== undefined) {
+          taskUpdateData.prospect_notes_justification = updates.prospect_notes_justification;
         }
 
         console.log('🔍 useTaskEditData: Atualizando tasks table com:', taskUpdateData);

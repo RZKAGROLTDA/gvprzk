@@ -116,6 +116,7 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     observacoes: '',
     status: 'prospect',
     prospectNotes: '',
+    prospectNotesJustification: '',
     products: [] as OpportunityItem[],
     // Campos adicionais da tarefa
     name: '',
@@ -152,7 +153,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
       filialAtendida: taskData.filialAtendida || '',
       observacoes: taskData.notas || '',
       status: getInitialStatus(),
-      prospectNotes: taskData.notas || '',
+      prospectNotes: taskData.prospectNotes || '',
+      prospectNotesJustification: taskData.prospectNotesJustification || '',
       products: (taskData.items || []).map(item => {
         // CRÍTICO: Para venda parcial, usar qtd_vendida como base
         // Para venda total, usar qtd_ofertada como base
@@ -308,6 +310,8 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
         cliente_email: formDataToProcess.customerEmail,
         filial: formDataToProcess.filial,
         observations: formDataToProcess.observacoes,
+        prospect_notes: formDataToProcess.prospectNotes || null,
+        prospect_notes_justification: formDataToProcess.prospectNotesJustification || null,
         task_type: mapTaskType(formDataToProcess.taskType),
         // Additional task fields
         name: formDataToProcess.name,
