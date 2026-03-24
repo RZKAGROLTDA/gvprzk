@@ -102,21 +102,16 @@ export const useTaskEditData = (taskId: string | null) => {
     setError(null);
 
     try {
-      // CRITICAL: Force complete session refresh to ensure auth.uid() is current
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError) {
-        console.error('Erro ao atualizar sessão:', refreshError);
-      }
-      
-      // Wait a moment for session to be fully updated
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Verify current session
+      // Verificar sessão - só refrescar se estiver próximo de expirar
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Sessão expirada. Faça login novamente.');
       }
-      
+      const fiveMinutes = 5 * 60 * 1000;
+      if (session.expires_at * 1000 - Date.now() < fiveMinutes) {
+        await supabase.auth.refreshSession();
+      }
+
       console.log('🔍 Session verified for user:', session.user.id);
       
       // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
@@ -354,102 +349,43 @@ export const useTaskEditData = (taskId: string | null) => {
       
       // REMOVIDO: Criação de nova oportunidade - isso é responsabilidade do ensureOpportunity no TaskEditModal
 
-      // Update items - try both opportunity_items and products
-      if (updates.items) {
-        // Usar o ID da oportunidade: o recém-criado (primeiro save) ou o já existente (edições)
+      // Update items - upsert em batch (1 query no lugar de N queries)
+      if (updates.items && updates.items.length > 0) {
         const effectiveOpportunityId = opportunityId || data.opportunity?.id;
 
-        for (const item of updates.items) {
-          if (effectiveOpportunityId) {
-            const qtdOfertada = item.qtd_ofertada || 0;
-            const qtdVendida  = item.qtd_vendida  || 0;
-            const precoUnit   = item.preco_unit   || 0;
+        if (effectiveOpportunityId) {
+          const { error: upsertError } = await supabase
+            .from('opportunity_items')
+            .upsert(
+              updates.items.map(item => ({
+                id:              item.id,
+                opportunity_id:  effectiveOpportunityId,
+                produto:         item.produto || 'Produto',
+                sku:             item.sku || '',
+                qtd_ofertada:    item.qtd_ofertada || 0,
+                qtd_vendida:     item.qtd_vendida || 0,
+                preco_unit:      item.preco_unit || 0,
+                updated_at:      new Date().toISOString()
+              }))
+            );
 
-            console.log('💾 SALVANDO ITEM:', {
-              itemId: item.id,
-              opportunityId: effectiveOpportunityId,
-              qtdOfertada,
-              qtdVendida,
-              precoUnit,
-              produto: item.produto
-            });
-
-            // UPDATE por id apenas (sem filtrar por opportunity_id).
-            const { data: updatedRows, error: updateError } = await supabase
-              .from('opportunity_items')
-              .update({
-                opportunity_id:   effectiveOpportunityId,
-                qtd_ofertada:     qtdOfertada,
-                qtd_vendida:      qtdVendida,
-                preco_unit:       precoUnit,
-                produto:          item.produto || 'Produto',
-                updated_at:       new Date().toISOString()
-              })
-              .eq('id', item.id)
-              .select('id');
-
-            console.log('💾 RESULTADO UPDATE:', {
-              itemId: item.id,
-              updatedRows: updatedRows?.length || 0,
-              updateError: updateError?.message
-            });
-
-            // Se nenhuma linha foi encontrada pelo id, o item não existe → INSERT
-            if (!updatedRows || updatedRows.length === 0) {
-              console.log('💾 UPDATE retornou 0 rows, tentando INSERT para item:', item.id);
-              const { error: insertError } = await supabase
-                .from('opportunity_items')
-                .insert({
-                  id:                item.id,
-                  opportunity_id:    effectiveOpportunityId,
-                  produto:           item.produto || 'Produto',
-                  sku:               item.sku || '',
-                  qtd_ofertada:      qtdOfertada,
-                  qtd_vendida:       qtdVendida,
-                  preco_unit:        precoUnit,
-                  updated_at:        new Date().toISOString()
-                });
-
-              if (insertError) {
-                console.warn('⚠️ INSERT falhou, tentando UPDATE forçado:', insertError.message);
-                const { data: forceRows, error: forceError } = await supabase
-                  .from('opportunity_items')
-                  .update({
-                    opportunity_id:   effectiveOpportunityId,
-                    qtd_ofertada:     qtdOfertada,
-                    qtd_vendida:      qtdVendida,
-                    preco_unit:       precoUnit,
-                    produto:          item.produto || 'Produto',
-                    updated_at:       new Date().toISOString()
-                  })
-                  .eq('id', item.id)
-                  .select('id');
-                  
-                console.log('💾 RESULTADO UPDATE FORÇADO:', {
-                  itemId: item.id,
-                  forceRows: forceRows?.length || 0,
-                  forceError: forceError?.message
-                });
-              } else {
-                console.log('✅ INSERT bem-sucedido para item:', item.id);
-              }
-            }
-          } else {
-            // Try products table
-            const { error: productError } = await supabase
+          if (upsertError) {
+            console.warn('Erro ao fazer upsert dos itens:', upsertError.message);
+          }
+        } else {
+          // Fallback: atualizar products table em batch
+          const productUpdates = updates.items.map(item =>
+            supabase
               .from('products')
               .update({
-                selected: item.qtd_vendida > 0,
-                quantity: item.qtd_vendida > 0 ? item.qtd_vendida : item.qtd_ofertada,
-                price: item.preco_unit,
+                selected:   item.qtd_vendida > 0,
+                quantity:   item.qtd_vendida > 0 ? item.qtd_vendida : item.qtd_ofertada,
+                price:      item.preco_unit,
                 updated_at: new Date().toISOString()
               })
-              .eq('id', item.id);
-
-            if (productError) {
-              console.warn('Erro ao atualizar products:', productError);
-            }
-          }
+              .eq('id', item.id)
+          );
+          await Promise.all(productUpdates);
         }
       }
 

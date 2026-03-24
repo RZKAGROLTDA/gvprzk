@@ -47,23 +47,24 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       schema: 'public',
       table: 'tasks',
       filter: `id=eq.${task.id}`
-    }, async payload => {
-      console.log('Task detail updated:', payload);
-      // Buscar dados atualizados da tarefa
-      const {
-        data: updatedTask
-      } = await supabase.from('tasks').select(`
-        *,
-        products(*),
-        reminders(*),
-        profiles!tasks_created_by_fkey(
-          name,
-          filiais(nome)
-        )
-      `).eq('id', task.id).single();
-      if (updatedTask) {
-        setCurrentTask(updatedTask as any);
-      }
+    }, payload => {
+      // Usar os dados do payload em vez de refazer query com joins pesados
+      const updated = payload.new as Record<string, any>;
+      setCurrentTask(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: updated.status ?? prev.status,
+          salesConfirmed: updated.sales_confirmed ?? prev.salesConfirmed,
+          salesType: updated.sales_type ?? prev.salesType,
+          salesValue: updated.sales_value ?? prev.salesValue,
+          partialSalesValue: updated.partial_sales_value ?? prev.partialSalesValue,
+          observations: updated.observations ?? prev.observations,
+          isProspect: updated.is_prospect ?? prev.isProspect,
+          prospectNotes: updated.prospect_notes ?? prev.prospectNotes,
+          priority: updated.priority ?? prev.priority,
+        };
+      });
     }).subscribe();
     return () => {
       supabase.removeChannel(channel);

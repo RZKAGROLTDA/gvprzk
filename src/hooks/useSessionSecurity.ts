@@ -115,9 +115,15 @@ export const useSessionSecurity = () => {
     if (!user) return;
 
     const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
+
+    // Throttle: só reseta o timer uma vez a cada 30 segundos
+    let lastReset = 0;
     const handleActivity = () => {
-      resetInactivityTimer();
+      const now = Date.now();
+      if (now - lastReset > 30_000) {
+        lastReset = now;
+        resetInactivityTimer();
+      }
     };
 
     // Add event listeners
@@ -144,7 +150,7 @@ export const useSessionSecurity = () => {
   useEffect(() => {
     if (!user) return;
 
-    const interval = setInterval(checkSessionHealth, 5 * 60 * 1000); // Every 5 minutes
+    const interval = setInterval(checkSessionHealth, 15 * 60 * 1000); // Every 15 minutes
     
     return () => clearInterval(interval);
   }, [user, checkSessionHealth]);
