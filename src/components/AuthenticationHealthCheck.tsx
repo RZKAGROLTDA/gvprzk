@@ -108,12 +108,9 @@ export const AuthenticationHealthCheck: React.FC = () => {
         return;
       }
 
-      queryClient.clear();
-      toast.success('✅ Sessão renovada! Recarregando...');
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      // Invalida seletivamente — não força reload completo da página
+      queryClient.invalidateQueries();
+      toast.success('✅ Sessão renovada com sucesso!');
       
     } catch (error) {
       console.error('Erro ao renovar sessão:', error);
@@ -126,13 +123,9 @@ export const AuthenticationHealthCheck: React.FC = () => {
 
   const handleClearCache = async () => {
     try {
-      queryClient.clear();
-      localStorage.removeItem('sb-wuvbrkbhunifudaewhng-auth-token');
-      toast.success('🗑️ Cache limpo! Recarregando...');
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      // Invalida queries seletivamente — não remove o token de auth nem faz reload
+      queryClient.invalidateQueries();
+      toast.success('🗑️ Cache de queries limpo!');
     } catch (error) {
       console.error('Erro ao limpar cache:', error);
       toast.error('❌ Erro ao limpar cache');

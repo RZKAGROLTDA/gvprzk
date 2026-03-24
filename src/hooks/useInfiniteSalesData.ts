@@ -74,12 +74,17 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
         const offset = (pageParam as number) * PAGE_SIZE;
 
         // Calcular datas de corte para filtro de período
-        let startDate: string | null = null;
+        // Sem período selecionado → padrão de 90 dias para evitar pull irrestrito
+        let startDate: string;
         if (filters?.period && filters.period !== 'all') {
           const daysAgo = parseInt(filters.period);
           const cutoffDate = new Date();
           cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
           startDate = cutoffDate.toISOString();
+        } else {
+          const defaultCutoff = new Date();
+          defaultCutoff.setDate(defaultCutoff.getDate() - 90);
+          startDate = defaultCutoff.toISOString();
         }
 
         // Mapear activity para array de task_types
@@ -99,7 +104,7 @@ export const useInfiniteSalesData = (filters?: SalesFilters) => {
           {
             p_limit: PAGE_SIZE,
             p_offset: offset,
-            p_start_date: startDate,
+            p_start_date: startDate, // nunca null — sempre há corte mínimo de 90 dias
             p_end_date: null,
             p_created_by: filters?.consultantId && filters.consultantId !== 'all' 
               ? filters.consultantId 

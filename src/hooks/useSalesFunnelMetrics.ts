@@ -46,7 +46,8 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['sales-funnel-metrics', filters],
     queryFn: async () => {
-      // Helper para aplicar filtros de data
+      // Helper para aplicar filtros de data — sempre aplica um corte mínimo de 90 dias
+      // para evitar buscar todo o histórico quando nenhum filtro for selecionado
       const getDateFilter = () => {
         if (filters?.period && filters.period !== 'all') {
           const daysAgo = parseInt(filters.period);
@@ -54,20 +55,21 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
           cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
           return cutoffDate.toISOString();
         }
-        return null;
+        // Sem filtro de período → padrão: últimos 90 dias
+        const defaultCutoff = new Date();
+        defaultCutoff.setDate(defaultCutoff.getDate() - 90);
+        return defaultCutoff.toISOString();
       };
 
       const dateFilter = getDateFilter();
 
-      // QUERY 1: Tasks (limitado para Disk IO — hook legado, use useConsolidatedSalesMetrics)
+      // QUERY 1: Tasks (hook legado — use useConsolidatedSalesMetrics para novos desenvolvimentos)
       let tasksQuery = supabase
         .from('tasks')
         .select('task_type, is_prospect, sales_type, sales_confirmed, sales_value, partial_sales_value, created_by, filial, created_at')
-        .limit(5000);
+        .gte('created_at', dateFilter)
+        .limit(1000);
 
-      if (dateFilter) {
-        tasksQuery = tasksQuery.gte('created_at', dateFilter);
-      }
       if (filters?.consultantId && filters.consultantId !== 'all') {
         tasksQuery = tasksQuery.eq('created_by', filters.consultantId);
       }
@@ -78,15 +80,13 @@ export const useSalesFunnelMetrics = (filters?: SalesFilters) => {
         tasksQuery = tasksQuery.eq('task_type', filters.activity);
       }
 
-      // QUERY 2: Opportunities (limitado)
+      // QUERY 2: Opportunities — mesmo corte de data da query 1
       let opportunitiesQuery = supabase
         .from('opportunities')
         .select('status, valor_total_oportunidade, valor_venda_fechada, filial, created_at')
-        .limit(5000);
+        .gte('created_at', dateFilter)
+        .limit(1000);
 
-      if (dateFilter) {
-        opportunitiesQuery = opportunitiesQuery.gte('created_at', dateFilter);
-      }
       if (filters?.filial && filters.filial !== 'all') {
         opportunitiesQuery = opportunitiesQuery.eq('filial', filters.filial);
       }

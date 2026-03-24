@@ -531,7 +531,10 @@ export const useTasksOptimized = (includeDetails = false) => {
     // Função para resetar filtros e cache
     resetAndRefresh: async () => {
       console.log('🔄 Reset completo com filtros...');
-      queryClient.clear(); // Limpa TUDO
+      // Invalidação seletiva — não nukar todo o cache (evita cascade de refetch)
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tasks });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.consultants });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.filiais });
       const result = await tasksQuery.refetch();
       console.log('✅ Reset completo concluído');
       return result;
