@@ -295,7 +295,7 @@ export const useOpportunityManager = () => {
         // Verificar também o estado final dos items
         const { data: finalItems } = await supabase
           .from('opportunity_items')
-          .select('*')
+          .select('id, qtd_vendida, qtd_ofertada, subtotal_vendido, subtotal_ofertado')
           .eq('opportunity_id', existingOpportunity.id);
           
         console.log('🎯 ESTADO FINAL DOS ITEMS:', finalItems?.map(item => ({
