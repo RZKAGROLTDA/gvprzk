@@ -915,7 +915,7 @@ export const SalesFunnel: React.FC = () => {
           <h1 className="text-3xl font-bold">Análise Gerencial</h1>
           <p className="text-muted-foreground">Análise de performance comercial e cobertura de carteira</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {filteredTasks.length} registros | {filiais.length} filiais
+            {totalCount} registros | {filiais.length} filiais
           </p>
         </div>
         
