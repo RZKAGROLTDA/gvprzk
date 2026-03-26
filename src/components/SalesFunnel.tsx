@@ -81,7 +81,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
-  const [itemsPerPage, setItemsPerPage] = useState<string>('all');
+  const [itemsPerPage, setItemsPerPage] = useState<string>('50');
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'migration'>('overview');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
