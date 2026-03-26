@@ -1720,14 +1720,13 @@ export type Database = {
           clientcode: string
           created_at: string
           created_by: string
-          documents: string[]
           email: string
           end_date: string
           end_time: string
-          equipment_list: Json
           equipment_quantity: number
           family_product: string
           filial: string
+          filial_atendida: string
           final_km: number
           id: string
           initial_km: number
@@ -1737,7 +1736,6 @@ export type Database = {
           observations: string
           partial_sales_value: number
           phone: string
-          photos: string[]
           priority: string
           property: string
           propertyhectares: number

@@ -42,23 +42,22 @@ export const useAllSalesData = (filters?: SalesFilters) => {
         ? new Date(Date.now() - parseInt(filters.period) * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-      // Usar RPC paginada para reduzir carga (evita get_secure_tasks_with_customer_protection = 500 linhas)
+      // Usar RPC filtrada (sem colunas pesadas: photos, documents, equipment_list)
+      // Filtros de period e filial aplicados no banco para reduzir rows retornados
       const SALES_TASKS_LIMIT = 300;
       const { data: allTasks, error: tasksError } = await supabase
-        .rpc('get_secure_tasks_paginated', { p_limit: SALES_TASKS_LIMIT, p_offset: 0 });
+        .rpc('get_secure_tasks_paginated_filtered', {
+          p_limit: SALES_TASKS_LIMIT,
+          p_offset: 0,
+          p_start_date: periodFilter || undefined,
+          p_filial: filters?.filial && filters.filial !== 'all' ? filters.filial : undefined,
+        });
       if (tasksError) throw tasksError;
 
-      // Aplicar filtros localmente
+      // Apenas filtros sem suporte nativo na RPC aplicados client-side
       let tasksData = allTasks || [];
-      
-      if (periodFilter) {
-        tasksData = tasksData.filter(task => task.created_at >= periodFilter);
-      }
       if (filters?.consultantId && filters.consultantId !== 'all') {
         tasksData = tasksData.filter(task => task.created_by === filters.consultantId);
-      }
-      if (filters?.filial && filters.filial !== 'all') {
-        tasksData = tasksData.filter(task => task.filial === filters.filial);
       }
       if (filters?.activity && filters.activity !== 'all') {
         tasksData = tasksData.filter(task => task.task_type === filters.activity);

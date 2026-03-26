@@ -37,10 +37,15 @@ export const useUnifiedSalesData = () => {
     queryKey: ['unified-sales-data'],
     queryFn: async () => {
       try {
-        // OTIMIZAÇÃO Disk IO: RPC em vez de direct table + join
-        const UNIFIED_SALES_LIMIT = 500;
+        // Usar RPC filtrada (sem colunas pesadas) com corte padrão de 90 dias
+        const UNIFIED_SALES_LIMIT = 300;
+        const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
         const { data: tasksData, error: tasksError } = await supabase
-          .rpc('get_secure_tasks_paginated', { p_limit: UNIFIED_SALES_LIMIT, p_offset: 0 });
+          .rpc('get_secure_tasks_paginated_filtered', {
+            p_limit: UNIFIED_SALES_LIMIT,
+            p_offset: 0,
+            p_start_date: ninetyDaysAgo,
+          });
 
         if (tasksError) throw tasksError;
         const tasks = (tasksData || []) as Array<Record<string, unknown>>;
