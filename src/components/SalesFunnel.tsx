@@ -76,7 +76,7 @@ interface ClientDetails {
 
 export const SalesFunnel: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('7');
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
