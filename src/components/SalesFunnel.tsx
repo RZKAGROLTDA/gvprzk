@@ -82,6 +82,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
   const [itemsPerPage, setItemsPerPage] = useState<string>('50');
+  const [displayPage, setDisplayPage] = useState<number>(1);
   const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'migration'>('overview');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
@@ -277,34 +278,40 @@ export const SalesFunnel: React.FC = () => {
         : isLoadingInfiniteData;
   const currentDataSource = infiniteSalesData || [];
 
+  // Resetar página de display quando filtros ou itemsPerPage mudam
+  React.useEffect(() => {
+    setDisplayPage(1);
+  }, [filters, itemsPerPage]);
+
   // Observer para scroll infinito - aba 'coverage' (Relatório)
   const observerTarget = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    // Somente aplicar infinite scroll na aba 'coverage'
     if (activeView !== 'coverage') return;
 
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          console.log('🔄 Carregando próxima página...');
+        if (!entries[0].isIntersecting) return;
+        const shownCount = itemsPerPage === 'all'
+          ? Infinity
+          : parseInt(itemsPerPage) * displayPage;
+        const hasMoreLoaded = shownCount < infiniteSalesData.length;
+        if (hasMoreLoaded) {
+          // Avança display sem nova query
+          setDisplayPage(p => p + 1);
+        } else if (hasNextPage && !isFetchingNextPage) {
+          // Busca próxima página no backend e avança display
           fetchNextPage();
+          setDisplayPage(p => p + 1);
         }
       },
       { threshold: 0.1 }
     );
 
     const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
-
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [activeView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+    if (currentTarget) observer.observe(currentTarget);
+    return () => { if (currentTarget) observer.unobserve(currentTarget); };
+  }, [activeView, hasNextPage, isFetchingNextPage, fetchNextPage, displayPage, itemsPerPage, infiniteSalesData.length]);
 
   // Observer para scroll infinito - aba 'details' (Detalhes dos Clientes)
   const clientDetailsObserverTarget = React.useRef<HTMLDivElement>(null);
@@ -1279,7 +1286,7 @@ export const SalesFunnel: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage))).map((task) => {
+                {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage) * displayPage)).map((task) => {
                   // Get opportunity values for this task.
                   // FIX: se a opportunity estiver com valor_total_oportunidade = 0 (ex.: Venda Perdida),
                   // usar o valor vindo dos dados da task/listagem (mesmo valor que aparece no modal).
@@ -1372,27 +1379,45 @@ export const SalesFunnel: React.FC = () => {
             </Table>
             
             <div className="mt-4 text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Mostrando {itemsPerPage === 'all' ? filteredTasks.length : Math.min(parseInt(itemsPerPage), filteredTasks.length)} de {filteredTasks.length} oportunidades{hasNextPage ? ` (${totalCount} disponíveis)` : ''}.
-                {hasNextPage && " Use os filtros para refinar a busca."}
-              </p>
-              {hasNextPage && itemsPerPage === 'all' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                >
-                  {isFetchingNextPage ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Carregando mais...
-                    </>
-                  ) : (
-                    'Carregar mais oportunidades'
-                  )}
-                </Button>
-              )}
+              {(() => {
+                const shown = itemsPerPage === 'all'
+                  ? filteredTasks.length
+                  : Math.min(parseInt(itemsPerPage) * displayPage, filteredTasks.length);
+                const hasMoreLoaded = shown < filteredTasks.length;
+                const hasMoreBackend = hasNextPage;
+                return (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Mostrando {shown} de {filteredTasks.length} oportunidades{hasMoreBackend ? ` (${totalCount} disponíveis)` : ''}.
+                      {(hasMoreLoaded || hasMoreBackend) && ' Use os filtros para refinar a busca.'}
+                    </p>
+                    {(hasMoreLoaded || hasMoreBackend) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isFetchingNextPage}
+                        onClick={() => {
+                          if (hasMoreLoaded) {
+                            setDisplayPage(p => p + 1);
+                          } else if (hasMoreBackend) {
+                            fetchNextPage();
+                            setDisplayPage(p => p + 1);
+                          }
+                        }}
+                      >
+                        {isFetchingNextPage ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Carregando mais...
+                          </>
+                        ) : (
+                          'Carregar mais oportunidades'
+                        )}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             
             {/* Observer para scroll infinito */}

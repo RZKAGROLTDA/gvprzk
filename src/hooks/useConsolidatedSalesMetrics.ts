@@ -46,6 +46,8 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
     queryKey: ['consolidated-sales-metrics', filters],
     queryFn: async () => {
       // Helper: janela de datas
+      // Sem período selecionado → padrão de 90 dias (igual ao useInfiniteSalesData)
+      // para manter consistência entre os cards de métricas e a tabela
       const getDateParams = () => {
         if (filters?.period && filters.period !== 'all') {
           const daysAgo = parseInt(filters.period);
@@ -57,7 +59,14 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
             p_end_date: end.toISOString(),
           };
         }
-        return { p_start_date: null, p_end_date: null };
+        // Default: últimos 90 dias
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - 90);
+        return {
+          p_start_date: start.toISOString(),
+          p_end_date: end.toISOString(),
+        };
       };
 
       // Helper: mapear filtro de atividade para task_type(s)
