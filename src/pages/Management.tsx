@@ -483,7 +483,7 @@ const Management: React.FC = () => {
               ) : roleSummary.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado.</p>
               ) : (
-                <Table>
+                <div className="overflow-x-auto"><Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo de Vendedor</TableHead>
