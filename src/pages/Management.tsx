@@ -362,9 +362,9 @@ const Management: React.FC = () => {
                       <TableBody>
                         {pagedSellers.map((s, i) => (
                           <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
-                            <TableCell className="font-medium">{s.seller_name}</TableCell>
-                            <TableCell><Badge variant={roleBadgeVariant(s.seller_role) as any}>{roleLabel(s.seller_role)}</Badge></TableCell>
-                            <TableCell>{s.filial || '—'}</TableCell>
+                            <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>
+                            <TableCell className="whitespace-nowrap"><Badge variant={roleBadgeVariant(s.seller_role) as any}>{roleLabel(s.seller_role)}</Badge></TableCell>
+                            <TableCell className="whitespace-nowrap">{s.filial || '—'}</TableCell>
                             <TableCell className="text-center">{Number(s.visitas)}</TableCell>
                             <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
                             <TableCell className="text-center">{Number(s.checklists)}</TableCell>
