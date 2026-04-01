@@ -366,7 +366,7 @@ const Management: React.FC = () => {
                             <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
                             <TableCell className="text-center">{Number(s.clientes_atendidos)}</TableCell>
                             <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(s.oportunidade_gerada))}</TableCell>
-                            <TableCell className="text-right font-bold text-green-600">{formatCurrency(Number(s.valor_convertido))}</TableCell>
+                            <TableCell className="text-right font-bold text-success">{formatCurrency(Number(s.valor_convertido))}</TableCell>
                             <TableCell className="text-center">
                               <Badge variant={Number(s.taxa_conversao) >= 30 ? 'success' : Number(s.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
                                 {Number(s.taxa_conversao).toFixed(1)}%
@@ -449,7 +449,7 @@ const Management: React.FC = () => {
                             <TableCell className="text-center">{Number(c.ligacoes)}</TableCell>
                             <TableCell className="text-center">{Number(c.checklists)}</TableCell>
                             <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(c.oportunidade_gerada))}</TableCell>
-                            <TableCell className="text-right font-bold text-green-600">{formatCurrency(Number(c.valor_convertido))}</TableCell>
+                            <TableCell className="text-right font-bold text-success">{formatCurrency(Number(c.valor_convertido))}</TableCell>
                             <TableCell>{statusBadge(c.status_cliente)}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {c.ultima_atividade ? format(new Date(c.ultima_atividade), 'dd/MM/yyyy') : '—'}
@@ -496,7 +496,7 @@ const Management: React.FC = () => {
                         <TableCell className="text-center font-medium">{r.count}</TableCell>
                         <TableCell className="text-center">{r.atividades}</TableCell>
                         <TableCell className="text-right font-semibold text-primary">{formatCurrency(r.oportunidade)}</TableCell>
-                        <TableCell className="text-right font-bold text-green-600">{formatCurrency(r.convertido)}</TableCell>
+                        <TableCell className="text-right font-bold text-success">{formatCurrency(r.convertido)}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant={r.taxa >= 30 ? 'success' : r.taxa >= 10 ? 'warning' : 'outline'}>
                             {r.taxa.toFixed(1)}%
@@ -553,7 +553,7 @@ const Management: React.FC = () => {
                             <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
                             <TableCell className="text-center">{Number(s.clientes_atendidos)}</TableCell>
                             <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(s.oportunidade_gerada))}</TableCell>
-                            <TableCell className="text-right font-bold text-green-600">{formatCurrency(Number(s.valor_convertido))}</TableCell>
+                            <TableCell className="text-right font-bold text-success">{formatCurrency(Number(s.valor_convertido))}</TableCell>
                             <TableCell className="text-center">
                               <Badge variant={Number(s.taxa_conversao) >= 30 ? 'success' : Number(s.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
                                 {Number(s.taxa_conversao).toFixed(1)}%
