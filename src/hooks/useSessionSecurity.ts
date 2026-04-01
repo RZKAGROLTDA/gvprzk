@@ -182,6 +182,6 @@ export const useSessionSecurity = () => {
 // Extend window type for TypeScript
 declare global {
   interface Window {
-    sessionTimeoutId: NodeJS.Timeout;
+    sessionTimeoutId: ReturnType<typeof setTimeout>;
   }
 }

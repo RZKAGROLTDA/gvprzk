@@ -351,8 +351,8 @@ export const mapTaskToStandardFields = (task: Task) => {
 
 // Function to calculate sales value - CORRIGIDO para usar calculadora unificada
 export const calculateSalesValue = (taskOrTasks: Task | Task[]): number => {
-  // Import dinâmico para evitar dependência circular
-  const { calculateTaskSalesValue, calculateTotalSalesValue } = require('./salesValueCalculator');
+  // Inline calculation to avoid circular dependency
+  const { calculateTaskSalesValue, calculateTotalSalesValue } = await import('./salesValueCalculator');
   
   if (Array.isArray(taskOrTasks)) {
     return calculateTotalSalesValue(taskOrTasks);
