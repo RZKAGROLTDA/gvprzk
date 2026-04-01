@@ -18,18 +18,22 @@ const formatCurrency = (v: number) =>
 const roleLabel = (role: string) => {
   const map: Record<string, string> = {
     consultant: 'Consultor de Vendas',
+    sales_consultant: 'Consultor de Vendas',
+    technical_consultant: 'Consultor Técnico',
     rac: 'RAC',
     supervisor: 'Supervisor',
     manager: 'Gerente',
-    admin: 'Admin',
+    admin: 'Gerente',
   };
-  return map[role] || role;
+  return map[role?.toLowerCase()] || role;
 };
 
 const roleBadgeVariant = (role: string) => {
-  if (role === 'rac') return 'warning';
-  if (role === 'consultant') return 'default';
-  if (role === 'supervisor') return 'secondary';
+  const r = role?.toLowerCase();
+  if (r === 'rac') return 'warning';
+  if (r === 'consultant' || r === 'sales_consultant' || r === 'technical_consultant') return 'default';
+  if (r === 'supervisor') return 'secondary';
+  if (r === 'manager' || r === 'admin') return 'outline';
   return 'outline';
 };
 
@@ -264,8 +268,9 @@ const Management: React.FC = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="consultant">Consultor de Vendas</SelectItem>
+                  <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                   <SelectItem value="rac">RAC</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -336,7 +341,7 @@ const Management: React.FC = () => {
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table className="min-w-[1200px]">
                       <TableHeader>
                         <TableRow>
                           <SortableHeader label="Vendedor" sortKey="seller_name" sort={sellerSort} onSort={() => toggleSort('seller_name', sellerSort, setSellerSort)} />
@@ -357,9 +362,9 @@ const Management: React.FC = () => {
                       <TableBody>
                         {pagedSellers.map((s, i) => (
                           <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
-                            <TableCell className="font-medium">{s.seller_name}</TableCell>
-                            <TableCell><Badge variant={roleBadgeVariant(s.seller_role) as any}>{roleLabel(s.seller_role)}</Badge></TableCell>
-                            <TableCell>{s.filial || '—'}</TableCell>
+                            <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>
+                            <TableCell className="whitespace-nowrap"><Badge variant={roleBadgeVariant(s.seller_role) as any}>{roleLabel(s.seller_role)}</Badge></TableCell>
+                            <TableCell className="whitespace-nowrap">{s.filial || '—'}</TableCell>
                             <TableCell className="text-center">{Number(s.visitas)}</TableCell>
                             <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
                             <TableCell className="text-center">{Number(s.checklists)}</TableCell>
@@ -420,7 +425,7 @@ const Management: React.FC = () => {
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table className="min-w-[1200px]">
                       <TableHeader>
                         <TableRow>
                           <SortableHeader label="Cliente" sortKey="client_name" sort={clientSort} onSort={() => toggleSort('client_name', clientSort, setClientSort)} />
@@ -440,10 +445,10 @@ const Management: React.FC = () => {
                       <TableBody>
                         {pagedClients.map((c, i) => (
                           <TableRow key={`${c.seller_id}-${c.client_name}-${i}`}>
-                            <TableCell className="font-medium">{c.client_name}</TableCell>
-                            <TableCell>{c.seller_name}</TableCell>
-                            <TableCell><Badge variant={roleBadgeVariant(c.seller_role) as any}>{roleLabel(c.seller_role)}</Badge></TableCell>
-                            <TableCell>{c.filial || '—'}</TableCell>
+                            <TableCell className="font-medium min-w-[150px]">{c.client_name}</TableCell>
+                            <TableCell className="min-w-[130px]">{c.seller_name}</TableCell>
+                            <TableCell className="whitespace-nowrap"><Badge variant={roleBadgeVariant(c.seller_role) as any}>{roleLabel(c.seller_role)}</Badge></TableCell>
+                            <TableCell className="whitespace-nowrap">{c.filial || '—'}</TableCell>
                             <TableCell className="text-center font-medium">{Number(c.total_atividades)}</TableCell>
                             <TableCell className="text-center">{Number(c.visitas)}</TableCell>
                             <TableCell className="text-center">{Number(c.ligacoes)}</TableCell>
@@ -478,7 +483,7 @@ const Management: React.FC = () => {
               ) : roleSummary.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado.</p>
               ) : (
-                <Table>
+                <div className="overflow-x-auto"><Table className="min-w-[800px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo de Vendedor</TableHead>
@@ -505,7 +510,7 @@ const Management: React.FC = () => {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </Table></div>
               )}
             </CardContent>
           </Card>
@@ -524,7 +529,7 @@ const Management: React.FC = () => {
                 <p className="text-center text-muted-foreground py-8">Nenhum RAC encontrado para os filtros selecionados.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="min-w-[1100px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Vendedor</TableHead>
@@ -546,8 +551,8 @@ const Management: React.FC = () => {
                         const oportPorAtiv = Number(s.total_atividades) > 0 ? Number(s.oportunidade_gerada) / Number(s.total_atividades) : 0;
                         return (
                           <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
-                            <TableCell className="font-medium">{s.seller_name}</TableCell>
-                            <TableCell>{s.filial || '—'}</TableCell>
+                            <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>
+                            <TableCell className="whitespace-nowrap">{s.filial || '—'}</TableCell>
                             <TableCell className="text-center">{Number(s.visitas)}</TableCell>
                             <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
                             <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
