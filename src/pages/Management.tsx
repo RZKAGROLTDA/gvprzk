@@ -268,8 +268,9 @@ const Management: React.FC = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="consultant">Consultor de Vendas</SelectItem>
+                  <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                   <SelectItem value="rac">RAC</SelectItem>
+                  <SelectItem value="supervisor">Supervisor</SelectItem>
                 </SelectContent>
               </Select>
             </div>
