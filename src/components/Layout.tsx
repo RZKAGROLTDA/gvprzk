@@ -153,6 +153,15 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                     className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
                   />
                 ))}
+
+                {canSeeManagement && managementItems.map(item => (
+                  <NavLink 
+                    key={item.path}
+                    item={item}
+                    isActive={isActive(item.path)}
+                    className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
+                  />
+                ))}
                 
                 {isAdmin && (
                   <>
