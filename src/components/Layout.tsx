@@ -3,7 +3,7 @@ import React, { memo, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, Settings, LogOut, Users, Building, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, LogOut, Users, Building, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useSessionSecurity } from '@/hooks/useSessionSecurity';
@@ -33,6 +33,13 @@ const useNavigationItems = () => {
         label: 'Relatórios'
       }
     ],
+    managementItems: [
+      {
+        path: '/management',
+        icon: BarChart3,
+        label: 'Análise Gerencial'
+      }
+    ],
     adminItems: [
       {
         path: '/users',
@@ -43,11 +50,6 @@ const useNavigationItems = () => {
         path: '/filiais',
         icon: Building,
         label: 'Filiais'
-      },
-      {
-        path: '/management',
-        icon: Settings,
-        label: 'Gestão'
       }
     ]
   }), []);
@@ -88,7 +90,8 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   // Initialize session security monitoring
   useSessionSecurity();
   
-  const { navItems, adminItems } = useNavigationItems();
+  const { navItems, managementItems, adminItems } = useNavigationItems();
+  const canSeeManagement = profile?.role === 'manager' || profile?.role === 'supervisor' || isAdmin;
   
   // Memoize active path check to prevent recalculation on every render
   const isActive = useMemo(() => (path: string) => location.pathname === path, [location.pathname]);
@@ -150,6 +153,15 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                     className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
                   />
                 ))}
+
+                {canSeeManagement && managementItems.map(item => (
+                  <NavLink 
+                    key={item.path}
+                    item={item}
+                    isActive={isActive(item.path)}
+                    className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
+                  />
+                ))}
                 
                 {isAdmin && (
                   <>
@@ -183,6 +195,15 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                   />
                 ))}
                 
+                {canSeeManagement && managementItems.map(item => (
+                  <NavLink 
+                    key={item.path}
+                    item={item}
+                    isActive={isActive(item.path)}
+                    className="flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap min-w-fit"
+                  />
+                ))}
+
                 {isAdmin && adminItems.map(item => (
                   <NavLink 
                     key={item.path}
