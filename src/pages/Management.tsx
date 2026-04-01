@@ -551,8 +551,8 @@ const Management: React.FC = () => {
                         const oportPorAtiv = Number(s.total_atividades) > 0 ? Number(s.oportunidade_gerada) / Number(s.total_atividades) : 0;
                         return (
                           <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
-                            <TableCell className="font-medium">{s.seller_name}</TableCell>
-                            <TableCell>{s.filial || '—'}</TableCell>
+                            <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>
+                            <TableCell className="whitespace-nowrap">{s.filial || '—'}</TableCell>
                             <TableCell className="text-center">{Number(s.visitas)}</TableCell>
                             <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
                             <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
