@@ -48,7 +48,7 @@ export const useUnifiedSalesData = () => {
           });
 
         if (tasksError) throw tasksError;
-        const tasks = (tasksData || []) as Array<Record<string, unknown>>;
+        const tasks = (tasksData || []) as Array<Record<string, any>>;
 
         if (tasks.length === 0) return [];
 

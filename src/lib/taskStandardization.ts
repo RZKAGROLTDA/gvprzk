@@ -349,16 +349,19 @@ export const mapTaskToStandardFields = (task: Task) => {
   return standardized;
 };
 
-// Function to calculate sales value - CORRIGIDO para usar calculadora unificada
+// Function to calculate sales value - inline to avoid circular dependency
 export const calculateSalesValue = (taskOrTasks: Task | Task[]): number => {
-  // Inline calculation to avoid circular dependency
-  const { calculateTaskSalesValue, calculateTotalSalesValue } = await import('./salesValueCalculator');
-  
   if (Array.isArray(taskOrTasks)) {
-    return calculateTotalSalesValue(taskOrTasks);
-  } else {
-    return calculateTaskSalesValue(taskOrTasks);
+    return taskOrTasks.reduce((sum, t) => sum + calculateSalesValue(t), 0);
   }
+  const task = taskOrTasks;
+  if (task.salesType === 'parcial' && task.salesConfirmed && task.partialSalesValue) {
+    return task.partialSalesValue;
+  }
+  if (task.salesType === 'ganho' && task.salesConfirmed) {
+    return typeof task.salesValue === 'number' ? task.salesValue : 0;
+  }
+  return typeof task.salesValue === 'number' ? task.salesValue : 0;
 };
 
 // Função para calcular estatísticas agregadas
