@@ -157,7 +157,7 @@ export const useEnhancedSecurityMonitor = () => {
   // Enhanced session monitoring
   useEffect(() => {
     let activityCount = 0;
-    let sessionTimer: NodeJS.Timeout;
+    let sessionTimer: ReturnType<typeof setTimeout>;
 
     const trackActivity = () => {
       activityCount++;

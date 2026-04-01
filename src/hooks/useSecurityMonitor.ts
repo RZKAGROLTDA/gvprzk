@@ -171,7 +171,7 @@ export const useSecurityMonitor = () => {
   // Monitor for suspicious patterns
   useEffect(() => {
     let rapidClickCount = 0;
-    let rapidClickTimer: NodeJS.Timeout;
+    let rapidClickTimer: ReturnType<typeof setTimeout>;
 
     const handleClick = () => {
       rapidClickCount++;

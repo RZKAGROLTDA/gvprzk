@@ -160,7 +160,7 @@ export const LoginForm: React.FC = () => {
 
   // Sistema de bloqueio temporário
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isBlocked && blockTimeLeft > 0) {
       interval = setInterval(() => {
         setBlockTimeLeft(prev => {
