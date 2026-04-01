@@ -89,15 +89,20 @@ const Management: React.FC = () => {
     const taskTypes = taskTypeFilter === 'all' ? undefined :
       taskTypeFilter === 'visita' ? ['prospection', 'visita'] : [taskTypeFilter];
 
+    // Supervisor must always filter by their own filial
+    const effectiveFilialValue = isSupervisor && !isManager && !isAdmin
+      ? (profile?.filial_nome || '')
+      : filial;
+
     return {
       startDate: start.toISOString(),
       endDate: end.toISOString(),
-      filial: filial,
+      filial: effectiveFilialValue,
       sellerRole: sellerRole,
       sellerId: sellerId,
       taskTypes: taskTypes,
     };
-  }, [period, filial, sellerRole, sellerId, taskTypeFilter]);
+  }, [period, filial, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, profile?.filial_nome]);
 
   // RAC-specific filters
   const racFilters: ManagementFilters = useMemo(() => ({
@@ -113,8 +118,7 @@ const Management: React.FC = () => {
   const { data: clientData = [], isLoading: clientLoading } = useClientDetails(clientFilters);
   const { data: racData = [], isLoading: racLoading } = useSellerSummary(racFilters);
 
-  // Supervisor: fix filial filter
-  const effectiveFilial = isSupervisor && !isManager && !isAdmin ? profile?.filial_nome || '' : filial;
+  // Supervisor filial filter is now applied in the filters useMemo above
   const showFilialFilter = isManager || isAdmin;
 
   // Sort helper

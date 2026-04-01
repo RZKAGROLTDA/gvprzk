@@ -42,14 +42,27 @@ export interface ClientDetail {
   ultima_atividade: string;
 }
 
-const buildParams = (filters: ManagementFilters) => ({
-  p_start_date: filters.startDate || null,
-  p_end_date: filters.endDate || null,
-  p_filial: filters.filial && filters.filial !== 'all' ? filters.filial : null,
-  p_seller_role: filters.sellerRole && filters.sellerRole !== 'all' ? filters.sellerRole : null,
-  p_seller_id: filters.sellerId && filters.sellerId !== 'all' ? filters.sellerId : null,
-  p_task_types: filters.taskTypes && filters.taskTypes.length > 0 ? filters.taskTypes : null,
-});
+const isNullFilter = (v: string | undefined | null): boolean => {
+  if (!v) return true;
+  const normalized = v.trim().toLowerCase();
+  return ['', 'all', 'todos', 'todas'].includes(normalized);
+};
+
+const buildParams = (filters: ManagementFilters) => {
+  const params = {
+    p_start_date: filters.startDate || null,
+    p_end_date: filters.endDate || null,
+    p_filial: isNullFilter(filters.filial) ? null : filters.filial!.trim(),
+    p_seller_role: isNullFilter(filters.sellerRole) ? null : filters.sellerRole!.trim(),
+    p_seller_id: isNullFilter(filters.sellerId) ? null : filters.sellerId!.trim(),
+    p_task_types: filters.taskTypes && filters.taskTypes.length > 0
+      && !filters.taskTypes.some(t => isNullFilter(t))
+      ? filters.taskTypes.map(t => t.trim())
+      : null,
+  };
+  console.log('[Management] RPC params:', params);
+  return params;
+};
 
 export const useSellerSummary = (filters: ManagementFilters) => {
   return useQuery({
