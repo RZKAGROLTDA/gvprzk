@@ -195,6 +195,15 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                   />
                 ))}
                 
+                {canSeeManagement && managementItems.map(item => (
+                  <NavLink 
+                    key={item.path}
+                    item={item}
+                    isActive={isActive(item.path)}
+                    className="flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap min-w-fit"
+                  />
+                ))}
+
                 {isAdmin && adminItems.map(item => (
                   <NavLink 
                     key={item.path}
