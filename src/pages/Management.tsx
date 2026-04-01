@@ -529,7 +529,7 @@ const Management: React.FC = () => {
                 <p className="text-center text-muted-foreground py-8">Nenhum RAC encontrado para os filtros selecionados.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="min-w-[1100px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Vendedor</TableHead>
