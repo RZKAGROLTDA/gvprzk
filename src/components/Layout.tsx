@@ -33,6 +33,13 @@ const useNavigationItems = () => {
         label: 'Relatórios'
       }
     ],
+    managementItems: [
+      {
+        path: '/management',
+        icon: BarChart3,
+        label: 'Análise Gerencial'
+      }
+    ],
     adminItems: [
       {
         path: '/users',
@@ -43,11 +50,6 @@ const useNavigationItems = () => {
         path: '/filiais',
         icon: Building,
         label: 'Filiais'
-      },
-      {
-        path: '/management',
-        icon: Settings,
-        label: 'Gestão'
       }
     ]
   }), []);
