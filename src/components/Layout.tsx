@@ -90,7 +90,8 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   // Initialize session security monitoring
   useSessionSecurity();
   
-  const { navItems, adminItems } = useNavigationItems();
+  const { navItems, managementItems, adminItems } = useNavigationItems();
+  const canSeeManagement = profile?.role === 'manager' || profile?.role === 'supervisor' || isAdmin;
   
   // Memoize active path check to prevent recalculation on every render
   const isActive = useMemo(() => (path: string) => location.pathname === path, [location.pathname]);
