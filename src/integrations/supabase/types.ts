@@ -1316,6 +1316,29 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_consolidated_sales_counts: {
+        Args: {
+          p_created_by?: string
+          p_end_date?: string
+          p_filial?: string
+          p_filial_atendida?: string
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          checklists_count: number
+          ligacoes_count: number
+          prospects_count: number
+          prospects_value: number
+          vendas_ganhas_count: number
+          vendas_ganhas_value: number
+          vendas_parciais_count: number
+          vendas_parciais_value: number
+          vendas_perdidas_count: number
+          vendas_perdidas_value: number
+          visitas_count: number
+        }[]
+      }
       get_filiais_for_registration: {
         Args: never
         Returns: {
@@ -1342,6 +1365,35 @@ export type Database = {
           id: string
           name: string
           role: string
+        }[]
+      }
+      get_performance_by_filial: {
+        Args: { p_date_from?: string; p_date_to?: string }
+        Returns: {
+          checklist: number
+          conversion_rate: number
+          filial_id: string
+          filial_nome: string
+          ligacoes: number
+          prospects: number
+          prospects_value: number
+          sales_value: number
+          visitas: number
+        }[]
+      }
+      get_performance_by_seller: {
+        Args: { p_date_from?: string; p_date_to?: string }
+        Returns: {
+          checklist: number
+          conversion_rate: number
+          ligacoes: number
+          prospects: number
+          prospects_value: number
+          sales_value: number
+          user_id: string
+          user_name: string
+          user_role: string
+          visitas: number
         }[]
       }
       get_prospects_aggregate: {
@@ -1799,6 +1851,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_security_audit_log_summary: {
+        Args: { p_since?: string }
+        Returns: {
+          max_created_at: string
+          min_created_at: string
+          total_count: number
+        }[]
+      }
       get_security_dashboard_data: {
         Args: never
         Returns: {
@@ -1806,6 +1866,15 @@ export type Database = {
           description: string
           metric_name: string
           metric_value: number
+        }[]
+      }
+      get_security_metrics_24h: {
+        Args: never
+        Returns: {
+          bulk_export_events: number
+          customer_access_events: number
+          high_risk_events: number
+          total_events: number
         }[]
       }
       get_supervisor_filial_id: { Args: { p_user_id: string }; Returns: string }
