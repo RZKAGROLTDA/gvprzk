@@ -18,18 +18,22 @@ const formatCurrency = (v: number) =>
 const roleLabel = (role: string) => {
   const map: Record<string, string> = {
     consultant: 'Consultor de Vendas',
+    sales_consultant: 'Consultor de Vendas',
+    technical_consultant: 'Consultor Técnico',
     rac: 'RAC',
     supervisor: 'Supervisor',
     manager: 'Gerente',
-    admin: 'Admin',
+    admin: 'Gerente',
   };
-  return map[role] || role;
+  return map[role?.toLowerCase()] || role;
 };
 
 const roleBadgeVariant = (role: string) => {
-  if (role === 'rac') return 'warning';
-  if (role === 'consultant') return 'default';
-  if (role === 'supervisor') return 'secondary';
+  const r = role?.toLowerCase();
+  if (r === 'rac') return 'warning';
+  if (r === 'consultant' || r === 'sales_consultant' || r === 'technical_consultant') return 'default';
+  if (r === 'supervisor') return 'secondary';
+  if (r === 'manager' || r === 'admin') return 'outline';
   return 'outline';
 };
 
