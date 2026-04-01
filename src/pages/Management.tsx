@@ -341,7 +341,7 @@ const Management: React.FC = () => {
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table className="min-w-[1200px]">
                       <TableHeader>
                         <TableRow>
                           <SortableHeader label="Vendedor" sortKey="seller_name" sort={sellerSort} onSort={() => toggleSort('seller_name', sellerSort, setSellerSort)} />
