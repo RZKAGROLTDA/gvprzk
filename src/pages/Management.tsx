@@ -1,260 +1,579 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Settings, FileText, Target, TrendingUp, Users, Building2, Plus, Edit, Trash2, Save, Eye } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
-interface Goal {
-  id: string;
-  title: string;
-  description: string;
-  target_value: number;
-  current_value: number;
-  period: string;
-  status: 'active' | 'completed' | 'paused';
-  created_at: string;
-}
-interface Report {
-  id: string;
-  title: string;
-  description: string;
-  type: 'monthly' | 'quarterly' | 'yearly';
-  content: string;
-  created_at: string;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useProfile } from '@/hooks/useProfile';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useSellerSummary, useClientDetails, useFiliais, type ManagementFilters } from '@/hooks/useManagementData';
+import { format } from 'date-fns';
+
+const formatCurrency = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+const roleLabel = (role: string) => {
+  const map: Record<string, string> = {
+    consultant: 'Consultor de Vendas',
+    rac: 'RAC',
+    supervisor: 'Supervisor',
+    manager: 'Gerente',
+    admin: 'Admin',
+  };
+  return map[role] || role;
+};
+
+const roleBadgeVariant = (role: string) => {
+  if (role === 'rac') return 'warning';
+  if (role === 'consultant') return 'default';
+  if (role === 'supervisor') return 'secondary';
+  return 'outline';
+};
+
+const statusBadge = (status: string) => {
+  const map: Record<string, { variant: any; label: string }> = {
+    Ganho: { variant: 'success', label: 'Ganho' },
+    Perdido: { variant: 'destructive', label: 'Perdido' },
+    Prospect: { variant: 'warning', label: 'Prospect' },
+    'Sem Oportunidade': { variant: 'outline', label: 'Sem Oportunidade' },
+  };
+  const s = map[status] || { variant: 'outline', label: status };
+  return <Badge variant={s.variant}>{s.label}</Badge>;
+};
+
+type SortDir = 'asc' | 'desc';
+
 const Management: React.FC = () => {
-  const {
-    user
-  } = useAuth();
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [newGoal, setNewGoal] = useState({
-    title: '',
-    description: '',
-    target_value: 0,
-    period: 'monthly'
-  });
-  const [showNewGoalForm, setShowNewGoalForm] = useState(false);
-  const loadGoals = async () => {
-    setLoading(true);
-    try {
-      // Por enquanto, vamos usar dados mockados já que não temos tabelas específicas para isso
-      setGoals([{
-        id: '1',
-        title: 'Meta de Visitas Mensais',
-        description: 'Atingir 100 visitas por mês em todas as filiais',
-        target_value: 100,
-        current_value: 75,
-        period: 'monthly',
-        status: 'active',
-        created_at: new Date().toISOString()
-      }, {
-        id: '2',
-        title: 'Meta de Conversão',
-        description: 'Alcançar 30% de taxa de conversão em oportunidades',
-        target_value: 30,
-        current_value: 25,
-        period: 'monthly',
-        status: 'active',
-        created_at: new Date().toISOString()
-      }]);
-      setReports([{
-        id: '1',
-        title: 'Relatório Mensal - Janeiro',
-        description: 'Desempenho geral do mês de Janeiro',
-        type: 'monthly',
-        content: 'Relatório detalhado das atividades...',
-        created_at: new Date().toISOString()
-      }]);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      toast.error('Erro ao carregar dados gerenciais');
-    } finally {
-      setLoading(false);
+  const { isManager, isAdmin, isSupervisor, role } = useUserRole();
+  const { profile } = useProfile();
+  const { consultants } = useFilteredConsultants();
+  const { data: filiais = [] } = useFiliais();
+
+  // Filters
+  const [period, setPeriod] = useState('90');
+  const [filial, setFilial] = useState('all');
+  const [sellerRole, setSellerRole] = useState('all');
+  const [sellerId, setSellerId] = useState('all');
+  const [taskTypeFilter, setTaskTypeFilter] = useState('all');
+  const [pageSize, setPageSize] = useState(20);
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState('vendedores');
+  const [selectedSellerForClients, setSelectedSellerForClients] = useState<string | null>(null);
+
+  // Sorting
+  const [sellerSort, setSellerSort] = useState<{ key: string; dir: SortDir }>({ key: 'valor_convertido', dir: 'desc' });
+  const [clientSort, setClientSort] = useState<{ key: string; dir: SortDir }>({ key: 'valor_convertido', dir: 'desc' });
+
+  // Pagination
+  const [sellerPage, setSellerPage] = useState(0);
+  const [clientPage, setClientPage] = useState(0);
+
+  // Build filters
+  const filters: ManagementFilters = useMemo(() => {
+    const end = new Date();
+    const start = new Date();
+    if (period !== 'all') {
+      start.setDate(start.getDate() - parseInt(period));
+    } else {
+      start.setFullYear(start.getFullYear() - 5);
     }
-  };
-  useEffect(() => {
-    if (user) {
-      loadGoals();
-    }
-  }, [user]);
-  const handleCreateGoal = async () => {
-    if (!newGoal.title || !newGoal.description) {
-      toast.error('Preencha todos os campos obrigatórios');
-      return;
-    }
-    const goal: Goal = {
-      id: Date.now().toString(),
-      ...newGoal,
-      current_value: 0,
-      status: 'active',
-      created_at: new Date().toISOString()
+
+    const taskTypes = taskTypeFilter === 'all' ? undefined :
+      taskTypeFilter === 'visita' ? ['prospection', 'visita'] : [taskTypeFilter];
+
+    return {
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      filial: filial,
+      sellerRole: sellerRole,
+      sellerId: sellerId,
+      taskTypes: taskTypes,
     };
-    setGoals([...goals, goal]);
-    setNewGoal({
-      title: '',
-      description: '',
-      target_value: 0,
-      period: 'monthly'
+  }, [period, filial, sellerRole, sellerId, taskTypeFilter]);
+
+  // RAC-specific filters
+  const racFilters: ManagementFilters = useMemo(() => ({
+    ...filters,
+    sellerRole: 'rac',
+  }), [filters]);
+
+  const { data: sellerData = [], isLoading: sellerLoading } = useSellerSummary(filters);
+  const clientFilters = useMemo(() => ({
+    ...filters,
+    sellerId: selectedSellerForClients || filters.sellerId,
+  }), [filters, selectedSellerForClients]);
+  const { data: clientData = [], isLoading: clientLoading } = useClientDetails(clientFilters);
+  const { data: racData = [], isLoading: racLoading } = useSellerSummary(racFilters);
+
+  // Supervisor: fix filial filter
+  const effectiveFilial = isSupervisor && !isManager && !isAdmin ? profile?.filial_nome || '' : filial;
+  const showFilialFilter = isManager || isAdmin;
+
+  // Sort helper
+  const sortData = <T extends Record<string, any>>(data: T[], sort: { key: string; dir: SortDir }) => {
+    return [...data].sort((a, b) => {
+      const va = a[sort.key] ?? 0;
+      const vb = b[sort.key] ?? 0;
+      if (typeof va === 'string') return sort.dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      return sort.dir === 'asc' ? (va as number) - (vb as number) : (vb as number) - (va as number);
     });
-    setShowNewGoalForm(false);
-    toast.success('Meta criada com sucesso!');
   };
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      active: 'default',
-      completed: 'secondary',
-      paused: 'outline'
-    };
-    const labels = {
-      active: 'Ativa',
-      completed: 'Concluída',
-      paused: 'Pausada'
-    };
-    return <Badge variant={variants[status as keyof typeof variants] as any}>
-        {labels[status as keyof typeof labels]}
-      </Badge>;
+
+  const toggleSort = (key: string, current: { key: string; dir: SortDir }, setter: (v: any) => void) => {
+    setter(current.key === key ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
   };
-  const getProgressPercentage = (current: number, target: number) => {
-    return target > 0 ? Math.min(current / target * 100, 100) : 0;
+
+  // Sorted & paginated
+  const sortedSellers = sortData(sellerData, sellerSort);
+  const pagedSellers = sortedSellers.slice(sellerPage * pageSize, (sellerPage + 1) * pageSize);
+  const sellerTotalPages = Math.ceil(sortedSellers.length / pageSize);
+
+  const sortedClients = sortData(clientData, clientSort);
+  const pagedClients = sortedClients.slice(clientPage * pageSize, (clientPage + 1) * pageSize);
+  const clientTotalPages = Math.ceil(sortedClients.length / pageSize);
+
+  // Role summary (aggregated from seller data)
+  const roleSummary = useMemo(() => {
+    const map = new Map<string, { count: number; atividades: number; oportunidade: number; convertido: number }>();
+    sellerData.forEach(s => {
+      const key = s.seller_role;
+      const prev = map.get(key) || { count: 0, atividades: 0, oportunidade: 0, convertido: 0 };
+      // Count unique sellers
+      map.set(key, {
+        count: prev.count + 1,
+        atividades: prev.atividades + Number(s.total_atividades),
+        oportunidade: prev.oportunidade + Number(s.oportunidade_gerada),
+        convertido: prev.convertido + Number(s.valor_convertido),
+      });
+    });
+    return Array.from(map.entries()).map(([role, v]) => ({
+      role,
+      ...v,
+      taxa: v.oportunidade > 0 ? (v.convertido / v.oportunidade * 100) : 0,
+    }));
+  }, [sellerData]);
+
+  // RAC sorted
+  const sortedRac = sortData(racData, { key: 'valor_convertido', dir: 'desc' });
+
+  const handleViewPortfolio = (sid: string) => {
+    setSelectedSellerForClients(sid);
+    setActiveTab('clientes');
+    setClientPage(0);
   };
-  return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
-          <h1 className="text-xl sm:text-2xl font-bold">Gestão</h1>
+
+  const SortableHeader = ({ label, sortKey, sort, onSort }: { label: string; sortKey: string; sort: { key: string; dir: SortDir }; onSort: () => void }) => (
+    <TableHead className="cursor-pointer select-none whitespace-nowrap" onClick={onSort}>
+      <div className="flex items-center gap-1">
+        {label}
+        <ArrowUpDown className={`h-3 w-3 ${sort.key === sortKey ? 'text-foreground' : 'text-muted-foreground/50'}`} />
+      </div>
+    </TableHead>
+  );
+
+  const Pagination = ({ page, totalPages, setPage }: { page: number; totalPages: number; setPage: (p: number) => void }) => (
+    totalPages > 1 ? (
+      <div className="flex items-center justify-between mt-4">
+        <span className="text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(page - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
+    ) : null
+  );
 
-      {/* Metas */}
+  return (
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-2">
+        <BarChart3 className="h-6 w-6" />
+        <h1 className="text-2xl font-bold">Análise Gerencial</h1>
+      </div>
+
+      {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Metas e Objetivos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {showNewGoalForm && (
-              <Card className="p-4 border-dashed">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="title">Título da Meta</Label>
-                    <Input
-                      id="title"
-                      value={newGoal.title}
-                      onChange={(e) => setNewGoal({...newGoal, title: e.target.value})}
-                      placeholder="Ex: Meta de Visitas Mensais"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="description">Descrição</Label>
-                    <Textarea
-                      id="description"
-                      value={newGoal.description}
-                      onChange={(e) => setNewGoal({...newGoal, description: e.target.value})}
-                      placeholder="Descreva a meta..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="target">Valor Alvo</Label>
-                    <Input
-                      id="target"
-                      type="number"
-                      value={newGoal.target_value}
-                      onChange={(e) => setNewGoal({...newGoal, target_value: Number(e.target.value)})}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleCreateGoal}>
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Meta
-                    </Button>
-                    <Button variant="outline" onClick={() => setShowNewGoalForm(false)}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {/* Período */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Período</label>
+              <Select value={period} onValueChange={v => { setPeriod(v); setSellerPage(0); setClientPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">Últimos 30 dias</SelectItem>
+                  <SelectItem value="60">Últimos 60 dias</SelectItem>
+                  <SelectItem value="90">Últimos 90 dias</SelectItem>
+                  <SelectItem value="180">Últimos 180 dias</SelectItem>
+                  <SelectItem value="365">Último ano</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Filial */}
+            {showFilialFilter && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Filial</label>
+                <Select value={filial} onValueChange={v => { setFilial(v); setSellerPage(0); setClientPage(0); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {filiais.map(f => (
+                      <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
-            
-            {!showNewGoalForm && (
-              <Button onClick={() => setShowNewGoalForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Meta
-              </Button>
+            {isSupervisor && !isManager && !isAdmin && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Filial</label>
+                <div className="h-10 flex items-center px-3 rounded-md border bg-muted text-sm">
+                  {profile?.filial_nome || 'Sua filial'}
+                </div>
+              </div>
             )}
 
-            <div className="grid gap-4">
-              {goals.map((goal) => (
-                <Card key={goal.id}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold">{goal.title}</h3>
-                      {getStatusBadge(goal.status)}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">{goal.description}</p>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progresso</span>
-                        <span>{goal.current_value} / {goal.target_value}</span>
-                      </div>
-                      <div className="w-full bg-secondary rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full transition-all"
-                          style={{ width: `${getProgressPercentage(goal.current_value, goal.target_value)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            {/* Tipo de Atividade */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Atividade</label>
+              <Select value={taskTypeFilter} onValueChange={v => { setTaskTypeFilter(v); setSellerPage(0); setClientPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="visita">Visita</SelectItem>
+                  <SelectItem value="ligacao">Ligação</SelectItem>
+                  <SelectItem value="checklist">Checklist</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tipo de Vendedor */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Vendedor</label>
+              <Select value={sellerRole} onValueChange={v => { setSellerRole(v); setSellerPage(0); setClientPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="consultant">Consultor de Vendas</SelectItem>
+                  <SelectItem value="rac">RAC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Vendedor */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Vendedor</label>
+              <Select value={sellerId} onValueChange={v => { setSellerId(v); setSellerPage(0); setClientPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {consultants.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Page size */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Itens por página</label>
+              <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setSellerPage(0); setClientPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Relatórios */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Relatórios Gerenciais
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            {reports.map((report) => (
-              <Card key={report.id}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold">{report.title}</h3>
-                      <p className="text-sm text-muted-foreground">{report.description}</p>
-                      <Badge variant="outline" className="mt-2">
-                        {report.type}
-                      </Badge>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedSellerForClients(null); }}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="vendedores">
+            <Users className="h-4 w-4 mr-1.5" />
+            Resumo por Vendedor
+          </TabsTrigger>
+          <TabsTrigger value="clientes">
+            <UserCheck className="h-4 w-4 mr-1.5" />
+            Clientes por Vendedor
+          </TabsTrigger>
+          <TabsTrigger value="cargos">
+            <BarChart3 className="h-4 w-4 mr-1.5" />
+            Resumo por Cargo
+          </TabsTrigger>
+          <TabsTrigger value="rac">
+            <BarChart3 className="h-4 w-4 mr-1.5" />
+            Resumo RAC
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ===== TAB: Resumo por Vendedor ===== */}
+        <TabsContent value="vendedores" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Resumo por Vendedor ({sortedSellers.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sellerLoading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+              ) : sortedSellers.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado para os filtros selecionados.</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <SortableHeader label="Vendedor" sortKey="seller_name" sort={sellerSort} onSort={() => toggleSort('seller_name', sellerSort, setSellerSort)} />
+                          <TableHead>Tipo</TableHead>
+                          <SortableHeader label="Filial" sortKey="filial" sort={sellerSort} onSort={() => toggleSort('filial', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Visitas" sortKey="visitas" sort={sellerSort} onSort={() => toggleSort('visitas', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Ligações" sortKey="ligacoes" sort={sellerSort} onSort={() => toggleSort('ligacoes', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Checklists" sortKey="checklists" sort={sellerSort} onSort={() => toggleSort('checklists', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Total Ativ." sortKey="total_atividades" sort={sellerSort} onSort={() => toggleSort('total_atividades', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Clientes" sortKey="clientes_atendidos" sort={sellerSort} onSort={() => toggleSort('clientes_atendidos', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Oport. Gerada" sortKey="oportunidade_gerada" sort={sellerSort} onSort={() => toggleSort('oportunidade_gerada', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Valor Convertido" sortKey="valor_convertido" sort={sellerSort} onSort={() => toggleSort('valor_convertido', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Conversão" sortKey="taxa_conversao" sort={sellerSort} onSort={() => toggleSort('taxa_conversao', sellerSort, setSellerSort)} />
+                          <SortableHeader label="Última Ativ." sortKey="ultima_atividade" sort={sellerSort} onSort={() => toggleSort('ultima_atividade', sellerSort, setSellerSort)} />
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pagedSellers.map((s, i) => (
+                          <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
+                            <TableCell className="font-medium">{s.seller_name}</TableCell>
+                            <TableCell><Badge variant={roleBadgeVariant(s.seller_role) as any}>{roleLabel(s.seller_role)}</Badge></TableCell>
+                            <TableCell>{s.filial || '—'}</TableCell>
+                            <TableCell className="text-center">{Number(s.visitas)}</TableCell>
+                            <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
+                            <TableCell className="text-center">{Number(s.checklists)}</TableCell>
+                            <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
+                            <TableCell className="text-center">{Number(s.clientes_atendidos)}</TableCell>
+                            <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(s.oportunidade_gerada))}</TableCell>
+                            <TableCell className="text-right font-bold text-green-600">{formatCurrency(Number(s.valor_convertido))}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={Number(s.taxa_conversao) >= 30 ? 'success' : Number(s.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
+                                {Number(s.taxa_conversao).toFixed(1)}%
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {s.ultima_atividade ? format(new Date(s.ultima_atividade), 'dd/MM/yyyy') : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => handleViewPortfolio(s.seller_id)}>
+                                <Eye className="h-4 w-4 mr-1" /> Ver Carteira
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                  <Pagination page={sellerPage} totalPages={sellerTotalPages} setPage={setSellerPage} />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== TAB: Clientes por Vendedor ===== */}
+        <TabsContent value="clientes" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  Clientes por Vendedor ({sortedClients.length})
+                  {selectedSellerForClients && (
+                    <span className="text-sm font-normal text-muted-foreground ml-2">
+                      — Filtrado por vendedor
+                    </span>
+                  )}
+                </CardTitle>
+                {selectedSellerForClients && (
+                  <Button variant="outline" size="sm" onClick={() => setSelectedSellerForClients(null)}>
+                    Limpar filtro de vendedor
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {clientLoading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+              ) : sortedClients.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado.</p>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <SortableHeader label="Cliente" sortKey="client_name" sort={clientSort} onSort={() => toggleSort('client_name', clientSort, setClientSort)} />
+                          <SortableHeader label="Vendedor" sortKey="seller_name" sort={clientSort} onSort={() => toggleSort('seller_name', clientSort, setClientSort)} />
+                          <TableHead>Tipo</TableHead>
+                          <SortableHeader label="Filial" sortKey="filial" sort={clientSort} onSort={() => toggleSort('filial', clientSort, setClientSort)} />
+                          <SortableHeader label="Total Ativ." sortKey="total_atividades" sort={clientSort} onSort={() => toggleSort('total_atividades', clientSort, setClientSort)} />
+                          <SortableHeader label="Visitas" sortKey="visitas" sort={clientSort} onSort={() => toggleSort('visitas', clientSort, setClientSort)} />
+                          <SortableHeader label="Ligações" sortKey="ligacoes" sort={clientSort} onSort={() => toggleSort('ligacoes', clientSort, setClientSort)} />
+                          <SortableHeader label="Checklists" sortKey="checklists" sort={clientSort} onSort={() => toggleSort('checklists', clientSort, setClientSort)} />
+                          <SortableHeader label="Oport. Gerada" sortKey="oportunidade_gerada" sort={clientSort} onSort={() => toggleSort('oportunidade_gerada', clientSort, setClientSort)} />
+                          <SortableHeader label="Valor Convertido" sortKey="valor_convertido" sort={clientSort} onSort={() => toggleSort('valor_convertido', clientSort, setClientSort)} />
+                          <TableHead>Status</TableHead>
+                          <SortableHeader label="Última Ativ." sortKey="ultima_atividade" sort={clientSort} onSort={() => toggleSort('ultima_atividade', clientSort, setClientSort)} />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pagedClients.map((c, i) => (
+                          <TableRow key={`${c.seller_id}-${c.client_name}-${i}`}>
+                            <TableCell className="font-medium">{c.client_name}</TableCell>
+                            <TableCell>{c.seller_name}</TableCell>
+                            <TableCell><Badge variant={roleBadgeVariant(c.seller_role) as any}>{roleLabel(c.seller_role)}</Badge></TableCell>
+                            <TableCell>{c.filial || '—'}</TableCell>
+                            <TableCell className="text-center font-medium">{Number(c.total_atividades)}</TableCell>
+                            <TableCell className="text-center">{Number(c.visitas)}</TableCell>
+                            <TableCell className="text-center">{Number(c.ligacoes)}</TableCell>
+                            <TableCell className="text-center">{Number(c.checklists)}</TableCell>
+                            <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(c.oportunidade_gerada))}</TableCell>
+                            <TableCell className="text-right font-bold text-green-600">{formatCurrency(Number(c.valor_convertido))}</TableCell>
+                            <TableCell>{statusBadge(c.status_cliente)}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {c.ultima_atividade ? format(new Date(c.ultima_atividade), 'dd/MM/yyyy') : '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <Pagination page={clientPage} totalPages={clientTotalPages} setPage={setClientPage} />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== TAB: Resumo por Cargo ===== */}
+        <TabsContent value="cargos" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Resumo por Cargo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sellerLoading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+              ) : roleSummary.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo de Vendedor</TableHead>
+                      <TableHead className="text-center">Qtd. Vendedores</TableHead>
+                      <TableHead className="text-center">Total de Atividades</TableHead>
+                      <TableHead className="text-right">Oportunidade Gerada</TableHead>
+                      <TableHead className="text-right">Valor Convertido</TableHead>
+                      <TableHead className="text-center">Taxa de Conversão</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {roleSummary.map(r => (
+                      <TableRow key={r.role}>
+                        <TableCell><Badge variant={roleBadgeVariant(r.role) as any}>{roleLabel(r.role)}</Badge></TableCell>
+                        <TableCell className="text-center font-medium">{r.count}</TableCell>
+                        <TableCell className="text-center">{r.atividades}</TableCell>
+                        <TableCell className="text-right font-semibold text-primary">{formatCurrency(r.oportunidade)}</TableCell>
+                        <TableCell className="text-right font-bold text-green-600">{formatCurrency(r.convertido)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={r.taxa >= 30 ? 'success' : r.taxa >= 10 ? 'warning' : 'outline'}>
+                            {r.taxa.toFixed(1)}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== TAB: Resumo RAC ===== */}
+        <TabsContent value="rac" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Resumo RAC ({sortedRac.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {racLoading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+              ) : sortedRac.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Nenhum RAC encontrado para os filtros selecionados.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Vendedor</TableHead>
+                        <TableHead>Filial</TableHead>
+                        <TableHead className="text-center">Visitas</TableHead>
+                        <TableHead className="text-center">Ligações</TableHead>
+                        <TableHead className="text-center">Total Ativ.</TableHead>
+                        <TableHead className="text-center">Clientes</TableHead>
+                        <TableHead className="text-right">Oport. Gerada</TableHead>
+                        <TableHead className="text-right">Valor Convertido</TableHead>
+                        <TableHead className="text-center">Conversão</TableHead>
+                        <TableHead className="text-right">Ticket Médio/Cliente</TableHead>
+                        <TableHead className="text-right">Oport./Atividade</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedRac.map((s, i) => {
+                        const ticketMedio = Number(s.clientes_atendidos) > 0 ? Number(s.valor_convertido) / Number(s.clientes_atendidos) : 0;
+                        const oportPorAtiv = Number(s.total_atividades) > 0 ? Number(s.oportunidade_gerada) / Number(s.total_atividades) : 0;
+                        return (
+                          <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
+                            <TableCell className="font-medium">{s.seller_name}</TableCell>
+                            <TableCell>{s.filial || '—'}</TableCell>
+                            <TableCell className="text-center">{Number(s.visitas)}</TableCell>
+                            <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
+                            <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
+                            <TableCell className="text-center">{Number(s.clientes_atendidos)}</TableCell>
+                            <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(s.oportunidade_gerada))}</TableCell>
+                            <TableCell className="text-right font-bold text-green-600">{formatCurrency(Number(s.valor_convertido))}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={Number(s.taxa_conversao) >= 30 ? 'success' : Number(s.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
+                                {Number(s.taxa_conversao).toFixed(1)}%
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">{formatCurrency(ticketMedio)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(oportPorAtiv)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
+
 export default Management;
