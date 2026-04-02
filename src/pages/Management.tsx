@@ -80,6 +80,8 @@ const Management: React.FC = () => {
   // Sorting
   const [sellerSort, setSellerSort] = useState<{ key: string; dir: SortDir }>({ key: 'valor_convertido', dir: 'desc' });
   const [clientSort, setClientSort] = useState<{ key: string; dir: SortDir }>({ key: 'valor_convertido', dir: 'desc' });
+  const [productSort, setProductSort] = useState<{ key: string; dir: SortDir }>({ key: 'oportunidade_gerada', dir: 'desc' });
+  const [productPage, setProductPage] = useState(0);
 
   // Pagination
   const [sellerPage, setSellerPage] = useState(0);
