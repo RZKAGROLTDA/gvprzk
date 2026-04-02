@@ -180,6 +180,10 @@ const Management: React.FC = () => {
   const pagedClients = sortedClients.slice(clientPage * pageSize, (clientPage + 1) * pageSize);
   const clientTotalPages = Math.ceil(sortedClients.length / pageSize);
 
+  const sortedProducts = sortData(productData, productSort);
+  const pagedProducts = sortedProducts.slice(productPage * pageSize, (productPage + 1) * pageSize);
+  const productTotalPages = Math.ceil(sortedProducts.length / pageSize);
+
   // Role summary (aggregated from seller data)
   const roleSummary = useMemo(() => {
     const map = new Map<string, { count: number; atividades: number; oportunidade: number; convertido: number }>();
