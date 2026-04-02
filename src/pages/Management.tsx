@@ -717,6 +717,74 @@ const Management: React.FC = () => {
             </Card>
           </TabsContent>
         )}
+
+        {/* ===== TAB: Análise por Produto (managers/supervisors only) ===== */}
+        {showProductTab && (
+          <TabsContent value="produtos" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Análise por Produto ({sortedProducts.length})</CardTitle>
+                  <div className="w-64">
+                    <Input
+                      placeholder="Filtrar por produto..."
+                      value={productFilter}
+                      onChange={e => { setProductFilter(e.target.value); setProductPage(0); }}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {productLoading ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+                ) : sortedProducts.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum dado de produto encontrado para os filtros selecionados.</p>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table className="min-w-[1100px]">
+                        <TableHeader>
+                          <TableRow>
+                            <SortableHeader label="Produto" sortKey="produto" sort={productSort} onSort={() => toggleSort('produto', productSort, setProductSort)} />
+                            <SortableHeader label="Clientes Ofertados" sortKey="clientes_ofertados" sort={productSort} onSort={() => toggleSort('clientes_ofertados', productSort, setProductSort)} />
+                            <SortableHeader label="Qtd. Atividades" sortKey="qtd_atividades" sort={productSort} onSort={() => toggleSort('qtd_atividades', productSort, setProductSort)} />
+                            <SortableHeader label="Oport. Gerada" sortKey="oportunidade_gerada" sort={productSort} onSort={() => toggleSort('oportunidade_gerada', productSort, setProductSort)} />
+                            <SortableHeader label="Valor Convertido" sortKey="valor_convertido" sort={productSort} onSort={() => toggleSort('valor_convertido', productSort, setProductSort)} />
+                            <SortableHeader label="Conversão" sortKey="taxa_conversao" sort={productSort} onSort={() => toggleSort('taxa_conversao', productSort, setProductSort)} />
+                            <SortableHeader label="Ticket Médio" sortKey="ticket_medio" sort={productSort} onSort={() => toggleSort('ticket_medio', productSort, setProductSort)} />
+                            <SortableHeader label="Última Oferta" sortKey="ultima_oferta" sort={productSort} onSort={() => toggleSort('ultima_oferta', productSort, setProductSort)} />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pagedProducts.map((p, i) => (
+                            <TableRow key={`${p.produto}-${i}`}>
+                              <TableCell className="font-medium min-w-[200px]">{p.produto}</TableCell>
+                              <TableCell className="text-center">{Number(p.clientes_ofertados)}</TableCell>
+                              <TableCell className="text-center">{Number(p.qtd_atividades)}</TableCell>
+                              <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(p.oportunidade_gerada))}</TableCell>
+                              <TableCell className="text-right font-bold text-success">{formatCurrency(Number(p.valor_convertido))}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={Number(p.taxa_conversao) >= 30 ? 'success' : Number(p.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
+                                  {Number(p.taxa_conversao).toFixed(1)}%
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">{formatCurrency(Number(p.ticket_medio))}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {p.ultima_oferta ? format(new Date(p.ultima_oferta), 'dd/MM/yyyy') : '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <Pagination page={productPage} totalPages={productTotalPages} setPage={setProductPage} />
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
