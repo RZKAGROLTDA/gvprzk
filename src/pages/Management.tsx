@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useSellerSummary, useClientDetails, useFiliais, type ManagementFilters } from '@/hooks/useManagementData';
@@ -52,9 +54,14 @@ type SortDir = 'asc' | 'desc';
 
 const Management: React.FC = () => {
   const { isManager, isAdmin, isSupervisor, role } = useUserRole();
+  const { user } = useAuth();
   const { profile } = useProfile();
   const { consultants } = useFilteredConsultants();
   const { data: filiais = [] } = useFiliais();
+
+  // Determine if user is a seller (consultant or RAC) — simplified view
+  const isSeller = !isManager && !isAdmin && !isSupervisor;
+  const currentUserId = user?.id || '';
 
   // Filters
   const [period, setPeriod] = useState('90');
@@ -94,15 +101,18 @@ const Management: React.FC = () => {
       ? (profile?.filial_nome || '')
       : filial;
 
+    // Seller always filters by own ID
+    const effectiveSellerId = isSeller ? currentUserId : sellerId;
+
     return {
       startDate: start.toISOString(),
       endDate: end.toISOString(),
       filial: effectiveFilialValue,
-      sellerRole: sellerRole,
-      sellerId: sellerId,
+      sellerRole: isSeller ? 'all' : sellerRole,
+      sellerId: effectiveSellerId,
       taskTypes: taskTypes,
     };
-  }, [period, filial, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, profile?.filial_nome]);
+  }, [period, filial, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, profile?.filial_nome]);
 
   // RAC-specific filters
   const racFilters: ManagementFilters = useMemo(() => ({
@@ -118,8 +128,22 @@ const Management: React.FC = () => {
   const { data: clientData = [], isLoading: clientLoading } = useClientDetails(clientFilters);
   const { data: racData = [], isLoading: racLoading } = useSellerSummary(racFilters);
 
-  // Supervisor filial filter is now applied in the filters useMemo above
   const showFilialFilter = isManager || isAdmin;
+  const showSellerFilter = !isSeller;
+  const showSellerRoleFilter = !isSeller;
+
+  // Seller KPI data (from sellerData which is auto-filtered for sellers)
+  const sellerKpi = useMemo(() => {
+    if (!isSeller || sellerData.length === 0) return null;
+    const s = sellerData[0]; // Single seller
+    return {
+      total_atividades: Number(s.total_atividades),
+      clientes_atendidos: Number(s.clientes_atendidos),
+      oportunidade_gerada: Number(s.oportunidade_gerada),
+      valor_convertido: Number(s.valor_convertido),
+      taxa_conversao: Number(s.taxa_conversao),
+    };
+  }, [isSeller, sellerData]);
 
   // Sort helper
   const sortData = <T extends Record<string, any>>(data: T[], sort: { key: string; dir: SortDir }) => {
@@ -150,7 +174,6 @@ const Management: React.FC = () => {
     sellerData.forEach(s => {
       const key = s.seller_role;
       const prev = map.get(key) || { count: 0, atividades: 0, oportunidade: 0, convertido: 0 };
-      // Count unique sellers
       map.set(key, {
         count: prev.count + 1,
         atividades: prev.atividades + Number(s.total_atividades),
@@ -204,8 +227,75 @@ const Management: React.FC = () => {
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <BarChart3 className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Análise Gerencial</h1>
+        <h1 className="text-2xl font-bold">
+          {isSeller ? 'Meus Resultados' : 'Análise Gerencial'}
+        </h1>
       </div>
+
+      {/* Seller KPI Cards */}
+      {isSeller && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Total de Atividades</span>
+              </div>
+              <p className="text-2xl font-bold">
+                {sellerLoading ? '...' : (sellerKpi?.total_atividades ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Clientes Atendidos</span>
+              </div>
+              <p className="text-2xl font-bold">
+                {sellerLoading ? '...' : (sellerKpi?.clientes_atendidos ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium text-muted-foreground">Oportunidade Gerada</span>
+              </div>
+              <p className="text-2xl font-bold text-primary">
+                {sellerLoading ? '...' : formatCurrency(sellerKpi?.oportunidade_gerada ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="h-4 w-4 text-success" />
+                <span className="text-xs font-medium text-muted-foreground">Valor Convertido</span>
+              </div>
+              <p className="text-2xl font-bold text-success">
+                {sellerLoading ? '...' : formatCurrency(sellerKpi?.valor_convertido ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Percent className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Taxa de Conversão</span>
+              </div>
+              <p className="text-2xl font-bold">
+                {sellerLoading ? '...' : (
+                  <Badge variant={(sellerKpi?.taxa_conversao ?? 0) >= 30 ? 'success' : (sellerKpi?.taxa_conversao ?? 0) >= 10 ? 'warning' : 'outline'} className="text-lg px-3 py-1">
+                    {(sellerKpi?.taxa_conversao ?? 0).toFixed(1)}%
+                  </Badge>
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -227,7 +317,7 @@ const Management: React.FC = () => {
               </Select>
             </div>
 
-            {/* Filial */}
+            {/* Filial - only for managers */}
             {showFilialFilter && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Filial</label>
@@ -265,33 +355,37 @@ const Management: React.FC = () => {
               </Select>
             </div>
 
-            {/* Tipo de Vendedor */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Vendedor</label>
-              <Select value={sellerRole} onValueChange={v => { setSellerRole(v); setSellerPage(0); setClientPage(0); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
-                  <SelectItem value="rac">RAC</SelectItem>
-                  <SelectItem value="supervisor">Supervisor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Tipo de Vendedor - hidden for sellers */}
+            {showSellerRoleFilter && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Vendedor</label>
+                <Select value={sellerRole} onValueChange={v => { setSellerRole(v); setSellerPage(0); setClientPage(0); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
+                    <SelectItem value="rac">RAC</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            {/* Vendedor */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Vendedor</label>
-              <Select value={sellerId} onValueChange={v => { setSellerId(v); setSellerPage(0); setClientPage(0); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {consultants.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Vendedor - hidden for sellers */}
+            {showSellerFilter && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Vendedor</label>
+                <Select value={sellerId} onValueChange={v => { setSellerId(v); setSellerPage(0); setClientPage(0); }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {consultants.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Page size */}
             <div>
@@ -312,30 +406,47 @@ const Management: React.FC = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedSellerForClients(null); }}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="vendedores">
-            <Users className="h-4 w-4 mr-1.5" />
-            Resumo por Vendedor
-          </TabsTrigger>
-          <TabsTrigger value="clientes">
-            <UserCheck className="h-4 w-4 mr-1.5" />
-            Clientes por Vendedor
-          </TabsTrigger>
-          <TabsTrigger value="cargos">
-            <BarChart3 className="h-4 w-4 mr-1.5" />
-            Resumo por Cargo
-          </TabsTrigger>
-          <TabsTrigger value="rac">
-            <BarChart3 className="h-4 w-4 mr-1.5" />
-            Resumo RAC
-          </TabsTrigger>
-        </TabsList>
+        {isSeller ? (
+          /* Simplified tabs for seller */
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="vendedores">
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              Meu Resumo
+            </TabsTrigger>
+            <TabsTrigger value="clientes">
+              <UserCheck className="h-4 w-4 mr-1.5" />
+              Meus Clientes
+            </TabsTrigger>
+          </TabsList>
+        ) : (
+          /* Full tabs for managers */
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="vendedores">
+              <Users className="h-4 w-4 mr-1.5" />
+              Resumo por Vendedor
+            </TabsTrigger>
+            <TabsTrigger value="clientes">
+              <UserCheck className="h-4 w-4 mr-1.5" />
+              Clientes por Vendedor
+            </TabsTrigger>
+            <TabsTrigger value="cargos">
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              Resumo por Cargo
+            </TabsTrigger>
+            <TabsTrigger value="rac">
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              Resumo RAC
+            </TabsTrigger>
+          </TabsList>
+        )}
 
-        {/* ===== TAB: Resumo por Vendedor ===== */}
+        {/* ===== TAB: Resumo por Vendedor / Meu Resumo ===== */}
         <TabsContent value="vendedores" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Resumo por Vendedor ({sortedSellers.length})</CardTitle>
+              <CardTitle className="text-lg">
+                {isSeller ? 'Meu Resumo de Atividades' : `Resumo por Vendedor (${sortedSellers.length})`}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {sellerLoading ? (
@@ -348,8 +459,8 @@ const Management: React.FC = () => {
                     <Table className="min-w-[1200px]">
                       <TableHeader>
                         <TableRow>
-                          <SortableHeader label="Vendedor" sortKey="seller_name" sort={sellerSort} onSort={() => toggleSort('seller_name', sellerSort, setSellerSort)} />
-                          <TableHead>Tipo</TableHead>
+                          {!isSeller && <SortableHeader label="Vendedor" sortKey="seller_name" sort={sellerSort} onSort={() => toggleSort('seller_name', sellerSort, setSellerSort)} />}
+                          {!isSeller && <TableHead>Tipo</TableHead>}
                           <SortableHeader label="Filial" sortKey="filial" sort={sellerSort} onSort={() => toggleSort('filial', sellerSort, setSellerSort)} />
                           <SortableHeader label="Visitas" sortKey="visitas" sort={sellerSort} onSort={() => toggleSort('visitas', sellerSort, setSellerSort)} />
                           <SortableHeader label="Ligações" sortKey="ligacoes" sort={sellerSort} onSort={() => toggleSort('ligacoes', sellerSort, setSellerSort)} />
@@ -360,14 +471,14 @@ const Management: React.FC = () => {
                           <SortableHeader label="Valor Convertido" sortKey="valor_convertido" sort={sellerSort} onSort={() => toggleSort('valor_convertido', sellerSort, setSellerSort)} />
                           <SortableHeader label="Conversão" sortKey="taxa_conversao" sort={sellerSort} onSort={() => toggleSort('taxa_conversao', sellerSort, setSellerSort)} />
                           <SortableHeader label="Última Ativ." sortKey="ultima_atividade" sort={sellerSort} onSort={() => toggleSort('ultima_atividade', sellerSort, setSellerSort)} />
-                          <TableHead>Ações</TableHead>
+                          {!isSeller && <TableHead>Ações</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {pagedSellers.map((s, i) => (
                           <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
-                            <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>
-                            <TableCell className="whitespace-nowrap"><Badge variant={roleBadgeVariant(s.seller_role) as any}>{roleLabel(s.seller_role)}</Badge></TableCell>
+                            {!isSeller && <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>}
+                            {!isSeller && <TableCell className="whitespace-nowrap"><Badge variant={roleBadgeVariant(s.seller_role) as any}>{roleLabel(s.seller_role)}</Badge></TableCell>}
                             <TableCell className="whitespace-nowrap">{s.filial || '—'}</TableCell>
                             <TableCell className="text-center">{Number(s.visitas)}</TableCell>
                             <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
@@ -384,11 +495,13 @@ const Management: React.FC = () => {
                             <TableCell className="text-sm text-muted-foreground">
                               {s.ultima_atividade ? format(new Date(s.ultima_atividade), 'dd/MM/yyyy') : '—'}
                             </TableCell>
-                            <TableCell>
-                              <Button variant="ghost" size="sm" onClick={() => handleViewPortfolio(s.seller_id)}>
-                                <Eye className="h-4 w-4 mr-1" /> Ver Carteira
-                              </Button>
-                            </TableCell>
+                            {!isSeller && (
+                              <TableCell>
+                                <Button variant="ghost" size="sm" onClick={() => handleViewPortfolio(s.seller_id)}>
+                                  <Eye className="h-4 w-4 mr-1" /> Ver Carteira
+                                </Button>
+                              </TableCell>
+                            )}
                           </TableRow>
                         ))}
                       </TableBody>
@@ -401,20 +514,20 @@ const Management: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* ===== TAB: Clientes por Vendedor ===== */}
+        {/* ===== TAB: Clientes por Vendedor / Meus Clientes ===== */}
         <TabsContent value="clientes" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
-                  Clientes por Vendedor ({sortedClients.length})
-                  {selectedSellerForClients && (
+                  {isSeller ? `Meus Clientes (${sortedClients.length})` : `Clientes por Vendedor (${sortedClients.length})`}
+                  {!isSeller && selectedSellerForClients && (
                     <span className="text-sm font-normal text-muted-foreground ml-2">
                       — Filtrado por vendedor
                     </span>
                   )}
                 </CardTitle>
-                {selectedSellerForClients && (
+                {!isSeller && selectedSellerForClients && (
                   <Button variant="outline" size="sm" onClick={() => setSelectedSellerForClients(null)}>
                     Limpar filtro de vendedor
                   </Button>
@@ -433,9 +546,9 @@ const Management: React.FC = () => {
                       <TableHeader>
                         <TableRow>
                           <SortableHeader label="Cliente" sortKey="client_name" sort={clientSort} onSort={() => toggleSort('client_name', clientSort, setClientSort)} />
-                          <SortableHeader label="Vendedor" sortKey="seller_name" sort={clientSort} onSort={() => toggleSort('seller_name', clientSort, setClientSort)} />
-                          <TableHead>Tipo</TableHead>
-                          <SortableHeader label="Filial" sortKey="filial" sort={clientSort} onSort={() => toggleSort('filial', clientSort, setClientSort)} />
+                          {!isSeller && <SortableHeader label="Vendedor" sortKey="seller_name" sort={clientSort} onSort={() => toggleSort('seller_name', clientSort, setClientSort)} />}
+                          {!isSeller && <TableHead>Tipo</TableHead>}
+                          {!isSeller && <SortableHeader label="Filial" sortKey="filial" sort={clientSort} onSort={() => toggleSort('filial', clientSort, setClientSort)} />}
                           <SortableHeader label="Total Ativ." sortKey="total_atividades" sort={clientSort} onSort={() => toggleSort('total_atividades', clientSort, setClientSort)} />
                           <SortableHeader label="Visitas" sortKey="visitas" sort={clientSort} onSort={() => toggleSort('visitas', clientSort, setClientSort)} />
                           <SortableHeader label="Ligações" sortKey="ligacoes" sort={clientSort} onSort={() => toggleSort('ligacoes', clientSort, setClientSort)} />
@@ -450,9 +563,9 @@ const Management: React.FC = () => {
                         {pagedClients.map((c, i) => (
                           <TableRow key={`${c.seller_id}-${c.client_name}-${i}`}>
                             <TableCell className="font-medium min-w-[150px]">{c.client_name}</TableCell>
-                            <TableCell className="min-w-[130px]">{c.seller_name}</TableCell>
-                            <TableCell className="whitespace-nowrap"><Badge variant={roleBadgeVariant(c.seller_role) as any}>{roleLabel(c.seller_role)}</Badge></TableCell>
-                            <TableCell className="whitespace-nowrap">{c.filial || '—'}</TableCell>
+                            {!isSeller && <TableCell className="min-w-[130px]">{c.seller_name}</TableCell>}
+                            {!isSeller && <TableCell className="whitespace-nowrap"><Badge variant={roleBadgeVariant(c.seller_role) as any}>{roleLabel(c.seller_role)}</Badge></TableCell>}
+                            {!isSeller && <TableCell className="whitespace-nowrap">{c.filial || '—'}</TableCell>}
                             <TableCell className="text-center font-medium">{Number(c.total_atividades)}</TableCell>
                             <TableCell className="text-center">{Number(c.visitas)}</TableCell>
                             <TableCell className="text-center">{Number(c.ligacoes)}</TableCell>
@@ -475,111 +588,115 @@ const Management: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* ===== TAB: Resumo por Cargo ===== */}
-        <TabsContent value="cargos" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Resumo por Cargo</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {sellerLoading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
-              ) : roleSummary.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado.</p>
-              ) : (
-                <div className="overflow-x-auto"><Table className="min-w-[800px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo de Vendedor</TableHead>
-                      <TableHead className="text-center">Qtd. Vendedores</TableHead>
-                      <TableHead className="text-center">Total de Atividades</TableHead>
-                      <TableHead className="text-right">Oportunidade Gerada</TableHead>
-                      <TableHead className="text-right">Valor Convertido</TableHead>
-                      <TableHead className="text-center">Taxa de Conversão</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {roleSummary.map(r => (
-                      <TableRow key={r.role}>
-                        <TableCell><Badge variant={roleBadgeVariant(r.role) as any}>{roleLabel(r.role)}</Badge></TableCell>
-                        <TableCell className="text-center font-medium">{r.count}</TableCell>
-                        <TableCell className="text-center">{r.atividades}</TableCell>
-                        <TableCell className="text-right font-semibold text-primary">{formatCurrency(r.oportunidade)}</TableCell>
-                        <TableCell className="text-right font-bold text-success">{formatCurrency(r.convertido)}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant={r.taxa >= 30 ? 'success' : r.taxa >= 10 ? 'warning' : 'outline'}>
-                            {r.taxa.toFixed(1)}%
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table></div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ===== TAB: Resumo RAC ===== */}
-        <TabsContent value="rac" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Resumo RAC ({sortedRac.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {racLoading ? (
-                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
-              ) : sortedRac.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Nenhum RAC encontrado para os filtros selecionados.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[1100px]">
+        {/* ===== TAB: Resumo por Cargo (managers only) ===== */}
+        {!isSeller && (
+          <TabsContent value="cargos" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Resumo por Cargo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {sellerLoading ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+                ) : roleSummary.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum dado encontrado.</p>
+                ) : (
+                  <div className="overflow-x-auto"><Table className="min-w-[800px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Vendedor</TableHead>
-                        <TableHead>Filial</TableHead>
-                        <TableHead className="text-center">Visitas</TableHead>
-                        <TableHead className="text-center">Ligações</TableHead>
-                        <TableHead className="text-center">Total Ativ.</TableHead>
-                        <TableHead className="text-center">Clientes</TableHead>
-                        <TableHead className="text-right">Oport. Gerada</TableHead>
+                        <TableHead>Tipo de Vendedor</TableHead>
+                        <TableHead className="text-center">Qtd. Vendedores</TableHead>
+                        <TableHead className="text-center">Total de Atividades</TableHead>
+                        <TableHead className="text-right">Oportunidade Gerada</TableHead>
                         <TableHead className="text-right">Valor Convertido</TableHead>
-                        <TableHead className="text-center">Conversão</TableHead>
-                        <TableHead className="text-right">Ticket Médio/Cliente</TableHead>
-                        <TableHead className="text-right">Oport./Atividade</TableHead>
+                        <TableHead className="text-center">Taxa de Conversão</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedRac.map((s, i) => {
-                        const ticketMedio = Number(s.clientes_atendidos) > 0 ? Number(s.valor_convertido) / Number(s.clientes_atendidos) : 0;
-                        const oportPorAtiv = Number(s.total_atividades) > 0 ? Number(s.oportunidade_gerada) / Number(s.total_atividades) : 0;
-                        return (
-                          <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
-                            <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>
-                            <TableCell className="whitespace-nowrap">{s.filial || '—'}</TableCell>
-                            <TableCell className="text-center">{Number(s.visitas)}</TableCell>
-                            <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
-                            <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
-                            <TableCell className="text-center">{Number(s.clientes_atendidos)}</TableCell>
-                            <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(s.oportunidade_gerada))}</TableCell>
-                            <TableCell className="text-right font-bold text-success">{formatCurrency(Number(s.valor_convertido))}</TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant={Number(s.taxa_conversao) >= 30 ? 'success' : Number(s.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
-                                {Number(s.taxa_conversao).toFixed(1)}%
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{formatCurrency(ticketMedio)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(oportPorAtiv)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
+                      {roleSummary.map(r => (
+                        <TableRow key={r.role}>
+                          <TableCell><Badge variant={roleBadgeVariant(r.role) as any}>{roleLabel(r.role)}</Badge></TableCell>
+                          <TableCell className="text-center font-medium">{r.count}</TableCell>
+                          <TableCell className="text-center">{r.atividades}</TableCell>
+                          <TableCell className="text-right font-semibold text-primary">{formatCurrency(r.oportunidade)}</TableCell>
+                          <TableCell className="text-right font-bold text-success">{formatCurrency(r.convertido)}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={r.taxa >= 30 ? 'success' : r.taxa >= 10 ? 'warning' : 'outline'}>
+                              {r.taxa.toFixed(1)}%
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  </Table></div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* ===== TAB: Resumo RAC (managers only) ===== */}
+        {!isSeller && (
+          <TabsContent value="rac" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Resumo RAC ({sortedRac.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {racLoading ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+                ) : sortedRac.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum RAC encontrado para os filtros selecionados.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[1100px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vendedor</TableHead>
+                          <TableHead>Filial</TableHead>
+                          <TableHead className="text-center">Visitas</TableHead>
+                          <TableHead className="text-center">Ligações</TableHead>
+                          <TableHead className="text-center">Total Ativ.</TableHead>
+                          <TableHead className="text-center">Clientes</TableHead>
+                          <TableHead className="text-right">Oport. Gerada</TableHead>
+                          <TableHead className="text-right">Valor Convertido</TableHead>
+                          <TableHead className="text-center">Conversão</TableHead>
+                          <TableHead className="text-right">Ticket Médio/Cliente</TableHead>
+                          <TableHead className="text-right">Oport./Atividade</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedRac.map((s, i) => {
+                          const ticketMedio = Number(s.clientes_atendidos) > 0 ? Number(s.valor_convertido) / Number(s.clientes_atendidos) : 0;
+                          const oportPorAtiv = Number(s.total_atividades) > 0 ? Number(s.oportunidade_gerada) / Number(s.total_atividades) : 0;
+                          return (
+                            <TableRow key={`${s.seller_id}-${s.filial}-${i}`}>
+                              <TableCell className="font-medium min-w-[150px]">{s.seller_name}</TableCell>
+                              <TableCell className="whitespace-nowrap">{s.filial || '—'}</TableCell>
+                              <TableCell className="text-center">{Number(s.visitas)}</TableCell>
+                              <TableCell className="text-center">{Number(s.ligacoes)}</TableCell>
+                              <TableCell className="text-center font-medium">{Number(s.total_atividades)}</TableCell>
+                              <TableCell className="text-center">{Number(s.clientes_atendidos)}</TableCell>
+                              <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(s.oportunidade_gerada))}</TableCell>
+                              <TableCell className="text-right font-bold text-success">{formatCurrency(Number(s.valor_convertido))}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={Number(s.taxa_conversao) >= 30 ? 'success' : Number(s.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
+                                  {Number(s.taxa_conversao).toFixed(1)}%
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">{formatCurrency(ticketMedio)}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(oportPorAtiv)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
