@@ -174,17 +174,3 @@ export const useFiliais = () => {
     refetchOnWindowFocus: false,
   });
 };
-  return useQuery({
-    queryKey: ['filiais-list'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('filiais')
-        .select('id, nome')
-        .order('nome');
-      if (error) throw error;
-      return data || [];
-    },
-    staleTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
-};
