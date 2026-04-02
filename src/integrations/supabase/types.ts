@@ -1367,6 +1367,17 @@ export type Database = {
           role: string
         }[]
       }
+      get_invitation_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          status: string
+          token: string
+        }[]
+      }
       get_management_client_details:
         | {
             Args: {
