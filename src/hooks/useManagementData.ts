@@ -119,6 +119,46 @@ export const useClientDetails = (filters: ManagementFilters) => {
   });
 };
 
+export interface ProductAnalysis {
+  produto: string;
+  clientes_ofertados: number;
+  qtd_atividades: number;
+  oportunidade_gerada: number;
+  valor_convertido: number;
+  taxa_conversao: number;
+  ticket_medio: number;
+  ultima_oferta: string;
+}
+
+export const useProductAnalysis = (filters: ManagementFilters & { product?: string }) => {
+  return useQuery({
+    queryKey: ['management-product-analysis', filters],
+    queryFn: async () => {
+      const params = {
+        p_start_date: filters.startDate || null,
+        p_end_date: filters.endDate || null,
+        p_filial: isNullFilter(filters.filial) ? null : filters.filial!.trim(),
+        p_task_types: filters.taskTypes && filters.taskTypes.length > 0
+          && !filters.taskTypes.some(t => isNullFilter(t))
+          ? filters.taskTypes.map(t => t.trim())
+          : null,
+        p_product: filters.product && filters.product.trim() ? filters.product.trim() : null,
+      };
+      
+      const { data, error } = await supabase.rpc(
+        'get_management_product_analysis' as any,
+        params
+      );
+      
+      if (error) throw error;
+      return (data || []) as unknown as ProductAnalysis[];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
 export const useFiliais = () => {
   return useQuery({
     queryKey: ['filiais-list'],

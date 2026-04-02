@@ -6,12 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
-import { useSellerSummary, useClientDetails, useFiliais, type ManagementFilters } from '@/hooks/useManagementData';
+import { useSellerSummary, useClientDetails, useFiliais, useProductAnalysis, type ManagementFilters } from '@/hooks/useManagementData';
 import { format } from 'date-fns';
 
 const formatCurrency = (v: number) =>
@@ -70,6 +71,7 @@ const Management: React.FC = () => {
   const [sellerId, setSellerId] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [pageSize, setPageSize] = useState(20);
+  const [productFilter, setProductFilter] = useState('');
 
   // Tabs
   const [activeTab, setActiveTab] = useState('vendedores');
@@ -78,6 +80,8 @@ const Management: React.FC = () => {
   // Sorting
   const [sellerSort, setSellerSort] = useState<{ key: string; dir: SortDir }>({ key: 'valor_convertido', dir: 'desc' });
   const [clientSort, setClientSort] = useState<{ key: string; dir: SortDir }>({ key: 'valor_convertido', dir: 'desc' });
+  const [productSort, setProductSort] = useState<{ key: string; dir: SortDir }>({ key: 'oportunidade_gerada', dir: 'desc' });
+  const [productPage, setProductPage] = useState(0);
 
   // Pagination
   const [sellerPage, setSellerPage] = useState(0);
@@ -128,6 +132,14 @@ const Management: React.FC = () => {
   const { data: clientData = [], isLoading: clientLoading } = useClientDetails(clientFilters);
   const { data: racData = [], isLoading: racLoading } = useSellerSummary(racFilters);
 
+  // Product analysis (only for managers/supervisors)
+  const productFilters = useMemo(() => ({
+    ...filters,
+    product: productFilter || undefined,
+  }), [filters, productFilter]);
+  const { data: productData = [], isLoading: productLoading } = useProductAnalysis(productFilters);
+  const showProductTab = !isSeller;
+
   const showFilialFilter = isManager || isAdmin;
   const showSellerFilter = !isSeller;
   const showSellerRoleFilter = !isSeller;
@@ -167,6 +179,10 @@ const Management: React.FC = () => {
   const sortedClients = sortData(clientData, clientSort);
   const pagedClients = sortedClients.slice(clientPage * pageSize, (clientPage + 1) * pageSize);
   const clientTotalPages = Math.ceil(sortedClients.length / pageSize);
+
+  const sortedProducts = sortData(productData, productSort);
+  const pagedProducts = sortedProducts.slice(productPage * pageSize, (productPage + 1) * pageSize);
+  const productTotalPages = Math.ceil(sortedProducts.length / pageSize);
 
   // Role summary (aggregated from seller data)
   const roleSummary = useMemo(() => {
@@ -420,7 +436,7 @@ const Management: React.FC = () => {
           </TabsList>
         ) : (
           /* Full tabs for managers */
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="vendedores">
               <Users className="h-4 w-4 mr-1.5" />
               Resumo por Vendedor
@@ -428,6 +444,10 @@ const Management: React.FC = () => {
             <TabsTrigger value="clientes">
               <UserCheck className="h-4 w-4 mr-1.5" />
               Clientes por Vendedor
+            </TabsTrigger>
+            <TabsTrigger value="produtos">
+              <Package className="h-4 w-4 mr-1.5" />
+              Análise por Produto
             </TabsTrigger>
             <TabsTrigger value="cargos">
               <BarChart3 className="h-4 w-4 mr-1.5" />
@@ -692,6 +712,74 @@ const Management: React.FC = () => {
                       </TableBody>
                     </Table>
                   </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* ===== TAB: Análise por Produto (managers/supervisors only) ===== */}
+        {showProductTab && (
+          <TabsContent value="produtos" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Análise por Produto ({sortedProducts.length})</CardTitle>
+                  <div className="w-64">
+                    <Input
+                      placeholder="Filtrar por produto..."
+                      value={productFilter}
+                      onChange={e => { setProductFilter(e.target.value); setProductPage(0); }}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {productLoading ? (
+                  <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
+                ) : sortedProducts.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhum dado de produto encontrado para os filtros selecionados.</p>
+                ) : (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table className="min-w-[1100px]">
+                        <TableHeader>
+                          <TableRow>
+                            <SortableHeader label="Produto" sortKey="produto" sort={productSort} onSort={() => toggleSort('produto', productSort, setProductSort)} />
+                            <SortableHeader label="Clientes Ofertados" sortKey="clientes_ofertados" sort={productSort} onSort={() => toggleSort('clientes_ofertados', productSort, setProductSort)} />
+                            <SortableHeader label="Qtd. Atividades" sortKey="qtd_atividades" sort={productSort} onSort={() => toggleSort('qtd_atividades', productSort, setProductSort)} />
+                            <SortableHeader label="Oport. Gerada" sortKey="oportunidade_gerada" sort={productSort} onSort={() => toggleSort('oportunidade_gerada', productSort, setProductSort)} />
+                            <SortableHeader label="Valor Convertido" sortKey="valor_convertido" sort={productSort} onSort={() => toggleSort('valor_convertido', productSort, setProductSort)} />
+                            <SortableHeader label="Conversão" sortKey="taxa_conversao" sort={productSort} onSort={() => toggleSort('taxa_conversao', productSort, setProductSort)} />
+                            <SortableHeader label="Ticket Médio" sortKey="ticket_medio" sort={productSort} onSort={() => toggleSort('ticket_medio', productSort, setProductSort)} />
+                            <SortableHeader label="Última Oferta" sortKey="ultima_oferta" sort={productSort} onSort={() => toggleSort('ultima_oferta', productSort, setProductSort)} />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pagedProducts.map((p, i) => (
+                            <TableRow key={`${p.produto}-${i}`}>
+                              <TableCell className="font-medium min-w-[200px]">{p.produto}</TableCell>
+                              <TableCell className="text-center">{Number(p.clientes_ofertados)}</TableCell>
+                              <TableCell className="text-center">{Number(p.qtd_atividades)}</TableCell>
+                              <TableCell className="text-right font-semibold text-primary">{formatCurrency(Number(p.oportunidade_gerada))}</TableCell>
+                              <TableCell className="text-right font-bold text-success">{formatCurrency(Number(p.valor_convertido))}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={Number(p.taxa_conversao) >= 30 ? 'success' : Number(p.taxa_conversao) >= 10 ? 'warning' : 'outline'}>
+                                  {Number(p.taxa_conversao).toFixed(1)}%
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">{formatCurrency(Number(p.ticket_medio))}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {p.ultima_oferta ? format(new Date(p.ultima_oferta), 'dd/MM/yyyy') : '—'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <Pagination page={productPage} totalPages={productTotalPages} setPage={setProductPage} />
+                  </>
                 )}
               </CardContent>
             </Card>

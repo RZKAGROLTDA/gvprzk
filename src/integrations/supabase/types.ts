@@ -1403,6 +1403,25 @@ export type Database = {
           visitas: number
         }[]
       }
+      get_management_product_analysis: {
+        Args: {
+          p_end_date?: string
+          p_filial?: string
+          p_product?: string
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          clientes_ofertados: number
+          oportunidade_gerada: number
+          produto: string
+          qtd_atividades: number
+          taxa_conversao: number
+          ticket_medio: number
+          ultima_oferta: string
+          valor_convertido: number
+        }[]
+      }
       get_management_seller_summary: {
         Args: {
           p_end_date?: string
