@@ -436,7 +436,7 @@ const Management: React.FC = () => {
           </TabsList>
         ) : (
           /* Full tabs for managers */
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="vendedores">
               <Users className="h-4 w-4 mr-1.5" />
               Resumo por Vendedor
@@ -444,6 +444,10 @@ const Management: React.FC = () => {
             <TabsTrigger value="clientes">
               <UserCheck className="h-4 w-4 mr-1.5" />
               Clientes por Vendedor
+            </TabsTrigger>
+            <TabsTrigger value="produtos">
+              <Package className="h-4 w-4 mr-1.5" />
+              Análise por Produto
             </TabsTrigger>
             <TabsTrigger value="cargos">
               <BarChart3 className="h-4 w-4 mr-1.5" />
