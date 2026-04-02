@@ -1378,108 +1378,56 @@ export type Database = {
           token: string
         }[]
       }
-      get_management_client_details:
-        | {
-            Args: {
-              p_end_date?: string
-              p_filial?: string
-              p_seller_id?: string
-              p_seller_role?: string
-              p_start_date?: string
-              p_task_types?: string[]
-            }
-            Returns: {
-              checklists: number
-              client_name: string
-              filial: string
-              ligacoes: number
-              oportunidade_gerada: number
-              seller_id: string
-              seller_name: string
-              seller_role: string
-              status_cliente: string
-              total_atividades: number
-              ultima_atividade: string
-              valor_convertido: number
-              visitas: number
-            }[]
-          }
-        | {
-            Args: {
-              p_end_date?: string
-              p_filial?: string
-              p_seller_id?: string
-              p_seller_role?: string
-              p_start_date?: string
-              p_task_types?: string[]
-            }
-            Returns: {
-              checklists: number
-              client_name: string
-              filial: string
-              ligacoes: number
-              oportunidade_gerada: number
-              seller_id: string
-              seller_name: string
-              seller_role: string
-              status_cliente: string
-              total_atividades: number
-              ultima_atividade: string
-              valor_convertido: number
-              visitas: number
-            }[]
-          }
-      get_management_seller_summary:
-        | {
-            Args: {
-              p_end_date?: string
-              p_filial?: string
-              p_seller_id?: string
-              p_seller_role?: string
-              p_start_date?: string
-              p_task_types?: string[]
-            }
-            Returns: {
-              checklists: number
-              clientes_atendidos: number
-              filial: string
-              ligacoes: number
-              oportunidade_gerada: number
-              seller_id: string
-              seller_name: string
-              seller_role: string
-              taxa_conversao: number
-              total_atividades: number
-              ultima_atividade: string
-              valor_convertido: number
-              visitas: number
-            }[]
-          }
-        | {
-            Args: {
-              p_end_date?: string
-              p_filial?: string
-              p_seller_id?: string
-              p_seller_role?: string
-              p_start_date?: string
-              p_task_types?: string[]
-            }
-            Returns: {
-              checklists: number
-              clientes_atendidos: number
-              filial: string
-              ligacoes: number
-              oportunidade_gerada: number
-              seller_id: string
-              seller_name: string
-              seller_role: string
-              taxa_conversao: number
-              total_atividades: number
-              ultima_atividade: string
-              valor_convertido: number
-              visitas: number
-            }[]
-          }
+      get_management_client_details: {
+        Args: {
+          p_end_date?: string
+          p_filial?: string
+          p_seller_id?: string
+          p_seller_role?: string
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          checklists: number
+          client_name: string
+          filial: string
+          ligacoes: number
+          oportunidade_gerada: number
+          seller_id: string
+          seller_name: string
+          seller_role: string
+          status_cliente: string
+          total_atividades: number
+          ultima_atividade: string
+          valor_convertido: number
+          visitas: number
+        }[]
+      }
+      get_management_seller_summary: {
+        Args: {
+          p_end_date?: string
+          p_filial?: string
+          p_seller_id?: string
+          p_seller_role?: string
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          checklists: number
+          clientes_atendidos: number
+          filial: string
+          ligacoes: number
+          oportunidade_gerada: number
+          seller_id: string
+          seller_name: string
+          seller_role: string
+          taxa_conversao: number
+          total_atividades: number
+          ultima_atividade: string
+          valor_convertido: number
+          visitas: number
+        }[]
+      }
       get_performance_by_filial: {
         Args: { p_date_from?: string; p_date_to?: string }
         Returns: {
