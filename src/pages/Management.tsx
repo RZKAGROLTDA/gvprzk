@@ -71,6 +71,7 @@ const Management: React.FC = () => {
   const [sellerId, setSellerId] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [pageSize, setPageSize] = useState(20);
+  const [productFilter, setProductFilter] = useState('');
 
   // Tabs
   const [activeTab, setActiveTab] = useState('vendedores');
