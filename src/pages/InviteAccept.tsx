@@ -34,7 +34,7 @@ const InviteAccept: React.FC = () => {
 
         const data = invitations?.find((inv: any) => inv.email === email) || null;
 
-        if (error) {
+        if (error || !data) {
           setError('Convite não encontrado ou inválido.');
           setLoading(false);
           return;
