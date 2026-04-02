@@ -91,7 +91,8 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   useSessionSecurity();
   
   const { navItems, managementItems, adminItems } = useNavigationItems();
-  const canSeeManagement = profile?.role === 'manager' || profile?.role === 'supervisor' || isAdmin;
+  // All roles can access Management - simplified view for consultants/RAC
+  const canSeeManagement = !!profile;
   
   // Memoize active path check to prevent recalculation on every render
   const isActive = useMemo(() => (path: string) => location.pathname === path, [location.pathname]);
