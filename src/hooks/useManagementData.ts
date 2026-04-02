@@ -68,10 +68,23 @@ export const useSellerSummary = (filters: ManagementFilters) => {
   return useQuery({
     queryKey: ['management-seller-summary', filters],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc(
+      const params = buildParams(filters);
+      
+      // DEBUG: Verificar sessão autenticada
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('[Management DEBUG] auth session exists:', !!sessionData?.session);
+      console.log('[Management DEBUG] auth user id:', sessionData?.session?.user?.id || 'NULL');
+      console.log('[Management DEBUG] seller_summary params:', JSON.stringify(params));
+      
+      const { data, error, status, statusText } = await supabase.rpc(
         'get_management_seller_summary' as any,
-        buildParams(filters)
+        params
       );
+      
+      console.log('[Management DEBUG] seller_summary response status:', status, statusText);
+      console.log('[Management DEBUG] seller_summary error:', error);
+      console.log('[Management DEBUG] seller_summary rows returned:', Array.isArray(data) ? data.length : 'not array', data);
+      
       if (error) throw error;
       return (data || []) as unknown as SellerSummary[];
     },
@@ -85,10 +98,18 @@ export const useClientDetails = (filters: ManagementFilters) => {
   return useQuery({
     queryKey: ['management-client-details', filters],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc(
+      const params = buildParams(filters);
+      console.log('[Management DEBUG] client_details params:', JSON.stringify(params));
+      
+      const { data, error, status, statusText } = await supabase.rpc(
         'get_management_client_details' as any,
-        buildParams(filters)
+        params
       );
+      
+      console.log('[Management DEBUG] client_details response status:', status, statusText);
+      console.log('[Management DEBUG] client_details error:', error);
+      console.log('[Management DEBUG] client_details rows returned:', Array.isArray(data) ? data.length : 'not array');
+      
       if (error) throw error;
       return (data || []) as unknown as ClientDetail[];
     },
