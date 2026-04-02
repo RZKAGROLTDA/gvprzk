@@ -132,6 +132,14 @@ const Management: React.FC = () => {
   const { data: clientData = [], isLoading: clientLoading } = useClientDetails(clientFilters);
   const { data: racData = [], isLoading: racLoading } = useSellerSummary(racFilters);
 
+  // Product analysis (only for managers/supervisors)
+  const productFilters = useMemo(() => ({
+    ...filters,
+    product: productFilter || undefined,
+  }), [filters, productFilter]);
+  const { data: productData = [], isLoading: productLoading } = useProductAnalysis(productFilters);
+  const showProductTab = !isSeller;
+
   const showFilialFilter = isManager || isAdmin;
   const showSellerFilter = !isSeller;
   const showSellerRoleFilter = !isSeller;
