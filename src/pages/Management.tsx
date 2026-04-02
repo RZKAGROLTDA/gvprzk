@@ -12,7 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
-import { useSellerSummary, useClientDetails, useFiliais, type ManagementFilters } from '@/hooks/useManagementData';
+import { useSellerSummary, useClientDetails, useFiliais, useProductAnalysis, type ManagementFilters } from '@/hooks/useManagementData';
 import { format } from 'date-fns';
 
 const formatCurrency = (v: number) =>
