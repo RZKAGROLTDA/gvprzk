@@ -28,13 +28,11 @@ const InviteAccept: React.FC = () => {
       }
 
       try {
-        // Check if invitation exists and is valid
-        const { data, error } = await supabase
-          .from('user_invitations')
-          .select('*')
-          .eq('token', token)
-          .eq('email', email)
-          .single();
+        // Check if invitation exists and is valid via secure RPC
+        const { data: invitations, error } = await supabase
+          .rpc('get_invitation_by_token', { p_token: token });
+
+        const data = invitations?.find((inv: any) => inv.email === email) || null;
 
         if (error) {
           setError('Convite não encontrado ou inválido.');
