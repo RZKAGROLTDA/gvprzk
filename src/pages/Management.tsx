@@ -175,12 +175,20 @@ const Management: React.FC = () => {
     setter(current.key === key ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
   };
 
-  // Sorted & paginated
-  const sortedSellers = sortData(sellerData, sellerSort);
-  const pagedSellers = sortedSellers.slice(sellerPage * pageSize, (sellerPage + 1) * pageSize);
-  const sellerTotalPages = Math.ceil(sortedSellers.length / pageSize);
+  // Client-side client name filter
+  const clientFilterLower = clientFilter.trim().toLowerCase();
+  const filterByClient = <T extends Record<string, any>>(data: T[], field: string) => {
+    if (!clientFilterLower) return data;
+    return data.filter(d => (d[field] || '').toString().toLowerCase().includes(clientFilterLower));
+  };
 
-  const sortedClients = sortData(clientData, clientSort);
+  // Sorted, filtered & paginated
+  const sortedSellers = sortData(sellerData, sellerSort);
+  const filteredSellers = filterByClient(sortedSellers, 'seller_name'); // sellers don't have client_name, but clientData does
+  const pagedSellers = filteredSellers.slice(sellerPage * pageSize, (sellerPage + 1) * pageSize);
+  const sellerTotalPages = Math.ceil(filteredSellers.length / pageSize);
+
+  const sortedClients = sortData(filterByClient(clientData, 'client_name'), clientSort);
   const pagedClients = sortedClients.slice(clientPage * pageSize, (clientPage + 1) * pageSize);
   const clientTotalPages = Math.ceil(sortedClients.length / pageSize);
 
