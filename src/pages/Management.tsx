@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package } from 'lucide-react';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
