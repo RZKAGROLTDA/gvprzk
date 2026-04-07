@@ -324,9 +324,11 @@ const Management: React.FC = () => {
             {/* Período */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Período</label>
-              <Select value={period} onValueChange={v => { setPeriod(v); setSellerPage(0); setClientPage(0); }}>
+            <Select value={period} onValueChange={v => { setPeriod(v); setSellerPage(0); setClientPage(0); setProductPage(0); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="0">Hoje</SelectItem>
+                  <SelectItem value="7">Últimos 7 dias</SelectItem>
                   <SelectItem value="30">Últimos 30 dias</SelectItem>
                   <SelectItem value="60">Últimos 60 dias</SelectItem>
                   <SelectItem value="90">Últimos 90 dias</SelectItem>
