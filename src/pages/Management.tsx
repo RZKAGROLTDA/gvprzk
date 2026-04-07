@@ -376,8 +376,21 @@ const Management: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Filtro por Cliente */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Cliente</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={clientFilter}
+                  onChange={e => { setClientFilter(e.target.value); setSellerPage(0); setClientPage(0); setProductPage(0); }}
+                  className="pl-8 h-10"
+                />
+              </div>
+            </div>
 
-            {/* Tipo de Vendedor - hidden for sellers */}
+
             {showSellerRoleFilter && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Vendedor</label>
