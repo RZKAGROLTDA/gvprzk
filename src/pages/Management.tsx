@@ -92,7 +92,10 @@ const Management: React.FC = () => {
   const filters: ManagementFilters = useMemo(() => {
     const end = new Date();
     const start = new Date();
-    if (period !== 'all') {
+    if (period === '0') {
+      // Hoje: início do dia atual
+      start.setHours(0, 0, 0, 0);
+    } else if (period !== 'all') {
       start.setDate(start.getDate() - parseInt(period));
     } else {
       start.setFullYear(start.getFullYear() - 5);
