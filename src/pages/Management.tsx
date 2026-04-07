@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package } from 'lucide-react';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -72,6 +72,7 @@ const Management: React.FC = () => {
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [pageSize, setPageSize] = useState(20);
   const [productFilter, setProductFilter] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
 
   // Tabs
   const [activeTab, setActiveTab] = useState('vendedores');
@@ -91,7 +92,10 @@ const Management: React.FC = () => {
   const filters: ManagementFilters = useMemo(() => {
     const end = new Date();
     const start = new Date();
-    if (period !== 'all') {
+    if (period === '0') {
+      // Hoje: início do dia atual
+      start.setHours(0, 0, 0, 0);
+    } else if (period !== 'all') {
       start.setDate(start.getDate() - parseInt(period));
     } else {
       start.setFullYear(start.getFullYear() - 5);
@@ -171,12 +175,20 @@ const Management: React.FC = () => {
     setter(current.key === key ? { key, dir: current.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' });
   };
 
-  // Sorted & paginated
-  const sortedSellers = sortData(sellerData, sellerSort);
-  const pagedSellers = sortedSellers.slice(sellerPage * pageSize, (sellerPage + 1) * pageSize);
-  const sellerTotalPages = Math.ceil(sortedSellers.length / pageSize);
+  // Client-side client name filter
+  const clientFilterLower = clientFilter.trim().toLowerCase();
+  const filterByClient = <T extends Record<string, any>>(data: T[], field: string) => {
+    if (!clientFilterLower) return data;
+    return data.filter(d => (d[field] || '').toString().toLowerCase().includes(clientFilterLower));
+  };
 
-  const sortedClients = sortData(clientData, clientSort);
+  // Sorted, filtered & paginated
+  const sortedSellers = sortData(sellerData, sellerSort);
+  const filteredSellers = filterByClient(sortedSellers, 'seller_name'); // sellers don't have client_name, but clientData does
+  const pagedSellers = filteredSellers.slice(sellerPage * pageSize, (sellerPage + 1) * pageSize);
+  const sellerTotalPages = Math.ceil(filteredSellers.length / pageSize);
+
+  const sortedClients = sortData(filterByClient(clientData, 'client_name'), clientSort);
   const pagedClients = sortedClients.slice(clientPage * pageSize, (clientPage + 1) * pageSize);
   const clientTotalPages = Math.ceil(sortedClients.length / pageSize);
 
@@ -320,9 +332,11 @@ const Management: React.FC = () => {
             {/* Período */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Período</label>
-              <Select value={period} onValueChange={v => { setPeriod(v); setSellerPage(0); setClientPage(0); }}>
+            <Select value={period} onValueChange={v => { setPeriod(v); setSellerPage(0); setClientPage(0); setProductPage(0); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="0">Hoje</SelectItem>
+                  <SelectItem value="7">Últimos 7 dias</SelectItem>
                   <SelectItem value="30">Últimos 30 dias</SelectItem>
                   <SelectItem value="60">Últimos 60 dias</SelectItem>
                   <SelectItem value="90">Últimos 90 dias</SelectItem>
@@ -370,8 +384,21 @@ const Management: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Filtro por Cliente */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Cliente</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={clientFilter}
+                  onChange={e => { setClientFilter(e.target.value); setSellerPage(0); setClientPage(0); setProductPage(0); }}
+                  className="pl-8 h-10"
+                />
+              </div>
+            </div>
 
-            {/* Tipo de Vendedor - hidden for sellers */}
+
             {showSellerRoleFilter && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Vendedor</label>
@@ -465,7 +492,7 @@ const Management: React.FC = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">
-                {isSeller ? 'Meu Resumo de Atividades' : `Resumo por Vendedor (${sortedSellers.length})`}
+                {isSeller ? 'Meu Resumo de Atividades' : `Resumo por Vendedor (${filteredSellers.length})`}
               </CardTitle>
             </CardHeader>
             <CardContent>
