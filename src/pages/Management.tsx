@@ -492,7 +492,7 @@ const Management: React.FC = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">
-                {isSeller ? 'Meu Resumo de Atividades' : `Resumo por Vendedor (${sortedSellers.length})`}
+                {isSeller ? 'Meu Resumo de Atividades' : `Resumo por Vendedor (${filteredSellers.length})`}
               </CardTitle>
             </CardHeader>
             <CardContent>
