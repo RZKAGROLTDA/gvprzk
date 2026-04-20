@@ -662,6 +662,87 @@ export type Database = {
           },
         ]
       }
+      task_followups: {
+        Row: {
+          activity_date: string
+          activity_type: Database["public"]["Enums"]["followup_activity_type"]
+          client_code: string | null
+          client_name: string
+          client_temperature:
+            | Database["public"]["Enums"]["client_temperature"]
+            | null
+          created_at: string
+          created_by: string
+          filial_id: string | null
+          followup_status: Database["public"]["Enums"]["followup_status"]
+          id: string
+          next_return_date: string | null
+          notes: string | null
+          priority: Database["public"]["Enums"]["followup_priority"]
+          responsible_user_id: string
+          return_notes: string | null
+          task_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          activity_date?: string
+          activity_type: Database["public"]["Enums"]["followup_activity_type"]
+          client_code?: string | null
+          client_name: string
+          client_temperature?:
+            | Database["public"]["Enums"]["client_temperature"]
+            | null
+          created_at?: string
+          created_by?: string
+          filial_id?: string | null
+          followup_status?: Database["public"]["Enums"]["followup_status"]
+          id?: string
+          next_return_date?: string | null
+          notes?: string | null
+          priority?: Database["public"]["Enums"]["followup_priority"]
+          responsible_user_id: string
+          return_notes?: string | null
+          task_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activity_date?: string
+          activity_type?: Database["public"]["Enums"]["followup_activity_type"]
+          client_code?: string | null
+          client_name?: string
+          client_temperature?:
+            | Database["public"]["Enums"]["client_temperature"]
+            | null
+          created_at?: string
+          created_by?: string
+          filial_id?: string | null
+          followup_status?: Database["public"]["Enums"]["followup_status"]
+          id?: string
+          next_return_date?: string | null
+          notes?: string | null
+          priority?: Database["public"]["Enums"]["followup_priority"]
+          responsible_user_id?: string
+          return_notes?: string | null
+          task_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_followups_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_followups_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           check_in_location: Json | null
@@ -2317,6 +2398,15 @@ export type Database = {
         | "sales_consultant"
         | "technical_consultant"
         | "admin"
+      client_temperature: "frio" | "morno" | "quente"
+      followup_activity_type:
+        | "visita"
+        | "ligacao"
+        | "checklist"
+        | "reuniao"
+        | "outro"
+      followup_priority: "baixa" | "media" | "alta"
+      followup_status: "pendente" | "concluido" | "cancelado" | "reagendado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2453,6 +2543,16 @@ export const Constants = {
         "technical_consultant",
         "admin",
       ],
+      client_temperature: ["frio", "morno", "quente"],
+      followup_activity_type: [
+        "visita",
+        "ligacao",
+        "checklist",
+        "reuniao",
+        "outro",
+      ],
+      followup_priority: ["baixa", "media", "alta"],
+      followup_status: ["pendente", "concluido", "cancelado", "reagendado"],
     },
   },
 } as const
