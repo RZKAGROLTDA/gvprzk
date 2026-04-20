@@ -34,6 +34,7 @@ import SecureRegistration from "./pages/SecureRegistration";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import CRM from "./pages/CRM";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -76,6 +77,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/create-call" element={<Layout><CreateCall /></Layout>} />
       <Route path="/create-workshop-checklist" element={<Layout><CreateWorkshopChecklist /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
+      <Route path="/crm" element={<Layout><CRM /></Layout>} />
       <Route path="/reports" element={<Layout><Reports /></Layout>} />
       <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
