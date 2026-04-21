@@ -639,7 +639,7 @@ const EntryRow: React.FC<{
       </TableCell>
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
-          <Select value={ruleId} onValueChange={setRuleId}>
+          <Select value={ruleId || undefined} onValueChange={setRuleId}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
