@@ -9,7 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Megaphone } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Plus, Megaphone, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   useCampaignRules,
@@ -17,7 +28,9 @@ import {
   useSearchCampaignClients,
   useCreateCampaignRule,
   useCreateCampaignClient,
+  useDeleteCampaignClient,
   useEnsureClientMaster,
+  type CampaignRule,
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
 
@@ -60,6 +73,7 @@ const Campaigns: React.FC = () => {
 const EntriesTab: React.FC = () => {
   const { data: entries, isLoading } = useCampaignClients();
   const { data: rules } = useCampaignRules();
+  const del = useDeleteCampaignClient();
   const [open, setOpen] = useState(false);
 
   const ruleMap = useMemo(() => {
@@ -100,8 +114,8 @@ const EntriesTab: React.FC = () => {
                   <TableHead className="text-right">Gatilho</TableHead>
                   <TableHead className="text-right">Abr</TableHead>
                   <TableHead className="text-right">Mai</TableHead>
-                  <TableHead className="text-right">Jun</TableHead>
                   <TableHead className="text-right">Compromisso</TableHead>
+                  <TableHead className="text-right w-16">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -115,8 +129,39 @@ const EntriesTab: React.FC = () => {
                     <TableCell className="text-right">{formatCurrency(e.campaign_trigger_value)}</TableCell>
                     <TableCell className="text-right">{formatPct(e.gained_april)}</TableCell>
                     <TableCell className="text-right">{formatPct(e.gained_may)}</TableCell>
-                    <TableCell className="text-right">{formatPct(e.gained_june)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(e.commitment_value)}</TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            aria-label="Remover lançamento"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover lançamento?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja remover o lançamento de{' '}
+                              <strong>{e.client_name}</strong>? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => del.mutate(e.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Remover
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -142,14 +187,28 @@ const NewEntryDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const [clientCode, setClientCode] = useState('');
   const [clientName, setClientName] = useState('');
-  const [filialId, setFilialId] = useState<string>(profile?.filial_id || '');
+  const [filialId, setFilialId] = useState<string>('');
   const [campaignRuleId, setCampaignRuleId] = useState<string>('');
-  const [triggerValue, setTriggerValue] = useState('');
-  const [aprilPct, setAprilPct] = useState('');
-  const [mayPct, setMayPct] = useState('');
-  const [junePct, setJunePct] = useState('');
-  const [commitment, setCommitment] = useState('');
   const [manualMode, setManualMode] = useState(false);
+
+  const activeRules = useMemo<CampaignRule[]>(
+    () =>
+      (rules || [])
+        .filter((r) => r.active)
+        .sort((a, b) => Number(a.trigger_min) - Number(b.trigger_min)),
+    [rules]
+  );
+
+  const selectedRule = useMemo(
+    () => activeRules.find((r) => r.id === campaignRuleId) || null,
+    [activeRules, campaignRuleId]
+  );
+
+  // Defaults derived from rule (locked fields)
+  const triggerValue = selectedRule ? Number(selectedRule.trigger_min) : 0;
+  const aprilPct = selectedRule ? Number(selectedRule.gained_april) : 0;
+  const mayPct = selectedRule ? Number(selectedRule.gained_may) : 0;
+  const commitment = selectedRule ? Number(selectedRule.commitment_value) : 0;
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300);
@@ -164,6 +223,19 @@ const NewEntryDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       .then(({ data }) => setFiliais(data || []));
   }, []);
 
+  // Set default filial from profile when available
+  useEffect(() => {
+    if (profile?.filial_id && !filialId) {
+      setFilialId(profile.filial_id);
+    }
+  }, [profile?.filial_id, filialId]);
+
+  const profileFilialName = useMemo(
+    () => filiais.find((f) => f.id === profile?.filial_id)?.nome,
+    [filiais, profile?.filial_id]
+  );
+  const hasDefaultFilial = !!profile?.filial_id;
+
   const selectClient = (c: { client_code: string; client_name: string }) => {
     setClientCode(c.client_code);
     setClientName(c.client_name);
@@ -173,19 +245,22 @@ const NewEntryDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const handleSubmit = async () => {
     if (!clientCode.trim() || !clientName.trim()) return;
-    if (manualMode) {
-      await ensureMaster.mutateAsync({ client_code: clientCode.trim(), client_name: clientName.trim() });
-    }
+    if (!selectedRule) return;
+    // Always ensure client exists in master table for future autocomplete
+    await ensureMaster.mutateAsync({
+      client_code: clientCode.trim(),
+      client_name: clientName.trim(),
+    });
     await create.mutateAsync({
-      campaign_rule_id: campaignRuleId || null,
+      campaign_rule_id: selectedRule.id,
       client_code: clientCode.trim(),
       client_name: clientName.trim(),
       filial_id: filialId || null,
-      campaign_trigger_value: parseFloat(triggerValue) || 0,
-      gained_april: parseFloat(aprilPct) || 0,
-      gained_may: parseFloat(mayPct) || 0,
-      gained_june: parseFloat(junePct) || 0,
-      commitment_value: parseFloat(commitment) || 0,
+      campaign_trigger_value: triggerValue,
+      gained_april: aprilPct,
+      gained_may: mayPct,
+      gained_june: 0,
+      commitment_value: commitment,
     });
     onClose();
   };
@@ -198,11 +273,19 @@ const NewEntryDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <DialogHeader>
         <DialogTitle>Novo Lançamento de Campanha</DialogTitle>
         <DialogDescription>
-          Busque o cliente ou cadastre manualmente. O vendedor é o usuário logado.
+          Busque o cliente, escolha o gatilho e o restante é preenchido pela regra.
         </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
+        {/* Vendedor (auto) */}
+        <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+          Vendedor:{' '}
+          <span className="font-medium text-foreground">
+            {profile?.name || 'Usuário logado'}
+          </span>
+        </div>
+
         {!manualMode && (
           <div className="space-y-2">
             <Label>Buscar Cliente</Label>
@@ -222,7 +305,12 @@ const NewEntryDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   >
                     <div className="font-medium">{r.client_name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {r.client_code} · {r.source === 'tasks' ? 'Histórico' : r.source === 'campaign' ? 'Campanha' : 'Mestre'}
+                      {r.client_code} ·{' '}
+                      {r.source === 'tasks'
+                        ? 'Histórico'
+                        : r.source === 'campaign'
+                        ? 'Campanha'
+                        : 'Mestre'}
                     </div>
                   </button>
                 ))}
@@ -278,61 +366,72 @@ const NewEntryDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Filial</Label>
-            <Select value={filialId} onValueChange={setFilialId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {filiais.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {hasDefaultFilial ? (
+              <Input value={profileFilialName || 'Filial padrão'} disabled className="bg-muted" />
+            ) : (
+              <Select value={filialId} onValueChange={setFilialId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filiais.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           <div>
-            <Label>Campanha</Label>
+            <Label>Gatilho / Comprou *</Label>
             <Select value={campaignRuleId} onValueChange={setCampaignRuleId}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione a regra" />
+                <SelectValue placeholder="Selecione o gatilho" />
               </SelectTrigger>
               <SelectContent>
-                {(rules || []).filter((r) => r.active).map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.campaign_name}
-                  </SelectItem>
-                ))}
+                {activeRules.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    Nenhuma regra ativa cadastrada
+                  </div>
+                ) : (
+                  activeRules.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {formatCurrency(Number(r.trigger_min))} — Abr {formatPct(Number(r.gained_april))} / Mai{' '}
+                      {formatPct(Number(r.gained_may))} / Comp.{' '}
+                      {formatCurrency(Number(r.commitment_value))}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Valor do Gatilho (R$)</Label>
-            <Input type="number" step="0.01" value={triggerValue} onChange={(e) => setTriggerValue(e.target.value)} />
-          </div>
-          <div>
-            <Label>Compromisso (R$)</Label>
-            <Input type="number" step="0.01" value={commitment} onChange={(e) => setCommitment(e.target.value)} />
-          </div>
-        </div>
-
+        {/* Auto-filled, read-only fields from selected rule */}
         <div className="grid grid-cols-3 gap-3">
           <div>
             <Label>Ganho Abril (%)</Label>
-            <Input type="number" step="0.01" value={aprilPct} onChange={(e) => setAprilPct(e.target.value)} />
+            <Input value={selectedRule ? aprilPct.toFixed(2) : ''} disabled className="bg-muted" />
           </div>
           <div>
             <Label>Ganho Maio (%)</Label>
-            <Input type="number" step="0.01" value={mayPct} onChange={(e) => setMayPct(e.target.value)} />
+            <Input value={selectedRule ? mayPct.toFixed(2) : ''} disabled className="bg-muted" />
           </div>
           <div>
-            <Label>Ganho Junho (%)</Label>
-            <Input type="number" step="0.01" value={junePct} onChange={(e) => setJunePct(e.target.value)} />
+            <Label>Compromisso (R$)</Label>
+            <Input
+              value={selectedRule ? formatCurrency(commitment) : ''}
+              disabled
+              className="bg-muted"
+            />
           </div>
         </div>
+        {selectedRule && (
+          <p className="text-xs text-muted-foreground">
+            Valores preenchidos automaticamente pela regra selecionada.
+          </p>
+        )}
       </div>
 
       <DialogFooter>
@@ -341,7 +440,13 @@ const NewEntryDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!clientCode.trim() || !clientName.trim() || create.isPending}
+          disabled={
+            !clientCode.trim() ||
+            !clientName.trim() ||
+            !selectedRule ||
+            create.isPending ||
+            ensureMaster.isPending
+          }
         >
           {create.isPending ? 'Salvando...' : 'Lançar'}
         </Button>
@@ -390,7 +495,6 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
                   <TableHead className="text-right">Gatilho Máx</TableHead>
                   <TableHead className="text-right">Abr</TableHead>
                   <TableHead className="text-right">Mai</TableHead>
-                  <TableHead className="text-right">Jun</TableHead>
                   <TableHead className="text-right">Compromisso</TableHead>
                   <TableHead>Ativa</TableHead>
                 </TableRow>
@@ -405,7 +509,6 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
                     </TableCell>
                     <TableCell className="text-right">{formatPct(r.gained_april)}</TableCell>
                     <TableCell className="text-right">{formatPct(r.gained_may)}</TableCell>
-                    <TableCell className="text-right">{formatPct(r.gained_june)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.commitment_value)}</TableCell>
                     <TableCell>
                       <Badge variant={r.active ? 'default' : 'secondary'}>
@@ -431,7 +534,6 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [tMax, setTMax] = useState('');
   const [april, setApril] = useState('');
   const [may, setMay] = useState('');
-  const [june, setJune] = useState('');
   const [commitment, setCommitment] = useState('');
   const [active, setActive] = useState(true);
 
@@ -443,7 +545,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       trigger_max: tMax.trim() === '' ? null : parseFloat(tMax),
       gained_april: parseFloat(april) || 0,
       gained_may: parseFloat(may) || 0,
-      gained_june: parseFloat(june) || 0,
+      gained_june: 0,
       commitment_value: parseFloat(commitment) || 0,
       active,
     });
@@ -455,7 +557,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <DialogHeader>
         <DialogTitle>Nova Regra de Campanha</DialogTitle>
         <DialogDescription>
-          Os percentuais (Abr/Mai/Jun) são em %. Deixe o gatilho máximo vazio para faixa aberta.
+          Os percentuais (Abr/Mai) são em %. Deixe o gatilho máximo vazio para faixa aberta.
         </DialogDescription>
       </DialogHeader>
 
@@ -482,7 +584,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Ganho Abril (%)</Label>
             <Input type="number" step="0.01" value={april} onChange={(e) => setApril(e.target.value)} />
@@ -490,10 +592,6 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <div>
             <Label>Ganho Maio (%)</Label>
             <Input type="number" step="0.01" value={may} onChange={(e) => setMay(e.target.value)} />
-          </div>
-          <div>
-            <Label>Ganho Junho (%)</Label>
-            <Input type="number" step="0.01" value={june} onChange={(e) => setJune(e.target.value)} />
           </div>
         </div>
 
