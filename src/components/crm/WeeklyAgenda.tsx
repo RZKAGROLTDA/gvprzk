@@ -122,11 +122,14 @@ export const WeeklyAgenda: React.FC = () => {
     enabled: !!user?.id && !!selectedDayISO,
     staleTime: 30_000,
     queryFn: async (): Promise<FollowupRow[]> => {
+      // Janela do dia local convertida para limites ISO seguros para timestamptz
+      const start = parseISODate(selectedDayISO!);
+      const end = addDays(start, 1);
       let q = supabase
         .from('task_followups')
         .select('*')
-        .gte('activity_date', `${selectedDayISO}T00:00:00`)
-        .lte('activity_date', `${selectedDayISO}T23:59:59`)
+        .gte('activity_date', start.toISOString())
+        .lt('activity_date', end.toISOString())
         .order('activity_date', { ascending: true });
       if (seller !== 'all') q = q.eq('responsible_user_id', seller);
       if (filial !== 'all') q = q.eq('filial_id', filial);
@@ -220,7 +223,11 @@ export const WeeklyAgenda: React.FC = () => {
 
       {/* Grade do calendário */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="h-44 animate-pulse rounded-lg bg-muted/50" />
+          ))}
+        </div>
       ) : (
         <div
           className={cn(
@@ -262,25 +269,31 @@ export const WeeklyAgenda: React.FC = () => {
 
           <div className="mt-4 space-y-2">
             {loadingDay ? (
-              <p className="text-sm text-muted-foreground">Carregando...</p>
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-md bg-muted/50" />
+                ))}
+              </div>
             ) : dayItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma atividade neste dia.</p>
+              <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+                Nenhuma atividade registrada neste dia.
+              </div>
             ) : (
               dayItems.map((f) => (
                 <Card key={f.id}>
                   <CardContent className="space-y-2 p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-medium">{f.client_name}</div>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{f.client_name}</div>
                         {f.client_code && (
-                          <div className="text-xs text-muted-foreground">{f.client_code}</div>
+                          <div className="truncate text-xs text-muted-foreground">Cód: {f.client_code}</div>
                         )}
                       </div>
-                      <Badge variant="outline">{f.activity_type}</Badge>
+                      <Badge variant="outline" className="shrink-0 capitalize">{f.activity_type}</Badge>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <Badge>{f.followup_status}</Badge>
-                      <Badge variant="outline">Prioridade: {f.priority}</Badge>
+                      <Badge variant="secondary" className="capitalize">{f.followup_status}</Badge>
+                      <Badge variant="outline" className="capitalize">Prio: {f.priority}</Badge>
                       <span className="text-muted-foreground">
                         Resp.: {consultantNameById.get(f.responsible_user_id) ?? '—'}
                       </span>
