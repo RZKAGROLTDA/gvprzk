@@ -78,11 +78,16 @@ const Campaigns: React.FC = () => {
       <Tabs defaultValue="entries" className="w-full">
         <TabsList>
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
+          <TabsTrigger value="summary">Resumo Vendedor</TabsTrigger>
           <TabsTrigger value="rules">Regras</TabsTrigger>
         </TabsList>
 
         <TabsContent value="entries" className="mt-6">
           <EntriesTab />
+        </TabsContent>
+
+        <TabsContent value="summary" className="mt-6">
+          <SellerSummaryTab />
         </TabsContent>
 
         <TabsContent value="rules" className="mt-6">
