@@ -146,6 +146,8 @@ export const ClientPortfolio: React.FC = () => {
         ? Math.floor((startOfDay(nextReturn).getTime() - today) / 86400000)
         : null;
 
+      const latestWithTask = sorted.find((i) => !!i.task_id) ?? null;
+
       result.push({
         key,
         client_name: last.client_name,
@@ -161,6 +163,7 @@ export const ClientPortfolio: React.FC = () => {
         priority: last.priority,
         temperature: last.client_temperature,
         total: items.length,
+        latest_task_id: latestWithTask?.task_id ?? null,
       });
     });
     return result;
