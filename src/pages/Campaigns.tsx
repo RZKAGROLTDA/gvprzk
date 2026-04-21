@@ -669,7 +669,7 @@ const EntryRow: React.FC<{
       <AutoCell value={formatCurrency(displayCommitment)} />
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
-          <Select value={filialId} onValueChange={setFilialId}>
+          <Select value={filialId || undefined} onValueChange={setFilialId}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Filial" />
             </SelectTrigger>
