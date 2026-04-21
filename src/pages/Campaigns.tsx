@@ -277,14 +277,14 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string }
   label,
   value,
 }) => (
-  <Card>
-    <CardContent className="p-4 flex items-center gap-3">
-      <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+  <Card className="border-border/60 shadow-sm">
+    <CardContent className="p-5 flex items-center gap-4">
+      <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-lg font-semibold truncate">{value}</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+        <p className="text-2xl font-semibold truncate leading-tight mt-0.5">{value}</p>
       </div>
     </CardContent>
   </Card>
