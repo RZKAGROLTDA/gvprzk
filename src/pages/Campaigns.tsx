@@ -379,6 +379,13 @@ const ClientAutocomplete: React.FC<{
     );
   }
 
+  const handleSelect = (r: { client_code: string; client_name: string }) => {
+    setOpen(false);
+    setSearch('');
+    setDebounced('');
+    onChange({ code: r.client_code, name: r.client_name });
+  };
+
   return (
     <div className="relative">
       <Input
@@ -399,12 +406,11 @@ const ClientAutocomplete: React.FC<{
               <button
                 type="button"
                 key={`${r.client_code}-${r.source}`}
-                onMouseDown={(ev) => ev.preventDefault()}
-                onClick={() => {
-                  onChange({ code: r.client_code, name: r.client_name });
-                  setSearch('');
-                  setOpen(false);
+                onMouseDown={(ev) => {
+                  ev.preventDefault();
+                  handleSelect(r);
                 }}
+                onClick={() => handleSelect(r)}
                 className="w-full text-left px-3 py-2 hover:bg-accent text-sm border-b last:border-b-0"
               >
                 <div className="font-medium">{r.client_name}</div>
