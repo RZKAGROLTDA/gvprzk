@@ -142,23 +142,23 @@ const EntriesTab: React.FC = () => {
     profile?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'supervisor';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Totalizadores */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           icon={<Users className="h-4 w-4" />}
-          label="Clientes lançados"
+          label="Clientes"
           value={String(totals.count)}
         />
         <StatCard
-          icon={<Wallet className="h-4 w-4" />}
-          label="Compromisso total"
-          value={formatCurrency(totals.totalCommitment)}
+          icon={<Target className="h-4 w-4" />}
+          label="Soma Gatilho"
+          value={formatCurrency(totals.totalTrigger)}
         />
         <StatCard
-          icon={<Target className="h-4 w-4" />}
-          label="Gatilho médio"
-          value={formatCurrency(totals.avgTrigger)}
+          icon={<Wallet className="h-4 w-4" />}
+          label="Soma Compromisso"
+          value={formatCurrency(totals.totalCommitment)}
         />
       </div>
 
