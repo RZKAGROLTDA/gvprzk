@@ -513,7 +513,7 @@ const NewEntryRow: React.FC<{
         <span className="text-sm text-muted-foreground truncate">{sellerName}</span>
       </TableCell>
       <TableCell className="py-2">
-        <Select value={ruleId || undefined} onValueChange={(v) => setRuleId(v)}>
+        <Select key={`rule-${resetKey}`} value={ruleId || undefined} onValueChange={(v) => setRuleId(v)}>
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Selecione o gatilho" />
           </SelectTrigger>
