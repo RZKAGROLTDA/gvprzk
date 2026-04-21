@@ -504,9 +504,12 @@ const NewEntryRow: React.FC<{
   const canAdd = !!client && !!selectedRule && !create.isPending;
 
   return (
-    <TableRow className="bg-accent/30 hover:bg-accent/30 align-top">
-      <TableCell className="py-2">
-        <ClientAutocomplete value={client} onChange={setClient} />
+    <TableRow className="bg-primary/5 hover:bg-primary/5 align-top border-b-2 border-primary/20">
+      <TableCell className="py-3">
+        <div className="space-y-1.5">
+          <span className="text-[10px] uppercase tracking-wider font-semibold text-primary">Novo lançamento</span>
+          <ClientAutocomplete value={client} onChange={setClient} />
+        </div>
       </TableCell>
       <TableCell className="py-2">
         <Select
