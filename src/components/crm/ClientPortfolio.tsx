@@ -305,11 +305,15 @@ export const ClientPortfolio: React.FC = () => {
 
       {/* Cards */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-56 animate-pulse rounded-lg bg-muted/50" />
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Nenhum cliente encontrado.
+            Nenhum cliente encontrado com os filtros atuais.
           </CardContent>
         </Card>
       ) : (
