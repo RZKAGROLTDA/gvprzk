@@ -143,27 +143,6 @@ export type Database = {
         }
         Relationships: []
       }
-      diag_results: {
-        Row: {
-          created_at: string | null
-          id: number
-          label: string | null
-          result: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: number
-          label?: string | null
-          result?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: number
-          label?: string | null
-          result?: string | null
-        }
-        Relationships: []
-      }
       filiais: {
         Row: {
           created_at: string
@@ -1376,7 +1355,6 @@ export type Database = {
           threat_description: string
         }[]
       }
-      diag_try_followup_insert: { Args: { p_task_id: string }; Returns: string }
       get_completely_secure_tasks: {
         Args: never
         Returns: {
