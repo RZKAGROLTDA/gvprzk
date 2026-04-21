@@ -501,7 +501,10 @@ const NewEntryRow: React.FC<{
         <ClientAutocomplete value={client} onChange={setClient} />
       </TableCell>
       <TableCell className="py-2">
-        <Select value={ruleId} onValueChange={setRuleId}>
+        <Select
+          value={ruleId || undefined}
+          onValueChange={(v) => setRuleId(v)}
+        >
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Selecione o gatilho" />
           </SelectTrigger>
