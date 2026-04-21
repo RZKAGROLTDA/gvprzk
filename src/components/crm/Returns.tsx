@@ -263,11 +263,18 @@ export const Returns: React.FC = () => {
               <X className="mr-1 h-3 w-3" /> Limpar filtros
             </Button>
           )}
+          <p className="col-span-full text-[11px] text-muted-foreground">
+            O período filtra pela data do retorno (ou pelo último contato, quando não há retorno agendado).
+          </p>
         </CardContent>
       </Card>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando...</p>
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-32 animate-pulse rounded-lg bg-muted/50" />
+          ))}
+        </div>
       ) : (
         <div className="space-y-4">
           <Section
