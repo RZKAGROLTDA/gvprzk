@@ -125,6 +125,22 @@ export const useCreateCampaignClient = () => {
   });
 };
 
+export const useDeleteCampaignClient = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('campaign_clients').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['campaign_clients'] });
+      toast.success('Lançamento removido');
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao remover lançamento'),
+  });
+};
+
 export const useEnsureClientMaster = () => {
   return useMutation({
     mutationFn: async ({ client_code, client_name }: { client_code: string; client_name: string }) => {
