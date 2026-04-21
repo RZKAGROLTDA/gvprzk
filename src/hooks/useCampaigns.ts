@@ -125,6 +125,44 @@ export const useCreateCampaignClient = () => {
   });
 };
 
+export const useUpdateCampaignClient = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<
+        Pick<
+          CampaignClient,
+          | 'campaign_rule_id'
+          | 'campaign_trigger_value'
+          | 'gained_april'
+          | 'gained_may'
+          | 'gained_june'
+          | 'commitment_value'
+          | 'filial_id'
+        >
+      >;
+    }) => {
+      const { data, error } = await supabase
+        .from('campaign_clients')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['campaign_clients'] });
+      toast.success('Lançamento atualizado');
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao atualizar lançamento'),
+  });
+};
+
 export const useDeleteCampaignClient = () => {
   const qc = useQueryClient();
   return useMutation({
