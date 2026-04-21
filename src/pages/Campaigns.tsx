@@ -49,6 +49,7 @@ import {
   type CampaignClient,
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const formatCurrency = (v: number) =>
@@ -97,14 +98,13 @@ const Campaigns: React.FC = () => {
 // ============================================================
 const EntriesTab: React.FC = () => {
   const { profile } = useProfile();
+  const { user } = useAuth();
   const { data: entries, isLoading } = useCampaignClients();
   const { data: rules } = useCampaignRules();
   const del = useDeleteCampaignClient();
 
   const [filiais, setFiliais] = useState<{ id: string; nome: string }[]>([]);
-  const [search, setSearch] = useState('');
-  const [campaignFilter, setCampaignFilter] = useState<string>('all');
-  const [filialFilter, setFilialFilter] = useState<string>('all');
+  const [sellers, setSellers] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     supabase
@@ -113,6 +113,23 @@ const EntriesTab: React.FC = () => {
       .order('nome')
       .then(({ data }) => setFiliais(data || []));
   }, []);
+
+  // Buscar nomes dos vendedores presentes nos lançamentos
+  useEffect(() => {
+    const ids = Array.from(
+      new Set((entries || []).map((e) => e.seller_id).filter(Boolean))
+    );
+    if (ids.length === 0) return;
+    supabase
+      .from('profiles')
+      .select('user_id, name')
+      .in('user_id', ids)
+      .then(({ data }) => {
+        const m = new Map<string, string>();
+        (data || []).forEach((p: any) => m.set(p.user_id, p.name));
+        setSellers(m);
+      });
+  }, [entries]);
 
   const ruleMap = useMemo(() => {
     const m = new Map<string, CampaignRule>();
@@ -126,25 +143,17 @@ const EntriesTab: React.FC = () => {
     return m;
   }, [filiais]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (entries || []).filter((e) => {
-      if (q && !`${e.client_name} ${e.client_code}`.toLowerCase().includes(q)) return false;
-      if (campaignFilter !== 'all' && e.campaign_rule_id !== campaignFilter) return false;
-      if (filialFilter !== 'all' && e.filial_id !== filialFilter) return false;
-      return true;
-    });
-  }, [entries, search, campaignFilter, filialFilter]);
+  const list = entries || [];
 
   const totals = useMemo(() => {
-    const count = filtered.length;
-    const totalTrigger = filtered.reduce((s, e) => s + Number(e.campaign_trigger_value || 0), 0);
-    const totalCommitment = filtered.reduce((s, e) => s + Number(e.commitment_value || 0), 0);
+    const count = list.length;
+    const totalTrigger = list.reduce((s, e) => s + Number(e.campaign_trigger_value || 0), 0);
+    const totalCommitment = list.reduce((s, e) => s + Number(e.commitment_value || 0), 0);
     return { count, totalTrigger, totalCommitment };
-  }, [filtered]);
+  }, [list]);
 
-  const showFilialFilter =
-    profile?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'supervisor';
+  const currentSellerName =
+    (user?.id && sellers.get(user.id)) || profile?.name || '—';
 
   return (
     <div className="space-y-6">
@@ -168,56 +177,11 @@ const EntriesTab: React.FC = () => {
       </div>
 
       <Card>
-        <CardHeader className="space-y-3 pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <CardTitle>Lançamentos de Clientes</CardTitle>
-              <CardDescription>
-                Adicione na primeira linha. Clique em uma linha para editar o gatilho.
-              </CardDescription>
-            </div>
-          </div>
-
-          {/* Filtros */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar cliente ou código..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-            <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-              <SelectTrigger className="h-9 w-full sm:w-56">
-                <SelectValue placeholder="Campanha" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as campanhas</SelectItem>
-                {(rules || []).map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.campaign_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {showFilialFilter && (
-              <Select value={filialFilter} onValueChange={setFilialFilter}>
-                <SelectTrigger className="h-9 w-full sm:w-48">
-                  <SelectValue placeholder="Filial" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as filiais</SelectItem>
-                  {filiais.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
+        <CardHeader className="pb-3">
+          <CardTitle>Lançamentos de Clientes</CardTitle>
+          <CardDescription>
+            Adicione na primeira linha. Clique em uma linha para editar o gatilho.
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="pt-0">
@@ -225,7 +189,9 @@ const EntriesTab: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40">
-                  <TableHead className="min-w-[260px]">Cliente</TableHead>
+                  <TableHead className="min-w-[120px]">Código</TableHead>
+                  <TableHead className="min-w-[220px]">Cliente</TableHead>
+                  <TableHead className="min-w-[160px]">Vendedor</TableHead>
                   <TableHead className="min-w-[240px]">Gatilho / Comprou</TableHead>
                   <TableHead className="text-right">Abr %</TableHead>
                   <TableHead className="text-right">Mai %</TableHead>
@@ -240,22 +206,23 @@ const EntriesTab: React.FC = () => {
                   rules={rules || []}
                   filiais={filiais}
                   defaultFilialId={profile?.filial_id || ''}
+                  sellerName={currentSellerName}
                 />
 
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
                       Carregando...
                     </TableCell>
                   </TableRow>
-                ) : filtered.length === 0 ? (
+                ) : list.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
                       Nenhum lançamento encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((e) => (
+                  list.map((e) => (
                     <EntryRow
                       key={e.id}
                       entry={e}
@@ -263,6 +230,7 @@ const EntriesTab: React.FC = () => {
                       ruleMap={ruleMap}
                       filiais={filiais}
                       filialMap={filialMap}
+                      sellerName={sellers.get(e.seller_id) || '—'}
                       onDelete={() => del.mutate(e.id)}
                     />
                   ))
@@ -456,7 +424,8 @@ const NewEntryRow: React.FC<{
   rules: CampaignRule[];
   filiais: { id: string; nome: string }[];
   defaultFilialId: string;
-}> = ({ rules, filiais, defaultFilialId }) => {
+  sellerName: string;
+}> = ({ rules, filiais, defaultFilialId, sellerName }) => {
   const create = useCreateCampaignClient();
   const ensureMaster = useEnsureClientMaster();
 
@@ -504,18 +473,35 @@ const NewEntryRow: React.FC<{
   const canAdd = !!client && !!selectedRule && !create.isPending;
 
   return (
-    <TableRow className="bg-primary/5 hover:bg-primary/5 align-top border-b-2 border-primary/20">
-      <TableCell className="py-3">
-        <div className="space-y-1.5">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-primary">Novo lançamento</span>
+    <TableRow className="bg-primary/5 hover:bg-primary/5 align-middle">
+      {/* Código + Nome compartilham o autocomplete (colspan 2) */}
+      <TableCell colSpan={2} className="py-2">
+        {client ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-muted-foreground shrink-0 w-[100px] truncate">
+              {client.code}
+            </span>
+            <span className="text-sm font-medium truncate flex-1">{client.name}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={() => setClient(null)}
+              aria-label="Limpar cliente"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
           <ClientAutocomplete value={client} onChange={setClient} />
-        </div>
+        )}
       </TableCell>
       <TableCell className="py-2">
-        <Select
-          value={ruleId || undefined}
-          onValueChange={(v) => setRuleId(v)}
-        >
+        <span className="text-sm text-muted-foreground truncate">{sellerName}</span>
+      </TableCell>
+      <TableCell className="py-2">
+        <Select value={ruleId || undefined} onValueChange={(v) => setRuleId(v)}>
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Selecione o gatilho" />
           </SelectTrigger>
@@ -554,18 +540,16 @@ const NewEntryRow: React.FC<{
         </Select>
       </TableCell>
       <TableCell className="py-2 text-right">
-        <div className="flex justify-end gap-1">
-          <Button
-            type="button"
-            size="sm"
-            className="h-9"
-            onClick={handleAdd}
-            disabled={!canAdd}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Adicionar
-          </Button>
-        </div>
+        <Button
+          type="button"
+          size="icon"
+          className="h-9 w-9"
+          onClick={handleAdd}
+          disabled={!canAdd}
+          aria-label="Adicionar lançamento"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
       </TableCell>
     </TableRow>
   );
@@ -588,8 +572,9 @@ const EntryRow: React.FC<{
   ruleMap: Map<string, CampaignRule>;
   filiais: { id: string; nome: string }[];
   filialMap: Map<string, string>;
+  sellerName: string;
   onDelete: () => void;
-}> = ({ entry, rules, ruleMap, filiais, filialMap, onDelete }) => {
+}> = ({ entry, rules, ruleMap, filiais, filialMap, sellerName, onDelete }) => {
   const update = useUpdateCampaignClient();
   const [editing, setEditing] = useState(false);
   const [ruleId, setRuleId] = useState(entry.campaign_rule_id || '');
@@ -641,13 +626,14 @@ const EntryRow: React.FC<{
 
   return (
     <TableRow
-      className={cn('align-top cursor-pointer', editing && 'bg-muted/30')}
+      className={cn('align-middle cursor-pointer', editing && 'bg-muted/30')}
       onClick={() => !editing && setEditing(true)}
     >
-      <TableCell className="py-2">
-        <div className="font-medium text-sm">{entry.client_name}</div>
-        <div className="text-xs text-muted-foreground">{entry.client_code}</div>
+      <TableCell className="py-2 font-mono text-xs text-muted-foreground">
+        {entry.client_code}
       </TableCell>
+      <TableCell className="py-2 font-medium text-sm">{entry.client_name}</TableCell>
+      <TableCell className="py-2 text-sm text-muted-foreground">{sellerName}</TableCell>
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
           <Select value={ruleId || undefined} onValueChange={setRuleId}>
