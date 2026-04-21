@@ -437,6 +437,8 @@ const NewEntryRow: React.FC<{
   const [client, setClient] = useState<{ code: string; name: string } | null>(null);
   const [ruleId, setRuleId] = useState('');
   const [filialId, setFilialId] = useState(defaultFilialId);
+  // Chave incremental para forçar remount dos Selects e garantir limpeza visual
+  const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
     if (defaultFilialId && !filialId) setFilialId(defaultFilialId);
@@ -456,23 +458,28 @@ const NewEntryRow: React.FC<{
     setClient(null);
     setRuleId('');
     setFilialId(defaultFilialId);
+    setResetKey((k) => k + 1);
   };
 
   const handleAdd = async () => {
     if (!client || !selectedRule) return;
-    await ensureMaster.mutateAsync({ client_code: client.code, client_name: client.name });
-    await create.mutateAsync({
-      campaign_rule_id: selectedRule.id,
-      client_code: client.code,
-      client_name: client.name,
-      filial_id: filialId || null,
-      campaign_trigger_value: Number(selectedRule.trigger_min),
-      gained_april: Number(selectedRule.gained_april),
-      gained_may: Number(selectedRule.gained_may),
-      gained_june: 0,
-      commitment_value: Number(selectedRule.commitment_value),
-    });
-    reset();
+    try {
+      await ensureMaster.mutateAsync({ client_code: client.code, client_name: client.name });
+      await create.mutateAsync({
+        campaign_rule_id: selectedRule.id,
+        client_code: client.code,
+        client_name: client.name,
+        filial_id: filialId || null,
+        campaign_trigger_value: Number(selectedRule.trigger_min),
+        gained_april: Number(selectedRule.gained_april),
+        gained_may: Number(selectedRule.gained_may),
+        gained_june: 0,
+        commitment_value: Number(selectedRule.commitment_value),
+      });
+      reset();
+    } catch {
+      // mantém o formulário em caso de erro para o usuário corrigir
+    }
   };
 
   const canAdd = !!client && !!selectedRule && !create.isPending;
