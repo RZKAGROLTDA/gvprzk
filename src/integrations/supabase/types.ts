@@ -2146,6 +2146,22 @@ export type Database = {
       get_user_filial_id: { Args: never; Returns: string }
       get_user_role: { Args: never; Returns: string }
       get_user_security_level: { Args: never; Returns: string }
+      get_weekly_followups_agenda: {
+        Args: {
+          p_end_date: string
+          p_filial_id?: string
+          p_responsible_user_id?: string
+          p_start_date: string
+        }
+        Returns: {
+          checklists: number
+          day: string
+          ligacoes: number
+          total_activities: number
+          unique_clients: number
+          visitas: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
