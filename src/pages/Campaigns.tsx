@@ -529,7 +529,7 @@ const NewEntryRow: React.FC<{
       <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_may)) : '—'} />
       <AutoCell value={selectedRule ? formatCurrency(Number(selectedRule.commitment_value)) : '—'} />
       <TableCell className="py-2">
-        <Select value={filialId} onValueChange={setFilialId}>
+        <Select value={filialId || undefined} onValueChange={setFilialId}>
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Filial" />
           </SelectTrigger>
