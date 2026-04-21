@@ -38,6 +38,8 @@ import {
   useCampaignClients,
   useSearchCampaignClients,
   useCreateCampaignRule,
+  useUpdateCampaignRule,
+  useDeleteCampaignRule,
   useCreateCampaignClient,
   useUpdateCampaignClient,
   useDeleteCampaignClient,
