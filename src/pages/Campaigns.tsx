@@ -572,8 +572,9 @@ const EntryRow: React.FC<{
   ruleMap: Map<string, CampaignRule>;
   filiais: { id: string; nome: string }[];
   filialMap: Map<string, string>;
+  sellerName: string;
   onDelete: () => void;
-}> = ({ entry, rules, ruleMap, filiais, filialMap, onDelete }) => {
+}> = ({ entry, rules, ruleMap, filiais, filialMap, sellerName, onDelete }) => {
   const update = useUpdateCampaignClient();
   const [editing, setEditing] = useState(false);
   const [ruleId, setRuleId] = useState(entry.campaign_rule_id || '');
@@ -625,13 +626,14 @@ const EntryRow: React.FC<{
 
   return (
     <TableRow
-      className={cn('align-top cursor-pointer', editing && 'bg-muted/30')}
+      className={cn('align-middle cursor-pointer', editing && 'bg-muted/30')}
       onClick={() => !editing && setEditing(true)}
     >
-      <TableCell className="py-2">
-        <div className="font-medium text-sm">{entry.client_name}</div>
-        <div className="text-xs text-muted-foreground">{entry.client_code}</div>
+      <TableCell className="py-2 font-mono text-xs text-muted-foreground">
+        {entry.client_code}
       </TableCell>
+      <TableCell className="py-2 font-medium text-sm">{entry.client_name}</TableCell>
+      <TableCell className="py-2 text-sm text-muted-foreground">{sellerName}</TableCell>
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
           <Select value={ruleId || undefined} onValueChange={setRuleId}>
