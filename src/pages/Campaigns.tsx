@@ -98,6 +98,7 @@ const Campaigns: React.FC = () => {
 // ============================================================
 const EntriesTab: React.FC = () => {
   const { profile } = useProfile();
+  const { user } = useAuth();
   const { data: entries, isLoading } = useCampaignClients();
   const { data: rules } = useCampaignRules();
   const del = useDeleteCampaignClient();
@@ -152,7 +153,7 @@ const EntriesTab: React.FC = () => {
   }, [list]);
 
   const currentSellerName =
-    (profile?.user_id && sellers.get(profile.user_id)) || profile?.name || '—';
+    (user?.id && sellers.get(user.id)) || profile?.name || '—';
 
   return (
     <div className="space-y-6">
