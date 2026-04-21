@@ -34,6 +34,7 @@ type ClientAggregate = {
   priority: FollowupRow['priority'];
   temperature: FollowupRow['client_temperature'];
   total: number;
+  latest_task_id: string | null;
 };
 
 const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
