@@ -67,13 +67,13 @@ export const MonthlyAgendaGrid: React.FC<MonthlyAgendaGridProps> = ({
   const rangeEnd = startOfDay(endDate);
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium text-muted-foreground">
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 text-center text-xs font-medium text-muted-foreground sm:grid-cols-4 lg:grid-cols-7">
         {HEADER_DAYS_MON.map((d) => (
-          <div key={d} className="py-1">{d}</div>
+          <div key={d} className="hidden py-1 lg:block">{d}</div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
         {cells.map((date) => {
           const iso = toISODate(date);
           const inRange = date >= rangeStart && date <= rangeEnd;
@@ -86,7 +86,7 @@ export const MonthlyAgendaGrid: React.FC<MonthlyAgendaGridProps> = ({
             unique_clients: 0,
           };
           return (
-            <CompactDayCell
+            <MonthDayCell
               key={iso}
               date={date}
               d={data}
@@ -101,7 +101,7 @@ export const MonthlyAgendaGrid: React.FC<MonthlyAgendaGridProps> = ({
   );
 };
 
-const CompactDayCell: React.FC<{
+const MonthDayCell: React.FC<{
   date: Date;
   d: WeeklyAgendaDay;
   inRange: boolean;
@@ -118,7 +118,7 @@ const CompactDayCell: React.FC<{
     <Card
       onClick={onClick}
       className={cn(
-        'overflow-hidden transition-all',
+        'transition-all',
         inRange
           ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'
           : 'opacity-40 pointer-events-none',
@@ -129,38 +129,38 @@ const CompactDayCell: React.FC<{
     >
       <div
         className={cn(
-          'flex items-center justify-between px-2 py-1 text-[10px] font-medium',
+          'flex items-center justify-between rounded-t-lg px-3 py-2 text-xs font-medium',
           isToday ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
         )}
       >
         <span>{WEEK_DAYS_SHORT[date.getDay()]}</span>
         <span>{fmt(date)}</span>
       </div>
-      <CardContent className="space-y-1.5 p-2">
+      <CardContent className="space-y-2 p-3">
         <div className="flex items-baseline justify-between">
-          <span className="text-[10px] text-muted-foreground">Atividades</span>
+          <span className="text-xs text-muted-foreground">Atividades</span>
           <span className={cn(
-            'text-lg font-semibold leading-none',
+            'text-2xl font-semibold leading-none',
             high && 'text-primary'
           )}>
             {d.total_activities}
           </span>
         </div>
 
-        <div className="h-0.5 w-full overflow-hidden rounded bg-muted">
+        <div className="h-1 w-full overflow-hidden rounded bg-muted">
           <div
             className={cn('h-full', empty ? 'bg-muted' : 'bg-primary')}
             style={{ width: `${Math.max(intensity * 100, empty ? 0 : 6)}%` }}
           />
         </div>
 
-        <div className="space-y-0.5 border-t pt-1.5 text-[10px]">
-          <CompactRow icon={<MapPin className="h-2.5 w-2.5" />} label="Visitas" value={d.visitas} />
-          <CompactRow icon={<Phone className="h-2.5 w-2.5" />} label="Ligações" value={d.ligacoes} />
-          <CompactRow icon={<ClipboardList className="h-2.5 w-2.5" />} label="Checklists" value={d.checklists} />
-          <div className="mt-0.5 flex items-center justify-between border-t pt-0.5">
+        <div className="space-y-1 border-t pt-2 text-xs">
+          <Row icon={<MapPin className="h-3 w-3" />} label="Visitas" value={d.visitas} />
+          <Row icon={<Phone className="h-3 w-3" />} label="Ligações" value={d.ligacoes} />
+          <Row icon={<ClipboardList className="h-3 w-3" />} label="Checklists" value={d.checklists} />
+          <div className="mt-1 flex items-center justify-between border-t pt-1">
             <span className="flex items-center gap-1 text-muted-foreground">
-              <UsersIcon className="h-2.5 w-2.5" /> Clientes
+              <UsersIcon className="h-3 w-3" /> Clientes
             </span>
             <strong>{d.unique_clients}</strong>
           </div>
@@ -170,7 +170,7 @@ const CompactDayCell: React.FC<{
   );
 };
 
-const CompactRow: React.FC<{ icon: React.ReactNode; label: string; value: number }> = ({ icon, label, value }) => (
+const Row: React.FC<{ icon: React.ReactNode; label: string; value: number }> = ({ icon, label, value }) => (
   <div className="flex items-center justify-between">
     <span className="flex items-center gap-1 text-muted-foreground">{icon} {label}</span>
     <strong>{value}</strong>
