@@ -101,6 +101,77 @@ export const useCreateCampaignRule = () => {
   });
 };
 
+export const useUpdateCampaignRule = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<Omit<CampaignRule, 'id' | 'created_at' | 'updated_at'>>;
+    }) => {
+      const { data, error } = await supabase
+        .from('campaign_rules')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['campaign_rules'] });
+      toast.success('Regra atualizada');
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao atualizar regra'),
+  });
+};
+
+export const useDeleteCampaignRule = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Verifica se há lançamentos vinculados
+      const { count, error: countError } = await supabase
+        .from('campaign_clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_rule_id', id);
+      if (countError) throw countError;
+      if ((count || 0) > 0) {
+        throw new Error(
+          `Não é possível excluir: ${count} lançamento(s) vinculado(s). Inative a regra.`
+        );
+      }
+      const { error } = await supabase.from('campaign_rules').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['campaign_rules'] });
+      toast.success('Regra removida');
+    },
+    onError: (e: any) => toast.error(e.message || 'Erro ao remover regra'),
+  });
+};
+
+export const useCampaignRuleUsageCount = (ruleId: string | null | undefined) => {
+  return useQuery({
+    queryKey: ['campaign_rule_usage', ruleId],
+    queryFn: async () => {
+      if (!ruleId) return 0;
+      const { count, error } = await supabase
+        .from('campaign_clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_rule_id', ruleId);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!ruleId,
+    staleTime: 30_000,
+  });
+};
+
 export const useCreateCampaignClient = () => {
   const qc = useQueryClient();
   return useMutation({
