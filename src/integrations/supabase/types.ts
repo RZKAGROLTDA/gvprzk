@@ -143,6 +143,27 @@ export type Database = {
         }
         Relationships: []
       }
+      diag_results: {
+        Row: {
+          created_at: string | null
+          id: number
+          label: string | null
+          result: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          label?: string | null
+          result?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          label?: string | null
+          result?: string | null
+        }
+        Relationships: []
+      }
       filiais: {
         Row: {
           created_at: string
