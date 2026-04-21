@@ -79,7 +79,7 @@ const Campaigns: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="rules" className="mt-4">
-          <RulesTab canManage={canManageRules} />
+          <RulesTab canManage={canManageRules} canDelete={canDeleteRules} />
         </TabsContent>
       </Tabs>
     </div>
