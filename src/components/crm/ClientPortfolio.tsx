@@ -466,6 +466,16 @@ export const ClientPortfolio: React.FC = () => {
           })}
         </div>
       )}
+
+      <TaskEditModal
+        taskId={selectedTaskId}
+        isOpen={!!selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        onTaskUpdate={() => {
+          queryClient.invalidateQueries({ queryKey: ['followups'] });
+          queryClient.invalidateQueries({ queryKey: ['weekly-agenda'] });
+        }}
+      />
     </div>
   );
 };
