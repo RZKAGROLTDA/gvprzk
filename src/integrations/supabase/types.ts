@@ -2263,6 +2263,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      map_task_status_to_followup_status: {
+        Args: { p_status: string }
+        Returns: Database["public"]["Enums"]["followup_status"]
+      }
+      map_task_type_to_followup_activity: {
+        Args: { p_task_type: string }
+        Returns: Database["public"]["Enums"]["followup_activity_type"]
+      }
       mask_client_name: {
         Args: { can_view: boolean; name_input: string }
         Returns: string
