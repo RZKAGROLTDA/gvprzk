@@ -49,6 +49,7 @@ import {
   type CampaignClient,
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const formatCurrency = (v: number) =>
