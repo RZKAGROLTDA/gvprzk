@@ -59,6 +59,7 @@ const Campaigns: React.FC = () => {
   const { profile } = useProfile();
   const canManageRules =
     profile?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'supervisor';
+  const canDeleteRules = profile?.role === 'manager' || profile?.role === 'admin';
 
   return (
     <div className="space-y-4">
