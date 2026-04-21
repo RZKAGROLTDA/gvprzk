@@ -757,9 +757,24 @@ const EntryRow: React.FC<{
 // ============================================================
 // REGRAS
 // ============================================================
-const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
+const RulesTab: React.FC<{ canManage: boolean; canDelete: boolean }> = ({
+  canManage,
+  canDelete,
+}) => {
   const { data: rules, isLoading } = useCampaignRules();
+  const { data: entries } = useCampaignClients();
   const [open, setOpen] = useState(false);
+
+  // Mapa rule_id -> contagem de lançamentos vinculados
+  const usageMap = useMemo(() => {
+    const m = new Map<string, number>();
+    (entries || []).forEach((e) => {
+      if (e.campaign_rule_id) {
+        m.set(e.campaign_rule_id, (m.get(e.campaign_rule_id) || 0) + 1);
+      }
+    });
+    return m;
+  }, [entries]);
 
   return (
     <Card>
@@ -791,32 +806,27 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Campanha</TableHead>
+                  <TableHead className="min-w-[180px]">Campanha</TableHead>
                   <TableHead className="text-right">Gatilho Mín</TableHead>
                   <TableHead className="text-right">Gatilho Máx</TableHead>
-                  <TableHead className="text-right">Abr</TableHead>
-                  <TableHead className="text-right">Mai</TableHead>
+                  <TableHead className="text-right">Abr %</TableHead>
+                  <TableHead className="text-right">Mai %</TableHead>
                   <TableHead className="text-right">Compromisso</TableHead>
                   <TableHead>Ativa</TableHead>
+                  {canManage && (
+                    <TableHead className="text-right w-32">Ações</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rules.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.campaign_name}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(r.trigger_min)}</TableCell>
-                    <TableCell className="text-right">
-                      {r.trigger_max == null ? <span className="text-muted-foreground">— sem teto</span> : formatCurrency(r.trigger_max)}
-                    </TableCell>
-                    <TableCell className="text-right">{formatPct(r.gained_april)}</TableCell>
-                    <TableCell className="text-right">{formatPct(r.gained_may)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(r.commitment_value)}</TableCell>
-                    <TableCell>
-                      <Badge variant={r.active ? 'default' : 'secondary'}>
-                        {r.active ? 'Sim' : 'Não'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+                  <RuleRow
+                    key={r.id}
+                    rule={r}
+                    usageCount={usageMap.get(r.id) || 0}
+                    canManage={canManage}
+                    canDelete={canDelete}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -824,6 +834,252 @@ const RulesTab: React.FC<{ canManage: boolean }> = ({ canManage }) => {
         )}
       </CardContent>
     </Card>
+  );
+};
+
+// --- Linha de regra com edição inline e exclusão protegida ---
+const RuleRow: React.FC<{
+  rule: CampaignRule;
+  usageCount: number;
+  canManage: boolean;
+  canDelete: boolean;
+}> = ({ rule, usageCount, canManage, canDelete }) => {
+  const update = useUpdateCampaignRule();
+  const del = useDeleteCampaignRule();
+  const [editing, setEditing] = useState(false);
+
+  const [name, setName] = useState(rule.campaign_name);
+  const [tMin, setTMin] = useState(String(rule.trigger_min ?? ''));
+  const [tMax, setTMax] = useState(rule.trigger_max == null ? '' : String(rule.trigger_max));
+  const [april, setApril] = useState(String(rule.gained_april ?? ''));
+  const [may, setMay] = useState(String(rule.gained_may ?? ''));
+  const [commitment, setCommitment] = useState(String(rule.commitment_value ?? ''));
+  const [active, setActive] = useState(rule.active);
+
+  const resetFromRule = () => {
+    setName(rule.campaign_name);
+    setTMin(String(rule.trigger_min ?? ''));
+    setTMax(rule.trigger_max == null ? '' : String(rule.trigger_max));
+    setApril(String(rule.gained_april ?? ''));
+    setMay(String(rule.gained_may ?? ''));
+    setCommitment(String(rule.commitment_value ?? ''));
+    setActive(rule.active);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    await update.mutateAsync({
+      id: rule.id,
+      patch: {
+        campaign_name: name.trim(),
+        trigger_min: parseFloat(tMin) || 0,
+        trigger_max: tMax.trim() === '' ? null : parseFloat(tMax),
+        gained_april: parseFloat(april) || 0,
+        gained_may: parseFloat(may) || 0,
+        commitment_value: parseFloat(commitment) || 0,
+        active,
+      },
+    });
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    resetFromRule();
+    setEditing(false);
+  };
+
+  const handleToggleActive = async (next: boolean) => {
+    if (editing) {
+      setActive(next);
+      return;
+    }
+    await update.mutateAsync({ id: rule.id, patch: { active: next } });
+  };
+
+  const isLocked = usageCount > 0;
+
+  if (editing) {
+    return (
+      <TableRow className="bg-muted/30 align-top">
+        <TableCell className="py-2">
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8" />
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <Input
+            type="number"
+            step="0.01"
+            value={tMin}
+            onChange={(e) => setTMin(e.target.value)}
+            className="h-8 text-right"
+          />
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <Input
+            type="number"
+            step="0.01"
+            value={tMax}
+            onChange={(e) => setTMax(e.target.value)}
+            placeholder="sem teto"
+            className="h-8 text-right"
+          />
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <Input
+            type="number"
+            step="0.01"
+            value={april}
+            onChange={(e) => setApril(e.target.value)}
+            className="h-8 text-right"
+          />
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <Input
+            type="number"
+            step="0.01"
+            value={may}
+            onChange={(e) => setMay(e.target.value)}
+            className="h-8 text-right"
+          />
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <Input
+            type="number"
+            step="0.01"
+            value={commitment}
+            onChange={(e) => setCommitment(e.target.value)}
+            className="h-8 text-right"
+          />
+        </TableCell>
+        <TableCell className="py-2">
+          <Switch checked={active} onCheckedChange={setActive} />
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <div className="flex justify-end gap-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={handleCancel}
+              aria-label="Cancelar"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleSave}
+              disabled={!name.trim() || update.isPending}
+              aria-label="Salvar"
+            >
+              <Check className="h-4 w-4" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return (
+    <TableRow>
+      <TableCell className="font-medium">
+        <div>{rule.campaign_name}</div>
+        {usageCount > 0 && (
+          <div className="text-xs text-muted-foreground">
+            {usageCount} lançamento{usageCount > 1 ? 's' : ''} vinculado{usageCount > 1 ? 's' : ''}
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="text-right">{formatCurrency(Number(rule.trigger_min))}</TableCell>
+      <TableCell className="text-right">
+        {rule.trigger_max == null ? (
+          <span className="text-muted-foreground">— sem teto</span>
+        ) : (
+          formatCurrency(Number(rule.trigger_max))
+        )}
+      </TableCell>
+      <TableCell className="text-right">{formatPct(Number(rule.gained_april))}</TableCell>
+      <TableCell className="text-right">{formatPct(Number(rule.gained_may))}</TableCell>
+      <TableCell className="text-right">{formatCurrency(Number(rule.commitment_value))}</TableCell>
+      <TableCell>
+        {canManage ? (
+          <Switch
+            checked={rule.active}
+            onCheckedChange={handleToggleActive}
+            disabled={update.isPending}
+          />
+        ) : (
+          <Badge variant={rule.active ? 'default' : 'secondary'}>
+            {rule.active ? 'Sim' : 'Não'}
+          </Badge>
+        )}
+      </TableCell>
+      {canManage && (
+        <TableCell className="text-right">
+          <div className="flex justify-end gap-1">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={() => setEditing(true)}
+              aria-label="Editar regra"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {canDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    aria-label="Excluir regra"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {isLocked ? 'Não é possível excluir' : 'Excluir regra?'}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {isLocked ? (
+                        <>
+                          A regra <strong>{rule.campaign_name}</strong> possui{' '}
+                          <strong>{usageCount}</strong> lançamento(s) vinculado(s) e não pode ser
+                          excluída para preservar o histórico. Você pode <strong>inativá-la</strong>{' '}
+                          usando o botão de status na linha.
+                        </>
+                      ) : (
+                        <>
+                          Excluir a regra <strong>{rule.campaign_name}</strong>? Esta ação não pode
+                          ser desfeita.
+                        </>
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Fechar</AlertDialogCancel>
+                    {!isLocked && (
+                      <AlertDialogAction
+                        onClick={() => del.mutate(rule.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Excluir
+                      </AlertDialogAction>
+                    )}
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+        </TableCell>
+      )}
+    </TableRow>
   );
 };
 
