@@ -20,7 +20,7 @@ import CreateFieldVisit from "./pages/CreateFieldVisit";
 import CreateCall from "./pages/CreateCall";
 import CreateWorkshopChecklist from "./pages/CreateWorkshopChecklist";
 
-import Reports from "./pages/Reports";
+import Campaigns from "./pages/Campaigns";
 import Management from "./pages/Management";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
@@ -78,7 +78,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/create-workshop-checklist" element={<Layout><CreateWorkshopChecklist /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
       <Route path="/crm" element={<Layout><CRM /></Layout>} />
-      <Route path="/reports" element={<Layout><Reports /></Layout>} />
+      <Route path="/campaigns" element={<Layout><Campaigns /></Layout>} />
       <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
       <Route path="/users" element={<Layout><Users /></Layout>} />

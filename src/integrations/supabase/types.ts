@@ -71,6 +71,144 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_clients: {
+        Row: {
+          campaign_rule_id: string | null
+          campaign_trigger_value: number
+          client_code: string
+          client_name: string
+          commitment_value: number
+          created_at: string
+          filial_id: string | null
+          gained_april: number
+          gained_june: number
+          gained_may: number
+          id: string
+          seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_rule_id?: string | null
+          campaign_trigger_value?: number
+          client_code: string
+          client_name: string
+          commitment_value?: number
+          created_at?: string
+          filial_id?: string | null
+          gained_april?: number
+          gained_june?: number
+          gained_may?: number
+          id?: string
+          seller_id?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_rule_id?: string | null
+          campaign_trigger_value?: number
+          client_code?: string
+          client_name?: string
+          commitment_value?: number
+          created_at?: string
+          filial_id?: string | null
+          gained_april?: number
+          gained_june?: number
+          gained_may?: number
+          id?: string
+          seller_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_clients_campaign_rule_id_fkey"
+            columns: ["campaign_rule_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_clients_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_clients_master: {
+        Row: {
+          client_code: string
+          client_name: string
+          created_at: string
+          created_by: string | null
+          id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          client_code: string
+          client_name: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          client_code?: string
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      campaign_rules: {
+        Row: {
+          active: boolean
+          campaign_name: string
+          commitment_value: number
+          created_at: string
+          created_by: string | null
+          gained_april: number
+          gained_june: number
+          gained_may: number
+          id: string
+          trigger_max: number | null
+          trigger_min: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          campaign_name: string
+          commitment_value?: number
+          created_at?: string
+          created_by?: string | null
+          gained_april?: number
+          gained_june?: number
+          gained_may?: number
+          id?: string
+          trigger_max?: number | null
+          trigger_min?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          campaign_name?: string
+          commitment_value?: number
+          created_at?: string
+          created_by?: string | null
+          gained_april?: number
+          gained_june?: number
+          gained_may?: number
+          id?: string
+          trigger_max?: number | null
+          trigger_min?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           archive_reason: string | null
@@ -2351,6 +2489,14 @@ export type Database = {
       monitor_session_security: { Args: never; Returns: undefined }
       monitor_tasks_new_unauthorized_access: { Args: never; Returns: undefined }
       monitor_unauthorized_customer_access: { Args: never; Returns: undefined }
+      search_clients_for_campaigns: {
+        Args: { p_query: string }
+        Returns: {
+          client_code: string
+          client_name: string
+          source: string
+        }[]
+      }
       secure_delete_task: { Args: { task_id_param: string }; Returns: Json }
       secure_log_security_event: {
         Args: {
