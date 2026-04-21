@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TaskEditModal } from '@/components/TaskEditModal';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,6 +34,7 @@ type ClientAggregate = {
   priority: FollowupRow['priority'];
   temperature: FollowupRow['client_temperature'];
   total: number;
+  latest_task_id: string | null;
 };
 
 const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -63,6 +66,8 @@ const initials = (name: string) =>
 export const ClientPortfolio: React.FC = () => {
   const { data = [], isLoading } = useFollowups();
   const { consultants } = useFilteredConsultants();
+  const queryClient = useQueryClient();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-options'],
@@ -143,6 +148,8 @@ export const ClientPortfolio: React.FC = () => {
         ? Math.floor((startOfDay(nextReturn).getTime() - today) / 86400000)
         : null;
 
+      const latestWithTask = sorted.find((i) => !!i.task_id) ?? null;
+
       result.push({
         key,
         client_name: last.client_name,
@@ -158,6 +165,7 @@ export const ClientPortfolio: React.FC = () => {
         priority: last.priority,
         temperature: last.client_temperature,
         total: items.length,
+        latest_task_id: latestWithTask?.task_id ?? null,
       });
     });
     return result;
@@ -327,11 +335,28 @@ export const ClientPortfolio: React.FC = () => {
             const highlight = isOverdueReturn || isInactive || isHot || isHighPriority;
             const sellerName = consultantById.get(c.responsible_user_id) ?? '—';
             const filialName = c.filial_id ? (filialById.get(c.filial_id) ?? '—') : '—';
-            return (
+            const hasTask = !!c.latest_task_id;
+            const cardEl = (
               <Card
                 key={c.key}
+                role={hasTask ? 'button' : undefined}
+                tabIndex={hasTask ? 0 : undefined}
+                onClick={hasTask ? () => setSelectedTaskId(c.latest_task_id) : undefined}
+                onKeyDown={
+                  hasTask
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedTaskId(c.latest_task_id);
+                        }
+                      }
+                    : undefined
+                }
                 className={cn(
-                  'transition-shadow hover:shadow-md',
+                  'transition-shadow',
+                  hasTask
+                    ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+                    : 'cursor-not-allowed opacity-90',
                   isOverdueReturn && 'border-destructive/50',
                   !isOverdueReturn && (isHot || isHighPriority) && 'border-amber-500/50',
                   !isOverdueReturn && !isHot && !isHighPriority && isInactive && 'border-sky-500/40'
@@ -428,9 +453,29 @@ export const ClientPortfolio: React.FC = () => {
                 </CardContent>
               </Card>
             );
+            return hasTask ? (
+              <React.Fragment key={c.key}>{cardEl}</React.Fragment>
+            ) : (
+              <TooltipProvider key={c.key} delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>{cardEl}</TooltipTrigger>
+                  <TooltipContent>Sem atividade vinculada</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
           })}
         </div>
       )}
+
+      <TaskEditModal
+        taskId={selectedTaskId}
+        isOpen={!!selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        onTaskUpdate={() => {
+          queryClient.invalidateQueries({ queryKey: ['followups'] });
+          queryClient.invalidateQueries({ queryKey: ['weekly-agenda'] });
+        }}
+      />
     </div>
   );
 };
