@@ -63,10 +63,15 @@ const Campaigns: React.FC = () => {
   const canDeleteRules = profile?.role === 'manager' || profile?.role === 'admin';
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Megaphone className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Campanhas</h1>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <Megaphone className="h-5 w-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold leading-tight">Campanhas</h1>
+          <p className="text-sm text-muted-foreground">Gestão e acompanhamento de campanhas comerciais</p>
+        </div>
       </div>
 
       <Tabs defaultValue="entries" className="w-full">
@@ -75,11 +80,11 @@ const Campaigns: React.FC = () => {
           <TabsTrigger value="rules">Regras</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="entries" className="mt-4">
+        <TabsContent value="entries" className="mt-6">
           <EntriesTab />
         </TabsContent>
 
-        <TabsContent value="rules" className="mt-4">
+        <TabsContent value="rules" className="mt-6">
           <RulesTab canManage={canManageRules} canDelete={canDeleteRules} />
         </TabsContent>
       </Tabs>
@@ -133,33 +138,32 @@ const EntriesTab: React.FC = () => {
 
   const totals = useMemo(() => {
     const count = filtered.length;
-    const totalCommitment = filtered.reduce((s, e) => s + Number(e.commitment_value || 0), 0);
     const totalTrigger = filtered.reduce((s, e) => s + Number(e.campaign_trigger_value || 0), 0);
-    const avgTrigger = count > 0 ? totalTrigger / count : 0;
-    return { count, totalCommitment, avgTrigger };
+    const totalCommitment = filtered.reduce((s, e) => s + Number(e.commitment_value || 0), 0);
+    return { count, totalTrigger, totalCommitment };
   }, [filtered]);
 
   const showFilialFilter =
     profile?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'supervisor';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Totalizadores */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           icon={<Users className="h-4 w-4" />}
-          label="Clientes lançados"
+          label="Clientes"
           value={String(totals.count)}
         />
         <StatCard
-          icon={<Wallet className="h-4 w-4" />}
-          label="Compromisso total"
-          value={formatCurrency(totals.totalCommitment)}
+          icon={<Target className="h-4 w-4" />}
+          label="Soma Gatilho"
+          value={formatCurrency(totals.totalTrigger)}
         />
         <StatCard
-          icon={<Target className="h-4 w-4" />}
-          label="Gatilho médio"
-          value={formatCurrency(totals.avgTrigger)}
+          icon={<Wallet className="h-4 w-4" />}
+          label="Soma Compromisso"
+          value={formatCurrency(totals.totalCommitment)}
         />
       </div>
 
@@ -278,14 +282,14 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string }
   label,
   value,
 }) => (
-  <Card>
-    <CardContent className="p-4 flex items-center gap-3">
-      <div className="h-9 w-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+  <Card className="border-border/60 shadow-sm">
+    <CardContent className="p-5 flex items-center gap-4">
+      <div className="h-11 w-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-lg font-semibold truncate">{value}</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+        <p className="text-2xl font-semibold truncate leading-tight mt-0.5">{value}</p>
       </div>
     </CardContent>
   </Card>
@@ -500,9 +504,12 @@ const NewEntryRow: React.FC<{
   const canAdd = !!client && !!selectedRule && !create.isPending;
 
   return (
-    <TableRow className="bg-accent/30 hover:bg-accent/30 align-top">
-      <TableCell className="py-2">
-        <ClientAutocomplete value={client} onChange={setClient} />
+    <TableRow className="bg-primary/5 hover:bg-primary/5 align-top border-b-2 border-primary/20">
+      <TableCell className="py-3">
+        <div className="space-y-1.5">
+          <span className="text-[10px] uppercase tracking-wider font-semibold text-primary">Novo lançamento</span>
+          <ClientAutocomplete value={client} onChange={setClient} />
+        </div>
       </TableCell>
       <TableCell className="py-2">
         <Select
