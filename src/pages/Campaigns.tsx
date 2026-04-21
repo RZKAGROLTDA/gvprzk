@@ -63,10 +63,15 @@ const Campaigns: React.FC = () => {
   const canDeleteRules = profile?.role === 'manager' || profile?.role === 'admin';
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Megaphone className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Campanhas</h1>
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <Megaphone className="h-5 w-5" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold leading-tight">Campanhas</h1>
+          <p className="text-sm text-muted-foreground">Gestão e acompanhamento de campanhas comerciais</p>
+        </div>
       </div>
 
       <Tabs defaultValue="entries" className="w-full">
@@ -75,11 +80,11 @@ const Campaigns: React.FC = () => {
           <TabsTrigger value="rules">Regras</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="entries" className="mt-4">
+        <TabsContent value="entries" className="mt-6">
           <EntriesTab />
         </TabsContent>
 
-        <TabsContent value="rules" className="mt-4">
+        <TabsContent value="rules" className="mt-6">
           <RulesTab canManage={canManageRules} canDelete={canDeleteRules} />
         </TabsContent>
       </Tabs>
