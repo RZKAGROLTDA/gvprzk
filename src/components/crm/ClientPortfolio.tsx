@@ -66,6 +66,8 @@ const initials = (name: string) =>
 export const ClientPortfolio: React.FC = () => {
   const { data = [], isLoading } = useFollowups();
   const { consultants } = useFilteredConsultants();
+  const queryClient = useQueryClient();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-options'],
