@@ -31,6 +31,7 @@ import {
   Users,
   Target,
   Wallet,
+  Pencil,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
