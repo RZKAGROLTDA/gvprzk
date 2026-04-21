@@ -754,6 +754,280 @@ const EntryRow: React.FC<{
 };
 
 // ============================================================
+// RESUMO VENDEDOR — agregação por seller_id com lógica combinada
+// para definição do tipo (Televendas pela filial > RAC pelo cargo > cargo padrão)
+// ============================================================
+const ROLE_LABELS: Record<string, string> = {
+  manager: 'Gerente',
+  admin: 'Admin',
+  supervisor: 'Supervisor',
+  sales_consultant: 'Consultor',
+  consultant: 'Consultor',
+  rac: 'RAC',
+  user: 'Usuário',
+};
+
+const formatRoleLabel = (role?: string | null) => {
+  if (!role) return '—';
+  return ROLE_LABELS[role.toLowerCase()] || role;
+};
+
+const isTelevendasFilial = (nome?: string | null) =>
+  !!nome && /televendas/i.test(nome);
+
+const isRacRole = (role?: string | null) =>
+  !!role && /rac/i.test(role);
+
+interface SellerInfo {
+  name: string;
+  role: string | null;
+  filial_id: string | null;
+}
+
+const SellerSummaryTab: React.FC = () => {
+  const { data: entries, isLoading } = useCampaignClients();
+  const [filiais, setFiliais] = useState<{ id: string; nome: string }[]>([]);
+  const [sellers, setSellers] = useState<Map<string, SellerInfo>>(new Map());
+  const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    supabase
+      .from('filiais')
+      .select('id, nome')
+      .order('nome')
+      .then(({ data }) => setFiliais(data || []));
+  }, []);
+
+  useEffect(() => {
+    const ids = Array.from(
+      new Set((entries || []).map((e) => e.seller_id).filter(Boolean))
+    );
+    if (ids.length === 0) {
+      setSellers(new Map());
+      setUserRoles(new Map());
+      return;
+    }
+    // profiles: name, role, filial_id
+    supabase
+      .from('profiles')
+      .select('user_id, name, role, filial_id')
+      .in('user_id', ids)
+      .then(({ data }) => {
+        const m = new Map<string, SellerInfo>();
+        (data || []).forEach((p: any) =>
+          m.set(p.user_id, { name: p.name, role: p.role, filial_id: p.filial_id })
+        );
+        setSellers(m);
+      });
+    // user_roles: pode conter 'rac' como app_role
+    supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', ids)
+      .then(({ data }) => {
+        const m = new Map<string, string>();
+        (data || []).forEach((r: any) => {
+          // Prioriza rac se houver
+          const existing = m.get(r.user_id);
+          if (!existing || isRacRole(r.role)) m.set(r.user_id, r.role);
+        });
+        setUserRoles(m);
+      });
+  }, [entries]);
+
+  const filialMap = useMemo(() => {
+    const m = new Map<string, string>();
+    filiais.forEach((f) => m.set(f.id, f.nome));
+    return m;
+  }, [filiais]);
+
+  const rows = useMemo(() => {
+    const valid = (entries || []).filter(
+      (e) => e.client_code && Number(e.campaign_trigger_value) > 0
+    );
+
+    // Agrupar por seller_id
+    const byseller = new Map<
+      string,
+      {
+        seller_id: string;
+        clientes: number;
+        somaGatilho: number;
+        somaCompromisso: number;
+        // Contagem de filiais usadas nos lançamentos para definir o tipo "Televendas"
+        filialCounts: Map<string, number>;
+      }
+    >();
+
+    valid.forEach((e) => {
+      const cur =
+        byseller.get(e.seller_id) || {
+          seller_id: e.seller_id,
+          clientes: 0,
+          somaGatilho: 0,
+          somaCompromisso: 0,
+          filialCounts: new Map<string, number>(),
+        };
+      cur.clientes += 1;
+      cur.somaGatilho += Number(e.campaign_trigger_value || 0);
+      cur.somaCompromisso += Number(e.commitment_value || 0);
+      if (e.filial_id) {
+        cur.filialCounts.set(
+          e.filial_id,
+          (cur.filialCounts.get(e.filial_id) || 0) + 1
+        );
+      }
+      byseller.set(e.seller_id, cur);
+    });
+
+    return Array.from(byseller.values())
+      .map((row) => {
+        const info = sellers.get(row.seller_id);
+        const profileFilialNome = info?.filial_id
+          ? filialMap.get(info.filial_id) || null
+          : null;
+
+        // Filial predominante dos lançamentos
+        let topFilialId: string | null = null;
+        let topCount = 0;
+        row.filialCounts.forEach((c, id) => {
+          if (c > topCount) {
+            topCount = c;
+            topFilialId = id;
+          }
+        });
+        const launchFilialNome = topFilialId ? filialMap.get(topFilialId) || null : null;
+
+        // Filial exibida: a do lançamento (predominante) ou, na ausência, a do perfil
+        const filialNome = launchFilialNome || profileFilialNome || '—';
+
+        // Lógica combinada para o tipo:
+        // 1) Televendas vence se a filial do lançamento for de Televendas
+        // 2) Senão, RAC se cargo do vendedor for RAC (em user_roles ou em profile.role)
+        // 3) Senão, cargo padrão do perfil
+        const racRole = userRoles.get(row.seller_id);
+        let tipo: string;
+        if (isTelevendasFilial(launchFilialNome)) {
+          tipo = 'Televendas';
+        } else if (isRacRole(racRole) || isRacRole(info?.role)) {
+          tipo = 'RAC';
+        } else {
+          tipo = formatRoleLabel(info?.role);
+        }
+
+        return {
+          seller_id: row.seller_id,
+          nome: info?.name || '—',
+          filial: filialNome,
+          tipo,
+          clientes: row.clientes,
+          somaGatilho: row.somaGatilho,
+          somaCompromisso: row.somaCompromisso,
+        };
+      })
+      .sort((a, b) => b.somaCompromisso - a.somaCompromisso);
+  }, [entries, sellers, userRoles, filialMap]);
+
+  const totals = useMemo(
+    () => ({
+      vendedores: rows.length,
+      clientes: rows.reduce((s, r) => s + r.clientes, 0),
+      somaGatilho: rows.reduce((s, r) => s + r.somaGatilho, 0),
+      somaCompromisso: rows.reduce((s, r) => s + r.somaCompromisso, 0),
+    }),
+    [rows]
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <StatCard
+          icon={<Users className="h-4 w-4" />}
+          label="Vendedores"
+          value={String(totals.vendedores)}
+        />
+        <StatCard
+          icon={<Users className="h-4 w-4" />}
+          label="Clientes"
+          value={String(totals.clientes)}
+        />
+        <StatCard
+          icon={<Target className="h-4 w-4" />}
+          label="Soma Gatilho"
+          value={formatCurrency(totals.somaGatilho)}
+        />
+        <StatCard
+          icon={<Wallet className="h-4 w-4" />}
+          label="Soma Compromisso"
+          value={formatCurrency(totals.somaCompromisso)}
+        />
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>Resumo por Vendedor</CardTitle>
+          <CardDescription>
+            Performance por vendedor, ordenado pela soma de compromisso
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="min-w-[200px]">Vendedor</TableHead>
+                  <TableHead className="min-w-[160px]">Filial</TableHead>
+                  <TableHead className="min-w-[120px]">Tipo</TableHead>
+                  <TableHead className="text-right">Clientes</TableHead>
+                  <TableHead className="text-right">Soma Gatilho</TableHead>
+                  <TableHead className="text-right">Soma Compromisso</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
+                      Carregando...
+                    </TableCell>
+                  </TableRow>
+                ) : rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
+                      Nenhum lançamento válido encontrado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((r) => (
+                    <TableRow key={r.seller_id} className="align-middle">
+                      <TableCell className="py-2 font-medium">{r.nome}</TableCell>
+                      <TableCell className="py-2 text-sm">{r.filial}</TableCell>
+                      <TableCell className="py-2">
+                        <Badge
+                          variant={r.tipo === 'Televendas' ? 'default' : 'secondary'}
+                        >
+                          {r.tipo}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-2 text-right">{r.clientes}</TableCell>
+                      <TableCell className="py-2 text-right">
+                        {formatCurrency(r.somaGatilho)}
+                      </TableCell>
+                      <TableCell className="py-2 text-right font-semibold">
+                        {formatCurrency(r.somaCompromisso)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// ============================================================
 // REGRAS
 // ============================================================
 const RulesTab: React.FC<{ canManage: boolean; canDelete: boolean }> = ({
