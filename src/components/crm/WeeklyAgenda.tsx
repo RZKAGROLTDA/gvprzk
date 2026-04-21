@@ -1,220 +1,395 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, MapPin, Phone, ClipboardList, Users as UsersIcon, CalendarRange } from 'lucide-react';
-import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import {
+  CalendarIcon, ChevronLeft, ChevronRight, MapPin, Phone, ClipboardList,
+  Users as UsersIcon, X, CalendarRange,
+} from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useWeeklyAgenda, WeeklyAgendaDay } from '@/hooks/useWeeklyAgenda';
+import { FollowupRow } from '@/hooks/useFollowups';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 const WEEK_DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const WEEK_DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
-const startOfWeek = (d: Date) => {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() - x.getDay());
+const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const startOfWeekMon = (d: Date) => {
+  const x = startOfDay(d);
+  const dow = x.getDay(); // 0=Dom
+  const diff = (dow + 6) % 7; // dias desde segunda
+  x.setDate(x.getDate() - diff);
   return x;
 };
-const addDays = (d: Date, n: number) => {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
+const fmt = (d: Date) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+const toISODate = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
 };
-const sameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const parseISODate = (s: string) => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+};
 
-const fmt = (d: Date) =>
-  d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+type RangeMode = 'week' | 'today' | 'last7' | 'custom';
 
 export const WeeklyAgenda: React.FC = () => {
-  const { data = [], isLoading } = useFollowups();
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+  const { user } = useAuth();
+  const { consultants } = useFilteredConsultants();
+
+  const { data: filiais = [] } = useQuery({
+    queryKey: ['filiais-options'],
+    staleTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const [mode, setMode] = useState<RangeMode>('week');
+  const [anchor, setAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
+  const [customStart, setCustomStart] = useState<Date | undefined>();
+  const [customEnd, setCustomEnd] = useState<Date | undefined>();
+  const [seller, setSeller] = useState<string>('all');
+  const [filial, setFilial] = useState<string>('all');
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const { startDate, endDate } = useMemo(() => {
+    if (mode === 'today') {
+      const t = startOfDay(new Date());
+      return { startDate: t, endDate: t };
+    }
+    if (mode === 'last7') {
+      const end = startOfDay(new Date());
+      return { startDate: addDays(end, -6), endDate: end };
+    }
+    if (mode === 'custom' && customStart && customEnd) {
+      const s = startOfDay(customStart);
+      const e = startOfDay(customEnd);
+      return s <= e ? { startDate: s, endDate: e } : { startDate: e, endDate: s };
+    }
+    // week
+    return { startDate: anchor, endDate: addDays(anchor, 6) };
+  }, [mode, anchor, customStart, customEnd]);
 
-  const byDay = useMemo(() => {
-    return days.map((day) => {
-      const items = data.filter((f) => sameDay(new Date(f.activity_date), day));
-      const visitas = items.filter((i) => i.activity_type === 'visita').length;
-      const ligacoes = items.filter((i) => i.activity_type === 'ligacao').length;
-      const checklists = items.filter((i) => i.activity_type === 'checklist').length;
-      const uniqueClients = new Set(items.map(getClientKey)).size;
-      return { day, items, visitas, ligacoes, checklists, uniqueClients, total: items.length };
-    });
-  }, [data, days]);
+  const { data: days = [], isLoading } = useWeeklyAgenda({
+    startDate,
+    endDate,
+    responsibleUserId: seller !== 'all' ? seller : null,
+    filialId: filial !== 'all' ? filial : null,
+  });
 
-  const weekTotals = useMemo(() => {
-    const all = data.filter((f) => {
-      const t = new Date(f.activity_date).getTime();
-      return t >= weekStart.getTime() && t < addDays(weekStart, 7).getTime();
-    });
-    return {
-      total: all.length,
-      visitas: all.filter((i) => i.activity_type === 'visita').length,
-      ligacoes: all.filter((i) => i.activity_type === 'ligacao').length,
-      checklists: all.filter((i) => i.activity_type === 'checklist').length,
-      uniqueClients: new Set(all.map(getClientKey)).size,
-    };
-  }, [data, weekStart]);
+  const maxActivities = useMemo(
+    () => days.reduce((m, d) => Math.max(m, d.total_activities), 0),
+    [days]
+  );
 
-  const dayItems = selectedDay
-    ? data.filter((f) => sameDay(new Date(f.activity_date), selectedDay))
-    : [];
+  const totals = useMemo(() => ({
+    total: days.reduce((s, d) => s + d.total_activities, 0),
+    visitas: days.reduce((s, d) => s + d.visitas, 0),
+    ligacoes: days.reduce((s, d) => s + d.ligacoes, 0),
+    checklists: days.reduce((s, d) => s + d.checklists, 0),
+  }), [days]);
+
+  const goPrevWeek = () => { setMode('week'); setAnchor(addDays(anchor, -7)); };
+  const goNextWeek = () => { setMode('week'); setAnchor(addDays(anchor, 7)); };
+  const goThisWeek = () => { setMode('week'); setAnchor(startOfWeekMon(new Date())); };
+
+  const clearFilters = () => {
+    setSeller('all');
+    setFilial('all');
+    goThisWeek();
+    setCustomStart(undefined);
+    setCustomEnd(undefined);
+  };
+
+  // Detalhe do dia selecionado
+  const selectedDayISO = selectedDay ? toISODate(selectedDay) : null;
+  const { data: dayItems = [], isLoading: loadingDay } = useQuery({
+    queryKey: ['agenda-day-details', user?.id, selectedDayISO, seller, filial],
+    enabled: !!user?.id && !!selectedDayISO,
+    staleTime: 30_000,
+    queryFn: async (): Promise<FollowupRow[]> => {
+      let q = supabase
+        .from('task_followups')
+        .select('*')
+        .gte('activity_date', `${selectedDayISO}T00:00:00`)
+        .lte('activity_date', `${selectedDayISO}T23:59:59`)
+        .order('activity_date', { ascending: true });
+      if (seller !== 'all') q = q.eq('responsible_user_id', seller);
+      if (filial !== 'all') q = q.eq('filial_id', filial);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as FollowupRow[];
+    },
+  });
+
+  const consultantNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    consultants.forEach((c) => map.set(c.id, c.name));
+    return map;
+  }, [consultants]);
 
   return (
     <div className="space-y-4">
-      {/* Header: navegação + resumo da semana */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Filtros + atalhos */}
+      <Card>
+        <CardContent className="flex flex-col gap-2 p-3 lg:flex-row lg:flex-wrap lg:items-center">
+          <div className="flex flex-wrap gap-1">
+            <Button size="sm" variant={mode === 'today' ? 'default' : 'outline'} onClick={() => setMode('today')}>
+              Hoje
+            </Button>
+            <Button size="sm" variant={mode === 'last7' ? 'default' : 'outline'} onClick={() => setMode('last7')}>
+              Últimos 7 dias
+            </Button>
+            <Button size="sm" variant={mode === 'week' ? 'default' : 'outline'} onClick={goThisWeek}>
+              Esta semana
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" onClick={goPrevWeek} aria-label="Semana anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={goNextWeek} aria-label="Próxima semana">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <DateField label="De" value={customStart} onChange={(d) => { setCustomStart(d); if (d) setMode('custom'); }} />
+          <DateField label="Até" value={customEnd} onChange={(d) => { setCustomEnd(d); if (d) setMode('custom'); }} />
+
+          <Select value={seller} onValueChange={setSeller}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Vendedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os vendedores</SelectItem>
+              {consultants.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={filial} onValueChange={setFilial}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filial" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as filiais</SelectItem>
+              {filiais.map((f) => (
+                <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="lg:ml-auto">
+            <X className="mr-1 h-3 w-3" /> Limpar
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Header período + totais */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm">
           <CalendarRange className="h-4 w-4 text-muted-foreground" />
-          <span className="text-muted-foreground">Semana de</span>
-          <strong>{fmt(weekStart)}</strong>
+          <span className="text-muted-foreground">Período:</span>
+          <strong>{fmt(startDate)}</strong>
           <span className="text-muted-foreground">a</span>
-          <strong>{fmt(addDays(weekStart, 6))}</strong>
+          <strong>{fmt(endDate)}</strong>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setWeekStart(startOfWeek(new Date()))}>
-            Hoje
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline">Total: {totals.total}</Badge>
+          <Badge variant="outline" className="gap-1"><MapPin className="h-3 w-3" /> {totals.visitas}</Badge>
+          <Badge variant="outline" className="gap-1"><Phone className="h-3 w-3" /> {totals.ligacoes}</Badge>
+          <Badge variant="outline" className="gap-1"><ClipboardList className="h-3 w-3" /> {totals.checklists}</Badge>
         </div>
       </div>
 
-      {/* Resumo semanal */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <SummaryTile label="Atividades" value={weekTotals.total} />
-        <SummaryTile label="Visitas" value={weekTotals.visitas} icon={<MapPin className="h-3.5 w-3.5" />} />
-        <SummaryTile label="Ligações" value={weekTotals.ligacoes} icon={<Phone className="h-3.5 w-3.5" />} />
-        <SummaryTile label="Checklists" value={weekTotals.checklists} icon={<ClipboardList className="h-3.5 w-3.5" />} />
-        <SummaryTile label="Clientes únicos" value={weekTotals.uniqueClients} icon={<UsersIcon className="h-3.5 w-3.5" />} />
-      </div>
+      {/* Grade do calendário */}
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Carregando...</p>
+      ) : (
+        <div
+          className={cn(
+            'grid gap-3',
+            days.length <= 1
+              ? 'grid-cols-1'
+              : days.length <= 4
+              ? 'grid-cols-2 sm:grid-cols-4'
+              : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7'
+          )}
+        >
+          {days.map((d) => (
+            <DayCell
+              key={d.day}
+              d={d}
+              maxActivities={maxActivities}
+              onClick={() => setSelectedDay(parseISODate(d.day))}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Calendário semanal em colunas */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-        {byDay.map(({ day, visitas, ligacoes, checklists, uniqueClients, total }, idx) => {
-          const isToday = sameDay(day, new Date());
-          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-          return (
-            <Card
-              key={idx}
-              className={cn(
-                'cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5',
-                isToday && 'border-primary ring-1 ring-primary/30',
-                isWeekend && !isToday && 'bg-muted/30'
-              )}
-              onClick={() => setSelectedDay(day)}
-            >
-              {/* Cabeçalho do dia */}
-              <div
-                className={cn(
-                  'flex items-center justify-between rounded-t-lg px-3 py-2 text-xs font-medium',
-                  isToday ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                )}
-              >
-                <span>{WEEK_DAYS_SHORT[day.getDay()]}</span>
-                <span>{fmt(day)}</span>
-              </div>
-
-              <CardContent className="space-y-2 p-3">
-                {/* Total destacado */}
-                <div className="flex items-baseline justify-between">
-                  <span className="text-xs text-muted-foreground">Atividades</span>
-                  <span className="text-2xl font-semibold leading-none">{total}</span>
-                </div>
-
-                <div className="space-y-1 border-t pt-2 text-xs">
-                  <Row icon={<MapPin className="h-3 w-3" />} label="Visitas" value={visitas} />
-                  <Row icon={<Phone className="h-3 w-3" />} label="Ligações" value={ligacoes} />
-                  <Row icon={<ClipboardList className="h-3 w-3" />} label="Checklists" value={checklists} />
-                  <div className="mt-1 flex items-center justify-between border-t pt-1">
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <UsersIcon className="h-3 w-3" /> Clientes
-                    </span>
-                    <strong>{uniqueClients}</strong>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
-
-      <Dialog open={!!selectedDay} onOpenChange={(o) => !o && setSelectedDay(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>
+      {/* Painel lateral com detalhes do dia */}
+      <Sheet open={!!selectedDay} onOpenChange={(o) => !o && setSelectedDay(null)}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
               {selectedDay && (
                 <>
-                  Atividades de {WEEK_DAYS_FULL[selectedDay.getDay()]},{' '}
-                  {selectedDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                  {WEEK_DAYS_FULL[selectedDay.getDay()]},{' '}
+                  {selectedDay.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </>
               )}
-            </DialogTitle>
-          </DialogHeader>
-          {dayItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma atividade neste dia.</p>
-          ) : (
-            <div className="max-h-[60vh] overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Próx. retorno</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dayItems.map((f: FollowupRow) => (
-                    <TableRow key={f.id}>
-                      <TableCell>
+            </SheetTitle>
+            <SheetDescription>
+              Atividades registradas neste dia.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-4 space-y-2">
+            {loadingDay ? (
+              <p className="text-sm text-muted-foreground">Carregando...</p>
+            ) : dayItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhuma atividade neste dia.</p>
+            ) : (
+              dayItems.map((f) => (
+                <Card key={f.id}>
+                  <CardContent className="space-y-2 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
                         <div className="font-medium">{f.client_name}</div>
-                        {f.client_code && <div className="text-xs text-muted-foreground">{f.client_code}</div>}
-                      </TableCell>
-                      <TableCell><Badge variant="outline">{f.activity_type}</Badge></TableCell>
-                      <TableCell><Badge>{f.followup_status}</Badge></TableCell>
-                      <TableCell className="text-sm">
-                        {f.next_return_date ? new Date(f.next_return_date).toLocaleDateString('pt-BR') : '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                        {f.client_code && (
+                          <div className="text-xs text-muted-foreground">{f.client_code}</div>
+                        )}
+                      </div>
+                      <Badge variant="outline">{f.activity_type}</Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <Badge>{f.followup_status}</Badge>
+                      <Badge variant="outline">Prioridade: {f.priority}</Badge>
+                      <span className="text-muted-foreground">
+                        Resp.: {consultantNameById.get(f.responsible_user_id) ?? '—'}
+                      </span>
+                    </div>
+                    {f.notes && (
+                      <p className="text-sm text-muted-foreground">{f.notes}</p>
+                    )}
+                    {f.next_return_date && (
+                      <p className="text-xs text-muted-foreground">
+                        Próx. retorno: {new Date(f.next_return_date).toLocaleDateString('pt-BR')}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
 
-const SummaryTile: React.FC<{ label: string; value: number; icon?: React.ReactNode }> = ({ label, value, icon }) => (
-  <Card>
-    <CardContent className="p-3">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {icon}
-        {label}
+const DayCell: React.FC<{
+  d: WeeklyAgendaDay;
+  maxActivities: number;
+  onClick: () => void;
+}> = ({ d, maxActivities, onClick }) => {
+  const date = parseISODate(d.day);
+  const isToday = startOfDay(date).getTime() === startOfDay(new Date()).getTime();
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const empty = d.total_activities === 0;
+  const intensity = maxActivities > 0 ? d.total_activities / maxActivities : 0;
+  const high = intensity >= 0.66 && d.total_activities > 0;
+
+  return (
+    <Card
+      onClick={onClick}
+      className={cn(
+        'cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5',
+        isToday && 'border-primary ring-1 ring-primary/40',
+        isWeekend && !isToday && 'bg-muted/30',
+        empty && 'opacity-70'
+      )}
+    >
+      <div
+        className={cn(
+          'flex items-center justify-between rounded-t-lg px-3 py-2 text-xs font-medium',
+          isToday ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+        )}
+      >
+        <span>{WEEK_DAYS_SHORT[date.getDay()]}</span>
+        <span>{fmt(date)}</span>
       </div>
-      <div className="mt-1 text-xl font-semibold">{value}</div>
-    </CardContent>
-  </Card>
-);
+      <CardContent className="space-y-2 p-3">
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-muted-foreground">Atividades</span>
+          <span className={cn(
+            'text-2xl font-semibold leading-none',
+            high && 'text-primary'
+          )}>
+            {d.total_activities}
+          </span>
+        </div>
+
+        {/* Barra de intensidade */}
+        <div className="h-1 w-full overflow-hidden rounded bg-muted">
+          <div
+            className={cn('h-full', empty ? 'bg-muted' : 'bg-primary')}
+            style={{ width: `${Math.max(intensity * 100, empty ? 0 : 6)}%` }}
+          />
+        </div>
+
+        <div className="space-y-1 border-t pt-2 text-xs">
+          <Row icon={<MapPin className="h-3 w-3" />} label="Visitas" value={d.visitas} />
+          <Row icon={<Phone className="h-3 w-3" />} label="Ligações" value={d.ligacoes} />
+          <Row icon={<ClipboardList className="h-3 w-3" />} label="Checklists" value={d.checklists} />
+          <div className="mt-1 flex items-center justify-between border-t pt-1">
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <UsersIcon className="h-3 w-3" /> Clientes
+            </span>
+            <strong>{d.unique_clients}</strong>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const Row: React.FC<{ icon: React.ReactNode; label: string; value: number }> = ({ icon, label, value }) => (
   <div className="flex items-center justify-between">
-    <span className="flex items-center gap-1 text-muted-foreground">
-      {icon} {label}
-    </span>
+    <span className="flex items-center gap-1 text-muted-foreground">{icon} {label}</span>
     <strong>{value}</strong>
   </div>
+);
+
+const DateField: React.FC<{ label: string; value?: Date; onChange: (d?: Date) => void }> = ({ label, value, onChange }) => (
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="outline"
+        className={cn('w-full justify-start text-left font-normal sm:w-[150px]', !value && 'text-muted-foreground')}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4" />
+        {value ? fmt(value) : label}
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-auto p-0" align="start">
+      <Calendar mode="single" selected={value} onSelect={onChange} initialFocus className={cn('p-3 pointer-events-auto')} />
+    </PopoverContent>
+  </Popover>
 );
