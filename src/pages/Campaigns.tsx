@@ -424,7 +424,136 @@ const NewEntryRow: React.FC<{
   rules: CampaignRule[];
   filiais: { id: string; nome: string }[];
   defaultFilialId: string;
-}> = ({ rules, filiais, defaultFilialId }) => {
+  sellerName: string;
+}> = ({ rules, filiais, defaultFilialId, sellerName }) => {
+  const create = useCreateCampaignClient();
+  const ensureMaster = useEnsureClientMaster();
+
+  const [client, setClient] = useState<{ code: string; name: string } | null>(null);
+  const [ruleId, setRuleId] = useState('');
+  const [filialId, setFilialId] = useState(defaultFilialId);
+
+  useEffect(() => {
+    if (defaultFilialId && !filialId) setFilialId(defaultFilialId);
+  }, [defaultFilialId, filialId]);
+
+  const activeRules = useMemo(
+    () =>
+      rules
+        .filter((r) => r.active)
+        .sort((a, b) => Number(a.trigger_min) - Number(b.trigger_min)),
+    [rules]
+  );
+
+  const selectedRule = activeRules.find((r) => r.id === ruleId) || null;
+
+  const reset = () => {
+    setClient(null);
+    setRuleId('');
+    setFilialId(defaultFilialId);
+  };
+
+  const handleAdd = async () => {
+    if (!client || !selectedRule) return;
+    await ensureMaster.mutateAsync({ client_code: client.code, client_name: client.name });
+    await create.mutateAsync({
+      campaign_rule_id: selectedRule.id,
+      client_code: client.code,
+      client_name: client.name,
+      filial_id: filialId || null,
+      campaign_trigger_value: Number(selectedRule.trigger_min),
+      gained_april: Number(selectedRule.gained_april),
+      gained_may: Number(selectedRule.gained_may),
+      gained_june: 0,
+      commitment_value: Number(selectedRule.commitment_value),
+    });
+    reset();
+  };
+
+  const canAdd = !!client && !!selectedRule && !create.isPending;
+
+  return (
+    <TableRow className="bg-primary/5 hover:bg-primary/5 align-middle">
+      {/* Código + Nome compartilham o autocomplete (colspan 2) */}
+      <TableCell colSpan={2} className="py-2">
+        {client ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-muted-foreground shrink-0 w-[100px] truncate">
+              {client.code}
+            </span>
+            <span className="text-sm font-medium truncate flex-1">{client.name}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0"
+              onClick={() => setClient(null)}
+              aria-label="Limpar cliente"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <ClientAutocomplete value={client} onChange={setClient} />
+        )}
+      </TableCell>
+      <TableCell className="py-2">
+        <span className="text-sm text-muted-foreground truncate">{sellerName}</span>
+      </TableCell>
+      <TableCell className="py-2">
+        <Select value={ruleId || undefined} onValueChange={(v) => setRuleId(v)}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Selecione o gatilho" />
+          </SelectTrigger>
+          <SelectContent>
+            {activeRules.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                Nenhuma regra ativa
+              </div>
+            ) : (
+              activeRules.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {formatCurrency(Number(r.trigger_min))} — Abr {formatPct(Number(r.gained_april))} / Mai{' '}
+                  {formatPct(Number(r.gained_may))} / Comp.{' '}
+                  {formatCurrency(Number(r.commitment_value))}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_april)) : '—'} />
+      <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_may)) : '—'} />
+      <AutoCell value={selectedRule ? formatCurrency(Number(selectedRule.commitment_value)) : '—'} />
+      <TableCell className="py-2">
+        <Select value={filialId || undefined} onValueChange={setFilialId}>
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Filial" />
+          </SelectTrigger>
+          <SelectContent>
+            {filiais.map((f) => (
+              <SelectItem key={f.id} value={f.id}>
+                {f.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell className="py-2 text-right">
+        <Button
+          type="button"
+          size="icon"
+          className="h-9 w-9"
+          onClick={handleAdd}
+          disabled={!canAdd}
+          aria-label="Adicionar lançamento"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+};
   const create = useCreateCampaignClient();
   const ensureMaster = useEnsureClientMaster();
 
