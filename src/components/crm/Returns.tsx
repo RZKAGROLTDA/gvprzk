@@ -263,6 +263,9 @@ export const Returns: React.FC = () => {
               <X className="mr-1 h-3 w-3" /> Limpar filtros
             </Button>
           )}
+          <p className="col-span-full text-[11px] text-muted-foreground">
+            O período filtra pela data do retorno (ou pelo último contato, quando não há retorno agendado).
+          </p>
         </CardContent>
       </Card>
 
