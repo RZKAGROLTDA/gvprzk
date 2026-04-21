@@ -335,7 +335,6 @@ export const ClientPortfolio: React.FC = () => {
             const highlight = isOverdueReturn || isInactive || isHot || isHighPriority;
             const sellerName = consultantById.get(c.responsible_user_id) ?? '—';
             const filialName = c.filial_id ? (filialById.get(c.filial_id) ?? '—') : '—';
-            return (
             const hasTask = !!c.latest_task_id;
             const cardEl = (
               <Card
