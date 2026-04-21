@@ -1355,6 +1355,7 @@ export type Database = {
           threat_description: string
         }[]
       }
+      diag_try_followup_insert: { Args: { p_task_id: string }; Returns: string }
       get_completely_secure_tasks: {
         Args: never
         Returns: {
