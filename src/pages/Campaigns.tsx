@@ -133,10 +133,9 @@ const EntriesTab: React.FC = () => {
 
   const totals = useMemo(() => {
     const count = filtered.length;
-    const totalCommitment = filtered.reduce((s, e) => s + Number(e.commitment_value || 0), 0);
     const totalTrigger = filtered.reduce((s, e) => s + Number(e.campaign_trigger_value || 0), 0);
-    const avgTrigger = count > 0 ? totalTrigger / count : 0;
-    return { count, totalCommitment, avgTrigger };
+    const totalCommitment = filtered.reduce((s, e) => s + Number(e.commitment_value || 0), 0);
+    return { count, totalTrigger, totalCommitment };
   }, [filtered]);
 
   const showFilialFilter =
