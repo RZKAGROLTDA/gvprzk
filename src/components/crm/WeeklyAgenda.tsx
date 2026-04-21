@@ -17,6 +17,7 @@ import { useWeeklyAgenda, WeeklyAgendaDay } from '@/hooks/useWeeklyAgenda';
 import { FollowupRow } from '@/hooks/useFollowups';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { MonthlyAgendaGrid } from './MonthlyAgendaGrid';
 
 const WEEK_DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const WEEK_DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -42,7 +43,10 @@ const parseISODate = (s: string) => {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 };
 
-type RangeMode = 'week' | 'today' | 'last7' | 'custom';
+type RangeMode = 'week' | 'today' | 'last7' | 'month' | 'last30' | 'custom';
+
+const startOfMonth = (d: Date) => { const x = startOfDay(d); x.setDate(1); return x; };
+const endOfMonth = (d: Date) => { const x = startOfDay(d); x.setMonth(x.getMonth() + 1, 0); return x; };
 
 export const WeeklyAgenda: React.FC = () => {
   const { user } = useAuth();
@@ -75,6 +79,14 @@ export const WeeklyAgenda: React.FC = () => {
       const end = startOfDay(new Date());
       return { startDate: addDays(end, -6), endDate: end };
     }
+    if (mode === 'month') {
+      const now = new Date();
+      return { startDate: startOfMonth(now), endDate: endOfMonth(now) };
+    }
+    if (mode === 'last30') {
+      const end = startOfDay(new Date());
+      return { startDate: addDays(end, -29), endDate: end };
+    }
     if (mode === 'custom' && customStart && customEnd) {
       const s = startOfDay(customStart);
       const e = startOfDay(customEnd);
@@ -83,6 +95,9 @@ export const WeeklyAgenda: React.FC = () => {
     // week
     return { startDate: anchor, endDate: addDays(anchor, 6) };
   }, [mode, anchor, customStart, customEnd]);
+
+  const rangeDays = Math.round((startOfDay(endDate).getTime() - startOfDay(startDate).getTime()) / 86_400_000) + 1;
+  const useMonthlyView = rangeDays > 7;
 
   const { data: days = [], isLoading } = useWeeklyAgenda({
     startDate,
@@ -160,16 +175,24 @@ export const WeeklyAgenda: React.FC = () => {
             <Button size="sm" variant={mode === 'week' ? 'default' : 'outline'} onClick={goThisWeek}>
               Esta semana
             </Button>
+            <Button size="sm" variant={mode === 'month' ? 'default' : 'outline'} onClick={() => setMode('month')}>
+              Este mês
+            </Button>
+            <Button size="sm" variant={mode === 'last30' ? 'default' : 'outline'} onClick={() => setMode('last30')}>
+              Últimos 30 dias
+            </Button>
           </div>
 
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" onClick={goPrevWeek} aria-label="Semana anterior">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" onClick={goNextWeek} aria-label="Próxima semana">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          {mode === 'week' && (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" onClick={goPrevWeek} aria-label="Semana anterior">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={goNextWeek} aria-label="Próxima semana">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
 
           <DateField label="De" value={customStart} onChange={(d) => { setCustomStart(d); if (d) setMode('custom'); }} />
           <DateField label="Até" value={customEnd} onChange={(d) => { setCustomEnd(d); if (d) setMode('custom'); }} />
@@ -224,10 +247,17 @@ export const WeeklyAgenda: React.FC = () => {
       {/* Grade do calendário */}
       {isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="h-44 animate-pulse rounded-lg bg-muted/50" />
+          {Array.from({ length: useMonthlyView ? 35 : 7 }).map((_, i) => (
+            <div key={i} className={cn('animate-pulse rounded-lg bg-muted/50', useMonthlyView ? 'h-20' : 'h-44')} />
           ))}
         </div>
+      ) : useMonthlyView ? (
+        <MonthlyAgendaGrid
+          startDate={startDate}
+          endDate={endDate}
+          days={days}
+          onDayClick={setSelectedDay}
+        />
       ) : (
         <div
           className={cn(
