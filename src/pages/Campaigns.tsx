@@ -379,6 +379,13 @@ const ClientAutocomplete: React.FC<{
     );
   }
 
+  const handleSelect = (r: { client_code: string; client_name: string }) => {
+    setOpen(false);
+    setSearch('');
+    setDebounced('');
+    onChange({ code: r.client_code, name: r.client_name });
+  };
+
   return (
     <div className="relative">
       <Input
@@ -399,12 +406,11 @@ const ClientAutocomplete: React.FC<{
               <button
                 type="button"
                 key={`${r.client_code}-${r.source}`}
-                onMouseDown={(ev) => ev.preventDefault()}
-                onClick={() => {
-                  onChange({ code: r.client_code, name: r.client_name });
-                  setSearch('');
-                  setOpen(false);
+                onMouseDown={(ev) => {
+                  ev.preventDefault();
+                  handleSelect(r);
                 }}
+                onClick={() => handleSelect(r)}
                 className="w-full text-left px-3 py-2 hover:bg-accent text-sm border-b last:border-b-0"
               >
                 <div className="font-medium">{r.client_name}</div>
@@ -495,7 +501,10 @@ const NewEntryRow: React.FC<{
         <ClientAutocomplete value={client} onChange={setClient} />
       </TableCell>
       <TableCell className="py-2">
-        <Select value={ruleId} onValueChange={setRuleId}>
+        <Select
+          value={ruleId || undefined}
+          onValueChange={(v) => setRuleId(v)}
+        >
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Selecione o gatilho" />
           </SelectTrigger>
@@ -520,7 +529,7 @@ const NewEntryRow: React.FC<{
       <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_may)) : '—'} />
       <AutoCell value={selectedRule ? formatCurrency(Number(selectedRule.commitment_value)) : '—'} />
       <TableCell className="py-2">
-        <Select value={filialId} onValueChange={setFilialId}>
+        <Select value={filialId || undefined} onValueChange={setFilialId}>
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Filial" />
           </SelectTrigger>
@@ -630,7 +639,7 @@ const EntryRow: React.FC<{
       </TableCell>
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
-          <Select value={ruleId} onValueChange={setRuleId}>
+          <Select value={ruleId || undefined} onValueChange={setRuleId}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Selecione" />
             </SelectTrigger>
@@ -660,7 +669,7 @@ const EntryRow: React.FC<{
       <AutoCell value={formatCurrency(displayCommitment)} />
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
-          <Select value={filialId} onValueChange={setFilialId}>
+          <Select value={filialId || undefined} onValueChange={setFilialId}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Filial" />
             </SelectTrigger>
