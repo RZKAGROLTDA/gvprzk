@@ -572,7 +572,7 @@ const NewEntryRow: React.FC<{
           size="icon"
           className="h-9 w-9"
           onClick={handleAdd}
-          disabled={!canAdd}
+          disabled={create.isPending || ensureMaster.isPending}
           aria-label="Adicionar lançamento"
         >
           <Plus className="h-4 w-4" />
