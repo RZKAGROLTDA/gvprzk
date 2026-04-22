@@ -441,6 +441,8 @@ const NewEntryRow: React.FC<{
   const [client, setClient] = useState<{ code: string; name: string } | null>(null);
   const [ruleId, setRuleId] = useState('');
   const [filialId, setFilialId] = useState(defaultFilialId);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [soldTrigger, setSoldTrigger] = useState('');
   // Chave incremental para forçar remount dos Selects e garantir limpeza visual
   const [resetKey, setResetKey] = useState(0);
 
@@ -467,6 +469,8 @@ const NewEntryRow: React.FC<{
     setClient(null);
     setRuleId('');
     setFilialId(defaultFilialId);
+    setInvoiceNumber('');
+    setSoldTrigger('');
     setResetKey((k) => k + 1);
   };
 
