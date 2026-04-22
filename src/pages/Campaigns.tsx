@@ -955,14 +955,40 @@ const SellerSummaryTab: React.FC = () => {
       .sort((a, b) => b.somaCompromisso - a.somaCompromisso);
   }, [entries, sellers, userRoles, filialMap]);
 
+  // --- Filtros ---
+  const [filterFilial, setFilterFilial] = useState<string>('all');
+  const [filterTipo, setFilterTipo] = useState<string>('all');
+
+  // Opções únicas de Tipo presentes nas linhas (após cálculo)
+  const tipoOptions = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => set.add(r.tipo));
+    return Array.from(set).sort();
+  }, [rows]);
+
+  // Opções únicas de Filial presentes nas linhas
+  const filialOptions = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => r.filial && r.filial !== '—' && set.add(r.filial));
+    return Array.from(set).sort();
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((r) => {
+      if (filterFilial !== 'all' && r.filial !== filterFilial) return false;
+      if (filterTipo !== 'all' && r.tipo !== filterTipo) return false;
+      return true;
+    });
+  }, [rows, filterFilial, filterTipo]);
+
   const totals = useMemo(
     () => ({
-      vendedores: rows.length,
-      clientes: rows.reduce((s, r) => s + r.clientes, 0),
-      somaGatilho: rows.reduce((s, r) => s + r.somaGatilho, 0),
-      somaCompromisso: rows.reduce((s, r) => s + r.somaCompromisso, 0),
+      vendedores: filteredRows.length,
+      clientes: filteredRows.reduce((s, r) => s + r.clientes, 0),
+      somaGatilho: filteredRows.reduce((s, r) => s + r.somaGatilho, 0),
+      somaCompromisso: filteredRows.reduce((s, r) => s + r.somaCompromisso, 0),
     }),
-    [rows]
+    [filteredRows]
   );
 
   return (
