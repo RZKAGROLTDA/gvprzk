@@ -220,13 +220,13 @@ const EntriesTab: React.FC = () => {
 
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : list.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
                       Nenhum lançamento encontrado.
                     </TableCell>
                   </TableRow>
