@@ -760,6 +760,40 @@ const EntryRow: React.FC<{
           </span>
         )}
       </TableCell>
+      <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+        {editing ? (
+          <Input
+            placeholder="Nº NF"
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+            className="h-9"
+          />
+        ) : (
+          <span className="text-sm">{entry.invoice_number || '—'}</span>
+        )}
+      </TableCell>
+      <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+        {editing ? (
+          <Select value={soldTrigger || undefined} onValueChange={setSoldTrigger}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {SOLD_TRIGGER_OPTIONS.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : entry.sold_trigger ? (
+          <Badge variant="secondary" className="font-normal">
+            {entry.sold_trigger}
+          </Badge>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        )}
+      </TableCell>
       <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-end gap-1">
           {editing ? (
