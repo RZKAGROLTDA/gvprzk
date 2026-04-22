@@ -500,6 +500,8 @@ const NewEntryRow: React.FC<{
         gained_may: Number(selectedRule.gained_may),
         gained_june: 0,
         commitment_value: Number(selectedRule.commitment_value),
+        invoice_number: invoiceNumber.trim() || null,
+        sold_trigger: soldTrigger || null,
       });
       reset();
     } catch (err: any) {
