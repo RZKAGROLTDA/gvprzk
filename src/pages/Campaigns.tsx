@@ -48,6 +48,7 @@ import {
   useEnsureClientMaster,
   type CampaignRule,
   type CampaignClient,
+  SOLD_TRIGGER_OPTIONS,
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
