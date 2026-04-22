@@ -1141,7 +1141,6 @@ const RuleRow: React.FC<{
 
   const [name, setName] = useState(rule.campaign_name);
   const [tMin, setTMin] = useState(String(rule.trigger_min ?? ''));
-  const [tMax, setTMax] = useState(rule.trigger_max == null ? '' : String(rule.trigger_max));
   const [april, setApril] = useState(String(rule.gained_april ?? ''));
   const [may, setMay] = useState(String(rule.gained_may ?? ''));
   const [commitment, setCommitment] = useState(String(rule.commitment_value ?? ''));
@@ -1150,7 +1149,6 @@ const RuleRow: React.FC<{
   const resetFromRule = () => {
     setName(rule.campaign_name);
     setTMin(String(rule.trigger_min ?? ''));
-    setTMax(rule.trigger_max == null ? '' : String(rule.trigger_max));
     setApril(String(rule.gained_april ?? ''));
     setMay(String(rule.gained_may ?? ''));
     setCommitment(String(rule.commitment_value ?? ''));
@@ -1164,7 +1162,8 @@ const RuleRow: React.FC<{
       patch: {
         campaign_name: name.trim(),
         trigger_min: parseFloat(tMin) || 0,
-        trigger_max: tMax.trim() === '' ? null : parseFloat(tMax),
+        // trigger_max foi descontinuado da UI — sempre null
+        trigger_max: null,
         gained_april: parseFloat(april) || 0,
         gained_may: parseFloat(may) || 0,
         commitment_value: parseFloat(commitment) || 0,
