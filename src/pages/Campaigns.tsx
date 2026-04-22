@@ -497,7 +497,7 @@ const NewEntryRow: React.FC<{
     }
   };
 
-  const canAdd = !!client && !!selectedRule && !create.isPending;
+  // canAdd não é mais usado para desabilitar — feedback agora vai via toast em handleAdd
 
   return (
     <TableRow className="bg-primary/5 hover:bg-primary/5 align-middle">
