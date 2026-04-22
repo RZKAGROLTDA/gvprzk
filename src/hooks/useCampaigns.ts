@@ -228,6 +228,8 @@ export const useUpdateCampaignClient = () => {
           | 'gained_june'
           | 'commitment_value'
           | 'filial_id'
+          | 'invoice_number'
+          | 'sold_trigger'
         >
       >;
     }) => {
