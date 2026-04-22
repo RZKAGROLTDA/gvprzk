@@ -659,7 +659,10 @@ const EntryRow: React.FC<{
 
   const currentRule = ruleMap.get(ruleId) || null;
   const dirty =
-    ruleId !== (entry.campaign_rule_id || '') || filialId !== (entry.filial_id || '');
+    ruleId !== (entry.campaign_rule_id || '') ||
+    filialId !== (entry.filial_id || '') ||
+    invoiceNumber !== (entry.invoice_number || '') ||
+    soldTrigger !== (entry.sold_trigger || '');
 
   const displayApril = currentRule ? Number(currentRule.gained_april) : Number(entry.gained_april);
   const displayMay = currentRule ? Number(currentRule.gained_may) : Number(entry.gained_may);
@@ -682,6 +685,8 @@ const EntryRow: React.FC<{
         gained_june: 0,
         commitment_value: Number(currentRule.commitment_value),
         filial_id: filialId || null,
+        invoice_number: invoiceNumber.trim() || null,
+        sold_trigger: soldTrigger || null,
       },
     });
     setEditing(false);
@@ -690,6 +695,8 @@ const EntryRow: React.FC<{
   const handleCancel = () => {
     setRuleId(entry.campaign_rule_id || '');
     setFilialId(entry.filial_id || '');
+    setInvoiceNumber(entry.invoice_number || '');
+    setSoldTrigger(entry.sold_trigger || '');
     setEditing(false);
   };
 
