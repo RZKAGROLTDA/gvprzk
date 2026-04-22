@@ -455,6 +455,11 @@ const NewEntryRow: React.FC<{
 
   const selectedRule = activeRules.find((r) => r.id === ruleId) || null;
 
+  // Se a regra escolhida deixou de existir/ficar ativa, limpa o select
+  useEffect(() => {
+    if (ruleId && !selectedRule) setRuleId('');
+  }, [ruleId, selectedRule]);
+
   const reset = () => {
     setClient(null);
     setRuleId('');
@@ -463,7 +468,15 @@ const NewEntryRow: React.FC<{
   };
 
   const handleAdd = async () => {
-    if (!client || !selectedRule) return;
+    // Validação explícita com feedback (em vez de bloquear silenciosamente)
+    if (!client) {
+      toast.error('Selecione um cliente para o lançamento');
+      return;
+    }
+    if (!selectedRule) {
+      toast.error('Selecione um gatilho válido');
+      return;
+    }
     try {
       await ensureMaster.mutateAsync({ client_code: client.code, client_name: client.name });
       await create.mutateAsync({
@@ -478,8 +491,9 @@ const NewEntryRow: React.FC<{
         commitment_value: Number(selectedRule.commitment_value),
       });
       reset();
-    } catch {
-      // mantém o formulário em caso de erro para o usuário corrigir
+    } catch (err: any) {
+      // Loga para debug e mantém o formulário para o usuário corrigir
+      console.error('[Campanhas] Falha ao criar lançamento:', err);
     }
   };
 
