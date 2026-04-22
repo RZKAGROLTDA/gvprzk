@@ -1018,10 +1018,48 @@ const SellerSummaryTab: React.FC = () => {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Resumo por Vendedor</CardTitle>
-          <CardDescription>
-            Performance por vendedor, ordenado pela soma de compromisso
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div>
+              <CardTitle>Resumo por Vendedor</CardTitle>
+              <CardDescription>
+                Performance por vendedor, ordenado pela soma de compromisso
+              </CardDescription>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="min-w-[180px]">
+                <Label className="text-[10px] uppercase text-muted-foreground">Filial</Label>
+                <Select value={filterFilial} onValueChange={setFilterFilial}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todas as filiais" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as filiais</SelectItem>
+                    {filialOptions.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {f}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-[160px]">
+                <Label className="text-[10px] uppercase text-muted-foreground">Cargo / Tipo</Label>
+                <Select value={filterTipo} onValueChange={setFilterTipo}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {tipoOptions.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="overflow-x-auto">
@@ -1043,14 +1081,14 @@ const SellerSummaryTab: React.FC = () => {
                       Carregando...
                     </TableCell>
                   </TableRow>
-                ) : rows.length === 0 ? (
+                ) : filteredRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
-                      Nenhum lançamento válido encontrado.
+                      Nenhum lançamento encontrado para os filtros aplicados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((r) => (
+                  filteredRows.map((r) => (
                     <TableRow key={r.seller_id} className="align-middle">
                       <TableCell className="py-2 font-medium">{r.nome}</TableCell>
                       <TableCell className="py-2 text-sm">{r.filial}</TableCell>
