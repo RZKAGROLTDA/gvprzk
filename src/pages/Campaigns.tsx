@@ -204,6 +204,8 @@ const EntriesTab: React.FC = () => {
                   <TableHead className="text-right">Mai %</TableHead>
                   <TableHead className="text-right">Compromisso</TableHead>
                   <TableHead className="min-w-[140px]">Filial</TableHead>
+                  <TableHead className="min-w-[140px]">Nº Nota Fiscal</TableHead>
+                  <TableHead className="min-w-[160px]">Gatilho Vendido</TableHead>
                   <TableHead className="text-right w-28">Ações</TableHead>
                 </TableRow>
               </TableHeader>
