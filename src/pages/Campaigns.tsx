@@ -646,6 +646,8 @@ const EntryRow: React.FC<{
   const [editing, setEditing] = useState(false);
   const [ruleId, setRuleId] = useState(entry.campaign_rule_id || '');
   const [filialId, setFilialId] = useState(entry.filial_id || '');
+  const [invoiceNumber, setInvoiceNumber] = useState(entry.invoice_number || '');
+  const [soldTrigger, setSoldTrigger] = useState(entry.sold_trigger || '');
 
   const activeRules = useMemo(
     () =>
