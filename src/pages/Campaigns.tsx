@@ -1192,53 +1192,56 @@ const RuleRow: React.FC<{
     return (
       <TableRow className="bg-muted/30 align-top">
         <TableCell className="py-2">
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8" />
-        </TableCell>
-        <TableCell className="py-2 text-right">
           <Input
-            type="number"
-            step="0.01"
-            value={tMin}
-            onChange={(e) => setTMin(e.target.value)}
-            className="h-8 text-right"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nome da campanha"
+            className="h-8"
           />
         </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={tMax}
-            onChange={(e) => setTMax(e.target.value)}
-            placeholder="sem teto"
-            className="h-8 text-right"
-          />
-        </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={april}
-            onChange={(e) => setApril(e.target.value)}
-            className="h-8 text-right"
-          />
-        </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={may}
-            onChange={(e) => setMay(e.target.value)}
-            className="h-8 text-right"
-          />
-        </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={commitment}
-            onChange={(e) => setCommitment(e.target.value)}
-            className="h-8 text-right"
-          />
+        <TableCell className="py-2">
+          <div className="grid grid-cols-4 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Gatilho R$</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={tMin}
+                onChange={(e) => setTMin(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Abr %</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={april}
+                onChange={(e) => setApril(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Mai %</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={may}
+                onChange={(e) => setMay(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Compromisso R$</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={commitment}
+                onChange={(e) => setCommitment(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+          </div>
         </TableCell>
         <TableCell className="py-2">
           <Switch checked={active} onCheckedChange={setActive} />
@@ -1273,7 +1276,7 @@ const RuleRow: React.FC<{
 
   return (
     <TableRow>
-      <TableCell className="font-medium">
+      <TableCell className="font-medium align-top">
         <div>{rule.campaign_name}</div>
         {usageCount > 0 && (
           <div className="text-xs text-muted-foreground">
@@ -1281,17 +1284,16 @@ const RuleRow: React.FC<{
           </div>
         )}
       </TableCell>
-      <TableCell className="text-right">{formatCurrency(Number(rule.trigger_min))}</TableCell>
-      <TableCell className="text-right">
-        {rule.trigger_max == null ? (
-          <span className="text-muted-foreground">— sem teto</span>
-        ) : (
-          formatCurrency(Number(rule.trigger_max))
-        )}
+      <TableCell className="align-top">
+        <div className="text-base font-semibold leading-tight">
+          {formatCurrency(Number(rule.trigger_min))}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Abr {formatPct(Number(rule.gained_april))} ·{' '}
+          Mai {formatPct(Number(rule.gained_may))} ·{' '}
+          Compromisso {formatCurrency(Number(rule.commitment_value))}
+        </div>
       </TableCell>
-      <TableCell className="text-right">{formatPct(Number(rule.gained_april))}</TableCell>
-      <TableCell className="text-right">{formatPct(Number(rule.gained_may))}</TableCell>
-      <TableCell className="text-right">{formatCurrency(Number(rule.commitment_value))}</TableCell>
       <TableCell>
         {canManage ? (
           <Switch
