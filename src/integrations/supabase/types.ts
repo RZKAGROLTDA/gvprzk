@@ -84,7 +84,9 @@ export type Database = {
           gained_june: number
           gained_may: number
           id: string
+          invoice_number: string | null
           seller_id: string
+          sold_trigger: string | null
           updated_at: string
         }
         Insert: {
@@ -99,7 +101,9 @@ export type Database = {
           gained_june?: number
           gained_may?: number
           id?: string
+          invoice_number?: string | null
           seller_id?: string
+          sold_trigger?: string | null
           updated_at?: string
         }
         Update: {
@@ -114,7 +118,9 @@ export type Database = {
           gained_june?: number
           gained_may?: number
           id?: string
+          invoice_number?: string | null
           seller_id?: string
+          sold_trigger?: string | null
           updated_at?: string
         }
         Relationships: [
