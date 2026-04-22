@@ -1462,18 +1462,31 @@ export type Database = {
           table_name: string
         }[]
       }
-      compute_followup_from_task: {
-        Args: {
-          p_base_date: string
-          p_sales_type: string
-          p_status: string
-          p_task_type: string
-        }
-        Returns: {
-          followup_status: Database["public"]["Enums"]["followup_status"]
-          next_return_date: string
-        }[]
-      }
+      compute_followup_from_task:
+        | {
+            Args: {
+              p_base_date: string
+              p_sales_type: string
+              p_status: string
+              p_task_type: string
+            }
+            Returns: {
+              followup_status: Database["public"]["Enums"]["followup_status"]
+              next_return_date: string
+            }[]
+          }
+        | {
+            Args: {
+              p_base_date: string
+              p_sales_type: string
+              p_status: string
+              p_task_type: string
+            }
+            Returns: {
+              followup_status: Database["public"]["Enums"]["followup_status"]
+              next_return_date: string
+            }[]
+          }
       create_secure_profile: {
         Args: {
           email_param: string
