@@ -34,6 +34,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   useCampaignRules,
   useCampaignClients,
@@ -454,6 +455,11 @@ const NewEntryRow: React.FC<{
 
   const selectedRule = activeRules.find((r) => r.id === ruleId) || null;
 
+  // Se a regra escolhida deixou de existir/ficar ativa, limpa o select
+  useEffect(() => {
+    if (ruleId && !selectedRule) setRuleId('');
+  }, [ruleId, selectedRule]);
+
   const reset = () => {
     setClient(null);
     setRuleId('');
@@ -462,7 +468,15 @@ const NewEntryRow: React.FC<{
   };
 
   const handleAdd = async () => {
-    if (!client || !selectedRule) return;
+    // Validação explícita com feedback (em vez de bloquear silenciosamente)
+    if (!client) {
+      toast.error('Selecione um cliente para o lançamento');
+      return;
+    }
+    if (!selectedRule) {
+      toast.error('Selecione um gatilho válido');
+      return;
+    }
     try {
       await ensureMaster.mutateAsync({ client_code: client.code, client_name: client.name });
       await create.mutateAsync({
@@ -477,12 +491,13 @@ const NewEntryRow: React.FC<{
         commitment_value: Number(selectedRule.commitment_value),
       });
       reset();
-    } catch {
-      // mantém o formulário em caso de erro para o usuário corrigir
+    } catch (err: any) {
+      // Loga para debug e mantém o formulário para o usuário corrigir
+      console.error('[Campanhas] Falha ao criar lançamento:', err);
     }
   };
 
-  const canAdd = !!client && !!selectedRule && !create.isPending;
+  // canAdd não é mais usado para desabilitar — feedback agora vai via toast em handleAdd
 
   return (
     <TableRow className="bg-primary/5 hover:bg-primary/5 align-middle">
@@ -557,7 +572,7 @@ const NewEntryRow: React.FC<{
           size="icon"
           className="h-9 w-9"
           onClick={handleAdd}
-          disabled={!canAdd}
+          disabled={create.isPending || ensureMaster.isPending}
           aria-label="Adicionar lançamento"
         >
           <Plus className="h-4 w-4" />
@@ -1086,12 +1101,8 @@ const RulesTab: React.FC<{ canManage: boolean; canDelete: boolean }> = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[180px]">Campanha</TableHead>
-                  <TableHead className="text-right">Gatilho Mín</TableHead>
-                  <TableHead className="text-right">Gatilho Máx</TableHead>
-                  <TableHead className="text-right">Abr %</TableHead>
-                  <TableHead className="text-right">Mai %</TableHead>
-                  <TableHead className="text-right">Compromisso</TableHead>
+                  <TableHead className="min-w-[200px]">Campanha</TableHead>
+                  <TableHead className="min-w-[360px]">Gatilho / Ação</TableHead>
                   <TableHead>Ativa</TableHead>
                   {canManage && (
                     <TableHead className="text-right w-32">Ações</TableHead>
@@ -1130,7 +1141,6 @@ const RuleRow: React.FC<{
 
   const [name, setName] = useState(rule.campaign_name);
   const [tMin, setTMin] = useState(String(rule.trigger_min ?? ''));
-  const [tMax, setTMax] = useState(rule.trigger_max == null ? '' : String(rule.trigger_max));
   const [april, setApril] = useState(String(rule.gained_april ?? ''));
   const [may, setMay] = useState(String(rule.gained_may ?? ''));
   const [commitment, setCommitment] = useState(String(rule.commitment_value ?? ''));
@@ -1139,7 +1149,6 @@ const RuleRow: React.FC<{
   const resetFromRule = () => {
     setName(rule.campaign_name);
     setTMin(String(rule.trigger_min ?? ''));
-    setTMax(rule.trigger_max == null ? '' : String(rule.trigger_max));
     setApril(String(rule.gained_april ?? ''));
     setMay(String(rule.gained_may ?? ''));
     setCommitment(String(rule.commitment_value ?? ''));
@@ -1153,7 +1162,8 @@ const RuleRow: React.FC<{
       patch: {
         campaign_name: name.trim(),
         trigger_min: parseFloat(tMin) || 0,
-        trigger_max: tMax.trim() === '' ? null : parseFloat(tMax),
+        // trigger_max foi descontinuado da UI — sempre null
+        trigger_max: null,
         gained_april: parseFloat(april) || 0,
         gained_may: parseFloat(may) || 0,
         commitment_value: parseFloat(commitment) || 0,
@@ -1182,53 +1192,56 @@ const RuleRow: React.FC<{
     return (
       <TableRow className="bg-muted/30 align-top">
         <TableCell className="py-2">
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8" />
-        </TableCell>
-        <TableCell className="py-2 text-right">
           <Input
-            type="number"
-            step="0.01"
-            value={tMin}
-            onChange={(e) => setTMin(e.target.value)}
-            className="h-8 text-right"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nome da campanha"
+            className="h-8"
           />
         </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={tMax}
-            onChange={(e) => setTMax(e.target.value)}
-            placeholder="sem teto"
-            className="h-8 text-right"
-          />
-        </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={april}
-            onChange={(e) => setApril(e.target.value)}
-            className="h-8 text-right"
-          />
-        </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={may}
-            onChange={(e) => setMay(e.target.value)}
-            className="h-8 text-right"
-          />
-        </TableCell>
-        <TableCell className="py-2 text-right">
-          <Input
-            type="number"
-            step="0.01"
-            value={commitment}
-            onChange={(e) => setCommitment(e.target.value)}
-            className="h-8 text-right"
-          />
+        <TableCell className="py-2">
+          <div className="grid grid-cols-4 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Gatilho R$</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={tMin}
+                onChange={(e) => setTMin(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Abr %</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={april}
+                onChange={(e) => setApril(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Mai %</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={may}
+                onChange={(e) => setMay(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Compromisso R$</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={commitment}
+                onChange={(e) => setCommitment(e.target.value)}
+                className="h-8 text-right"
+              />
+            </div>
+          </div>
         </TableCell>
         <TableCell className="py-2">
           <Switch checked={active} onCheckedChange={setActive} />
@@ -1263,7 +1276,7 @@ const RuleRow: React.FC<{
 
   return (
     <TableRow>
-      <TableCell className="font-medium">
+      <TableCell className="font-medium align-top">
         <div>{rule.campaign_name}</div>
         {usageCount > 0 && (
           <div className="text-xs text-muted-foreground">
@@ -1271,17 +1284,16 @@ const RuleRow: React.FC<{
           </div>
         )}
       </TableCell>
-      <TableCell className="text-right">{formatCurrency(Number(rule.trigger_min))}</TableCell>
-      <TableCell className="text-right">
-        {rule.trigger_max == null ? (
-          <span className="text-muted-foreground">— sem teto</span>
-        ) : (
-          formatCurrency(Number(rule.trigger_max))
-        )}
+      <TableCell className="align-top">
+        <div className="text-base font-semibold leading-tight">
+          {formatCurrency(Number(rule.trigger_min))}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Abr {formatPct(Number(rule.gained_april))} ·{' '}
+          Mai {formatPct(Number(rule.gained_may))} ·{' '}
+          Compromisso {formatCurrency(Number(rule.commitment_value))}
+        </div>
       </TableCell>
-      <TableCell className="text-right">{formatPct(Number(rule.gained_april))}</TableCell>
-      <TableCell className="text-right">{formatPct(Number(rule.gained_may))}</TableCell>
-      <TableCell className="text-right">{formatCurrency(Number(rule.commitment_value))}</TableCell>
       <TableCell>
         {canManage ? (
           <Switch
@@ -1368,7 +1380,6 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const create = useCreateCampaignRule();
   const [name, setName] = useState('');
   const [tMin, setTMin] = useState('');
-  const [tMax, setTMax] = useState('');
   const [april, setApril] = useState('');
   const [may, setMay] = useState('');
   const [commitment, setCommitment] = useState('');
@@ -1379,7 +1390,8 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     await create.mutateAsync({
       campaign_name: name.trim(),
       trigger_min: parseFloat(tMin) || 0,
-      trigger_max: tMax.trim() === '' ? null : parseFloat(tMax),
+      // trigger_max foi descontinuado da UI — sempre null
+      trigger_max: null,
       gained_april: parseFloat(april) || 0,
       gained_may: parseFloat(may) || 0,
       gained_june: 0,
@@ -1394,7 +1406,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <DialogHeader>
         <DialogTitle>Nova Regra de Campanha</DialogTitle>
         <DialogDescription>
-          Os percentuais (Abr/Mai) são em %. Deixe o gatilho máximo vazio para faixa aberta.
+          Cada regra representa um valor fixo de gatilho. Os percentuais (Abr/Mai) são em %.
         </DialogDescription>
       </DialogHeader>
 
@@ -1404,21 +1416,9 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Gatilho Mínimo (R$)</Label>
-            <Input type="number" step="0.01" value={tMin} onChange={(e) => setTMin(e.target.value)} />
-          </div>
-          <div>
-            <Label>Gatilho Máximo (R$) — vazio = sem teto</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={tMax}
-              onChange={(e) => setTMax(e.target.value)}
-              placeholder="Faixa aberta"
-            />
-          </div>
+        <div>
+          <Label>Gatilho (R$)</Label>
+          <Input type="number" step="0.01" value={tMin} onChange={(e) => setTMin(e.target.value)} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
