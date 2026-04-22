@@ -580,6 +580,32 @@ const NewEntryRow: React.FC<{
           </SelectContent>
         </Select>
       </TableCell>
+      <TableCell className="py-2">
+        <Input
+          placeholder="Nº NF"
+          value={invoiceNumber}
+          onChange={(e) => setInvoiceNumber(e.target.value)}
+          className="h-9"
+        />
+      </TableCell>
+      <TableCell className="py-2">
+        <Select
+          key={`sold-${resetKey}`}
+          value={soldTrigger || undefined}
+          onValueChange={setSoldTrigger}
+        >
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            {SOLD_TRIGGER_OPTIONS.map((opt) => (
+              <SelectItem key={opt} value={opt}>
+                {opt}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
       <TableCell className="py-2 text-right">
         <Button
           type="button"
