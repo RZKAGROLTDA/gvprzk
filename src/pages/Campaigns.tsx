@@ -477,13 +477,17 @@ const NewEntryRow: React.FC<{
       toast.error('Selecione um gatilho válido');
       return;
     }
+    if (!filialId) {
+      toast.error('Selecione a filial do lançamento');
+      return;
+    }
     try {
       await ensureMaster.mutateAsync({ client_code: client.code, client_name: client.name });
       await create.mutateAsync({
         campaign_rule_id: selectedRule.id,
         client_code: client.code,
         client_name: client.name,
-        filial_id: filialId || null,
+        filial_id: filialId,
         campaign_trigger_value: Number(selectedRule.trigger_min),
         gained_april: Number(selectedRule.gained_april),
         gained_may: Number(selectedRule.gained_may),
@@ -492,8 +496,9 @@ const NewEntryRow: React.FC<{
       });
       reset();
     } catch (err: any) {
-      // Loga para debug e mantém o formulário para o usuário corrigir
+      // Torna o erro visível ao usuário (antes era silencioso, só no console)
       console.error('[Campanhas] Falha ao criar lançamento:', err);
+      toast.error(err?.message || 'Não foi possível criar o lançamento');
     }
   };
 
@@ -950,14 +955,40 @@ const SellerSummaryTab: React.FC = () => {
       .sort((a, b) => b.somaCompromisso - a.somaCompromisso);
   }, [entries, sellers, userRoles, filialMap]);
 
+  // --- Filtros ---
+  const [filterFilial, setFilterFilial] = useState<string>('all');
+  const [filterTipo, setFilterTipo] = useState<string>('all');
+
+  // Opções únicas de Tipo presentes nas linhas (após cálculo)
+  const tipoOptions = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => set.add(r.tipo));
+    return Array.from(set).sort();
+  }, [rows]);
+
+  // Opções únicas de Filial presentes nas linhas
+  const filialOptions = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((r) => r.filial && r.filial !== '—' && set.add(r.filial));
+    return Array.from(set).sort();
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((r) => {
+      if (filterFilial !== 'all' && r.filial !== filterFilial) return false;
+      if (filterTipo !== 'all' && r.tipo !== filterTipo) return false;
+      return true;
+    });
+  }, [rows, filterFilial, filterTipo]);
+
   const totals = useMemo(
     () => ({
-      vendedores: rows.length,
-      clientes: rows.reduce((s, r) => s + r.clientes, 0),
-      somaGatilho: rows.reduce((s, r) => s + r.somaGatilho, 0),
-      somaCompromisso: rows.reduce((s, r) => s + r.somaCompromisso, 0),
+      vendedores: filteredRows.length,
+      clientes: filteredRows.reduce((s, r) => s + r.clientes, 0),
+      somaGatilho: filteredRows.reduce((s, r) => s + r.somaGatilho, 0),
+      somaCompromisso: filteredRows.reduce((s, r) => s + r.somaCompromisso, 0),
     }),
-    [rows]
+    [filteredRows]
   );
 
   return (
@@ -987,10 +1018,48 @@ const SellerSummaryTab: React.FC = () => {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Resumo por Vendedor</CardTitle>
-          <CardDescription>
-            Performance por vendedor, ordenado pela soma de compromisso
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div>
+              <CardTitle>Resumo por Vendedor</CardTitle>
+              <CardDescription>
+                Performance por vendedor, ordenado pela soma de compromisso
+              </CardDescription>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="min-w-[180px]">
+                <Label className="text-[10px] uppercase text-muted-foreground">Filial</Label>
+                <Select value={filterFilial} onValueChange={setFilterFilial}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todas as filiais" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as filiais</SelectItem>
+                    {filialOptions.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {f}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-[160px]">
+                <Label className="text-[10px] uppercase text-muted-foreground">Cargo / Tipo</Label>
+                <Select value={filterTipo} onValueChange={setFilterTipo}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {tipoOptions.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0">
           <div className="overflow-x-auto">
@@ -1012,14 +1081,14 @@ const SellerSummaryTab: React.FC = () => {
                       Carregando...
                     </TableCell>
                   </TableRow>
-                ) : rows.length === 0 ? (
+                ) : filteredRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-6">
-                      Nenhum lançamento válido encontrado.
+                      Nenhum lançamento encontrado para os filtros aplicados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((r) => (
+                  filteredRows.map((r) => (
                     <TableRow key={r.seller_id} className="align-middle">
                       <TableCell className="py-2 font-medium">{r.nome}</TableCell>
                       <TableCell className="py-2 text-sm">{r.filial}</TableCell>
