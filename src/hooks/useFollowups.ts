@@ -29,7 +29,7 @@ export const getClientKey = (f: Pick<FollowupRow, 'client_code' | 'client_name'>
   return `name:${(f.client_name ?? '').trim().toLowerCase()}`;
 };
 
-/** Todos os follow-ups visíveis ao usuário (RLS filtra). */
+/** Todos os follow-ups de PROSPECTS visíveis ao usuário (RLS filtra). */
 export const useFollowups = () => {
   const { user } = useAuth();
   return useQuery({
@@ -39,11 +39,15 @@ export const useFollowups = () => {
     queryFn: async (): Promise<FollowupRow[]> => {
       const { data, error } = await supabase
         .from('task_followups')
-        .select('*')
+        .select('*, tasks!inner(sales_type)')
+        .eq('tasks.sales_type', 'prospect')
         .order('activity_date', { ascending: false })
         .limit(2000);
       if (error) throw error;
-      return (data ?? []) as FollowupRow[];
+      return (data ?? []).map((row: any) => {
+        const { tasks: _t, ...rest } = row;
+        return rest as FollowupRow;
+      });
     },
   });
 };
