@@ -477,13 +477,17 @@ const NewEntryRow: React.FC<{
       toast.error('Selecione um gatilho válido');
       return;
     }
+    if (!filialId) {
+      toast.error('Selecione a filial do lançamento');
+      return;
+    }
     try {
       await ensureMaster.mutateAsync({ client_code: client.code, client_name: client.name });
       await create.mutateAsync({
         campaign_rule_id: selectedRule.id,
         client_code: client.code,
         client_name: client.name,
-        filial_id: filialId || null,
+        filial_id: filialId,
         campaign_trigger_value: Number(selectedRule.trigger_min),
         gained_april: Number(selectedRule.gained_april),
         gained_may: Number(selectedRule.gained_may),
@@ -492,8 +496,9 @@ const NewEntryRow: React.FC<{
       });
       reset();
     } catch (err: any) {
-      // Loga para debug e mantém o formulário para o usuário corrigir
+      // Torna o erro visível ao usuário (antes era silencioso, só no console)
       console.error('[Campanhas] Falha ao criar lançamento:', err);
+      toast.error(err?.message || 'Não foi possível criar o lançamento');
     }
   };
 
