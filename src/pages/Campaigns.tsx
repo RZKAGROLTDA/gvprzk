@@ -1101,12 +1101,8 @@ const RulesTab: React.FC<{ canManage: boolean; canDelete: boolean }> = ({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[180px]">Campanha</TableHead>
-                  <TableHead className="text-right">Gatilho Mín</TableHead>
-                  <TableHead className="text-right">Gatilho Máx</TableHead>
-                  <TableHead className="text-right">Abr %</TableHead>
-                  <TableHead className="text-right">Mai %</TableHead>
-                  <TableHead className="text-right">Compromisso</TableHead>
+                  <TableHead className="min-w-[200px]">Campanha</TableHead>
+                  <TableHead className="min-w-[360px]">Gatilho / Ação</TableHead>
                   <TableHead>Ativa</TableHead>
                   {canManage && (
                     <TableHead className="text-right w-32">Ações</TableHead>
