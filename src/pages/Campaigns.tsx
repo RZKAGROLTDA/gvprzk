@@ -48,6 +48,7 @@ import {
   useEnsureClientMaster,
   type CampaignRule,
   type CampaignClient,
+  SOLD_TRIGGER_OPTIONS,
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
@@ -203,6 +204,8 @@ const EntriesTab: React.FC = () => {
                   <TableHead className="text-right">Mai %</TableHead>
                   <TableHead className="text-right">Compromisso</TableHead>
                   <TableHead className="min-w-[140px]">Filial</TableHead>
+                  <TableHead className="min-w-[140px]">Nº Nota Fiscal</TableHead>
+                  <TableHead className="min-w-[160px]">Gatilho Vendido</TableHead>
                   <TableHead className="text-right w-28">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -217,13 +220,13 @@ const EntriesTab: React.FC = () => {
 
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : list.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
                       Nenhum lançamento encontrado.
                     </TableCell>
                   </TableRow>
@@ -438,6 +441,8 @@ const NewEntryRow: React.FC<{
   const [client, setClient] = useState<{ code: string; name: string } | null>(null);
   const [ruleId, setRuleId] = useState('');
   const [filialId, setFilialId] = useState(defaultFilialId);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [soldTrigger, setSoldTrigger] = useState('');
   // Chave incremental para forçar remount dos Selects e garantir limpeza visual
   const [resetKey, setResetKey] = useState(0);
 
@@ -464,6 +469,8 @@ const NewEntryRow: React.FC<{
     setClient(null);
     setRuleId('');
     setFilialId(defaultFilialId);
+    setInvoiceNumber('');
+    setSoldTrigger('');
     setResetKey((k) => k + 1);
   };
 
@@ -493,6 +500,8 @@ const NewEntryRow: React.FC<{
         gained_may: Number(selectedRule.gained_may),
         gained_june: 0,
         commitment_value: Number(selectedRule.commitment_value),
+        invoice_number: invoiceNumber.trim() || null,
+        sold_trigger: soldTrigger || null,
       });
       reset();
     } catch (err: any) {
@@ -571,6 +580,32 @@ const NewEntryRow: React.FC<{
           </SelectContent>
         </Select>
       </TableCell>
+      <TableCell className="py-2">
+        <Input
+          placeholder="Nº NF"
+          value={invoiceNumber}
+          onChange={(e) => setInvoiceNumber(e.target.value)}
+          className="h-9"
+        />
+      </TableCell>
+      <TableCell className="py-2">
+        <Select
+          key={`sold-${resetKey}`}
+          value={soldTrigger || undefined}
+          onValueChange={setSoldTrigger}
+        >
+          <SelectTrigger className="h-9">
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            {SOLD_TRIGGER_OPTIONS.map((opt) => (
+              <SelectItem key={opt} value={opt}>
+                {opt}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
       <TableCell className="py-2 text-right">
         <Button
           type="button"
@@ -611,6 +646,8 @@ const EntryRow: React.FC<{
   const [editing, setEditing] = useState(false);
   const [ruleId, setRuleId] = useState(entry.campaign_rule_id || '');
   const [filialId, setFilialId] = useState(entry.filial_id || '');
+  const [invoiceNumber, setInvoiceNumber] = useState(entry.invoice_number || '');
+  const [soldTrigger, setSoldTrigger] = useState(entry.sold_trigger || '');
 
   const activeRules = useMemo(
     () =>
@@ -622,7 +659,10 @@ const EntryRow: React.FC<{
 
   const currentRule = ruleMap.get(ruleId) || null;
   const dirty =
-    ruleId !== (entry.campaign_rule_id || '') || filialId !== (entry.filial_id || '');
+    ruleId !== (entry.campaign_rule_id || '') ||
+    filialId !== (entry.filial_id || '') ||
+    invoiceNumber !== (entry.invoice_number || '') ||
+    soldTrigger !== (entry.sold_trigger || '');
 
   const displayApril = currentRule ? Number(currentRule.gained_april) : Number(entry.gained_april);
   const displayMay = currentRule ? Number(currentRule.gained_may) : Number(entry.gained_may);
@@ -645,6 +685,8 @@ const EntryRow: React.FC<{
         gained_june: 0,
         commitment_value: Number(currentRule.commitment_value),
         filial_id: filialId || null,
+        invoice_number: invoiceNumber.trim() || null,
+        sold_trigger: soldTrigger || null,
       },
     });
     setEditing(false);
@@ -653,6 +695,8 @@ const EntryRow: React.FC<{
   const handleCancel = () => {
     setRuleId(entry.campaign_rule_id || '');
     setFilialId(entry.filial_id || '');
+    setInvoiceNumber(entry.invoice_number || '');
+    setSoldTrigger(entry.sold_trigger || '');
     setEditing(false);
   };
 
@@ -714,6 +758,40 @@ const EntryRow: React.FC<{
           <span className="text-sm">
             {entry.filial_id ? filialMap.get(entry.filial_id) || '—' : '—'}
           </span>
+        )}
+      </TableCell>
+      <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+        {editing ? (
+          <Input
+            placeholder="Nº NF"
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+            className="h-9"
+          />
+        ) : (
+          <span className="text-sm">{entry.invoice_number || '—'}</span>
+        )}
+      </TableCell>
+      <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+        {editing ? (
+          <Select value={soldTrigger || undefined} onValueChange={setSoldTrigger}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {SOLD_TRIGGER_OPTIONS.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : entry.sold_trigger ? (
+          <Badge variant="secondary" className="font-normal">
+            {entry.sold_trigger}
+          </Badge>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
         )}
       </TableCell>
       <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
