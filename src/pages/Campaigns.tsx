@@ -1380,7 +1380,6 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const create = useCreateCampaignRule();
   const [name, setName] = useState('');
   const [tMin, setTMin] = useState('');
-  const [tMax, setTMax] = useState('');
   const [april, setApril] = useState('');
   const [may, setMay] = useState('');
   const [commitment, setCommitment] = useState('');
@@ -1391,7 +1390,8 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     await create.mutateAsync({
       campaign_name: name.trim(),
       trigger_min: parseFloat(tMin) || 0,
-      trigger_max: tMax.trim() === '' ? null : parseFloat(tMax),
+      // trigger_max foi descontinuado da UI — sempre null
+      trigger_max: null,
       gained_april: parseFloat(april) || 0,
       gained_may: parseFloat(may) || 0,
       gained_june: 0,
@@ -1406,7 +1406,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <DialogHeader>
         <DialogTitle>Nova Regra de Campanha</DialogTitle>
         <DialogDescription>
-          Os percentuais (Abr/Mai) são em %. Deixe o gatilho máximo vazio para faixa aberta.
+          Cada regra representa um valor fixo de gatilho. Os percentuais (Abr/Mai) são em %.
         </DialogDescription>
       </DialogHeader>
 
@@ -1416,21 +1416,9 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Gatilho Mínimo (R$)</Label>
-            <Input type="number" step="0.01" value={tMin} onChange={(e) => setTMin(e.target.value)} />
-          </div>
-          <div>
-            <Label>Gatilho Máximo (R$) — vazio = sem teto</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={tMax}
-              onChange={(e) => setTMax(e.target.value)}
-              placeholder="Faixa aberta"
-            />
-          </div>
+        <div>
+          <Label>Gatilho (R$)</Label>
+          <Input type="number" step="0.01" value={tMin} onChange={(e) => setTMin(e.target.value)} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
