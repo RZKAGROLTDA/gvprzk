@@ -28,9 +28,23 @@ export interface CampaignClient {
   gained_may: number;
   gained_june: number;
   commitment_value: number;
+  invoice_number: string | null;
+  sold_trigger: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export const SOLD_TRIGGER_OPTIONS = [
+  'Kit revisão',
+  'JDM',
+  'DSH',
+  'Rolamento',
+  'Correia',
+  'Lista Seletiva',
+  'Combo',
+] as const;
+
+export type SoldTrigger = typeof SOLD_TRIGGER_OPTIONS[number];
 
 export interface ClientSearchResult {
   client_code: string;
