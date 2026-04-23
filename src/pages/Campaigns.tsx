@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -728,6 +728,128 @@ const AutoCell: React.FC<{ value: string }> = ({ value }) => (
   </TableCell>
 );
 
+// --- Editor inline para Nº Nota Fiscal ---
+const InlineInvoiceEditor: React.FC<{
+  entryId: string;
+  value: string | null;
+}> = ({ entryId, value }) => {
+  const update = useUpdateCampaignClient();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDraft(value || '');
+  }, [value]);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const commit = async () => {
+    const next = draft.trim();
+    const current = (value || '').trim();
+    if (next === current) {
+      setEditing(false);
+      return;
+    }
+    try {
+      await update.mutateAsync({
+        id: entryId,
+        patch: { invoice_number: next || null },
+      });
+    } catch {
+      setDraft(value || '');
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditing(true);
+        }}
+        className="text-sm text-left w-full hover:underline decoration-dotted underline-offset-4"
+        title="Clique para editar"
+      >
+        {value || <span className="text-muted-foreground">—</span>}
+      </button>
+    );
+  }
+
+  return (
+    <Input
+      ref={inputRef}
+      placeholder="Nº NF"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          (e.currentTarget as HTMLInputElement).blur();
+        } else if (e.key === 'Escape') {
+          setDraft(value || '');
+          setEditing(false);
+        }
+      }}
+      disabled={update.isPending}
+      className="h-9"
+    />
+  );
+};
+
+// --- Editor inline para Gatilho Vendido ---
+const InlineSoldTriggerEditor: React.FC<{
+  entryId: string;
+  value: string | null;
+}> = ({ entryId, value }) => {
+  const update = useUpdateCampaignClient();
+  const [open, setOpen] = useState(false);
+
+  const handleChange = async (next: string) => {
+    if (next === (value || '')) return;
+    await update.mutateAsync({
+      id: entryId,
+      patch: { sold_trigger: next || null },
+    });
+  };
+
+  return (
+    <Select
+      open={open}
+      onOpenChange={setOpen}
+      value={value || undefined}
+      onValueChange={handleChange}
+      disabled={update.isPending}
+    >
+      <SelectTrigger
+        className="h-9 border-dashed"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {value ? (
+          <Badge variant="secondary" className="font-normal">
+            {value}
+          </Badge>
+        ) : (
+          <span className="text-sm text-muted-foreground">Selecione</span>
+        )}
+      </SelectTrigger>
+      <SelectContent>
+        {SOLD_TRIGGER_OPTIONS.map((opt) => (
+          <SelectItem key={opt} value={opt}>
+            {opt}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
+
 // --- Linha existente com edição inline do gatilho ---
 const EntryRow: React.FC<{
   entry: CampaignClient;
@@ -865,7 +987,7 @@ const EntryRow: React.FC<{
             className="h-9"
           />
         ) : (
-          <span className="text-sm">{entry.invoice_number || '—'}</span>
+          <InlineInvoiceEditor entryId={entry.id} value={entry.invoice_number} />
         )}
       </TableCell>
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
@@ -882,12 +1004,8 @@ const EntryRow: React.FC<{
               ))}
             </SelectContent>
           </Select>
-        ) : entry.sold_trigger ? (
-          <Badge variant="secondary" className="font-normal">
-            {entry.sold_trigger}
-          </Badge>
         ) : (
-          <span className="text-sm text-muted-foreground">—</span>
+          <InlineSoldTriggerEditor entryId={entry.id} value={entry.sold_trigger} />
         )}
       </TableCell>
       <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
