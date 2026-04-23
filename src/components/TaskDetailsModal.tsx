@@ -9,7 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
 import { TaskLocationInfo } from './TaskLocationInfo';
 import { TaskReportExporter } from './TaskReportExporter';
-import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { resolveFilialName } from '@/lib/taskStandardization';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getSalesValueAsNumber, formatSalesValue } from '@/lib/securityUtils';
@@ -24,6 +24,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   onOpenChange
 }) => {
   const [currentTask, setCurrentTask] = useState<Task | null>(task);
+  const queryClient = useQueryClient();
 
   // Carregar detalhes completos da task se necessário (produtos, lembretes)
   const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
@@ -39,37 +40,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     setCurrentTask(fullTask);
   }, [fullTask]);
 
-  // Configurar realtime listener para atualizar a tarefa específica
+  // Sincronizar com servidor ao abrir o modal (substitui o listener Realtime
+  // removido por segurança — tasks não está mais na publication).
   useEffect(() => {
     if (!task?.id || !open) return;
-    const channel = supabase.channel(`task-${task.id}`).on('postgres_changes', {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'tasks',
-      filter: `id=eq.${task.id}`
-    }, payload => {
-      // Usar os dados do payload em vez de refazer query com joins pesados
-      const updated = payload.new as Record<string, any>;
-      setCurrentTask(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          status: updated.status ?? prev.status,
-          salesConfirmed: updated.sales_confirmed ?? prev.salesConfirmed,
-          salesType: updated.sales_type ?? prev.salesType,
-          salesValue: updated.sales_value ?? prev.salesValue,
-          partialSalesValue: updated.partial_sales_value ?? prev.partialSalesValue,
-          observations: updated.observations ?? prev.observations,
-          isProspect: updated.is_prospect ?? prev.isProspect,
-          prospectNotes: updated.prospect_notes ?? prev.prospectNotes,
-          priority: updated.priority ?? prev.priority,
-        };
-      });
-    }).subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [task?.id, open]);
+    queryClient.invalidateQueries({ queryKey: ['task-details', task.id] });
+  }, [task?.id, open, queryClient]);
   if (loadingDetails) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
