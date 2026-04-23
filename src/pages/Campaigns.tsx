@@ -865,7 +865,7 @@ const EntryRow: React.FC<{
             className="h-9"
           />
         ) : (
-          <span className="text-sm">{entry.invoice_number || '—'}</span>
+          <InlineInvoiceEditor entryId={entry.id} value={entry.invoice_number} />
         )}
       </TableCell>
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
@@ -882,12 +882,8 @@ const EntryRow: React.FC<{
               ))}
             </SelectContent>
           </Select>
-        ) : entry.sold_trigger ? (
-          <Badge variant="secondary" className="font-normal">
-            {entry.sold_trigger}
-          </Badge>
         ) : (
-          <span className="text-sm text-muted-foreground">—</span>
+          <InlineSoldTriggerEditor entryId={entry.id} value={entry.sold_trigger} />
         )}
       </TableCell>
       <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
