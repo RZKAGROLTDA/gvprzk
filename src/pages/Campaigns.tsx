@@ -1232,6 +1232,31 @@ const SellerSummaryTab: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex sm:items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-full sm:w-auto"
+                  disabled={filteredRows.length === 0}
+                  onClick={() => {
+                    const rows = filteredRows.map((r) => ({
+                      'Nome do vendedor': r.nome,
+                      'Filial': r.filial,
+                      'Tipo': r.tipo,
+                      'Quantidade de clientes': r.clientes,
+                      'Soma Gatilho (R$)': Number(r.somaGatilho || 0),
+                      'Soma Compromisso (R$)': Number(r.somaCompromisso || 0),
+                    }));
+                    exportRowsToExcel(rows, 'campanhas_resumo_vendedor', 'Resumo Vendedor', {
+                      currencyCols: ['Soma Gatilho (R$)', 'Soma Compromisso (R$)'],
+                    });
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Excel
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
