@@ -32,7 +32,9 @@ import {
   Target,
   Wallet,
   Pencil,
+  Download,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -58,6 +60,59 @@ const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
 const formatPct = (v: number) => `${(v ?? 0).toFixed(2)}%`;
+
+// Exporta uma matriz de objetos para .xlsx aplicando formatos a colunas conhecidas.
+const exportRowsToExcel = (
+  rows: Record<string, any>[],
+  fileBaseName: string,
+  sheetName: string,
+  formats?: { currencyCols?: string[]; percentCols?: string[] }
+) => {
+  if (!rows.length) {
+    toast.info('Nenhum dado para exportar');
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const headers = Object.keys(rows[0]);
+  const currencyCols = new Set(formats?.currencyCols || []);
+  const percentCols = new Set(formats?.percentCols || []);
+
+  headers.forEach((header, colIdx) => {
+    const isCurrency = currencyCols.has(header);
+    const isPercent = percentCols.has(header);
+    if (!isCurrency && !isPercent) return;
+    for (let r = 1; r <= rows.length; r++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c: colIdx });
+      const cell = ws[cellRef];
+      if (!cell || cell.v == null || cell.v === '') continue;
+      if (isCurrency) {
+        cell.t = 'n';
+        cell.z = 'R$ #,##0.00;[Red]-R$ #,##0.00';
+      } else if (isPercent) {
+        cell.t = 'n';
+        cell.v = Number(cell.v) / 100; // 5 -> 0.05 para formato 0.00%
+        cell.z = '0.00%';
+      }
+    }
+  });
+
+  ws['!cols'] = headers.map((h) => {
+    const maxLen = Math.max(
+      h.length,
+      ...rows.map((row) => {
+        const val = row[h];
+        return val == null ? 0 : String(val).length;
+      })
+    );
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `${fileBaseName}_${stamp}.xlsx`);
+  toast.success('Arquivo Excel gerado');
+};
 
 const Campaigns: React.FC = () => {
   const { profile } = useProfile();
@@ -185,10 +240,51 @@ const EntriesTab: React.FC = () => {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Lançamentos de Clientes</CardTitle>
-          <CardDescription>
-            Adicione na primeira linha. Clique em uma linha para editar o gatilho.
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <CardTitle>Lançamentos de Clientes</CardTitle>
+              <CardDescription>
+                Adicione na primeira linha. Clique em uma linha para editar o gatilho.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              disabled={list.length === 0}
+              onClick={() => {
+                const rows = list.map((e) => {
+                  const rule = e.campaign_rule_id ? ruleMap.get(e.campaign_rule_id) : undefined;
+                  const gatilhoLabel = rule
+                    ? `${formatCurrency(Number(rule.trigger_min))}${rule.trigger_max ? ' — ' + formatCurrency(Number(rule.trigger_max)) : ''}`
+                    : formatCurrency(Number(e.campaign_trigger_value || 0));
+                  return {
+                    'Código Cliente': e.client_code || '',
+                    'Nome Cliente': e.client_name || '',
+                    'Filial': e.filial_id ? filialMap.get(e.filial_id) || '' : '',
+                    'Vendedor': sellers.get(e.seller_id) || '',
+                    'Gatilho / Comprou': gatilhoLabel,
+                    'Ganhou Abril (%)': Number(e.gained_april || 0),
+                    'Ganhou Maio (%)': Number(e.gained_may || 0),
+                    'Compromisso (R$)': Number(e.commitment_value || 0),
+                    'Nº Nota Fiscal': e.invoice_number || '',
+                    'Gatilho Vendido': e.sold_trigger || '',
+                    'Data de criação': e.created_at
+                      ? new Date(e.created_at).toLocaleString('pt-BR')
+                      : '',
+                  };
+                });
+                exportRowsToExcel(rows, 'campanhas_lancamentos', 'Lançamentos', {
+                  currencyCols: ['Compromisso (R$)'],
+                  percentCols: ['Ganhou Abril (%)', 'Ganhou Maio (%)'],
+                });
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Excel
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="pt-0">
@@ -1135,6 +1231,31 @@ const SellerSummaryTab: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="flex sm:items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-full sm:w-auto"
+                  disabled={filteredRows.length === 0}
+                  onClick={() => {
+                    const rows = filteredRows.map((r) => ({
+                      'Nome do vendedor': r.nome,
+                      'Filial': r.filial,
+                      'Tipo': r.tipo,
+                      'Quantidade de clientes': r.clientes,
+                      'Soma Gatilho (R$)': Number(r.somaGatilho || 0),
+                      'Soma Compromisso (R$)': Number(r.somaCompromisso || 0),
+                    }));
+                    exportRowsToExcel(rows, 'campanhas_resumo_vendedor', 'Resumo Vendedor', {
+                      currencyCols: ['Soma Gatilho (R$)', 'Soma Compromisso (R$)'],
+                    });
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Excel
+                </Button>
               </div>
             </div>
           </div>
