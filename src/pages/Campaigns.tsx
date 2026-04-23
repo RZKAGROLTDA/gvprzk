@@ -61,6 +61,59 @@ const formatCurrency = (v: number) =>
 
 const formatPct = (v: number) => `${(v ?? 0).toFixed(2)}%`;
 
+// Exporta uma matriz de objetos para .xlsx aplicando formatos a colunas conhecidas.
+const exportRowsToExcel = (
+  rows: Record<string, any>[],
+  fileBaseName: string,
+  sheetName: string,
+  formats?: { currencyCols?: string[]; percentCols?: string[] }
+) => {
+  if (!rows.length) {
+    toast.info('Nenhum dado para exportar');
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const headers = Object.keys(rows[0]);
+  const currencyCols = new Set(formats?.currencyCols || []);
+  const percentCols = new Set(formats?.percentCols || []);
+
+  headers.forEach((header, colIdx) => {
+    const isCurrency = currencyCols.has(header);
+    const isPercent = percentCols.has(header);
+    if (!isCurrency && !isPercent) return;
+    for (let r = 1; r <= rows.length; r++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c: colIdx });
+      const cell = ws[cellRef];
+      if (!cell || cell.v == null || cell.v === '') continue;
+      if (isCurrency) {
+        cell.t = 'n';
+        cell.z = 'R$ #,##0.00;[Red]-R$ #,##0.00';
+      } else if (isPercent) {
+        cell.t = 'n';
+        cell.v = Number(cell.v) / 100; // 5 -> 0.05 para formato 0.00%
+        cell.z = '0.00%';
+      }
+    }
+  });
+
+  ws['!cols'] = headers.map((h) => {
+    const maxLen = Math.max(
+      h.length,
+      ...rows.map((row) => {
+        const val = row[h];
+        return val == null ? 0 : String(val).length;
+      })
+    );
+    return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `${fileBaseName}_${stamp}.xlsx`);
+  toast.success('Arquivo Excel gerado');
+};
+
 const Campaigns: React.FC = () => {
   const { profile } = useProfile();
   const canManageRules =
