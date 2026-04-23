@@ -32,7 +32,9 @@ import {
   Target,
   Wallet,
   Pencil,
+  Download,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
