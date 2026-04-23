@@ -9,7 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
 import { TaskLocationInfo } from './TaskLocationInfo';
 import { TaskReportExporter } from './TaskReportExporter';
-import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { resolveFilialName } from '@/lib/taskStandardization';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getSalesValueAsNumber, formatSalesValue } from '@/lib/securityUtils';
@@ -24,6 +24,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   onOpenChange
 }) => {
   const [currentTask, setCurrentTask] = useState<Task | null>(task);
+  const queryClient = useQueryClient();
 
   // Carregar detalhes completos da task se necessário (produtos, lembretes)
   const needsDetailsLoading = task && (!task.checklist || task.checklist.length === 0 || !task.reminders || task.reminders.length === 0);
@@ -40,11 +41,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   }, [fullTask]);
 
   // Sincronizar com servidor ao abrir o modal (substitui o listener Realtime
-  // que foi removido por motivos de segurança - tasks não está mais na publication).
+  // removido por segurança — tasks não está mais na publication).
   useEffect(() => {
     if (!task?.id || !open) return;
-    refetch?.();
-  }, [task?.id, open, refetch]);
+    queryClient.invalidateQueries({ queryKey: ['task-details', task.id] });
+  }, [task?.id, open, queryClient]);
   if (loadingDetails) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
