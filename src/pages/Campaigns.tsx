@@ -240,10 +240,51 @@ const EntriesTab: React.FC = () => {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>Lançamentos de Clientes</CardTitle>
-          <CardDescription>
-            Adicione na primeira linha. Clique em uma linha para editar o gatilho.
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <CardTitle>Lançamentos de Clientes</CardTitle>
+              <CardDescription>
+                Adicione na primeira linha. Clique em uma linha para editar o gatilho.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              disabled={list.length === 0}
+              onClick={() => {
+                const rows = list.map((e) => {
+                  const rule = e.campaign_rule_id ? ruleMap.get(e.campaign_rule_id) : undefined;
+                  const gatilhoLabel = rule
+                    ? `${formatCurrency(Number(rule.trigger_min))}${rule.trigger_max ? ' — ' + formatCurrency(Number(rule.trigger_max)) : ''}`
+                    : formatCurrency(Number(e.campaign_trigger_value || 0));
+                  return {
+                    'Código Cliente': e.client_code || '',
+                    'Nome Cliente': e.client_name || '',
+                    'Filial': e.filial_id ? filialMap.get(e.filial_id) || '' : '',
+                    'Vendedor': sellers.get(e.seller_id) || '',
+                    'Gatilho / Comprou': gatilhoLabel,
+                    'Ganhou Abril (%)': Number(e.gained_april || 0),
+                    'Ganhou Maio (%)': Number(e.gained_may || 0),
+                    'Compromisso (R$)': Number(e.commitment_value || 0),
+                    'Nº Nota Fiscal': e.invoice_number || '',
+                    'Gatilho Vendido': e.sold_trigger || '',
+                    'Data de criação': e.created_at
+                      ? new Date(e.created_at).toLocaleString('pt-BR')
+                      : '',
+                  };
+                });
+                exportRowsToExcel(rows, 'campanhas_lancamentos', 'Lançamentos', {
+                  currencyCols: ['Compromisso (R$)'],
+                  percentCols: ['Ganhou Abril (%)', 'Ganhou Maio (%)'],
+                });
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Excel
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="pt-0">
