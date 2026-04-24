@@ -373,6 +373,18 @@ export const WeeklyAgenda: React.FC = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      <TaskEditModal
+        taskId={selectedTaskId}
+        isOpen={!!selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        onTaskUpdate={() => {
+          queryClient.invalidateQueries({ queryKey: ['weekly_followups_agenda'] });
+          queryClient.invalidateQueries({ queryKey: ['agenda-day-details'] });
+          queryClient.invalidateQueries({ queryKey: ['task_followups'] });
+          queryClient.invalidateQueries({ queryKey: ['followups'] });
+        }}
+      />
     </div>
   );
 };
