@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TaskEditModal } from '@/components/TaskEditModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,7 +52,9 @@ const endOfMonth = (d: Date) => { const x = startOfDay(d); x.setMonth(x.getMonth
 
 export const WeeklyAgenda: React.FC = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { consultants } = useFilteredConsultants();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-options'],
@@ -309,40 +313,78 @@ export const WeeklyAgenda: React.FC = () => {
                 Nenhuma atividade registrada neste dia.
               </div>
             ) : (
-              dayItems.map((f) => (
-                <Card key={f.id}>
-                  <CardContent className="space-y-2 p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium">{f.client_name}</div>
-                        {f.client_code && (
-                          <div className="truncate text-xs text-muted-foreground">Cód: {f.client_code}</div>
-                        )}
+              dayItems.map((f) => {
+                const hasTask = !!f.task_id;
+                const cardEl = (
+                  <Card
+                    key={f.id}
+                    onClick={hasTask ? () => setSelectedTaskId(f.task_id!) : undefined}
+                    className={cn(
+                      'transition-all',
+                      hasTask
+                        ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/50'
+                        : 'opacity-80'
+                    )}
+                    aria-disabled={!hasTask}
+                  >
+                    <CardContent className="space-y-2 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate font-medium">{f.client_name}</div>
+                          {f.client_code && (
+                            <div className="truncate text-xs text-muted-foreground">Cód: {f.client_code}</div>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="shrink-0 capitalize">{f.activity_type}</Badge>
                       </div>
-                      <Badge variant="outline" className="shrink-0 capitalize">{f.activity_type}</Badge>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <Badge variant="secondary" className="capitalize">{f.followup_status}</Badge>
-                      <Badge variant="outline" className="capitalize">Prio: {f.priority}</Badge>
-                      <span className="text-muted-foreground">
-                        Resp.: {consultantNameById.get(f.responsible_user_id) ?? '—'}
-                      </span>
-                    </div>
-                    {f.notes && (
-                      <p className="text-sm text-muted-foreground">{f.notes}</p>
-                    )}
-                    {f.next_return_date && (
-                      <p className="text-xs text-muted-foreground">
-                        Próx. retorno: {new Date(f.next_return_date).toLocaleDateString('pt-BR')}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <Badge variant="secondary" className="capitalize">{f.followup_status}</Badge>
+                        <Badge variant="outline" className="capitalize">Prio: {f.priority}</Badge>
+                        <span className="text-muted-foreground">
+                          Resp.: {consultantNameById.get(f.responsible_user_id) ?? '—'}
+                        </span>
+                      </div>
+                      {f.notes && (
+                        <p className="text-sm text-muted-foreground">{f.notes}</p>
+                      )}
+                      {f.next_return_date && (
+                        <p className="text-xs text-muted-foreground">
+                          Próx. retorno: {new Date(f.next_return_date).toLocaleDateString('pt-BR')}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+
+                if (hasTask) return <div key={f.id}>{cardEl}</div>;
+
+                return (
+                  <TooltipProvider key={f.id} delayDuration={150}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>{cardEl}</div>
+                      </TooltipTrigger>
+                      <TooltipContent>Sem atividade vinculada</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              })
             )}
           </div>
         </SheetContent>
       </Sheet>
+
+      <TaskEditModal
+        taskId={selectedTaskId}
+        isOpen={!!selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        onTaskUpdate={() => {
+          queryClient.invalidateQueries({ queryKey: ['weekly_followups_agenda'] });
+          queryClient.invalidateQueries({ queryKey: ['agenda-day-details'] });
+          queryClient.invalidateQueries({ queryKey: ['task_followups'] });
+          queryClient.invalidateQueries({ queryKey: ['followups'] });
+        }}
+      />
     </div>
   );
 };
