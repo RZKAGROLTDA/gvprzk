@@ -52,7 +52,9 @@ const endOfMonth = (d: Date) => { const x = startOfDay(d); x.setMonth(x.getMonth
 
 export const WeeklyAgenda: React.FC = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { consultants } = useFilteredConsultants();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-options'],
