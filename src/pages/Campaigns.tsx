@@ -263,6 +263,88 @@ const EntriesTab: React.FC = () => {
         />
       </div>
 
+      {/* Filtros */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Filial</Label>
+              <Select value={filterFilial} onValueChange={setFilterFilial}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todas as filiais" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as filiais</SelectItem>
+                  {filiais.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Vendedor</Label>
+              <Select value={filterSeller} onValueChange={setFilterSeller}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos os vendedores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os vendedores</SelectItem>
+                  {sellerOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="text-xs text-muted-foreground">Cliente</Label>
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={filterClient}
+                  onChange={(e) => setFilterClient(e.target.value)}
+                  placeholder="Buscar por nome ou código"
+                  className="h-9 pl-8 pr-8"
+                />
+                {filterClient && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterClient('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Limpar busca"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          {(filterFilial !== 'all' || filterSeller !== 'all' || filterClient.trim()) && (
+            <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+              <span>
+                Mostrando {list.length} de {allEntries.length} lançamentos
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => {
+                  setFilterFilial('all');
+                  setFilterSeller('all');
+                  setFilterClient('');
+                }}
+              >
+                Limpar filtros
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
