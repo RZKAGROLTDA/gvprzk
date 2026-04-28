@@ -957,7 +957,115 @@ const InlineSoldTriggerEditor: React.FC<{
   );
 };
 
-// --- Linha existente com edição inline do gatilho ---
+// --- Editor inline para Código + Nome do Cliente ---
+const InlineClientEditor: React.FC<{
+  entryId: string;
+  code: string;
+  name: string;
+}> = ({ entryId, code, name }) => {
+  const update = useUpdateCampaignClient();
+  const ensureMaster = useEnsureClientMaster();
+  const [open, setOpen] = useState(false);
+  const [draftCode, setDraftCode] = useState(code);
+  const [draftName, setDraftName] = useState(name);
+
+  useEffect(() => {
+    if (open) {
+      setDraftCode(code);
+      setDraftName(name);
+    }
+  }, [open, code, name]);
+
+  const handleSave = async () => {
+    const nextCode = draftCode.trim();
+    const nextName = draftName.trim();
+    if (!nextCode) {
+      toast.error('Informe o código do cliente');
+      return;
+    }
+    if (!nextName) {
+      toast.error('Informe o nome do cliente');
+      return;
+    }
+    if (nextCode === code && nextName === name) {
+      setOpen(false);
+      return;
+    }
+    try {
+      await update.mutateAsync({
+        id: entryId,
+        patch: { client_code: nextCode, client_name: nextName },
+      });
+      // Sincroniza cadastro mestre (upsert por client_code)
+      await ensureMaster.mutateAsync({ client_code: nextCode, client_name: nextName });
+      setOpen(false);
+    } catch {
+      // erro já tratado no hook
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground hover:underline decoration-dotted underline-offset-4"
+          title="Editar código e nome do cliente"
+        >
+          {code || <span className="italic">sem código</span>}
+          <Pencil className="h-3 w-3 opacity-60" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Editar cliente</DialogTitle>
+          <DialogDescription>
+            Atualizar código e nome deste lançamento. O cadastro mestre será sincronizado.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`code-${entryId}`}>Código do cliente *</Label>
+            <Input
+              id={`code-${entryId}`}
+              value={draftCode}
+              onChange={(e) => setDraftCode(e.target.value)}
+              placeholder="Código"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`name-${entryId}`}>Nome do cliente *</Label>
+            <Input
+              id={`name-${entryId}`}
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              placeholder="Nome"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={
+              update.isPending ||
+              ensureMaster.isPending ||
+              !draftCode.trim() ||
+              !draftName.trim()
+            }
+          >
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const EntryRow: React.FC<{
   entry: CampaignClient;
   rules: CampaignRule[];
