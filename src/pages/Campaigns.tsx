@@ -1138,8 +1138,12 @@ const EntryRow: React.FC<{
       className={cn('align-middle cursor-pointer', editing && 'bg-muted/30')}
       onClick={() => !editing && setEditing(true)}
     >
-      <TableCell className="py-2 font-mono text-xs text-muted-foreground">
-        {entry.client_code}
+      <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+        <InlineClientEditor
+          entryId={entry.id}
+          code={entry.client_code || ''}
+          name={entry.client_name || ''}
+        />
       </TableCell>
       <TableCell className="py-2 font-medium text-sm">{entry.client_name}</TableCell>
       <TableCell className="py-2 text-sm text-muted-foreground">{sellerName}</TableCell>
