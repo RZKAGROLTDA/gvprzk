@@ -230,6 +230,8 @@ export const useUpdateCampaignClient = () => {
           | 'filial_id'
           | 'invoice_number'
           | 'sold_trigger'
+          | 'client_code'
+          | 'client_name'
         >
       >;
     }) => {

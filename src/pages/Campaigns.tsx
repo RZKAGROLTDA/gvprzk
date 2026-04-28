@@ -205,7 +205,32 @@ const EntriesTab: React.FC = () => {
     return m;
   }, [filiais]);
 
-  const list = entries || [];
+  // Filtros
+  const [filterFilial, setFilterFilial] = useState<string>('all');
+  const [filterSeller, setFilterSeller] = useState<string>('all');
+  const [filterClient, setFilterClient] = useState<string>('');
+
+  const allEntries = entries || [];
+
+  const sellerOptions = useMemo(() => {
+    const ids = Array.from(new Set(allEntries.map((e) => e.seller_id).filter(Boolean)));
+    return ids
+      .map((id) => ({ id, name: sellers.get(id) || '—' }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allEntries, sellers]);
+
+  const list = useMemo(() => {
+    const term = filterClient.trim().toLowerCase();
+    return allEntries.filter((e) => {
+      if (filterFilial !== 'all' && (e.filial_id || '') !== filterFilial) return false;
+      if (filterSeller !== 'all' && e.seller_id !== filterSeller) return false;
+      if (term) {
+        const hay = `${e.client_name || ''} ${e.client_code || ''}`.toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [allEntries, filterFilial, filterSeller, filterClient]);
 
   const totals = useMemo(() => {
     const count = list.length;
@@ -237,6 +262,88 @@ const EntriesTab: React.FC = () => {
           value={formatCurrency(totals.totalCommitment)}
         />
       </div>
+
+      {/* Filtros */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Filial</Label>
+              <Select value={filterFilial} onValueChange={setFilterFilial}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todas as filiais" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as filiais</SelectItem>
+                  {filiais.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Vendedor</Label>
+              <Select value={filterSeller} onValueChange={setFilterSeller}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos os vendedores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os vendedores</SelectItem>
+                  {sellerOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label className="text-xs text-muted-foreground">Cliente</Label>
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={filterClient}
+                  onChange={(e) => setFilterClient(e.target.value)}
+                  placeholder="Buscar por nome ou código"
+                  className="h-9 pl-8 pr-8"
+                />
+                {filterClient && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterClient('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Limpar busca"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          {(filterFilial !== 'all' || filterSeller !== 'all' || filterClient.trim()) && (
+            <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+              <span>
+                Mostrando {list.length} de {allEntries.length} lançamentos
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                onClick={() => {
+                  setFilterFilial('all');
+                  setFilterSeller('all');
+                  setFilterClient('');
+                }}
+              >
+                Limpar filtros
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">
@@ -850,7 +957,115 @@ const InlineSoldTriggerEditor: React.FC<{
   );
 };
 
-// --- Linha existente com edição inline do gatilho ---
+// --- Editor inline para Código + Nome do Cliente ---
+const InlineClientEditor: React.FC<{
+  entryId: string;
+  code: string;
+  name: string;
+}> = ({ entryId, code, name }) => {
+  const update = useUpdateCampaignClient();
+  const ensureMaster = useEnsureClientMaster();
+  const [open, setOpen] = useState(false);
+  const [draftCode, setDraftCode] = useState(code);
+  const [draftName, setDraftName] = useState(name);
+
+  useEffect(() => {
+    if (open) {
+      setDraftCode(code);
+      setDraftName(name);
+    }
+  }, [open, code, name]);
+
+  const handleSave = async () => {
+    const nextCode = draftCode.trim();
+    const nextName = draftName.trim();
+    if (!nextCode) {
+      toast.error('Informe o código do cliente');
+      return;
+    }
+    if (!nextName) {
+      toast.error('Informe o nome do cliente');
+      return;
+    }
+    if (nextCode === code && nextName === name) {
+      setOpen(false);
+      return;
+    }
+    try {
+      await update.mutateAsync({
+        id: entryId,
+        patch: { client_code: nextCode, client_name: nextName },
+      });
+      // Sincroniza cadastro mestre (upsert por client_code)
+      await ensureMaster.mutateAsync({ client_code: nextCode, client_name: nextName });
+      setOpen(false);
+    } catch {
+      // erro já tratado no hook
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground hover:underline decoration-dotted underline-offset-4"
+          title="Editar código e nome do cliente"
+        >
+          {code || <span className="italic">sem código</span>}
+          <Pencil className="h-3 w-3 opacity-60" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Editar cliente</DialogTitle>
+          <DialogDescription>
+            Atualizar código e nome deste lançamento. O cadastro mestre será sincronizado.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`code-${entryId}`}>Código do cliente *</Label>
+            <Input
+              id={`code-${entryId}`}
+              value={draftCode}
+              onChange={(e) => setDraftCode(e.target.value)}
+              placeholder="Código"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`name-${entryId}`}>Nome do cliente *</Label>
+            <Input
+              id={`name-${entryId}`}
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              placeholder="Nome"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={
+              update.isPending ||
+              ensureMaster.isPending ||
+              !draftCode.trim() ||
+              !draftName.trim()
+            }
+          >
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const EntryRow: React.FC<{
   entry: CampaignClient;
   rules: CampaignRule[];
@@ -923,8 +1138,12 @@ const EntryRow: React.FC<{
       className={cn('align-middle cursor-pointer', editing && 'bg-muted/30')}
       onClick={() => !editing && setEditing(true)}
     >
-      <TableCell className="py-2 font-mono text-xs text-muted-foreground">
-        {entry.client_code}
+      <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+        <InlineClientEditor
+          entryId={entry.id}
+          code={entry.client_code || ''}
+          name={entry.client_name || ''}
+        />
       </TableCell>
       <TableCell className="py-2 font-medium text-sm">{entry.client_name}</TableCell>
       <TableCell className="py-2 text-sm text-muted-foreground">{sellerName}</TableCell>
