@@ -205,7 +205,32 @@ const EntriesTab: React.FC = () => {
     return m;
   }, [filiais]);
 
-  const list = entries || [];
+  // Filtros
+  const [filterFilial, setFilterFilial] = useState<string>('all');
+  const [filterSeller, setFilterSeller] = useState<string>('all');
+  const [filterClient, setFilterClient] = useState<string>('');
+
+  const allEntries = entries || [];
+
+  const sellerOptions = useMemo(() => {
+    const ids = Array.from(new Set(allEntries.map((e) => e.seller_id).filter(Boolean)));
+    return ids
+      .map((id) => ({ id, name: sellers.get(id) || '—' }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allEntries, sellers]);
+
+  const list = useMemo(() => {
+    const term = filterClient.trim().toLowerCase();
+    return allEntries.filter((e) => {
+      if (filterFilial !== 'all' && (e.filial_id || '') !== filterFilial) return false;
+      if (filterSeller !== 'all' && e.seller_id !== filterSeller) return false;
+      if (term) {
+        const hay = `${e.client_name || ''} ${e.client_code || ''}`.toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [allEntries, filterFilial, filterSeller, filterClient]);
 
   const totals = useMemo(() => {
     const count = list.length;
