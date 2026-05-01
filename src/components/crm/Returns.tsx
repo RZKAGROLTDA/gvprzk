@@ -15,7 +15,7 @@ import {
   AlertTriangle, Building2, CalendarCheck, CalendarClock, CalendarDays, CalendarIcon,
   CheckCircle2, Flame, History, Search, Snowflake, Thermometer, User as UserIcon, X, XCircle,
 } from 'lucide-react';
-import { useFollowups, FollowupRow } from '@/hooks/useFollowups';
+import { useFollowupsProspectsOnly, FollowupRow } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -49,7 +49,7 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
 };
 
 export const Returns: React.FC = () => {
-  const { data = [], isLoading } = useFollowups();
+  const { data = [], isLoading } = useFollowupsProspectsOnly();
   const { consultants } = useFilteredConsultants();
   const qc = useQueryClient();
 
