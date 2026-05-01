@@ -29,25 +29,70 @@ export const getClientKey = (f: Pick<FollowupRow, 'client_code' | 'client_name'>
   return `name:${(f.client_name ?? '').trim().toLowerCase()}`;
 };
 
-/** Todos os follow-ups de PROSPECTS visíveis ao usuário (RLS filtra). */
+const FOLLOWUP_COLUMNS =
+  'id, task_id, client_name, client_code, activity_type, activity_date, next_return_date, return_notes, followup_status, priority, client_temperature, responsible_user_id, filial_id, notes, created_by, created_at, updated_at';
+
+/**
+ * Paginação interna para evitar o teto de 1000 linhas do PostgREST
+ * sem impor um limite artificial (ex.: limit(2000)).
+ */
+const PAGE_SIZE = 1000;
+const HARD_CAP = 50_000; // proteção contra loop em caso de erro
+
+async function fetchAllFollowups(filterProspectsOnly: boolean): Promise<FollowupRow[]> {
+  const out: FollowupRow[] = [];
+  let from = 0;
+
+  while (from < HARD_CAP) {
+    const to = from + PAGE_SIZE - 1;
+    let query = filterProspectsOnly
+      ? supabase
+          .from('task_followups')
+          .select(`${FOLLOWUP_COLUMNS}, tasks!inner(sales_type)`)
+          .eq('tasks.sales_type', 'prospect')
+      : supabase.from('task_followups').select(FOLLOWUP_COLUMNS);
+
+    const { data, error } = await query
+      .order('activity_date', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+    const rows = (data ?? []) as any[];
+    for (const row of rows) {
+      const { tasks: _t, ...rest } = row;
+      out.push(rest as FollowupRow);
+    }
+    if (rows.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return out;
+}
+
+/**
+ * Fonte única para Agenda Semanal e Gerencial.
+ * Lê task_followups direto, SEM filtro por sales_type, SEM JOIN.
+ * RLS já restringe o que cada usuário enxerga.
+ */
 export const useFollowups = () => {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['task_followups', user?.id],
+    queryKey: ['task_followups', 'all', user?.id],
     enabled: !!user?.id,
-    staleTime: 60_000,
-    queryFn: async (): Promise<FollowupRow[]> => {
-      const { data, error } = await supabase
-        .from('task_followups')
-        .select('*, tasks!inner(sales_type)')
-        .eq('tasks.sales_type', 'prospect')
-        .order('activity_date', { ascending: false })
-        .limit(2000);
-      if (error) throw error;
-      return (data ?? []).map((row: any) => {
-        const { tasks: _t, ...rest } = row;
-        return rest as FollowupRow;
-      });
-    },
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchAllFollowups(false),
+  });
+};
+
+/**
+ * Variante usada pela tela Retornos: apenas follow-ups de tasks do tipo prospect.
+ */
+export const useFollowupsProspectsOnly = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['task_followups', 'prospects', user?.id],
+    enabled: !!user?.id,
+    staleTime: 5 * 60_000,
+    queryFn: () => fetchAllFollowups(true),
   });
 };
