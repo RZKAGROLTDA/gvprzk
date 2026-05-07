@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Shield, Building, Trash2, AlertTriangle } from 'lucide-react';
+import { Users as UsersIcon, Shield, Building, Trash2, AlertTriangle, Search } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -34,7 +35,14 @@ export const Users: React.FC = () => {
   const queryClient = useQueryClient();
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [filialFilter, setFilialFilter] = useState<string>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim().toLowerCase()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   // SECURITY FIX: Use user_roles table as single source of truth for authorization
   const { isManager, isLoading: isLoadingRole } = useUserRole();
   
@@ -269,6 +277,22 @@ export const Users: React.FC = () => {
   const profiles = secureUserData || [];
   const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
   const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
+  const filteredApprovedUsers = useMemo(() => {
+    return approvedUsers.filter(p => {
+      if (filialFilter !== 'all') {
+        if (filialFilter === 'none') {
+          if (p.filial_id) return false;
+        } else if (p.filial_id !== filialFilter) {
+          return false;
+        }
+      }
+      if (debouncedSearch) {
+        const hay = `${p.name || ''} ${p.email || ''}`.toLowerCase();
+        if (!hay.includes(debouncedSearch)) return false;
+      }
+      return true;
+    });
+  }, [approvedUsers, filialFilter, debouncedSearch]);
   const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
   
   // SECURITY FIX: Use isManager from useUserRole hook (user_roles table) instead of profiles.role
@@ -365,8 +389,31 @@ export const Users: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-gray-900">
-              Usuários Aprovados ({approvedUsers.length})
+              Usuários Aprovados ({filteredApprovedUsers.length})
             </CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou email..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <Select value={filialFilter} onValueChange={setFilialFilter}>
+                <SelectTrigger className="w-full sm:w-64">
+                  <SelectValue placeholder="Filtrar por filial" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as filiais</SelectItem>
+                  <SelectItem value="none">Sem filial</SelectItem>
+                  {filiais.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
         <CardContent>
           <Table>
@@ -381,7 +428,7 @@ export const Users: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {approvedUsers.map((profile) => (
+              {filteredApprovedUsers.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.name}</TableCell>
                   <TableCell>
