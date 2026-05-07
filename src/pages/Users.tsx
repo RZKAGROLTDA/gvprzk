@@ -428,7 +428,7 @@ export const Users: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {approvedUsers.map((profile) => (
+              {filteredApprovedUsers.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.name}</TableCell>
                   <TableCell>
