@@ -280,7 +280,11 @@ export const Users: React.FC = () => {
   const filteredApprovedUsers = useMemo(() => {
     return approvedUsers.filter(p => {
       if (filialFilter !== 'all') {
-        if (filialFilter === 'none' ? p.filial_id : p.filial_id !== filialFilter) return false;
+        if (filialFilter === 'none') {
+          if (p.filial_id) return false;
+        } else if (p.filial_id !== filialFilter) {
+          return false;
+        }
       }
       if (debouncedSearch) {
         const hay = `${p.name || ''} ${p.email || ''}`.toLowerCase();
