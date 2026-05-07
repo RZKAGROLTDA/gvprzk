@@ -389,8 +389,31 @@ export const Users: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-gray-900">
-              Usuários Aprovados ({approvedUsers.length})
+              Usuários Aprovados ({filteredApprovedUsers.length})
             </CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou email..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <Select value={filialFilter} onValueChange={setFilialFilter}>
+                <SelectTrigger className="w-full sm:w-64">
+                  <SelectValue placeholder="Filtrar por filial" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as filiais</SelectItem>
+                  <SelectItem value="none">Sem filial</SelectItem>
+                  {filiais.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
         <CardContent>
           <Table>
