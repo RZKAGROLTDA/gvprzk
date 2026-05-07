@@ -35,7 +35,14 @@ export const Users: React.FC = () => {
   const queryClient = useQueryClient();
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [filialFilter, setFilialFilter] = useState<string>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim().toLowerCase()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   // SECURITY FIX: Use user_roles table as single source of truth for authorization
   const { isManager, isLoading: isLoadingRole } = useUserRole();
   
