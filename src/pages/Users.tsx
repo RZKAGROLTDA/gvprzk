@@ -277,6 +277,18 @@ export const Users: React.FC = () => {
   const profiles = secureUserData || [];
   const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
   const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
+  const filteredApprovedUsers = useMemo(() => {
+    return approvedUsers.filter(p => {
+      if (filialFilter !== 'all') {
+        if (filialFilter === 'none' ? p.filial_id : p.filial_id !== filialFilter) return false;
+      }
+      if (debouncedSearch) {
+        const hay = `${p.name || ''} ${p.email || ''}`.toLowerCase();
+        if (!hay.includes(debouncedSearch)) return false;
+      }
+      return true;
+    });
+  }, [approvedUsers, filialFilter, debouncedSearch]);
   const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
   
   // SECURITY FIX: Use isManager from useUserRole hook (user_roles table) instead of profiles.role
