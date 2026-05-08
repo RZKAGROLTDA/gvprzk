@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Shield, Building, Trash2, AlertTriangle, Search } from 'lucide-react';
+import { Users as UsersIcon, Building, Trash2, AlertTriangle, Search } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -417,8 +417,8 @@ export const Users: React.FC = () => {
           </div>
 
           <Card>
-        <CardContent className="pt-6">
-          <Table>
+            <CardContent className="pt-6">
+              <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
@@ -533,9 +533,10 @@ export const Users: React.FC = () => {
                  </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
