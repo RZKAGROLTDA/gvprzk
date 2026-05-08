@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
@@ -384,14 +384,16 @@ export const Users: React.FC = () => {
 
       {/* Todos os Usuários Aprovados */}
       {approvedUsers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-900">
-              Usuários Aprovados ({filteredApprovedUsers.length})
-            </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2 mt-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                Usuários Aprovados ({filteredApprovedUsers.length})
+              </h2>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome ou email..."
                   value={searchInput}
@@ -412,8 +414,10 @@ export const Users: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-          </CardHeader>
-        <CardContent>
+          </div>
+
+          <Card>
+        <CardContent className="pt-6">
           <Table>
             <TableHeader>
               <TableRow>
