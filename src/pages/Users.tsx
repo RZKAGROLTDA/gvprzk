@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Shield, Building, Trash2, AlertTriangle, Search } from 'lucide-react';
+import { Users as UsersIcon, Building, Trash2, AlertTriangle, Search } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -31,7 +30,6 @@ interface Filial {
 }
 
 export const Users: React.FC = () => {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +42,7 @@ export const Users: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchInput]);
   // SECURITY FIX: Use user_roles table as single source of truth for authorization
-  const { isManager, isLoading: isLoadingRole } = useUserRole();
+  const { isManager } = useUserRole();
   
   // Use secure user directory with data masking
   const { data: secureUserData, isLoading: isLoadingUsers, error: userError } = useSecureUserDirectory();
@@ -277,7 +275,6 @@ export const Users: React.FC = () => {
   const profiles = secureUserData || [];
   const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
   const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
-  const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
   const filteredApprovedUsers = approvedUsers.filter(p => {
     if (filialFilter !== 'all') {
       if (filialFilter === 'none') {
@@ -384,14 +381,16 @@ export const Users: React.FC = () => {
 
       {/* Todos os Usuários Aprovados */}
       {approvedUsers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-gray-900">
-              Usuários Aprovados ({filteredApprovedUsers.length})
-            </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2 mt-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                Usuários Aprovados ({filteredApprovedUsers.length})
+              </h2>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome ou email..."
                   value={searchInput}
@@ -412,9 +411,11 @@ export const Users: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-          </CardHeader>
-        <CardContent>
-          <Table>
+          </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
@@ -529,9 +530,10 @@ export const Users: React.FC = () => {
                  </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
