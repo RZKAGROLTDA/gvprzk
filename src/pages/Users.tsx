@@ -31,7 +31,6 @@ interface Filial {
 }
 
 export const Users: React.FC = () => {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +43,7 @@ export const Users: React.FC = () => {
     return () => clearTimeout(t);
   }, [searchInput]);
   // SECURITY FIX: Use user_roles table as single source of truth for authorization
-  const { isManager, isLoading: isLoadingRole } = useUserRole();
+  const { isManager } = useUserRole();
   
   // Use secure user directory with data masking
   const { data: secureUserData, isLoading: isLoadingUsers, error: userError } = useSecureUserDirectory();
@@ -277,7 +276,6 @@ export const Users: React.FC = () => {
   const profiles = secureUserData || [];
   const pendingUsers = profiles.filter(p => p.approval_status === 'pending');
   const approvedUsers = profiles.filter(p => p.approval_status === 'approved');
-  const rejectedUsers = profiles.filter(p => p.approval_status === 'rejected');
   const filteredApprovedUsers = approvedUsers.filter(p => {
     if (filialFilter !== 'all') {
       if (filialFilter === 'none') {
