@@ -246,7 +246,7 @@ export const VisitScheduleForm: React.FC<Props> = ({ open, onOpenChange, initial
                       <SelectItem value={user.id}>{profile?.name || user.email} (eu)</SelectItem>
                     )}
                     {consultants.map((c: any) => (
-                      <SelectItem key={c.user_id || c.id} value={c.user_id || c.id}>
+                      <SelectItem key={c.id} value={c.id}>
                         {c.name}
                       </SelectItem>
                     ))}
