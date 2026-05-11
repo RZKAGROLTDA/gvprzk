@@ -36,8 +36,8 @@ const todayISO = () => {
 export const VisitScheduleForm: React.FC<Props> = ({ open, onOpenChange, initial, defaultDate }) => {
   const { user } = useAuth();
   const { profile } = useProfile();
-  const { userRole } = useUserRole() as any;
-  const isPrivileged = !!(userRole?.isManager || userRole?.isAdmin || userRole?.isSupervisor);
+  const { isManager, isAdmin, isSupervisor } = useUserRole() as any;
+  const isPrivileged = !!(isManager || isAdmin || isSupervisor);
   const { consultants } = useFilteredConsultants();
 
   const { data: filiais = [] } = useQuery({
