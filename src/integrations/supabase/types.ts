@@ -1346,6 +1346,80 @@ export type Database = {
         }
         Relationships: []
       }
+      visit_schedules: {
+        Row: {
+          client_code: string
+          client_email: string | null
+          client_name: string
+          client_phone: string | null
+          client_property: string | null
+          created_at: string
+          created_by: string
+          filial: string
+          filial_id: string | null
+          id: string
+          observation: string | null
+          planned_date: string
+          realized_at: string | null
+          realized_task_id: string | null
+          reschedule_from_id: string | null
+          seller_id: string
+          seller_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_code: string
+          client_email?: string | null
+          client_name: string
+          client_phone?: string | null
+          client_property?: string | null
+          created_at?: string
+          created_by: string
+          filial: string
+          filial_id?: string | null
+          id?: string
+          observation?: string | null
+          planned_date: string
+          realized_at?: string | null
+          realized_task_id?: string | null
+          reschedule_from_id?: string | null
+          seller_id: string
+          seller_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_code?: string
+          client_email?: string | null
+          client_name?: string
+          client_phone?: string | null
+          client_property?: string | null
+          created_at?: string
+          created_by?: string
+          filial?: string
+          filial_id?: string | null
+          id?: string
+          observation?: string | null
+          planned_date?: string
+          realized_at?: string | null
+          realized_task_id?: string | null
+          reschedule_from_id?: string | null
+          seller_id?: string
+          seller_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_schedules_reschedule_from_id_fkey"
+            columns: ["reschedule_from_id"]
+            isOneToOne: false
+            referencedRelation: "visit_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
