@@ -1,11 +1,12 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, Users, RotateCcw, BarChart3 } from 'lucide-react';
+import { CalendarDays, Users, RotateCcw, BarChart3, CalendarPlus } from 'lucide-react';
 import { WeeklyAgenda } from '@/components/crm/WeeklyAgenda';
 import { ClientPortfolio } from '@/components/crm/ClientPortfolio';
 import { Returns } from '@/components/crm/Returns';
 import { CRMManagement } from '@/components/crm/CRMManagement';
+import { VisitSchedulePanel } from '@/components/crm/VisitSchedulePanel';
 import { useUserRole } from '@/hooks/useUserRole';
 
 const CRM: React.FC = () => {
