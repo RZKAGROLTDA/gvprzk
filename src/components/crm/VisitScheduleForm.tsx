@@ -82,7 +82,7 @@ export const VisitScheduleForm: React.FC<Props> = ({ open, onOpenChange, initial
   // Seller name snapshot
   const sellerName = useMemo(() => {
     if (seller_id === user?.id) return profile?.name || user?.email || '';
-    const c = consultants.find((c: any) => c.user_id === seller_id || c.id === seller_id);
+    const c = consultants.find((c: any) => c.id === seller_id);
     return c?.name || '';
   }, [seller_id, consultants, user, profile]);
 
