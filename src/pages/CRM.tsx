@@ -24,9 +24,12 @@ const CRM: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="agenda" className="w-full">
-            <TabsList className={`grid w-full ${canManage ? 'grid-cols-4 max-w-2xl' : 'grid-cols-3 max-w-xl'}`}>
+            <TabsList className={`grid w-full ${canManage ? 'grid-cols-5 max-w-3xl' : 'grid-cols-4 max-w-2xl'}`}>
               <TabsTrigger value="agenda" className="gap-2">
                 <CalendarDays className="h-4 w-4" /> Agenda Semanal
+              </TabsTrigger>
+              <TabsTrigger value="programacao" className="gap-2">
+                <CalendarPlus className="h-4 w-4" /> Programação
               </TabsTrigger>
               <TabsTrigger value="carteira" className="gap-2">
                 <Users className="h-4 w-4" /> Carteira
@@ -42,6 +45,9 @@ const CRM: React.FC = () => {
             </TabsList>
             <TabsContent value="agenda" className="mt-4">
               <WeeklyAgenda />
+            </TabsContent>
+            <TabsContent value="programacao" className="mt-4">
+              <VisitSchedulePanel />
             </TabsContent>
             <TabsContent value="carteira" className="mt-4">
               <ClientPortfolio />
