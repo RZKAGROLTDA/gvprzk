@@ -294,39 +294,35 @@ const PerformanceBySeller: React.FC = () => {
 
     setLoading(true);
     try {
-      // OTIMIZAÇÃO Disk IO: RPC de agregação em vez de fetch de 1000 tasks
-      const { data: stats, error } = await supabase.rpc('get_performance_by_seller', {
-        p_date_from: dateFrom?.toISOString().split('T')[0] ?? null,
-        p_date_to: dateTo?.toISOString().split('T')[0] ?? null,
+      // V2: agregação por task_followups (activity_date / responsible_user_id) + tasks (valores)
+      const { data: stats, error } = await supabase.rpc('get_performance_by_seller_v2', {
+        p_start_date: dateFrom ? dateFrom.toISOString().split('T')[0] : null,
+        p_end_date: dateTo ? dateTo.toISOString().split('T')[0] : null,
+        p_filial_id: null,
       });
 
       if (error) throw error;
 
-      const userStatsResult = (stats || []).map((row: {
-        user_id: string;
-        user_name: string;
-        user_role: string;
-        visitas: number;
-        checklist: number;
-        ligacoes: number;
-        prospects: number;
-        prospects_value: number;
-        sales_value: number;
-        conversion_rate: number;
-      }) => {
-        const totalActivities = Number(row.visitas ?? 0) + Number(row.checklist ?? 0) + Number(row.ligacoes ?? 0);
+      const userStatsResult = (stats || []).map((row: any) => {
+        const visitas = Number(row.visitas ?? 0);
+        const checklist = Number(row.checklists ?? 0);
+        const ligacoes = Number(row.ligacoes ?? 0);
+        const totalActivities = visitas + checklist + ligacoes;
+        const salesCount = Number(row.sales_total_count ?? 0) + Number(row.sales_partial_count ?? 0);
+        const salesValue = Number(row.sales_total_value ?? 0) + Number(row.sales_partial_value ?? 0);
+        const conversionRate = totalActivities > 0 ? (salesCount / totalActivities) * 100 : 0;
         return {
-          name: row.user_name,
-          role: row.user_role,
-          user_id: row.user_id,
+          name: row.responsible_name ?? 'Sem nome',
+          role: 'consultant',
+          user_id: row.responsible_user_id,
           visits: totalActivities,
-          prospects: Number(row.prospects ?? 0),
-          sales: Number(row.sales_value ?? 0),
-          conversionRate: Math.round(Number(row.conversion_rate ?? 0) * 10) / 10,
+          prospects: Number(row.prospections ?? 0),
+          sales: salesValue,
+          conversionRate: Math.round(conversionRate * 10) / 10,
           totalActivities,
-          visitas: Number(row.visitas ?? 0),
-          checklist: Number(row.checklist ?? 0),
-          ligacoes: Number(row.ligacoes ?? 0),
+          visitas,
+          checklist,
+          ligacoes,
         };
       });
 
