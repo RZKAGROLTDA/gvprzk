@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useSessionSecurity } from '@/hooks/useSessionSecurity';
 import { getVersionInfo, formatVersion } from '@/config/version';
+import { ForceUpdateButton } from '@/components/ForceUpdateButton';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -137,6 +138,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                   </div>
                 </div>
               </div>
+              <ForceUpdateButton />
               <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair" className="h-8 w-8 sm:h-10 sm:w-10">
                 <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
