@@ -1598,6 +1598,15 @@ export type Database = {
           threat_description: string
         }[]
       }
+      get_activity_metrics_v2: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_responsible_user_id?: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
       get_completely_secure_tasks: {
         Args: never
         Returns: {
@@ -1662,6 +1671,15 @@ export type Database = {
           vendas_perdidas_value: number
           visitas_count: number
         }[]
+      }
+      get_consolidated_sales_counts_v2: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_responsible_user_id?: string
+          p_start_date?: string
+        }
+        Returns: Json
       }
       get_filiais_for_registration: {
         Args: never
@@ -1785,6 +1803,27 @@ export type Database = {
           visitas: number
         }[]
       }
+      get_performance_by_filial_v2: {
+        Args: {
+          p_end_date?: string
+          p_responsible_user_id?: string
+          p_start_date?: string
+        }
+        Returns: {
+          checklists: number
+          filial_id: string
+          filial_nome: string
+          ligacoes: number
+          prospections: number
+          sales_partial_count: number
+          sales_partial_value: number
+          sales_total_count: number
+          sales_total_value: number
+          total_activities: number
+          unique_clients: number
+          visitas: number
+        }[]
+      }
       get_performance_by_seller: {
         Args: { p_date_from?: string; p_date_to?: string }
         Returns: {
@@ -1797,6 +1836,29 @@ export type Database = {
           user_id: string
           user_name: string
           user_role: string
+          visitas: number
+        }[]
+      }
+      get_performance_by_seller_v2: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_start_date?: string
+        }
+        Returns: {
+          checklists: number
+          filial_id: string
+          filial_nome: string
+          ligacoes: number
+          prospections: number
+          responsible_name: string
+          responsible_user_id: string
+          sales_partial_count: number
+          sales_partial_value: number
+          sales_total_count: number
+          sales_total_value: number
+          total_activities: number
+          unique_clients: number
           visitas: number
         }[]
       }
