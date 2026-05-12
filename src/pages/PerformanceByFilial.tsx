@@ -63,25 +63,37 @@ const PerformanceByFilial: React.FC = () => {
 
     setLoading(true);
     try {
-      // OTIMIZAÇÃO Disk IO: RPC de agregação em vez de fetch de 2000 tasks
-      const { data: stats, error } = await supabase.rpc('get_performance_by_filial', {
-        p_date_from: dateFrom?.toISOString().split('T')[0] ?? null,
-        p_date_to: dateTo?.toISOString().split('T')[0] ?? null,
+      // V2: agregação por task_followups (activity_date / filial_id) + tasks (valores)
+      const p_responsible_user_id =
+        selectedUser && selectedUser !== 'all' ? selectedUser : null;
+
+      const { data: stats, error } = await supabase.rpc('get_performance_by_filial_v2', {
+        p_start_date: dateFrom ? dateFrom.toISOString().split('T')[0] : null,
+        p_end_date: dateTo ? dateTo.toISOString().split('T')[0] : null,
+        p_responsible_user_id,
       });
 
       if (error) throw error;
 
-      const filialStatsResult = (stats || []).map((row: { filial_id: string; filial_nome: string; visitas: number; checklist: number; ligacoes: number; prospects: number; prospects_value: number; sales_value: number; conversion_rate: number }) => ({
-        id: row.filial_id,
-        nome: row.filial_nome,
-        visitas: Number(row.visitas ?? 0),
-        checklist: Number(row.checklist ?? 0),
-        ligacoes: Number(row.ligacoes ?? 0),
-        prospects: Number(row.prospects ?? 0),
-        prospectsValue: Number(row.prospects_value ?? 0),
-        salesValue: Number(row.sales_value ?? 0),
-        conversionRate: Number(row.conversion_rate ?? 0),
-      }));
+      const filialStatsResult = (stats || []).map((row: any) => {
+        const visitas = Number(row.visitas ?? 0);
+        const checklist = Number(row.checklists ?? 0);
+        const ligacoes = Number(row.ligacoes ?? 0);
+        const total = visitas + checklist + ligacoes;
+        const salesCount = Number(row.sales_total_count ?? 0) + Number(row.sales_partial_count ?? 0);
+        const conversionRate = total > 0 ? (salesCount / total) * 100 : 0;
+        return {
+          id: row.filial_id,
+          nome: row.filial_nome ?? 'Sem filial',
+          visitas,
+          checklist,
+          ligacoes,
+          prospects: Number(row.prospections ?? 0),
+          prospectsValue: 0,
+          salesValue: Number(row.sales_total_value ?? 0) + Number(row.sales_partial_value ?? 0),
+          conversionRate,
+        };
+      });
 
       setFilialStats(filialStatsResult);
     } catch (error) {
