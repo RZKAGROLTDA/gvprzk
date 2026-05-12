@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 
 export interface SalesFilters {
   period?: string;
@@ -10,7 +11,6 @@ export interface SalesFilters {
 }
 
 export interface ConsolidatedMetrics {
-  // Métricas de visão geral (antigo useAllSalesData)
   overview: {
     contacts: { count: number; value: number };
     prospects: { count: number; value: number };
@@ -18,8 +18,6 @@ export interface ConsolidatedMetrics {
     partialSales: { count: number; value: number };
     lostSales: { count: number; value: number };
   };
-  
-  // Métricas detalhadas do funil (antigo useSalesFunnelMetrics)
   funnel: {
     visitas: { count: number; value: number };
     checklists: { count: number; value: number };
@@ -36,121 +34,98 @@ export interface ConsolidatedMetrics {
   };
 }
 
+const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
+
 /**
- * Hook CONSOLIDADO para métricas de vendas.
- * Toda a agregação acontece no banco via RPCs dedicados — nenhuma linha bruta
- * é transferida para o cliente só para ser somada em JS.
+ * Hook CONSOLIDADO — agora consome `get_activity_metrics_v2`.
+ *
+ * Fonte oficial:
+ * - task_followups → contagens operacionais (activity_date / filial_id / responsible_user_id)
+ * - tasks         → valores financeiros e status comercial
+ *
+ * Sem filtro hardcoded de 90 dias. Sem uso de created_at para análise operacional.
  */
 export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
   const { data: metrics, isLoading, error, refetch } = useQuery({
-    queryKey: ['consolidated-sales-metrics', filters],
+    queryKey: ['consolidated-sales-metrics-v2', filters],
     queryFn: async () => {
-      // Helper: janela de datas
-      // Sem período selecionado → padrão de 90 dias (igual ao useInfiniteSalesData)
-      // para manter consistência entre os cards de métricas e a tabela
-      const getDateParams = () => {
-        if (filters?.period && filters.period !== 'all') {
-          const daysAgo = parseInt(filters.period);
+      // Janela de datas: somente quando o usuário escolher um período explícito.
+      // 'all' / undefined → sem corte (V2 aceita NULL).
+      let p_start_date: string | null = null;
+      let p_end_date: string | null = null;
+      if (filters?.period && filters.period !== 'all') {
+        const days = parseInt(filters.period, 10);
+        if (!Number.isNaN(days) && days > 0) {
           const end = new Date();
           const start = new Date();
-          start.setDate(start.getDate() - daysAgo);
-          return {
-            p_start_date: start.toISOString(),
-            p_end_date: end.toISOString(),
-          };
+          start.setDate(start.getDate() - days);
+          p_start_date = toIsoDate(start);
+          p_end_date = toIsoDate(end);
         }
-        // Default: últimos 90 dias
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - 90);
-        return {
-          p_start_date: start.toISOString(),
-          p_end_date: end.toISOString(),
-        };
-      };
+      }
 
-      // Helper: mapear filtro de atividade para task_type(s)
-      const getActivityTaskTypes = (activity?: string): string[] | null => {
-        if (!activity || activity === 'all') return null;
-        if (activity === 'field_visit' || activity === 'prospection' || activity === 'visita')
-          return ['prospection', 'visita'];
-        return [activity];
-      };
+      const p_filial_id = await resolveFilialIdForFilter(filters?.filial);
+      const p_responsible_user_id =
+        filters?.consultantId && filters.consultantId !== 'all'
+          ? filters.consultantId
+          : null;
 
-      const dateParams = getDateParams();
-      const activityTaskTypes = getActivityTaskTypes(filters?.activity);
-
-      // OTIMIZAÇÃO Disk IO: 1 RPC em vez de 6+ queries diretas em tasks
-      const { data: row, error: rpcError } = await supabase.rpc('get_consolidated_sales_counts', {
-        p_start_date: dateParams.p_start_date,
-        p_end_date: dateParams.p_end_date,
-        p_created_by: filters?.consultantId && filters.consultantId !== 'all' ? filters.consultantId : null,
-        p_filial: filters?.filial && filters.filial !== 'all' ? filters.filial : null,
-        p_filial_atendida: filters?.filialAtendida && filters.filialAtendida !== 'all' ? filters.filialAtendida : null,
-        p_task_types: activityTaskTypes,
+      const { data, error: rpcError } = await supabase.rpc('get_activity_metrics_v2', {
+        p_start_date,
+        p_end_date,
+        p_filial_id,
+        p_responsible_user_id,
       });
-
       if (rpcError) throw rpcError;
 
-      const r = (row?.[0] ?? {}) as {
-        visitas_count?: number;
-        ligacoes_count?: number;
-        checklists_count?: number;
-        prospects_count?: number;
-        prospects_value?: number;
-        vendas_ganhas_count?: number;
-        vendas_ganhas_value?: number;
-        vendas_parciais_count?: number;
-        vendas_parciais_value?: number;
-        vendas_perdidas_count?: number;
-        vendas_perdidas_value?: number;
-      };
+      const r = (data ?? {}) as Record<string, number>;
+      const num = (k: string) => Number(r[k] ?? 0);
 
-      const visitasCount = Number(r.visitas_count ?? 0);
-      const ligacoesCount = Number(r.ligacoes_count ?? 0);
-      const checklistsCount = Number(r.checklists_count ?? 0);
-      const prospectsCount = Number(r.prospects_count ?? 0);
-      const prospectsValue = Number(r.prospects_value ?? 0);
-      const vendasGanhas = Number(r.vendas_ganhas_count ?? 0);
-      const valorGanhas = Number(r.vendas_ganhas_value ?? 0);
-      const vendasParciais = Number(r.vendas_parciais_count ?? 0);
-      const valorParciais = Number(r.vendas_parciais_value ?? 0);
-      const vendasPerdidas = Number(r.vendas_perdidas_count ?? 0);
-      const valorPerdidas = Number(r.vendas_perdidas_value ?? 0);
+      const visitas = num('visitas');
+      const ligacoes = num('ligacoes');
+      const checklists = num('checklists');
 
-      const totalContatos = visitasCount + checklistsCount + ligacoesCount;
-      const totalVendas = vendasGanhas + vendasParciais;
+      const vendasGanhasCount = num('sales_total_count');
+      const vendasGanhasValue = num('sales_total_value');
+      const vendasParciaisCount = num('sales_partial_count');
+      const vendasParciaisValue = num('sales_partial_value');
+      const vendasPerdidasCount = num('sales_lost_count');
+      const vendasPerdidasValue = num('sales_lost_value');
+      const prospectsCount = num('prospect_open_count');
+      const prospectsValue = num('prospect_open_value');
+
+      const totalContatos = visitas + checklists + ligacoes;
+      const totalVendas = vendasGanhasCount + vendasParciaisCount;
       const taxaConversao = totalContatos > 0 ? (totalVendas / totalContatos) * 100 : 0;
 
       const result: ConsolidatedMetrics = {
         overview: {
-          contacts:     { count: totalContatos,  value: 0 },
-          prospects:    { count: prospectsCount, value: prospectsValue },
-          sales:        { count: vendasGanhas,   value: valorGanhas },
-          partialSales: { count: vendasParciais, value: valorParciais },
-          lostSales:    { count: vendasPerdidas, value: valorPerdidas },
+          contacts:     { count: totalContatos,        value: 0 },
+          prospects:    { count: prospectsCount,       value: prospectsValue },
+          sales:        { count: vendasGanhasCount,    value: vendasGanhasValue },
+          partialSales: { count: vendasParciaisCount,  value: vendasParciaisValue },
+          lostSales:    { count: vendasPerdidasCount,  value: vendasPerdidasValue },
         },
         funnel: {
-          visitas:              { count: visitasCount,    value: 0 },
-          checklists:           { count: checklistsCount, value: 0 },
-          ligacoes:             { count: ligacoesCount,   value: 0 },
+          visitas:              { count: visitas,    value: 0 },
+          checklists:           { count: checklists, value: 0 },
+          ligacoes:             { count: ligacoes,   value: 0 },
           totalContatos,
-          prospeccoesAbertas:   { count: prospectsCount,                  value: prospectsValue },
-          prospeccoesFechadas:  { count: vendasGanhas + vendasParciais,   value: valorGanhas + valorParciais },
-          prospeccoesPerdidas:  { count: vendasPerdidas,                  value: valorPerdidas },
+          prospeccoesAbertas:   { count: prospectsCount,                            value: prospectsValue },
+          prospeccoesFechadas:  { count: vendasGanhasCount + vendasParciaisCount,   value: vendasGanhasValue + vendasParciaisValue },
+          prospeccoesPerdidas:  { count: vendasPerdidasCount,                       value: vendasPerdidasValue },
           totalProspeccoes:     prospectsCount,
-          vendasTotal:          { count: vendasGanhas,   value: valorGanhas },
-          vendasParcial:        { count: vendasParciais, value: valorParciais },
+          vendasTotal:          { count: vendasGanhasCount,   value: vendasGanhasValue },
+          vendasParcial:        { count: vendasParciaisCount, value: vendasParciaisValue },
           totalVendas,
           taxaConversao,
         },
       };
-
       return result;
     },
-    staleTime: 10 * 60 * 1000, // 10 min - reduz refetch e Disk IO
+    staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
-    refetchOnMount: false, // usar cache existente
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
 
