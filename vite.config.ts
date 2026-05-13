@@ -20,11 +20,11 @@ export default defineConfig(({ mode }) => {
     react(),
     mode === 'development' &&
     componentTagger(),
-    {
+    ((): any => ({
       name: 'emit-version-json',
-      apply: 'build' as const,
-      generateBundle(this: any) {
-        this.emitFile({
+      apply: 'build',
+      generateBundle() {
+        (this as any).emitFile({
           type: 'asset',
           fileName: 'version.json',
           source: JSON.stringify({
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
           }),
         });
       },
-    },
+    }))(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt'],
