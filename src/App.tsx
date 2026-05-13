@@ -37,6 +37,7 @@ import ResetPassword from "./pages/ResetPassword";
 import CRM from "./pages/CRM";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
 
 const queryClient = new QueryClient();
 
@@ -167,16 +168,19 @@ const AuthAwareWrapper: React.FC = () => {
   return <AppRoutes user={user} profile={profile} />;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <SecurityHeaders />
-      <Toaster />
-      <Sonner />
-      <HotToaster />
-      <AppContent />
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useAutoVersionCheck();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <SecurityHeaders />
+        <Toaster />
+        <Sonner />
+        <HotToaster />
+        <AppContent />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
