@@ -167,16 +167,19 @@ const AuthAwareWrapper: React.FC = () => {
   return <AppRoutes user={user} profile={profile} />;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <SecurityHeaders />
-      <Toaster />
-      <Sonner />
-      <HotToaster />
-      <AppContent />
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useAutoVersionCheck();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <SecurityHeaders />
+        <Toaster />
+        <Sonner />
+        <HotToaster />
+        <AppContent />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
