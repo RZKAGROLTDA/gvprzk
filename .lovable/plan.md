@@ -1,112 +1,116 @@
-# Plano: Nova aba "Programação" no CRM
+## Fase 3 — Migração analítica para o padrão `_v2`
 
-## 1. Estrutura da tabela
-
-Nova tabela `visit_schedules` (programação planejada — separada de tasks/followups):
-
-| Coluna | Tipo | Observação |
-|---|---|---|
-| id | uuid PK | |
-| planned_date | date | data planejada da visita |
-| client_code | text | código do cliente (índice) |
-| client_name | text | nome do cliente |
-| client_property | text NULL | fazenda/propriedade |
-| client_phone | text NULL | |
-| client_email | text NULL | |
-| filial | text | nome da filial (consistente com `tasks.filial`) |
-| filial_id | uuid NULL | FK lógico para `filiais.id` |
-| seller_id | uuid | vendedor responsável (auth.uid) |
-| seller_name | text | snapshot do nome |
-| observation | text NULL | |
-| status | text | `planejado` \| `realizado` \| `nao_realizado` \| `reagendado` |
-| realized_task_id | uuid NULL | task que marcou como realizado |
-| realized_at | timestamptz NULL | |
-| reschedule_from_id | uuid NULL | aponta para o registro original quando reagendado |
-| created_by | uuid | |
-| created_at / updated_at | timestamptz | |
-
-**Índices:** `(seller_id, planned_date)`, `(client_code, planned_date)`, `(filial_id, planned_date)`, `(status)`.
-
-**Constraint:** `UNIQUE (seller_id, client_code, planned_date)` para evitar duplicidade na programação do mesmo vendedor para o mesmo cliente no mesmo dia.
-
-## 2. RLS (segue padrão do CRM atual)
-
-Usando `has_role()` e `get_supervisor_filial_id()` (memória do projeto):
-
-- **SELECT**: dono (`seller_id = auth.uid()`) OR manager/admin OR (supervisor AND `filial_id = get_supervisor_filial_id(auth.uid())`)
-- **INSERT**: o próprio vendedor (`seller_id = auth.uid() AND created_by = auth.uid()`) OR manager/admin OR supervisor da mesma filial
-- **UPDATE**: mesmas regras do SELECT
-- **DELETE**: somente admin
-
-Filtro de filial sempre via `LOWER(TRIM(filial))` quando comparar com `tasks.filial` (memória do projeto).
-
-## 3. Vínculo programação ↔ visita realizada
-
-**Quando ocorre o match:** trigger `AFTER INSERT OR UPDATE` em `tasks` que executa quando:
-- `task_type IN ('ligacao','prospection','checklist')` (qualquer visita real)
-- `clientcode IS NOT NULL`
-- `status` muda para `in_progress` ou `completed` (visita efetivamente iniciada)
-
-**Critérios de match (todos obrigatórios):**
-1. `visit_schedules.client_code = NEW.clientcode`
-2. `visit_schedules.seller_id = NEW.created_by`
-3. `visit_schedules.planned_date = NEW.start_date`
-4. `visit_schedules.status = 'planejado'` (não sobrescreve manual)
-5. `visit_schedules.realized_task_id IS NULL`
-
-**Ação:** UPDATE no(s) registro(s) que casam → `status='realizado'`, `realized_task_id=NEW.id`, `realized_at=now()`.
-
-Se não houver match → não faz nada (silencioso, sem erro).
-
-## 4. Como evitar duplicidade
-
-- `UNIQUE (seller_id, client_code, planned_date)` no banco
-- No frontend, ao salvar: tentar UPSERT com `onConflict`; se já existir, mostrar aviso "Já existe programação para este cliente nesta data"
-- Reagendar = criar novo registro com `reschedule_from_id` apontando para o original e marcar o original como `reagendado` (mantém histórico, não viola unique pois mudou a data)
-
-## 5. Frontend
-
-**Arquivos novos:**
-- `src/components/crm/VisitSchedule.tsx` — container da aba
-- `src/components/crm/VisitScheduleWeekView.tsx` — visão semanal (7 cards)
-- `src/components/crm/VisitScheduleForm.tsx` — modal de criar/editar
-- `src/components/crm/VisitScheduleFilters.tsx` — filtros
-- `src/components/crm/VisitScheduleKPIs.tsx` — indicadores no topo
-- `src/hooks/useVisitSchedules.ts` — React Query (staleTime 5min, sem refetch on focus, conforme memória)
-
-**Edição em arquivo existente:**
-- `src/pages/CRM.tsx` — adicionar `<TabsTrigger value="programacao">` e `<TabsContent>`. Manter a Agenda Semanal intacta.
-
-**Autocomplete de cliente:** reaproveitar a mesma lógica usada hoje na criação de visita. Vou inspecionar `src/pages/CreateFieldVisit.tsx` / `CreateCall.tsx` / `StandardTaskForm.tsx` para extrair o componente de busca (busca por código ou nome em tasks históricas + cadastro manual se não existir). Ao selecionar, preencher: client_code, client_name, filial, property, phone, email. Vendedor responsável = usuário logado (editável apenas para manager/supervisor).
-
-**KPIs no topo (período filtrado):**
-- Programadas (total)
-- Realizadas (status=realizado)
-- Pendentes (status=planejado e planned_date >= hoje)
-- % Execução = realizadas / (realizadas + nao_realizado + planejado_passado) × 100
-
-**Filtros:** período (de/até), vendedor (UUID — memória do projeto), filial (dropdown de `filiais`), status (multi), busca por cliente (nome/código, ilike).
-
-**Visão semanal:** grid 7 colunas (seg–dom) com cards por cliente. Cores:
-- planejado: neutro
-- realizado: verde
-- nao_realizado: vermelho
-- reagendado: âmbar (com seta indicando nova data)
-
-## 6. Itens fora de escopo (preservados)
-
-- Agenda Semanal atual (`WeeklyAgenda.tsx`) **não é alterada** — continua mostrando atividades/follow-ups realizados.
-- Não mexer em `tasks`, `task_followups`, `opportunities`.
-- Não alterar RLS de tabelas existentes.
-
-## 7. Ordem de execução
-
-1. Migração: criar tabela + índices + RLS + trigger de match.
-2. Hook `useVisitSchedules` (CRUD + filtros).
-3. Componentes (form, semana, filtros, KPIs).
-4. Integrar aba em `CRM.tsx`.
-5. Testar: criar programação → criar task com mesmo cliente/data → confirmar que vira `realizado` automaticamente.
+Objetivo: garantir que Dashboard › Funil, Clientes, Tarefas e Reports usem `task_followups` como fonte oficial de operação, mantendo `tasks`/`opportunities` apenas para valores e status comerciais. Manter compatibilidade dos hooks/RPCs antigos (deprecated) até validação.
 
 ---
 
-Posso prosseguir com a migração e implementação?
+### 1. Novas RPCs no banco (Supabase)
+
+Para evitar misturar conceitos (operacional × comercial) e respeitar o contrato único `(p_start_date, p_end_date, p_filial_id, p_responsible_user_id)`:
+
+- **`get_funnel_metrics_v2`** — agrega `task_followups` (visitas, ligações, checklists, prospects) + `opportunities` ligadas via `task_id` para etapas comerciais (abertas, ganhas, parciais, perdidas) e seus valores. Sem corte de 90 dias.
+- **`get_clients_overview_v2`** — lista de clientes únicos baseada em `task_followups`, agrupados por `COALESCE(NULLIF(client_code,''), LOWER(TRIM(client_name)))`, com:
+  - `last_activity_date` (de `task_followups`)
+  - `last_visit_date` (followups tipo visita)
+  - `last_opportunity_date` (de `opportunities` via `task_id`)
+  - `filial_id`, `responsible_user_id`
+- **`get_tasks_metrics_v2`** — métricas de tarefas baseadas em `task_followups.activity_date` (não `tasks.created_at`): contagens por tipo, por status comercial (lookup em `tasks`/`opportunities`).
+- **`get_reports_dataset_v2`** — dataset de linhas para Reports (paginação server-side), pivotando `task_followups` + dados financeiros de `tasks`/`opportunities`. Colunas explícitas: `activity_date`, `created_at`, `sale_date`, `filial`, `filial_atendida`.
+
+Todas as RPCs:
+- `SECURITY DEFINER`, respeitam roles (manager/admin/supervisor/seller) usando `has_role` + `get_supervisor_filial_id`.
+- Aceitam `NULL` em qualquer parâmetro = sem filtro.
+- Sem `SELECT *`; colunas explícitas; `LIMIT` em datasets.
+
+---
+
+### 2. Hooks (frontend)
+
+Criar novos hooks consumindo o contrato único, mantendo os antigos com `@deprecated`:
+
+- `src/hooks/useFunnelMetricsV2.ts` (novo) — substitui uso direto de tasks/opportunities em `SalesFunnel.tsx`.
+- `src/hooks/useClientsOverviewV2.ts` (novo) — substitui agregação manual em `FunnelClientsOptimized.tsx`.
+- `src/hooks/useTasksMetricsV2.ts` (novo) — substitui contagens de `FunnelTasksOptimized.tsx`.
+- `src/hooks/useReportsDatasetV2.ts` (novo) — fonte para `Reports.tsx`.
+
+Padrão dos hooks:
+- React Query `staleTime: 10*60*1000`, `refetchOnWindowFocus: false`.
+- `resolveFilialIdForFilter()` para converter nome→uuid.
+- `consultantId === 'all'` → `null`.
+- Período `'all'` → `p_start_date=null`, `p_end_date=null` (sem fallback de 90 dias).
+
+---
+
+### 3. Migração das telas
+
+**Dashboard › Funil** (`SalesFunnel.tsx` / `SalesFunnelOptimized.tsx` / `FunnelTasksOptimized.tsx` / `FunnelClientsOptimized.tsx`)
+- Substituir leituras diretas por hooks `_v2`.
+- Manter pipeline visual de oportunidades como camada complementar (apenas valores/status comerciais).
+- Remover hardcoded 90 dias.
+
+**Clientes** (`FunnelClientsOptimized.tsx`)
+- Eliminar agregação client-side de `tasks`+`opportunities`.
+- Consumir `useClientsOverviewV2`. Chave única: `COALESCE(NULLIF(client_code,''), LOWER(TRIM(client_name)))`.
+
+**Tarefas** (`FunnelTasksOptimized.tsx`)
+- Trocar `created_at` por `activity_date` via `useTasksMetricsV2`.
+
+**Reports** (`Reports.tsx`)
+- Migrar dataset principal para `useReportsDatasetV2`.
+- Colunas explícitas: Data Atividade, Data Criação, Data Venda, Filial Operacional, Filial Atendida.
+
+---
+
+### 4. Clareza visual
+
+Em todas as telas migradas, renomear cabeçalhos e tooltips para deixar explícito:
+- "Data da atividade" (operacional, `activity_date`)
+- "Data de criação" (`tasks.created_at`)
+- "Data da venda/oportunidade" (`opportunities.data_fechamento`)
+- "Filial operacional" (`task_followups.filial_id`)
+- "Filial atendida" (`tasks.filial_atendida`)
+
+---
+
+### 5. Deprecação controlada
+
+- Adicionar comentário JSDoc `@deprecated — usar X_v2` em:
+  - `useAllSalesData` (legado)
+  - `get_consolidated_sales_counts` (RPC) → manter no banco, sinalizar no doc.
+  - hooks antigos referenciados acima.
+- **Não remover** nada nesta fase.
+
+---
+
+### 6. Validação pós-migração
+
+Após o deploy, executar via `supabase--read_query` consultas comparativas para o **mesmo período + filial + vendedor**:
+
+| Métrica | Origem A | Origem B | Esperado |
+|---|---|---|---|
+| Atividades totais | `get_activity_metrics_v2` | CRM Agenda (`get_weekly_followups_agenda`) | igual |
+| Visitas/Ligações/Checklists | Funil v2 | Dashboard (`useConsolidatedSalesMetrics`) | igual |
+| Vendas ganhas/parciais/perdidas | Reports v2 | Performance Filial/Vendedor | igual |
+| Clientes únicos | Clientes v2 | CRM Gerencial | igual |
+
+Documentar resultados em `docs/VALIDACAO_FASE3.md`.
+
+---
+
+### Detalhes técnicos
+
+- Migração SQL em um único arquivo (4 RPCs + grants).
+- `types.ts` será regenerado após a migração.
+- Sem alterar RLS de `task_followups`/`tasks`/`opportunities`.
+- Sem mudar telas não listadas (CRM Agenda, Performance por Filial/Vendedor já estão no padrão v2).
+
+---
+
+### Ordem de execução
+
+1. Migração SQL (4 RPCs).
+2. Novos hooks v2.
+3. Refatoração de telas (Funil → Clientes → Tarefas → Reports).
+4. Validação comparativa + documento.
+
+Confirma para eu seguir?
