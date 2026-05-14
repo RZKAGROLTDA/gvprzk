@@ -1,186 +1,73 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckSquare, Download, Search, Filter, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
-import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
+import { CheckSquare, Search, Filter } from 'lucide-react';
+import { useFiliais } from '@/hooks/useTasksOptimized';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
-import { useSecurityCache } from '@/hooks/useSecurityCache';
-import { useOpportunities } from '@/hooks/useOpportunities';
-import { format, subDays } from 'date-fns';
+import { useReportsDatasetV2, ReportRowV2 } from '@/hooks/useReportsDatasetV2';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getFilialNameRobust } from '@/lib/taskStandardization';
-import { toast } from 'react-hot-toast';
-import { SessionRefreshButton } from '@/components/SessionRefreshButton';
 
-interface TaskData {
-  date: Date;
-  client: string;
-  responsible: string;
-  taskType: string;
-  observation: string;
-  filial: string;
-}
-
+/**
+ * Histórico de Atividades — fonte oficial: `get_reports_dataset_v2` (task_followups).
+ *
+ * Padronização (Fase 3):
+ *   - Operacional: task_followups (activity_date, filial_id, responsible_user_id)
+ *   - Comercial:   tasks/opportunities (latest snapshot por task_id)
+ *   - Sem corte hardcoded de 90 dias.
+ */
 export const FunnelTasksOptimized: React.FC = () => {
-  console.log('🔧 FunnelTasksOptimized: Componente carregado');
-  const { tasks, loading, refetch, forceRefresh, resetAndRefresh, error } = useTasksOptimized();
-  const { data: opportunities = [], isLoading: opportunitiesLoading } = useOpportunities();
   const { consultants, isLoading: consultantsLoading } = useFilteredConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
-  const { invalidateAll } = useSecurityCache();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState('365');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
   const [selectedFilial, setSelectedFilial] = useState('all');
-  const [selectedFilialAtendida, setSelectedFilialAtendida] = useState('all');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [isForceRefreshing, setIsForceRefreshing] = useState(false);
-  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
-  const tasksData = useMemo(() => {
-    console.log('🔧 FILTRO DEBUG - selectedFilial:', selectedFilial);
-    console.log('🔧 FILTRO DEBUG - selectedFilialAtendida:', selectedFilialAtendida);
-    console.log('🔧 FILTRO DEBUG - tasks.length:', tasks.length);
-    console.log('🔧 FILTRO DEBUG - opportunities.length:', opportunities.length);
-    
-    if (!tasks.length && !opportunities.length) return [];
+  const { data, isLoading, error } = useReportsDatasetV2({
+    period: selectedPeriod,
+    filial: selectedFilial,
+    consultantId: selectedConsultant,
+    limit: 200,
+    offset: 0,
+  });
 
-    const now = new Date();
-    const daysAgo = parseInt(selectedPeriod);
-    const periodStart = daysAgo >= 9999 ? new Date(0) : subDays(now, daysAgo);
-    const searchLower = searchTerm.toLowerCase();
+  const filialNameById = new Map(filiais.map((f: any) => [f.id, f.nome]));
+  const consultantNameById = new Map(consultants.map((c: any) => [c.id, c.name]));
 
-    const result: TaskData[] = [];
-    
-    // Processar tasks
-    for (const task of tasks) {
-      if (!task || !task.created_at) continue;
-      const taskDate = new Date(task.created_at);
-      
-      if (daysAgo < 9999 && taskDate < periodStart) continue;
-      
-      if (selectedConsultant !== 'all') {
-        const consultant = consultants.find(c => c.id === selectedConsultant);
-        if (!consultant || task.responsible !== consultant.name) continue;
-      }
-
-      if (selectedFilial !== 'all' && task.filial !== selectedFilial) continue;
-      
-      // Filtro de Filial Atendida
-      if (selectedFilialAtendida !== 'all' && (task as any).filialAtendida !== selectedFilialAtendida) continue;
-      
-      if (searchTerm && !task.client.toLowerCase().includes(searchLower)) continue;
-
-      result.push({
-        date: new Date(task.created_at),
-        client: task.client,
-        responsible: task.responsible,
-        taskType: getTaskTypeLabel(task.taskType),
-        observation: task.observations || '-',
-        filial: task.filial || ''
-      });
-    }
-
-    // Processar opportunities
-    for (const opp of opportunities) {
-      const oppDate = new Date(opp.data_criacao);
-      
-      if (daysAgo < 9999 && oppDate < periodStart) continue;
-      if (selectedFilial !== 'all' && opp.filial !== selectedFilial) continue;
-      if (searchTerm && !opp.cliente_nome.toLowerCase().includes(searchLower)) continue;
-
-      result.push({
-        date: oppDate,
-        client: opp.cliente_nome,
-        responsible: '-',
-        taskType: `Opportunity (${opp.status})`,
-        observation: `Valor: R$ ${opp.valor_total_oportunidade.toFixed(2)}`,
-        filial: opp.filial || ''
-      });
-    }
-
-    // Ordenação otimizada
-    result.sort((a, b) => {
-      const diff = a.date.getTime() - b.date.getTime();
-      return sortDirection === 'asc' ? diff : -diff;
+  const filteredRows: ReportRowV2[] = (data?.rows ?? [])
+    .filter(r => !searchTerm || r.client_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => {
+      const da = new Date(a.activity_date).getTime();
+      const db = new Date(b.activity_date).getTime();
+      return sortDirection === 'asc' ? da - db : db - da;
     });
 
-    return result.slice(0, 100); // Limitar para performance
-  }, [tasks, opportunities, searchTerm, selectedPeriod, selectedConsultant, selectedFilial, selectedFilialAtendida, sortDirection, consultants]);
-
-  const getTaskTypeLabel = (taskType: string) => {
-    switch (taskType) {
-      case 'prospection':
-        return 'Visita';
-      case 'ligacao':
-        return 'Ligação';
-      case 'checklist':
-        return 'Checklist Oficina';
-      default:
-        return taskType;
+  const labelType = (t: string) => {
+    switch (t) {
+      case 'visita':
+      case 'prospection': return 'Visita';
+      case 'ligacao': return 'Ligação';
+      case 'checklist': return 'Checklist';
+      default: return t;
     }
   };
 
-  const getTaskTypeBadgeVariant = (taskType: string): "default" | "secondary" | "outline" => {
-    switch (taskType) {
-      case 'Visita':
-        return 'default';
-      case 'Ligação':
-        return 'secondary';
-      case 'Checklist Oficina':
-        return 'outline';
-      default:
-        return 'secondary';
-    }
+  const badgeVariant = (t: string): 'default' | 'secondary' | 'outline' => {
+    if (t === 'visita' || t === 'prospection') return 'default';
+    if (t === 'ligacao') return 'secondary';
+    return 'outline';
   };
 
-  // OTIMIZAÇÃO Disk IO: Removido auto-refresh no focus para reduzir queries duplicadas
+  const loading = isLoading || consultantsLoading || filiaisLoading;
 
-  const isLoading = loading || opportunitiesLoading || consultantsLoading || filiaisLoading;
-
-  // Função para force refresh com feedback visual
-  const handleForceRefresh = async () => {
-    setIsForceRefreshing(true);
-    try {
-      await forceRefresh();
-      setLastRefreshTime(new Date());
-      toast.success("✅ Dados Atualizados - Cache limpo e dados recarregados com sucesso!");
-    } catch (error) {
-      console.error('Erro no force refresh:', error);
-      toast.error("❌ Erro ao atualizar dados. Tente novamente.");
-    } finally {
-      setIsForceRefreshing(false);
-    }
-  };
-
-  // Função para reset completo
-  const handleResetAndRefresh = async () => {
-    setIsForceRefreshing(true);
-    try {
-      // Reset filtros
-      setSearchTerm('');
-      setSelectedPeriod('365');
-      setSelectedConsultant('all');
-      setSelectedFilial('all');
-      setSelectedFilialAtendida('all');
-      
-      await resetAndRefresh();
-      setLastRefreshTime(new Date());
-      toast.success("🔄 Reset Completo - Filtros resetados e dados recarregados!");
-    } catch (error) {
-      console.error('Erro no reset:', error);
-      toast.error("❌ Erro ao resetar dados. Tente novamente.");
-    } finally {
-      setIsForceRefreshing(false);
-    }
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -191,49 +78,19 @@ export const FunnelTasksOptimized: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Filtros */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Filter className="h-5 w-5" />
-              <span>Filtros e Busca</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              {error && (
-                <Badge variant="destructive" className="flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  Erro ao carregar
-                </Badge>
-              )}
-              {lastRefreshTime && (
-                <span className="text-xs text-muted-foreground">
-                  Última atualização: {format(lastRefreshTime, 'HH:mm:ss')}
-                </span>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleForceRefresh}
-                disabled={isForceRefreshing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-1 ${isForceRefreshing ? 'animate-spin' : ''}`} />
-                {isForceRefreshing ? 'Atualizando...' : 'Atualizar'}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleResetAndRefresh}
-                disabled={isForceRefreshing}
-              >
-                <RotateCcw className="h-4 w-4 mr-1" />
-                Reset
-              </Button>
-            </div>
+          <CardTitle className="flex items-center space-x-2">
+            <Filter className="h-5 w-5" />
+            <span>Filtros e Busca</span>
           </CardTitle>
+          <CardDescription>
+            Fonte: <strong>task_followups</strong> · Data exibida = <strong>activity_date</strong>
+            {' '}· Filial operacional = filial_id · Vendedor = responsible_user_id
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Buscar Cliente</label>
               <div className="relative">
@@ -248,17 +105,15 @@ export const FunnelTasksOptimized: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Período</label>
+              <label className="text-sm font-medium">Período (data da atividade)</label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="7">Últimos 7 dias</SelectItem>
                   <SelectItem value="30">Últimos 30 dias</SelectItem>
                   <SelectItem value="90">Últimos 90 dias</SelectItem>
                   <SelectItem value="365">Último ano</SelectItem>
-                  <SelectItem value="9999">Todos os registros</SelectItem>
+                  <SelectItem value="all">Todos os registros</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -266,66 +121,43 @@ export const FunnelTasksOptimized: React.FC = () => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Consultor</label>
               <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os consultores</SelectItem>
-                  {consultants.map(consultant => (
-                    <SelectItem key={consultant.id} value={consultant.id}>
-                      {consultant.name}
-                    </SelectItem>
+                  {consultants.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Filial</label>
+              <label className="text-sm font-medium">Filial operacional</label>
               <Select value={selectedFilial} onValueChange={setSelectedFilial}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as filiais</SelectItem>
-                  {filiais.map(filial => (
-                    <SelectItem key={filial.id} value={filial.nome}>
-                      {filial.nome}
-                    </SelectItem>
+                  {filiais.map((f: any) => (
+                    <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Filial Atendida</label>
-              <Select value={selectedFilialAtendida} onValueChange={setSelectedFilialAtendida}>
-                <SelectTrigger className={selectedFilialAtendida !== 'all' ? 'border-primary' : ''}>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {filiais.map(filial => (
-                    <SelectItem key={filial.id} value={filial.nome}>
-                      {filial.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Exportar</label>
-              <Button variant="outline" className="w-full">
-                <Download className="h-4 w-4 mr-2" />
-                Excel/PDF
+              <label className="text-sm font-medium">Ordenação</label>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
+              >
+                Data {sortDirection === 'asc' ? '↑' : '↓'}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabela de Tarefas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -333,94 +165,69 @@ export const FunnelTasksOptimized: React.FC = () => {
             <span>Histórico de Atividades</span>
           </CardTitle>
           <CardDescription>
-            Registro detalhado de todas as atividades realizadas ({tasksData.length} atividades encontradas)
+            {filteredRows.length} de {data?.total ?? 0} atividades · 1 linha por followup
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-            >
-              Ordenar por data {sortDirection === 'asc' ? '↑' : '↓'}
-            </Button>
-          </div>
-
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data da Tarefa</TableHead>
-                  <TableHead>Nome do Cliente</TableHead>
-                  <TableHead>Consultor Responsável</TableHead>
-                  <TableHead>Tipo da Tarefa</TableHead>
-                  <TableHead>Filial</TableHead>
-                  <TableHead>Observação</TableHead>
+                  <TableHead>Data da atividade</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Consultor</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Filial operacional</TableHead>
+                  <TableHead>Filial atendida</TableHead>
+                  <TableHead>Data criação tarefa</TableHead>
+                  <TableHead>Data venda</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tasksData.map((task, index) => (
-                  <TableRow key={index}>
+                {filteredRows.map((r) => (
+                  <TableRow key={r.followup_id}>
                     <TableCell className="font-medium">
-                      {format(task.date, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      {format(new Date(r.activity_date), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                     </TableCell>
-                    <TableCell>{task.client}</TableCell>
-                    <TableCell>{task.responsible}</TableCell>
                     <TableCell>
-                      <Badge variant={getTaskTypeBadgeVariant(task.taskType)}>
-                        {task.taskType}
+                      {r.client_name}
+                      {r.client_code && (
+                        <span className="ml-2 text-xs text-muted-foreground">[{r.client_code}]</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{consultantNameById.get(r.responsible_user_id ?? '') ?? '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant={badgeVariant(r.activity_type)}>
+                        {labelType(r.activity_type)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{getFilialNameRobust(task.filial, filiais)}</TableCell>
-                    <TableCell className="max-w-xs truncate" title={task.observation}>
-                      {task.observation}
+                    <TableCell>
+                      <Badge variant="secondary">{r.followup_status}</Badge>
+                    </TableCell>
+                    <TableCell>{filialNameById.get(r.filial_id ?? '') ?? '—'}</TableCell>
+                    <TableCell>{r.task_filial_atendida ?? '—'}</TableCell>
+                    <TableCell>
+                      {r.task_created_at
+                        ? format(new Date(r.task_created_at), 'dd/MM/yyyy', { locale: ptBR })
+                        : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {r.sale_date
+                        ? format(new Date(r.sale_date), 'dd/MM/yyyy', { locale: ptBR })
+                        : '—'}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-          
-          {tasksData.length === 0 && !loading && (
-            <div className="text-center py-8">
-              {error ? (
-                <div className="space-y-4">
-                  <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
-                  <div>
-                    <h3 className="text-lg font-medium text-destructive">Erro ao carregar dados</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {error?.message || 'Não foi possível carregar as atividades. Verifique sua conexão.'}
-                    </p>
-                    {error?.message?.includes('Sessão expirada') && (
-                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
-                          Sua sessão expirou. Renove sua sessão ou faça login novamente.
-                        </p>
-                        <SessionRefreshButton />
-                      </div>
-                    )}
-                    <div className="mt-4 flex justify-center gap-2">
-                      <Button variant="outline" onClick={handleForceRefresh} disabled={isForceRefreshing}>
-                        <RefreshCw className={`h-4 w-4 mr-2 ${isForceRefreshing ? 'animate-spin' : ''}`} />
-                        Tentar Novamente
-                      </Button>
-                      <Button variant="outline" onClick={handleResetAndRefresh} disabled={isForceRefreshing}>
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Reset Completo
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-muted-foreground">
-                  <Search className="h-12 w-12 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium">Nenhuma atividade encontrada</h3>
-                  <p className="text-sm">
-                    Nenhuma atividade corresponde aos filtros aplicados.
-                  </p>
-                </div>
-              )}
+
+          {filteredRows.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              {error
+                ? <span className="text-destructive">Erro ao carregar atividades.</span>
+                : 'Nenhuma atividade encontrada com os filtros aplicados.'}
             </div>
           )}
         </CardContent>
