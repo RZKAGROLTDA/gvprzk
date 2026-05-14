@@ -33,6 +33,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { DataMigrationButton } from '@/components/DataMigrationButton';
+import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 
 const Reports: React.FC = () => {
   const { user } = useAuth();
