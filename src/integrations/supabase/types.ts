@@ -1607,6 +1607,18 @@ export type Database = {
         }
         Returns: Json
       }
+      get_clients_overview_v2: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_responsible_user_id?: string
+          p_search?: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
       get_completely_secure_tasks: {
         Args: never
         Returns: {
@@ -1708,6 +1720,15 @@ export type Database = {
           name: string
           role: string
         }[]
+      }
+      get_funnel_metrics_v2: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_responsible_user_id?: string
+          p_start_date?: string
+        }
+        Returns: Json
       }
       get_invitation_by_token: {
         Args: { p_token: string }
@@ -1875,6 +1896,17 @@ export type Database = {
           row_count: number
           total_value: number
         }[]
+      }
+      get_reports_dataset_v2: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_responsible_user_id?: string
+          p_start_date?: string
+        }
+        Returns: Json
       }
       get_sales_breakdown: {
         Args: {
@@ -2411,6 +2443,15 @@ export type Database = {
           row_count: number
           task_type: string
         }[]
+      }
+      get_tasks_metrics_v2: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_responsible_user_id?: string
+          p_start_date?: string
+        }
+        Returns: Json
       }
       get_tasks_optimized: {
         Args: never

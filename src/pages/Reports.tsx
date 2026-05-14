@@ -33,6 +33,7 @@ import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { DataMigrationButton } from '@/components/DataMigrationButton';
+import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 
 const Reports: React.FC = () => {
   const { user } = useAuth();
@@ -106,54 +107,51 @@ const Reports: React.FC = () => {
     }
   };
 
+  // Migrado para o padrão analítico v2:
+  //   Operacional → task_followups (activity_date / filial_id / responsible_user_id)
+  //   Comercial   → tasks + opportunities
+  // Contrato único (p_start_date, p_end_date, p_filial_id, p_responsible_user_id).
+  // Sem filtro hardcoded de período. p_filial_atendida é metadado e NÃO aplica
+  // ao corte operacional — para diferenciar use a coluna "Filial atendida" no dataset.
   const loadAggregatedStats = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
     setIsFiltering(true);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rpc = supabase.rpc as any;
-
-    const sharedParams = {
-      p_start_date:      dateFrom ? dateFrom.toISOString() : null,
-      p_end_date:        dateTo   ? dateTo.toISOString()   : null,
-      p_created_by:      selectedUser          !== 'all' ? selectedUser          : null,
-      p_filial:          selectedFilial        !== 'all' ? selectedFilial        : null,
-      p_filial_atendida: selectedFilialAtendida !== 'all' ? selectedFilialAtendida : null,
-      p_task_types:      null,
-    };
-
     try {
-      const [countsRes, prospectsRes, salesRes] = await Promise.all([
-        rpc('get_task_type_counts', sharedParams) as Promise<{ data: Array<{ task_type: string; count: number }> | null; error: unknown }>,
-        rpc('get_prospects_aggregate', sharedParams) as Promise<{ data: Array<{ count: number; total_value: number }> | null; error: unknown }>,
-        rpc('get_sales_breakdown', sharedParams) as Promise<{ data: Array<{ sales_type: string; count: number; total_value: number }> | null; error: unknown }>,
-      ]);
+      const p_filial_id = await resolveFilialIdForFilter(
+        selectedFilial !== 'all' ? selectedFilial : null,
+      );
+      // selectedUser nesta tela é id de profile; v2 espera user_id (auth uid).
+      // Mantemos null aqui até unificarmos o filtro de vendedor (próxima iteração).
+      const p_responsible_user_id =
+        selectedUser !== 'all'
+          ? (collaborators.find(c => c.id === selectedUser)?.user_id ?? null)
+          : null;
 
-      if (countsRes.error)   throw countsRes.error;
-      if (prospectsRes.error) throw prospectsRes.error;
-      if (salesRes.error)    throw salesRes.error;
+      const params = {
+        p_start_date: dateFrom ? dateFrom.toISOString().slice(0, 10) : null,
+        p_end_date:   dateTo   ? dateTo.toISOString().slice(0, 10)   : null,
+        p_filial_id,
+        p_responsible_user_id,
+      };
 
-      const typeCounts: Record<string, number> = {};
-      for (const row of countsRes.data ?? []) {
-        typeCounts[row.task_type] = Number(row.count) || 0;
-      }
+      const { data, error } = await supabase.rpc('get_funnel_metrics_v2', params);
+      if (error) throw error;
 
-      const visitas   = (typeCounts['prospection'] || 0) + (typeCounts['visita'] || 0);
-      const checklist = typeCounts['checklist'] || 0;
-      const ligacoes  = typeCounts['ligacao']   || 0;
-      const totalTasks = Object.values(typeCounts).reduce((s, v) => s + v, 0);
+      const r = (data ?? {}) as Record<string, number>;
+      const num = (k: string) => Number(r[k] ?? 0);
 
-      const prospectsRow = prospectsRes.data?.[0];
-      const prospects      = Number(prospectsRow?.count)       || 0;
-      const prospectsValue = Number(prospectsRow?.total_value) || 0;
+      const visitas    = num('visitas');
+      const checklist  = num('checklists');
+      const ligacoes   = num('ligacoes');
+      const total      = num('total_activities');
+      const prospects  = num('prospect_open_count');
+      const prospectsValue = num('prospect_open_value');
+      const salesValue = num('sales_total_value') + num('sales_partial_value');
 
-      const salesValue = (salesRes.data ?? [])
-        .filter(r => r.sales_type === 'ganho')
-        .reduce((s, r) => s + (Number(r.total_value) || 0), 0);
-
-      setTotalTasks(totalTasks);
+      setTotalTasks(total);
       setTotalVisitas(visitas);
       setTotalChecklist(checklist);
       setTotalLigacoes(ligacoes);
@@ -161,7 +159,7 @@ const Reports: React.FC = () => {
       setTotalProspectsValue(prospectsValue);
       setTotalSalesValue(salesValue);
     } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas de relatório:', error);
+      console.error('❌ Erro ao carregar estatísticas de relatório (v2):', error);
       setTotalTasks(0);
       setTotalVisitas(0);
       setTotalChecklist(0);
@@ -173,7 +171,7 @@ const Reports: React.FC = () => {
       setLoading(false);
       setIsFiltering(false);
     }
-  }, [user, dateFrom, dateTo, selectedUser, selectedFilial, selectedFilialAtendida]);
+  }, [user, dateFrom, dateTo, selectedUser, selectedFilial, collaborators]);
 
   const clearFilters = () => {
     setDateFrom(undefined);
