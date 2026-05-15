@@ -172,10 +172,11 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       };
       return result;
     },
-    staleTime: 10 * 60 * 1000,
+    staleTime: 0,
     gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   const defaultMetrics: ConsolidatedMetrics = {
