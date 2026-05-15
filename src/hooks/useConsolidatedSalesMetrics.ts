@@ -49,8 +49,13 @@ const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
  * Sem filtro hardcoded de 90 dias. Sem uso de created_at para análise operacional.
  */
 export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const { role, isSupervisor } = useUserRole();
+
   const { data: metrics, isLoading, error, refetch } = useQuery({
-    queryKey: ['consolidated-sales-metrics-v2', filters],
+    queryKey: ['consolidated-sales-metrics-v2', user?.id ?? null, filters],
+    enabled: !!user?.id,
     queryFn: async () => {
       // Janela de datas: somente quando o usuário escolher um período explícito.
       // 'all' / undefined → sem corte (V2 aceita NULL).
