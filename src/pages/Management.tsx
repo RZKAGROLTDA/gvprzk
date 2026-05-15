@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useSellerSummary, useClientDetails, useFiliais, useProductAnalysis, type ManagementFilters } from '@/hooks/useManagementData';
+import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 const formatCurrency = (v: number) =>
@@ -54,6 +55,7 @@ const statusBadge = (status: string) => {
 type SortDir = 'asc' | 'desc';
 
 const Management: React.FC = () => {
+  const queryClient = useQueryClient();
   const { isManager, isAdmin, isSupervisor, role, isLoading: roleLoading } = useUserRole();
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
@@ -177,6 +179,14 @@ const Management: React.FC = () => {
       setSelectedSellerForClients(null);
     }
   }, [isSupervisor, isManager, isAdmin, sellerId, sellerRole, selectedSellerForClients]);
+
+  useEffect(() => {
+    if (!managementContextReady) return;
+
+    queryClient.invalidateQueries({ queryKey: ['management-seller-summary-v2'] });
+    queryClient.invalidateQueries({ queryKey: ['management-client-details-v2'] });
+    queryClient.invalidateQueries({ queryKey: ['management-product-analysis-v2'] });
+  }, [managementContextReady, queryClient]);
 
   // RAC-specific filters
   const racFilters: ManagementFilters = useMemo(() => ({
