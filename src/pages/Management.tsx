@@ -222,7 +222,9 @@ const Management: React.FC = () => {
   const productData = productQuery.data ?? [];
   const productLoading = productQuery.isLoading;
   const showProductTab = !isSeller;
-  const showLoadingState = !managementContextReady;
+  // Não bloqueamos a UI: spinner só aparece nos primeiros 5s e enquanto auth/role
+  // ainda não resolveram. Depois disso, mostramos a tela com banner de motivo.
+  const showLoadingState = !canRunManagementQueries && !watchdogElapsed && (!authReady || !roleLoaded);
 
   const sellerRpcParams = useMemo(() => buildManagementParams(filters), [filters]);
   const clientRpcParams = useMemo(() => buildManagementParams(clientFilters), [clientFilters]);
