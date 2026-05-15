@@ -1744,7 +1744,7 @@ export type Database = {
       get_management_client_details: {
         Args: {
           p_end_date?: string
-          p_filial?: string
+          p_filial_id?: string
           p_seller_id?: string
           p_seller_role?: string
           p_start_date?: string
@@ -1769,7 +1769,7 @@ export type Database = {
       get_management_product_analysis: {
         Args: {
           p_end_date?: string
-          p_filial?: string
+          p_filial_id?: string
           p_product?: string
           p_start_date?: string
           p_task_types?: string[]
@@ -1788,7 +1788,7 @@ export type Database = {
       get_management_seller_summary: {
         Args: {
           p_end_date?: string
-          p_filial?: string
+          p_filial_id?: string
           p_seller_id?: string
           p_seller_role?: string
           p_start_date?: string
