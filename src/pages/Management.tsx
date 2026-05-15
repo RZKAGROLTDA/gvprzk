@@ -232,9 +232,11 @@ const Management: React.FC = () => {
   const debugContext = useMemo(() => ({
     auth: {
       auth_uid: user?.id ?? null,
+      authReady,
       current_role_label: role,
       user_roles: rawRoles,
       roleLoading,
+      roleLoaded,
     },
     profile: {
       profile_user_id: profile?.user_id ?? null,
@@ -243,16 +245,20 @@ const Management: React.FC = () => {
       filial_id: profile?.filial_id ?? null,
       filial_nome: profile?.filial_nome ?? null,
       profileLoading,
+      profileLoaded,
+      filialLoaded,
     },
     flags: {
       isManager,
       isAdmin,
       isSupervisor,
       isSeller,
-      supervisorContextReady,
+      canRunManagementQueries,
+      blockReason,
+      watchdogElapsed,
       managementContextReady,
     },
-  }), [user?.id, role, rawRoles, roleLoading, profile?.user_id, profile?.role, profile?.approval_status, profile?.filial_id, profile?.filial_nome, profileLoading, isManager, isAdmin, isSupervisor, isSeller, supervisorContextReady, managementContextReady]);
+  }), [user?.id, authReady, role, rawRoles, roleLoading, roleLoaded, profile?.user_id, profile?.role, profile?.approval_status, profile?.filial_id, profile?.filial_nome, profileLoading, profileLoaded, filialLoaded, isManager, isAdmin, isSupervisor, isSeller, canRunManagementQueries, blockReason, watchdogElapsed, managementContextReady]);
 
   const debugComparison = useMemo(() => ({
     seller_summary: {
