@@ -64,14 +64,34 @@ const Management: React.FC = () => {
   const { consultants } = useFilteredConsultants();
   const { data: filiais = [] } = useFiliais();
 
-  // Só definir o escopo final após role/profile estarem resolvidos.
-  // Sem isso, gerente/supervisor podem renderizar momentaneamente como vendedor
-  // e disparar RPC com p_seller_id = user.id, zerando a tela por race condition.
-  const roleContextReady = !roleLoading;
+  // Readiness flags — UI nunca trava esperando indefinidamente.
+  const authReady = !!user?.id;
+  const userId = user?.id ?? null;
+  const profileLoaded = !profileLoading;
+  const roleLoaded = !roleLoading;
+  const filialLoaded = profileLoaded && (!isSupervisor || !!profile?.filial_id);
+  const roleContextReady = roleLoaded;
   const isSeller = roleContextReady && !isManager && !isAdmin && !isSupervisor;
-  const currentUserId = user?.id || '';
-  const supervisorContextReady = !isSupervisor || (!!profile?.filial_id && profile.approval_status === 'approved');
-  const managementContextReady = !!user?.id && !profileLoading && !roleLoading && supervisorContextReady;
+  const currentUserId = userId || '';
+
+  // Watchdog: depois de 5s, libera a UI mesmo se algo ficou pendente,
+  // para o usuário ver o motivo ao invés de spinner infinito.
+  const [watchdogElapsed, setWatchdogElapsed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setWatchdogElapsed(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Motivo exato para queries não rodarem
+  let blockReason: string | null = null;
+  if (!authReady) blockReason = 'Aguardando autenticação (auth.uid ausente)';
+  else if (!roleLoaded) blockReason = 'Aguardando carregamento das roles do usuário';
+  else if (isSupervisor && !profileLoaded) blockReason = 'Aguardando carregamento do profile do supervisor';
+  else if (isSupervisor && !profile?.filial_id) blockReason = 'Supervisor sem filial vinculada — contate o administrador';
+  else if (isSupervisor && profile?.approval_status !== 'approved') blockReason = `Supervisor com approval_status="${profile?.approval_status}" (precisa ser "approved")`;
+
+  const canRunManagementQueries = blockReason === null;
+  const managementContextReady = canRunManagementQueries;
 
   // Filters (filialId is UUID)
   const [period, setPeriod] = useState('90');
@@ -144,11 +164,12 @@ const Management: React.FC = () => {
       profileFilialNome: profile?.filial_nome ?? null,
       approvalStatus: profile?.approval_status ?? null,
       roleLoading,
-      supervisorContextReady,
+      canRunManagementQueries,
+      blockReason,
       managementContextReady,
       filters,
     });
-  }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, roleLoading, supervisorContextReady, managementContextReady, filters]);
+  }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, roleLoading, canRunManagementQueries, blockReason, managementContextReady, filters]);
 
   useEffect(() => {
     if (!isSupervisor || isManager || isAdmin) return;
@@ -201,7 +222,9 @@ const Management: React.FC = () => {
   const productData = productQuery.data ?? [];
   const productLoading = productQuery.isLoading;
   const showProductTab = !isSeller;
-  const showLoadingState = !managementContextReady;
+  // Não bloqueamos a UI: spinner só aparece nos primeiros 5s e enquanto auth/role
+  // ainda não resolveram. Depois disso, mostramos a tela com banner de motivo.
+  const showLoadingState = !canRunManagementQueries && !watchdogElapsed && (!authReady || !roleLoaded);
 
   const sellerRpcParams = useMemo(() => buildManagementParams(filters), [filters]);
   const clientRpcParams = useMemo(() => buildManagementParams(clientFilters), [clientFilters]);
@@ -209,9 +232,11 @@ const Management: React.FC = () => {
   const debugContext = useMemo(() => ({
     auth: {
       auth_uid: user?.id ?? null,
+      authReady,
       current_role_label: role,
       user_roles: rawRoles,
       roleLoading,
+      roleLoaded,
     },
     profile: {
       profile_user_id: profile?.user_id ?? null,
@@ -220,16 +245,20 @@ const Management: React.FC = () => {
       filial_id: profile?.filial_id ?? null,
       filial_nome: profile?.filial_nome ?? null,
       profileLoading,
+      profileLoaded,
+      filialLoaded,
     },
     flags: {
       isManager,
       isAdmin,
       isSupervisor,
       isSeller,
-      supervisorContextReady,
+      canRunManagementQueries,
+      blockReason,
+      watchdogElapsed,
       managementContextReady,
     },
-  }), [user?.id, role, rawRoles, roleLoading, profile?.user_id, profile?.role, profile?.approval_status, profile?.filial_id, profile?.filial_nome, profileLoading, isManager, isAdmin, isSupervisor, isSeller, supervisorContextReady, managementContextReady]);
+  }), [user?.id, authReady, role, rawRoles, roleLoading, roleLoaded, profile?.user_id, profile?.role, profile?.approval_status, profile?.filial_id, profile?.filial_nome, profileLoading, profileLoaded, filialLoaded, isManager, isAdmin, isSupervisor, isSeller, canRunManagementQueries, blockReason, watchdogElapsed, managementContextReady]);
 
   const debugComparison = useMemo(() => ({
     seller_summary: {
@@ -411,6 +440,16 @@ const Management: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {blockReason && (
+        <Card className="border-warning">
+          <CardContent className="py-4">
+            <p className="text-sm">
+              <strong>⚠️ Carregamento da Análise Gerencial bloqueado:</strong> {blockReason}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {showLoadingState && (
         <Card>
