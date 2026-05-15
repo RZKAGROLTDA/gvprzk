@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useUserRole = () => {
+  const { user } = useAuth();
+
   const { data: userRole, isLoading } = useQuery({
-    queryKey: ['user-role'],
+    queryKey: ['user-role', user?.id ?? null],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.log('🔒 useUserRole: Nenhum usuário autenticado');
         return null;
@@ -55,6 +57,7 @@ export const useUserRole = () => {
 
       return result;
     },
+    enabled: !!user?.id,
     staleTime: 15 * 60 * 1000, // 15 minutos - OTIMIZAÇÃO Disk IO (dados estáticos)
     gcTime: 30 * 60 * 1000, // 30 minutos
     refetchOnWindowFocus: false,
