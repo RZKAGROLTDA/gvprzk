@@ -41,6 +41,8 @@ import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
 
 const queryClient = new QueryClient();
 
+let lastQueryClientUserId: string | null = null;
+
 interface ProtectedRoutesProps {
   user: any;
   profile: any;
@@ -124,6 +126,14 @@ const AuthAwareWrapper: React.FC = () => {
   const { profile, loading: profileLoading } = useProfile();
   const { isUnhealthy, isChecking, retryWithBackoff, errorMessage, retryCount } = useSupabaseHealth();
   const [showProfileCreator, setShowProfileCreator] = React.useState(false);
+
+  React.useEffect(() => {
+    const currentUserId = user?.id ?? null;
+    if (lastQueryClientUserId !== currentUserId) {
+      queryClient.clear();
+      lastQueryClientUserId = currentUserId;
+    }
+  }, [user?.id]);
 
   // Show profile creator if user exists but no profile
   React.useEffect(() => {
