@@ -64,9 +64,9 @@ const Management: React.FC = () => {
   const isSeller = !isManager && !isAdmin && !isSupervisor;
   const currentUserId = user?.id || '';
 
-  // Filters
+  // Filters (filialId is UUID)
   const [period, setPeriod] = useState('90');
-  const [filial, setFilial] = useState('all');
+  const [filialId, setFilialId] = useState<string>('all');
   const [sellerRole, setSellerRole] = useState('all');
   const [sellerId, setSellerId] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
@@ -93,7 +93,6 @@ const Management: React.FC = () => {
     const end = new Date();
     const start = new Date();
     if (period === '0') {
-      // Hoje: início do dia atual
       start.setHours(0, 0, 0, 0);
     } else if (period !== 'all') {
       start.setDate(start.getDate() - parseInt(period));
@@ -102,25 +101,26 @@ const Management: React.FC = () => {
     }
 
     const taskTypes = taskTypeFilter === 'all' ? undefined :
-      taskTypeFilter === 'visita' ? ['prospection', 'visita'] : [taskTypeFilter];
+      taskTypeFilter === 'visita' ? ['visita', 'prospection'] : [taskTypeFilter];
 
-    // Supervisor must always filter by their own filial
-    const effectiveFilialValue = isSupervisor && !isManager && !isAdmin
-      ? (profile?.filial_nome || '')
-      : filial;
+    // Supervisor: lock to own filial UUID. Seller: lock to own user_id.
+    const effectiveFilialId = isSupervisor && !isManager && !isAdmin
+      ? (profile?.filial_id || null)
+      : (filialId === 'all' ? null : filialId);
 
-    // Seller always filters by own ID
-    const effectiveSellerId = isSeller ? currentUserId : sellerId;
+    const effectiveSellerId = isSeller
+      ? currentUserId
+      : (sellerId === 'all' ? undefined : sellerId);
 
     return {
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-      filial: effectiveFilialValue,
+      startDate: start.toISOString().substring(0, 10),
+      endDate: end.toISOString().substring(0, 10),
+      filialId: effectiveFilialId,
       sellerRole: isSeller ? 'all' : sellerRole,
       sellerId: effectiveSellerId,
       taskTypes: taskTypes,
     };
-  }, [period, filial, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, profile?.filial_nome]);
+  }, [period, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, profile?.filial_id]);
 
   // RAC-specific filters
   const racFilters: ManagementFilters = useMemo(() => ({
@@ -351,12 +351,12 @@ const Management: React.FC = () => {
             {showFilialFilter && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Filial</label>
-                <Select value={filial} onValueChange={v => { setFilial(v); setSellerPage(0); setClientPage(0); }}>
+                <Select value={filialId} onValueChange={v => { setFilialId(v); setSellerPage(0); setClientPage(0); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
                     {filiais.map(f => (
-                      <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
+                      <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
