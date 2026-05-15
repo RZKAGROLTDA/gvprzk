@@ -966,6 +966,10 @@ export const SalesFunnel: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={handleClearFilters}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Limpar
+          </Button>
           <Button variant="outline" size="sm" onClick={forceRefresh} disabled={isLoadingData}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingData ? 'animate-spin' : ''}`} />
             Recarregar Dados
