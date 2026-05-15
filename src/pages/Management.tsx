@@ -12,7 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
-import { useSellerSummary, useClientDetails, useFiliais, useProductAnalysis, type ManagementFilters } from '@/hooks/useManagementData';
+import { useSellerSummary, useClientDetails, useFiliais, useProductAnalysis, useManagementRpcDebug, buildManagementParams, type ManagementFilters } from '@/hooks/useManagementData';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
@@ -52,11 +52,13 @@ const statusBadge = (status: string) => {
   return <Badge variant={s.variant}>{s.label}</Badge>;
 };
 
+const formatDebugJson = (value: unknown) => JSON.stringify(value, null, 2) ?? 'null';
+
 type SortDir = 'asc' | 'desc';
 
 const Management: React.FC = () => {
   const queryClient = useQueryClient();
-  const { isManager, isAdmin, isSupervisor, role, isLoading: roleLoading } = useUserRole();
+  const { isManager, isAdmin, isSupervisor, role, rawRoles, isLoading: roleLoading } = useUserRole();
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { consultants } = useFilteredConsultants();
@@ -148,25 +150,6 @@ const Management: React.FC = () => {
     });
   }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, roleLoading, supervisorContextReady, managementContextReady, filters]);
 
-  if (!managementContextReady) {
-    return (
-      <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-2 mb-2">
-          <BarChart3 className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Análise Gerencial</h1>
-        </div>
-
-        <Card>
-          <CardContent className="py-12">
-            <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (!isSupervisor || isManager || isAdmin) return;
     if (sellerId !== 'all') {
@@ -194,21 +177,77 @@ const Management: React.FC = () => {
     sellerRole: 'rac',
   }), [filters]);
 
-  const { data: sellerData = [], isLoading: sellerLoading } = useSellerSummary(filters);
+  const sellerQuery = useSellerSummary(filters);
   const clientFilters = useMemo(() => ({
     ...filters,
     sellerId: selectedSellerForClients || filters.sellerId,
   }), [filters, selectedSellerForClients]);
-  const { data: clientData = [], isLoading: clientLoading } = useClientDetails(clientFilters);
-  const { data: racData = [], isLoading: racLoading } = useSellerSummary(racFilters);
+  const clientQuery = useClientDetails(clientFilters);
+  const racQuery = useSellerSummary(racFilters);
 
   // Product analysis (only for managers/supervisors)
   const productFilters = useMemo(() => ({
     ...filters,
     product: productFilter || undefined,
   }), [filters, productFilter]);
-  const { data: productData = [], isLoading: productLoading } = useProductAnalysis(productFilters);
+  const productQuery = useProductAnalysis(productFilters);
+  const managementDebugQuery = useManagementRpcDebug(productFilters);
+  const sellerData = sellerQuery.data ?? [];
+  const sellerLoading = sellerQuery.isLoading;
+  const clientData = clientQuery.data ?? [];
+  const clientLoading = clientQuery.isLoading;
+  const racData = racQuery.data ?? [];
+  const racLoading = racQuery.isLoading;
+  const productData = productQuery.data ?? [];
+  const productLoading = productQuery.isLoading;
   const showProductTab = !isSeller;
+  const showLoadingState = !managementContextReady;
+
+  const sellerRpcParams = useMemo(() => buildManagementParams(filters), [filters]);
+  const clientRpcParams = useMemo(() => buildManagementParams(clientFilters), [clientFilters]);
+
+  const debugContext = useMemo(() => ({
+    auth: {
+      auth_uid: user?.id ?? null,
+      current_role_label: role,
+      user_roles: rawRoles,
+      roleLoading,
+    },
+    profile: {
+      profile_user_id: profile?.user_id ?? null,
+      profile_role: profile?.role ?? null,
+      approval_status: profile?.approval_status ?? null,
+      filial_id: profile?.filial_id ?? null,
+      filial_nome: profile?.filial_nome ?? null,
+      profileLoading,
+    },
+    flags: {
+      isManager,
+      isAdmin,
+      isSupervisor,
+      isSeller,
+      supervisorContextReady,
+      managementContextReady,
+    },
+  }), [user?.id, role, rawRoles, roleLoading, profile?.user_id, profile?.role, profile?.approval_status, profile?.filial_id, profile?.filial_nome, profileLoading, isManager, isAdmin, isSupervisor, isSeller, supervisorContextReady, managementContextReady]);
+
+  const debugComparison = useMemo(() => ({
+    seller_summary: {
+      hook_rows: sellerData.length,
+      direct_rows: managementDebugQuery.data?.sellerSummary.rowCount ?? null,
+      same_count: managementDebugQuery.data ? sellerData.length === managementDebugQuery.data.sellerSummary.rowCount : null,
+    },
+    client_details: {
+      hook_rows: clientData.length,
+      direct_rows: managementDebugQuery.data?.clientDetails.rowCount ?? null,
+      same_count: managementDebugQuery.data ? clientData.length === managementDebugQuery.data.clientDetails.rowCount : null,
+    },
+    product_analysis: {
+      hook_rows: productData.length,
+      direct_rows: managementDebugQuery.data?.productAnalysis.rowCount ?? null,
+      same_count: managementDebugQuery.data ? productData.length === managementDebugQuery.data.productAnalysis.rowCount : null,
+    },
+  }), [sellerData.length, clientData.length, productData.length, managementDebugQuery.data]);
 
   const showFilialFilter = isManager || isAdmin;
   const showSellerFilter = !isSeller && !isSupervisor;
