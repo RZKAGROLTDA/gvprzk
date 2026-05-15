@@ -53,6 +53,16 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
   const { profile } = useProfile();
   const { role, isSupervisor } = useUserRole();
 
+  // eslint-disable-next-line no-console
+  console.log('[useConsolidatedSalesMetrics] 🧭 hook render', {
+    bundleMarker: 'v2-debug-2',
+    userId: user?.id ?? null,
+    role,
+    isSupervisor,
+    profileFilialId: profile?.filial_id ?? null,
+    filters,
+  });
+
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['consolidated-sales-metrics-v2', user?.id ?? null, filters],
     enabled: !!user?.id,
@@ -162,10 +172,11 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       };
       return result;
     },
-    staleTime: 10 * 60 * 1000,
+    staleTime: 0,
     gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   const defaultMetrics: ConsolidatedMetrics = {
