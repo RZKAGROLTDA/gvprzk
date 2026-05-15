@@ -164,11 +164,12 @@ const Management: React.FC = () => {
       profileFilialNome: profile?.filial_nome ?? null,
       approvalStatus: profile?.approval_status ?? null,
       roleLoading,
-      supervisorContextReady,
+      canRunManagementQueries,
+      blockReason,
       managementContextReady,
       filters,
     });
-  }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, roleLoading, supervisorContextReady, managementContextReady, filters]);
+  }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, roleLoading, canRunManagementQueries, blockReason, managementContextReady, filters]);
 
   useEffect(() => {
     if (!isSupervisor || isManager || isAdmin) return;
