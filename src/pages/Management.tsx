@@ -145,10 +145,13 @@ const Management: React.FC = () => {
     if (sellerId !== 'all') {
       setSellerId('all');
     }
+    if (sellerRole !== 'all') {
+      setSellerRole('all');
+    }
     if (selectedSellerForClients !== null) {
       setSelectedSellerForClients(null);
     }
-  }, [isSupervisor, isManager, isAdmin, sellerId, selectedSellerForClients]);
+  }, [isSupervisor, isManager, isAdmin, sellerId, sellerRole, selectedSellerForClients]);
 
   // RAC-specific filters
   const racFilters: ManagementFilters = useMemo(() => ({
