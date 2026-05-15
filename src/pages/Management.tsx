@@ -54,16 +54,20 @@ const statusBadge = (status: string) => {
 type SortDir = 'asc' | 'desc';
 
 const Management: React.FC = () => {
-  const { isManager, isAdmin, isSupervisor, role } = useUserRole();
+  const { isManager, isAdmin, isSupervisor, role, isLoading: roleLoading } = useUserRole();
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const { consultants } = useFilteredConsultants();
   const { data: filiais = [] } = useFiliais();
 
-  // Determine if user is a seller (consultant or RAC) — simplified view
-  const isSeller = !isManager && !isAdmin && !isSupervisor;
+  // Só definir o escopo final após role/profile estarem resolvidos.
+  // Sem isso, gerente/supervisor podem renderizar momentaneamente como vendedor
+  // e disparar RPC com p_seller_id = user.id, zerando a tela por race condition.
+  const roleContextReady = !roleLoading;
+  const isSeller = roleContextReady && !isManager && !isAdmin && !isSupervisor;
   const currentUserId = user?.id || '';
   const supervisorContextReady = !isSupervisor || (!!profile?.filial_id && profile.approval_status === 'approved');
+  const managementContextReady = !!user?.id && !profileLoading && !roleLoading && supervisorContextReady;
 
   // Filters (filialId is UUID)
   const [period, setPeriod] = useState('90');
@@ -120,9 +124,9 @@ const Management: React.FC = () => {
       sellerRole: isSeller ? 'all' : sellerRole,
       sellerId: effectiveSellerId,
       taskTypes: taskTypes,
-      enabled: !!user?.id && !profileLoading && supervisorContextReady,
+        enabled: managementContextReady,
     };
-  }, [period, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, profile?.filial_id, profile?.approval_status, user?.id, profileLoading, supervisorContextReady]);
+  }, [period, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, managementContextReady]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -135,10 +139,31 @@ const Management: React.FC = () => {
       profileFilialId: profile?.filial_id ?? null,
       profileFilialNome: profile?.filial_nome ?? null,
       approvalStatus: profile?.approval_status ?? null,
+      roleLoading,
       supervisorContextReady,
+      managementContextReady,
       filters,
     });
-  }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, supervisorContextReady, filters]);
+  }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, roleLoading, supervisorContextReady, managementContextReady, filters]);
+
+  if (!managementContextReady) {
+    return (
+      <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-2 mb-2">
+          <BarChart3 className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Análise Gerencial</h1>
+        </div>
+
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!isSupervisor || isManager || isAdmin) return;
