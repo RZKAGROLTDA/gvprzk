@@ -8,6 +8,7 @@ export interface ManagementFilters {
   sellerRole?: string;
   sellerId?: string;        // UUID (responsible_user_id)
   taskTypes?: string[];     // task_followups.activity_type values
+  enabled?: boolean;
 }
 
 export interface SellerSummary {
@@ -57,6 +58,18 @@ const toDateOnly = (v?: string | null): string | null => {
   return d;
 };
 
+const MANAGEMENT_DEBUG = import.meta.env.DEV;
+
+const logRpcDebug = (rpcName: string, stage: 'params' | 'response' | 'error', payload: unknown) => {
+  if (!MANAGEMENT_DEBUG) return;
+  const prefix = `📊 Management RPC [${rpcName}] ${stage}`;
+  if (stage === 'error') {
+    console.error(prefix, payload);
+    return;
+  }
+  console.log(prefix, payload);
+};
+
 const buildParams = (filters: ManagementFilters) => {
   const params = {
     p_start_date: toDateOnly(filters.startDate),
@@ -77,13 +90,22 @@ export const useSellerSummary = (filters: ManagementFilters) => {
     queryKey: ['management-seller-summary-v2', filters],
     queryFn: async () => {
       const params = buildParams(filters);
+      logRpcDebug('get_management_seller_summary', 'params', params);
       const { data, error } = await supabase.rpc(
         'get_management_seller_summary' as any,
         params as any
       );
-      if (error) throw error;
+      if (error) {
+        logRpcDebug('get_management_seller_summary', 'error', error);
+        throw error;
+      }
+      logRpcDebug('get_management_seller_summary', 'response', {
+        rows: Array.isArray(data) ? data.length : 0,
+        firstRow: Array.isArray(data) && data.length > 0 ? data[0] : null,
+      });
       return (data || []) as unknown as SellerSummary[];
     },
+    enabled: filters.enabled ?? true,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -95,13 +117,22 @@ export const useClientDetails = (filters: ManagementFilters) => {
     queryKey: ['management-client-details-v2', filters],
     queryFn: async () => {
       const params = buildParams(filters);
+      logRpcDebug('get_management_client_details', 'params', params);
       const { data, error } = await supabase.rpc(
         'get_management_client_details' as any,
         params as any
       );
-      if (error) throw error;
+      if (error) {
+        logRpcDebug('get_management_client_details', 'error', error);
+        throw error;
+      }
+      logRpcDebug('get_management_client_details', 'response', {
+        rows: Array.isArray(data) ? data.length : 0,
+        firstRow: Array.isArray(data) && data.length > 0 ? data[0] : null,
+      });
       return (data || []) as unknown as ClientDetail[];
     },
+    enabled: filters.enabled ?? true,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -133,13 +164,22 @@ export const useProductAnalysis = (filters: ManagementFilters & { product?: stri
           : null,
         p_product: filters.product && filters.product.trim() ? filters.product.trim() : null,
       };
+      logRpcDebug('get_management_product_analysis', 'params', params);
       const { data, error } = await supabase.rpc(
         'get_management_product_analysis' as any,
         params as any
       );
-      if (error) throw error;
+      if (error) {
+        logRpcDebug('get_management_product_analysis', 'error', error);
+        throw error;
+      }
+      logRpcDebug('get_management_product_analysis', 'response', {
+        rows: Array.isArray(data) ? data.length : 0,
+        firstRow: Array.isArray(data) && data.length > 0 ? data[0] : null,
+      });
       return (data || []) as unknown as ProductAnalysis[];
     },
+    enabled: filters.enabled ?? true,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
