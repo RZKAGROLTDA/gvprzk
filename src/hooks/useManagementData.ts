@@ -150,6 +150,30 @@ export interface ProductAnalysis {
   ultima_oferta: string;
 }
 
+export interface ManagementRpcDebugState {
+  rpcName: string;
+  params: Record<string, unknown> | null;
+  rawData: unknown[] | null;
+  rowCount: number;
+  error: {
+    message: string | null;
+    details: string | null;
+    hint: string | null;
+    code: string | null;
+    statusCode: number | null;
+  } | null;
+}
+
+export const buildManagementParams = (filters: ManagementFilters) => buildParams(filters);
+
+const toDebugError = (error: any) => ({
+  message: error?.message ?? null,
+  details: error?.details ?? null,
+  hint: error?.hint ?? null,
+  code: error?.code ?? null,
+  statusCode: error?.status ?? error?.statusCode ?? null,
+});
+
 export const useProductAnalysis = (filters: ManagementFilters & { product?: string }) => {
   return useQuery({
     queryKey: ['management-product-analysis-v2', filters],
@@ -182,6 +206,60 @@ export const useProductAnalysis = (filters: ManagementFilters & { product?: stri
     enabled: filters.enabled ?? true,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useManagementRpcDebug = (filters: ManagementFilters & { product?: string }) => {
+  const sellerParams = buildParams(filters);
+  const clientParams = buildParams(filters);
+  const productParams = {
+    p_start_date: toDateOnly(filters.startDate),
+    p_end_date: toDateOnly(filters.endDate),
+    p_filial_id: filters.filialId && UUID_RE.test(filters.filialId) ? filters.filialId : null,
+    p_task_types: filters.taskTypes && filters.taskTypes.length > 0
+      && !filters.taskTypes.some(t => isNullFilter(t))
+      ? filters.taskTypes.map(t => t.trim())
+      : null,
+    p_product: filters.product && filters.product.trim() ? filters.product.trim() : null,
+  };
+
+  return useQuery({
+    queryKey: ['management-rpc-debug', filters],
+    queryFn: async () => {
+      const [seller, clients, products] = await Promise.all([
+        supabase.rpc('get_management_seller_summary' as any, sellerParams as any),
+        supabase.rpc('get_management_client_details' as any, clientParams as any),
+        supabase.rpc('get_management_product_analysis' as any, productParams as any),
+      ]);
+
+      return {
+        sellerSummary: {
+          rpcName: 'get_management_seller_summary',
+          params: sellerParams,
+          rawData: (seller.data ?? null) as unknown[] | null,
+          rowCount: Array.isArray(seller.data) ? seller.data.length : 0,
+          error: seller.error ? toDebugError(seller.error) : null,
+        } satisfies ManagementRpcDebugState,
+        clientDetails: {
+          rpcName: 'get_management_client_details',
+          params: clientParams,
+          rawData: (clients.data ?? null) as unknown[] | null,
+          rowCount: Array.isArray(clients.data) ? clients.data.length : 0,
+          error: clients.error ? toDebugError(clients.error) : null,
+        } satisfies ManagementRpcDebugState,
+        productAnalysis: {
+          rpcName: 'get_management_product_analysis',
+          params: productParams,
+          rawData: (products.data ?? null) as unknown[] | null,
+          rowCount: Array.isArray(products.data) ? products.data.length : 0,
+          error: products.error ? toDebugError(products.error) : null,
+        } satisfies ManagementRpcDebugState,
+      };
+    },
+    enabled: filters.enabled ?? true,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 };
