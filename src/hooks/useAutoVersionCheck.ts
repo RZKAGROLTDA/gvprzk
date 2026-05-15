@@ -8,6 +8,8 @@ const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 min
 const VERSION_URL = '/version.json';
 const AUTH_KEY = 'sb-wuvbrkbhunifudaewhng-auth-token';
 
+const currentVersion = (import.meta.env.VITE_APP_VERSION as string) || 'dev';
+const currentBuildTime = (import.meta.env.VITE_BUILD_TIME as string) || '';
 const currentBuildHash = (import.meta.env.VITE_BUILD_HASH as string) || 'dev';
 
 let reloading = false;
@@ -49,10 +51,27 @@ async function checkVersion() {
       headers: { 'cache-control': 'no-cache' },
     });
     if (!res.ok) return;
-    const data = (await res.json()) as { buildHash?: string };
-    if (data?.buildHash && currentBuildHash !== 'dev' && data.buildHash !== currentBuildHash) {
+    const data = (await res.json()) as {
+      version?: string;
+      buildHash?: string;
+      buildTime?: string;
+    };
+
+    const buildMismatch = !!data?.buildHash && data.buildHash !== currentBuildHash;
+    const versionMismatch = !!data?.version && data.version !== currentVersion;
+    const timeMismatch = !!data?.buildTime && !!currentBuildTime && data.buildTime !== currentBuildTime;
+
+    if (buildMismatch || versionMismatch || timeMismatch) {
       console.log(
-        `[auto-version] new build detected: ${currentBuildHash} -> ${data.buildHash}. Reloading...`
+        '[auto-version] new build detected. Reloading...',
+        {
+          currentVersion,
+          currentBuildHash,
+          currentBuildTime,
+          remoteVersion: data?.version ?? null,
+          remoteBuildHash: data?.buildHash ?? null,
+          remoteBuildTime: data?.buildTime ?? null,
+        }
       );
       clearAndReload();
     }
@@ -67,6 +86,14 @@ export function useAutoVersionCheck() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+
+    console.log('[auto-version] watcher started', {
+      currentVersion,
+      currentBuildHash,
+      currentBuildTime,
+    });
+
+    void checkVersion();
 
     // Initial check shortly after mount
     const initial = setTimeout(checkVersion, 5000);
