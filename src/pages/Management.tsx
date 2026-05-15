@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -56,13 +56,14 @@ type SortDir = 'asc' | 'desc';
 const Management: React.FC = () => {
   const { isManager, isAdmin, isSupervisor, role } = useUserRole();
   const { user } = useAuth();
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading } = useProfile();
   const { consultants } = useFilteredConsultants();
   const { data: filiais = [] } = useFiliais();
 
   // Determine if user is a seller (consultant or RAC) — simplified view
   const isSeller = !isManager && !isAdmin && !isSupervisor;
   const currentUserId = user?.id || '';
+  const supervisorContextReady = !isSupervisor || (!!profile?.filial_id && profile.approval_status === 'approved');
 
   // Filters (filialId is UUID)
   const [period, setPeriod] = useState('90');
@@ -110,7 +111,7 @@ const Management: React.FC = () => {
 
     const effectiveSellerId = isSeller
       ? currentUserId
-      : (sellerId === 'all' ? undefined : sellerId);
+      : (isSupervisor ? undefined : (sellerId === 'all' ? undefined : sellerId));
 
     return {
       startDate: start.toISOString().substring(0, 10),
@@ -119,8 +120,35 @@ const Management: React.FC = () => {
       sellerRole: isSeller ? 'all' : sellerRole,
       sellerId: effectiveSellerId,
       taskTypes: taskTypes,
+      enabled: !!user?.id && !profileLoading && supervisorContextReady,
     };
-  }, [period, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, profile?.filial_id]);
+  }, [period, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, profile?.filial_id, profile?.approval_status, user?.id, profileLoading, supervisorContextReady]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.log('🛂 Management auth context', {
+      authUid: user?.id ?? null,
+      role,
+      isSupervisor,
+      isManager,
+      isAdmin,
+      profileFilialId: profile?.filial_id ?? null,
+      profileFilialNome: profile?.filial_nome ?? null,
+      approvalStatus: profile?.approval_status ?? null,
+      supervisorContextReady,
+      filters,
+    });
+  }, [user?.id, role, isSupervisor, isManager, isAdmin, profile?.filial_id, profile?.filial_nome, profile?.approval_status, supervisorContextReady, filters]);
+
+  useEffect(() => {
+    if (!isSupervisor || isManager || isAdmin) return;
+    if (sellerId !== 'all') {
+      setSellerId('all');
+    }
+    if (selectedSellerForClients !== null) {
+      setSelectedSellerForClients(null);
+    }
+  }, [isSupervisor, isManager, isAdmin, sellerId, selectedSellerForClients]);
 
   // RAC-specific filters
   const racFilters: ManagementFilters = useMemo(() => ({
@@ -145,7 +173,7 @@ const Management: React.FC = () => {
   const showProductTab = !isSeller;
 
   const showFilialFilter = isManager || isAdmin;
-  const showSellerFilter = !isSeller;
+  const showSellerFilter = !isSeller && !isSupervisor;
   const showSellerRoleFilter = !isSeller;
 
   // Seller KPI data (from sellerData which is auto-filtered for sellers)
