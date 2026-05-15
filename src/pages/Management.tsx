@@ -351,12 +351,12 @@ const Management: React.FC = () => {
             {showFilialFilter && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Filial</label>
-                <Select value={filial} onValueChange={v => { setFilial(v); setSellerPage(0); setClientPage(0); }}>
+                <Select value={filialId} onValueChange={v => { setFilialId(v); setSellerPage(0); setClientPage(0); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
                     {filiais.map(f => (
-                      <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
+                      <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
