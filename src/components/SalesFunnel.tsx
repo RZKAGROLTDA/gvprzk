@@ -92,9 +92,49 @@ export const SalesFunnel: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
-  const { isAdmin, isLoading: isLoadingRole } = useUserRole();
+  const { isAdmin, isSupervisor, isLoading: isLoadingRole } = useUserRole();
 
-  console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isLoadingRole });
+  console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isSupervisor, isLoadingRole });
+
+  // Track whether the consultant filter was explicitly chosen in THIS session.
+  // For supervisors, we never want a stale/persisted consultant id to silently
+  // scope the dashboard to an empty subset.
+  const consultantExplicitRef = useRef(false);
+
+  const handleConsultantChange = useCallback((value: string) => {
+    consultantExplicitRef.current = value !== 'all';
+    setSelectedConsultant(value);
+  }, []);
+
+  // Defensive sweep: when the user is a supervisor, clear any persisted
+  // consultant filter that could be cached from a previous session/profile.
+  useEffect(() => {
+    if (!isSupervisor) return;
+    try {
+      Object.keys(localStorage).forEach((k) => {
+        if (/consultant|selectedConsultant|analise.?gerencial|sales.?funnel/i.test(k)) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch {}
+    if (!consultantExplicitRef.current && selectedConsultant !== 'all') {
+      setSelectedConsultant('all');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupervisor]);
+
+  const handleClearFilters = useCallback(() => {
+    consultantExplicitRef.current = false;
+    setSelectedPeriod('7');
+    setSelectedConsultant('all');
+    setSelectedFilial('all');
+    setSelectedFilialAtendida('all');
+    setSelectedActivity('all');
+    queryClient.invalidateQueries({ queryKey: ['consolidated-sales-metrics-v2'] });
+    queryClient.invalidateQueries({ queryKey: ['client-details'] });
+    queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
+    toast.success('Filtros limpos');
+  }, [queryClient]);
 
   // Fetch users filtrados por filial para supervisores
   const { consultants } = useFilteredConsultants();
