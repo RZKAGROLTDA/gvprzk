@@ -441,6 +441,16 @@ const Management: React.FC = () => {
         </CardContent>
       </Card>
 
+      {blockReason && (
+        <Card className="border-warning">
+          <CardContent className="py-4">
+            <p className="text-sm">
+              <strong>⚠️ Carregamento da Análise Gerencial bloqueado:</strong> {blockReason}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {showLoadingState && (
         <Card>
           <CardContent className="py-12">
