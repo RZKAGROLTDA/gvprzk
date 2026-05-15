@@ -169,14 +169,20 @@ export const SalesFunnel: React.FC = () => {
 
   // Removed useTasksOptimized() - using useInfiniteSalesData instead
 
-  // Criar objeto de filtros para passar aos hooks
+  // Criar objeto de filtros para passar aos hooks.
+  // Proteção: se o usuário é supervisor e NÃO escolheu explicitamente um
+  // consultor nesta sessão, jamais enviar consultantId — evita que um id
+  // residual zere os cards da Análise Gerencial.
+  const effectiveConsultant =
+    isSupervisor && !consultantExplicitRef.current ? 'all' : selectedConsultant;
+
   const filters = useMemo(() => ({
     period: selectedPeriod,
-    consultantId: selectedConsultant,
+    consultantId: effectiveConsultant,
     filial: selectedFilial,
     filialAtendida: selectedFilialAtendida,
     activity: selectedActivity
-  }), [selectedPeriod, selectedConsultant, selectedFilial, selectedFilialAtendida, selectedActivity]);
+  }), [selectedPeriod, effectiveConsultant, selectedFilial, selectedFilialAtendida, selectedActivity]);
 
   // Hook CONSOLIDADO para métricas (substitui useAllSalesData + useSalesFunnelMetrics)
   const {
