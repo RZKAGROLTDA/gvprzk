@@ -27,7 +27,8 @@ export const useUserRole = () => {
           isAdmin: false,
           isSupervisor: false,
           isManager: false,
-          role: 'none'
+          role: 'none',
+          rawRoles: []
         };
       }
 
@@ -50,7 +51,8 @@ export const useUserRole = () => {
         isAdmin,
         isSupervisor,
         isManager,
-        role: primaryRole
+        role: primaryRole,
+        rawRoles: roles?.map((entry) => entry.role) ?? []
       };
 
       console.log('✅ useUserRole: Resultado final:', result);
@@ -69,6 +71,7 @@ export const useUserRole = () => {
     isSupervisor: userRole?.isSupervisor ?? false,
     isManager: userRole?.isManager ?? false,
     role: userRole?.role || 'none',
+    rawRoles: userRole?.rawRoles ?? [],
     isLoading
   };
 };
