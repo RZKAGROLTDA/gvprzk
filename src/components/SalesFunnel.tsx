@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -92,9 +92,49 @@ export const SalesFunnel: React.FC = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; name: string } | null>(null);
   const queryClient = useQueryClient();
-  const { isAdmin, isLoading: isLoadingRole } = useUserRole();
+  const { isAdmin, isSupervisor, isLoading: isLoadingRole } = useUserRole();
 
-  console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isLoadingRole });
+  console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isSupervisor, isLoadingRole });
+
+  // Track whether the consultant filter was explicitly chosen in THIS session.
+  // For supervisors, we never want a stale/persisted consultant id to silently
+  // scope the dashboard to an empty subset.
+  const consultantExplicitRef = useRef(false);
+
+  const handleConsultantChange = useCallback((value: string) => {
+    consultantExplicitRef.current = value !== 'all';
+    setSelectedConsultant(value);
+  }, []);
+
+  // Defensive sweep: when the user is a supervisor, clear any persisted
+  // consultant filter that could be cached from a previous session/profile.
+  useEffect(() => {
+    if (!isSupervisor) return;
+    try {
+      Object.keys(localStorage).forEach((k) => {
+        if (/consultant|selectedConsultant|analise.?gerencial|sales.?funnel/i.test(k)) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch {}
+    if (!consultantExplicitRef.current && selectedConsultant !== 'all') {
+      setSelectedConsultant('all');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupervisor]);
+
+  const handleClearFilters = useCallback(() => {
+    consultantExplicitRef.current = false;
+    setSelectedPeriod('7');
+    setSelectedConsultant('all');
+    setSelectedFilial('all');
+    setSelectedFilialAtendida('all');
+    setSelectedActivity('all');
+    queryClient.invalidateQueries({ queryKey: ['consolidated-sales-metrics-v2'] });
+    queryClient.invalidateQueries({ queryKey: ['client-details'] });
+    queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
+    toast.success('Filtros limpos');
+  }, [queryClient]);
 
   // Fetch users filtrados por filial para supervisores
   const { consultants } = useFilteredConsultants();
@@ -129,14 +169,20 @@ export const SalesFunnel: React.FC = () => {
 
   // Removed useTasksOptimized() - using useInfiniteSalesData instead
 
-  // Criar objeto de filtros para passar aos hooks
+  // Criar objeto de filtros para passar aos hooks.
+  // Proteção: se o usuário é supervisor e NÃO escolheu explicitamente um
+  // consultor nesta sessão, jamais enviar consultantId — evita que um id
+  // residual zere os cards da Análise Gerencial.
+  const effectiveConsultant =
+    isSupervisor && !consultantExplicitRef.current ? 'all' : selectedConsultant;
+
   const filters = useMemo(() => ({
     period: selectedPeriod,
-    consultantId: selectedConsultant,
+    consultantId: effectiveConsultant,
     filial: selectedFilial,
     filialAtendida: selectedFilialAtendida,
     activity: selectedActivity
-  }), [selectedPeriod, selectedConsultant, selectedFilial, selectedFilialAtendida, selectedActivity]);
+  }), [selectedPeriod, effectiveConsultant, selectedFilial, selectedFilialAtendida, selectedActivity]);
 
   // Hook CONSOLIDADO para métricas (substitui useAllSalesData + useSalesFunnelMetrics)
   const {
@@ -920,6 +966,10 @@ export const SalesFunnel: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={handleClearFilters}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Limpar
+          </Button>
           <Button variant="outline" size="sm" onClick={forceRefresh} disabled={isLoadingData}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingData ? 'animate-spin' : ''}`} />
             Recarregar Dados
@@ -947,7 +997,7 @@ export const SalesFunnel: React.FC = () => {
 
         <div>
           <label className="text-sm font-medium mb-2 block">Usuário</label>
-          <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
+          <Select value={selectedConsultant} onValueChange={handleConsultantChange}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o usuário" />
             </SelectTrigger>
