@@ -365,6 +365,65 @@ const Management: React.FC = () => {
         </h1>
       </div>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Debug temporário /management</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">1. Usuário carregado</p>
+              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson(debugContext)}</pre>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">2. Filtros enviados</p>
+              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson({
+                sellerSummary: sellerRpcParams,
+                clientDetails: clientRpcParams,
+                productAnalysis: managementDebugQuery.data?.productAnalysis.params ?? null,
+                selectedSellerForClients,
+              })}</pre>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">3. RPCs chamadas e retorno bruto</p>
+              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson(managementDebugQuery.data ?? {
+                loading: managementDebugQuery.isLoading,
+                fetchStatus: managementDebugQuery.fetchStatus,
+              })}</pre>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">4. Erros das RPCs</p>
+              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson({
+                sellerSummary: sellerQuery.error ?? managementDebugQuery.data?.sellerSummary.error ?? null,
+                clientDetails: clientQuery.error ?? managementDebugQuery.data?.clientDetails.error ?? null,
+                productAnalysis: productQuery.error ?? managementDebugQuery.data?.productAnalysis.error ?? null,
+                debugQueryError: managementDebugQuery.error ?? null,
+              })}</pre>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">5. Comparativo direto frontend × RPC direta</p>
+            <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson(debugComparison)}</pre>
+          </div>
+        </CardContent>
+      </Card>
+
+      {showLoadingState && (
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!showLoadingState && (
+
       {/* Seller KPI Cards */}
       {isSeller && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -918,6 +977,7 @@ const Management: React.FC = () => {
           </TabsContent>
         )}
       </Tabs>
+      )}
     </div>
   );
 };
