@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export interface SalesFilters {
   period?: string;
@@ -46,8 +49,13 @@ const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
  * Sem filtro hardcoded de 90 dias. Sem uso de created_at para análise operacional.
  */
 export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const { role, isSupervisor } = useUserRole();
+
   const { data: metrics, isLoading, error, refetch } = useQuery({
-    queryKey: ['consolidated-sales-metrics-v2', filters],
+    queryKey: ['consolidated-sales-metrics-v2', user?.id ?? null, filters],
+    enabled: !!user?.id,
     queryFn: async () => {
       // Janela de datas: somente quando o usuário escolher um período explícito.
       // 'all' / undefined → sem corte (V2 aceita NULL).
@@ -70,13 +78,44 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           ? filters.consultantId
           : null;
 
-      const { data, error: rpcError } = await supabase.rpc('get_activity_metrics_v2', {
+      const rpcParams = {
         p_start_date,
         p_end_date,
         p_filial_id,
         p_responsible_user_id,
+      };
+
+      // eslint-disable-next-line no-console
+      console.log('[useConsolidatedSalesMetrics] 🔍 Chamando get_activity_metrics_v2', {
+        userId: user?.id,
+        role,
+        isSupervisor,
+        profileFilialId: profile?.filial_id,
+        profileFilialNome: (profile as any)?.filial_nome,
+        approvalStatus: (profile as any)?.approval_status,
+        filtersIn: filters,
+        rpcParams,
       });
-      if (rpcError) throw rpcError;
+
+      const { data, error: rpcError } = await supabase.rpc('get_activity_metrics_v2', rpcParams);
+
+      if (rpcError) {
+        // eslint-disable-next-line no-console
+        console.error('[useConsolidatedSalesMetrics] ❌ Erro RPC get_activity_metrics_v2', {
+          rpcError,
+          rpcParams,
+          userId: user?.id,
+        });
+        throw rpcError;
+      }
+
+      // eslint-disable-next-line no-console
+      console.log('[useConsolidatedSalesMetrics] ✅ Payload bruto get_activity_metrics_v2', {
+        userId: user?.id,
+        rpcParams,
+        rawData: data,
+      });
+
 
       const r = (data ?? {}) as Record<string, number>;
       const num = (k: string) => Number(r[k] ?? 0);
