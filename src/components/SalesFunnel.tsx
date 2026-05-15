@@ -993,7 +993,7 @@ export const SalesFunnel: React.FC = () => {
 
         <div>
           <label className="text-sm font-medium mb-2 block">Usuário</label>
-          <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
+          <Select value={selectedConsultant} onValueChange={handleConsultantChange}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o usuário" />
             </SelectTrigger>
