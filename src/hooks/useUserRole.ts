@@ -27,7 +27,8 @@ export const useUserRole = () => {
           isAdmin: false,
           isSupervisor: false,
           isManager: false,
-          role: 'none'
+          role: 'none',
+          rawRoles: []
         };
       }
 
