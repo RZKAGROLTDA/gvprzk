@@ -106,8 +106,9 @@ export const useSellerSummary = (filters: ManagementFilters) => {
       return (data || []) as unknown as SellerSummary[];
     },
     enabled: filters.enabled ?? true,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 };
@@ -133,8 +134,9 @@ export const useClientDetails = (filters: ManagementFilters) => {
       return (data || []) as unknown as ClientDetail[];
     },
     enabled: filters.enabled ?? true,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 };
@@ -204,8 +206,9 @@ export const useProductAnalysis = (filters: ManagementFilters & { product?: stri
       return (data || []) as unknown as ProductAnalysis[];
     },
     enabled: filters.enabled ?? true,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 };
