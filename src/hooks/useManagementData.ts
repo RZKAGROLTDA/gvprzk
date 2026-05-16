@@ -134,8 +134,9 @@ export const useClientDetails = (filters: ManagementFilters) => {
       return (data || []) as unknown as ClientDetail[];
     },
     enabled: filters.enabled ?? true,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 };
