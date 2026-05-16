@@ -75,8 +75,6 @@ interface ClientDetails {
 }
 
 export const SalesFunnel: React.FC = () => {
-  // eslint-disable-next-line no-console
-  console.log('[SalesFunnel] mounted/render', { bundleMarker: 'salesfunnel-v3', href: typeof window !== 'undefined' ? window.location.href : null });
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('7');
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
