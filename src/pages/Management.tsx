@@ -213,15 +213,53 @@ const Management: React.FC = () => {
   }), [filters, productFilter]);
   const productQuery = useProductAnalysis(productFilters);
   const managementDebugQuery = useManagementRpcDebug(productFilters);
-  const sellerData = sellerQuery.data ?? [];
-  const sellerLoading = sellerQuery.isLoading;
-  const clientData = clientQuery.data ?? [];
-  const clientLoading = clientQuery.isLoading;
+  // Fallback: se o hook principal vier vazio mas a RPC direta (debug) tiver linhas,
+  // usamos o payload da debug query para renderizar. Isso elimina qualquer
+  // inconsistência de cache do React Query entre hooks com a mesma chamada.
+  const sellerHookData = sellerQuery.data ?? [];
+  const clientHookData = clientQuery.data ?? [];
+  const productHookData = productQuery.data ?? [];
+  const sellerDebugRows = (managementDebugQuery.data?.sellerSummary.rawData ?? []) as SellerSummary[];
+  const clientDebugRows = (managementDebugQuery.data?.clientDetails.rawData ?? []) as ClientDetail[];
+  const productDebugRows = (managementDebugQuery.data?.productAnalysis.rawData ?? []) as ProductAnalysis[];
+  const sellerData: SellerSummary[] = sellerHookData.length > 0 ? sellerHookData : sellerDebugRows;
+  const clientData: ClientDetail[] = clientHookData.length > 0 ? clientHookData : clientDebugRows;
+  const productData: ProductAnalysis[] = productHookData.length > 0 ? productHookData : productDebugRows;
+  const sellerLoading = sellerQuery.isLoading && managementDebugQuery.isLoading;
+  const clientLoading = clientQuery.isLoading && managementDebugQuery.isLoading;
   const racData = racQuery.data ?? [];
   const racLoading = racQuery.isLoading;
-  const productData = productQuery.data ?? [];
-  const productLoading = productQuery.isLoading;
+  const productLoading = productQuery.isLoading && managementDebugQuery.isLoading;
   const showProductTab = !isSeller;
+
+  // Log render payloads (somente DEV) — payload bruto da RPC vs payload usado no render
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.log('🔍 Management render payloads', {
+      seller: {
+        hook_len: sellerHookData.length,
+        debug_len: sellerDebugRows.length,
+        rendered_len: sellerData.length,
+        hook_status: sellerQuery.status,
+        hook_fetchStatus: sellerQuery.fetchStatus,
+        hook_error: (sellerQuery.error as any)?.message ?? null,
+        first_rendered: sellerData[0] ?? null,
+      },
+      client: {
+        hook_len: clientHookData.length,
+        debug_len: clientDebugRows.length,
+        rendered_len: clientData.length,
+        hook_status: clientQuery.status,
+        first_rendered: clientData[0] ?? null,
+      },
+      product: {
+        hook_len: productHookData.length,
+        debug_len: productDebugRows.length,
+        rendered_len: productData.length,
+      },
+    });
+  }, [sellerHookData.length, sellerDebugRows.length, sellerData.length, clientHookData.length, clientDebugRows.length, clientData.length, productHookData.length, productDebugRows.length, productData.length, sellerQuery.status, sellerQuery.fetchStatus, sellerQuery.error, clientQuery.status]);
+
   // Não bloqueamos a UI: spinner só aparece nos primeiros 5s e enquanto auth/role
   // ainda não resolveram. Depois disso, mostramos a tela com banner de motivo.
   const showLoadingState = !canRunManagementQueries && !watchdogElapsed && (!authReady || !roleLoaded);
