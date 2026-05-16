@@ -190,19 +190,13 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         },
       };
 
-      // eslint-disable-next-line no-console
-      console.log('[useConsolidatedSalesMetrics] 🧮 transformedMetrics', {
-        parsedNumbers: {
-          visitas, ligacoes, checklists,
-          vendasGanhasCount, vendasGanhasValue,
-          vendasParciaisCount, vendasParciaisValue,
-          vendasPerdidasCount, vendasPerdidasValue,
-          prospectsCount, prospectsValue,
-          totalContatos, totalVendas, taxaConversao,
-        },
-        overview: result.overview,
-        funnel: result.funnel,
-      });
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[useConsolidatedSalesMetrics] transformed', {
+          overview: result.overview,
+          funnel: result.funnel,
+        });
+      }
 
       return result;
     },
