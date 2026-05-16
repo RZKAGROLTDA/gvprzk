@@ -197,6 +197,20 @@ export const SalesFunnel: React.FC = () => {
   const isLoadingOverview = isLoadingMetrics;
   const isLoadingFunnel = isLoadingMetrics;
 
+  // eslint-disable-next-line no-console
+  console.log('[SalesFunnel] 🎯 finalMetricsReturned -> cards', {
+    isLoadingMetrics,
+    filtersSent: filters,
+    consolidatedMetrics,
+    cardProps: {
+      contacts: overviewMetrics.contacts,
+      prospects: overviewMetrics.prospects,
+      sales: overviewMetrics.sales,
+      partialSales: overviewMetrics.partialSales,
+      lostSales: overviewMetrics.lostSales,
+    },
+  });
+
   // Usar hook com scroll infinito (usado na aba Relatório)
   const { 
     data: infiniteSalesData, 

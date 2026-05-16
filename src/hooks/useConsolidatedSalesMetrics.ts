@@ -124,11 +124,30 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         userId: user?.id,
         rpcParams,
         rawData: data,
+        rawDataType: typeof data,
+        rawDataIsArray: Array.isArray(data),
+        rawDataKeys: data && typeof data === 'object' ? Object.keys(data as any) : null,
       });
 
+      // Defensive: alguns drivers podem devolver jsonb embrulhado em array
+      let payload: any = data;
+      if (Array.isArray(payload)) {
+        payload = payload[0] ?? {};
+        // eslint-disable-next-line no-console
+        console.warn('[useConsolidatedSalesMetrics] ⚠️ rawData veio como array, desembrulhando primeiro item', payload);
+      }
+      if (typeof payload === 'string') {
+        try { payload = JSON.parse(payload); } catch { payload = {}; }
+        // eslint-disable-next-line no-console
+        console.warn('[useConsolidatedSalesMetrics] ⚠️ rawData veio como string JSON, parseando');
+      }
 
-      const r = (data ?? {}) as Record<string, number>;
-      const num = (k: string) => Number(r[k] ?? 0);
+      const r = (payload ?? {}) as Record<string, unknown>;
+      const num = (k: string) => {
+        const v = r[k];
+        const n = typeof v === 'string' ? Number(v) : (v as number);
+        return Number.isFinite(n) ? Number(n) : 0;
+      };
 
       const visitas = num('visitas');
       const ligacoes = num('ligacoes');
@@ -170,6 +189,21 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
           taxaConversao,
         },
       };
+
+      // eslint-disable-next-line no-console
+      console.log('[useConsolidatedSalesMetrics] 🧮 transformedMetrics', {
+        parsedNumbers: {
+          visitas, ligacoes, checklists,
+          vendasGanhasCount, vendasGanhasValue,
+          vendasParciaisCount, vendasParciaisValue,
+          vendasPerdidasCount, vendasPerdidasValue,
+          prospectsCount, prospectsValue,
+          totalContatos, totalVendas, taxaConversao,
+        },
+        overview: result.overview,
+        funnel: result.funnel,
+      });
+
       return result;
     },
     staleTime: 0,
