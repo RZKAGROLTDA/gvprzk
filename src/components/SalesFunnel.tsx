@@ -1170,77 +1170,67 @@ export const SalesFunnel: React.FC = () => {
         });
         return null;
       })()}
-      {activeView === 'overview' && <>
-        <div className="rounded-md border-2 border-dashed border-red-500 bg-red-500/10 p-2 text-xs font-mono text-red-700">
-          🛠 DEBUG V3 — SalesFunnel.tsx overview cards · raw: contacts={String(overviewMetrics?.contacts?.count)} prospects={String(overviewMetrics?.prospects?.count)} sales={String(overviewMetrics?.sales?.count)} partial={String(overviewMetrics?.partialSales?.count)} lost={String(overviewMetrics?.lostSales?.count)}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card data-debug="v3-contacts">
+      {activeView === 'overview' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Contatos <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Contatos</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.contacts.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.contacts?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.contacts.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-prospects">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Prospects <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Prospects</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.prospects.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.prospects?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.prospects.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-sales">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Vendas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.sales.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.sales?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.sales.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-partial">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Parciais <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Vendas Parciais</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.partialSales.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.partialSales?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.partialSales.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-lost">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Perdidas <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Vendas Perdidas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.lostSales.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.lostSales?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.lostSales.value)}
               </p>
             </CardContent>
           </Card>
-        </div>
-      </>}
+        </div>}
 
       {/* Hierarchical Funnel View */}
       {activeView === 'funnel' && <div className="space-y-8">
