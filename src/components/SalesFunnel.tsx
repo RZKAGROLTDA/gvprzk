@@ -75,6 +75,8 @@ interface ClientDetails {
 }
 
 export const SalesFunnel: React.FC = () => {
+  // eslint-disable-next-line no-console
+  console.log('[SalesFunnel] mounted/render', { bundleMarker: 'salesfunnel-v3', href: typeof window !== 'undefined' ? window.location.href : null });
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('7');
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
@@ -188,8 +190,19 @@ export const SalesFunnel: React.FC = () => {
   const {
     metrics: consolidatedMetrics,
     isLoading: isLoadingMetrics,
+    error: metricsError,
     refetch: refetchMetrics
   } = useConsolidatedSalesMetrics(filters);
+
+  // eslint-disable-next-line no-console
+  console.log('[SalesFunnel] hook result', {
+    isLoadingMetrics,
+    metricsError,
+    hasMetrics: !!consolidatedMetrics,
+    metricsKeys: consolidatedMetrics ? Object.keys(consolidatedMetrics) : [],
+    overviewKeys: consolidatedMetrics?.overview ? Object.keys(consolidatedMetrics.overview) : [],
+    metrics: consolidatedMetrics,
+  });
 
   // Extrair métricas para compatibilidade
   const overviewMetrics = consolidatedMetrics.overview;
