@@ -18,7 +18,7 @@ import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useWeeklyAgenda, WeeklyAgendaDay } from '@/hooks/useWeeklyAgenda';
 import { FollowupRow } from '@/hooks/useFollowups';
 import { useAuth } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils';
+import { cn, formatDateDisplay } from '@/lib/utils';
 import { MonthlyAgendaGrid } from './MonthlyAgendaGrid';
 
 const WEEK_DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
