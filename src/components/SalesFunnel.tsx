@@ -214,7 +214,7 @@ export const SalesFunnel: React.FC = () => {
     },
     renderConditions: {
       willRenderOverviewCards: true, // cards de overview não têm guard de loading
-      isLoadingData,
+      
       hasOverviewObject: !!overviewMetrics,
       contactsCountResolved: overviewMetrics?.contacts?.count ?? null,
       salesCountResolved: overviewMetrics?.sales?.count ?? null,
