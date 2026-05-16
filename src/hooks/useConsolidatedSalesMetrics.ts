@@ -96,17 +96,16 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         p_responsible_user_id,
       };
 
-      // eslint-disable-next-line no-console
-      console.log('[useConsolidatedSalesMetrics] 🔍 Chamando get_activity_metrics_v2', {
-        userId: user?.id,
-        role,
-        isSupervisor,
-        profileFilialId: profile?.filial_id,
-        profileFilialNome: (profile as any)?.filial_nome,
-        approvalStatus: (profile as any)?.approval_status,
-        filtersIn: filters,
-        rpcParams,
-      });
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[useConsolidatedSalesMetrics] calling get_activity_metrics_v2', {
+          userId: user?.id,
+          role,
+          isSupervisor,
+          profileFilialId: profile?.filial_id,
+          rpcParams,
+        });
+      }
 
       const { data, error: rpcError } = await supabase.rpc('get_activity_metrics_v2', rpcParams);
 
