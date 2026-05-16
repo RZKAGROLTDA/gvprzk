@@ -351,7 +351,7 @@ export const WeeklyAgenda: React.FC = () => {
                       )}
                       {f.next_return_date && (
                         <p className="text-xs text-muted-foreground">
-                          Próx. retorno: {new Date(f.next_return_date).toLocaleDateString('pt-BR')}
+                          Próx. retorno: {formatDateDisplay(f.next_return_date)}
                         </p>
                       )}
                     </CardContent>
