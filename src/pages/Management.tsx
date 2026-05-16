@@ -446,13 +446,25 @@ const Management: React.FC = () => {
   }), [sellerQuery.isLoading, sellerQuery.error, sellerData.length, clientQuery.isLoading, clientQuery.error, clientData.length, productQuery.isLoading, productQuery.error, productData.length, managementDebugQuery.data]);
 
   const handleRefreshAll = async () => {
-    await Promise.all([
-      sellerQuery.refetch(),
-      clientQuery.refetch(),
-      productQuery.refetch(),
-      racQuery.refetch(),
-      managementDebugQuery.refetch(),
-    ]);
+    try {
+      const [sellerRes, clientRes, productRes, racRes, debugRes] = await Promise.all([
+        sellerQuery.refetch(),
+        clientQuery.refetch(),
+        productQuery.refetch(),
+        racQuery.refetch(),
+        managementDebugQuery.refetch(),
+      ]);
+      const sellerRows = sellerRes.data?.length ?? debugRes.data?.sellerSummary.rowCount ?? 0;
+      const clientRows = clientRes.data?.length ?? debugRes.data?.clientDetails.rowCount ?? 0;
+      const productRows = productRes.data?.length ?? debugRes.data?.productAnalysis.rowCount ?? 0;
+      const racRows = racRes.data?.length ?? 0;
+      toast.success('Dados atualizados', {
+        description: `seller_summary: ${sellerRows} linhas\nclient_details: ${clientRows} linhas\nproduct_analysis: ${productRows} linhas\nrac_summary: ${racRows} linhas`,
+        style: { whiteSpace: 'pre-line' },
+      });
+    } catch (err: any) {
+      toast.error('Falha ao atualizar', { description: err?.message ?? 'Erro desconhecido' });
+    }
   };
 
   const isRefreshing =
