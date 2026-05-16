@@ -53,15 +53,16 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
   const { profile } = useProfile();
   const { role, isSupervisor } = useUserRole();
 
-  // eslint-disable-next-line no-console
-  console.log('[useConsolidatedSalesMetrics] 🧭 hook render', {
-    bundleMarker: 'v2-debug-2',
-    userId: user?.id ?? null,
-    role,
-    isSupervisor,
-    profileFilialId: profile?.filial_id ?? null,
-    filters,
-  });
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[useConsolidatedSalesMetrics] hook render', {
+      userId: user?.id ?? null,
+      role,
+      isSupervisor,
+      profileFilialId: profile?.filial_id ?? null,
+      filters,
+    });
+  }
 
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['consolidated-sales-metrics-v2', user?.id ?? null, filters],
@@ -95,17 +96,16 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         p_responsible_user_id,
       };
 
-      // eslint-disable-next-line no-console
-      console.log('[useConsolidatedSalesMetrics] 🔍 Chamando get_activity_metrics_v2', {
-        userId: user?.id,
-        role,
-        isSupervisor,
-        profileFilialId: profile?.filial_id,
-        profileFilialNome: (profile as any)?.filial_nome,
-        approvalStatus: (profile as any)?.approval_status,
-        filtersIn: filters,
-        rpcParams,
-      });
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[useConsolidatedSalesMetrics] calling get_activity_metrics_v2', {
+          userId: user?.id,
+          role,
+          isSupervisor,
+          profileFilialId: profile?.filial_id,
+          rpcParams,
+        });
+      }
 
       const { data, error: rpcError } = await supabase.rpc('get_activity_metrics_v2', rpcParams);
 
@@ -119,15 +119,15 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         throw rpcError;
       }
 
-      // eslint-disable-next-line no-console
-      console.log('[useConsolidatedSalesMetrics] ✅ Payload bruto get_activity_metrics_v2', {
-        userId: user?.id,
-        rpcParams,
-        rawData: data,
-        rawDataType: typeof data,
-        rawDataIsArray: Array.isArray(data),
-        rawDataKeys: data && typeof data === 'object' ? Object.keys(data as any) : null,
-      });
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[useConsolidatedSalesMetrics] raw payload', {
+          rawDataType: typeof data,
+          rawDataIsArray: Array.isArray(data),
+          rawDataKeys: data && typeof data === 'object' ? Object.keys(data as any) : null,
+          rawData: data,
+        });
+      }
 
       // Defensive: alguns drivers podem devolver jsonb embrulhado em array
       let payload: any = data;
@@ -190,19 +190,13 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         },
       };
 
-      // eslint-disable-next-line no-console
-      console.log('[useConsolidatedSalesMetrics] 🧮 transformedMetrics', {
-        parsedNumbers: {
-          visitas, ligacoes, checklists,
-          vendasGanhasCount, vendasGanhasValue,
-          vendasParciaisCount, vendasParciaisValue,
-          vendasPerdidasCount, vendasPerdidasValue,
-          prospectsCount, prospectsValue,
-          totalContatos, totalVendas, taxaConversao,
-        },
-        overview: result.overview,
-        funnel: result.funnel,
-      });
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[useConsolidatedSalesMetrics] transformed', {
+          overview: result.overview,
+          funnel: result.funnel,
+        });
+      }
 
       return result;
     },

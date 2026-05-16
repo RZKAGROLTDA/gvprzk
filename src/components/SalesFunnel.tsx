@@ -75,8 +75,6 @@ interface ClientDetails {
 }
 
 export const SalesFunnel: React.FC = () => {
-  // eslint-disable-next-line no-console
-  console.log('[SalesFunnel] mounted/render', { bundleMarker: 'salesfunnel-v3', href: typeof window !== 'undefined' ? window.location.href : null });
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('7');
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
@@ -96,7 +94,10 @@ export const SalesFunnel: React.FC = () => {
   const queryClient = useQueryClient();
   const { isAdmin, isSupervisor, isLoading: isLoadingRole } = useUserRole();
 
-  console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isSupervisor, isLoadingRole });
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isSupervisor, isLoadingRole });
+  }
 
   // Track whether the consultant filter was explicitly chosen in THIS session.
   // For supervisors, we never want a stale/persisted consultant id to silently
@@ -161,12 +162,7 @@ export const SalesFunnel: React.FC = () => {
 
   // Initialize filial cache on component mount
   useEffect(() => {
-    const initializeCache = async () => {
-      console.log('🚀 SalesFunnel: Initializing filial cache...');
-      await loadFiliaisCache();
-      console.log('✅ SalesFunnel: Filial cache initialized');
-    };
-    initializeCache();
+    loadFiliaisCache().catch(() => {});
   }, []);
 
   // Removed useTasksOptimized() - using useInfiniteSalesData instead
@@ -194,45 +190,22 @@ export const SalesFunnel: React.FC = () => {
     refetch: refetchMetrics
   } = useConsolidatedSalesMetrics(filters);
 
-  // eslint-disable-next-line no-console
-  console.log('[SalesFunnel] hook result', {
-    isLoadingMetrics,
-    metricsError,
-    hasMetrics: !!consolidatedMetrics,
-    metricsKeys: consolidatedMetrics ? Object.keys(consolidatedMetrics) : [],
-    overviewKeys: consolidatedMetrics?.overview ? Object.keys(consolidatedMetrics.overview) : [],
-    metrics: consolidatedMetrics,
-  });
-
   // Extrair métricas para compatibilidade
   const overviewMetrics = consolidatedMetrics.overview;
   const funnelMetrics = consolidatedMetrics.funnel;
   const isLoadingOverview = isLoadingMetrics;
   const isLoadingFunnel = isLoadingMetrics;
 
-  // eslint-disable-next-line no-console
-  console.log('[useConsolidatedSalesMetrics][SalesFunnel] 🎯 finalMetricsReturned -> cards', {
-    isLoadingMetrics,
-    activeView,
-    filtersSent: filters,
-    consolidatedMetricsRef: consolidatedMetrics,
-    overviewMetricsRef: overviewMetrics,
-    funnelMetricsRef: funnelMetrics,
-    cardProps: {
-      contacts: overviewMetrics?.contacts,
-      prospects: overviewMetrics?.prospects,
-      sales: overviewMetrics?.sales,
-      partialSales: overviewMetrics?.partialSales,
-      lostSales: overviewMetrics?.lostSales,
-    },
-    renderConditions: {
-      willRenderOverviewCards: true, // cards de overview não têm guard de loading
-      
-      hasOverviewObject: !!overviewMetrics,
-      contactsCountResolved: overviewMetrics?.contacts?.count ?? null,
-      salesCountResolved: overviewMetrics?.sales?.count ?? null,
-    },
-  });
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[SalesFunnel] metrics', {
+      isLoadingMetrics,
+      metricsError,
+      overviewMetrics,
+      funnelMetrics,
+    });
+  }
+
 
   // Usar hook com scroll infinito (usado na aba Relatório)
   const { 
@@ -1149,98 +1122,67 @@ export const SalesFunnel: React.FC = () => {
       </div>
 
       {/* Overview */}
-      {activeView === 'overview' && (() => {
-        // eslint-disable-next-line no-console
-        console.log('[CARD RENDER useConsolidatedSalesMetrics]', {
-          activeView,
-          overviewMetricsRef: overviewMetrics,
-          contacts: overviewMetrics?.contacts,
-          prospects: overviewMetrics?.prospects,
-          sales: overviewMetrics?.sales,
-          partialSales: overviewMetrics?.partialSales,
-          lostSales: overviewMetrics?.lostSales,
-          rawCounts: {
-            contactsCount: overviewMetrics?.contacts?.count,
-            prospectsCount: overviewMetrics?.prospects?.count,
-            salesCount: overviewMetrics?.sales?.count,
-            partialSalesCount: overviewMetrics?.partialSales?.count,
-            lostSalesCount: overviewMetrics?.lostSales?.count,
-          },
-          consolidatedMetricsRef: consolidatedMetrics,
-        });
-        return null;
-      })()}
-      {activeView === 'overview' && <>
-        <div className="rounded-md border-2 border-dashed border-red-500 bg-red-500/10 p-2 text-xs font-mono text-red-700">
-          🛠 DEBUG V3 — SalesFunnel.tsx overview cards · raw: contacts={String(overviewMetrics?.contacts?.count)} prospects={String(overviewMetrics?.prospects?.count)} sales={String(overviewMetrics?.sales?.count)} partial={String(overviewMetrics?.partialSales?.count)} lost={String(overviewMetrics?.lostSales?.count)}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card data-debug="v3-contacts">
+      {activeView === 'overview' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Contatos <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Contatos</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.contacts.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.contacts?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.contacts.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-prospects">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Prospects <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Prospects</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.prospects.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.prospects?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.prospects.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-sales">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Vendas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.sales.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.sales?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.sales.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-partial">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Parciais <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Vendas Parciais</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.partialSales.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.partialSales?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.partialSales.value)}
               </p>
             </CardContent>
           </Card>
 
-          <Card data-debug="v3-lost">
+          <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Perdidas <span className="text-[10px] text-red-600">[V3]</span></CardTitle>
+              <CardTitle className="text-sm font-medium">Vendas Perdidas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{overviewMetrics.lostSales.count}</div>
-              <p className="text-[10px] text-red-600 font-mono">raw={String(overviewMetrics?.lostSales?.count)}</p>
               <p className="text-xs text-muted-foreground">
                 {formatSalesValue(overviewMetrics.lostSales.value)}
               </p>
             </CardContent>
           </Card>
-        </div>
-      </>}
+        </div>}
 
       {/* Hierarchical Funnel View */}
       {activeView === 'funnel' && <div className="space-y-8">
