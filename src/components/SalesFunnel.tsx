@@ -94,7 +94,10 @@ export const SalesFunnel: React.FC = () => {
   const queryClient = useQueryClient();
   const { isAdmin, isSupervisor, isLoading: isLoadingRole } = useUserRole();
 
-  console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isSupervisor, isLoadingRole });
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('🔧 SalesFunnel: Estado do admin:', { isAdmin, isSupervisor, isLoadingRole });
+  }
 
   // Track whether the consultant filter was explicitly chosen in THIS session.
   // For supervisors, we never want a stale/persisted consultant id to silently
