@@ -190,40 +190,21 @@ export const SalesFunnel: React.FC = () => {
     refetch: refetchMetrics
   } = useConsolidatedSalesMetrics(filters);
 
-  // eslint-disable-next-line no-console
-  console.log('[SalesFunnel] hook result', {
-    isLoadingMetrics,
-    metricsError,
-    hasMetrics: !!consolidatedMetrics,
-    metricsKeys: consolidatedMetrics ? Object.keys(consolidatedMetrics) : [],
-    overviewKeys: consolidatedMetrics?.overview ? Object.keys(consolidatedMetrics.overview) : [],
-    metrics: consolidatedMetrics,
-  });
-
   // Extrair métricas para compatibilidade
   const overviewMetrics = consolidatedMetrics.overview;
   const funnelMetrics = consolidatedMetrics.funnel;
   const isLoadingOverview = isLoadingMetrics;
   const isLoadingFunnel = isLoadingMetrics;
 
-  // eslint-disable-next-line no-console
-  console.log('[useConsolidatedSalesMetrics][SalesFunnel] 🎯 finalMetricsReturned -> cards', {
-    isLoadingMetrics,
-    activeView,
-    filtersSent: filters,
-    consolidatedMetricsRef: consolidatedMetrics,
-    overviewMetricsRef: overviewMetrics,
-    funnelMetricsRef: funnelMetrics,
-    cardProps: {
-      contacts: overviewMetrics?.contacts,
-      prospects: overviewMetrics?.prospects,
-      sales: overviewMetrics?.sales,
-      partialSales: overviewMetrics?.partialSales,
-      lostSales: overviewMetrics?.lostSales,
-    },
-    renderConditions: {
-      willRenderOverviewCards: true, // cards de overview não têm guard de loading
-      
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[SalesFunnel] metrics', {
+      isLoadingMetrics,
+      metricsError,
+      overviewMetrics,
+      funnelMetrics,
+    });
+  }
       hasOverviewObject: !!overviewMetrics,
       contactsCountResolved: overviewMetrics?.contacts?.count ?? null,
       salesCountResolved: overviewMetrics?.sales?.count ?? null,
