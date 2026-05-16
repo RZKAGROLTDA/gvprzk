@@ -190,8 +190,19 @@ export const SalesFunnel: React.FC = () => {
   const {
     metrics: consolidatedMetrics,
     isLoading: isLoadingMetrics,
+    error: metricsError,
     refetch: refetchMetrics
   } = useConsolidatedSalesMetrics(filters);
+
+  // eslint-disable-next-line no-console
+  console.log('[SalesFunnel] hook result', {
+    isLoadingMetrics,
+    metricsError,
+    hasMetrics: !!consolidatedMetrics,
+    metricsKeys: consolidatedMetrics ? Object.keys(consolidatedMetrics) : [],
+    overviewKeys: consolidatedMetrics?.overview ? Object.keys(consolidatedMetrics.overview) : [],
+    metrics: consolidatedMetrics,
+  });
 
   // Extrair métricas para compatibilidade
   const overviewMetrics = consolidatedMetrics.overview;
