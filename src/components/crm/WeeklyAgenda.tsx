@@ -18,7 +18,7 @@ import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useWeeklyAgenda, WeeklyAgendaDay } from '@/hooks/useWeeklyAgenda';
 import { FollowupRow } from '@/hooks/useFollowups';
 import { useAuth } from '@/hooks/useAuth';
-import { cn } from '@/lib/utils';
+import { cn, formatDateDisplay } from '@/lib/utils';
 import { MonthlyAgendaGrid } from './MonthlyAgendaGrid';
 
 const WEEK_DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -136,20 +136,22 @@ export const WeeklyAgenda: React.FC = () => {
 
   // Detalhe do dia selecionado
   const selectedDayISO = selectedDay ? toISODate(selectedDay) : null;
+  const FOLLOWUP_COLS =
+    'id, task_id, client_name, client_code, activity_type, activity_date, next_return_date, return_notes, followup_status, priority, client_temperature, responsible_user_id, filial_id, notes, created_by, created_at, updated_at';
   const { data: dayItems = [], isLoading: loadingDay } = useQuery({
     queryKey: ['agenda-day-details', user?.id, selectedDayISO, seller, filial],
     enabled: !!user?.id && !!selectedDayISO,
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
     queryFn: async (): Promise<FollowupRow[]> => {
-      // Janela do dia local convertida para limites ISO seguros para timestamptz
       const start = parseISODate(selectedDayISO!);
       const end = addDays(start, 1);
       let q = supabase
         .from('task_followups')
-        .select('*')
+        .select(FOLLOWUP_COLS)
         .gte('activity_date', start.toISOString())
         .lt('activity_date', end.toISOString())
-        .order('activity_date', { ascending: true });
+        .order('activity_date', { ascending: true })
+        .limit(500);
       if (seller !== 'all') q = q.eq('responsible_user_id', seller);
       if (filial !== 'all') q = q.eq('filial_id', filial);
       const { data, error } = await q;
@@ -349,7 +351,7 @@ export const WeeklyAgenda: React.FC = () => {
                       )}
                       {f.next_return_date && (
                         <p className="text-xs text-muted-foreground">
-                          Próx. retorno: {new Date(f.next_return_date).toLocaleDateString('pt-BR')}
+                          Próx. retorno: {formatDateDisplay(f.next_return_date)}
                         </p>
                       )}
                     </CardContent>

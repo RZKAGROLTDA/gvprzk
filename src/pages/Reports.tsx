@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  CheckSquare, 
+import { cn, formatDateDisplay, formatDateToLocal } from '@/lib/utils';
+import {
+  BarChart3,
+  TrendingUp,
+  Users,
+  CheckSquare,
   Download,
   Calendar as CalendarIcon,
   DollarSign,
@@ -19,229 +19,156 @@ import {
   Activity,
   Building2,
   RefreshCw,
-  X,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
-import { TaskStats } from '@/types/task';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { calculateTaskSalesValue, calculateProspectValue } from '@/lib/salesValueCalculator';
-import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
-import { DataMigrationButton } from '@/components/DataMigrationButton';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 
+interface FilialOption {
+  id: string;
+  nome: string;
+}
+
+/**
+ * Contrato oficial:
+ * - RPC V2 (get_funnel_metrics_v2) com filtros 'all'/'' → NULL
+ * - Datas via formatDateToLocal (sem .toISOString().slice)
+ * - Consultor filtrado por UUID (user_id) via useFilteredConsultants
+ * - Sem profiles.role, sem SELECT *
+ * - React Query default (staleTime 5m, refetchOnWindowFocus:false em QueryProvider)
+ */
 const Reports: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [selectedUser, setSelectedUser] = useState('all');
-  const [selectedFilial, setSelectedFilial] = useState('all');
-  const [selectedFilialAtendida, setSelectedFilialAtendida] = useState('all');
-  const [collaborators, setCollaborators] = useState<any[]>([]);
-  const [filiais, setFiliais] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isFiltering, setIsFiltering] = useState(false);
+  const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
+  const [selectedFilial, setSelectedFilial] = useState<string>('all');
+  const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
 
-  // Estados para as estatísticas agregadas
-  const [totalTasks, setTotalTasks] = useState(0);
-  const [totalVisitas, setTotalVisitas] = useState(0);
-  const [totalChecklist, setTotalChecklist] = useState(0);
-  const [totalLigacoes, setTotalLigacoes] = useState(0);
-  const [totalProspects, setTotalProspects] = useState(0);
-  const [totalProspectsValue, setTotalProspectsValue] = useState(0);
-  const [totalSalesValue, setTotalSalesValue] = useState(0);
+  const { consultants } = useFilteredConsultants();
 
-  // Taxa de conversão geral corrigida: (Vendas Realizadas / Valor Total de Prospects) * 100
-  const overallConversionRate = totalProspectsValue > 0 ? (totalSalesValue / totalProspectsValue) * 100 : 0;
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'manager':
-        return 'Gerente';
-      case 'supervisor':
-        return 'Supervisor';
-      case 'rac':
-        return 'RAC';
-      case 'consultant':
-        return 'Consultor';
-      case 'sales_consultant':
-        return 'Consultor de Vendas';
-      case 'technical_consultant':
-        return 'Consultor Técnico';
-      default:
-        return role;
-    }
-  };
-
-  const loadCollaborators = async () => {
-    try {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, name, role, user_id')
-        .order('name');
-
-      if (error) throw error;
-      setCollaborators(profiles || []);
-    } catch (error) {
-      console.error('Erro ao carregar colaboradores:', error);
-    }
-  };
-
-  const loadFiliais = async () => {
-    try {
-      const { data: filiaisData, error } = await supabase
+  // Filiais (catálogo) — staleTime longo, dados estáticos
+  const { data: filiais = [] } = useQuery<FilialOption[]>({
+    queryKey: ['filiais-options'],
+    staleTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from('filiais')
         .select('id, nome')
         .order('nome');
-
       if (error) throw error;
-      setFiliais(filiaisData || []);
-    } catch (error) {
-      console.error('Erro ao carregar filiais:', error);
-    }
-  };
+      return data ?? [];
+    },
+  });
 
-  // Migrado para o padrão analítico v2:
-  //   Operacional → task_followups (activity_date / filial_id / responsible_user_id)
-  //   Comercial   → tasks + opportunities
-  // Contrato único (p_start_date, p_end_date, p_filial_id, p_responsible_user_id).
-  // Sem filtro hardcoded de período. p_filial_atendida é metadado e NÃO aplica
-  // ao corte operacional — para diferenciar use a coluna "Filial atendida" no dataset.
-  const loadAggregatedStats = useCallback(async () => {
-    if (!user) return;
+  const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
+  const endStr = dateTo ? formatDateToLocal(dateTo) : null;
+  const responsibleUserId =
+    selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
+  const filialFilter =
+    selectedFilial && selectedFilial !== 'all' ? selectedFilial : null;
 
-    setLoading(true);
-    setIsFiltering(true);
+  const {
+    data: metrics,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      'reports-funnel-metrics-v2',
+      user?.id ?? null,
+      startStr,
+      endStr,
+      filialFilter,
+      responsibleUserId,
+    ],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      // Resolver nome/uuid/'all' → uuid|null (filtros normalizados).
+      const p_filial_id = await resolveFilialIdForFilter(filialFilter);
 
-    try {
-      const p_filial_id = await resolveFilialIdForFilter(
-        selectedFilial !== 'all' ? selectedFilial : null,
-      );
-      // selectedUser nesta tela é id de profile; v2 espera user_id (auth uid).
-      // Mantemos null aqui até unificarmos o filtro de vendedor (próxima iteração).
-      const p_responsible_user_id =
-        selectedUser !== 'all'
-          ? (collaborators.find(c => c.id === selectedUser)?.user_id ?? null)
-          : null;
-
-      const params = {
-        p_start_date: dateFrom ? dateFrom.toISOString().slice(0, 10) : null,
-        p_end_date:   dateTo   ? dateTo.toISOString().slice(0, 10)   : null,
+      const { data, error } = await supabase.rpc('get_funnel_metrics_v2', {
+        p_start_date: startStr,
+        p_end_date: endStr,
         p_filial_id,
-        p_responsible_user_id,
-      };
-
-      const { data, error } = await supabase.rpc('get_funnel_metrics_v2', params);
+        p_responsible_user_id: responsibleUserId,
+      });
       if (error) throw error;
 
       const r = (data ?? {}) as Record<string, number>;
       const num = (k: string) => Number(r[k] ?? 0);
 
-      const visitas    = num('visitas');
-      const checklist  = num('checklists');
-      const ligacoes   = num('ligacoes');
-      const total      = num('total_activities');
-      const prospects  = num('prospect_open_count');
-      const prospectsValue = num('prospect_open_value');
-      const salesValue = num('sales_total_value') + num('sales_partial_value');
+      return {
+        totalTasks: num('total_activities'),
+        totalVisitas: num('visitas'),
+        totalChecklist: num('checklists'),
+        totalLigacoes: num('ligacoes'),
+        totalProspects: num('prospect_open_count'),
+        totalProspectsValue: num('prospect_open_value'),
+        totalSalesValue: num('sales_total_value') + num('sales_partial_value'),
+      };
+    },
+  });
 
-      setTotalTasks(total);
-      setTotalVisitas(visitas);
-      setTotalChecklist(checklist);
-      setTotalLigacoes(ligacoes);
-      setTotalProspects(prospects);
-      setTotalProspectsValue(prospectsValue);
-      setTotalSalesValue(salesValue);
-    } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas de relatório (v2):', error);
-      setTotalTasks(0);
-      setTotalVisitas(0);
-      setTotalChecklist(0);
-      setTotalLigacoes(0);
-      setTotalProspects(0);
-      setTotalProspectsValue(0);
-      setTotalSalesValue(0);
-    } finally {
-      setLoading(false);
-      setIsFiltering(false);
-    }
-  }, [user, dateFrom, dateTo, selectedUser, selectedFilial, collaborators]);
+  const totalTasks = metrics?.totalTasks ?? 0;
+  const totalVisitas = metrics?.totalVisitas ?? 0;
+  const totalChecklist = metrics?.totalChecklist ?? 0;
+  const totalLigacoes = metrics?.totalLigacoes ?? 0;
+  const totalProspectsValue = metrics?.totalProspectsValue ?? 0;
+  const totalSalesValue = metrics?.totalSalesValue ?? 0;
+
+  const loading = isFetching;
 
   const clearFilters = () => {
     setDateFrom(undefined);
     setDateTo(undefined);
-    setSelectedUser('all');
+    setSelectedConsultant('all');
     setSelectedFilial('all');
     setSelectedFilialAtendida('all');
-    
     toast({
-      title: "✨ Filtros limpos",
-      description: "Todos os filtros foram resetados com sucesso"
+      title: '✨ Filtros limpos',
+      description: 'Todos os filtros foram resetados com sucesso',
     });
   };
-
-  useEffect(() => {
-    console.log('🔄 REPORTS DEBUG: useEffect disparado com dependências:', {
-      user: !!user,
-      dateFrom: dateFrom?.toISOString().split('T')[0],
-      dateTo: dateTo?.toISOString().split('T')[0],
-      selectedUser,
-      selectedFilial,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Add timeout to ensure state is updated before query
-    const timeoutId = setTimeout(() => {
-      loadAggregatedStats();
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [loadAggregatedStats]);
-
-  useEffect(() => {
-    if (user) {
-      loadCollaborators();
-      loadFiliais();
-    }
-  }, [user]);
 
   const exportReport = (type: 'filial' | 'cep') => {
-    console.log(`Exportando relatório por ${type}...`);
-    
-    // Dados dos filtros aplicados
-    const filtrosAplicados = {
-      dataInicial: dateFrom ? format(dateFrom, "dd/MM/yyyy") : 'Não definida',
-      dataFinal: dateTo ? format(dateTo, "dd/MM/yyyy") : 'Não definida',
-      colaboradorSelecionado: selectedUser !== 'all' ? 
-        collaborators.find(c => c.id === selectedUser)?.name || 'Colaborador específico' : 
-        'Todos os colaboradores',
-      filialSelecionada: selectedFilial !== 'all' ? selectedFilial : 'Todas as filiais'
-    };
-
     if (type === 'filial') {
-      // Lógica para exportar relatório por filial
-      console.log('Filtros aplicados:', filtrosAplicados);
-      
       toast({
-        title: "📊 Relatório por Filial",
-        description: "Exportação em desenvolvimento - dados das filiais com filtros aplicados"
+        title: '📊 Relatório por Filial',
+        description: 'Exportação em desenvolvimento — dados das filiais com filtros aplicados',
       });
     } else {
-      // Lógica para exportar relatório por CEP
-      console.log('Filtros aplicados:', filtrosAplicados);
-      
       toast({
-        title: "📍 Relatório por CEP", 
-        description: "Exportação em desenvolvimento - dados dos CEPs com filtros aplicados"
+        title: '📍 Relatório por CEP',
+        description: 'Exportação em desenvolvimento — dados dos CEPs com filtros aplicados',
       });
     }
   };
+
+  const hasActiveFilter =
+    !!dateFrom ||
+    !!dateTo ||
+    selectedConsultant !== 'all' ||
+    selectedFilial !== 'all' ||
+    selectedFilialAtendida !== 'all';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -258,18 +185,14 @@ const Reports: React.FC = () => {
 
       {/* Botões de Exportação */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-        <Button 
-          variant="gradient" 
-          onClick={() => exportReport('filial')} 
-          className="gap-2 text-sm"
-        >
+        <Button variant="gradient" onClick={() => exportReport('filial')} className="gap-2 text-sm">
           <Download className="h-4 w-4" />
           Relatório por Filial
         </Button>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => exportReport('cep')} 
+
+        <Button
+          variant="outline"
+          onClick={() => exportReport('cep')}
           className="gap-2 text-sm border-green-600 text-green-600 hover:bg-green-50"
         >
           <Download className="h-4 w-4" />
@@ -295,12 +218,12 @@ const Reports: React.FC = () => {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dateFrom && "text-muted-foreground"
+                        'w-full justify-start text-left font-normal',
+                        !dateFrom && 'text-muted-foreground',
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateFrom ? format(dateFrom, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                      {dateFrom ? formatDateDisplay(dateFrom) : <span>Selecionar data</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -309,7 +232,7 @@ const Reports: React.FC = () => {
                       selected={dateFrom}
                       onSelect={setDateFrom}
                       initialFocus
-                      className={cn("p-3 pointer-events-auto")}
+                      className={cn('p-3 pointer-events-auto')}
                     />
                   </PopoverContent>
                 </Popover>
@@ -322,12 +245,12 @@ const Reports: React.FC = () => {
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dateTo && "text-muted-foreground"
+                        'w-full justify-start text-left font-normal',
+                        !dateTo && 'text-muted-foreground',
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateTo ? format(dateTo, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                      {dateTo ? formatDateDisplay(dateTo) : <span>Selecionar data</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -336,8 +259,8 @@ const Reports: React.FC = () => {
                       selected={dateTo}
                       onSelect={setDateTo}
                       initialFocus
-                      disabled={(date) => dateFrom ? date < dateFrom : false}
-                      className={cn("p-3 pointer-events-auto")}
+                      disabled={(date) => (dateFrom ? date < dateFrom : false)}
+                      className={cn('p-3 pointer-events-auto')}
                     />
                   </PopoverContent>
                 </Popover>
@@ -345,23 +268,9 @@ const Reports: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Filial</label>
-                <Select 
-                  value={selectedFilial} 
-                  onValueChange={(value) => {
-                    console.log('🏢 REPORTS DEBUG: Mudança de filial detectada:', {
-                      valorAnterior: selectedFilial,
-                      novoValor: value,
-                      filiaisDisponiveis: filiais.map(f => f.nome),
-                      timestamp: new Date().toISOString()
-                    });
-                    setSelectedFilial(value);
-                  }}
-                >
+                <Select value={selectedFilial} onValueChange={setSelectedFilial}>
                   <SelectTrigger className={selectedFilial !== 'all' ? 'border-primary' : ''}>
                     <SelectValue placeholder="Todas as filiais" />
-                    {selectedFilial !== 'all' && isFiltering && (
-                      <RefreshCw className="h-4 w-4 ml-2 animate-spin" />
-                    )}
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as filiais</SelectItem>
@@ -371,7 +280,7 @@ const Reports: React.FC = () => {
                       </SelectItem>
                     ))}
                   </SelectContent>
-              </Select>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -392,16 +301,16 @@ const Reports: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Colaborador</label>
-                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <label className="text-sm font-medium">Consultor</label>
+                <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Todos os colaboradores" />
+                    <SelectValue placeholder="Todos os consultores" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos os colaboradores</SelectItem>
-                    {collaborators.map((collaborator) => (
-                      <SelectItem key={collaborator.id} value={collaborator.id}>
-                        {collaborator.name} - {getRoleLabel(collaborator.role)}
+                    <SelectItem value="all">Todos os consultores</SelectItem>
+                    {consultants.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -411,22 +320,22 @@ const Reports: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium opacity-0">Ações</label>
                 <div className="flex gap-2">
-        <Button 
-          variant="outline" 
-          onClick={() => loadAggregatedStats()}
-          disabled={loading}
-          className="flex-1"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Atualizando...' : 'Atualizar'}
-        </Button>
-                   
-                   <AlertDialog>
-                     <AlertDialogTrigger asChild>
-                       <Button variant="outline" size="icon" className="shrink-0">
-                         <RotateCcw className="h-4 w-4" />
-                       </Button>
-                     </AlertDialogTrigger>
+                  <Button
+                    variant="outline"
+                    onClick={() => refetch()}
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    {loading ? 'Atualizando...' : 'Atualizar'}
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="icon" className="shrink-0">
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Limpar filtros</AlertDialogTitle>
@@ -446,32 +355,30 @@ const Reports: React.FC = () => {
               </div>
             </div>
 
-            {(dateFrom || dateTo || selectedUser !== 'all' || selectedFilial !== 'all' || selectedFilialAtendida !== 'all') && (
+            {hasActiveFilter && (
               <div className="flex items-center gap-2 pt-2 border-t flex-wrap">
                 <p className="text-sm text-muted-foreground">Filtros ativos:</p>
                 {dateFrom && (
                   <Badge variant="secondary" className="gap-1">
-                    De: {format(dateFrom, "dd/MM/yyyy")}
+                    De: {formatDateDisplay(dateFrom)}
                   </Badge>
                 )}
                 {dateTo && (
                   <Badge variant="secondary" className="gap-1">
-                    Até: {format(dateTo, "dd/MM/yyyy")}
+                    Até: {formatDateDisplay(dateTo)}
                   </Badge>
                 )}
                 {selectedFilial !== 'all' && (
-                  <Badge variant="secondary" className="gap-1">
-                    Filial: {selectedFilial}
-                  </Badge>
+                  <Badge variant="secondary" className="gap-1">Filial: {selectedFilial}</Badge>
                 )}
                 {selectedFilialAtendida !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
                     Filial Atendida: {selectedFilialAtendida}
                   </Badge>
                 )}
-                {selectedUser !== 'all' && (
+                {selectedConsultant !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
-                    {collaborators.find(c => c.id === selectedUser)?.name || 'Colaborador específico'}
+                    {consultants.find((c) => c.id === selectedConsultant)?.name ?? 'Consultor'}
                   </Badge>
                 )}
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2">
@@ -483,50 +390,18 @@ const Reports: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Debug Info Card - Remover após resolver o problema */}
-      {(selectedFilial !== 'all' || selectedUser !== 'all') && (
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="p-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-yellow-800">🐛 Informações de Debug</p>
-              <div className="text-xs text-yellow-700 space-y-1">
-                <p>Filial selecionada: <span className="font-mono bg-yellow-100 px-1 rounded">{selectedFilial}</span></p>
-                <p>Usuário selecionado: <span className="font-mono bg-yellow-100 px-1 rounded">{selectedUser}</span></p>
-                <p>Estado de loading: <span className="font-mono bg-yellow-100 px-1 rounded">{loading ? 'true' : 'false'}</span></p>
-                <p>Estado de filtering: <span className="font-mono bg-yellow-100 px-1 rounded">{isFiltering ? 'true' : 'false'}</span></p>
-                <p>Total de tasks: <span className="font-mono bg-yellow-100 px-1 rounded">{totalTasks}</span></p>
-                <p>Filiais carregadas: <span className="font-mono bg-yellow-100 px-1 rounded">{filiais.length}</span></p>
-                <p>Última atualização: <span className="font-mono bg-yellow-100 px-1 rounded">{new Date().toLocaleTimeString()}</span></p>
-                {selectedFilial !== 'all' && (
-                  <p>Filtro ativo: <span className="font-mono bg-yellow-100 px-1 rounded">filial = "{selectedFilial}"</span></p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Resumo Geral */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        <Card className={`bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 ${isFiltering ? 'animate-pulse' : ''}`}>
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Total {isFiltering && <span className="text-blue-500">(Filtrando...)</span>}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
                 <p className="text-2xl font-bold text-primary">
-                  {isFiltering ? (
-                    <div className="flex items-center gap-2">
-                      <RefreshCw className="h-5 w-5 animate-spin" />
-                      ...
-                    </div>
-                  ) : totalTasks}
+                  {loading ? '...' : totalTasks}
                 </p>
-                {selectedFilial !== 'all' && !isFiltering && (
-                  <p className="text-xs text-muted-foreground">
-                    Filial: {selectedFilial}
-                  </p>
+                {selectedFilial !== 'all' && !loading && (
+                  <p className="text-xs text-muted-foreground">Filial: {selectedFilial}</p>
                 )}
               </div>
               <Activity className="h-8 w-8 text-primary/50" />
@@ -539,12 +414,7 @@ const Reports: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Visitas</p>
-                <p className="text-2xl font-bold text-accent">
-                  {loading ? '...' : totalVisitas}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  R$ {loading ? "..." : (totalProspectsValue * 0.4).toLocaleString("pt-BR")}
-                </p>
+                <p className="text-2xl font-bold text-accent">{loading ? '...' : totalVisitas}</p>
               </div>
               <Target className="h-8 w-8 text-accent/50" />
             </div>
@@ -556,12 +426,7 @@ const Reports: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Checklist</p>
-                <p className="text-2xl font-bold text-success">
-                  {loading ? '...' : totalChecklist}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  R$ {loading ? "..." : (totalProspectsValue * 0.3).toLocaleString("pt-BR")}
-                </p>
+                <p className="text-2xl font-bold text-success">{loading ? '...' : totalChecklist}</p>
               </div>
               <CheckSquare className="h-8 w-8 text-success/50" />
             </div>
@@ -573,12 +438,7 @@ const Reports: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Ligações</p>
-                <p className="text-2xl font-bold text-warning">
-                  {loading ? '...' : totalLigacoes}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  R$ {loading ? "..." : (totalProspectsValue * 0.3).toLocaleString("pt-BR")}
-                </p>
+                <p className="text-2xl font-bold text-warning">{loading ? '...' : totalLigacoes}</p>
               </div>
               <Users className="h-8 w-8 text-warning/50" />
             </div>
@@ -616,8 +476,7 @@ const Reports: React.FC = () => {
 
       {/* Análises Detalhadas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card Desempenho por Filial */}
-        <Card 
+        <Card
           className="hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 border-l-primary/50"
           onClick={() => navigate('/reports/filial')}
         >
@@ -636,7 +495,6 @@ const Reports: React.FC = () => {
               </div>
               <ArrowRight className="h-5 w-5 text-muted-foreground" />
             </div>
-            
             <div className="text-center">
               <Button variant="outline" size="sm" className="w-full">
                 Ver Análise Completa
@@ -645,8 +503,7 @@ const Reports: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Card Performance dos Vendedores */}
-        <Card 
+        <Card
           className="hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 border-l-accent/50"
           onClick={() => navigate('/reports/seller')}
         >
@@ -665,8 +522,6 @@ const Reports: React.FC = () => {
               </div>
               <ArrowRight className="h-5 w-5 text-muted-foreground" />
             </div>
-            
-            
             <div className="text-center">
               <Button variant="outline" size="sm" className="w-full">
                 Ver Ranking Completo

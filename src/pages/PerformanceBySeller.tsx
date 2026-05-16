@@ -1,24 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { 
+import { cn, formatDateDisplay, formatDateToLocal } from '@/lib/utils';
+import {
   Users,
   RefreshCw,
   Calendar as CalendarIcon,
-  ArrowLeft
+  ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+
+interface SellerStat {
+  name: string;
+  role: string;
+  user_id: string;
+  visits: number;
+  prospects: number;
+  sales: number;
+  conversionRate: number;
+  totalActivities: number;
+  visitas: number;
+  checklist: number;
+  ligacoes: number;
+}
+
+const roleLabel = (role: string) =>
+  role === 'consultant' ? 'Consultor'
+  : role === 'manager' ? 'Gerente'
+  : role === 'admin' ? 'Admin'
+  : role === 'supervisor' ? 'Supervisor'
+  : role;
 
 interface UserPerformanceItemProps {
-  user: any;
+  user: SellerStat;
   index: number;
   dateFrom?: Date;
   dateTo?: Date;
@@ -26,75 +48,35 @@ interface UserPerformanceItemProps {
 
 const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, dateFrom, dateTo }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [userTasks, setUserTasks] = useState<any[]>([]);
-  const [loadingTasks, setLoadingTasks] = useState(false);
 
-  const loadUserTasks = async () => {
-    if (isExpanded || userTasks.length > 0) return;
-    
-    setLoadingTasks(true);
-    try {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('name', user.name)
-        .single();
+  const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
+  const endStr = dateTo ? formatDateToLocal(dateTo) : null;
 
-      if (profileError || !profile) {
-        console.error('Erro ao buscar perfil:', profileError);
-        return;
-      }
-
-      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários + LIMIT
+  // Filtro por UUID (user_id) — NUNCA por nome.
+  const { data: userTasks = [], isFetching: loadingTasks } = useQuery({
+    queryKey: ['seller-tasks', user.user_id, startStr, endStr],
+    enabled: isExpanded && !!user.user_id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      // Colunas explícitas + LIMIT (contrato oficial).
       let query = supabase
         .from('tasks')
         .select('id, name, client, property, task_type, is_prospect, sales_value, sales_confirmed, start_date, end_date')
-        .eq('created_by', profile.user_id)
+        .eq('created_by', user.user_id)
         .order('created_at', { ascending: false })
         .limit(200);
 
-      if (dateFrom) {
-        query = query.gte('start_date', dateFrom.toISOString().split('T')[0]);
-      }
-      if (dateTo) {
-        query = query.lte('end_date', dateTo.toISOString().split('T')[0]);
-      }
+      if (startStr) query = query.gte('start_date', startStr);
+      if (endStr) query = query.lte('end_date', endStr);
 
-      const { data: tasks, error: tasksError } = await query;
-
-      if (tasksError) {
-        console.error('Erro ao buscar tarefas:', tasksError);
-        return;
-      }
-
-      setUserTasks(tasks || []);
-    } catch (error) {
-      console.error('Erro ao carregar tarefas do usuário:', error);
-    } finally {
-      setLoadingTasks(false);
-    }
-  };
-
-  const handleToggleExpand = () => {
-    setIsExpanded(!isExpanded);
-    if (!isExpanded) {
-      loadUserTasks();
-    }
-  };
-
-  const visitas = userTasks.filter(task => task.task_type === 'prospection').length;
-  const checklists = userTasks.filter(task => task.task_type === 'checklist').length;
-  const ligacoes = userTasks.filter(task => task.task_type === 'ligacao').length;
-  const totalOportunidades = userTasks.filter(task => task.is_prospect === true).reduce((sum, task) => sum + (task.sales_value || 0), 0);
-  const vendasConfirmadas = userTasks
-    .filter(task => task.sales_confirmed === true)
-    .reduce((sum, task) => sum + (task.sales_value || 0), 0);
-  
-  const taxaConversao = totalOportunidades > 0 ? 
-    (vendasConfirmadas / totalOportunidades) * 100 : 0;
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   return (
-    <Card 
+    <Card
       className={`transition-all duration-200 hover:shadow-md ${
         index < 3 ? 'ring-1 ring-primary/20 bg-primary/5' : ''
       }`}
@@ -111,37 +93,33 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
               }`}>
                 {index + 1}
               </div>
-              
+
               <div>
                 <h4 className="font-semibold text-base">{user.name}</h4>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {user.role === 'consultant' ? 'Consultor' : 
-                     user.role === 'manager' ? 'Gerente' : 
-                     user.role === 'admin' ? 'Admin' : user.role}
-                  </Badge>
+                  <Badge variant="outline" className="text-xs">{roleLabel(user.role)}</Badge>
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
-              <Badge 
-                variant={taxaConversao > 15 ? "default" : "secondary"}
+              <Badge
+                variant={user.conversionRate > 15 ? 'default' : 'secondary'}
                 className="text-xs"
               >
-                {taxaConversao.toFixed(1)}% conversão
+                {user.conversionRate.toFixed(1)}% conversão
               </Badge>
               <div className="text-right">
                 <p className="text-sm font-bold text-success">
-                  R$ {vendasConfirmadas.toLocaleString('pt-BR')}
+                  R$ {user.sales.toLocaleString('pt-BR')}
                 </p>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="text-xs h-6 w-6 p-0"
-                onClick={handleToggleExpand}
-                title="Ver todas as tarefas preenchidas do usuário"
+                onClick={() => setIsExpanded((v) => !v)}
+                title="Ver tarefas do consultor"
               >
                 {isExpanded ? '▼' : '▶'}
               </Button>
@@ -151,92 +129,82 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
           <div className="grid grid-cols-5 gap-3">
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Total</p>
-              <p className="font-bold text-foreground">{visitas + checklists + ligacoes}</p>
+              <p className="font-bold text-foreground">{user.totalActivities}</p>
               <p className="text-xs text-muted-foreground">atividades</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Visitas</p>
-              <p className="font-bold text-primary">{visitas}</p>
-              <p className="text-xs text-muted-foreground">
-                R$ {(userTasks.filter(t => t.task_type === 'prospection' && t.is_prospect === true).reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
-              </p>
+              <p className="font-bold text-primary">{user.visitas}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Checklist</p>
-              <p className="font-bold text-success">{checklists}</p>
-              <p className="text-xs text-muted-foreground">
-                R$ {(userTasks.filter(t => t.task_type === 'checklist' && t.is_prospect === true).reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
-              </p>
+              <p className="font-bold text-success">{user.checklist}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Ligações</p>
-              <p className="font-bold text-warning">{ligacoes}</p>
-              <p className="text-xs text-muted-foreground">
-                R$ {(userTasks.filter(t => t.task_type === 'ligacao' && t.is_prospect === true).reduce((sum, t) => sum + (t.sales_value || 0), 0)).toLocaleString('pt-BR')}
-              </p>
+              <p className="font-bold text-warning">{user.ligacoes}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">Prospects</p>
-              <p className="font-bold text-accent">{userTasks.filter(task => task.is_prospect === true).length}</p>
-              <p className="text-xs text-muted-foreground">
-                R$ {totalOportunidades.toLocaleString('pt-BR')}
-              </p>
+              <p className="font-bold text-accent">{user.prospects}</p>
             </div>
           </div>
         </div>
-        
+
         {isExpanded && (
           <div className="border-t pt-4 mt-4">
             {loadingTasks ? (
               <div className="text-center py-4">
                 <div className="animate-spin h-6 w-6 border-2 border-primary rounded-full border-t-transparent mx-auto"></div>
-                <p className="text-sm text-muted-foreground mt-2">Carregando visitas...</p>
+                <p className="text-sm text-muted-foreground mt-2">Carregando tarefas...</p>
               </div>
             ) : userTasks.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
-                <p className="text-sm">Nenhuma visita encontrada no período</p>
+                <p className="text-sm">Nenhuma tarefa encontrada no período</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 <h5 className="font-medium text-sm mb-3">
-                  Lista de Visitas ({userTasks.length})
+                  Lista de Tarefas ({userTasks.length})
                 </h5>
-                {userTasks.map((task, taskIndex) => (
-                  <div 
-                    key={task.id} 
-                    className="bg-muted/50 rounded-lg p-3 text-sm"
-                  >
+                {userTasks.map((task: any) => (
+                  <div key={task.id} className="bg-muted/50 rounded-lg p-3 text-sm">
                     <div className="flex justify-between items-start mb-2">
-                     <div className="flex-1">
+                      <div className="flex-1">
                         <p className="font-medium">{task.name || task.client || 'Tarefa sem nome'}</p>
                         <p className="text-muted-foreground text-xs">
                           {task.client} • {task.property}
                         </p>
                       </div>
                       <div className="text-right">
-                        <Badge variant={
-                          task.task_type === 'prospection' ? 'default' :
-                          task.task_type === 'checklist' ? 'secondary' :
-                          'outline'
-                        } className="text-xs">
+                        <Badge
+                          variant={
+                            task.task_type === 'prospection' ? 'default' :
+                            task.task_type === 'checklist' ? 'secondary' :
+                            'outline'
+                          }
+                          className="text-xs"
+                        >
                           {task.task_type === 'prospection' ? 'Visita' :
-                           task.task_type === 'checklist' ? 'Checklist' :
-                           'Ligação'}
+                           task.task_type === 'checklist' ? 'Checklist' : 'Ligação'}
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <div className="mt-2">
                       <p className="text-muted-foreground mb-1">Status:</p>
-                       <Badge variant={
-                         task.sales_confirmed === true ? 'default' :
-                         task.is_prospect === true && task.sales_confirmed === null ? 'secondary' :
-                         task.sales_confirmed === false ? 'destructive' : 'outline'
-                       } className="text-xs">
-                         {task.sales_confirmed === true ? 'Venda Confirmada' :
-                          task.is_prospect === true && task.sales_confirmed === null ? 'Prospect' :
-                          task.sales_confirmed === false ? 'Venda Perdida' : 'Em Análise'}
-                       </Badge>
+                      <Badge
+                        variant={
+                          task.sales_confirmed === true ? 'default' :
+                          task.is_prospect === true && task.sales_confirmed === null ? 'secondary' :
+                          task.sales_confirmed === false ? 'destructive' : 'outline'
+                        }
+                        className="text-xs"
+                      >
+                        {task.sales_confirmed === true ? 'Venda Confirmada' :
+                         task.is_prospect === true && task.sales_confirmed === null ? 'Prospect' :
+                         task.sales_confirmed === false ? 'Venda Perdida' : 'Em Análise'}
+                      </Badge>
                     </div>
                   </div>
                 ))}
@@ -249,61 +217,42 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
   );
 };
 
+/**
+ * Contrato oficial:
+ * - RPC V2 (get_performance_by_seller_v2) com filtros 'all'/'' → NULL
+ * - Datas via formatDateToLocal
+ * - Filtro de consultor por UUID (user_id) — NUNCA por nome ou profile.id
+ * - useFilteredConsultants respeita filial do supervisor
+ * - React Query default (staleTime 5m, refetchOnWindowFocus:false em QueryProvider)
+ */
 const PerformanceBySeller: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [selectedUser, setSelectedUser] = useState('all');
-  const [collaborators, setCollaborators] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [userStats, setUserStats] = useState<any[]>([]);
+  const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
 
-  const loadCollaborators = async () => {
-    try {
-      // SECURITY FIX: Fetch roles from user_roles table
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, name, user_id')
-        .order('name');
+  const { consultants } = useFilteredConsultants();
 
-      if (profilesError) throw profilesError;
+  const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
+  const endStr = dateTo ? formatDateToLocal(dateTo) : null;
+  const responsibleUserId =
+    selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
 
-      // Fetch roles from user_roles table
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      // Merge profiles with roles
-      const rolesMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
-      const collaboratorsWithRoles = profiles?.map(p => ({
-        ...p,
-        role: rolesMap.get(p.user_id) || 'consultant'
-      })) || [];
-
-      setCollaborators(collaboratorsWithRoles);
-    } catch (error) {
-      console.error('Erro ao carregar colaboradores:', error);
-    }
-  };
-
-  const loadUserStats = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      // V2: agregação por task_followups (activity_date / responsible_user_id) + tasks (valores)
-      const { data: stats, error } = await supabase.rpc('get_performance_by_seller_v2', {
-        p_start_date: dateFrom ? dateFrom.toISOString().split('T')[0] : null,
-        p_end_date: dateTo ? dateTo.toISOString().split('T')[0] : null,
+  const { data: userStats = [], isFetching, refetch } = useQuery<SellerStat[]>({
+    queryKey: ['performance-by-seller-v2', user?.id ?? null, startStr, endStr, responsibleUserId],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_performance_by_seller_v2', {
+        p_start_date: startStr,
+        p_end_date: endStr,
         p_filial_id: null,
+        p_responsible_user_id: responsibleUserId,
       });
-
       if (error) throw error;
 
-      const userStatsResult = (stats || []).map((row: any) => {
+      return (data ?? []).map((row: any) => {
         const visitas = Number(row.visitas ?? 0);
         const checklist = Number(row.checklists ?? 0);
         const ligacoes = Number(row.ligacoes ?? 0);
@@ -313,7 +262,7 @@ const PerformanceBySeller: React.FC = () => {
         const conversionRate = totalActivities > 0 ? (salesCount / totalActivities) * 100 : 0;
         return {
           name: row.responsible_name ?? 'Sem nome',
-          role: 'consultant',
+          role: row.role ?? 'consultant',
           user_id: row.responsible_user_id,
           visits: totalActivities,
           prospects: Number(row.prospections ?? 0),
@@ -325,22 +274,10 @@ const PerformanceBySeller: React.FC = () => {
           ligacoes,
         };
       });
+    },
+  });
 
-      setUserStats(userStatsResult);
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas dos usuários:', error);
-      setUserStats([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      loadCollaborators();
-      loadUserStats();
-    }
-  }, [user, dateFrom, dateTo, selectedUser]);
+  const loading = isFetching;
 
   return (
     <div className="space-y-6">
@@ -361,10 +298,10 @@ const PerformanceBySeller: React.FC = () => {
             <p className="text-muted-foreground">Análise detalhada da performance individual dos vendedores</p>
           </div>
         </div>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => loadUserStats()}
+
+        <Button
+          variant="outline"
+          onClick={() => refetch()}
           disabled={loading}
           className="gap-2"
         >
@@ -390,21 +327,16 @@ const PerformanceBySeller: React.FC = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateFrom && "text-muted-foreground"
+                      'w-full justify-start text-left font-normal',
+                      !dateFrom && 'text-muted-foreground',
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    {dateFrom ? formatDateDisplay(dateFrom) : <span>Selecionar data</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
@@ -416,12 +348,12 @@ const PerformanceBySeller: React.FC = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateTo && "text-muted-foreground"
+                      'w-full justify-start text-left font-normal',
+                      !dateTo && 'text-muted-foreground',
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    {dateTo ? formatDateDisplay(dateTo) : <span>Selecionar data</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -430,27 +362,23 @@ const PerformanceBySeller: React.FC = () => {
                     selected={dateTo}
                     onSelect={setDateTo}
                     initialFocus
-                    disabled={(date) => dateFrom ? date < dateFrom : false}
+                    disabled={(date) => (dateFrom ? date < dateFrom : false)}
                   />
                 </PopoverContent>
               </Popover>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">CEP</label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <label className="text-sm font-medium">Consultor</label>
+              <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Todos os CEPs" />
+                  <SelectValue placeholder="Todos os consultores" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os CEPs</SelectItem>
-                  {collaborators.map((collaborator) => (
-                    <SelectItem key={collaborator.id} value={collaborator.id}>
-                      {collaborator.name} - {
-                        collaborator.role === 'consultant' ? 'Consultor' : 
-                        collaborator.role === 'manager' ? 'Gerente' : 
-                        collaborator.role === 'admin' ? 'Admin' : collaborator.role
-                      }
+                  <SelectItem value="all">Todos os consultores</SelectItem>
+                  {consultants.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -493,10 +421,10 @@ const PerformanceBySeller: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {userStats.map((user, index) => (
-                <UserPerformanceItem 
-                  key={`${user.name}-${user.user_id}`}
-                  user={user}
+              {userStats.map((u, index) => (
+                <UserPerformanceItem
+                  key={`${u.name}-${u.user_id}`}
+                  user={u}
                   index={index}
                   dateFrom={dateFrom}
                   dateTo={dateTo}
