@@ -205,11 +205,7 @@ export const SalesFunnel: React.FC = () => {
       funnelMetrics,
     });
   }
-      hasOverviewObject: !!overviewMetrics,
-      contactsCountResolved: overviewMetrics?.contacts?.count ?? null,
-      salesCountResolved: overviewMetrics?.sales?.count ?? null,
-    },
-  });
+
 
   // Usar hook com scroll infinito (usado na aba Relatório)
   const { 
