@@ -15,6 +15,7 @@ import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useSellerSummary, useClientDetails, useFiliais, useProductAnalysis, useManagementRpcDebug, buildManagementParams, type ManagementFilters, type SellerSummary, type ClientDetail, type ProductAnalysis } from '@/hooks/useManagementData';
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
