@@ -384,6 +384,28 @@ const Management: React.FC = () => {
     ) : null
   );
 
+  // Concise RPC status summary for fast diagnosis on mobile
+  const rpcStatus = useMemo(() => ({
+    seller_summary: {
+      status: sellerQuery.isLoading ? 'loading' : sellerQuery.error ? 'error' : 'ok',
+      rows: sellerData.length,
+      direct_rows: managementDebugQuery.data?.sellerSummary.rowCount ?? null,
+      error: (sellerQuery.error as any)?.message ?? managementDebugQuery.data?.sellerSummary.error?.message ?? null,
+    },
+    client_details: {
+      status: clientQuery.isLoading ? 'loading' : clientQuery.error ? 'error' : 'ok',
+      rows: clientData.length,
+      direct_rows: managementDebugQuery.data?.clientDetails.rowCount ?? null,
+      error: (clientQuery.error as any)?.message ?? managementDebugQuery.data?.clientDetails.error?.message ?? null,
+    },
+    product_analysis: {
+      status: productQuery.isLoading ? 'loading' : productQuery.error ? 'error' : 'ok',
+      rows: productData.length,
+      direct_rows: managementDebugQuery.data?.productAnalysis.rowCount ?? null,
+      error: (productQuery.error as any)?.message ?? managementDebugQuery.data?.productAnalysis.error?.message ?? null,
+    },
+  }), [sellerQuery.isLoading, sellerQuery.error, sellerData.length, clientQuery.isLoading, clientQuery.error, clientData.length, productQuery.isLoading, productQuery.error, productData.length, managementDebugQuery.data]);
+
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
@@ -394,62 +416,56 @@ const Management: React.FC = () => {
         </h1>
       </div>
 
-      <Card>
+      {/* Banner de bloqueio — vermelho, sempre acima de tudo */}
+      {blockReason && (
+        <div className="rounded-md border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+          <strong>⚠️ Carregamento bloqueado:</strong> {blockReason}
+        </div>
+      )}
+
+      {/* Debug panel — sempre visível no topo, mobile e desktop */}
+      <Card className="border-2 border-amber-500/60 bg-amber-50/30 dark:bg-amber-950/20">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Debug temporário /management</CardTitle>
+          <CardTitle className="text-base sm:text-lg">🔍 Debug temporário /management</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">1. Usuário carregado</p>
-              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson(debugContext)}</pre>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">2. Filtros enviados</p>
-              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson({
-                sellerSummary: sellerRpcParams,
-                clientDetails: clientRpcParams,
-                productAnalysis: managementDebugQuery.data?.productAnalysis.params ?? null,
-                selectedSellerForClients,
-              })}</pre>
-            </div>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+            <div className="rounded border bg-background p-2"><strong>authReady:</strong> {String(authReady)}</div>
+            <div className="rounded border bg-background p-2"><strong>roleLoaded:</strong> {String(roleLoaded)}</div>
+            <div className="rounded border bg-background p-2"><strong>profileLoaded:</strong> {String(profileLoaded)}</div>
+            <div className="rounded border bg-background p-2"><strong>filialLoaded:</strong> {String(filialLoaded)}</div>
+            <div className="rounded border bg-background p-2"><strong>canRun:</strong> {String(canRunManagementQueries)}</div>
+            <div className="rounded border bg-background p-2"><strong>role:</strong> {role}</div>
+            <div className="rounded border bg-background p-2 col-span-2 sm:col-span-3 break-all"><strong>userId:</strong> {userId ?? 'null'}</div>
+            <div className="rounded border bg-background p-2 col-span-2 sm:col-span-3 break-all"><strong>profileFilialId:</strong> {profile?.filial_id ?? 'null'} ({profile?.filial_nome ?? '—'})</div>
+            {blockReason && (
+              <div className="rounded border-2 border-destructive bg-destructive/10 p-2 col-span-2 sm:col-span-3 text-destructive"><strong>blockReason:</strong> {blockReason}</div>
+            )}
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">3. RPCs chamadas e retorno bruto</p>
-              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson(managementDebugQuery.data ?? {
-                loading: managementDebugQuery.isLoading,
-                fetchStatus: managementDebugQuery.fetchStatus,
-              })}</pre>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">4. Erros das RPCs</p>
-              <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson({
-                sellerSummary: sellerQuery.error ?? managementDebugQuery.data?.sellerSummary.error ?? null,
-                clientDetails: clientQuery.error ?? managementDebugQuery.data?.clientDetails.error ?? null,
-                productAnalysis: productQuery.error ?? managementDebugQuery.data?.productAnalysis.error ?? null,
-                debugQueryError: managementDebugQuery.error ?? null,
-              })}</pre>
-            </div>
+          <div>
+            <p className="text-xs font-semibold mb-1">RPCs (status / rows / erro)</p>
+            <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson(rpcStatus)}</pre>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">5. Comparativo direto frontend × RPC direta</p>
-            <pre className="overflow-x-auto rounded-md border bg-muted p-3 text-xs">{formatDebugJson(debugComparison)}</pre>
+          <div>
+            <p className="text-xs font-semibold mb-1">Filtros enviados (p_start_date, p_end_date, p_filial_id, p_seller_id…)</p>
+            <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson({
+              sellerSummary: sellerRpcParams,
+              clientDetails: clientRpcParams,
+              productAnalysis: managementDebugQuery.data?.productAnalysis.params ?? null,
+            })}</pre>
           </div>
+
+          <details className="text-xs">
+            <summary className="cursor-pointer font-semibold">Detalhes completos (auth, profile, flags, comparativo)</summary>
+            <div className="mt-2 space-y-2">
+              <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson(debugContext)}</pre>
+              <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson(debugComparison)}</pre>
+            </div>
+          </details>
         </CardContent>
       </Card>
-
-      {blockReason && (
-        <Card className="border-warning">
-          <CardContent className="py-4">
-            <p className="text-sm">
-              <strong>⚠️ Carregamento da Análise Gerencial bloqueado:</strong> {blockReason}
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       {showLoadingState && (
         <Card>
@@ -653,41 +669,42 @@ const Management: React.FC = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedSellerForClients(null); }}>
         {isSeller ? (
-          /* Simplified tabs for seller */
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="vendedores">
+            <TabsTrigger value="vendedores" className="text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Meu Resumo
             </TabsTrigger>
-            <TabsTrigger value="clientes">
+            <TabsTrigger value="clientes" className="text-xs sm:text-sm">
               <UserCheck className="h-4 w-4 mr-1.5" />
               Meus Clientes
             </TabsTrigger>
           </TabsList>
         ) : (
-          /* Full tabs for managers */
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="vendedores">
-              <Users className="h-4 w-4 mr-1.5" />
-              Resumo por Vendedor
-            </TabsTrigger>
-            <TabsTrigger value="clientes">
-              <UserCheck className="h-4 w-4 mr-1.5" />
-              Clientes por Vendedor
-            </TabsTrigger>
-            <TabsTrigger value="produtos">
-              <Package className="h-4 w-4 mr-1.5" />
-              Análise por Produto
-            </TabsTrigger>
-            <TabsTrigger value="cargos">
-              <BarChart3 className="h-4 w-4 mr-1.5" />
-              Resumo por Cargo
-            </TabsTrigger>
-            <TabsTrigger value="rac">
-              <BarChart3 className="h-4 w-4 mr-1.5" />
-              Resumo RAC
-            </TabsTrigger>
-          </TabsList>
+          /* Full tabs for managers — horizontal scroll on mobile, grid no desktop */
+          <div className="w-full overflow-x-auto -mx-1 px-1">
+            <TabsList className="inline-flex h-auto w-auto min-w-full sm:grid sm:grid-cols-5 gap-1 p-1">
+              <TabsTrigger value="vendedores" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <Users className="h-4 w-4 mr-1.5 shrink-0" />
+                Vendedores
+              </TabsTrigger>
+              <TabsTrigger value="clientes" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <UserCheck className="h-4 w-4 mr-1.5 shrink-0" />
+                Clientes
+              </TabsTrigger>
+              <TabsTrigger value="produtos" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <Package className="h-4 w-4 mr-1.5 shrink-0" />
+                Produtos
+              </TabsTrigger>
+              <TabsTrigger value="cargos" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <BarChart3 className="h-4 w-4 mr-1.5 shrink-0" />
+                Cargos
+              </TabsTrigger>
+              <TabsTrigger value="rac" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <BarChart3 className="h-4 w-4 mr-1.5 shrink-0" />
+                RAC
+              </TabsTrigger>
+            </TabsList>
+          </div>
         )}
 
         {/* ===== TAB: Resumo por Vendedor / Meu Resumo ===== */}
