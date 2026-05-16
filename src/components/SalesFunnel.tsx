@@ -1122,27 +1122,6 @@ export const SalesFunnel: React.FC = () => {
       </div>
 
       {/* Overview */}
-      {activeView === 'overview' && (() => {
-        // eslint-disable-next-line no-console
-        console.log('[CARD RENDER useConsolidatedSalesMetrics]', {
-          activeView,
-          overviewMetricsRef: overviewMetrics,
-          contacts: overviewMetrics?.contacts,
-          prospects: overviewMetrics?.prospects,
-          sales: overviewMetrics?.sales,
-          partialSales: overviewMetrics?.partialSales,
-          lostSales: overviewMetrics?.lostSales,
-          rawCounts: {
-            contactsCount: overviewMetrics?.contacts?.count,
-            prospectsCount: overviewMetrics?.prospects?.count,
-            salesCount: overviewMetrics?.sales?.count,
-            partialSalesCount: overviewMetrics?.partialSales?.count,
-            lostSalesCount: overviewMetrics?.lostSales?.count,
-          },
-          consolidatedMetricsRef: consolidatedMetrics,
-        });
-        return null;
-      })()}
       {activeView === 'overview' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>
             <CardHeader className="pb-2">
