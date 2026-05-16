@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { 
+import { formatDateDisplay, formatDateToLocal } from '@/lib/utils';
+import {
   Building2,
   RefreshCw,
   Calendar as CalendarIcon,
@@ -16,11 +17,12 @@ import {
   CheckSquare,
   Users,
   TrendingUp,
-  ArrowLeft
+  ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 
 interface FilialStats {
   id: string;
@@ -34,48 +36,41 @@ interface FilialStats {
   conversionRate: number;
 }
 
+/**
+ * Contrato oficial:
+ * - RPC V2 (get_performance_by_filial_v2) com filtros 'all'/'' → NULL
+ * - Datas via formatDateToLocal
+ * - Filtro de consultor por UUID (user_id) — NUNCA por nome ou profile.id
+ * - Consultores via useFilteredConsultants (RLS + filial do supervisor)
+ * - React Query default (staleTime 5m, refetchOnWindowFocus:false em QueryProvider)
+ */
 const PerformanceByFilial: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [selectedUser, setSelectedUser] = useState('all');
-  const [filialStats, setFilialStats] = useState<FilialStats[]>([]);
-  const [collaborators, setCollaborators] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
 
-  const loadCollaborators = async () => {
-    try {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, name, role, user_id')
-        .order('name');
+  const { consultants } = useFilteredConsultants();
 
-      if (error) throw error;
-      setCollaborators(profiles || []);
-    } catch (error) {
-      console.error('Erro ao carregar colaboradores:', error);
-    }
-  };
+  const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
+  const endStr = dateTo ? formatDateToLocal(dateTo) : null;
+  const responsibleUserId =
+    selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
 
-  const loadFilialStats = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      // V2: agregação por task_followups (activity_date / filial_id) + tasks (valores)
-      const p_responsible_user_id =
-        selectedUser && selectedUser !== 'all' ? selectedUser : null;
-
-      const { data: stats, error } = await supabase.rpc('get_performance_by_filial_v2', {
-        p_start_date: dateFrom ? dateFrom.toISOString().split('T')[0] : null,
-        p_end_date: dateTo ? dateTo.toISOString().split('T')[0] : null,
-        p_responsible_user_id,
+  const { data: filialStats = [], isFetching, refetch } = useQuery<FilialStats[]>({
+    queryKey: ['performance-by-filial-v2', user?.id ?? null, startStr, endStr, responsibleUserId],
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_performance_by_filial_v2', {
+        p_start_date: startStr,
+        p_end_date: endStr,
+        p_responsible_user_id: responsibleUserId,
       });
-
       if (error) throw error;
 
-      const filialStatsResult = (stats || []).map((row: any) => {
+      return (data ?? []).map((row: any) => {
         const visitas = Number(row.visitas ?? 0);
         const checklist = Number(row.checklists ?? 0);
         const ligacoes = Number(row.ligacoes ?? 0);
@@ -91,25 +86,13 @@ const PerformanceByFilial: React.FC = () => {
           prospects: Number(row.prospections ?? 0),
           prospectsValue: 0,
           salesValue: Number(row.sales_total_value ?? 0) + Number(row.sales_partial_value ?? 0),
-          conversionRate,
+          conversionRate: Math.round(conversionRate * 10) / 10,
         };
       });
+    },
+  });
 
-      setFilialStats(filialStatsResult);
-    } catch (error) {
-      console.error('Erro ao carregar stats por filial:', error);
-      setFilialStats([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      loadFilialStats();
-      loadCollaborators();
-    }
-  }, [user, dateFrom, dateTo, selectedUser]);
+  const loading = isFetching;
 
   return (
     <div className="space-y-6">
@@ -130,10 +113,10 @@ const PerformanceByFilial: React.FC = () => {
             <p className="text-muted-foreground">Análise detalhada do desempenho de cada filial</p>
           </div>
         </div>
-        
-        <Button 
-          variant="outline" 
-          onClick={() => loadFilialStats()}
+
+        <Button
+          variant="outline"
+          onClick={() => refetch()}
           disabled={loading}
           className="gap-2"
         >
@@ -159,21 +142,16 @@ const PerformanceByFilial: React.FC = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateFrom && "text-muted-foreground"
+                      'w-full justify-start text-left font-normal',
+                      !dateFrom && 'text-muted-foreground',
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    {dateFrom ? formatDateDisplay(dateFrom) : <span>Selecionar data</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
@@ -185,12 +163,12 @@ const PerformanceByFilial: React.FC = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !dateTo && "text-muted-foreground"
+                      'w-full justify-start text-left font-normal',
+                      !dateTo && 'text-muted-foreground',
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                    {dateTo ? formatDateDisplay(dateTo) : <span>Selecionar data</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -199,27 +177,23 @@ const PerformanceByFilial: React.FC = () => {
                     selected={dateTo}
                     onSelect={setDateTo}
                     initialFocus
-                    disabled={(date) => dateFrom ? date < dateFrom : false}
+                    disabled={(date) => (dateFrom ? date < dateFrom : false)}
                   />
                 </PopoverContent>
               </Popover>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">CEP</label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <label className="text-sm font-medium">Consultor</label>
+              <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Todos os CEPs" />
+                  <SelectValue placeholder="Todos os consultores" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os CEPs</SelectItem>
-                  {collaborators.map((collaborator) => (
-                    <SelectItem key={collaborator.id} value={collaborator.id}>
-                      {collaborator.name} - {
-                        collaborator.role === 'consultant' ? 'Consultor' : 
-                        collaborator.role === 'manager' ? 'Gerente' : 
-                        collaborator.role === 'admin' ? 'Admin' : collaborator.role
-                      }
+                  <SelectItem value="all">Todos os consultores</SelectItem>
+                  {consultants.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -271,8 +245,8 @@ const PerformanceByFilial: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge 
-                          variant={filial.conversionRate > 15 ? "default" : "secondary"}
+                        <Badge
+                          variant={filial.conversionRate > 15 ? 'default' : 'secondary'}
                           className="text-sm px-3 py-1"
                         >
                           {filial.conversionRate}% conversão
@@ -285,39 +259,27 @@ const PerformanceByFilial: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <div className="bg-primary/5 rounded-lg p-4 text-center">
                         <Target className="h-6 w-6 mx-auto mb-2 text-primary" />
                         <p className="text-2xl font-bold text-primary">{filial.visitas}</p>
                         <p className="text-xs text-muted-foreground">Visitas</p>
-                        <p className="text-xs text-muted-foreground font-medium">
-                          R$ {(filial.prospectsValue * (filial.visitas / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
-                        </p>
                       </div>
                       <div className="bg-success/5 rounded-lg p-4 text-center">
                         <CheckSquare className="h-6 w-6 mx-auto mb-2 text-success" />
                         <p className="text-2xl font-bold text-success">{filial.checklist}</p>
                         <p className="text-xs text-muted-foreground">Checklist</p>
-                        <p className="text-xs text-muted-foreground font-medium">
-                          R$ {(filial.prospectsValue * (filial.checklist / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
-                        </p>
                       </div>
                       <div className="bg-warning/5 rounded-lg p-4 text-center">
                         <Users className="h-6 w-6 mx-auto mb-2 text-warning" />
                         <p className="text-2xl font-bold text-warning">{filial.ligacoes}</p>
                         <p className="text-xs text-muted-foreground">Ligações</p>
-                        <p className="text-xs text-muted-foreground font-medium">
-                          R$ {(filial.prospectsValue * (filial.ligacoes / Math.max(1, filial.visitas + filial.checklist + filial.ligacoes))).toLocaleString('pt-BR')}
-                        </p>
                       </div>
                       <div className="bg-accent/5 rounded-lg p-4 text-center">
                         <TrendingUp className="h-6 w-6 mx-auto mb-2 text-accent" />
                         <p className="text-2xl font-bold text-accent">{filial.prospects}</p>
                         <p className="text-xs text-muted-foreground">Prospects</p>
-                        <p className="text-xs text-muted-foreground font-medium">
-                          R$ {filial.prospectsValue.toLocaleString('pt-BR')}
-                        </p>
                       </div>
                       <div className="bg-secondary/5 rounded-lg p-4 text-center md:hidden">
                         <DollarSign className="h-6 w-6 mx-auto mb-2 text-success" />
