@@ -119,15 +119,15 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         throw rpcError;
       }
 
-      // eslint-disable-next-line no-console
-      console.log('[useConsolidatedSalesMetrics] ✅ Payload bruto get_activity_metrics_v2', {
-        userId: user?.id,
-        rpcParams,
-        rawData: data,
-        rawDataType: typeof data,
-        rawDataIsArray: Array.isArray(data),
-        rawDataKeys: data && typeof data === 'object' ? Object.keys(data as any) : null,
-      });
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[useConsolidatedSalesMetrics] raw payload', {
+          rawDataType: typeof data,
+          rawDataIsArray: Array.isArray(data),
+          rawDataKeys: data && typeof data === 'object' ? Object.keys(data as any) : null,
+          rawData: data,
+        });
+      }
 
       // Defensive: alguns drivers podem devolver jsonb embrulhado em array
       let payload: any = data;
