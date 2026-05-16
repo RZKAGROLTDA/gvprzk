@@ -198,16 +198,26 @@ export const SalesFunnel: React.FC = () => {
   const isLoadingFunnel = isLoadingMetrics;
 
   // eslint-disable-next-line no-console
-  console.log('[SalesFunnel] 🎯 finalMetricsReturned -> cards', {
+  console.log('[useConsolidatedSalesMetrics][SalesFunnel] 🎯 finalMetricsReturned -> cards', {
     isLoadingMetrics,
+    activeView,
     filtersSent: filters,
-    consolidatedMetrics,
+    consolidatedMetricsRef: consolidatedMetrics,
+    overviewMetricsRef: overviewMetrics,
+    funnelMetricsRef: funnelMetrics,
     cardProps: {
-      contacts: overviewMetrics.contacts,
-      prospects: overviewMetrics.prospects,
-      sales: overviewMetrics.sales,
-      partialSales: overviewMetrics.partialSales,
-      lostSales: overviewMetrics.lostSales,
+      contacts: overviewMetrics?.contacts,
+      prospects: overviewMetrics?.prospects,
+      sales: overviewMetrics?.sales,
+      partialSales: overviewMetrics?.partialSales,
+      lostSales: overviewMetrics?.lostSales,
+    },
+    renderConditions: {
+      willRenderOverviewCards: true, // cards de overview não têm guard de loading
+      isLoadingData,
+      hasOverviewObject: !!overviewMetrics,
+      contactsCountResolved: overviewMetrics?.contacts?.count ?? null,
+      salesCountResolved: overviewMetrics?.sales?.count ?? null,
     },
   });
 
