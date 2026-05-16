@@ -162,12 +162,7 @@ export const SalesFunnel: React.FC = () => {
 
   // Initialize filial cache on component mount
   useEffect(() => {
-    const initializeCache = async () => {
-      console.log('🚀 SalesFunnel: Initializing filial cache...');
-      await loadFiliaisCache();
-      console.log('✅ SalesFunnel: Filial cache initialized');
-    };
-    initializeCache();
+    loadFiliaisCache().catch(() => {});
   }, []);
 
   // Removed useTasksOptimized() - using useInfiniteSalesData instead
