@@ -143,13 +143,16 @@ export const WeeklyAgenda: React.FC = () => {
     enabled: !!user?.id && !!selectedDayISO,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<FollowupRow[]> => {
-      const start = parseISODate(selectedDayISO!);
-      const end = addDays(start, 1);
+      // Alinhar com get_weekly_followups_agenda, que filtra por activity_date::date (UTC).
+      // Usar range UTC [dia 00:00Z, próximo dia 00:00Z) para garantir mesma contagem do card.
+      const [y, m, d] = selectedDayISO!.split('-').map(Number);
+      const startUtc = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
+      const endUtc = new Date(startUtc.getTime() + 86_400_000);
       let q = supabase
         .from('task_followups')
         .select(FOLLOWUP_COLS)
-        .gte('activity_date', start.toISOString())
-        .lt('activity_date', end.toISOString())
+        .gte('activity_date', startUtc.toISOString())
+        .lt('activity_date', endUtc.toISOString())
         .order('activity_date', { ascending: true })
         .limit(500);
       if (seller !== 'all') q = q.eq('responsible_user_id', seller);
