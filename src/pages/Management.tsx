@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search } from 'lucide-react';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search, RefreshCw } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -444,14 +444,43 @@ const Management: React.FC = () => {
     },
   }), [sellerQuery.isLoading, sellerQuery.error, sellerData.length, clientQuery.isLoading, clientQuery.error, clientData.length, productQuery.isLoading, productQuery.error, productData.length, managementDebugQuery.data]);
 
+  const handleRefreshAll = async () => {
+    await Promise.all([
+      sellerQuery.refetch(),
+      clientQuery.refetch(),
+      productQuery.refetch(),
+      racQuery.refetch(),
+      managementDebugQuery.refetch(),
+    ]);
+  };
+
+  const isRefreshing =
+    sellerQuery.isFetching ||
+    clientQuery.isFetching ||
+    productQuery.isFetching ||
+    managementDebugQuery.isFetching;
+
+  const showDebugPanel = import.meta.env.DEV;
+
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-2">
-        <BarChart3 className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">
-          {isSeller ? 'Meus Resultados' : 'Análise Gerencial'}
-        </h1>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">
+            {isSeller ? 'Meus Resultados' : 'Análise Gerencial'}
+          </h1>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefreshAll}
+          disabled={isRefreshing || !managementContextReady}
+        >
+          <RefreshCw className={`h-4 w-4 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Atualizando…' : 'Atualizar agora'}
+        </Button>
       </div>
 
       {/* Banner de bloqueio — vermelho, sempre acima de tudo */}
@@ -461,7 +490,8 @@ const Management: React.FC = () => {
         </div>
       )}
 
-      {/* Debug panel — sempre visível no topo, mobile e desktop */}
+      {/* Debug panel — somente em desenvolvimento */}
+      {showDebugPanel && (
       <Card className="border-2 border-amber-500/60 bg-amber-50/30 dark:bg-amber-950/20">
         <CardHeader className="pb-2">
           <CardTitle className="text-base sm:text-lg">🔍 Debug temporário /management</CardTitle>
@@ -504,6 +534,7 @@ const Management: React.FC = () => {
           </details>
         </CardContent>
       </Card>
+      )}
 
       {showLoadingState && (
         <Card>
