@@ -669,41 +669,42 @@ const Management: React.FC = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedSellerForClients(null); }}>
         {isSeller ? (
-          /* Simplified tabs for seller */
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="vendedores">
+            <TabsTrigger value="vendedores" className="text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Meu Resumo
             </TabsTrigger>
-            <TabsTrigger value="clientes">
+            <TabsTrigger value="clientes" className="text-xs sm:text-sm">
               <UserCheck className="h-4 w-4 mr-1.5" />
               Meus Clientes
             </TabsTrigger>
           </TabsList>
         ) : (
-          /* Full tabs for managers */
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="vendedores">
-              <Users className="h-4 w-4 mr-1.5" />
-              Resumo por Vendedor
-            </TabsTrigger>
-            <TabsTrigger value="clientes">
-              <UserCheck className="h-4 w-4 mr-1.5" />
-              Clientes por Vendedor
-            </TabsTrigger>
-            <TabsTrigger value="produtos">
-              <Package className="h-4 w-4 mr-1.5" />
-              Análise por Produto
-            </TabsTrigger>
-            <TabsTrigger value="cargos">
-              <BarChart3 className="h-4 w-4 mr-1.5" />
-              Resumo por Cargo
-            </TabsTrigger>
-            <TabsTrigger value="rac">
-              <BarChart3 className="h-4 w-4 mr-1.5" />
-              Resumo RAC
-            </TabsTrigger>
-          </TabsList>
+          /* Full tabs for managers — horizontal scroll on mobile, grid no desktop */
+          <div className="w-full overflow-x-auto -mx-1 px-1">
+            <TabsList className="inline-flex h-auto w-auto min-w-full sm:grid sm:grid-cols-5 gap-1 p-1">
+              <TabsTrigger value="vendedores" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <Users className="h-4 w-4 mr-1.5 shrink-0" />
+                Vendedores
+              </TabsTrigger>
+              <TabsTrigger value="clientes" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <UserCheck className="h-4 w-4 mr-1.5 shrink-0" />
+                Clientes
+              </TabsTrigger>
+              <TabsTrigger value="produtos" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <Package className="h-4 w-4 mr-1.5 shrink-0" />
+                Produtos
+              </TabsTrigger>
+              <TabsTrigger value="cargos" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <BarChart3 className="h-4 w-4 mr-1.5 shrink-0" />
+                Cargos
+              </TabsTrigger>
+              <TabsTrigger value="rac" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <BarChart3 className="h-4 w-4 mr-1.5 shrink-0" />
+                RAC
+              </TabsTrigger>
+            </TabsList>
+          </div>
         )}
 
         {/* ===== TAB: Resumo por Vendedor / Meu Resumo ===== */}
