@@ -108,6 +108,27 @@ export const useUpsertVisitSchedule = () => {
   });
 };
 
+export const useDeleteVisitSchedule = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('visit_schedules' as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['visit_schedules'] });
+      toast({ title: 'Programação excluída' });
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Erro ao excluir',
+        description: String(err?.message || 'Você não tem permissão para excluir esta programação.'),
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useUpdateVisitScheduleStatus = () => {
   const qc = useQueryClient();
   return useMutation({

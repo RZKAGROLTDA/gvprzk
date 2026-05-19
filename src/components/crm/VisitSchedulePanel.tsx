@@ -5,15 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus, CalendarDays, CheckCircle2, Clock, Percent, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, CalendarDays, CheckCircle2, Clock, Percent, Pencil, Trash2, RotateCcw, XCircle } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import {
   useVisitSchedules,
   VisitSchedule,
   VisitScheduleStatus,
   useUpdateVisitScheduleStatus,
+  useDeleteVisitSchedule,
 } from '@/hooks/useVisitSchedules';
 import { VisitScheduleForm } from './VisitScheduleForm';
 import { cn } from '@/lib/utils';
@@ -47,6 +53,7 @@ const STATUS_CARD_CLASS: Record<VisitScheduleStatus, string> = {
 };
 
 export const VisitSchedulePanel: React.FC = () => {
+  const { user } = useAuth();
   const { isManager, isAdmin, isSupervisor } = useUserRole() as any;
   const isPrivileged = !!(isManager || isAdmin || isSupervisor);
   const { consultants } = useFilteredConsultants();
@@ -83,11 +90,21 @@ export const VisitSchedulePanel: React.FC = () => {
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined);
 
   const updateStatus = useUpdateVisitScheduleStatus();
+  const deleteSchedule = useDeleteVisitSchedule();
+  const [toDelete, setToDelete] = useState<VisitSchedule | null>(null);
+
+  const canDelete = (s: VisitSchedule) => {
+    if (isManager || isAdmin) return true;
+    if (isSupervisor) return true; // RLS restringe pela filial
+    return s.seller_id === user?.id && s.status !== 'realizado';
+  };
 
   const kpis = useMemo(() => {
     const today = startOfDay(new Date());
     const total = schedules.length;
     const realizadas = schedules.filter((s) => s.status === 'realizado').length;
+    const naoRealizadas = schedules.filter((s) => s.status === 'nao_realizado').length;
+    const reagendadas = schedules.filter((s) => s.status === 'reagendado').length;
     const pendentes = schedules.filter(
       (s) => s.status === 'planejado' && parseISO(s.planned_date) >= today,
     ).length;
@@ -98,7 +115,7 @@ export const VisitSchedulePanel: React.FC = () => {
         (s.status === 'planejado' && parseISO(s.planned_date) < today),
     ).length;
     const exec = denom > 0 ? Math.round((realizadas / denom) * 100) : 0;
-    return { total, realizadas, pendentes, exec };
+    return { total, realizadas, naoRealizadas, reagendadas, pendentes, exec };
   }, [schedules]);
 
   const byDay = useMemo(() => {
@@ -125,11 +142,13 @@ export const VisitSchedulePanel: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Resumo da semana */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard icon={<CalendarDays className="h-5 w-5" />} label="Programadas" value={kpis.total} />
         <KpiCard icon={<CheckCircle2 className="h-5 w-5 text-green-600" />} label="Realizadas" value={kpis.realizadas} />
         <KpiCard icon={<Clock className="h-5 w-5 text-amber-600" />} label="Pendentes" value={kpis.pendentes} />
+        <KpiCard icon={<XCircle className="h-5 w-5 text-destructive" />} label="Não realizadas" value={kpis.naoRealizadas} />
+        <KpiCard icon={<RotateCcw className="h-5 w-5 text-amber-500" />} label="Reagendadas" value={kpis.reagendadas} />
         <KpiCard icon={<Percent className="h-5 w-5 text-primary" />} label="% Execução" value={`${kpis.exec}%`} />
       </div>
 
@@ -235,22 +254,34 @@ export const VisitSchedulePanel: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABELS[s.status]}</Badge>
-                      {s.status === 'planejado' && (
-                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
+                        {s.status === 'planejado' && (
+                          <>
+                            <button
+                              type="button"
+                              title="Marcar realizado"
+                              className="text-green-600 text-[10px] hover:underline"
+                              onClick={() => updateStatus.mutate({ id: s.id, status: 'realizado' })}
+                            >✓</button>
+                            <button
+                              type="button"
+                              title="Não realizado"
+                              className="text-destructive text-[10px] hover:underline"
+                              onClick={() => updateStatus.mutate({ id: s.id, status: 'nao_realizado' })}
+                            >✗</button>
+                          </>
+                        )}
+                        {canDelete(s) && (
                           <button
                             type="button"
-                            title="Marcar realizado"
-                            className="text-green-600 text-[10px] hover:underline"
-                            onClick={() => updateStatus.mutate({ id: s.id, status: 'realizado' })}
-                          >✓</button>
-                          <button
-                            type="button"
-                            title="Não realizado"
-                            className="text-destructive text-[10px] hover:underline"
-                            onClick={() => updateStatus.mutate({ id: s.id, status: 'nao_realizado' })}
-                          >✗</button>
-                        </div>
-                      )}
+                            title="Excluir programação"
+                            className="text-destructive hover:opacity-80"
+                            onClick={() => setToDelete(s)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -270,6 +301,35 @@ export const VisitSchedulePanel: React.FC = () => {
           defaultDate={defaultDate}
         />
       )}
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir programação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete && (
+                <>
+                  Cliente <strong>{toDelete.client_name}</strong> em{' '}
+                  <strong>{parseISO(toDelete.planned_date).toLocaleDateString('pt-BR')}</strong>.
+                  Esta ação não pode ser desfeita.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (toDelete) deleteSchedule.mutate(toDelete.id);
+                setToDelete(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
