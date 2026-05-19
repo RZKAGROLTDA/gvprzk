@@ -476,7 +476,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string }
 );
 
 // --- Autocomplete inline de cliente ---
-const ClientAutocomplete: React.FC<{
+export const ClientAutocomplete: React.FC<{
   value: { code: string; name: string } | null;
   onChange: (v: { code: string; name: string } | null) => void;
 }> = ({ value, onChange }) => {
