@@ -5,15 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus, CalendarDays, CheckCircle2, Clock, Percent, Pencil } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, CalendarDays, CheckCircle2, Clock, Percent, Pencil, Trash2, RotateCcw, XCircle } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import {
   useVisitSchedules,
   VisitSchedule,
   VisitScheduleStatus,
   useUpdateVisitScheduleStatus,
+  useDeleteVisitSchedule,
 } from '@/hooks/useVisitSchedules';
 import { VisitScheduleForm } from './VisitScheduleForm';
 import { cn } from '@/lib/utils';
