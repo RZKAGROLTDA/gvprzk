@@ -142,11 +142,13 @@ export const VisitSchedulePanel: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Resumo da semana */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard icon={<CalendarDays className="h-5 w-5" />} label="Programadas" value={kpis.total} />
         <KpiCard icon={<CheckCircle2 className="h-5 w-5 text-green-600" />} label="Realizadas" value={kpis.realizadas} />
         <KpiCard icon={<Clock className="h-5 w-5 text-amber-600" />} label="Pendentes" value={kpis.pendentes} />
+        <KpiCard icon={<XCircle className="h-5 w-5 text-destructive" />} label="Não realizadas" value={kpis.naoRealizadas} />
+        <KpiCard icon={<RotateCcw className="h-5 w-5 text-amber-500" />} label="Reagendadas" value={kpis.reagendadas} />
         <KpiCard icon={<Percent className="h-5 w-5 text-primary" />} label="% Execução" value={`${kpis.exec}%`} />
       </div>
 
