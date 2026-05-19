@@ -137,6 +137,7 @@ const Campaigns: React.FC = () => {
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="summary">Resumo Vendedor</TabsTrigger>
           <TabsTrigger value="rules">Regras</TabsTrigger>
+          <TabsTrigger value="special">Condição Especial</TabsTrigger>
         </TabsList>
 
         <TabsContent value="entries" className="mt-6">
@@ -149,6 +150,10 @@ const Campaigns: React.FC = () => {
 
         <TabsContent value="rules" className="mt-6">
           <RulesTab canManage={canManageRules} canDelete={canDeleteRules} />
+        </TabsContent>
+
+        <TabsContent value="special" className="mt-6">
+          <SpecialConditionsTab />
         </TabsContent>
       </Tabs>
     </div>
