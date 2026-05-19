@@ -55,6 +55,7 @@ import {
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { SpecialConditionsTab } from '@/components/campaigns/SpecialConditionsTab';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -137,6 +138,7 @@ const Campaigns: React.FC = () => {
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="summary">Resumo Vendedor</TabsTrigger>
           <TabsTrigger value="rules">Regras</TabsTrigger>
+          <TabsTrigger value="special">Condição Especial</TabsTrigger>
         </TabsList>
 
         <TabsContent value="entries" className="mt-6">
@@ -149,6 +151,10 @@ const Campaigns: React.FC = () => {
 
         <TabsContent value="rules" className="mt-6">
           <RulesTab canManage={canManageRules} canDelete={canDeleteRules} />
+        </TabsContent>
+
+        <TabsContent value="special" className="mt-6">
+          <SpecialConditionsTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -476,7 +482,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string }
 );
 
 // --- Autocomplete inline de cliente ---
-const ClientAutocomplete: React.FC<{
+export const ClientAutocomplete: React.FC<{
   value: { code: string; name: string } | null;
   onChange: (v: { code: string; name: string } | null) => void;
 }> = ({ value, onChange }) => {
