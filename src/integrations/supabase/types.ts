@@ -720,6 +720,81 @@ export type Database = {
         }
         Relationships: []
       }
+      special_conditions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          attachments: string[] | null
+          client_code: string
+          client_name: string
+          created_at: string
+          created_by: string
+          discount_percent: number
+          filial_id: string | null
+          filial_name: string | null
+          id: string
+          invoice_number: string | null
+          nf_date: string | null
+          observation: string | null
+          payment_condition: string | null
+          sale_date: string | null
+          sale_value: number
+          seller_id: string
+          seller_name: string | null
+          status: string
+          total_discount_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: string[] | null
+          client_code: string
+          client_name: string
+          created_at?: string
+          created_by?: string
+          discount_percent?: number
+          filial_id?: string | null
+          filial_name?: string | null
+          id?: string
+          invoice_number?: string | null
+          nf_date?: string | null
+          observation?: string | null
+          payment_condition?: string | null
+          sale_date?: string | null
+          sale_value?: number
+          seller_id?: string
+          seller_name?: string | null
+          status?: string
+          total_discount_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: string[] | null
+          client_code?: string
+          client_name?: string
+          created_at?: string
+          created_by?: string
+          discount_percent?: number
+          filial_id?: string | null
+          filial_name?: string | null
+          id?: string
+          invoice_number?: string | null
+          nf_date?: string | null
+          observation?: string | null
+          payment_condition?: string | null
+          sale_date?: string | null
+          sale_value?: number
+          seller_id?: string
+          seller_name?: string | null
+          status?: string
+          total_discount_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_access_metadata: {
         Row: {
           created_at: string | null
