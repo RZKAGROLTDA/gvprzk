@@ -115,7 +115,7 @@ export const VisitSchedulePanel: React.FC = () => {
         (s.status === 'planejado' && parseISO(s.planned_date) < today),
     ).length;
     const exec = denom > 0 ? Math.round((realizadas / denom) * 100) : 0;
-    return { total, realizadas, pendentes, exec };
+    return { total, realizadas, naoRealizadas, reagendadas, pendentes, exec };
   }, [schedules]);
 
   const byDay = useMemo(() => {
