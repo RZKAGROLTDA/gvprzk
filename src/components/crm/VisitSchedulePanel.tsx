@@ -53,6 +53,7 @@ const STATUS_CARD_CLASS: Record<VisitScheduleStatus, string> = {
 };
 
 export const VisitSchedulePanel: React.FC = () => {
+  const { user } = useAuth();
   const { isManager, isAdmin, isSupervisor } = useUserRole() as any;
   const isPrivileged = !!(isManager || isAdmin || isSupervisor);
   const { consultants } = useFilteredConsultants();
