@@ -301,6 +301,35 @@ export const VisitSchedulePanel: React.FC = () => {
           defaultDate={defaultDate}
         />
       )}
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir programação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toDelete && (
+                <>
+                  Cliente <strong>{toDelete.client_name}</strong> em{' '}
+                  <strong>{parseISO(toDelete.planned_date).toLocaleDateString('pt-BR')}</strong>.
+                  Esta ação não pode ser desfeita.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (toDelete) deleteSchedule.mutate(toDelete.id);
+                setToDelete(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
