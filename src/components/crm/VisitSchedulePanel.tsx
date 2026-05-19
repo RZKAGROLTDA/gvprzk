@@ -90,11 +90,21 @@ export const VisitSchedulePanel: React.FC = () => {
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined);
 
   const updateStatus = useUpdateVisitScheduleStatus();
+  const deleteSchedule = useDeleteVisitSchedule();
+  const [toDelete, setToDelete] = useState<VisitSchedule | null>(null);
+
+  const canDelete = (s: VisitSchedule) => {
+    if (isManager || isAdmin) return true;
+    if (isSupervisor) return true; // RLS restringe pela filial
+    return s.seller_id === user?.id && s.status !== 'realizado';
+  };
 
   const kpis = useMemo(() => {
     const today = startOfDay(new Date());
     const total = schedules.length;
     const realizadas = schedules.filter((s) => s.status === 'realizado').length;
+    const naoRealizadas = schedules.filter((s) => s.status === 'nao_realizado').length;
+    const reagendadas = schedules.filter((s) => s.status === 'reagendado').length;
     const pendentes = schedules.filter(
       (s) => s.status === 'planejado' && parseISO(s.planned_date) >= today,
     ).length;
