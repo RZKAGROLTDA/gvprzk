@@ -254,22 +254,34 @@ export const VisitSchedulePanel: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABELS[s.status]}</Badge>
-                      {s.status === 'planejado' && (
-                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
+                        {s.status === 'planejado' && (
+                          <>
+                            <button
+                              type="button"
+                              title="Marcar realizado"
+                              className="text-green-600 text-[10px] hover:underline"
+                              onClick={() => updateStatus.mutate({ id: s.id, status: 'realizado' })}
+                            >✓</button>
+                            <button
+                              type="button"
+                              title="Não realizado"
+                              className="text-destructive text-[10px] hover:underline"
+                              onClick={() => updateStatus.mutate({ id: s.id, status: 'nao_realizado' })}
+                            >✗</button>
+                          </>
+                        )}
+                        {canDelete(s) && (
                           <button
                             type="button"
-                            title="Marcar realizado"
-                            className="text-green-600 text-[10px] hover:underline"
-                            onClick={() => updateStatus.mutate({ id: s.id, status: 'realizado' })}
-                          >✓</button>
-                          <button
-                            type="button"
-                            title="Não realizado"
-                            className="text-destructive text-[10px] hover:underline"
-                            onClick={() => updateStatus.mutate({ id: s.id, status: 'nao_realizado' })}
-                          >✗</button>
-                        </div>
-                      )}
+                            title="Excluir programação"
+                            className="text-destructive hover:opacity-80"
+                            onClick={() => setToDelete(s)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
