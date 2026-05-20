@@ -207,7 +207,7 @@ export const SpecialConditionsTab: React.FC = () => {
       if (fEnd && (e.sale_date || '') > fEnd) return false;
       return true;
     });
-  }, [all, fFilial, fSeller, fStatus, fPay, fClient, fNF, fStart, fEnd]);
+  }, [all, fFilial, fSeller, fStatus, fPay, fInstall, fPayType, fClient, fNF, fStart, fEnd]);
 
   const kpis = useMemo(() => {
     const count = list.length;
