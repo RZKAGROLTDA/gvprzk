@@ -450,13 +450,13 @@ export const SpecialConditionsTab: React.FC = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : list.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
                       Nenhuma condição encontrada.
                     </TableCell>
                   </TableRow>
