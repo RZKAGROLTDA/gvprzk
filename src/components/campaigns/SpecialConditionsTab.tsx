@@ -196,6 +196,8 @@ export const SpecialConditionsTab: React.FC = () => {
       if (fSeller !== 'all' && e.seller_id !== fSeller) return false;
       if (fStatus !== 'all' && e.status !== fStatus) return false;
       if (fPay !== 'all' && (e.payment_condition || '') !== fPay) return false;
+      if (fInstall !== 'all' && ((e as any).installments || '') !== fInstall) return false;
+      if (fPayType !== 'all' && ((e as any).payment_type || '') !== fPayType) return false;
       if (term) {
         const hay = `${e.client_name || ''} ${e.client_code || ''}`.toLowerCase();
         if (!hay.includes(term)) return false;
