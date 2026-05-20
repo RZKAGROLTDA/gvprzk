@@ -362,6 +362,30 @@ export const SpecialConditionsTab: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Parcelamento</Label>
+              <Select value={fInstall} onValueChange={setFInstall}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {INSTALLMENT_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Tipo Pagamento</Label>
+              <Select value={fPayType} onValueChange={setFPayType}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {PAYMENT_TYPE_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
             <span>Mostrando {list.length} de {all.length} registros</span>
@@ -373,6 +397,7 @@ export const SpecialConditionsTab: React.FC = () => {
               onClick={() => {
                 setFStart(''); setFEnd(''); setFFilial('all'); setFSeller('all');
                 setFClient(''); setFNF(''); setFStatus('all'); setFPay('all');
+                setFInstall('all'); setFPayType('all');
               }}
             >
               Limpar filtros
