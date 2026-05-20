@@ -49,10 +49,10 @@ export const useSpecialConditions = () => {
   return useQuery({
     queryKey: ['special_conditions'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('special_conditions')
+      const { data, error } = await (supabase
+        .from('special_conditions') as any)
         .select(
-          'id, client_code, client_name, filial_id, filial_name, seller_id, seller_name, sale_value, discount_percent, total_discount_value, invoice_number, payment_condition, sale_date, nf_date, payment_date, payment_condition_days, status, approved_by, approved_at, observation, attachments, created_by, created_at, updated_at' as any
+          'id, client_code, client_name, filial_id, filial_name, seller_id, seller_name, sale_value, discount_percent, total_discount_value, invoice_number, payment_condition, sale_date, nf_date, payment_date, payment_condition_days, status, approved_by, approved_at, observation, attachments, created_by, created_at, updated_at'
         )
         .order('created_at', { ascending: false })
         .limit(1000);
