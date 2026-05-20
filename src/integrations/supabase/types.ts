@@ -1685,6 +1685,24 @@ export type Database = {
           threat_description: string
         }[]
       }
+      ensure_campaign_client_master: {
+        Args: { p_client_code: string; p_client_name: string }
+        Returns: {
+          client_code: string
+          client_name: string
+          created_at: string
+          created_by: string | null
+          id: string
+          source: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaign_clients_master"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       get_activity_metrics_v2: {
         Args: {
           p_end_date?: string

@@ -271,11 +271,10 @@ export const useDeleteCampaignClient = () => {
 export const useEnsureClientMaster = () => {
   return useMutation({
     mutationFn: async ({ client_code, client_name }: { client_code: string; client_name: string }) => {
-      const { data, error } = await supabase
-        .from('campaign_clients_master')
-        .upsert({ client_code, client_name, source: 'manual' }, { onConflict: 'client_code' })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('ensure_campaign_client_master', {
+        p_client_code: client_code,
+        p_client_name: client_name,
+      });
       if (error) throw error;
       return data;
     },
