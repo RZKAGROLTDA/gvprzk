@@ -259,6 +259,8 @@ export const SpecialConditionsTab: React.FC = () => {
       'Desconto Total': Number(e.total_discount_value || 0),
       'NF': e.invoice_number || '',
       'Cond. Pagamento': e.payment_condition || '',
+      'Parcelamento': (e as any).installments || '',
+      'Tipo Pagamento': (e as any).payment_type || '',
       'Data Venda': e.sale_date || '',
       'Data Pagamento': (e as any).payment_date || '',
       'Status': e.status,
