@@ -619,6 +619,8 @@ const SpecialConditionDialog: React.FC<{
       setSaleDate(editing.sale_date || '');
       setPaymentDate((editing as any).payment_date || '');
       setObservation(editing.observation || '');
+      setInstallments((editing as any).installments || '');
+      setPaymentType((editing as any).payment_type || '');
     } else {
       setClient(null);
       setFilialId(defaultFilialId || '');
@@ -628,6 +630,8 @@ const SpecialConditionDialog: React.FC<{
       setSaleDate('');
       setPaymentDate('');
       setObservation('');
+      setInstallments('');
+      setPaymentType('');
     }
   }, [open, editing, defaultFilialId]);
 
