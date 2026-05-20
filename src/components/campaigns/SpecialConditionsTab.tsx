@@ -440,6 +440,8 @@ export const SpecialConditionsTab: React.FC = () => {
                   <TableHead className="text-right">Desc Total</TableHead>
                   <TableHead>NF</TableHead>
                   <TableHead>Cond. Pgto</TableHead>
+                  <TableHead>Parcelamento</TableHead>
+                  <TableHead>Tipo Pgto</TableHead>
                   <TableHead>Data Venda</TableHead>
                   <TableHead>Data Pgto</TableHead>
                   <TableHead className="text-right w-44">Ações</TableHead>
