@@ -169,6 +169,8 @@ export const SpecialConditionsTab: React.FC = () => {
   const [fNF, setFNF] = useState('');
   const [fStatus, setFStatus] = useState<'all' | SpecialConditionStatus>('all');
   const [fPay, setFPay] = useState('all');
+  const [fInstall, setFInstall] = useState('all');
+  const [fPayType, setFPayType] = useState('all');
 
   const all = items || [];
 
