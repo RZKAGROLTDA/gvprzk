@@ -733,12 +733,14 @@ export type Database = {
           filial_id: string | null
           filial_name: string | null
           id: string
+          installments: string | null
           invoice_number: string | null
           nf_date: string | null
           observation: string | null
           payment_condition: string | null
           payment_condition_days: number | null
           payment_date: string | null
+          payment_type: string | null
           sale_date: string | null
           sale_value: number
           seller_id: string
@@ -759,12 +761,14 @@ export type Database = {
           filial_id?: string | null
           filial_name?: string | null
           id?: string
+          installments?: string | null
           invoice_number?: string | null
           nf_date?: string | null
           observation?: string | null
           payment_condition?: string | null
           payment_condition_days?: number | null
           payment_date?: string | null
+          payment_type?: string | null
           sale_date?: string | null
           sale_value?: number
           seller_id?: string
@@ -785,12 +789,14 @@ export type Database = {
           filial_id?: string | null
           filial_name?: string | null
           id?: string
+          installments?: string | null
           invoice_number?: string | null
           nf_date?: string | null
           observation?: string | null
           payment_condition?: string | null
           payment_condition_days?: number | null
           payment_date?: string | null
+          payment_type?: string | null
           sale_date?: string | null
           sale_value?: number
           seller_id?: string

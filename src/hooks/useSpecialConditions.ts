@@ -21,6 +21,8 @@ export interface SpecialCondition {
   nf_date: string | null;
   payment_date: string | null;
   payment_condition_days: number | null;
+  installments: string | null;
+  payment_type: string | null;
   status: SpecialConditionStatus;
   approved_by: string | null;
   approved_at: string | null;
