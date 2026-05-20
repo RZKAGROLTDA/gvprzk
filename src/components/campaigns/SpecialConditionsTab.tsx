@@ -83,6 +83,23 @@ const PAYMENT_CONDITIONS = [
   'PIX',
 ];
 
+const INSTALLMENT_OPTIONS = ['1x', '2x', '3x', '4x', '5x', '6x'];
+const PAYMENT_TYPE_OPTIONS = ['RZKPay', 'Cartão de Crédito', 'Limite RZK'] as const;
+type PaymentType = typeof PAYMENT_TYPE_OPTIONS[number];
+
+const paymentTypeBadge = (pt?: string | null) => {
+  if (!pt) return <span className="text-muted-foreground">—</span>;
+  const map: Record<string, string> = {
+    'RZKPay':
+      'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30',
+    'Cartão de Crédito':
+      'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30',
+    'Limite RZK':
+      'bg-green-100 text-green-800 border-green-300 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30',
+  };
+  return <Badge variant="outline" className={cn('font-medium', map[pt] || '')}>{pt}</Badge>;
+};
+
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const formatPct = (v: number) => `${(v ?? 0).toFixed(2)}%`;
