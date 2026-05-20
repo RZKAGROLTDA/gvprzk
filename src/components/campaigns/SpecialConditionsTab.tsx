@@ -239,7 +239,7 @@ export const SpecialConditionsTab: React.FC = () => {
       'NF': e.invoice_number || '',
       'Cond. Pagamento': e.payment_condition || '',
       'Data Venda': e.sale_date || '',
-      'Data NF': e.nf_date || '',
+      'Data Pagamento': (e as any).payment_date || '',
       'Status': e.status,
       'Aprovado por': e.approved_by ? sellers.get(e.approved_by) || '' : '',
       'Aprovado em': e.approved_at ? new Date(e.approved_at).toLocaleString('pt-BR') : '',
@@ -393,7 +393,7 @@ export const SpecialConditionsTab: React.FC = () => {
                   <TableHead>NF</TableHead>
                   <TableHead>Cond. Pgto</TableHead>
                   <TableHead>Data Venda</TableHead>
-                  <TableHead>Data NF</TableHead>
+                  <TableHead>Data Pgto</TableHead>
                   <TableHead className="text-right w-44">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -426,7 +426,7 @@ export const SpecialConditionsTab: React.FC = () => {
                       <TableCell>{e.invoice_number || '—'}</TableCell>
                       <TableCell>{e.payment_condition || '—'}</TableCell>
                       <TableCell>{safeDate(e.sale_date)}</TableCell>
-                      <TableCell>{safeDate(e.nf_date)}</TableCell>
+                      <TableCell>{safeDate((e as any).payment_date)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {canApproveRow(e) && (
