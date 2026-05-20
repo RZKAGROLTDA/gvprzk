@@ -605,6 +605,8 @@ const SpecialConditionDialog: React.FC<{
   const [saleDate, setSaleDate] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
   const [observation, setObservation] = useState('');
+  const [installments, setInstallments] = useState<string>('');
+  const [paymentType, setPaymentType] = useState<string>('');
 
   useEffect(() => {
     if (!open) return;
