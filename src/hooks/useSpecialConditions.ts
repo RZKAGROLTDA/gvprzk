@@ -19,6 +19,8 @@ export interface SpecialCondition {
   payment_condition: string | null;
   sale_date: string | null;
   nf_date: string | null;
+  payment_date: string | null;
+  payment_condition_days: number | null;
   status: SpecialConditionStatus;
   approved_by: string | null;
   approved_at: string | null;
@@ -50,7 +52,7 @@ export const useSpecialConditions = () => {
       const { data, error } = await supabase
         .from('special_conditions')
         .select(
-          'id, client_code, client_name, filial_id, filial_name, seller_id, seller_name, sale_value, discount_percent, total_discount_value, invoice_number, payment_condition, sale_date, nf_date, status, approved_by, approved_at, observation, attachments, created_by, created_at, updated_at'
+          'id, client_code, client_name, filial_id, filial_name, seller_id, seller_name, sale_value, discount_percent, total_discount_value, invoice_number, payment_condition, sale_date, nf_date, payment_date, payment_condition_days, status, approved_by, approved_at, observation, attachments, created_by, created_at, updated_at' as any
         )
         .order('created_at', { ascending: false })
         .limit(1000);
