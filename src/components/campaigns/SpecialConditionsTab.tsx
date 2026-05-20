@@ -475,6 +475,8 @@ export const SpecialConditionsTab: React.FC = () => {
                       </TableCell>
                       <TableCell>{e.invoice_number || '—'}</TableCell>
                       <TableCell>{e.payment_condition || '—'}</TableCell>
+                      <TableCell>{(e as any).installments || '—'}</TableCell>
+                      <TableCell>{paymentTypeBadge((e as any).payment_type)}</TableCell>
                       <TableCell>{safeDate(e.sale_date)}</TableCell>
                       <TableCell>{safeDate((e as any).payment_date)}</TableCell>
                       <TableCell className="text-right">
