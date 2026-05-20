@@ -188,6 +188,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <HotToaster />
+        <VersionUpdateNotification />
         <AppContent />
       </TooltipProvider>
     </QueryClientProvider>
