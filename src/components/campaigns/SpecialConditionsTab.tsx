@@ -83,6 +83,23 @@ const PAYMENT_CONDITIONS = [
   'PIX',
 ];
 
+const INSTALLMENT_OPTIONS = ['1x', '2x', '3x', '4x', '5x', '6x'];
+const PAYMENT_TYPE_OPTIONS = ['RZKPay', 'Cartão de Crédito', 'Limite RZK'] as const;
+type PaymentType = typeof PAYMENT_TYPE_OPTIONS[number];
+
+const paymentTypeBadge = (pt?: string | null) => {
+  if (!pt) return <span className="text-muted-foreground">—</span>;
+  const map: Record<string, string> = {
+    'RZKPay':
+      'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/30',
+    'Cartão de Crédito':
+      'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30',
+    'Limite RZK':
+      'bg-green-100 text-green-800 border-green-300 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/30',
+  };
+  return <Badge variant="outline" className={cn('font-medium', map[pt] || '')}>{pt}</Badge>;
+};
+
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const formatPct = (v: number) => `${(v ?? 0).toFixed(2)}%`;
@@ -152,6 +169,8 @@ export const SpecialConditionsTab: React.FC = () => {
   const [fNF, setFNF] = useState('');
   const [fStatus, setFStatus] = useState<'all' | SpecialConditionStatus>('all');
   const [fPay, setFPay] = useState('all');
+  const [fInstall, setFInstall] = useState('all');
+  const [fPayType, setFPayType] = useState('all');
 
   const all = items || [];
 
@@ -177,6 +196,8 @@ export const SpecialConditionsTab: React.FC = () => {
       if (fSeller !== 'all' && e.seller_id !== fSeller) return false;
       if (fStatus !== 'all' && e.status !== fStatus) return false;
       if (fPay !== 'all' && (e.payment_condition || '') !== fPay) return false;
+      if (fInstall !== 'all' && ((e as any).installments || '') !== fInstall) return false;
+      if (fPayType !== 'all' && ((e as any).payment_type || '') !== fPayType) return false;
       if (term) {
         const hay = `${e.client_name || ''} ${e.client_code || ''}`.toLowerCase();
         if (!hay.includes(term)) return false;
@@ -186,7 +207,7 @@ export const SpecialConditionsTab: React.FC = () => {
       if (fEnd && (e.sale_date || '') > fEnd) return false;
       return true;
     });
-  }, [all, fFilial, fSeller, fStatus, fPay, fClient, fNF, fStart, fEnd]);
+  }, [all, fFilial, fSeller, fStatus, fPay, fInstall, fPayType, fClient, fNF, fStart, fEnd]);
 
   const kpis = useMemo(() => {
     const count = list.length;
@@ -238,6 +259,8 @@ export const SpecialConditionsTab: React.FC = () => {
       'Desconto Total': Number(e.total_discount_value || 0),
       'NF': e.invoice_number || '',
       'Cond. Pagamento': e.payment_condition || '',
+      'Parcelamento': (e as any).installments || '',
+      'Tipo Pagamento': (e as any).payment_type || '',
       'Data Venda': e.sale_date || '',
       'Data Pagamento': (e as any).payment_date || '',
       'Status': e.status,
@@ -339,6 +362,30 @@ export const SpecialConditionsTab: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Parcelamento</Label>
+              <Select value={fInstall} onValueChange={setFInstall}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {INSTALLMENT_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Tipo Pagamento</Label>
+              <Select value={fPayType} onValueChange={setFPayType}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Todos" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {PAYMENT_TYPE_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
             <span>Mostrando {list.length} de {all.length} registros</span>
@@ -350,6 +397,7 @@ export const SpecialConditionsTab: React.FC = () => {
               onClick={() => {
                 setFStart(''); setFEnd(''); setFFilial('all'); setFSeller('all');
                 setFClient(''); setFNF(''); setFStatus('all'); setFPay('all');
+                setFInstall('all'); setFPayType('all');
               }}
             >
               Limpar filtros
@@ -392,6 +440,8 @@ export const SpecialConditionsTab: React.FC = () => {
                   <TableHead className="text-right">Desc Total</TableHead>
                   <TableHead>NF</TableHead>
                   <TableHead>Cond. Pgto</TableHead>
+                  <TableHead>Parcelamento</TableHead>
+                  <TableHead>Tipo Pgto</TableHead>
                   <TableHead>Data Venda</TableHead>
                   <TableHead>Data Pgto</TableHead>
                   <TableHead className="text-right w-44">Ações</TableHead>
@@ -400,13 +450,13 @@ export const SpecialConditionsTab: React.FC = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : list.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
                       Nenhuma condição encontrada.
                     </TableCell>
                   </TableRow>
@@ -425,6 +475,8 @@ export const SpecialConditionsTab: React.FC = () => {
                       </TableCell>
                       <TableCell>{e.invoice_number || '—'}</TableCell>
                       <TableCell>{e.payment_condition || '—'}</TableCell>
+                      <TableCell>{(e as any).installments || '—'}</TableCell>
+                      <TableCell>{paymentTypeBadge((e as any).payment_type)}</TableCell>
                       <TableCell>{safeDate(e.sale_date)}</TableCell>
                       <TableCell>{safeDate((e as any).payment_date)}</TableCell>
                       <TableCell className="text-right">
@@ -553,6 +605,8 @@ const SpecialConditionDialog: React.FC<{
   const [saleDate, setSaleDate] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
   const [observation, setObservation] = useState('');
+  const [installments, setInstallments] = useState<string>('');
+  const [paymentType, setPaymentType] = useState<string>('');
 
   useEffect(() => {
     if (!open) return;
@@ -565,6 +619,8 @@ const SpecialConditionDialog: React.FC<{
       setSaleDate(editing.sale_date || '');
       setPaymentDate((editing as any).payment_date || '');
       setObservation(editing.observation || '');
+      setInstallments((editing as any).installments || '');
+      setPaymentType((editing as any).payment_type || '');
     } else {
       setClient(null);
       setFilialId(defaultFilialId || '');
@@ -574,6 +630,8 @@ const SpecialConditionDialog: React.FC<{
       setSaleDate('');
       setPaymentDate('');
       setObservation('');
+      setInstallments('');
+      setPaymentType('');
     }
   }, [open, editing, defaultFilialId]);
 
@@ -599,6 +657,8 @@ const SpecialConditionDialog: React.FC<{
     const dp = parseFloat(discountPct);
     if (isNaN(sv) || sv < 0) { toast.error('Valor de venda inválido'); return; }
     if (isNaN(dp) || dp < 0 || dp > 100) { toast.error('Desconto deve estar entre 0 e 100'); return; }
+    if (!installments) { toast.error('Selecione o parcelamento'); return; }
+    if (!paymentType) { toast.error('Selecione o tipo de pagamento'); return; }
 
     const filialName = filiais.find((f) => f.id === filialId)?.nome || defaultFilialName || null;
 
@@ -611,6 +671,8 @@ const SpecialConditionDialog: React.FC<{
       discount_percent: dp,
       invoice_number: invoice.trim() || null,
       payment_condition: paymentConditionLabel || null,
+      installments,
+      payment_type: paymentType,
       sale_date: saleDate || null,
       nf_date: null,
       payment_date: paymentDate || null,
@@ -713,6 +775,32 @@ const SpecialConditionDialog: React.FC<{
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Parcelamento *</Label>
+              <Select value={installments} onValueChange={setInstallments}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {INSTALLMENT_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de Pagamento *</Label>
+              <Select value={paymentType} onValueChange={setPaymentType}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_TYPE_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
 
           <div className="space-y-1.5">
             <Label>Observação</Label>
