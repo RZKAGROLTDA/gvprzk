@@ -38,6 +38,7 @@ import CRM from "./pages/CRM";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
+import { VersionUpdateNotification } from "@/components/VersionUpdateNotification";
 
 const queryClient = new QueryClient();
 
@@ -187,6 +188,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <HotToaster />
+        <VersionUpdateNotification />
         <AppContent />
       </TooltipProvider>
     </QueryClientProvider>

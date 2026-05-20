@@ -45,22 +45,10 @@ export default defineConfig(({ mode }) => {
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
-          {
-            // Cache para API do Supabase
-            urlPattern: /^https:\/\/wuvbrkbhunifudaewhng\.supabase\.co/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 horas
-              },
-              networkTimeoutSeconds: 10,
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
+          // ⚠️ Removido cache NetworkFirst do Supabase API:
+          // ele segurava requisições antigas por até 24h (inclusive bundles antigos
+          // já invalidados que continuavam fazendo upsert direto em tabelas).
+          // Chamadas REST/RPC do Supabase devem ir SEMPRE direto à rede.
           {
             // Cache para imagens do Storage
             urlPattern: /^https:\/\/wuvbrkbhunifudaewhng\.supabase\.co\/storage/,
