@@ -737,6 +737,8 @@ export type Database = {
           nf_date: string | null
           observation: string | null
           payment_condition: string | null
+          payment_condition_days: number | null
+          payment_date: string | null
           sale_date: string | null
           sale_value: number
           seller_id: string
@@ -761,6 +763,8 @@ export type Database = {
           nf_date?: string | null
           observation?: string | null
           payment_condition?: string | null
+          payment_condition_days?: number | null
+          payment_date?: string | null
           sale_date?: string | null
           sale_value?: number
           seller_id?: string
@@ -785,6 +789,8 @@ export type Database = {
           nf_date?: string | null
           observation?: string | null
           payment_condition?: string | null
+          payment_condition_days?: number | null
+          payment_date?: string | null
           sale_date?: string | null
           sale_value?: number
           seller_id?: string

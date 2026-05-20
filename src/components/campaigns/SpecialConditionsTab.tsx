@@ -239,7 +239,7 @@ export const SpecialConditionsTab: React.FC = () => {
       'NF': e.invoice_number || '',
       'Cond. Pagamento': e.payment_condition || '',
       'Data Venda': e.sale_date || '',
-      'Data NF': e.nf_date || '',
+      'Data Pagamento': (e as any).payment_date || '',
       'Status': e.status,
       'Aprovado por': e.approved_by ? sellers.get(e.approved_by) || '' : '',
       'Aprovado em': e.approved_at ? new Date(e.approved_at).toLocaleString('pt-BR') : '',
@@ -393,7 +393,7 @@ export const SpecialConditionsTab: React.FC = () => {
                   <TableHead>NF</TableHead>
                   <TableHead>Cond. Pgto</TableHead>
                   <TableHead>Data Venda</TableHead>
-                  <TableHead>Data NF</TableHead>
+                  <TableHead>Data Pgto</TableHead>
                   <TableHead className="text-right w-44">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -426,7 +426,7 @@ export const SpecialConditionsTab: React.FC = () => {
                       <TableCell>{e.invoice_number || '—'}</TableCell>
                       <TableCell>{e.payment_condition || '—'}</TableCell>
                       <TableCell>{safeDate(e.sale_date)}</TableCell>
-                      <TableCell>{safeDate(e.nf_date)}</TableCell>
+                      <TableCell>{safeDate((e as any).payment_date)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {canApproveRow(e) && (
@@ -550,9 +550,8 @@ const SpecialConditionDialog: React.FC<{
   const [saleValue, setSaleValue] = useState<string>('');
   const [discountPct, setDiscountPct] = useState<string>('');
   const [invoice, setInvoice] = useState('');
-  const [payCond, setPayCond] = useState('');
   const [saleDate, setSaleDate] = useState('');
-  const [nfDate, setNfDate] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
   const [observation, setObservation] = useState('');
 
   useEffect(() => {
@@ -563,9 +562,8 @@ const SpecialConditionDialog: React.FC<{
       setSaleValue(String(editing.sale_value ?? ''));
       setDiscountPct(String(editing.discount_percent ?? ''));
       setInvoice(editing.invoice_number || '');
-      setPayCond(editing.payment_condition || '');
       setSaleDate(editing.sale_date || '');
-      setNfDate(editing.nf_date || '');
+      setPaymentDate((editing as any).payment_date || '');
       setObservation(editing.observation || '');
     } else {
       setClient(null);
@@ -573,12 +571,21 @@ const SpecialConditionDialog: React.FC<{
       setSaleValue('');
       setDiscountPct('');
       setInvoice('');
-      setPayCond('');
       setSaleDate('');
-      setNfDate('');
+      setPaymentDate('');
       setObservation('');
     }
   }, [open, editing, defaultFilialId]);
+
+  const paymentDays = useMemo(() => {
+    if (!saleDate || !paymentDate) return null;
+    const s = parseLocalDate(saleDate);
+    const p = parseLocalDate(paymentDate);
+    if (!s || !p) return null;
+    const diff = Math.round((p.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
+  }, [saleDate, paymentDate]);
+  const paymentConditionLabel = paymentDays === null ? '' : `${paymentDays} dias`;
 
   const totalDiscount = useMemo(() => {
     const sv = parseFloat(saleValue) || 0;
@@ -603,9 +610,10 @@ const SpecialConditionDialog: React.FC<{
       sale_value: sv,
       discount_percent: dp,
       invoice_number: invoice.trim() || null,
-      payment_condition: payCond || null,
+      payment_condition: paymentConditionLabel || null,
       sale_date: saleDate || null,
-      nf_date: nfDate || null,
+      nf_date: null,
+      payment_date: paymentDate || null,
       observation: observation.trim() || null,
       attachments: [] as string[],
     };
@@ -688,23 +696,21 @@ const SpecialConditionDialog: React.FC<{
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label>Condição Pagamento</Label>
-              <Select value={payCond} onValueChange={setPayCond}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_CONDITIONS.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
               <Label>Data Venda</Label>
               <Input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="h-9" />
             </div>
             <div className="space-y-1.5">
-              <Label>Data NF</Label>
-              <Input type="date" value={nfDate} onChange={(e) => setNfDate(e.target.value)} className="h-9" />
+              <Label>Data Pagamento</Label>
+              <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Condição Pagamento</Label>
+              <Input
+                value={paymentConditionLabel}
+                readOnly
+                placeholder="Calculado automaticamente"
+                className="h-9 bg-muted"
+              />
             </div>
           </div>
 
