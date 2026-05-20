@@ -657,6 +657,8 @@ const SpecialConditionDialog: React.FC<{
     const dp = parseFloat(discountPct);
     if (isNaN(sv) || sv < 0) { toast.error('Valor de venda inválido'); return; }
     if (isNaN(dp) || dp < 0 || dp > 100) { toast.error('Desconto deve estar entre 0 e 100'); return; }
+    if (!installments) { toast.error('Selecione o parcelamento'); return; }
+    if (!paymentType) { toast.error('Selecione o tipo de pagamento'); return; }
 
     const filialName = filiais.find((f) => f.id === filialId)?.nome || defaultFilialName || null;
 
@@ -669,6 +671,8 @@ const SpecialConditionDialog: React.FC<{
       discount_percent: dp,
       invoice_number: invoice.trim() || null,
       payment_condition: paymentConditionLabel || null,
+      installments,
+      payment_type: paymentType,
       sale_date: saleDate || null,
       nf_date: null,
       payment_date: paymentDate || null,
