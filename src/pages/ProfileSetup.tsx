@@ -73,18 +73,16 @@ const ProfileSetup: React.FC = () => {
         .single();
 
       if (existingProfile) {
-        // Update existing profile
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: formData.name,
-            email: formData.email,
-            role: formData.role,
-            filial_id: formData.filial_id === 'none' ? null : formData.filial_id || null
-          })
-          .eq('user_id', user.id);
+        // Atualizar apenas campos seguros via RPC segura.
+        // role/filial_id/email só podem ser alterados por admin/manager
+        // através das telas administrativas (não por este formulário).
+        const { error } = await supabase.rpc('update_my_profile', {
+          p_name: formData.name,
+          p_avatar: null,
+        });
 
         if (error) throw error;
+
       } else {
         // Create new profile using secure function
         const { error } = await supabase.rpc('create_secure_profile', {
