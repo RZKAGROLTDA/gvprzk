@@ -76,10 +76,11 @@ const ProfileSetup: React.FC = () => {
         // Atualizar apenas campos seguros via RPC segura.
         // role/filial_id/email só podem ser alterados por admin/manager
         // através das telas administrativas (não por este formulário).
-        const { error } = await supabase.rpc('update_my_profile', {
+        const { error } = await (supabase.rpc as any)('update_my_profile', {
           p_name: formData.name,
           p_avatar: null,
         });
+
 
         if (error) throw error;
 
