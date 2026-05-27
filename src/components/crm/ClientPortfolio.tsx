@@ -18,6 +18,7 @@ import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { getActivityLabel } from '@/lib/activityLabels';
 
 type ClientAggregate = {
   key: string;
@@ -422,7 +423,7 @@ export const ClientPortfolio: React.FC = () => {
                       {c.lastStatus}
                     </span>
                     <Badge variant="outline" className="text-[10px]">
-                      {c.lastActivityType}
+                      {getActivityLabel(c.lastActivityType)}
                     </Badge>
                     <span className="ml-auto text-[10px] text-muted-foreground">
                       {c.total} ativ.
