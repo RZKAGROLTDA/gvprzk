@@ -187,9 +187,20 @@ const TechnicalVisitForm: React.FC = () => {
         </TabsContent>
       </Tabs>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-muted-foreground">Formulário completo</CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 sm:p-4">
+          <TaskFormSnapshotProvider>
+            <CreateTask taskType="technical-visit" />
+          </TaskFormSnapshotProvider>
+        </CardContent>
+      </Card>
+
       <MobileStickyFooter score={0}>
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          Preview · sem gravação
+          Visita Técnica · grava como atividade padrão
         </span>
       </MobileStickyFooter>
     </div>
