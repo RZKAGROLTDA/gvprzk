@@ -92,6 +92,9 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
     propertyHectares: supabaseTask.propertyhectares || 0,
     equipmentList: Array.isArray(supabaseTask.equipment_list) ? supabaseTask.equipment_list : [],
+    // Visita Técnica
+    technicalVisitData: supabaseTask.technical_visit_data ?? null,
+    technicalFunnelStage: supabaseTask.technical_funnel_stage ?? null,
     // Add security metadata
     isMasked
   };
