@@ -23,6 +23,8 @@ import {
   Construction,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import CreateTask from './CreateTask';
+import { TaskFormSnapshotProvider } from '@/components/task-form/FieldVisitSnapshotContext';
 
 /**
  * Visita Técnica — base visual (sem backend novo).
