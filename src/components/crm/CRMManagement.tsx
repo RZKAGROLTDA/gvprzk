@@ -27,6 +27,7 @@ type SellerStat = {
   filial_id: string | null;
   total: number;
   visitas: number;
+  visitasTec: number;
   ligacoes: number;
   checklists: number;
   uniqueClients: number;
@@ -38,6 +39,7 @@ type FilialStat = {
   filial_id: string;
   name: string;
   total: number;
+  visitasTec: number;
   uniqueClients: number;
   activeSellers: number;
   overdueReturns: number;
