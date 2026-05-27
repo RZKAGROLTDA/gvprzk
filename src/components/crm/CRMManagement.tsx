@@ -453,6 +453,7 @@ export const CRMManagement: React.FC = () => {
                   <TableRow>
                     <TableHead>Filial</TableHead>
                     <TableHead className="text-right">Atividades</TableHead>
+                    <TableHead className="text-right">Visitas Téc.</TableHead>
                     <TableHead className="text-right">Clientes únicos</TableHead>
                     <TableHead className="text-right">Vendedores ativos</TableHead>
                     <TableHead className="text-right">Vencidos</TableHead>
@@ -461,12 +462,13 @@ export const CRMManagement: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filialStats.length === 0 && (
-                    <TableRow><TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">Sem dados no período.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="py-6 text-center text-sm text-muted-foreground">Sem dados no período.</TableCell></TableRow>
                   )}
                   {filialStats.map((f) => (
                     <TableRow key={f.filial_id}>
                       <TableCell className="font-medium">{f.name}</TableCell>
                       <TableCell className="text-right">{f.total}</TableCell>
+                      <TableCell className="text-right">{f.visitasTec}</TableCell>
                       <TableCell className="text-right">{f.uniqueClients}</TableCell>
                       <TableCell className="text-right">{f.activeSellers}</TableCell>
                       <TableCell className="text-right">
