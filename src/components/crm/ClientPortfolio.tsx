@@ -18,6 +18,7 @@ import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { getActivityLabel } from '@/lib/activityLabels';
 
 type ClientAggregate = {
   key: string;
