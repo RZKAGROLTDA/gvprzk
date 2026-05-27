@@ -228,7 +228,7 @@ export const CRMManagement: React.FC = () => {
         s = {
           filial_id: key,
           name: id ? (filialById.get(id) ?? 'Filial') : 'Sem filial',
-          total: 0, uniqueClients: 0, activeSellers: 0, overdueReturns: 0, inactive30d: 0,
+          total: 0, visitasTec: 0, uniqueClients: 0, activeSellers: 0, overdueReturns: 0, inactive30d: 0,
         };
         map.set(key, s);
       }
