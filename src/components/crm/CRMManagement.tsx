@@ -155,13 +155,14 @@ export const CRMManagement: React.FC = () => {
         s = {
           user_id: id, name: consultantById.get(id) ?? 'Vendedor',
           filial_id: f.filial_id,
-          total: 0, visitas: 0, ligacoes: 0, checklists: 0,
+          total: 0, visitas: 0, visitasTec: 0, ligacoes: 0, checklists: 0,
           uniqueClients: 0, overdueReturns: 0, inactive30d: 0,
         };
         map.set(id, s);
       }
       s.total += 1;
       if (f.activity_type === 'visita') s.visitas += 1;
+      if (f.activity_type === 'visita_tecnica') s.visitasTec += 1;
       if (f.activity_type === 'ligacao') s.ligacoes += 1;
       if (f.activity_type === 'checklist') s.checklists += 1;
     }
