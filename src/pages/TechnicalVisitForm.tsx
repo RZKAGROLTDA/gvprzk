@@ -82,9 +82,8 @@ const TechnicalVisitForm: React.FC = () => {
       <Alert>
         <Construction className="h-4 w-4" />
         <AlertDescription className="text-sm">
-          <strong>Base visual em preparação.</strong> Esta tela ainda não grava dados. O motor de
-          persistência será plugado em uma próxima iteração, reaproveitando o mesmo padrão de
-          Visita à Fazenda e Ligação.
+          <strong>Visita Técnica</strong> — grava como atividade padrão (task_type=<code>technical_visit</code>),
+          aparecendo no CRM, Agenda e Gerencial como "Visita Técnica". Use o formulário abaixo para registrar.
         </AlertDescription>
       </Alert>
 
