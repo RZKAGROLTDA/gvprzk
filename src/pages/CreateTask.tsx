@@ -5722,6 +5722,14 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       }, 0);
     }
 
+    // Somar estimativas da Visita Técnica
+    if (taskCategory === 'technical-visit') {
+      const e = task.technicalVisitData?.estimates;
+      if (e) {
+        total += (Number(e.servicos) || 0) + (Number(e.pecas) || 0) + (Number(e.treinamento) || 0) + (Number(e.puk) || 0);
+      }
+    }
+
     // Somar valores das perguntas da ligação (mantido para compatibilidade)
     if (taskCategory === 'call') {
       total += Object.values(callQuestions).reduce((sum, item) => {
