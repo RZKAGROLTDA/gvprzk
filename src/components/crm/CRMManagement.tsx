@@ -405,6 +405,7 @@ export const CRMManagement: React.FC = () => {
                     <TableHead className="text-right">Atividades</TableHead>
                     <TableHead className="text-right">Clientes únicos</TableHead>
                     <TableHead className="text-right">Visitas</TableHead>
+                    <TableHead className="text-right">Visitas Téc.</TableHead>
                     <TableHead className="text-right">Ligações</TableHead>
                     <TableHead className="text-right">Checklists</TableHead>
                     <TableHead className="text-right">Vencidos</TableHead>
@@ -413,7 +414,7 @@ export const CRMManagement: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {sellerStats.length === 0 && (
-                    <TableRow><TableCell colSpan={8} className="py-6 text-center text-sm text-muted-foreground">Sem dados no período.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="py-6 text-center text-sm text-muted-foreground">Sem dados no período.</TableCell></TableRow>
                   )}
                   {sellerStats.map((s) => (
                     <TableRow key={s.user_id}>
@@ -421,6 +422,7 @@ export const CRMManagement: React.FC = () => {
                       <TableCell className="text-right">{s.total}</TableCell>
                       <TableCell className="text-right">{s.uniqueClients}</TableCell>
                       <TableCell className="text-right">{s.visitas}</TableCell>
+                      <TableCell className="text-right">{s.visitasTec}</TableCell>
                       <TableCell className="text-right">{s.ligacoes}</TableCell>
                       <TableCell className="text-right">{s.checklists}</TableCell>
                       <TableCell className="text-right">
