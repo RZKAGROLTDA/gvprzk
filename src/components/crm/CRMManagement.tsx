@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import {
   Activity, AlertTriangle, Building2, CalendarIcon, CheckSquare, ClipboardList,
-  Phone, Trophy, UserCheck, Users, UserX, X,
+  Phone, Trophy, UserCheck, Users, UserX, Wrench, X,
 } from 'lucide-react';
 import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
