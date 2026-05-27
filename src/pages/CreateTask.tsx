@@ -5757,7 +5757,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         salesValue: totalValue
       }));
     }
-  }, [checklist, callQuestions, callProducts, taskCategory, task.prospectItems]);
+  }, [checklist, callQuestions, callProducts, taskCategory, task.prospectItems, task.technicalVisitData]);
 
   // REMOVER este useEffect que estava alterando o valor quando prospectItems mudava
   // useEffect(() => {
