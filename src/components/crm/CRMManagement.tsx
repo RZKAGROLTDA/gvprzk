@@ -372,6 +372,7 @@ export const CRMManagement: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Kpi icon={<Activity className="h-4 w-4" />} label="Atividades" value={kpis.total} tone="primary" />
             <Kpi icon={<Building2 className="h-4 w-4" />} label="Visitas" value={kpis.visitas} tone="muted" />
+            <Kpi icon={<Wrench className="h-4 w-4" />} label="Visitas Técnicas" value={kpis.visitasTec} tone="muted" />
             <Kpi icon={<Phone className="h-4 w-4" />} label="Ligações" value={kpis.ligacoes} tone="muted" />
             <Kpi icon={<ClipboardList className="h-4 w-4" />} label="Checklists" value={kpis.checklists} tone="muted" />
             <Kpi icon={<Users className="h-4 w-4" />} label="Clientes únicos" value={kpis.uniqueClients} tone="primary" />
