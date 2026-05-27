@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { useFieldVisitSnapshotPublisher } from '@/components/task-form/FieldVisitSnapshotContext';
+import { TECHNICAL_FUNNEL_OPTIONS, TECHNICAL_NEXT_ACTIONS, emptyTechnicalVisitData, type TechnicalVisitData, type TechnicalFunnelStage } from '@/lib/activityLabels';
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit';
 }
