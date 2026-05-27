@@ -514,7 +514,7 @@ const ReturnCard: React.FC<{
             )}
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="h-3 w-3" />
-              Último: {fmt(new Date(row.activity_date))} ({row.activity_type})
+              Último: {fmt(new Date(row.activity_date))} ({getActivityLabel(row.activity_type)})
             </span>
             {nextDate && (
               <span className={cn(
