@@ -1,116 +1,124 @@
-## Fase 3 — Migração analítica para o padrão `_v2`
+## Escopo desta etapa
 
-Objetivo: garantir que Dashboard › Funil, Clientes, Tarefas e Reports usem `task_followups` como fonte oficial de operação, mantendo `tasks`/`opportunities` apenas para valores e status comerciais. Manter compatibilidade dos hooks/RPCs antigos (deprecated) até validação.
+Apenas **redesign visual** da tela **Visita Fazenda** (`/create-field-visit`).
 
----
+Não muda:
+- backend, RPCs, tabelas, contratos
+- gravação (mesmo `handleSubmit`, mesmo `task` state)
+- regras de negócio (validações, fluxo prospect/ganho/parcial/perdido, cálculos de valor)
+- CRM, histórico, relatórios, task_followups
+- telas Ligação e Visita Técnica (ficam para próximas etapas reusando os mesmos componentes)
 
-### 1. Novas RPCs no banco (Supabase)
+## Problema atual
 
-Para evitar misturar conceitos (operacional × comercial) e respeitar o contrato único `(p_start_date, p_end_date, p_filial_id, p_responsible_user_id)`:
+`src/pages/CreateTask.tsx` tem 7.379 linhas e renderiza os 3 tipos (field-visit, call, workshop-checklist) no mesmo JSX gigante, controlado por `taskCategory === 'field-visit'`. Visualmente é um formulário linear longo, sem hierarquia executiva, sem resumo da oportunidade, sem score, e mistura peças/serviços/equipamentos no mesmo bloco "Produtos para Ofertar".
 
-- **`get_funnel_metrics_v2`** — agrega `task_followups` (visitas, ligações, checklists, prospects) + `opportunities` ligadas via `task_id` para etapas comerciais (abertas, ganhas, parciais, perdidas) e seus valores. Sem corte de 90 dias.
-- **`get_clients_overview_v2`** — lista de clientes únicos baseada em `task_followups`, agrupados por `COALESCE(NULLIF(client_code,''), LOWER(TRIM(client_name)))`, com:
-  - `last_activity_date` (de `task_followups`)
-  - `last_visit_date` (followups tipo visita)
-  - `last_opportunity_date` (de `opportunities` via `task_id`)
-  - `filial_id`, `responsible_user_id`
-- **`get_tasks_metrics_v2`** — métricas de tarefas baseadas em `task_followups.activity_date` (não `tasks.created_at`): contagens por tipo, por status comercial (lookup em `tasks`/`opportunities`).
-- **`get_reports_dataset_v2`** — dataset de linhas para Reports (paginação server-side), pivotando `task_followups` + dados financeiros de `tasks`/`opportunities`. Colunas explícitas: `activity_date`, `created_at`, `sale_date`, `filial`, `filial_atendida`.
+## Estratégia
 
-Todas as RPCs:
-- `SECURITY DEFINER`, respeitam roles (manager/admin/supervisor/seller) usando `has_role` + `get_supervisor_filial_id`.
-- Aceitam `NULL` em qualquer parâmetro = sem filtro.
-- Sem `SELECT *`; colunas explícitas; `LIMIT` em datasets.
+**Wrapper visual, não reescrita.** Em vez de tocar no monólito, criar uma nova tela `FieldVisitForm` que:
 
----
+1. Consome **o mesmo `useTaskEditData` / `useTasksOptimized` / `handleSubmit`** já existentes (mesmas chamadas Supabase, mesmo mapeamento `task` → tabela `tasks`).
+2. Reorganiza o JSX em seções executivas componentizadas.
+3. Mantém os mesmos campos com os mesmos `name` / `setTask` keys — zero risco de regressão de gravação.
 
-### 2. Hooks (frontend)
+`CreateFieldVisit.tsx` passa a renderizar `FieldVisitForm` em vez de `<CreateTask taskType="field-visit" />`. `CreateTask.tsx` continua intacto servindo `/create-call` e `/create-workshop-checklist`.
 
-Criar novos hooks consumindo o contrato único, mantendo os antigos com `@deprecated`:
+## Nova estrutura visual
 
-- `src/hooks/useFunnelMetricsV2.ts` (novo) — substitui uso direto de tasks/opportunities em `SalesFunnel.tsx`.
-- `src/hooks/useClientsOverviewV2.ts` (novo) — substitui agregação manual em `FunnelClientsOptimized.tsx`.
-- `src/hooks/useTasksMetricsV2.ts` (novo) — substitui contagens de `FunnelTasksOptimized.tsx`.
-- `src/hooks/useReportsDatasetV2.ts` (novo) — fonte para `Reports.tsx`.
+```text
+┌─────────────────────────────────────────────────┐
+│ HEADER EXECUTIVO                                │
+│ ← Voltar  · Visita Fazenda · [status][score]   │
+│ Cliente · Filial · Consultor · OfflineIndicator│
+├─────────────────────────────────────────────────┤
+│ CARDS DE RESUMO (4 cols → 2 → 1)                │
+│ [Valor Oportunidade] [Equipamentos] [Itens]    │
+│ [Próxima Ação]                                  │
+├─────────────────────────────────────────────────┤
+│ TABS: Cliente · Equipamentos · Oferta · Visita  │
+│  ├ Cliente: dados + propriedade                 │
+│  ├ Equipamentos: cards (família, qtd, ha)       │
+│  ├ Oferta:                                      │
+│  │    └ sub-tabs: Peças · Serviços              │
+│  │    └ resumo da oportunidade (sticky)         │
+│  └ Visita: data, check-in, fotos, observações   │
+├─────────────────────────────────────────────────┤
+│ FOOTER STICKY (mobile-first)                    │
+│ [Score visual] [Próxima ação] [Salvar]          │
+└─────────────────────────────────────────────────┘
+```
 
-Padrão dos hooks:
-- React Query `staleTime: 10*60*1000`, `refetchOnWindowFocus: false`.
-- `resolveFilialIdForFilter()` para converter nome→uuid.
-- `consultantId === 'all'` → `null`.
-- Período `'all'` → `p_start_date=null`, `p_end_date=null` (sem fallback de 90 dias).
+## Componentes novos (reutilizáveis para Ligação e Visita Técnica depois)
 
----
+Em `src/components/task-form/`:
 
-### 3. Migração das telas
+- `TaskHeader.tsx` — header executivo com título, badges de status e score
+- `SummaryCards.tsx` — 4 KPI cards (valor, equipamentos, itens, próxima ação)
+- `EquipmentCard.tsx` — card individual de equipamento (família, quantidade, hectares)
+- `EquipmentList.tsx` — grid responsivo de `EquipmentCard` + botão adicionar
+- `OfferTabs.tsx` — separa Peças vs Serviços (filtra `predefinedProducts` por `category`: `tires|lubricants|oils|greases|batteries|parts` → Peças; `services` → Serviços)
+- `OpportunitySummary.tsx` — resumo sticky com total, qtd itens, status
+- `OpportunityScore.tsx` — score 0-100 derivado de campos preenchidos (equipamentos, itens selecionados, valor, próxima ação) — **puramente visual, não persistido**
+- `NextActionCard.tsx` — exibe/edita próxima ação (usa campos já existentes de reminders / observações)
+- `MobileStickyFooter.tsx` — barra inferior fixa em mobile com score + salvar
 
-**Dashboard › Funil** (`SalesFunnel.tsx` / `SalesFunnelOptimized.tsx` / `FunnelTasksOptimized.tsx` / `FunnelClientsOptimized.tsx`)
-- Substituir leituras diretas por hooks `_v2`.
-- Manter pipeline visual de oportunidades como camada complementar (apenas valores/status comerciais).
-- Remover hardcoded 90 dias.
+Todos consomem props derivadas do mesmo `task: Task` já usado hoje. Nenhum componente faz fetch ou mutation próprios.
 
-**Clientes** (`FunnelClientsOptimized.tsx`)
-- Eliminar agregação client-side de `tasks`+`opportunities`.
-- Consumir `useClientsOverviewV2`. Chave única: `COALESCE(NULLIF(client_code,''), LOWER(TRIM(client_name)))`.
+## Score visual (regra local, sem persistência)
 
-**Tarefas** (`FunnelTasksOptimized.tsx`)
-- Trocar `created_at` por `activity_date` via `useTasksMetricsV2`.
+```text
+score =
+  (cliente preenchido ? 20 : 0) +
+  (equipamentos.length > 0 ? 20 : 0) +
+  (itens selecionados > 0 ? 20 : 0) +
+  (valor oportunidade > 0 ? 20 : 0) +
+  (próxima ação definida ? 20 : 0)
+```
 
-**Reports** (`Reports.tsx`)
-- Migrar dataset principal para `useReportsDatasetV2`.
-- Colunas explícitas: Data Atividade, Data Criação, Data Venda, Filial Operacional, Filial Atendida.
+Renderizado como ring/progress com cor semântica (`destructive` < 40, `warning` < 70, `success` ≥ 70).
 
----
+## Arquivos
 
-### 4. Clareza visual
+**Novos:**
+- `src/pages/FieldVisitForm.tsx` — tela completa nova
+- `src/components/task-form/TaskHeader.tsx`
+- `src/components/task-form/SummaryCards.tsx`
+- `src/components/task-form/EquipmentCard.tsx`
+- `src/components/task-form/EquipmentList.tsx`
+- `src/components/task-form/OfferTabs.tsx`
+- `src/components/task-form/OpportunitySummary.tsx`
+- `src/components/task-form/OpportunityScore.tsx`
+- `src/components/task-form/NextActionCard.tsx`
+- `src/components/task-form/MobileStickyFooter.tsx`
+- `src/components/task-form/useFieldVisitForm.ts` — hook que encapsula state + submit reusando as mesmas funções do CreateTask original (extraídas, não reimplementadas)
 
-Em todas as telas migradas, renomear cabeçalhos e tooltips para deixar explícito:
-- "Data da atividade" (operacional, `activity_date`)
-- "Data de criação" (`tasks.created_at`)
-- "Data da venda/oportunidade" (`opportunities.data_fechamento`)
-- "Filial operacional" (`task_followups.filial_id`)
-- "Filial atendida" (`tasks.filial_atendida`)
+**Editados:**
+- `src/pages/CreateFieldVisit.tsx` — passa a renderizar `<FieldVisitForm />`
 
----
+**Não tocar:**
+- `src/pages/CreateTask.tsx` (continua servindo Call e Workshop)
+- `src/pages/CreateCall.tsx`
+- qualquer hook de dados, mapper, RPC, migration
 
-### 5. Deprecação controlada
+## Detalhes técnicos
 
-- Adicionar comentário JSDoc `@deprecated — usar X_v2` em:
-  - `useAllSalesData` (legado)
-  - `get_consolidated_sales_counts` (RPC) → manter no banco, sinalizar no doc.
-  - hooks antigos referenciados acima.
-- **Não remover** nada nesta fase.
+- Usar tokens semânticos do design system (`bg-card`, `text-primary`, `border-border`, etc.) — zero cor hardcoded.
+- Mobile-first: header colapsável, tabs scrolláveis horizontalmente, sticky footer com ação primária.
+- Reutilizar `PhotoUpload`, `CheckInLocation`, `OfflineIndicator` existentes.
+- Separar peças/serviços filtrando `predefinedProducts` por `category` — o array unificado de `ProductType[]` no `task.checklist` continua igual no banco.
+- `useFieldVisitForm.ts` extrai do `CreateTask.tsx` apenas o subset usado por field-visit (sem duplicar lógica de call/workshop). Para evitar divergência, na 1ª iteração esse hook **importa funções utilitárias** do CreateTask atual onde possível; refatoração mais profunda fica para etapa futura.
 
----
+## Validação após implementar
 
-### 6. Validação pós-migração
+1. `/create-field-visit` abre o novo layout.
+2. Criar visita nova preenchendo todos os campos → salva igual ao fluxo atual (mesma row em `tasks`).
+3. Editar visita existente → carrega dados corretamente, salva sem perda.
+4. Fluxo offline continua funcionando (`saveTaskOffline`).
+5. `/create-call` e `/create-workshop-checklist` continuam exatamente como antes.
+6. Mobile (375px): header, cards, tabs e footer sticky usáveis sem scroll horizontal.
 
-Após o deploy, executar via `supabase--read_query` consultas comparativas para o **mesmo período + filial + vendedor**:
+## Próximas etapas (fora deste plano)
 
-| Métrica | Origem A | Origem B | Esperado |
-|---|---|---|---|
-| Atividades totais | `get_activity_metrics_v2` | CRM Agenda (`get_weekly_followups_agenda`) | igual |
-| Visitas/Ligações/Checklists | Funil v2 | Dashboard (`useConsolidatedSalesMetrics`) | igual |
-| Vendas ganhas/parciais/perdidas | Reports v2 | Performance Filial/Vendedor | igual |
-| Clientes únicos | Clientes v2 | CRM Gerencial | igual |
-
-Documentar resultados em `docs/VALIDACAO_FASE3.md`.
-
----
-
-### Detalhes técnicos
-
-- Migração SQL em um único arquivo (4 RPCs + grants).
-- `types.ts` será regenerado após a migração.
-- Sem alterar RLS de `task_followups`/`tasks`/`opportunities`.
-- Sem mudar telas não listadas (CRM Agenda, Performance por Filial/Vendedor já estão no padrão v2).
-
----
-
-### Ordem de execução
-
-1. Migração SQL (4 RPCs).
-2. Novos hooks v2.
-3. Refatoração de telas (Funil → Clientes → Tarefas → Reports).
-4. Validação comparativa + documento.
-
-Confirma para eu seguir?
+- Aplicar mesma estrutura à tela Ligação reusando os componentes de `task-form/`.
+- Criar tela Visita Técnica reusando os mesmos componentes.
+- Eventualmente aposentar `CreateTask.tsx` monolítico.
