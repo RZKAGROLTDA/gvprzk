@@ -302,8 +302,10 @@ export const useTasks = () => {
           is_prospect: standardizedTaskData.isProspect || false,
           prospect_notes: standardizedTaskData.prospectNotes || '',
           sales_value: standardizedTaskData.salesValue || 0,
-          sales_confirmed: standardizedTaskData.salesConfirmed
-        })
+          sales_confirmed: standardizedTaskData.salesConfirmed,
+          ...((taskData as any).technicalVisitData !== undefined ? { technical_visit_data: (taskData as any).technicalVisitData } : {}),
+          ...((taskData as any).technicalFunnelStage !== undefined ? { technical_funnel_stage: (taskData as any).technicalFunnelStage } : {}),
+        } as any)
         .select()
         .single();
 
