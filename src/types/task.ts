@@ -46,6 +46,9 @@ export interface Task {
   equipmentQuantity?: number;
   propertyHectares?: number;
   equipmentList?: {id: string, familyProduct: string, quantity: number}[];
+  // Visita Técnica
+  technicalVisitData?: import('@/lib/activityLabels').TechnicalVisitData | null;
+  technicalFunnelStage?: import('@/lib/activityLabels').TechnicalFunnelStage | null;
   // Security metadata
   isMasked?: boolean; // Indicates if customer data is masked for security
 }
