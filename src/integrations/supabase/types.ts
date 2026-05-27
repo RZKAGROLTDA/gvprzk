@@ -2409,6 +2409,8 @@ export type Database = {
           start_time: string
           status: string
           task_type: string
+          technical_funnel_stage: string
+          technical_visit_data: Json
           updated_at: string
         }[]
       }
