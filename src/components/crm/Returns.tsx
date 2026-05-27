@@ -584,7 +584,7 @@ const ClientHistory: React.FC<{
       {items.map((f) => (
         <div key={f.id} className="rounded-md border p-2 text-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">{f.activity_type}</Badge>
+            <Badge variant="outline" className="text-[10px]">{getActivityLabel(f.activity_type)}</Badge>
             <Badge variant="outline" className={cn('text-[10px]', statusStyle(f.followup_status))}>
               {f.followup_status}
             </Badge>
