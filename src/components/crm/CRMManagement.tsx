@@ -241,6 +241,7 @@ export const CRMManagement: React.FC = () => {
     for (const f of filtered) {
       const s = ensure(f.filial_id);
       s.total += 1;
+      if (f.activity_type === 'visita_tecnica') s.visitasTec += 1;
       const k = f.filial_id ?? '__none';
       const cset = uniquePerFilial.get(k) ?? new Set<string>(); cset.add(getClientKey(f)); uniquePerFilial.set(k, cset);
       const sset = sellersPerFilial.get(k) ?? new Set<string>(); sset.add(f.responsible_user_id); sellersPerFilial.set(k, sset);
