@@ -136,7 +136,7 @@ export const CRMManagement: React.FC = () => {
     lastByClient.forEach((d) => { if (daysDiff(today, d) >= 30) inactive30d += 1; });
 
     return {
-      total: filtered.length, visitas, ligacoes, checklists,
+      total: filtered.length, visitas, visitasTec, ligacoes, checklists,
       uniqueClients, activeSellers, overdueReturns, inactive30d,
     };
   }, [filtered, all, filial, seller]);
