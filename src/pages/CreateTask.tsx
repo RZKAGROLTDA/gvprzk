@@ -28,7 +28,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { useFieldVisitSnapshotPublisher } from '@/components/task-form/FieldVisitSnapshotContext';
 interface CreateTaskProps {
-  taskType?: 'field-visit' | 'call' | 'workshop-checklist';
+  taskType?: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit';
 }
 const CreateTask: React.FC<CreateTaskProps> = ({
   taskType: propTaskType
