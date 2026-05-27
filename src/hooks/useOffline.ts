@@ -214,7 +214,9 @@ export const useOffline = () => {
                 is_prospect: taskData.isProspect || false,
                 prospect_notes: taskData.prospectNotes || '',
                 sales_value: taskData.salesValue || null,
-                sales_confirmed: taskData.salesConfirmed || null
+                sales_confirmed: taskData.salesConfirmed || null,
+                ...(taskData.technicalVisitData !== undefined ? { technical_visit_data: taskData.technicalVisitData } : {}),
+                ...(taskData.technicalFunnelStage !== undefined ? { technical_funnel_stage: taskData.technicalFunnelStage } : {})
               }])
               .select()
               .single();
