@@ -105,6 +105,7 @@ export const CRMManagement: React.FC = () => {
   const kpis = useMemo(() => {
     const today = new Date();
     const visitas = filtered.filter((f) => f.activity_type === 'visita').length;
+    const visitasTec = filtered.filter((f) => f.activity_type === 'visita_tecnica').length;
     const ligacoes = filtered.filter((f) => f.activity_type === 'ligacao').length;
     const checklists = filtered.filter((f) => f.activity_type === 'checklist').length;
     const uniqueClients = new Set(filtered.map(getClientKey)).size;
