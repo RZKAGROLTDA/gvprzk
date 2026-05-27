@@ -5529,7 +5529,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   };
 
   // Estado para controlar o tipo de tarefa selecionado
-  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | null>(null);
+  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit' | null>(null);
   // Inicializar com URL ou prop se existir
   useEffect(() => {
     if (propTaskType) {
