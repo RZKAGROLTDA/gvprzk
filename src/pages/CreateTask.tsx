@@ -5523,6 +5523,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         return 'call';
       case 'workshop_checklist':
         return 'workshop-checklist';
+      case 'technical_visit':
+        return 'technical-visit';
       default:
         return 'field-visit';
     }
