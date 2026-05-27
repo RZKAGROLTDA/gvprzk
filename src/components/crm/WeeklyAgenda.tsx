@@ -16,6 +16,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useWeeklyAgenda, WeeklyAgendaDay } from '@/hooks/useWeeklyAgenda';
+import { getActivityLabel } from '@/lib/activityLabels';
 import { FollowupRow } from '@/hooks/useFollowups';
 import { useAuth } from '@/hooks/useAuth';
 import { cn, formatDateDisplay } from '@/lib/utils';
