@@ -5698,12 +5698,12 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const [checklist, setChecklist] = useState<ProductType[]>([]);
   const [callProducts, setCallProducts] = useState<ProductType[]>([]);
 
-  // Publica snapshot do form para o shell executivo (FieldVisitForm).
+  // Publica snapshot do form para os shells executivos (FieldVisitForm / CallForm).
   // No-op quando renderizado fora do provider — não afeta gravação.
   const publishFieldVisitSnapshot = useFieldVisitSnapshotPublisher();
   useEffect(() => {
-    publishFieldVisitSnapshot({ task, checklist, equipmentList });
-  }, [task, checklist, equipmentList, publishFieldVisitSnapshot]);
+    publishFieldVisitSnapshot({ task, checklist, callProducts, equipmentList });
+  }, [task, checklist, callProducts, equipmentList, publishFieldVisitSnapshot]);
 
   // Função para calcular valor total automático
   const calculateTotalSalesValue = () => {
