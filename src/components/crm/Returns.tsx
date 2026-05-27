@@ -20,6 +20,7 @@ import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { getActivityLabel } from '@/lib/activityLabels';
 
 const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const fmt = (d: Date) => d.toLocaleDateString('pt-BR');
@@ -513,7 +514,7 @@ const ReturnCard: React.FC<{
             )}
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="h-3 w-3" />
-              Último: {fmt(new Date(row.activity_date))} ({row.activity_type})
+              Último: {fmt(new Date(row.activity_date))} ({getActivityLabel(row.activity_type)})
             </span>
             {nextDate && (
               <span className={cn(
@@ -583,7 +584,7 @@ const ClientHistory: React.FC<{
       {items.map((f) => (
         <div key={f.id} className="rounded-md border p-2 text-sm">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">{f.activity_type}</Badge>
+            <Badge variant="outline" className="text-[10px]">{getActivityLabel(f.activity_type)}</Badge>
             <Badge variant="outline" className={cn('text-[10px]', statusStyle(f.followup_status))}>
               {f.followup_status}
             </Badge>

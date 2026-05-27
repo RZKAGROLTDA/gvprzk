@@ -16,6 +16,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useWeeklyAgenda, WeeklyAgendaDay } from '@/hooks/useWeeklyAgenda';
+import { getActivityLabel } from '@/lib/activityLabels';
 import { FollowupRow } from '@/hooks/useFollowups';
 import { useAuth } from '@/hooks/useAuth';
 import { cn, formatDateDisplay } from '@/lib/utils';
@@ -340,7 +341,7 @@ export const WeeklyAgenda: React.FC = () => {
                             <div className="truncate text-xs text-muted-foreground">Cód: {f.client_code}</div>
                           )}
                         </div>
-                        <Badge variant="outline" className="shrink-0 capitalize">{f.activity_type}</Badge>
+                        <Badge variant="outline" className="shrink-0">{getActivityLabel(f.activity_type)}</Badge>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs">
                         <Badge variant="secondary" className="capitalize">{f.followup_status}</Badge>

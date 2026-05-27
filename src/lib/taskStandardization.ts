@@ -285,7 +285,8 @@ export const mapTaskToStandardFields = (task: Task) => {
     // === DADOS DO FORMULÁRIO ===
     tipoFormulario: safeValue(task.taskType === 'prospection' ? 'Visita' : 
                              task.taskType === 'ligacao' ? 'Ligação' : 
-                             task.taskType === 'checklist' ? 'Checklist' : task.taskType),
+                             task.taskType === 'checklist' ? 'Checklist' : 
+                             task.taskType === 'technical_visit' ? 'Visita Técnica' : task.taskType),
     dataInicio: safeDate(task.startDate),
     dataFim: safeDate(task.endDate),
     horarioInicio: safeValue(task.startTime),

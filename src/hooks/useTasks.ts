@@ -98,7 +98,9 @@ export const useTasks = () => {
             documents,
             check_in_location,
             initial_km,
-            final_km
+            final_km,
+            technical_visit_data,
+            technical_funnel_stage
           `)
           .order('created_at', { ascending: false })
           .limit(50); // Reduzir para 50 para melhor performance
