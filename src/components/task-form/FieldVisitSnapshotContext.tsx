@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import type { Task, ProductType } from '@/types/task';
+import type { TechnicalVisitData, TechnicalFunnelStage } from '@/lib/activityLabels';
 
 /**
- * Snapshot compartilhado dos shells executivos (FieldVisitForm, CallForm, futuro
+ * Snapshot compartilhado dos shells executivos (FieldVisitForm, CallForm,
  * TechnicalVisitForm). Apenas leitura — publicado pelo CreateTask via useEffect.
  * Zero impacto em gravação, follow-ups, histórico ou regras de status.
  */
@@ -11,6 +12,8 @@ export interface TaskFormSnapshot {
   checklist: ProductType[];
   callProducts: ProductType[];
   equipmentList: { id: string; familyProduct: string; quantity: number }[];
+  technicalVisitData?: TechnicalVisitData | null;
+  technicalFunnelStage?: TechnicalFunnelStage | null;
 }
 
 interface SnapshotContextValue {
@@ -23,6 +26,8 @@ const empty: TaskFormSnapshot = {
   checklist: [],
   callProducts: [],
   equipmentList: [],
+  technicalVisitData: null,
+  technicalFunnelStage: null,
 };
 
 const Ctx = createContext<SnapshotContextValue | null>(null);

@@ -12,7 +12,7 @@ export interface Task {
   functionOther?: string;
   filial?: string;
   filialAtendida?: string; // Filial atendida durante a ligação (pode ser diferente da filial do usuário)
-  taskType: 'prospection' | 'ligacao' | 'checklist';
+  taskType: 'prospection' | 'ligacao' | 'checklist' | 'technical_visit';
   checklist: ProductType[];
   startDate: Date;
   endDate: Date;
@@ -46,6 +46,9 @@ export interface Task {
   equipmentQuantity?: number;
   propertyHectares?: number;
   equipmentList?: {id: string, familyProduct: string, quantity: number}[];
+  // Visita Técnica
+  technicalVisitData?: import('@/lib/activityLabels').TechnicalVisitData | null;
+  technicalFunnelStage?: import('@/lib/activityLabels').TechnicalFunnelStage | null;
   // Security metadata
   isMasked?: boolean; // Indicates if customer data is masked for security
 }

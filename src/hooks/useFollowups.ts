@@ -7,7 +7,7 @@ export type FollowupRow = {
   task_id: string | null;
   client_name: string;
   client_code: string | null;
-  activity_type: 'visita' | 'ligacao' | 'checklist' | 'reuniao' | 'outro';
+  activity_type: 'visita' | 'visita_tecnica' | 'ligacao' | 'checklist' | 'reuniao' | 'outro';
   activity_date: string;
   next_return_date: string | null;
   return_notes: string | null;

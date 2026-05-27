@@ -28,7 +28,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { useFieldVisitSnapshotPublisher } from '@/components/task-form/FieldVisitSnapshotContext';
 interface CreateTaskProps {
-  taskType?: 'field-visit' | 'call' | 'workshop-checklist';
+  taskType?: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit';
 }
 const CreateTask: React.FC<CreateTaskProps> = ({
   taskType: propTaskType
@@ -5515,7 +5515,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   } = useProfile();
 
   // Mapear tipos da URL para tipos internos
-  const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' => {
+  const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit' => {
     switch (urlType) {
       case 'farm_visit':
         return 'field-visit';
@@ -5523,13 +5523,15 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         return 'call';
       case 'workshop_checklist':
         return 'workshop-checklist';
+      case 'technical_visit':
+        return 'technical-visit';
       default:
         return 'field-visit';
     }
   };
 
   // Estado para controlar o tipo de tarefa selecionado
-  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | null>(null);
+  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit' | null>(null);
   // Inicializar com URL ou prop se existir
   useEffect(() => {
     if (propTaskType) {
@@ -5543,7 +5545,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   }, [urlTaskType, propTaskType]);
 
   // Função para alterar o tipo de tarefa
-  const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist') => {
+  const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit') => {
     setSelectedTaskType(newType);
     setTaskCategory(newType);
 
@@ -5555,7 +5557,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   };
 
   // Função para obter o título da tarefa
-  const getTaskTitle = (category: 'field-visit' | 'call' | 'workshop-checklist'): string => {
+  const getTaskTitle = (category: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit'): string => {
     switch (category) {
       case 'field-visit':
         return 'Visita a Fazenda';
@@ -5563,11 +5565,13 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         return 'Ligação para Cliente';
       case 'workshop-checklist':
         return 'Checklist da Oficina';
+      case 'technical-visit':
+        return 'Visita Técnica';
       default:
         return 'Nova Tarefa';
     }
   };
-  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(selectedTaskType);
+  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit'>(selectedTaskType ?? 'field-visit');
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionLockRef = useRef(false);
@@ -5582,7 +5586,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   } = useTasksOptimized();
   const { data: filiais = [] } = useFiliais();
   // Mapear taskCategory para taskType
-  const getTaskTypeFromCategory = (category: 'field-visit' | 'call' | 'workshop-checklist'): 'prospection' | 'ligacao' | 'checklist' => {
+  const getTaskTypeFromCategory = (category: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit'): 'prospection' | 'ligacao' | 'checklist' | 'technical_visit' => {
     switch (category) {
       case 'field-visit':
         return 'prospection';
@@ -5590,6 +5594,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         return 'ligacao';
       case 'workshop-checklist':
         return 'checklist';
+      case 'technical-visit':
+        return 'technical_visit';
       default:
         return 'prospection';
     }

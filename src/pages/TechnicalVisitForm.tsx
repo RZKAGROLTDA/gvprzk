@@ -23,6 +23,8 @@ import {
   Construction,
 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import CreateTask from './CreateTask';
+import { TaskFormSnapshotProvider } from '@/components/task-form/FieldVisitSnapshotContext';
 
 /**
  * Visita Técnica — base visual (sem backend novo).
@@ -82,9 +84,8 @@ const TechnicalVisitForm: React.FC = () => {
       <Alert>
         <Construction className="h-4 w-4" />
         <AlertDescription className="text-sm">
-          <strong>Base visual em preparação.</strong> Esta tela ainda não grava dados. O motor de
-          persistência será plugado em uma próxima iteração, reaproveitando o mesmo padrão de
-          Visita à Fazenda e Ligação.
+          <strong>Visita Técnica</strong> — grava como atividade padrão (task_type=<code>technical_visit</code>),
+          aparecendo no CRM, Agenda e Gerencial como "Visita Técnica". Use o formulário abaixo para registrar.
         </AlertDescription>
       </Alert>
 
@@ -186,9 +187,20 @@ const TechnicalVisitForm: React.FC = () => {
         </TabsContent>
       </Tabs>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-muted-foreground">Formulário completo</CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 sm:p-4">
+          <TaskFormSnapshotProvider>
+            <CreateTask taskType="technical-visit" />
+          </TaskFormSnapshotProvider>
+        </CardContent>
+      </Card>
+
       <MobileStickyFooter score={0}>
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          Preview · sem gravação
+          Visita Técnica · grava como atividade padrão
         </span>
       </MobileStickyFooter>
     </div>

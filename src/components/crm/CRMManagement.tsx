@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Progress } from '@/components/ui/progress';
 import {
   Activity, AlertTriangle, Building2, CalendarIcon, CheckSquare, ClipboardList,
-  Phone, Trophy, UserCheck, Users, UserX, X,
+  Phone, Trophy, UserCheck, Users, UserX, Wrench, X,
 } from 'lucide-react';
 import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
@@ -105,6 +105,7 @@ export const CRMManagement: React.FC = () => {
   const kpis = useMemo(() => {
     const today = new Date();
     const visitas = filtered.filter((f) => f.activity_type === 'visita').length;
+    const visitasTec = filtered.filter((f) => f.activity_type === 'visita_tecnica').length;
     const ligacoes = filtered.filter((f) => f.activity_type === 'ligacao').length;
     const checklists = filtered.filter((f) => f.activity_type === 'checklist').length;
     const uniqueClients = new Set(filtered.map(getClientKey)).size;
@@ -135,7 +136,7 @@ export const CRMManagement: React.FC = () => {
     lastByClient.forEach((d) => { if (daysDiff(today, d) >= 30) inactive30d += 1; });
 
     return {
-      total: filtered.length, visitas, ligacoes, checklists,
+      total: filtered.length, visitas, visitasTec, ligacoes, checklists,
       uniqueClients, activeSellers, overdueReturns, inactive30d,
     };
   }, [filtered, all, filial, seller]);
@@ -371,6 +372,7 @@ export const CRMManagement: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Kpi icon={<Activity className="h-4 w-4" />} label="Atividades" value={kpis.total} tone="primary" />
             <Kpi icon={<Building2 className="h-4 w-4" />} label="Visitas" value={kpis.visitas} tone="muted" />
+            <Kpi icon={<Wrench className="h-4 w-4" />} label="Visitas Técnicas" value={kpis.visitasTec} tone="muted" />
             <Kpi icon={<Phone className="h-4 w-4" />} label="Ligações" value={kpis.ligacoes} tone="muted" />
             <Kpi icon={<ClipboardList className="h-4 w-4" />} label="Checklists" value={kpis.checklists} tone="muted" />
             <Kpi icon={<Users className="h-4 w-4" />} label="Clientes únicos" value={kpis.uniqueClients} tone="primary" />
