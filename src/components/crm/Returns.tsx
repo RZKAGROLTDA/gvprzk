@@ -20,6 +20,7 @@ import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { getActivityLabel } from '@/lib/activityLabels';
 
 const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const fmt = (d: Date) => d.toLocaleDateString('pt-BR');
