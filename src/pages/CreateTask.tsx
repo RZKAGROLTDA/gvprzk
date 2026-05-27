@@ -5515,7 +5515,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   } = useProfile();
 
   // Mapear tipos da URL para tipos internos
-  const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' => {
+  const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit' => {
     switch (urlType) {
       case 'farm_visit':
         return 'field-visit';
