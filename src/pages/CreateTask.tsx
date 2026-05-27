@@ -26,6 +26,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { useFieldVisitSnapshotPublisher } from '@/components/task-form/FieldVisitSnapshotContext';
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
@@ -5696,6 +5697,13 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   // Estado para o checklist (deve ser declarado antes das funções que o usam)
   const [checklist, setChecklist] = useState<ProductType[]>([]);
   const [callProducts, setCallProducts] = useState<ProductType[]>([]);
+
+  // Publica snapshot do form para o shell executivo (FieldVisitForm).
+  // No-op quando renderizado fora do provider — não afeta gravação.
+  const publishFieldVisitSnapshot = useFieldVisitSnapshotPublisher();
+  useEffect(() => {
+    publishFieldVisitSnapshot({ task, checklist, equipmentList });
+  }, [task, checklist, equipmentList, publishFieldVisitSnapshot]);
 
   // Função para calcular valor total automático
   const calculateTotalSalesValue = () => {
