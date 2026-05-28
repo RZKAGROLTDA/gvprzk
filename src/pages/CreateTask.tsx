@@ -33,6 +33,8 @@ import {
   ObservationsSection,
   PhotosCheckinSection,
 } from '@/components/task-form/sections';
+import { SectionHeader } from '@/components/task-form/sections/SectionHeader';
+import { User as UserIcon, Tractor, MessageSquare } from 'lucide-react';
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
@@ -6597,10 +6599,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           {/* Informações Básicas */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckSquare className="h-5 w-5" />
-                Informações Básicas
-              </CardTitle>
+              {taskCategory === 'call' ? (
+                <SectionHeader
+                  icon={UserIcon}
+                  title="Informações do Cliente"
+                  description="Contato, propriedade e filial atendida"
+                  tone="primary"
+                />
+              ) : (
+                <CardTitle className="flex items-center gap-2">
+                  <CheckSquare className="h-5 w-5" />
+                  Informações Básicas
+                </CardTitle>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -6843,10 +6854,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           {/* Informações de Equipamentos - para ambos: visita a campo e ligação */}
           {(taskCategory === 'field-visit' || taskCategory === 'call') && <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  Lista de Equipamentos
-                </CardTitle>
+                {taskCategory === 'call' ? (
+                  <SectionHeader
+                    icon={Tractor}
+                    title="Parque de Máquinas"
+                    description="Equipamentos do cliente"
+                    tone="success"
+                  />
+                ) : (
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Lista de Equipamentos
+                  </CardTitle>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Hectares da Propriedade */}
@@ -7042,10 +7062,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         {/* Observações e Valores */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Observações
-            </CardTitle>
+            {taskCategory === 'call' ? (
+              <SectionHeader
+                icon={MessageSquare}
+                title="Observações & Funil de Vendas"
+                description="Anotações, valor da oportunidade e status no funil"
+                tone="primary"
+              />
+            ) : (
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Observações
+              </CardTitle>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
