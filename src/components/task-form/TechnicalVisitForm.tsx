@@ -8,16 +8,22 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
+import { CLIENT_CODES } from '@/lib/clientCodes';
 import {
   ClientInfoSection,
   EquipmentParkSection,
   TechnicalServiceSection,
   SalesEstimateSection,
+  OpportunityClassificationSection,
+  SalesFunnelSection,
+  NextActionSection,
+  ObservationsSection,
+} from '@/components/task-form/sections';
   OpportunityClassificationSection,
   SalesFunnelSection,
   NextActionSection,
