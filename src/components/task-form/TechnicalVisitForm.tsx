@@ -10,12 +10,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Trash2, Search } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
-import { CLIENT_CODES } from '@/lib/clientCodes';
+import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
 import {
-  ClientInfoSection,
   EquipmentParkSection,
   TechnicalServiceSection,
   SalesEstimateSection,
@@ -26,9 +27,6 @@ import {
 } from '@/components/task-form/sections';
 import { format } from 'date-fns';
 
-type Level = 'baixa' | 'media' | 'alta';
-
-const SERVICE_TYPES = [
   'Prospecção',
   'Pacotes',
   'Revisão Preventiva',
