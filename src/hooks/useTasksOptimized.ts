@@ -341,7 +341,7 @@ export const useTasksOptimized = (includeDetails = false) => {
           is_prospect: standardizedTaskData.isProspect || false,
           prospect_notes: standardizedTaskData.prospectNotes || '',
           sales_value: standardizedTaskData.salesValue || 0,
-          sales_confirmed: standardizedTaskData.sales_confirmed ?? standardizedTaskData.salesConfirmed,
+          sales_confirmed: standardizedTaskData.salesConfirmed,
           sales_type: taskData.salesType || null,
           // Technical Visit (task_type='technical_visit') — only pass when present
           ...(taskData.technicalCategory !== undefined && { technical_category: taskData.technicalCategory }),
