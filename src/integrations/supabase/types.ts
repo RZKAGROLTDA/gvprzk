@@ -215,6 +215,59 @@ export type Database = {
         }
         Relationships: []
       }
+      client_equipment: {
+        Row: {
+          client_code: string
+          client_name: string
+          created_at: string
+          created_by: string
+          filial_id: string | null
+          hours: number | null
+          id: string
+          model: string | null
+          observation: string | null
+          serial_chassis: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          client_code: string
+          client_name: string
+          created_at?: string
+          created_by?: string
+          filial_id?: string | null
+          hours?: number | null
+          id?: string
+          model?: string | null
+          observation?: string | null
+          serial_chassis?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          client_code?: string
+          client_name?: string
+          created_at?: string
+          created_by?: string
+          filial_id?: string | null
+          hours?: number | null
+          id?: string
+          model?: string | null
+          observation?: string | null
+          serial_chassis?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_equipment_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           archive_reason: string | null
@@ -995,7 +1048,13 @@ export type Database = {
           initial_km: number | null
           is_prospect: boolean | null
           name: string
+          next_action: string | null
+          next_action_date: string | null
           observations: string | null
+          opportunity_closing: string | null
+          opportunity_impact: string | null
+          opportunity_interest: string | null
+          opportunity_urgency: string | null
           partial_sales_value: number | null
           phone: string | null
           photos: string[] | null
@@ -1006,12 +1065,14 @@ export type Database = {
           prospect_notes_justification: string | null
           responsible: string
           sales_confirmed: boolean | null
+          sales_estimate: Json | null
           sales_type: string | null
           sales_value: number | null
           start_date: string
           start_time: string
           status: string
           task_type: string
+          technical_category: string | null
           technical_funnel_stage: string | null
           technical_visit_data: Json | null
           updated_at: string
@@ -1036,7 +1097,13 @@ export type Database = {
           initial_km?: number | null
           is_prospect?: boolean | null
           name: string
+          next_action?: string | null
+          next_action_date?: string | null
           observations?: string | null
+          opportunity_closing?: string | null
+          opportunity_impact?: string | null
+          opportunity_interest?: string | null
+          opportunity_urgency?: string | null
           partial_sales_value?: number | null
           phone?: string | null
           photos?: string[] | null
@@ -1047,12 +1114,14 @@ export type Database = {
           prospect_notes_justification?: string | null
           responsible: string
           sales_confirmed?: boolean | null
+          sales_estimate?: Json | null
           sales_type?: string | null
           sales_value?: number | null
           start_date: string
           start_time: string
           status?: string
           task_type?: string
+          technical_category?: string | null
           technical_funnel_stage?: string | null
           technical_visit_data?: Json | null
           updated_at?: string
@@ -1077,7 +1146,13 @@ export type Database = {
           initial_km?: number | null
           is_prospect?: boolean | null
           name?: string
+          next_action?: string | null
+          next_action_date?: string | null
           observations?: string | null
+          opportunity_closing?: string | null
+          opportunity_impact?: string | null
+          opportunity_interest?: string | null
+          opportunity_urgency?: string | null
           partial_sales_value?: number | null
           phone?: string | null
           photos?: string[] | null
@@ -1088,12 +1163,14 @@ export type Database = {
           prospect_notes_justification?: string | null
           responsible?: string
           sales_confirmed?: boolean | null
+          sales_estimate?: Json | null
           sales_type?: string | null
           sales_value?: number | null
           start_date?: string
           start_time?: string
           status?: string
           task_type?: string
+          technical_category?: string | null
           technical_funnel_stage?: string | null
           technical_visit_data?: Json | null
           updated_at?: string
