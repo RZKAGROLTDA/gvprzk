@@ -1185,259 +1185,38 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Informações Básicas */}
-          <Card>
-            <CardHeader>
-              {taskCategory === 'call' ? (
-                <SectionHeader
-                  icon={UserIcon}
-                  title="Informações do Cliente"
-                  description="Contato, propriedade e filial atendida"
-                  tone="primary"
-                />
-              ) : (
-                <CardTitle className="flex items-center gap-2">
-                  <CheckSquare className="h-5 w-5" />
-                  Informações Básicas
-                </CardTitle>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="contact">Nome do Contato</Label>
-                <Input id="contact" value={task.responsible} onChange={e => setTask(prev => ({
-                ...prev,
-                responsible: e.target.value
-              }))} placeholder="Nome do Contato" />
-              </div>
+          {/* Informações Básicas (bloco padronizado) */}
+          <BasicInfoBlock
+            contactName={task.responsible || ''}
+            onContactNameChange={(v) => setTask(prev => ({ ...prev, responsible: v }))}
+            showFunction
+            contactFunction={task.function || ''}
+            onContactFunctionChange={(v) => setTask(prev => ({ ...prev, function: v, functionOther: v !== 'Outros' ? '' : prev.functionOther }))}
+            contactFunctionOther={task.functionOther || ''}
+            onContactFunctionOtherChange={(v) => setTask(prev => ({ ...prev, functionOther: v }))}
+            phone={task.phone || ''}
+            onPhoneChange={(v) => setTask(prev => ({ ...prev, phone: v }))}
+            clientCode={task.clientCode || ''}
+            onClientCodeChange={(v) => setTask(prev => ({ ...prev, clientCode: v }))}
+            clientName={task.client || ''}
+            onClientNameChange={(v) => setTask(prev => ({ ...prev, client: v }))}
+            email={task.email || ''}
+            onEmailChange={(v) => setTask(prev => ({ ...prev, email: v }))}
+            property={task.property || ''}
+            onPropertyChange={(v) => setTask(prev => ({ ...prev, property: v }))}
+            vendedor={profile?.name || ''}
+            filial={profile?.filial_nome || 'Não informado'}
+            showFilialAtendida={taskCategory === 'call'}
+            filialAtendidaRequired={taskCategory === 'call'}
+            filialAtendida={task.filialAtendida || ''}
+            onFilialAtendidaChange={(v) => setTask(prev => ({ ...prev, filialAtendida: v }))}
+            filiais={filiais as any[]}
+            onClientSelected={async (code, name) => {
+              setTask(prev => ({ ...prev, clientCode: code, client: name }));
+              await loadPreviousClientData(code);
+            }}
+          />
 
-              <div className="space-y-2">
-                <Label htmlFor="function">Função</Label>
-                <Select value={task.function || ''} onValueChange={(value) => setTask(prev => ({
-                  ...prev,
-                  function: value,
-                  functionOther: value !== 'Outros' ? '' : prev.functionOther // Clear functionOther if not "Outros"
-                }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a função do contato" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border">
-                    <SelectItem value="Comprador">Comprador</SelectItem>
-                    <SelectItem value="Socio">Sócio</SelectItem>
-                    <SelectItem value="Esposa">Esposa</SelectItem>
-                    <SelectItem value="Gerente">Gerente</SelectItem>
-                    <SelectItem value="Outros">Outros</SelectItem>
-                  </SelectContent>
-                </Select>
-                {task.function === 'Outros' && (
-                  <div className="mt-2">
-                    <Input 
-                      placeholder="Especifique a função" 
-                      value={task.functionOther || ''} 
-                      onChange={e => setTask(prev => ({
-                        ...prev,
-                        functionOther: e.target.value
-                      }))} 
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input id="phone" type="tel" value={task.phone || ''} onChange={e => setTask(prev => ({
-                ...prev,
-                phone: e.target.value
-              }))} placeholder="(00) 00000-0000" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="reportDate">Data do Relatório</Label>
-                <Input id="reportDate" value={new Date().toLocaleDateString('pt-BR')} readOnly className="bg-muted cursor-not-allowed" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="clientCode">Código do Cliente</Label>
-                <div className="relative">
-                  <Input id="clientCode" value={task.clientCode || ''} onChange={e => {
-                  const value = e.target.value;
-                  setTask(prev => ({
-                    ...prev,
-                    clientCode: value
-                  }));
-                  // Filtrar códigos baseado no input
-                  if (value) {
-                    const filtered = clientCodes.filter(code => code.code.includes(value) || code.name.toLowerCase().includes(value.toLowerCase()));
-                    setFilteredClientCodes(filtered);
-                    setShowDropdown(true);
-                  } else {
-                    setShowDropdown(false);
-                  }
-                }} onFocus={() => {
-                  if (task.clientCode) {
-                    const filtered = clientCodes.filter(code => code.code.includes(task.clientCode) || code.name.toLowerCase().includes(task.clientCode.toLowerCase()));
-                    setFilteredClientCodes(filtered);
-                    setShowDropdown(true);
-                  }
-                }} onBlur={async () => {
-                  // Delay para permitir clique no dropdown
-                  setTimeout(() => setShowDropdown(false), 200);
-
-                  // Se o código foi digitado manualmente, verificar se existe e carregar dados
-                  if (task.clientCode && task.clientCode.length >= 5) {
-                    const foundClient = clientCodes.find(code => code.code === task.clientCode);
-                    if (foundClient) {
-                      // Atualizar nome do cliente se não foi preenchido
-                      if (!task.client || task.client !== foundClient.name) {
-                        setTask(prev => ({
-                          ...prev,
-                          client: foundClient.name
-                        }));
-                      }
-                      // Carregar dados anteriores
-                      await loadPreviousClientData(task.clientCode);
-                    }
-                  }
-                }} onKeyDown={async e => {
-                  if (e.key === 'Enter' && task.clientCode) {
-                    const foundClient = clientCodes.find(code => code.code === task.clientCode);
-                    if (foundClient) {
-                      setTask(prev => ({
-                        ...prev,
-                        client: foundClient.name
-                      }));
-                      await loadPreviousClientData(task.clientCode);
-                    }
-                  }
-                }} placeholder="Digite o código ou nome do cliente" />
-                  {showDropdown && filteredClientCodes.length > 0 && <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {filteredClientCodes.map(clientCodeItem => <div key={clientCodeItem.code} className="px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center" onClick={async () => {
-                    setTask(prev => ({
-                      ...prev,
-                      clientCode: clientCodeItem.code,
-                      client: clientCodeItem.name
-                    }));
-                    setShowDropdown(false);
-
-                    // Buscar dados anteriores do cliente
-                    await loadPreviousClientData(clientCodeItem.code);
-                  }}>
-                          <span className="font-medium">{clientCodeItem.code}</span>
-                          <span className="text-muted-foreground text-sm">{clientCodeItem.name}</span>
-                        </div>)}
-                    </div>}
-                </div>
-              </div>
-
-              <div className="space-y-2 relative">
-                <Label htmlFor="client">Nome do Cliente</Label>
-                <Input id="client" value={task.client} onChange={e => {
-                const value = e.target.value;
-                setTask(prev => ({
-                  ...prev,
-                  client: value
-                }));
-                // Filtrar clientes baseado no nome
-                if (value) {
-                  const filtered = clientCodes.filter(code => code.name.toLowerCase().includes(value.toLowerCase()) || code.code.includes(value));
-                  setFilteredClientNames(filtered);
-                  setShowClientNameDropdown(true);
-                } else {
-                  setShowClientNameDropdown(false);
-                }
-              }} onFocus={() => {
-                if (task.client) {
-                  const filtered = clientCodes.filter(code => code.name.toLowerCase().includes(task.client.toLowerCase()) || code.code.includes(task.client));
-                  setFilteredClientNames(filtered);
-                  setShowClientNameDropdown(true);
-                }
-              }} onBlur={async () => {
-                // Delay para permitir clique no dropdown
-                setTimeout(() => setShowClientNameDropdown(false), 200);
-
-                // Se o nome foi digitado, verificar se existe e carregar dados
-                if (task.client && task.client.length >= 3) {
-                  const foundClient = clientCodes.find(code => code.name.toLowerCase() === task.client.toLowerCase());
-                  if (foundClient) {
-                    setTask(prev => ({
-                      ...prev,
-                      clientCode: foundClient.code
-                    }));
-                    await loadPreviousClientData(foundClient.code);
-                  }
-                }
-              }} placeholder="Digite o nome do cliente" />
-                {showClientNameDropdown && filteredClientNames.length > 0 && <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                    {filteredClientNames.map(clientItem => <div key={clientItem.code} className="px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center" onClick={async () => {
-                  setTask(prev => ({
-                    ...prev,
-                    client: clientItem.name,
-                    clientCode: clientItem.code
-                  }));
-                  setShowClientNameDropdown(false);
-                  await loadPreviousClientData(clientItem.code);
-                }}>
-                        <span className="font-medium">{clientItem.name}</span>
-                        <span className="text-sm text-muted-foreground">{clientItem.code}</span>
-                      </div>)}
-                  </div>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email do Cliente/Contato</Label>
-                <Input id="email" type="email" value={task.email || ''} onChange={e => setTask(prev => ({
-                ...prev,
-                email: e.target.value
-              }))} placeholder="email@exemplo.com" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="property">Nome da Propriedade</Label>
-                <Input id="property" value={task.property} onChange={e => setTask(prev => ({
-                ...prev,
-                property: e.target.value
-              }))} placeholder="Nome da propriedade" />
-              </div>
-
-              {/* Campo Filial Atendida - obrigatório para ligações */}
-              {taskCategory === 'call' && (
-                <div className="space-y-2">
-                  <Label htmlFor="filialAtendida">
-                    Filial Atendida <span className="text-destructive">*</span>
-                  </Label>
-                  <Select 
-                    value={task.filialAtendida || ''} 
-                    onValueChange={(value) => setTask(prev => ({ ...prev, filialAtendida: value }))}
-                    required
-                  >
-                    <SelectTrigger className={!task.filialAtendida ? 'border-destructive/50' : ''}>
-                      <SelectValue placeholder="Selecione a filial atendida" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filiais.map((filial) => (
-                        <SelectItem key={filial.id} value={filial.nome}>
-                          {filial.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Selecione a filial que está sendo atendida nesta ligação
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="vendor">Vendedor</Label>
-                <Input id="vendor" value={profile?.name || ''} disabled placeholder="Nome do vendedor" className="bg-muted" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="filial">Filial</Label>
-                <Input id="filial" value={profile?.filial_nome || 'Não informado'} disabled placeholder="Filial" className="bg-muted" />
-              </div>
-
-            </CardContent>
-          </Card>
 
           {/* Informações de Equipamentos - para ambos: visita a campo e ligação */}
           {(taskCategory === 'field-visit' || taskCategory === 'call') && <Card>
