@@ -8,10 +8,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Trash2, Search } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
