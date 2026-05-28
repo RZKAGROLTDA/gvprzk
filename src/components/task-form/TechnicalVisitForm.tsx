@@ -27,6 +27,8 @@ import {
 } from '@/components/task-form/sections';
 import { format } from 'date-fns';
 
+const SERVICE_TYPES = [
+
   'Prospecção',
   'Pacotes',
   'Revisão Preventiva',
