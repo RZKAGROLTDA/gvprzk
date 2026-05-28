@@ -81,6 +81,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/create-field-visit" element={<Layout><CreateFieldVisit /></Layout>} />
       <Route path="/create-call" element={<Layout><CreateCall /></Layout>} />
       <Route path="/create-workshop-checklist" element={<Layout><CreateWorkshopChecklist /></Layout>} />
+      <Route path="/create-technical-visit" element={<Layout><CreateTechnicalVisit /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
       <Route path="/crm" element={<Layout><CRM /></Layout>} />
       <Route path="/campaigns" element={<Layout><Campaigns /></Layout>} />
