@@ -7038,8 +7038,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </CardContent>
                     </Card>)}
                 </div>
-              </CardContent>
-            </Card>}
+            </ProductsOfferSection>}
         </div>
 
         {/* Observações e Valores */}
