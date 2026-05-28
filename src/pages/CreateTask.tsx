@@ -6555,7 +6555,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <h2 className="text-xl font-semibold text-foreground mb-2">Gestão de Vendas de Peças</h2>
               <p className="text-muted-foreground text-sm sm:text-base">Selecione o tipo de tarefa que deseja criar:</p>
             </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Button type="button" variant="outline" className="h-auto p-6 flex-col gap-3 border-success/20 hover:border-success/40 hover:bg-success/5" onClick={() => window.location.href = '/create-field-visit'}>
               <MapPin className="h-8 w-8 text-success" />
               <div className="text-center">
@@ -6577,6 +6577,14 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               <div className="text-center">
                 <div className="font-semibold">Checklist Oficina</div>
                 <div className="text-sm opacity-80">Verificação de produtos</div>
+              </div>
+            </Button>
+
+            <Button type="button" variant="outline" className="h-auto p-6 flex-col gap-3 border-warning/20 hover:border-warning/40 hover:bg-warning/5" onClick={() => window.location.href = '/create-technical-visit'}>
+              <Settings className="h-8 w-8 text-warning" />
+              <div className="text-center">
+                <div className="font-semibold">Visita Técnica</div>
+                <div className="text-sm opacity-80">Atendimento e oportunidade técnica</div>
               </div>
             </Button>
           </div>
