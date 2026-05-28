@@ -33,6 +33,8 @@ import {
   ObservationsSection,
   PhotosCheckinSection,
 } from '@/components/task-form/sections';
+import { SectionHeader } from '@/components/task-form/sections/SectionHeader';
+import { User as UserIcon, Tractor, MessageSquare } from 'lucide-react';
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
