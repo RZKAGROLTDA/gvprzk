@@ -321,86 +321,39 @@ export const TechnicalVisitForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Cliente */}
-      <ClientInfoSection>
-        <div className="space-y-4">
-          {/* Busca de cliente (mesma base usada em Ligação/Visita Fazenda) */}
-          <div className="space-y-2 relative">
-            <Label htmlFor="clientSearch">Buscar Cliente (código ou nome)</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="clientSearch"
-                className="pl-9"
-                value={clientSearch}
-                onChange={(e) => {
-                  setClientSearch(e.target.value);
-                  setShowClientSuggestions(true);
-                }}
-                onFocus={() => setShowClientSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowClientSuggestions(false), 150)}
-                placeholder="Digite o código ou nome do cliente..."
-                autoComplete="off"
-              />
-            </div>
-            {showClientSuggestions && filteredClients.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-lg">
-                {filteredClients.map((c) => (
-                  <button
-                    type="button"
-                    key={c.code}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => selectClient(c)}
-                    className="w-full text-left px-3 py-2 hover:bg-muted flex justify-between items-center"
-                  >
-                    <span className="font-medium">{c.code}</span>
-                    <span className="text-muted-foreground text-sm">{c.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+      {/* Informações Básicas (bloco padronizado) */}
+      <BasicInfoBlock
+        contactName={contactName}
+        onContactNameChange={setContactName}
+        showFunction
+        contactFunction={contactFunction}
+        onContactFunctionChange={setContactFunction}
+        contactFunctionOther={contactFunctionOther}
+        onContactFunctionOtherChange={setContactFunctionOther}
+        phone={phone}
+        onPhoneChange={setPhone}
+        clientCode={clientCode}
+        onClientCodeChange={setClientCode}
+        clientName={clientName}
+        onClientNameChange={setClientName}
+        email={email}
+        onEmailChange={setEmail}
+        property={property}
+        onPropertyChange={setProperty}
+        vendedor={profile?.name || ''}
+        filial={profile?.filial_nome || 'Não informado'}
+        showFilialAtendida
+        filialAtendida={filialAtendida}
+        onFilialAtendidaChange={setFilialAtendida}
+        filiais={filiais as any[]}
+        onClientSelected={async (code) => {
+          await Promise.all([
+            loadClientEquipments(code),
+            loadPreviousClientData(code),
+          ]);
+        }}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="clientCode">Código do Cliente</Label>
-              <Input
-                id="clientCode"
-                value={clientCode}
-                onChange={(e) => setClientCode(e.target.value)}
-                placeholder="Preenchido pela busca"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="clientName">Nome do Cliente *</Label>
-              <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="property">Propriedade *</Label>
-              <Input id="property" value={property} onChange={(e) => setProperty(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Filial</Label>
-              <Select value={filialId} onValueChange={setFilialId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {filiais.map((f: any) => (
-                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      </ClientInfoSection>
 
 
       {/* Parque de Máquinas */}
