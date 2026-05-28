@@ -189,7 +189,8 @@ export const TechnicalVisitForm: React.FC = () => {
       const payload = newOnes.map(e => ({
         client_code: clientCode.trim(),
         client_name: clientName.trim(),
-        filial_id: filialId || null,
+        filial_id: profile?.filial_id || null,
+
         model: e.model || null,
         serial_chassis: e.serial_chassis || null,
         hours: e.hours ? Number(e.hours) : null,
