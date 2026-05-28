@@ -7062,10 +7062,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         {/* Observações e Valores */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Observações
-            </CardTitle>
+            {taskCategory === 'call' ? (
+              <SectionHeader
+                icon={MessageSquare}
+                title="Observações & Funil de Vendas"
+                description="Anotações, valor da oportunidade e status no funil"
+                tone="primary"
+              />
+            ) : (
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Observações
+              </CardTitle>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
