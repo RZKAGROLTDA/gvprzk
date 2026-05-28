@@ -35,7 +35,9 @@ import {
   PhotosCheckinSection,
 } from '@/components/task-form/sections';
 import { SectionHeader } from '@/components/task-form/sections/SectionHeader';
+import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
 import { User as UserIcon, Tractor, MessageSquare } from 'lucide-react';
+
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
