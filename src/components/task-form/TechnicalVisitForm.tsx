@@ -25,8 +25,11 @@ import {
   ObservationsSection,
 } from '@/components/task-form/sections';
 import { format } from 'date-fns';
+import { format } from 'date-fns';
 
-const SERVICE_TYPES = [
+type Level = 'baixa' | 'media' | 'alta';
+
+
 
   'Prospecção',
   'Pacotes',
