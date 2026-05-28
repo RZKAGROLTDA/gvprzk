@@ -252,9 +252,8 @@ export const TechnicalVisitForm: React.FC = () => {
     const salesConfirmed = isClosed ? true : isLost ? false : undefined;
     const salesType = isClosed ? 'ganho' : isLost ? 'perdido' : undefined;
 
-    const filialNome = filiais.find((f: any) => f.id === filialId)?.nome
-      || profile?.filial_nome
-      || '';
+    const filialNome = profile?.filial_nome || '';
+
 
     const taskData: any = {
       name: 'Visita Técnica',
