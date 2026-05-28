@@ -25,7 +25,6 @@ import {
   ObservationsSection,
 } from '@/components/task-form/sections';
 import { format } from 'date-fns';
-import { format } from 'date-fns';
 
 type Level = 'baixa' | 'media' | 'alta';
 
