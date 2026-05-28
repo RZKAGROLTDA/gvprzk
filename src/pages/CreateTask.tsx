@@ -6854,10 +6854,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           {/* Informações de Equipamentos - para ambos: visita a campo e ligação */}
           {(taskCategory === 'field-visit' || taskCategory === 'call') && <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  Lista de Equipamentos
-                </CardTitle>
+                {taskCategory === 'call' ? (
+                  <SectionHeader
+                    icon={Tractor}
+                    title="Parque de Máquinas"
+                    description="Equipamentos do cliente"
+                    tone="success"
+                  />
+                ) : (
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Lista de Equipamentos
+                  </CardTitle>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Hectares da Propriedade */}
