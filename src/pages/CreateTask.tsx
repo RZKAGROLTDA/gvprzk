@@ -6983,8 +6983,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
           {/* Produtos para Ligação — wrapper modernizado (Fase 2) */}
           {taskCategory === 'call' && <ProductsOfferSection>
-              <div>
-                <div className="space-y-6">
+              <div className="space-y-6">
+
 
                 <div className="space-y-6">
                   {checklist.map(item => <Card key={item.id} className="border border-border/50">
