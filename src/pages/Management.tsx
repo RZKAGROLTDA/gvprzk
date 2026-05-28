@@ -682,7 +682,6 @@ const Management: React.FC = () => {
                   <SelectItem value="visita">Visita</SelectItem>
                   <SelectItem value="ligacao">Ligação</SelectItem>
                   <SelectItem value="checklist">Checklist</SelectItem>
-                  <SelectItem value="technical_visit">Visita Técnica</SelectItem>
                 </SelectContent>
               </Select>
             </div>

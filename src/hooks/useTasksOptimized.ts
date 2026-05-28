@@ -343,10 +343,8 @@ export const useTasksOptimized = (includeDetails = false) => {
           sales_value: standardizedTaskData.salesValue || 0,
           sales_confirmed: standardizedTaskData.salesConfirmed,
           sales_type: taskData.salesType || null,
-          ...(taskData.technicalVisitData !== undefined ? { technical_visit_data: taskData.technicalVisitData } : {}),
-          ...(taskData.technicalFunnelStage !== undefined ? { technical_funnel_stage: taskData.technicalFunnelStage } : {}),
           ...equipmentData
-        } as any)
+        })
         .select()
         .single();
 

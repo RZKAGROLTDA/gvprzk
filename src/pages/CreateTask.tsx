@@ -26,10 +26,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
-import { useFieldVisitSnapshotPublisher } from '@/components/task-form/FieldVisitSnapshotContext';
-import { TECHNICAL_FUNNEL_OPTIONS, TECHNICAL_NEXT_ACTIONS, emptyTechnicalVisitData, type TechnicalVisitData, type TechnicalFunnelStage } from '@/lib/activityLabels';
 interface CreateTaskProps {
-  taskType?: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit';
+  taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
 const CreateTask: React.FC<CreateTaskProps> = ({
   taskType: propTaskType
@@ -5516,7 +5514,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   } = useProfile();
 
   // Mapear tipos da URL para tipos internos
-  const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit' => {
+  const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' => {
     switch (urlType) {
       case 'farm_visit':
         return 'field-visit';
@@ -5524,15 +5522,13 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         return 'call';
       case 'workshop_checklist':
         return 'workshop-checklist';
-      case 'technical_visit':
-        return 'technical-visit';
       default:
         return 'field-visit';
     }
   };
 
   // Estado para controlar o tipo de tarefa selecionado
-  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit' | null>(null);
+  const [selectedTaskType, setSelectedTaskType] = useState<'field-visit' | 'call' | 'workshop-checklist' | null>(null);
   // Inicializar com URL ou prop se existir
   useEffect(() => {
     if (propTaskType) {
@@ -5546,7 +5542,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   }, [urlTaskType, propTaskType]);
 
   // Função para alterar o tipo de tarefa
-  const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit') => {
+  const handleTaskTypeChange = (newType: 'field-visit' | 'call' | 'workshop-checklist') => {
     setSelectedTaskType(newType);
     setTaskCategory(newType);
 
@@ -5558,7 +5554,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   };
 
   // Função para obter o título da tarefa
-  const getTaskTitle = (category: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit'): string => {
+  const getTaskTitle = (category: 'field-visit' | 'call' | 'workshop-checklist'): string => {
     switch (category) {
       case 'field-visit':
         return 'Visita a Fazenda';
@@ -5566,13 +5562,11 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         return 'Ligação para Cliente';
       case 'workshop-checklist':
         return 'Checklist da Oficina';
-      case 'technical-visit':
-        return 'Visita Técnica';
       default:
         return 'Nova Tarefa';
     }
   };
-  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit'>(selectedTaskType ?? 'field-visit');
+  const [taskCategory, setTaskCategory] = useState<'field-visit' | 'call' | 'workshop-checklist'>(selectedTaskType);
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionLockRef = useRef(false);
@@ -5587,7 +5581,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   } = useTasksOptimized();
   const { data: filiais = [] } = useFiliais();
   // Mapear taskCategory para taskType
-  const getTaskTypeFromCategory = (category: 'field-visit' | 'call' | 'workshop-checklist' | 'technical-visit'): 'prospection' | 'ligacao' | 'checklist' | 'technical_visit' => {
+  const getTaskTypeFromCategory = (category: 'field-visit' | 'call' | 'workshop-checklist'): 'prospection' | 'ligacao' | 'checklist' => {
     switch (category) {
       case 'field-visit':
         return 'prospection';
@@ -5595,8 +5589,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         return 'ligacao';
       case 'workshop-checklist':
         return 'checklist';
-      case 'technical-visit':
-        return 'technical_visit';
       default:
         return 'prospection';
     }
@@ -5705,13 +5697,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const [checklist, setChecklist] = useState<ProductType[]>([]);
   const [callProducts, setCallProducts] = useState<ProductType[]>([]);
 
-  // Publica snapshot do form para os shells executivos (FieldVisitForm / CallForm).
-  // No-op quando renderizado fora do provider — não afeta gravação.
-  const publishFieldVisitSnapshot = useFieldVisitSnapshotPublisher();
-  useEffect(() => {
-    publishFieldVisitSnapshot({ task, checklist, callProducts, equipmentList });
-  }, [task, checklist, callProducts, equipmentList, publishFieldVisitSnapshot]);
-
   // Função para calcular valor total automático
   const calculateTotalSalesValue = () => {
     let total = 0;
@@ -5721,14 +5706,6 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       total += checklist.reduce((sum, item) => {
         return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
       }, 0);
-    }
-
-    // Somar estimativas da Visita Técnica
-    if (taskCategory === 'technical-visit') {
-      const e = task.technicalVisitData?.estimates;
-      if (e) {
-        total += (Number(e.servicos) || 0) + (Number(e.pecas) || 0) + (Number(e.treinamento) || 0) + (Number(e.puk) || 0);
-      }
     }
 
     // Somar valores das perguntas da ligação (mantido para compatibilidade)
@@ -5758,7 +5735,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
         salesValue: totalValue
       }));
     }
-  }, [checklist, callQuestions, callProducts, taskCategory, task.prospectItems, task.technicalVisitData]);
+  }, [checklist, callQuestions, callProducts, taskCategory, task.prospectItems]);
 
   // REMOVER este useEffect que estava alterando o valor quando prospectItems mudava
   // useEffect(() => {
@@ -6855,136 +6832,6 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
             </CardContent>
           </Card>
-
-          {/* === VISITA TÉCNICA === Campos específicos */}
-          {taskCategory === 'technical-visit' && (() => {
-            const tvd: TechnicalVisitData = task.technicalVisitData ?? emptyTechnicalVisitData();
-            const updateTvd = (patch: Partial<TechnicalVisitData>) => {
-              setTask(prev => ({
-                ...prev,
-                technicalVisitData: { ...(prev.technicalVisitData ?? emptyTechnicalVisitData()), ...patch },
-              }));
-            };
-            const updateEstimate = (key: 'servicos' | 'pecas' | 'treinamento' | 'puk', value: string) => {
-              const num = parseFloat(value.replace(',', '.')) || 0;
-              updateTvd({ estimates: { ...(tvd.estimates ?? {}), [key]: num } });
-            };
-            const updateClassification = (key: keyof NonNullable<TechnicalVisitData['classification']>, value: 'baixa' | 'media' | 'alta') => {
-              updateTvd({ classification: { ...(tvd.classification ?? {}), [key]: value } });
-            };
-            const serviceTypes = ['Prospecção', 'Pacotes', 'Revisão Preventiva', 'Revisão Geral', 'Reforma', 'Diagnóstico Técnico'];
-            const levels: { value: 'baixa' | 'media' | 'alta'; label: string }[] = [
-              { value: 'baixa', label: 'Baixa' },
-              { value: 'media', label: 'Média' },
-              { value: 'alta', label: 'Alta' },
-            ];
-            const classifFields: { key: keyof NonNullable<TechnicalVisitData['classification']>; label: string }[] = [
-              { key: 'interesse_cliente', label: 'Interesse do Cliente' },
-              { key: 'urgencia_operacional', label: 'Urgência Operacional' },
-              { key: 'impacto_disponibilidade', label: 'Impacto na Disponibilidade' },
-              { key: 'possibilidade_fechamento', label: 'Possibilidade de Fechamento' },
-            ];
-            return (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Wrench className="h-5 w-5" />
-                    Visita Técnica
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Tipo de serviço */}
-                  <div className="space-y-2">
-                    <Label>Tipo de Serviço</Label>
-                    <Select
-                      value={tvd.service_type || ''}
-                      onValueChange={(v) => updateTvd({ service_type: v })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione o tipo de serviço" /></SelectTrigger>
-                      <SelectContent>
-                        {serviceTypes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Estimativas */}
-                  <div className="space-y-2">
-                    <Label className="text-base font-medium">Estimativas (R$)</Label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {([
-                        ['servicos', 'Serviços'],
-                        ['pecas', 'Peças'],
-                        ['treinamento', 'Treinamento'],
-                        ['puk', 'PUK'],
-                      ] as const).map(([key, label]) => (
-                        <div key={key} className="space-y-1">
-                          <Label htmlFor={`est-${key}`} className="text-xs text-muted-foreground">{label}</Label>
-                          <Input
-                            id={`est-${key}`}
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={tvd.estimates?.[key] ?? ''}
-                            onChange={(e) => updateEstimate(key, e.target.value)}
-                            placeholder="0,00"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Classificação */}
-                  <div className="space-y-2">
-                    <Label className="text-base font-medium">Classificação</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {classifFields.map(({ key, label }) => (
-                        <div key={key} className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">{label}</Label>
-                          <Select
-                            value={tvd.classification?.[key] ?? ''}
-                            onValueChange={(v) => updateClassification(key, v as 'baixa' | 'media' | 'alta')}
-                          >
-                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                            <SelectContent>
-                              {levels.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Funil Técnico */}
-                  <div className="space-y-2">
-                    <Label>Funil Técnico</Label>
-                    <Select
-                      value={task.technicalFunnelStage ?? ''}
-                      onValueChange={(v) => setTask(prev => ({ ...prev, technicalFunnelStage: v as TechnicalFunnelStage }))}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione o estágio" /></SelectTrigger>
-                      <SelectContent>
-                        {TECHNICAL_FUNNEL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Próxima Ação */}
-                  <div className="space-y-2">
-                    <Label>Próxima Ação</Label>
-                    <Select
-                      value={tvd.next_action || ''}
-                      onValueChange={(v) => updateTvd({ next_action: v })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione a próxima ação" /></SelectTrigger>
-                      <SelectContent>
-                        {TECHNICAL_NEXT_ACTIONS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })()}
 
           {/* Informações de Equipamentos - para ambos: visita a campo e ligação */}
           {(taskCategory === 'field-visit' || taskCategory === 'call') && <Card>

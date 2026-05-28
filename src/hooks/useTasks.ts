@@ -98,9 +98,7 @@ export const useTasks = () => {
             documents,
             check_in_location,
             initial_km,
-            final_km,
-            technical_visit_data,
-            technical_funnel_stage
+            final_km
           `)
           .order('created_at', { ascending: false })
           .limit(50); // Reduzir para 50 para melhor performance
@@ -304,10 +302,8 @@ export const useTasks = () => {
           is_prospect: standardizedTaskData.isProspect || false,
           prospect_notes: standardizedTaskData.prospectNotes || '',
           sales_value: standardizedTaskData.salesValue || 0,
-          sales_confirmed: standardizedTaskData.salesConfirmed,
-          ...((taskData as any).technicalVisitData !== undefined ? { technical_visit_data: (taskData as any).technicalVisitData } : {}),
-          ...((taskData as any).technicalFunnelStage !== undefined ? { technical_funnel_stage: (taskData as any).technicalFunnelStage } : {}),
-        } as any)
+          sales_confirmed: standardizedTaskData.salesConfirmed
+        })
         .select()
         .single();
 

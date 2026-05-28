@@ -1012,8 +1012,6 @@ export type Database = {
           start_time: string
           status: string
           task_type: string
-          technical_funnel_stage: string | null
-          technical_visit_data: Json | null
           updated_at: string
         }
         Insert: {
@@ -1053,8 +1051,6 @@ export type Database = {
           start_time: string
           status?: string
           task_type?: string
-          technical_funnel_stage?: string | null
-          technical_visit_data?: Json | null
           updated_at?: string
         }
         Update: {
@@ -1094,8 +1090,6 @@ export type Database = {
           start_time?: string
           status?: string
           task_type?: string
-          technical_funnel_stage?: string | null
-          technical_visit_data?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -2409,8 +2403,6 @@ export type Database = {
           start_time: string
           status: string
           task_type: string
-          technical_funnel_stage: string
-          technical_visit_data: Json
           updated_at: string
         }[]
       }
@@ -2896,7 +2888,6 @@ export type Database = {
         | "checklist"
         | "reuniao"
         | "outro"
-        | "visita_tecnica"
       followup_priority: "baixa" | "media" | "alta"
       followup_status: "pendente" | "concluido" | "cancelado" | "reagendado"
     }
@@ -3042,7 +3033,6 @@ export const Constants = {
         "checklist",
         "reuniao",
         "outro",
-        "visita_tecnica",
       ],
       followup_priority: ["baixa", "media", "alta"],
       followup_status: ["pendente", "concluido", "cancelado", "reagendado"],
