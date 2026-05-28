@@ -8,11 +8,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
+import { CLIENT_CODES } from '@/lib/clientCodes';
 import {
   ClientInfoSection,
   EquipmentParkSection,
@@ -82,11 +83,60 @@ export const TechnicalVisitForm: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [filialId, setFilialId] = useState<string>('');
+  // Autocomplete cliente
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const filteredClients = useMemo(() => {
+    const q = clientSearch.trim().toLowerCase();
+    if (!q) return [];
+    return CLIENT_CODES.filter(c =>
+      c.code.includes(q) || c.name.toLowerCase().includes(q)
+    ).slice(0, 20);
+  }, [clientSearch]);
 
   // Pre-fill filial from profile
   useEffect(() => {
     if (profile?.filial_id && !filialId) setFilialId(profile.filial_id);
   }, [profile?.filial_id, filialId]);
+
+  // Carrega dados anteriores do cliente (mesma lógica das outras tarefas)
+  const loadPreviousClientData = async (code: string) => {
+    const c = code.trim();
+    if (!c) return;
+    try {
+      const { data } = await (supabase as any)
+        .from('tasks')
+        .select('property, email, phone, filial')
+        .eq('clientCode', c)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        if (data.property && !property) setProperty(data.property);
+        if (data.email && !email) setEmail(data.email);
+        if (data.phone && !phone) setPhone(data.phone);
+        if (data.filial && !filialId) {
+          const match = (filiais as any[]).find(
+            (f) => f.nome?.toLowerCase().trim() === String(data.filial).toLowerCase().trim()
+          );
+          if (match) setFilialId(match.id);
+        }
+      }
+    } catch (err) {
+      console.warn('loadPreviousClientData:', err);
+    }
+  };
+
+  const selectClient = async (c: { code: string; name: string }) => {
+    setClientCode(c.code);
+    setClientName(c.name);
+    setClientSearch(`${c.code} - ${c.name}`);
+    setShowClientSuggestions(false);
+    await Promise.all([
+      loadClientEquipments(c.code),
+      loadPreviousClientData(c.code),
+    ]);
+  };
 
   // --- Parque de Máquinas ---
   const [equipments, setEquipments] = useState<EquipmentRow[]>([]);
@@ -300,46 +350,85 @@ export const TechnicalVisitForm: React.FC = () => {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Cliente */}
       <ClientInfoSection>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="clientCode">Código do Cliente</Label>
-            <Input
-              id="clientCode"
-              value={clientCode}
-              onChange={(e) => setClientCode(e.target.value)}
-              onBlur={() => loadClientEquipments(clientCode)}
-              placeholder="Ex.: 50001"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="clientName">Nome do Cliente *</Label>
-            <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="property">Propriedade *</Label>
-            <Input id="property" value={property} onChange={(e) => setProperty(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="phone">Telefone</Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Filial</Label>
-            <Select value={filialId} onValueChange={setFilialId}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {filiais.map((f: any) => (
-                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+        <div className="space-y-4">
+          {/* Busca de cliente (mesma base usada em Ligação/Visita Fazenda) */}
+          <div className="space-y-2 relative">
+            <Label htmlFor="clientSearch">Buscar Cliente (código ou nome)</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="clientSearch"
+                className="pl-9"
+                value={clientSearch}
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setShowClientSuggestions(true);
+                }}
+                onFocus={() => setShowClientSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowClientSuggestions(false), 150)}
+                placeholder="Digite o código ou nome do cliente..."
+                autoComplete="off"
+              />
+            </div>
+            {showClientSuggestions && filteredClients.length > 0 && (
+              <div className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-lg">
+                {filteredClients.map((c) => (
+                  <button
+                    type="button"
+                    key={c.code}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectClient(c)}
+                    className="w-full text-left px-3 py-2 hover:bg-muted flex justify-between items-center"
+                  >
+                    <span className="font-medium">{c.code}</span>
+                    <span className="text-muted-foreground text-sm">{c.name}</span>
+                  </button>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="clientCode">Código do Cliente</Label>
+              <Input
+                id="clientCode"
+                value={clientCode}
+                onChange={(e) => setClientCode(e.target.value)}
+                placeholder="Preenchido pela busca"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="clientName">Nome do Cliente *</Label>
+              <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="property">Propriedade *</Label>
+              <Input id="property" value={property} onChange={(e) => setProperty(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Filial</Label>
+              <Select value={filialId} onValueChange={setFilialId}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {filiais.map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </ClientInfoSection>
+
 
       {/* Parque de Máquinas */}
       <EquipmentParkSection
