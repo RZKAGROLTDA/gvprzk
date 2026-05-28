@@ -26,6 +26,13 @@ import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import {
+  ClientInfoSection,
+  ProductsOfferSection,
+  SalesFunnelSection,
+  ObservationsSection,
+  PhotosCheckinSection,
+} from '@/components/task-form/sections';
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
@@ -6974,16 +6981,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardContent>
             </Card>}
 
-          {/* Produtos para Ligação */}
-          {taskCategory === 'call' && <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  Produtos para Ofertar
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+          {/* Produtos para Ligação — wrapper modernizado (Fase 2) */}
+          {taskCategory === 'call' && <ProductsOfferSection>
                 <div className="space-y-6">
+
                   {checklist.map(item => <Card key={item.id} className="border border-border/50">
                       <CardContent className="p-4">
                         <div className="space-y-4">
@@ -7035,8 +7036,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </CardContent>
                     </Card>)}
                 </div>
-              </CardContent>
-            </Card>}
+            </ProductsOfferSection>}
         </div>
 
         {/* Observações e Valores */}
