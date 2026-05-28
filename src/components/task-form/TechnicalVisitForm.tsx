@@ -29,7 +29,7 @@ import { format } from 'date-fns';
 
 type Level = 'baixa' | 'media' | 'alta';
 
-
+const SERVICE_TYPES = [
 
   'Prospecção',
   'Pacotes',
