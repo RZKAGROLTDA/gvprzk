@@ -24,11 +24,6 @@ import {
   NextActionSection,
   ObservationsSection,
 } from '@/components/task-form/sections';
-  OpportunityClassificationSection,
-  SalesFunnelSection,
-  NextActionSection,
-  ObservationsSection,
-} from '@/components/task-form/sections';
 import { format } from 'date-fns';
 
 type Level = 'baixa' | 'media' | 'alta';
