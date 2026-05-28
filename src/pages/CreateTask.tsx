@@ -26,6 +26,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import { CLIENT_CODES } from '@/lib/clientCodes';
 import {
   ClientInfoSection,
   ProductsOfferSection,
