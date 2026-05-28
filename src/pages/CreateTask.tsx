@@ -26,6 +26,13 @@ import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
+import {
+  ClientInfoSection,
+  ProductsOfferSection,
+  SalesFunnelSection,
+  ObservationsSection,
+  PhotosCheckinSection,
+} from '@/components/task-form/sections';
 interface CreateTaskProps {
   taskType?: 'field-visit' | 'call' | 'workshop-checklist';
 }
