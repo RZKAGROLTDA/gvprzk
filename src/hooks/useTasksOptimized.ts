@@ -343,6 +343,21 @@ export const useTasksOptimized = (includeDetails = false) => {
           sales_value: standardizedTaskData.salesValue || 0,
           sales_confirmed: standardizedTaskData.salesConfirmed,
           sales_type: taskData.salesType || null,
+          // Technical Visit (task_type='technical_visit') — only pass when present
+          ...(taskData.technicalCategory !== undefined && { technical_category: taskData.technicalCategory }),
+          ...(taskData.technicalFunnelStage !== undefined && { technical_funnel_stage: taskData.technicalFunnelStage }),
+          ...(taskData.technicalVisitData !== undefined && { technical_visit_data: taskData.technicalVisitData }),
+          ...(taskData.opportunityInterest !== undefined && { opportunity_interest: taskData.opportunityInterest }),
+          ...(taskData.opportunityUrgency !== undefined && { opportunity_urgency: taskData.opportunityUrgency }),
+          ...(taskData.opportunityImpact !== undefined && { opportunity_impact: taskData.opportunityImpact }),
+          ...(taskData.opportunityClosing !== undefined && { opportunity_closing: taskData.opportunityClosing }),
+          ...(taskData.salesEstimate !== undefined && { sales_estimate: taskData.salesEstimate }),
+          ...(taskData.nextAction !== undefined && { next_action: taskData.nextAction }),
+          ...(taskData.nextActionDate !== undefined && {
+            next_action_date: typeof taskData.nextActionDate === 'string'
+              ? taskData.nextActionDate
+              : (taskData.nextActionDate as Date)?.toISOString().split('T')[0],
+          }),
           ...equipmentData
         })
         .select()
@@ -620,6 +635,8 @@ const getDefaultTaskName = (taskType: string): string => {
       return 'Ligação para Cliente';
     case 'checklist':
       return 'Checklist da Oficina';
+    case 'technical_visit':
+      return 'Visita Técnica';
     default:
       return 'Visita à Fazenda';
   }
