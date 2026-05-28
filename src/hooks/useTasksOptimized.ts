@@ -620,6 +620,8 @@ const getDefaultTaskName = (taskType: string): string => {
       return 'Ligação para Cliente';
     case 'checklist':
       return 'Checklist da Oficina';
+    case 'technical_visit':
+      return 'Visita Técnica';
     default:
       return 'Visita à Fazenda';
   }
