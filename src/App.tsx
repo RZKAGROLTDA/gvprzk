@@ -19,6 +19,7 @@ import CreateTask from "./pages/CreateTask";
 import CreateFieldVisit from "./pages/CreateFieldVisit";
 import CreateCall from "./pages/CreateCall";
 import CreateWorkshopChecklist from "./pages/CreateWorkshopChecklist";
+import CreateTechnicalVisit from "./pages/CreateTechnicalVisit";
 
 import Campaigns from "./pages/Campaigns";
 import Management from "./pages/Management";
