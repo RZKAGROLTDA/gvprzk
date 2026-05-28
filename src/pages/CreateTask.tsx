@@ -6599,10 +6599,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           {/* Informações Básicas */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckSquare className="h-5 w-5" />
-                Informações Básicas
-              </CardTitle>
+              {taskCategory === 'call' ? (
+                <SectionHeader
+                  icon={UserIcon}
+                  title="Informações do Cliente"
+                  description="Contato, propriedade e filial atendida"
+                  tone="primary"
+                />
+              ) : (
+                <CardTitle className="flex items-center gap-2">
+                  <CheckSquare className="h-5 w-5" />
+                  Informações Básicas
+                </CardTitle>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
