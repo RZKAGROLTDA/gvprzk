@@ -83,22 +83,10 @@ export const TechnicalVisitForm: React.FC = () => {
   const [property, setProperty] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [filialId, setFilialId] = useState<string>('');
-  // Autocomplete cliente
-  const [clientSearch, setClientSearch] = useState('');
-  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
-  const filteredClients = useMemo(() => {
-    const q = clientSearch.trim().toLowerCase();
-    if (!q) return [];
-    return CLIENT_CODES.filter(c =>
-      c.code.includes(q) || c.name.toLowerCase().includes(q)
-    ).slice(0, 20);
-  }, [clientSearch]);
-
-  // Pre-fill filial from profile
-  useEffect(() => {
-    if (profile?.filial_id && !filialId) setFilialId(profile.filial_id);
-  }, [profile?.filial_id, filialId]);
+  const [contactName, setContactName] = useState('');
+  const [contactFunction, setContactFunction] = useState('');
+  const [contactFunctionOther, setContactFunctionOther] = useState('');
+  const [filialAtendida, setFilialAtendida] = useState('');
 
   // Carrega dados anteriores do cliente (mesma lógica das outras tarefas)
   const loadPreviousClientData = async (code: string) => {
@@ -107,7 +95,7 @@ export const TechnicalVisitForm: React.FC = () => {
     try {
       const { data } = await (supabase as any)
         .from('tasks')
-        .select('property, email, phone, filial')
+        .select('property, email, phone')
         .eq('clientCode', c)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -116,28 +104,12 @@ export const TechnicalVisitForm: React.FC = () => {
         if (data.property && !property) setProperty(data.property);
         if (data.email && !email) setEmail(data.email);
         if (data.phone && !phone) setPhone(data.phone);
-        if (data.filial && !filialId) {
-          const match = (filiais as any[]).find(
-            (f) => f.nome?.toLowerCase().trim() === String(data.filial).toLowerCase().trim()
-          );
-          if (match) setFilialId(match.id);
-        }
       }
     } catch (err) {
       console.warn('loadPreviousClientData:', err);
     }
   };
 
-  const selectClient = async (c: { code: string; name: string }) => {
-    setClientCode(c.code);
-    setClientName(c.name);
-    setClientSearch(`${c.code} - ${c.name}`);
-    setShowClientSuggestions(false);
-    await Promise.all([
-      loadClientEquipments(c.code),
-      loadPreviousClientData(c.code),
-    ]);
-  };
 
   // --- Parque de Máquinas ---
   const [equipments, setEquipments] = useState<EquipmentRow[]>([]);
