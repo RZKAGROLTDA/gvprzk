@@ -15,6 +15,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
 import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
+import { EquipmentParkBlock } from '@/components/equipment';
+import {
+  useEquipmentByClient, syncTaskEquipment,
+} from '@/hooks/useClientEquipment';
 import {
   EquipmentParkSection,
   TechnicalServiceSection,
