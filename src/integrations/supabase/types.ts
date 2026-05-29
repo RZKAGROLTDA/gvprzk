@@ -361,6 +361,39 @@ export type Database = {
         }
         Relationships: []
       }
+      equipment_import_log: {
+        Row: {
+          batch_id: string
+          created_at: string
+          executed_by: string | null
+          executed_by_email: string | null
+          id: string
+          notes: string | null
+          rows_inserted: number
+          source: string | null
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          executed_by?: string | null
+          executed_by_email?: string | null
+          id?: string
+          notes?: string | null
+          rows_inserted?: number
+          source?: string | null
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          executed_by?: string | null
+          executed_by_email?: string | null
+          id?: string
+          notes?: string | null
+          rows_inserted?: number
+          source?: string | null
+        }
+        Relationships: []
+      }
       filiais: {
         Row: {
           created_at: string
