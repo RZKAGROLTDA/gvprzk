@@ -1012,7 +1012,16 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
       // Use the useTasks hook which has built-in duplicate prevention
       console.log('Creating task with data:', finalTaskData);
-      await createTask(finalTaskData);
+      const createdTask: any = await createTask(finalTaskData);
+
+      // Vincular equipamentos selecionados do parque (cadastro mestre) à task
+      if (createdTask?.id && selectedEquipmentIds.length > 0) {
+        try {
+          await syncTaskEquipment(createdTask.id, selectedEquipmentIds);
+        } catch (linkErr) {
+          console.warn('Falha ao vincular equipamentos à task:', linkErr);
+        }
+      }
 
       // Enviar para WhatsApp se webhook configurado
       if (whatsappWebhook) {
