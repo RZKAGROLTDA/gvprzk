@@ -53,25 +53,36 @@ const norm = (v?: string | null) => {
 // -----------------------------------------------------------------------------
 // Autoselect: parque do cliente da tarefa atual
 // -----------------------------------------------------------------------------
-export const useEquipmentByClient = (clientCode?: string, clientName?: string) => {
+/**
+ * Carrega o parque de máquinas do cliente selecionado.
+ * Usa RPC `search_client_equipment` (SECURITY DEFINER) que aplica:
+ *   1) match exato por client_code (trim/text)
+ *   2) fallback por client_name ILIKE quando o código não retorna nada
+ *   3) também aceita serial como critério adicional
+ * Isso resolve registros importados sem filial_id/created_by, que ficariam
+ * invisíveis pela RLS direta da tabela.
+ */
+export const useEquipmentByClient = (
+  clientCode?: string,
+  clientName?: string,
+  serial?: string,
+) => {
   const code = norm(clientCode);
   const name = norm(clientName);
+  const ser = norm(serial);
   return useQuery({
-    queryKey: ['client-equipment', 'by-client', code, name],
-    enabled: !!(code || name),
+    queryKey: ['client-equipment', 'by-client-rpc', code, name, ser],
+    enabled: !!(code || name || ser),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<ClientEquipment[]> => {
-      let q = supabase
-        .from('client_equipment' as any)
-        .select(EQUIPMENT_COLUMNS)
-        .order('updated_at', { ascending: false })
-        .limit(200);
-      if (code) q = q.eq('client_code', code);
-      else if (name) q = q.ilike('client_name', `%${name}%`);
-      const { data, error } = await q;
+      const { data, error } = await (supabase as any).rpc('search_client_equipment', {
+        p_client_code: code,
+        p_client_name: name,
+        p_serial: ser,
+      });
       if (error) throw error;
-      return (data as unknown as ClientEquipment[]) ?? [];
+      return ((data as unknown) as ClientEquipment[]) ?? [];
     },
   });
 };
