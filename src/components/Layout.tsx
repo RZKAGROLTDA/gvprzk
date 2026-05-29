@@ -37,6 +37,11 @@ const useNavigationItems = () => {
         path: '/crm',
         icon: Briefcase,
         label: 'CRM'
+      },
+      {
+        path: '/equipamentos',
+        icon: Tractor,
+        label: 'Parque de Máquinas'
       }
     ],
     managementItems: [
