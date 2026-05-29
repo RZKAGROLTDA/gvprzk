@@ -25,6 +25,7 @@ import Campaigns from "./pages/Campaigns";
 import Management from "./pages/Management";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
+import Equipamentos from "./pages/Equipamentos";
 import PerformanceByFilial from "./pages/PerformanceByFilial";
 import PerformanceBySeller from "./pages/PerformanceBySeller";
 import { Home } from "./pages/Home";
