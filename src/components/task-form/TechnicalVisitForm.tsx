@@ -208,7 +208,7 @@ export const TechnicalVisitForm: React.FC = () => {
     await persistNewEquipments();
 
     const now = new Date();
-    const equipmentSnapshot = equipments
+    const manualSnapshot = equipments
       .filter(e => e.model || e.serial_chassis || e.hours || e.year || e.observation)
       .map(e => ({
         model: e.model,
@@ -217,6 +217,19 @@ export const TechnicalVisitForm: React.FC = () => {
         year: e.year ? Number(e.year) : null,
         observation: e.observation,
       }));
+    const selectedSnapshot = clientEquipments
+      .filter(e => selectedEquipmentIds.includes(e.id))
+      .map(e => ({
+        id: e.id,
+        model: e.model,
+        serial_chassis: e.serial_chassis,
+        hours: e.hours,
+        year: e.year,
+        machine_type: e.machine_type,
+        puk_status: e.puk_status,
+        observation: e.observation,
+      }));
+    const equipmentSnapshot = [...selectedSnapshot, ...manualSnapshot];
 
     const technicalVisitData = {
       equipments: equipmentSnapshot,
