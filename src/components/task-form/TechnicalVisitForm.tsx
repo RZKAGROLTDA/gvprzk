@@ -371,6 +371,20 @@ export const TechnicalVisitForm: React.FC = () => {
           </Button>
         }
       >
+        {/* Cadastro mestre: buscar, validar e selecionar equipamentos do cliente */}
+        <EquipmentParkBlock
+          clientCode={clientCode}
+          clientName={clientName}
+          selectable
+          selectedIds={selectedEquipmentIds}
+          onSelectionChange={setSelectedEquipmentIds}
+        />
+
+        {/* Cadastro em campo: novo equipamento que ainda não está no mestre */}
+        <div className="pt-4 mt-4 border-t border-border/60">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            Cadastrar novo equipamento em campo
+          </p>
         {loadingEquip && (
           <div className="flex items-center text-sm text-muted-foreground gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando equipamentos do cliente...
