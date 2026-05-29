@@ -36,6 +36,8 @@ import {
 } from '@/components/task-form/sections';
 import { SectionHeader } from '@/components/task-form/sections/SectionHeader';
 import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
+import { EquipmentParkBlock } from '@/components/equipment';
+import { syncTaskEquipment } from '@/hooks/useClientEquipment';
 import { User as UserIcon, Tractor, MessageSquare } from 'lucide-react';
 
 interface CreateTaskProps {
@@ -226,6 +228,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     return [];
   };
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  // IDs de equipamentos do parque (cadastro mestre) selecionados na visita
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentList, setEquipmentList] = useState<{
     id: string;
     familyProduct: string;
@@ -1008,7 +1012,16 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
       // Use the useTasks hook which has built-in duplicate prevention
       console.log('Creating task with data:', finalTaskData);
-      await createTask(finalTaskData);
+      const createdTask: any = await createTask(finalTaskData);
+
+      // Vincular equipamentos selecionados do parque (cadastro mestre) à task
+      if (createdTask?.id && selectedEquipmentIds.length > 0) {
+        try {
+          await syncTaskEquipment(createdTask.id, selectedEquipmentIds);
+        } catch (linkErr) {
+          console.warn('Falha ao vincular equipamentos à task:', linkErr);
+        }
+      }
 
       // Enviar para WhatsApp se webhook configurado
       if (whatsappWebhook) {
@@ -1238,6 +1251,21 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Parque de Máquinas — busca pelo cadastro mestre do cliente */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Parque de Máquinas (cadastro do cliente)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
+                  </p>
+                  <EquipmentParkBlock
+                    clientCode={task.clientCode || ''}
+                    clientName={task.client || ''}
+                    selectable
+                    selectedIds={selectedEquipmentIds}
+                    onSelectionChange={setSelectedEquipmentIds}
+                  />
+                </div>
+
                 {/* Hectares da Propriedade */}
                  <div className="space-y-2">
                    <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
@@ -1246,6 +1274,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 propertyHectares: parseInt(e.target.value) || undefined
               }))} placeholder="Digite os hectares da propriedade" />
                  </div>
+
 
                 {/* Lista de Equipamentos */}
                 <div className="space-y-4">
