@@ -119,33 +119,14 @@ export const TechnicalVisitForm: React.FC = () => {
   const [equipments, setEquipments] = useState<EquipmentRow[]>([]);
   const [loadingEquip, setLoadingEquip] = useState(false);
 
-  const loadClientEquipments = async (code: string) => {
-    const c = code.trim();
-    if (!c) return;
-    setLoadingEquip(true);
-    try {
-      const { data, error } = await supabase
-        .from('client_equipment' as any)
-        .select('id, model, serial_chassis, hours, year, observation')
-        .ilike('client_code', c)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      const rows: EquipmentRow[] = (data || []).map((e: any) => ({
-        id: e.id,
-        model: e.model ?? '',
-        serial_chassis: e.serial_chassis ?? '',
-        hours: e.hours != null ? String(e.hours) : '',
-        year: e.year != null ? String(e.year) : '',
-        observation: e.observation ?? '',
-        saved: true,
-      }));
-      setEquipments(rows);
-    } catch (err: any) {
-      console.error('Erro carregando equipamentos:', err);
-    } finally {
-      setLoadingEquip(false);
-    }
+  // Selecionados na visita (vínculo em task_equipment)
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
+  const { data: clientEquipments = [] } = useEquipmentByClient(clientCode, clientName);
+
+  // Mantém o bloco antigo somente para "cadastrar novo equipamento em campo".
+  // A busca/listagem/edição agora é feita pelo EquipmentParkBlock.
+  const loadClientEquipments = async (_code: string) => {
+    // intencionalmente vazio — useEquipmentByClient reage à mudança do clientCode/Name
   };
 
   const addEquipmentRow = () => setEquipments(prev => [...prev, emptyEquipment()]);
