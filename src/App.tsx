@@ -25,6 +25,7 @@ import Campaigns from "./pages/Campaigns";
 import Management from "./pages/Management";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
+import Equipamentos from "./pages/Equipamentos";
 import PerformanceByFilial from "./pages/PerformanceByFilial";
 import PerformanceBySeller from "./pages/PerformanceBySeller";
 import { Home } from "./pages/Home";
@@ -89,6 +90,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
       <Route path="/users" element={<Layout><Users /></Layout>} />
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
+      <Route path="/equipamentos" element={<Layout><Equipamentos /></Layout>} />
       <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

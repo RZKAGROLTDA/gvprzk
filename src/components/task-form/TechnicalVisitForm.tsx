@@ -15,6 +15,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
 import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
+import { EquipmentParkBlock } from '@/components/equipment';
+import {
+  useEquipmentByClient, syncTaskEquipment,
+} from '@/hooks/useClientEquipment';
 import {
   EquipmentParkSection,
   TechnicalServiceSection,
@@ -115,33 +119,14 @@ export const TechnicalVisitForm: React.FC = () => {
   const [equipments, setEquipments] = useState<EquipmentRow[]>([]);
   const [loadingEquip, setLoadingEquip] = useState(false);
 
-  const loadClientEquipments = async (code: string) => {
-    const c = code.trim();
-    if (!c) return;
-    setLoadingEquip(true);
-    try {
-      const { data, error } = await supabase
-        .from('client_equipment' as any)
-        .select('id, model, serial_chassis, hours, year, observation')
-        .ilike('client_code', c)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      const rows: EquipmentRow[] = (data || []).map((e: any) => ({
-        id: e.id,
-        model: e.model ?? '',
-        serial_chassis: e.serial_chassis ?? '',
-        hours: e.hours != null ? String(e.hours) : '',
-        year: e.year != null ? String(e.year) : '',
-        observation: e.observation ?? '',
-        saved: true,
-      }));
-      setEquipments(rows);
-    } catch (err: any) {
-      console.error('Erro carregando equipamentos:', err);
-    } finally {
-      setLoadingEquip(false);
-    }
+  // Selecionados na visita (vínculo em task_equipment)
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
+  const { data: clientEquipments = [] } = useEquipmentByClient(clientCode, clientName);
+
+  // Mantém o bloco antigo somente para "cadastrar novo equipamento em campo".
+  // A busca/listagem/edição agora é feita pelo EquipmentParkBlock.
+  const loadClientEquipments = async (_code: string) => {
+    // intencionalmente vazio — useEquipmentByClient reage à mudança do clientCode/Name
   };
 
   const addEquipmentRow = () => setEquipments(prev => [...prev, emptyEquipment()]);
@@ -223,7 +208,7 @@ export const TechnicalVisitForm: React.FC = () => {
     await persistNewEquipments();
 
     const now = new Date();
-    const equipmentSnapshot = equipments
+    const manualSnapshot = equipments
       .filter(e => e.model || e.serial_chassis || e.hours || e.year || e.observation)
       .map(e => ({
         model: e.model,
@@ -232,6 +217,19 @@ export const TechnicalVisitForm: React.FC = () => {
         year: e.year ? Number(e.year) : null,
         observation: e.observation,
       }));
+    const selectedSnapshot = clientEquipments
+      .filter(e => selectedEquipmentIds.includes(e.id))
+      .map(e => ({
+        id: e.id,
+        model: e.model,
+        serial_chassis: e.serial_chassis,
+        hours: e.hours,
+        year: e.year,
+        machine_type: e.machine_type,
+        puk_status: e.puk_status,
+        observation: e.observation,
+      }));
+    const equipmentSnapshot = [...selectedSnapshot, ...manualSnapshot];
 
     const technicalVisitData = {
       equipments: equipmentSnapshot,
@@ -291,10 +289,19 @@ export const TechnicalVisitForm: React.FC = () => {
       salesEstimate,
       nextAction: nextAction || undefined,
       nextActionDate: nextActionDate || undefined,
+      equipmentList: equipmentSnapshot,
     };
 
     try {
-      await createTask(taskData);
+      const created: any = await createTask(taskData);
+      // Vínculo task_equipment para equipamentos selecionados do cadastro mestre
+      if (created?.id && selectedEquipmentIds.length > 0) {
+        try {
+          await syncTaskEquipment(created.id, selectedEquipmentIds);
+        } catch (linkErr) {
+          console.warn('Falha ao vincular equipamentos à task:', linkErr);
+        }
+      }
       toast({ title: '✅ Visita Técnica criada com sucesso!' });
       navigate('/create-task');
     } catch (e: any) {
@@ -364,6 +371,20 @@ export const TechnicalVisitForm: React.FC = () => {
           </Button>
         }
       >
+        {/* Cadastro mestre: buscar, validar e selecionar equipamentos do cliente */}
+        <EquipmentParkBlock
+          clientCode={clientCode}
+          clientName={clientName}
+          selectable
+          selectedIds={selectedEquipmentIds}
+          onSelectionChange={setSelectedEquipmentIds}
+        />
+
+        {/* Cadastro em campo: novo equipamento que ainda não está no mestre */}
+        <div className="pt-4 mt-4 border-t border-border/60">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            Cadastrar novo equipamento em campo
+          </p>
         {loadingEquip && (
           <div className="flex items-center text-sm text-muted-foreground gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Carregando equipamentos do cliente...
@@ -413,6 +434,7 @@ export const TechnicalVisitForm: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
         </div>
       </EquipmentParkSection>
 

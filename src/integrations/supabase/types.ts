@@ -1000,6 +1000,30 @@ export type Database = {
           },
         ]
       }
+      task_equipment: {
+        Row: {
+          created_at: string
+          created_by: string
+          equipment_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          equipment_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          equipment_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: []
+      }
       task_followups: {
         Row: {
           activity_date: string

@@ -3,7 +3,7 @@ import React, { memo, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, LogOut, Users, Building, TrendingUp, Briefcase, Megaphone } from 'lucide-react';
+import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, LogOut, Users, Building, TrendingUp, Briefcase, Megaphone, Tractor } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useSessionSecurity } from '@/hooks/useSessionSecurity';
@@ -37,6 +37,11 @@ const useNavigationItems = () => {
         path: '/crm',
         icon: Briefcase,
         label: 'CRM'
+      },
+      {
+        path: '/equipamentos',
+        icon: Tractor,
+        label: 'Parque de Máquinas'
       }
     ],
     managementItems: [
