@@ -289,10 +289,19 @@ export const TechnicalVisitForm: React.FC = () => {
       salesEstimate,
       nextAction: nextAction || undefined,
       nextActionDate: nextActionDate || undefined,
+      equipmentList: equipmentSnapshot,
     };
 
     try {
-      await createTask(taskData);
+      const created: any = await createTask(taskData);
+      // Vínculo task_equipment para equipamentos selecionados do cadastro mestre
+      if (created?.id && selectedEquipmentIds.length > 0) {
+        try {
+          await syncTaskEquipment(created.id, selectedEquipmentIds);
+        } catch (linkErr) {
+          console.warn('Falha ao vincular equipamentos à task:', linkErr);
+        }
+      }
       toast({ title: '✅ Visita Técnica criada com sucesso!' });
       navigate('/create-task');
     } catch (e: any) {
