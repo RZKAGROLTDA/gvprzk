@@ -435,6 +435,7 @@ export const TechnicalVisitForm: React.FC = () => {
             </div>
           ))}
         </div>
+        </div>
       </EquipmentParkSection>
 
       {/* Tipo de Serviço */}
