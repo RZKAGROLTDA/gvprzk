@@ -90,6 +90,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
       <Route path="/users" element={<Layout><Users /></Layout>} />
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
+      <Route path="/equipamentos" element={<Layout><Equipamentos /></Layout>} />
       <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
