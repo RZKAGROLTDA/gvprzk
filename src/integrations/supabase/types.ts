@@ -2953,6 +2953,33 @@ export type Database = {
       monitor_session_security: { Args: never; Returns: undefined }
       monitor_tasks_new_unauthorized_access: { Args: never; Returns: undefined }
       monitor_unauthorized_customer_access: { Args: never; Returns: undefined }
+      search_client_equipment: {
+        Args: {
+          p_client_code?: string
+          p_client_name?: string
+          p_serial?: string
+        }
+        Returns: {
+          client_code: string
+          client_name: string
+          created_at: string
+          filial_id: string
+          hours: number
+          id: string
+          import_batch_id: string
+          last_validation_at: string
+          machine_status: string
+          machine_type: string
+          model: string
+          observation: string
+          product_raw: string
+          puk_status: string
+          serial_chassis: string
+          updated_at: string
+          validated_by: string
+          year: number
+        }[]
+      }
       search_clients_for_campaigns: {
         Args: { p_query: string }
         Returns: {
