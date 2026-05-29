@@ -217,45 +217,66 @@ export type Database = {
       }
       client_equipment: {
         Row: {
-          client_code: string
+          client_code: string | null
           client_name: string
           created_at: string
-          created_by: string
+          created_by: string | null
           filial_id: string | null
           hours: number | null
           id: string
+          import_batch_id: string | null
+          last_validation_at: string | null
+          machine_status: string
+          machine_type: string | null
           model: string | null
           observation: string | null
+          product_raw: string | null
+          puk_status: string | null
           serial_chassis: string | null
           updated_at: string
+          validated_by: string | null
           year: number | null
         }
         Insert: {
-          client_code: string
+          client_code?: string | null
           client_name: string
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           filial_id?: string | null
           hours?: number | null
           id?: string
+          import_batch_id?: string | null
+          last_validation_at?: string | null
+          machine_status?: string
+          machine_type?: string | null
           model?: string | null
           observation?: string | null
+          product_raw?: string | null
+          puk_status?: string | null
           serial_chassis?: string | null
           updated_at?: string
+          validated_by?: string | null
           year?: number | null
         }
         Update: {
-          client_code?: string
+          client_code?: string | null
           client_name?: string
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           filial_id?: string | null
           hours?: number | null
           id?: string
+          import_batch_id?: string | null
+          last_validation_at?: string | null
+          machine_status?: string
+          machine_type?: string | null
           model?: string | null
           observation?: string | null
+          product_raw?: string | null
+          puk_status?: string | null
           serial_chassis?: string | null
           updated_at?: string
+          validated_by?: string | null
           year?: number | null
         }
         Relationships: [
