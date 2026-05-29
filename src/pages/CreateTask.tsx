@@ -228,6 +228,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     return [];
   };
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  // IDs de equipamentos do parque (cadastro mestre) selecionados na visita
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
   const [equipmentList, setEquipmentList] = useState<{
     id: string;
     familyProduct: string;
