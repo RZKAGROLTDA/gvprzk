@@ -306,14 +306,14 @@ export const TechnicalVisitForm: React.FC = () => {
       puk: parseFloat(estPuk.replace(',', '.')) || 0,
     };
 
-    // Mapear funil → status de oportunidade (sem alterar fluxos antigos)
-    const isClosed = funnelStage === 'Fechado';
-    const isLost = funnelStage === 'Perdido';
-    const salesConfirmed = isClosed ? true : isLost ? false : undefined;
-    const salesType = isClosed ? 'ganho' : isLost ? 'perdido' : undefined;
+    // Derivar funil a partir do status (cards visuais) — mantém compatibilidade
+    let derivedFunnel = funnelStage;
+    if (salesType === 'ganho') derivedFunnel = 'Fechado';
+    else if (salesType === 'perdido') derivedFunnel = 'Perdido';
+    else if (salesType === 'parcial') derivedFunnel = 'Negociação';
+    else if (salesType === 'prospect') derivedFunnel = funnelStage || 'Prospectado';
 
     const filialNome = profile?.filial_nome || '';
-
 
     const taskData: any = {
       name: 'Visita Técnica',
@@ -334,15 +334,19 @@ export const TechnicalVisitForm: React.FC = () => {
       observations,
       checklist: productsOffer.filter((p) => p.selected),
       reminders: [],
-      photos: [],
+      photos,
       documents: [],
-      isProspect: !salesConfirmed,
-      salesValue: totalEstimate,
-      salesConfirmed,
-      salesType,
+      checkInLocation,
+      isProspect: salesConfirmed === true ? false : true,
+      salesValue: effectiveSalesValue,
+      salesConfirmed: salesConfirmed === null ? undefined : salesConfirmed,
+      salesType: salesType === 'prospect' ? undefined : salesType,
+      prospectNotes: prospectNotes || undefined,
+      prospectItems: salesType === 'parcial' ? prospectItems : undefined,
+      partialSalesValue: salesType === 'parcial' ? partialSalesValue : undefined,
       // Technical Visit specifics
       technicalCategory: serviceType || undefined,
-      technicalFunnelStage: funnelStage,
+      technicalFunnelStage: derivedFunnel,
       technicalVisitData,
       opportunityInterest: interest || undefined,
       opportunityUrgency: urgency || undefined,
@@ -353,6 +357,7 @@ export const TechnicalVisitForm: React.FC = () => {
       nextActionDate: nextActionDate || undefined,
       equipmentList: equipmentSnapshot,
     };
+
 
     try {
       const created: any = await createTask(taskData);
