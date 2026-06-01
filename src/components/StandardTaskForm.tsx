@@ -503,82 +503,77 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
           tone="success"
           contentClassName="space-y-6"
         >
-            {/* Resumo Financeiro - SEMPRE VISÍVEL */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Valor Total da Oportunidade</p>
-                <p className="text-2xl font-bold text-primary">
-                  R$ {valorTotalOportunidade.toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+            {/* Resumo Financeiro - KPIs compactos */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total da Oportunidade</p>
+                <p className="mt-1 text-2xl font-bold text-primary tabular-nums">
+                  R$ {valorTotalOportunidade.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
-              
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Valor da Venda Parcial</p>
-                <p className="text-2xl font-bold text-warning">
-                  R$ {valorVendaParcial.toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+              <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Venda Parcial</p>
+                <p className="mt-1 text-2xl font-bold text-warning tabular-nums">
+                  R$ {valorVendaParcial.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   {itensIncluidos} de {formData.products.length} itens
-                  {formData.products.length === 0 && " (nenhum produto cadastrado)"}
+                  {formData.products.length === 0 && ' (sem produtos)'}
                 </p>
               </div>
-              
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">
-                  {formData.status === 'venda_total' ? 'Valor Venda Fechada' : 
-                   formData.status === 'venda_parcial' ? 'Valor Venda Parcial' : 
-                   'Valor da Venda'}
+              <div className="rounded-lg border border-success/20 bg-success/5 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {formData.status === 'venda_total' ? 'Venda Fechada'
+                    : formData.status === 'venda_parcial' ? 'Venda Parcial'
+                    : 'Valor da Venda'}
                 </p>
-                <p className="text-2xl font-bold text-success">
-                  R$ {valorVenda.toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+                <p className="mt-1 text-2xl font-bold text-success tabular-nums">
+                  R$ {valorVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
 
-            {/* Status da Venda */}
-            <div className="space-y-4">
-              <Label>Status da Venda</Label>
-              <RadioGroup value={formData.status} onValueChange={handleStatusChange}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="prospect" id="prospect" />
-                  <Label htmlFor="prospect">
-                    <Badge variant="warning">Prospect</Badge>
-                    <span className="ml-2">Em prospecção</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="venda_total" id="venda_total" />
-                  <Label htmlFor="venda_total">
-                    <Badge variant="success">Venda Total</Badge>
-                    <span className="ml-2">Venda de todos os itens ofertados</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="venda_parcial" id="venda_parcial" />
-                  <Label htmlFor="venda_parcial">
-                    <Badge variant="warning">Venda Parcial</Badge>
-                    <span className="ml-2">Venda de itens selecionados</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="venda_perdida" id="venda_perdida" />
-                  <Label htmlFor="venda_perdida">
-                    <Badge variant="destructive">Venda Perdida</Badge>
-                    <span className="ml-2">Venda não realizada</span>
-                  </Label>
-                </div>
+            {/* Status da Venda — cards visuais (mantém RadioGroup por baixo para a11y/lógica) */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Status da Oportunidade</Label>
+              <RadioGroup
+                value={formData.status}
+                onValueChange={handleStatusChange}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              >
+                {[
+                  { value: 'prospect',      label: 'Prospect',      desc: 'Em prospecção',                  icon: Target,         tone: 'primary'     as const },
+                  { value: 'venda_total',   label: 'Venda Total',   desc: 'Todos os itens fechados',        icon: CheckCircle2,   tone: 'success'     as const },
+                  { value: 'venda_parcial', label: 'Venda Parcial', desc: 'Itens selecionados fechados',    icon: MinusCircle,    tone: 'warning'     as const },
+                  { value: 'venda_perdida', label: 'Venda Perdida', desc: 'Negócio não realizado',          icon: XCircle,        tone: 'destructive' as const },
+                ].map(({ value, label, desc, icon: Icon, tone }) => {
+                  const active = formData.status === value;
+                  const ring   = tone === 'success' ? 'border-success bg-success/5'
+                             : tone === 'warning' ? 'border-warning bg-warning/5'
+                             : tone === 'destructive' ? 'border-destructive bg-destructive/5'
+                             : 'border-primary bg-primary/5';
+                  const iconC  = tone === 'success' ? 'text-success'
+                             : tone === 'warning' ? 'text-warning'
+                             : tone === 'destructive' ? 'text-destructive'
+                             : 'text-primary';
+                  return (
+                    <Label
+                      key={value}
+                      htmlFor={value}
+                      className={cn(
+                        'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                        active ? ring : 'border-border bg-background hover:border-muted-foreground/40',
+                      )}
+                    >
+                      <RadioGroupItem value={value} id={value} className="mt-0.5" />
+                      <Icon className={cn('h-5 w-5 shrink-0 mt-0.5', iconC)} />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold leading-tight">{label}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
+                      </div>
+                    </Label>
+                  );
+                })}
               </RadioGroup>
             </div>
 
