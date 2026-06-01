@@ -1198,7 +1198,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
       {(selectedTaskType || propTaskType) && <form onSubmit={handleSubmit}>
 
-        <div className={`grid grid-cols-1 gap-6 ${taskCategory === 'field-visit' ? '' : 'lg:grid-cols-2'}`}>
+        <div className={`grid grid-cols-1 gap-6 ${taskCategory === 'workshop-checklist' ? 'lg:grid-cols-2' : ''}`}>
           {/* Informações Básicas */}
           {/* Informações Básicas (bloco padronizado) */}
           <BasicInfoBlock
