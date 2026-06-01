@@ -36,7 +36,7 @@ import {
 } from '@/components/task-form/sections';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
-import { StatusSelectionComponent } from '@/components/StatusSelectionComponent';
+// StatusSelectionComponent removido — agora usamos cards visuais inline (mesmo padrão da Visita à Fazenda)
 import { PhotoUpload } from '@/components/PhotoUpload';
 import { CheckInLocation } from '@/components/CheckInLocation';
 import { offerProducts } from '@/lib/predefinedProducts';
