@@ -30,7 +30,7 @@ import {
   ObservationsSection,
 } from '@/components/task-form/sections';
 import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
-import { predefinedProducts } from '@/lib/predefinedProducts';
+import { offerProducts } from '@/lib/predefinedProducts';
 import { ProductType } from '@/types/task';
 import { Checkbox } from '@/components/ui/checkbox';
 
