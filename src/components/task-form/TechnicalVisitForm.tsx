@@ -8,7 +8,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Loader2, Plus, Trash2, CheckSquare, FileText, RotateCcw } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +35,9 @@ import {
   ObservationsSection,
 } from '@/components/task-form/sections';
 import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
+import { StatusSelectionComponent } from '@/components/StatusSelectionComponent';
+import { PhotoUpload } from '@/components/PhotoUpload';
+import { CheckInLocation } from '@/components/CheckInLocation';
 import { offerProducts } from '@/lib/predefinedProducts';
 import { ProductType } from '@/types/task';
 import { Checkbox } from '@/components/ui/checkbox';
