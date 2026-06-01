@@ -36,10 +36,17 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronUp,
-  Download
+  Download,
+  Tractor,
+  Image as ImageIcon,
+  Activity,
+  ListChecks
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { SectionCard } from '@/components/task-form/sections/SectionCard';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
 
 interface OpportunityDetailsModalProps {
   task: Task | null;
