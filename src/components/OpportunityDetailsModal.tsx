@@ -36,10 +36,17 @@ import {
   MessageSquare,
   ChevronDown,
   ChevronUp,
-  Download
+  Download,
+  Tractor,
+  Image as ImageIcon,
+  Activity,
+  ListChecks
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { SectionCard } from '@/components/task-form/sections/SectionCard';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Separator } from '@/components/ui/separator';
 
 interface OpportunityDetailsModalProps {
   task: Task | null;
@@ -553,343 +560,410 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
     );
   }
 
+  const itemsCount = currentTask.checklist?.length || 0;
+  const selectedItemsCount = currentTask.checklist?.filter(i => i.selected).length || 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[95vh] overflow-y-auto overflow-x-hidden p-0 w-[95vw] max-w-[95vw] sm:w-full sm:max-w-5xl">
         <div ref={printRef} className="print:p-4">
-          {/* Header */}
-          <div className="p-4 sm:p-6 pb-4 border-b bg-gradient-to-r from-blue-50 to-white space-y-3">
-            {/* Linha 1: Título */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+          {/* Cabeçalho executivo */}
+          <div className="p-4 sm:p-6 border-b bg-gradient-to-r from-primary/5 via-background to-background">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div className="w-11 h-11 bg-primary/10 text-primary rounded-xl flex items-center justify-center flex-shrink-0 ring-1 ring-primary/20">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg sm:text-xl font-bold text-foreground truncate">
+                    {currentTask.client || 'Oportunidade'}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs sm:text-sm text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Activity className="w-3.5 h-3.5" />
+                      {getTaskTypeLabel(currentTask.taskType)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {formatDateDisplay(currentTask.startDate)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5" />
+                      {getFilialNameRobust(currentTask.filial, filiais)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <User className="w-3.5 h-3.5" />
+                      {currentTask.responsible || 'N/A'}
+                    </span>
+                    <Badge className={`${getStatusColor(selectedStatus)} text-xs px-2 py-0.5`}>
+                      {getStatusLabel(selectedStatus)}
+                    </Badge>
+                  </div>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Detalhes da Oportunidade</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                  {getTaskTypeLabel(currentTask.taskType)} • {formatDateDisplay(currentTask.startDate)}
-                </p>
-              </div>
-            </div>
 
-            {/* Linha 2: Ações */}
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-nowrap print:hidden">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handlePDF}
-                className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <Download className="w-4 h-4 mr-1" />
-                PDF
-              </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint} className="text-xs sm:text-sm flex-1 sm:flex-none">
-                <Printer className="w-4 h-4 mr-1" />
-                Imprimir
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleEmail} className="text-xs sm:text-sm flex-1 sm:flex-none">
-                <Mail className="w-4 h-4 mr-1" />
-                Email
-              </Button>
+              <div className="flex gap-2 print:hidden">
+                <Button variant="default" size="sm" onClick={handlePDF}>
+                  <Download className="w-4 h-4 mr-1" /> PDF
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrint}>
+                  <Printer className="w-4 h-4 mr-1" /> Imprimir
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleEmail}>
+                  <Mail className="w-4 h-4 mr-1" /> Email
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Status Cards */}
-          <div className="p-6 bg-gray-50">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Status */}
-              <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
-                <Target className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-2">Status</p>
-                <Badge className={`${getStatusColor(selectedStatus)} text-sm px-3 py-1`}>
-                  {getStatusLabel(selectedStatus)}
-                </Badge>
-              </div>
-              
-              {/* Valor Potencial */}
-              <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
-                <TrendingUp className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">Valor Potencial</p>
-                <p className="text-lg font-bold text-blue-600">
+          {/* KPIs compactos */}
+          <div className="px-4 sm:px-6 pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="rounded-lg border bg-card p-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <TrendingUp className="w-3.5 h-3.5 text-primary" /> Valor Potencial
+                </div>
+                <p className="text-base font-bold text-primary tabular-nums">
                   R$ {totalOpportunityValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              
-              {/* Valor Fechado */}
-              <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
-                <DollarSign className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">Valor Fechado</p>
-                <p className="text-lg font-bold text-green-600">
+              <div className="rounded-lg border bg-card p-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <DollarSign className="w-3.5 h-3.5 text-success" /> Valor Fechado
+                </div>
+                <p className="text-base font-bold text-success tabular-nums">
                   R$ {closedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              
-              {/* Conversão */}
-              <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
-                <Percent className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-1">Conversão</p>
-                <p className="text-lg font-bold text-orange-600">
+              <div className="rounded-lg border bg-card p-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <Percent className="w-3.5 h-3.5 text-warning" /> Conversão
+                </div>
+                <p className="text-base font-bold text-warning tabular-nums">
                   {conversionRate.toFixed(1)}%
+                </p>
+              </div>
+              <div className="rounded-lg border bg-card p-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <Target className="w-3.5 h-3.5" /> Status
+                </div>
+                <Badge className={`${getStatusColor(selectedStatus)} text-xs`}>
+                  {getStatusLabel(selectedStatus)}
+                </Badge>
+              </div>
+              <div className="rounded-lg border bg-card p-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                  <ListChecks className="w-3.5 h-3.5 text-primary" /> Itens
+                </div>
+                <p className="text-base font-bold tabular-nums">
+                  {selectedItemsCount}<span className="text-muted-foreground font-normal">/{itemsCount}</span>
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Dados do Cliente */}
-              <div className="bg-white rounded-xl border p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <User className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Dados do Cliente</h3>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
+          {/* Conteúdo */}
+          <div className="p-4 sm:p-6 space-y-4">
+            {/* Cliente + Filial/Responsável */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <SectionCard icon={User} title="Dados do Cliente" tone="primary">
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Nome</p>
-                    <p className="font-medium text-sm">{currentTask.client || 'N/A'}</p>
+                    <p className="text-xs text-muted-foreground">Nome</p>
+                    <p className="font-medium">{currentTask.client || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Código</p>
-                    <p className="font-medium text-sm">{currentTask.clientCode || 'N/A'}</p>
+                    <p className="text-xs text-muted-foreground">Código</p>
+                    <p className="font-medium">{currentTask.clientCode || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Email</p>
-                    <p className="font-medium text-sm flex items-center gap-1">
-                      {currentTask.email ? (
-                        <>
-                          <AtSign className="w-3 h-3" />
-                          {currentTask.email}
-                        </>
-                      ) : 'N/A'}
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="font-medium flex items-center gap-1">
+                      {currentTask.email ? (<><AtSign className="w-3 h-3" />{currentTask.email}</>) : 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Telefone</p>
-                    <p className="font-medium text-sm flex items-center gap-1">
-                      {currentTask.phone ? (
-                        <>
-                          <Phone className="w-3 h-3" />
-                          {currentTask.phone}
-                        </>
-                      ) : 'N/A'}
+                    <p className="text-xs text-muted-foreground">Telefone</p>
+                    <p className="font-medium flex items-center gap-1">
+                      {currentTask.phone ? (<><Phone className="w-3 h-3" />{currentTask.phone}</>) : 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Propriedade</p>
-                    <p className="font-medium text-sm">{currentTask.property || 'N/A'}</p>
+                    <p className="text-xs text-muted-foreground">Propriedade</p>
+                    <p className="font-medium">{currentTask.property || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Hectares</p>
-                    <p className="font-medium text-sm">
+                    <p className="text-xs text-muted-foreground">Hectares</p>
+                    <p className="font-medium">
                       {currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : 'N/A'}
                     </p>
                   </div>
                 </div>
-              </div>
+              </SectionCard>
 
-            {/* Filial e Responsável */}
-              <div className="bg-white rounded-xl border p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <Building2 className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Filial e Responsável</h3>
-                </div>
-                
-                <div className="space-y-4">
+              <SectionCard icon={Building2} title="Filial e Responsável" tone="primary">
+                <div className="space-y-3 text-sm">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Responsável</p>
-                    <p className="font-medium text-sm">{currentTask.responsible || 'N/A'}</p>
+                    <p className="text-xs text-muted-foreground">Responsável</p>
+                    <p className="font-medium">{currentTask.responsible || 'N/A'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-2">Filial do Responsável</p>
-                      <p className="font-medium text-sm">{getFilialNameRobust(currentTask.filial, filiais)}</p>
+                      <p className="text-xs text-muted-foreground">Filial do Responsável</p>
+                      <p className="font-medium">{getFilialNameRobust(currentTask.filial, filiais)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-2">Filial Atendida</p>
-                      <p className="font-medium text-sm italic">
-                        {currentTask.filialAtendida 
-                          ? getFilialNameRobust(currentTask.filialAtendida, filiais) 
+                      <p className="text-xs text-muted-foreground">Filial Atendida</p>
+                      <p className="font-medium italic">
+                        {currentTask.filialAtendida
+                          ? getFilialNameRobust(currentTask.filialAtendida, filiais)
                           : 'Mesma do responsável'}
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className="text-xs text-muted-foreground mb-2">Tipo de Atividade</p>
-                      <Badge variant="outline" className="text-xs">
+                      <p className="text-xs text-muted-foreground">Tipo de Atividade</p>
+                      <Badge variant="outline" className="text-xs mt-0.5">
                         {getTaskTypeLabel(currentTask.taskType)}
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground mb-2">Prioridade</p>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${
-                          currentTask.priority === 'high' ? 'bg-red-100 text-red-800 border-red-200' :
-                          currentTask.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
-                          'bg-green-100 text-green-800 border-green-200'
-                        }`}
+                      <p className="text-xs text-muted-foreground">Prioridade</p>
+                      <Badge
+                        variant={
+                          currentTask.priority === 'high' ? 'destructive' :
+                          currentTask.priority === 'medium' ? 'warning' : 'success'
+                        }
+                        className="text-xs mt-0.5"
                       >
-                        {currentTask.priority === 'high' ? 'Alta' : 
+                        {currentTask.priority === 'high' ? 'Alta' :
                          currentTask.priority === 'medium' ? 'Média' : 'Baixa'}
                       </Badge>
                     </div>
                   </div>
                 </div>
-              </div>
+              </SectionCard>
             </div>
 
-            {/* Produtos Oferecidos - Layout similar ao editar */}
-            <div className="bg-white rounded-xl border p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Produtos Oferecidos</h3>
-              </div>
-              
+            {/* Produtos / Serviços (tabela moderna) */}
+            <SectionCard
+              icon={Package}
+              title="Produtos / Serviços"
+              tone="primary"
+              description={itemsCount > 0 ? `${selectedItemsCount} de ${itemsCount} vendido(s)` : undefined}
+            >
               {currentTask.checklist && currentTask.checklist.length > 0 ? (
-                <div className="space-y-4">
-                  {currentTask.checklist.map((item, index) => (
-                    <div 
-                      key={index} 
-                      className={`border rounded-lg p-4 ${
-                        item.selected ? 'bg-green-50 border-green-200' : 'bg-gray-50'
-                      }`}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-2">Nome do Produto</p>
-                          <div className="bg-white border rounded-md p-2.5">
-                            <p className="font-medium text-sm">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">{item.category}</p>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-2">SKU/Código</p>
-                          <div className="bg-white border rounded-md p-2.5 h-[52px] flex items-center">
-                            <p className="text-sm">{item.id?.slice(0, 8) || 'N/A'}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-2">Quantidade</p>
-                          {selectedStatus === 'parcial' ? (
-                            <div className="flex items-center gap-2">
-                              <Checkbox 
-                                checked={selectedItems[item.id] || false} 
-                                onCheckedChange={(checked) => handleItemSelection(item.id, checked as boolean)} 
-                              />
-                              <Input 
-                                type="number" 
-                                min="1" 
-                                value={itemQuantities[item.id] || item.quantity || 1}
-                                onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
-                                className="h-9 text-sm"
-                                disabled={!selectedItems[item.id]}
-                              />
-                            </div>
-                          ) : (
-                            <div className="bg-white border rounded-md p-2.5 h-9 flex items-center">
-                              <p className="text-sm">{item.quantity || 0}</p>
-                            </div>
+                <div className="space-y-3">
+                  <div className="overflow-x-auto rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-right">Qtd</TableHead>
+                          <TableHead className="text-right">Valor Unit.</TableHead>
+                          <TableHead className="text-right">Subtotal</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                          {selectedStatus === 'parcial' && (
+                            <TableHead className="text-center print:hidden">Vender</TableHead>
                           )}
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-2">Preço Unitário (R$)</p>
-                          <div className="bg-white border rounded-md p-2.5 h-9 flex items-center">
-                            <p className="text-sm">
-                              {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-2">Subtotal</p>
-                          <div className="bg-blue-50 border border-blue-200 rounded-md p-2.5 h-9 flex items-center justify-between">
-                            <p className="text-sm font-semibold text-blue-700">
-                              R$ {((item.price || 0) * (itemQuantities[item.id] || item.quantity || 1)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                            <Badge variant={item.selected ? 'default' : 'secondary'} className="text-xs">
-                              {item.selected ? 'Vendido' : 'Ofertado'}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {item.observations && (
-                        <div className="mt-3 pt-3 border-t">
-                          <p className="text-xs text-muted-foreground mb-1">Observações do Produto</p>
-                          <p className="text-sm italic text-muted-foreground">{item.observations}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {/* Resumo dos produtos */}
-                  <div className="border-t pt-4 mt-4 flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">
-                      {currentTask.checklist.length} produto(s) oferecido(s)
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {currentTask.checklist.map(item => {
+                          const qty = itemQuantities[item.id] || item.quantity || 1;
+                          const subtotal = (item.price || 0) * qty;
+                          return (
+                            <React.Fragment key={item.id}>
+                              <TableRow className={item.selected ? 'bg-success/5' : ''}>
+                                <TableCell>
+                                  <div className="font-medium text-sm">{item.name}</div>
+                                  <div className="text-xs text-muted-foreground">{item.category}</div>
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {selectedStatus === 'parcial' ? (
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      value={qty}
+                                      onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                                      className="h-8 w-20 text-sm text-right inline-block"
+                                      disabled={!selectedItems[item.id]}
+                                    />
+                                  ) : (
+                                    qty
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-sm">
+                                  R$ {(item.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums font-semibold text-primary">
+                                  R$ {subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant={item.selected ? 'success' : 'secondary'} className="text-xs">
+                                    {item.selected ? 'Vendido' : 'Ofertado'}
+                                  </Badge>
+                                </TableCell>
+                                {selectedStatus === 'parcial' && (
+                                  <TableCell className="text-center print:hidden">
+                                    <Checkbox
+                                      checked={selectedItems[item.id] || false}
+                                      onCheckedChange={(checked) => handleItemSelection(item.id, checked as boolean)}
+                                    />
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                              {item.observations && (
+                                <TableRow className="bg-muted/30">
+                                  <TableCell colSpan={selectedStatus === 'parcial' ? 6 : 5} className="text-xs italic text-muted-foreground py-2">
+                                    Obs: {item.observations}
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <p className="text-xs text-muted-foreground">
+                      {currentTask.checklist.length} item(ns)
                     </p>
                     <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Total</p>
-                      <p className="text-xl font-bold text-blue-600">
+                      <p className="text-xs text-muted-foreground">Total da Oportunidade</p>
+                      <p className="text-lg font-bold text-primary tabular-nums">
                         R$ {totalOpportunityValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                  <p>Nenhum produto oferecido</p>
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                  Nenhum produto oferecido
                 </div>
               )}
-            </div>
+            </SectionCard>
+
+            {/* Equipamentos (read-only) */}
+            {currentTask.equipmentList && currentTask.equipmentList.length > 0 && (
+              <SectionCard
+                icon={Tractor}
+                title="Parque de Máquinas"
+                tone="muted"
+                description={`${currentTask.equipmentList.length} equipamento(s)`}
+              >
+                <div className="overflow-x-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Família / Modelo</TableHead>
+                        <TableHead className="text-right">Quantidade</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentTask.equipmentList.map((eq, idx) => (
+                        <TableRow key={eq.id || idx}>
+                          <TableCell className="text-sm">{eq.familyProduct || 'N/A'}</TableCell>
+                          <TableCell className="text-right tabular-nums">{eq.quantity || 0}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </SectionCard>
+            )}
+
+            {/* Próxima Ação */}
+            {(currentTask.nextAction || currentTask.nextActionDate) && (
+              <SectionCard icon={Activity} title="Próxima Ação" tone="warning">
+                <div className="space-y-2 text-sm">
+                  {currentTask.nextAction && (
+                    <p className="whitespace-pre-wrap">{currentTask.nextAction}</p>
+                  )}
+                  {currentTask.nextActionDate && (
+                    <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {formatDateDisplay(currentTask.nextActionDate as any)}
+                    </p>
+                  )}
+                </div>
+              </SectionCard>
+            )}
 
             {/* Observações */}
             {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) && (
-              <div className="bg-white rounded-xl border p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-gray-900">Observações e Notas</h3>
-                </div>
-                
-                <div className="space-y-4">
+              <SectionCard icon={MessageSquare} title="Observações e Notas" tone="primary">
+                <div className="space-y-3">
                   {currentTask.observations && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Observações da Atividade</p>
-                      <p className="text-sm bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">{currentTask.observations}</p>
+                      <p className="text-sm bg-muted/40 p-3 rounded-lg whitespace-pre-wrap">{currentTask.observations}</p>
                     </div>
                   )}
                   {currentTask.prospectNotes && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Notas do Prospect</p>
-                      <p className="text-sm bg-blue-50 p-3 rounded-lg whitespace-pre-wrap">{currentTask.prospectNotes}</p>
+                      <p className="text-sm bg-primary/5 p-3 rounded-lg whitespace-pre-wrap">{currentTask.prospectNotes}</p>
                     </div>
                   )}
                   {currentTask.prospectNotesJustification && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Justificativa</p>
-                      <p className="text-sm bg-yellow-50 p-3 rounded-lg whitespace-pre-wrap">{currentTask.prospectNotesJustification}</p>
+                      <p className="text-sm bg-warning/10 p-3 rounded-lg whitespace-pre-wrap">{currentTask.prospectNotesJustification}</p>
                     </div>
                   )}
                 </div>
-              </div>
+              </SectionCard>
+            )}
+
+            {/* Fotos */}
+            {currentTask.photos && currentTask.photos.length > 0 && (
+              <SectionCard
+                icon={ImageIcon}
+                title="Fotos"
+                tone="muted"
+                description={`${currentTask.photos.length} foto(s)`}
+              >
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {currentTask.photos.map((photo, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => window.open(photo, '_blank')}
+                      className="aspect-square border rounded-md overflow-hidden hover:opacity-80 transition-opacity"
+                    >
+                      <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+
+            {/* Check-in / Localização */}
+            {currentTask.checkInLocation && (
+              <SectionCard icon={MapPin} title="Check-in" tone="success">
+                <div className="text-sm space-y-1">
+                  {currentTask.checkInLocation.lat && currentTask.checkInLocation.lng && (
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      Lat: {currentTask.checkInLocation.lat}, Lng: {currentTask.checkInLocation.lng}
+                    </p>
+                  )}
+                  {currentTask.property && (
+                    <p className="text-sm">{currentTask.property}</p>
+                  )}
+                </div>
+              </SectionCard>
             )}
 
             {/* Atualização de Status */}
-            <div className="bg-gradient-to-r from-blue-50 to-white rounded-xl border p-5 print:hidden">
-              <div className="flex items-center gap-2 mb-4">
-                <FileCheck className="w-5 h-5 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Atualizar Status</h3>
-              </div>
-              
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                <div className="flex-1">
-                  <Select 
-                    value={selectedStatus} 
+            <SectionCard icon={FileCheck} title="Atualizar Status" tone="primary" className="print:hidden">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+                <div className="flex-1 w-full md:w-auto">
+                  <Select
+                    value={selectedStatus}
                     onValueChange={(value: 'prospect' | 'ganho' | 'perdido' | 'parcial') => setSelectedStatus(value)}
                   >
                     <SelectTrigger className="w-full md:w-64">
@@ -903,32 +977,29 @@ ${currentTask.responsible || 'Equipe Comercial'}`;
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {selectedStatus === 'parcial' && (
-                  <div className="bg-yellow-100 px-4 py-2 rounded-lg">
-                    <span className="text-sm text-yellow-800">
-                      Valor Parcial: <strong>R$ {partialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                      {totalOpportunityValue > 0 && (
-                        <span className="ml-2">({conversionRate.toFixed(1)}%)</span>
-                      )}
-                    </span>
+                  <div className="bg-warning/10 text-warning-foreground px-3 py-2 rounded-lg text-sm">
+                    Valor Parcial: <strong className="tabular-nums">R$ {partialValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                    {totalOpportunityValue > 0 && (
+                      <span className="ml-2 text-xs">({conversionRate.toFixed(1)}%)</span>
+                    )}
                   </div>
                 )}
-                
-                <div className="flex gap-2">
+
+                <div className="flex gap-2 ml-auto">
                   <Button variant="outline" onClick={onClose}>
                     Cancelar
                   </Button>
-                  <Button 
-                    onClick={handleStatusUpdate} 
+                  <Button
+                    onClick={handleStatusUpdate}
                     disabled={isUpdating || selectedStatus === mapSalesStatus(currentTask)}
-                    className="bg-blue-600 hover:bg-blue-700"
                   >
                     {isUpdating ? 'Salvando...' : 'Salvar Alterações'}
                   </Button>
                 </div>
               </div>
-            </div>
+            </SectionCard>
           </div>
         </div>
       </DialogContent>
