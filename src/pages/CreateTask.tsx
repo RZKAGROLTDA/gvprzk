@@ -1235,43 +1235,33 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             }}
           />
 
-          {/* Parque de Máquinas — inline vertical para Visita à Fazenda e Ligação */}
+          {/* Parque de Máquinas — wrapper padronizado (igual Visita Técnica) */}
           {(taskCategory === 'field-visit' || taskCategory === 'call') && (
-            <Card>
-              <CardHeader>
-                <SectionHeader
-                  icon={Tractor}
-                  title="Parque de Máquinas"
-                  description="Equipamentos do cliente (cadastro mestre)"
-                  tone="success"
-                />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {taskCategory === 'field-visit' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                    <Input
-                      id="propertyHectares"
-                      type="number"
-                      min="0"
-                      value={task.propertyHectares || ''}
-                      onChange={e => setTask(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || undefined }))}
-                      placeholder="Digite os hectares da propriedade"
-                    />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
-                </p>
-                <EquipmentParkBlock
-                  clientCode={task.clientCode || ''}
-                  clientName={task.client || ''}
-                  selectable
-                  selectedIds={selectedEquipmentIds}
-                  onSelectionChange={setSelectedEquipmentIds}
-                />
-              </CardContent>
-            </Card>
+            <EquipmentParkSection>
+              {taskCategory === 'field-visit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                  <Input
+                    id="propertyHectares"
+                    type="number"
+                    min="0"
+                    value={task.propertyHectares || ''}
+                    onChange={e => setTask(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || undefined }))}
+                    placeholder="Digite os hectares da propriedade"
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
+              </p>
+              <EquipmentParkBlock
+                clientCode={task.clientCode || ''}
+                clientName={task.client || ''}
+                selectable
+                selectedIds={selectedEquipmentIds}
+                onSelectionChange={setSelectedEquipmentIds}
+              />
+            </EquipmentParkSection>
           )}
 
 
