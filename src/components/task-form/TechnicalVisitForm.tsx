@@ -21,6 +21,7 @@ import {
 } from '@/hooks/useClientEquipment';
 import {
   EquipmentParkSection,
+  ProductsOfferSection,
   TechnicalServiceSection,
   SalesEstimateSection,
   OpportunityClassificationSection,
@@ -28,6 +29,11 @@ import {
   NextActionSection,
   ObservationsSection,
 } from '@/components/task-form/sections';
+import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
+import { predefinedProducts } from '@/lib/predefinedProducts';
+import { ProductType } from '@/types/task';
+import { Checkbox } from '@/components/ui/checkbox';
+
 import { format } from 'date-fns';
 
 type Level = 'baixa' | 'media' | 'alta';
@@ -164,6 +170,23 @@ export const TechnicalVisitForm: React.FC = () => {
   // --- Observações ---
   const [observations, setObservations] = useState('');
 
+  // --- Produtos para Ofertar (mesma estrutura usada em Ligação/Visita à Fazenda) ---
+  const [productsOffer, setProductsOffer] = useState<ProductType[]>(
+    () => predefinedProducts.map((p, i) => ({
+      id: `tv-prod-${i}`,
+      name: p.name,
+      category: p.category as any,
+      selected: false,
+      quantity: 0,
+      price: 0,
+      observations: '',
+    })),
+  );
+  const updateProduct = (id: string, patch: Partial<ProductType>) =>
+    setProductsOffer((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
+
+
   const persistNewEquipments = async () => {
     if (!clientCode.trim() || !clientName.trim()) return;
     const newOnes = equipments.filter(e =>
@@ -270,7 +293,7 @@ export const TechnicalVisitForm: React.FC = () => {
       startTime: format(now, 'HH:mm'),
       endTime: format(now, 'HH:mm'),
       observations,
-      checklist: [],
+      checklist: productsOffer.filter((p) => p.selected),
       reminders: [],
       photos: [],
       documents: [],
@@ -437,6 +460,63 @@ export const TechnicalVisitForm: React.FC = () => {
         </div>
         </div>
       </EquipmentParkSection>
+
+      {/* Produtos para Ofertar — recolhível, mesmo padrão de Ligação/Visita à Fazenda */}
+      <ProductsOfferSection>
+        <CollapsibleProductsBlock products={productsOffer}>
+          <div className="space-y-3">
+            {productsOffer.map((item) => (
+              <div key={item.id} className="rounded-lg border border-border/50 p-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`tv-${item.id}`}
+                    checked={item.selected}
+                    onCheckedChange={(v) => updateProduct(item.id, { selected: !!v })}
+                  />
+                  <Label htmlFor={`tv-${item.id}`} className="text-sm font-medium">
+                    {item.name}
+                  </Label>
+                </div>
+                {item.selected && (
+                  <div className="ml-6 mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label>QTD</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={item.quantity || ''}
+                        onChange={(e) => updateProduct(item.id, { quantity: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Valor Unitário (R$)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.price || ''}
+                        onChange={(e) => updateProduct(item.id, { price: parseFloat(e.target.value) || 0 })}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Valor Total</Label>
+                      <Input
+                        type="text"
+                        readOnly
+                        className="bg-muted cursor-not-allowed"
+                        value={formatBRL((item.price || 0) * (item.quantity || 0))}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CollapsibleProductsBlock>
+      </ProductsOfferSection>
+
+
 
       {/* Tipo de Serviço */}
       <TechnicalServiceSection>
