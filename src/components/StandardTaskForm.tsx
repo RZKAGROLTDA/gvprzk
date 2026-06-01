@@ -9,9 +9,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Package, TrendingUp, AlertCircle, Plus } from 'lucide-react';
+import {
+  Calculator, Package, TrendingUp, AlertCircle, Plus,
+  ClipboardList, User as UserIcon, FileText, CheckCircle2, XCircle, MinusCircle, Target,
+} from 'lucide-react';
 import { Autocomplete, AutocompleteOption } from '@/components/ui/autocomplete';
 import { predefinedProducts } from '@/lib/predefinedProducts';
+import { SectionCard } from '@/components/task-form/sections/SectionCard';
+import { cn } from '@/lib/utils';
 
 interface OpportunityItem {
   id: string;
