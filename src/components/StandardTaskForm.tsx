@@ -341,15 +341,16 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
+      </SectionCard>
 
       {/* Informações do Cliente */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações do Cliente</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SectionCard
+        icon={UserIcon}
+        title="Informações do Cliente"
+        description="Dados de contato e localização"
+        tone="primary"
+        contentClassName="space-y-4"
+      >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customerName">Nome do Cliente</Label>
