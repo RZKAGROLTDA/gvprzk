@@ -492,19 +492,17 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               />
             </div>
           )}
-        </CardContent>
-      </Card>
+      </SectionCard>
 
       {/* Seção de Produtos e Valores - SEMPRE VISÍVEL */}
       {showProductsSection && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Produtos Oferecidos e Valores
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <SectionCard
+          icon={Package}
+          title="Produtos / Serviços e Valores"
+          description="Itens ofertados, status e fechamento da oportunidade"
+          tone="success"
+          contentClassName="space-y-6"
+        >
             {/* Resumo Financeiro - SEMPRE VISÍVEL */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
               <div className="text-center">
