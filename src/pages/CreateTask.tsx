@@ -37,6 +37,8 @@ import {
 import { SectionHeader } from '@/components/task-form/sections/SectionHeader';
 import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
 import { EquipmentParkBlock } from '@/components/equipment';
+import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
+
 import { syncTaskEquipment } from '@/hooks/useClientEquipment';
 import { User as UserIcon, Tractor, MessageSquare } from 'lucide-react';
 
