@@ -1445,6 +1445,34 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             </ProductsOfferSection>}
         </div>
 
+        {/* Parque de Máquinas — full-width, abaixo das Informações Básicas */}
+        {(taskCategory === 'field-visit' || taskCategory === 'call') && (
+          <Card className="mt-6">
+            <CardHeader>
+              <SectionHeader
+                icon={Tractor}
+                title="Parque de Máquinas"
+                description="Equipamentos do cliente (cadastro mestre)"
+                tone="success"
+              />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">
+                Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
+              </p>
+              <EquipmentParkBlock
+                clientCode={task.clientCode || ''}
+                clientName={task.client || ''}
+                selectable
+                selectedIds={selectedEquipmentIds}
+                onSelectionChange={setSelectedEquipmentIds}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+
+
         {/* Observações e Valores */}
         <Card className="mt-6">
           <CardHeader>
