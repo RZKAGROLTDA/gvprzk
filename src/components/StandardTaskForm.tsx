@@ -907,28 +907,27 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
       )}
 
       {/* Observações */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Observações</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="observacoes">Observações Gerais</Label>
-            <Textarea
-              id="observacoes"
-              value={formData.observacoes}
-              onChange={(e) => onFormDataChange({ ...formData, observacoes: e.target.value })}
-              placeholder="Observações adicionais sobre a tarefa..."
-              className="min-h-[100px]"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <SectionCard
+        icon={FileText}
+        title="Observações"
+        description="Notas e considerações adicionais"
+        tone="muted"
+      >
+        <div className="space-y-2">
+          <Label htmlFor="observacoes" className="sr-only">Observações Gerais</Label>
+          <Textarea
+            id="observacoes"
+            value={formData.observacoes}
+            onChange={(e) => onFormDataChange({ ...formData, observacoes: e.target.value })}
+            placeholder="Observações adicionais sobre a tarefa..."
+            className="min-h-[120px] resize-y"
+          />
+        </div>
+      </SectionCard>
 
       {/* Botões de Ação */}
       <div className="flex justify-end space-x-4">
