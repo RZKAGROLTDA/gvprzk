@@ -13,7 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Plus, Trash2, CheckSquare, FileText, RotateCcw, Search, CheckCircle, ShoppingCart, XCircle } from 'lucide-react';
+import { Loader2, Plus, Trash2, CheckSquare, FileText, RotateCcw, Search, CheckCircle, ShoppingCart, XCircle, CalendarClock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +34,7 @@ import {
   NextActionSection,
   ObservationsSection,
 } from '@/components/task-form/sections';
+import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
 import { StatusSelectionComponent } from '@/components/StatusSelectionComponent';
 import { PhotoUpload } from '@/components/PhotoUpload';
