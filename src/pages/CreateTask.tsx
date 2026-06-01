@@ -1251,20 +1251,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Parque de Máquinas — busca pelo cadastro mestre do cliente */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Parque de Máquinas (cadastro do cliente)</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
-                  </p>
-                  <EquipmentParkBlock
-                    clientCode={task.clientCode || ''}
-                    clientName={task.client || ''}
-                    selectable
-                    selectedIds={selectedEquipmentIds}
-                    onSelectionChange={setSelectedEquipmentIds}
-                  />
-                </div>
+
+
 
                 {/* Hectares da Propriedade */}
                  <div className="space-y-2">
