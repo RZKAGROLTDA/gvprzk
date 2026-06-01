@@ -172,7 +172,7 @@ export const TechnicalVisitForm: React.FC = () => {
 
   // --- Produtos para Ofertar (mesma estrutura usada em Ligação/Visita à Fazenda) ---
   const [productsOffer, setProductsOffer] = useState<ProductType[]>(
-    () => predefinedProducts.map((p, i) => ({
+    () => offerProducts.map((p, i) => ({
       id: `tv-prod-${i}`,
       name: p.name,
       category: p.category as any,
