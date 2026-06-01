@@ -337,11 +337,19 @@ export const TechnicalVisitForm: React.FC = () => {
       photos,
       documents: [],
       checkInLocation,
-      isProspect: salesConfirmed === true ? false : true,
+      // Padronização operacional Técnica ↔ Fazenda:
+      // isProspect = true SEMPRE (igual Fazenda); o status real vem de salesConfirmed/salesType.
+      isProspect: true,
       salesValue: effectiveSalesValue,
       salesConfirmed: salesConfirmed === null ? undefined : salesConfirmed,
-      salesType: salesType === 'prospect' ? undefined : salesType,
+      // Na "venda perdida", Fazenda não envia salesType — apenas salesConfirmed=false.
+      // Replicamos o mesmo critério aqui para manter indicadores idênticos.
+      salesType:
+        salesType === 'prospect' ? undefined
+        : salesConfirmed === false ? undefined
+        : salesType,
       prospectNotes: prospectNotes || undefined,
+      prospectNotesJustification: prospectNotesJustification || undefined,
       prospectItems: salesType === 'parcial' ? prospectItems : undefined,
       partialSalesValue: salesType === 'parcial' ? partialSalesValue : undefined,
       // Technical Visit specifics
