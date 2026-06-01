@@ -178,6 +178,23 @@ export const TechnicalVisitForm: React.FC = () => {
   // --- Observações ---
   const [observations, setObservations] = useState('');
 
+  // --- Fotos e Check-in ---
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [checkInLocation, setCheckInLocation] = useState<
+    { lat: number; lng: number; timestamp: Date } | undefined
+  >(undefined);
+
+  // --- Status da Oportunidade (cards visuais — mesmo padrão da Visita à Fazenda) ---
+  const [salesConfirmed, setSalesConfirmed] = useState<boolean | null | undefined>(null);
+  const [salesType, setSalesType] = useState<
+    'ganho' | 'parcial' | 'perdido' | 'prospect' | undefined
+  >('prospect');
+  const [isProspect, setIsProspect] = useState<boolean>(true);
+  const [prospectNotes, setProspectNotes] = useState('');
+  const [prospectNotesJustification, setProspectNotesJustification] = useState('');
+  const [prospectItems, setProspectItems] = useState<ProductType[]>([]);
+  const [partialSalesValue, setPartialSalesValue] = useState(0);
+
   // --- Produtos para Ofertar (mesma estrutura usada em Ligação/Visita à Fazenda) ---
   const [productsOffer, setProductsOffer] = useState<ProductType[]>(
     () => offerProducts.map((p, i) => ({
@@ -192,6 +209,20 @@ export const TechnicalVisitForm: React.FC = () => {
   );
   const updateProduct = (id: string, patch: Partial<ProductType>) =>
     setProductsOffer((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
+  // Valor calculado automaticamente a partir dos produtos selecionados
+  const productsTotal = useMemo(
+    () =>
+      productsOffer
+        .filter((p) => p.selected)
+        .reduce((sum, p) => sum + (p.price || 0) * (p.quantity || 0), 0),
+    [productsOffer],
+  );
+
+  // Valor de Venda/Oportunidade — editável, com fallback no total dos produtos
+  const [salesValueOverride, setSalesValueOverride] = useState<number | undefined>(undefined);
+  const effectiveSalesValue = salesValueOverride ?? productsTotal;
+
 
 
 
