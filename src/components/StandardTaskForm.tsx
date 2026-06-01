@@ -9,9 +9,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, Package, TrendingUp, AlertCircle, Plus } from 'lucide-react';
+import {
+  Calculator, Package, TrendingUp, AlertCircle, Plus,
+  ClipboardList, User as UserIcon, FileText, CheckCircle2, XCircle, MinusCircle, Target,
+} from 'lucide-react';
 import { Autocomplete, AutocompleteOption } from '@/components/ui/autocomplete';
 import { predefinedProducts } from '@/lib/predefinedProducts';
+import { SectionCard } from '@/components/task-form/sections/SectionCard';
+import { cn } from '@/lib/utils';
 
 interface OpportunityItem {
   id: string;
@@ -220,14 +225,13 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Informações da Tarefa */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Informações da Tarefa
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SectionCard
+        icon={ClipboardList}
+        title="Informações da Tarefa"
+        description="Dados gerais, tipo e agendamento"
+        tone="primary"
+        contentClassName="space-y-4"
+      >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="taskName">Nome da Tarefa</Label>
@@ -337,15 +341,16 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
+      </SectionCard>
 
       {/* Informações do Cliente */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Informações do Cliente</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SectionCard
+        icon={UserIcon}
+        title="Informações do Cliente"
+        description="Dados de contato e localização"
+        tone="primary"
+        contentClassName="space-y-4"
+      >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customerName">Nome do Cliente</Label>
@@ -487,95 +492,88 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
               />
             </div>
           )}
-        </CardContent>
-      </Card>
+      </SectionCard>
 
       {/* Seção de Produtos e Valores - SEMPRE VISÍVEL */}
       {showProductsSection && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Produtos Oferecidos e Valores
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Resumo Financeiro - SEMPRE VISÍVEL */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Valor Total da Oportunidade</p>
-                <p className="text-2xl font-bold text-primary">
-                  R$ {valorTotalOportunidade.toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+        <SectionCard
+          icon={Package}
+          title="Produtos / Serviços e Valores"
+          description="Itens ofertados, status e fechamento da oportunidade"
+          tone="success"
+          contentClassName="space-y-6"
+        >
+            {/* Resumo Financeiro - KPIs compactos */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total da Oportunidade</p>
+                <p className="mt-1 text-2xl font-bold text-primary tabular-nums">
+                  R$ {valorTotalOportunidade.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
-              
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Valor da Venda Parcial</p>
-                <p className="text-2xl font-bold text-warning">
-                  R$ {valorVendaParcial.toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+              <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Venda Parcial</p>
+                <p className="mt-1 text-2xl font-bold text-warning tabular-nums">
+                  R$ {valorVendaParcial.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   {itensIncluidos} de {formData.products.length} itens
-                  {formData.products.length === 0 && " (nenhum produto cadastrado)"}
+                  {formData.products.length === 0 && ' (sem produtos)'}
                 </p>
               </div>
-              
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">
-                  {formData.status === 'venda_total' ? 'Valor Venda Fechada' : 
-                   formData.status === 'venda_parcial' ? 'Valor Venda Parcial' : 
-                   'Valor da Venda'}
+              <div className="rounded-lg border border-success/20 bg-success/5 p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {formData.status === 'venda_total' ? 'Venda Fechada'
+                    : formData.status === 'venda_parcial' ? 'Venda Parcial'
+                    : 'Valor da Venda'}
                 </p>
-                <p className="text-2xl font-bold text-success">
-                  R$ {valorVenda.toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
+                <p className="mt-1 text-2xl font-bold text-success tabular-nums">
+                  R$ {valorVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
 
-            {/* Status da Venda */}
-            <div className="space-y-4">
-              <Label>Status da Venda</Label>
-              <RadioGroup value={formData.status} onValueChange={handleStatusChange}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="prospect" id="prospect" />
-                  <Label htmlFor="prospect">
-                    <Badge variant="warning">Prospect</Badge>
-                    <span className="ml-2">Em prospecção</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="venda_total" id="venda_total" />
-                  <Label htmlFor="venda_total">
-                    <Badge variant="success">Venda Total</Badge>
-                    <span className="ml-2">Venda de todos os itens ofertados</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="venda_parcial" id="venda_parcial" />
-                  <Label htmlFor="venda_parcial">
-                    <Badge variant="warning">Venda Parcial</Badge>
-                    <span className="ml-2">Venda de itens selecionados</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="venda_perdida" id="venda_perdida" />
-                  <Label htmlFor="venda_perdida">
-                    <Badge variant="destructive">Venda Perdida</Badge>
-                    <span className="ml-2">Venda não realizada</span>
-                  </Label>
-                </div>
+            {/* Status da Venda — cards visuais (mantém RadioGroup por baixo para a11y/lógica) */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Status da Oportunidade</Label>
+              <RadioGroup
+                value={formData.status}
+                onValueChange={handleStatusChange}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              >
+                {[
+                  { value: 'prospect',      label: 'Prospect',      desc: 'Em prospecção',                  icon: Target,         tone: 'primary'     as const },
+                  { value: 'venda_total',   label: 'Venda Total',   desc: 'Todos os itens fechados',        icon: CheckCircle2,   tone: 'success'     as const },
+                  { value: 'venda_parcial', label: 'Venda Parcial', desc: 'Itens selecionados fechados',    icon: MinusCircle,    tone: 'warning'     as const },
+                  { value: 'venda_perdida', label: 'Venda Perdida', desc: 'Negócio não realizado',          icon: XCircle,        tone: 'destructive' as const },
+                ].map(({ value, label, desc, icon: Icon, tone }) => {
+                  const active = formData.status === value;
+                  const ring   = tone === 'success' ? 'border-success bg-success/5'
+                             : tone === 'warning' ? 'border-warning bg-warning/5'
+                             : tone === 'destructive' ? 'border-destructive bg-destructive/5'
+                             : 'border-primary bg-primary/5';
+                  const iconC  = tone === 'success' ? 'text-success'
+                             : tone === 'warning' ? 'text-warning'
+                             : tone === 'destructive' ? 'text-destructive'
+                             : 'text-primary';
+                  return (
+                    <Label
+                      key={value}
+                      htmlFor={value}
+                      className={cn(
+                        'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                        active ? ring : 'border-border bg-background hover:border-muted-foreground/40',
+                      )}
+                    >
+                      <RadioGroupItem value={value} id={value} className="mt-0.5" />
+                      <Icon className={cn('h-5 w-5 shrink-0 mt-0.5', iconC)} />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold leading-tight">{label}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
+                      </div>
+                    </Label>
+                  );
+                })}
               </RadioGroup>
             </div>
 
@@ -904,39 +902,38 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
                 )}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
       )}
 
       {/* Observações */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Observações</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="observacoes">Observações Gerais</Label>
-            <Textarea
-              id="observacoes"
-              value={formData.observacoes}
-              onChange={(e) => onFormDataChange({ ...formData, observacoes: e.target.value })}
-              placeholder="Observações adicionais sobre a tarefa..."
-              className="min-h-[100px]"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <SectionCard
+        icon={FileText}
+        title="Observações"
+        description="Notas e considerações adicionais"
+        tone="muted"
+      >
+        <div className="space-y-2">
+          <Label htmlFor="observacoes" className="sr-only">Observações Gerais</Label>
+          <Textarea
+            id="observacoes"
+            value={formData.observacoes}
+            onChange={(e) => onFormDataChange({ ...formData, observacoes: e.target.value })}
+            placeholder="Observações adicionais sobre a tarefa..."
+            className="min-h-[120px] resize-y"
+          />
+        </div>
+      </SectionCard>
 
-      {/* Botões de Ação */}
-      <div className="flex justify-end space-x-4">
+      {/* Rodapé de ações */}
+      <div className="sticky bottom-0 -mx-6 px-6 py-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-end gap-3">
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="min-w-[120px]"
+          className="min-w-[160px]"
         >
           {isSubmitting ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
               Salvando...
             </>
           ) : (

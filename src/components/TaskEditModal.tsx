@@ -566,22 +566,49 @@ export const TaskEditModal: React.FC<TaskEditModalProps> = ({
     );
   }
 
+  // Status visual para o header executivo
+  const statusMeta = (() => {
+    switch (formData.status) {
+      case 'venda_total':   return { label: 'Venda Total',   className: 'bg-success/10 text-success border-success/30' };
+      case 'venda_parcial': return { label: 'Venda Parcial', className: 'bg-warning/10 text-warning border-warning/30' };
+      case 'venda_perdida': return { label: 'Venda Perdida', className: 'bg-destructive/10 text-destructive border-destructive/30' };
+      default:              return { label: 'Prospect',      className: 'bg-primary/10 text-primary border-primary/30' };
+    }
+  })();
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar Tarefa</DialogTitle>
-        </DialogHeader>
-        
-        <StandardTaskForm
-          formData={formData}
-          onFormDataChange={setFormData}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          showProductsSection={true}
-          title="Editar Tarefa"
-          filiais={filiais}
-        />
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto p-0">
+        <div className="sticky top-0 z-10 bg-gradient-to-r from-primary/5 via-background to-background border-b">
+          <DialogHeader className="px-6 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="min-w-0">
+                <DialogTitle className="text-xl font-semibold leading-tight">
+                  Editar Tarefa
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                  {formData.customerName || 'Cliente não informado'}
+                  {formData.property && <span className="text-muted-foreground/70"> · {formData.property}</span>}
+                </p>
+              </div>
+              <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium ${statusMeta.className}`}>
+                {statusMeta.label}
+              </span>
+            </div>
+          </DialogHeader>
+        </div>
+
+        <div className="px-6 py-6">
+          <StandardTaskForm
+            formData={formData}
+            onFormDataChange={setFormData}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            showProductsSection={true}
+            title="Editar Tarefa"
+            filiais={filiais}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );
