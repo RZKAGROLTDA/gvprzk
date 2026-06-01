@@ -293,7 +293,7 @@ export const TechnicalVisitForm: React.FC = () => {
       startTime: format(now, 'HH:mm'),
       endTime: format(now, 'HH:mm'),
       observations,
-      checklist: [],
+      checklist: productsOffer.filter((p) => p.selected),
       reminders: [],
       photos: [],
       documents: [],
