@@ -1287,6 +1287,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                <CollapsibleProductsBlock products={checklist}>
                 <div className="space-y-6">
                   {checklist.map(item => <Card key={item.id} className="border border-border/50">
                       <CardContent className="p-4">
@@ -1340,6 +1341,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </CardContent>
                     </Card>)}
                 </div>
+                </CollapsibleProductsBlock>
               </CardContent>
             </Card>}
 

@@ -30,7 +30,7 @@ import {
   ObservationsSection,
 } from '@/components/task-form/sections';
 import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
-import { predefinedProducts } from '@/lib/predefinedProducts';
+import { offerProducts } from '@/lib/predefinedProducts';
 import { ProductType } from '@/types/task';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -172,7 +172,7 @@ export const TechnicalVisitForm: React.FC = () => {
 
   // --- Produtos para Ofertar (mesma estrutura usada em Ligação/Visita à Fazenda) ---
   const [productsOffer, setProductsOffer] = useState<ProductType[]>(
-    () => predefinedProducts.map((p, i) => ({
+    () => offerProducts.map((p, i) => ({
       id: `tv-prod-${i}`,
       name: p.name,
       category: p.category as any,
