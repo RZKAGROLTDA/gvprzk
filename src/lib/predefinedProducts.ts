@@ -27,8 +27,10 @@ export const workshopChecklistItems = [
   { name: 'Limpeza Geral', category: 'other' },
 ];
 
-// Mantido para retrocompatibilidade (autocomplete e buscas genéricas)
-export const predefinedProducts = [...offerProducts, ...workshopChecklistItems];
+// Apenas os 10 produtos oficiais participam de autocomplete/suggestions.
+// `workshopChecklistItems` permanece exportado para uso exclusivo do
+// formulário "Checklist da Oficina" (não entra no funil comercial).
+export const predefinedProducts = [...offerProducts];
 
 export const getProductSuggestions = (query: string, limit: number = 10) => {
   if (!query.trim()) return predefinedProducts.slice(0, limit);

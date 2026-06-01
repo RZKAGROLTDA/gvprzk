@@ -33,6 +33,7 @@ import {
   SalesFunnelSection,
   ObservationsSection,
   PhotosCheckinSection,
+  EquipmentParkSection,
 } from '@/components/task-form/sections';
 import { SectionHeader } from '@/components/task-form/sections/SectionHeader';
 import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
@@ -1234,43 +1235,33 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             }}
           />
 
-          {/* Parque de Máquinas — inline vertical para Visita à Fazenda e Ligação */}
+          {/* Parque de Máquinas — wrapper padronizado (igual Visita Técnica) */}
           {(taskCategory === 'field-visit' || taskCategory === 'call') && (
-            <Card>
-              <CardHeader>
-                <SectionHeader
-                  icon={Tractor}
-                  title="Parque de Máquinas"
-                  description="Equipamentos do cliente (cadastro mestre)"
-                  tone="success"
-                />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {taskCategory === 'field-visit' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                    <Input
-                      id="propertyHectares"
-                      type="number"
-                      min="0"
-                      value={task.propertyHectares || ''}
-                      onChange={e => setTask(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || undefined }))}
-                      placeholder="Digite os hectares da propriedade"
-                    />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
-                </p>
-                <EquipmentParkBlock
-                  clientCode={task.clientCode || ''}
-                  clientName={task.client || ''}
-                  selectable
-                  selectedIds={selectedEquipmentIds}
-                  onSelectionChange={setSelectedEquipmentIds}
-                />
-              </CardContent>
-            </Card>
+            <EquipmentParkSection>
+              {taskCategory === 'field-visit' && (
+                <div className="space-y-2">
+                  <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                  <Input
+                    id="propertyHectares"
+                    type="number"
+                    min="0"
+                    value={task.propertyHectares || ''}
+                    onChange={e => setTask(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || undefined }))}
+                    placeholder="Digite os hectares da propriedade"
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
+              </p>
+              <EquipmentParkBlock
+                clientCode={task.clientCode || ''}
+                clientName={task.client || ''}
+                selectable
+                selectedIds={selectedEquipmentIds}
+                onSelectionChange={setSelectedEquipmentIds}
+              />
+            </EquipmentParkSection>
           )}
 
 
@@ -1278,16 +1269,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               o Parque de Máquinas (cadastro mestre) é exibido full-width abaixo. */}
 
 
-          {/* Produtos / Checklist - apenas para visita a campo e workshop */}
-          {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  {taskCategory === 'field-visit' ? 'Produtos para Ofertar' : 'Checklist da Oficina'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CollapsibleProductsBlock products={checklist}>
+          {/* Produtos / Checklist - field-visit usa ProductsOfferSection; workshop mantém Card legacy */}
+          {taskCategory === 'field-visit' && (
+            <ProductsOfferSection>
+              <CollapsibleProductsBlock products={checklist}>
                 <div className="space-y-6">
                   {checklist.map(item => <Card key={item.id} className="border border-border/50">
                       <CardContent className="p-4">
@@ -1298,7 +1283,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                               {item.name}
                             </Label>
                           </div>
-                          
+
                           {item.selected && <div className="ml-6 space-y-4">
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
@@ -1330,12 +1315,79 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                   </div>
                                 </div>
                               </div>
-                              
+
                               <div className="space-y-2">
                                 <Label htmlFor={`obs-${item.id}`}>Observações</Label>
                                 <Textarea id={`obs-${item.id}`} value={item.observations || ''} onChange={e => handleProductChange(item.id, 'observations', e.target.value)} placeholder="Observações sobre este produto..." className="min-h-[80px]" />
                               </div>
-                              
+
+                            </div>}
+                        </div>
+                      </CardContent>
+                    </Card>)}
+                </div>
+              </CollapsibleProductsBlock>
+            </ProductsOfferSection>
+          )}
+
+          {/* Workshop Checklist mantém layout próprio (não comercial) */}
+          {taskCategory === 'workshop-checklist' && <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="h-5 w-5" />
+                  Checklist da Oficina
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CollapsibleProductsBlock products={checklist}>
+                <div className="space-y-6">
+                  {checklist.map(item => <Card key={item.id} className="border border-border/50">
+                      <CardContent className="p-4">
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id={item.id} checked={item.selected} onCheckedChange={checked => handleChecklistChange(item.id, checked as boolean)} />
+                            <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {item.name}
+                            </Label>
+                          </div>
+
+                          {item.selected && <div className="ml-6 space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor={`qty-${item.id}`}>QTD</Label>
+                                  <Input id={`qty-${item.id}`} type="number" min="0" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label htmlFor={`price-${item.id}`}>Valor Unitário</Label>
+                                  <div className="relative">
+                                    <Input id={`price-${item.id}`} type="text" value={item.price ? new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format(item.price) : ''} onChange={e => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              const numericValue = parseFloat(value) / 100;
+                              handleProductChange(item.id, 'price', isNaN(numericValue) ? 0 : numericValue);
+                            }} placeholder="0,00" className="pl-8" />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Valor Total</Label>
+                                  <div className="relative">
+                                    <Input type="text" className="pl-8 bg-muted cursor-not-allowed" value={item.selected && item.price && item.quantity ? new Intl.NumberFormat('pt-BR', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            }).format(item.price * item.quantity) : '0,00'} readOnly />
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor={`obs-${item.id}`}>Observações</Label>
+                                <Textarea id={`obs-${item.id}`} value={item.observations || ''} onChange={e => handleProductChange(item.id, 'observations', e.target.value)} placeholder="Observações sobre este produto..." className="min-h-[80px]" />
+                              </div>
+
                             </div>}
                         </div>
                       </CardContent>
