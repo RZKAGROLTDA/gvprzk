@@ -1234,8 +1234,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             }}
           />
 
-          {/* Parque de Máquinas — inline vertical para Visita à Fazenda */}
-          {taskCategory === 'field-visit' && (
+          {/* Parque de Máquinas — inline vertical para Visita à Fazenda e Ligação */}
+          {(taskCategory === 'field-visit' || taskCategory === 'call') && (
             <Card>
               <CardHeader>
                 <SectionHeader
@@ -1246,17 +1246,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 />
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                  <Input
-                    id="propertyHectares"
-                    type="number"
-                    min="0"
-                    value={task.propertyHectares || ''}
-                    onChange={e => setTask(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || undefined }))}
-                    placeholder="Digite os hectares da propriedade"
-                  />
-                </div>
+                {taskCategory === 'field-visit' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                    <Input
+                      id="propertyHectares"
+                      type="number"
+                      min="0"
+                      value={task.propertyHectares || ''}
+                      onChange={e => setTask(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || undefined }))}
+                      placeholder="Digite os hectares da propriedade"
+                    />
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
                 </p>
@@ -1270,6 +1272,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
               </CardContent>
             </Card>
           )}
+
 
           {/* Bloco legacy "Lista de Equipamentos" removido para 'call' —
               o Parque de Máquinas (cadastro mestre) é exibido full-width abaixo. */}
