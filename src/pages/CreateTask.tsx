@@ -1398,7 +1398,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       </CardContent>
                     </Card>)}
                 </div>
+                </CollapsibleProductsBlock>
             </ProductsOfferSection>}
+
         </div>
 
         {/* Parque de Máquinas — full-width, abaixo das Informações Básicas */}
