@@ -570,69 +570,21 @@ export const TechnicalVisitForm: React.FC = () => {
 
 
 
-      {/* Tipo de Serviço */}
-      <TechnicalServiceSection>
-        <div className="space-y-2">
-          <Label>Tipo de Serviço</Label>
-          <Select value={serviceType} onValueChange={setServiceType}>
-            <SelectTrigger><SelectValue placeholder="Selecione o tipo de serviço" /></SelectTrigger>
-            <SelectContent>
-              {SERVICE_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </TechnicalServiceSection>
+      {/* Observações — fluxo operacional, igual Fazenda */}
+      <ObservationsSection>
+        <Textarea
+          value={observations}
+          onChange={(e) => setObservations(e.target.value)}
+          placeholder="Anotações gerais sobre a visita técnica..."
+          rows={5}
+          className="min-h-[120px] resize-y"
+        />
+      </ObservationsSection>
 
-      {/* Estimativa de Venda */}
-      <SalesEstimateSection>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { label: 'Serviços', v: estServicos, set: setEstServicos },
-            { label: 'Peças', v: estPecas, set: setEstPecas },
-            { label: 'Treinamento', v: estTreinamento, set: setEstTreinamento },
-            { label: 'PUK', v: estPuk, set: setEstPuk },
-          ].map((it) => (
-            <div key={it.label} className="space-y-2">
-              <Label>{it.label} (R$)</Label>
-              <Input
-                inputMode="decimal"
-                placeholder="0,00"
-                value={it.v}
-                onChange={(e) => it.set(e.target.value)}
-              />
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center justify-between pt-2 border-t border-border/60">
-          <span className="text-sm text-muted-foreground">Total estimado</span>
-          <span className="text-lg font-semibold text-success">{formatBRL(totalEstimate)}</span>
-        </div>
-      </SalesEstimateSection>
-
-      {/* Classificação da Oportunidade */}
-      <OpportunityClassificationSection>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {renderLevel('Interesse do Cliente', interest, setInterest)}
-          {renderLevel('Urgência Operacional', urgency, setUrgency)}
-          {renderLevel('Impacto na Disponibilidade', impact, setImpact)}
-          {renderLevel('Possibilidade de Fechamento', closing, setClosing)}
-        </div>
-      </OpportunityClassificationSection>
-
-      {/* Funil de Vendas / Status da Oportunidade — cards visuais (padrão Visita à Fazenda) */}
+      {/* Status da Oportunidade — MESMO componente visual da Visita à Fazenda */}
       <SalesFunnelSection>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Etapa no Funil</Label>
-            <Select value={funnelStage} onValueChange={setFunnelStage}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {FUNNEL_STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Valor de Venda/Oportunidade — auto a partir dos produtos selecionados */}
+          {/* Valor da Oportunidade */}
           <div className="space-y-2">
             <Label htmlFor="tv-sales-value">Valor de Venda/Oportunidade (R$)</Label>
             <div className="relative">
@@ -658,39 +610,246 @@ export const TechnicalVisitForm: React.FC = () => {
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              ⚡ Calculado automaticamente a partir dos produtos/serviços selecionados — editável se necessário.
+              Calculado a partir dos produtos selecionados — editável.
             </p>
           </div>
 
-          {/* Status da Oportunidade — mesmos cards visuais */}
-          <StatusSelectionComponent
-            salesConfirmed={salesConfirmed}
-            salesType={salesType}
-            prospectNotes={prospectNotes}
-            prospectNotesJustification={prospectNotesJustification}
-            isProspect={isProspect}
-            prospectItems={prospectItems}
-            availableProducts={productsOffer.filter(p => p.selected)}
-            checklist={productsOffer.filter(p => p.selected)}
-            onStatusChange={(s) => {
-              if (s.salesConfirmed !== undefined) setSalesConfirmed(s.salesConfirmed);
-              if (s.salesType !== undefined) setSalesType(s.salesType);
-              if (s.isProspect !== undefined) setIsProspect(s.isProspect);
-              if (s.prospectNotes !== undefined) setProspectNotes(s.prospectNotes);
-              if (s.prospectNotesJustification !== undefined)
-                setProspectNotesJustification(s.prospectNotesJustification);
-              if (s.prospectItems !== undefined) setProspectItems(s.prospectItems);
-              if (s.partialSalesValue !== undefined) setPartialSalesValue(s.partialSalesValue);
-            }}
-          />
+          {/* Cards de Status — réplica visual da Visita à Fazenda */}
+          <div>
+            <Label className="text-base font-medium text-foreground mb-3 block">
+              Status da Oportunidade
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <button
+                type="button"
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  isProspect && salesConfirmed === null
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-border bg-background hover:border-primary/50'
+                }`}
+                onClick={() => {
+                  setIsProspect(true);
+                  setSalesConfirmed(null);
+                  setSalesType('prospect');
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <Search className="h-4 w-4" />
+                  <div>
+                    <div className="font-medium text-sm">Prospect</div>
+                    <div className="text-xs text-muted-foreground">Cliente em análise</div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  salesConfirmed === true && salesType === 'ganho'
+                    ? 'border-success bg-success/5 text-success'
+                    : 'border-border bg-background hover:border-success/50'
+                }`}
+                onClick={() => {
+                  setSalesConfirmed(true);
+                  setSalesType('ganho');
+                  setIsProspect(true);
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-4 w-4" />
+                  <div>
+                    <div className="font-medium text-sm">Venda Total</div>
+                    <div className="text-xs text-muted-foreground">Negócio fechado integralmente</div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  salesConfirmed === true && salesType === 'parcial'
+                    ? 'border-warning bg-warning/5 text-warning'
+                    : 'border-border bg-background hover:border-warning/50'
+                }`}
+                onClick={() => {
+                  setSalesConfirmed(true);
+                  setSalesType('parcial');
+                  setIsProspect(true);
+                  if (prospectItems.length === 0) {
+                    setProspectItems(
+                      productsOffer
+                        .filter((p) => p.selected)
+                        .map((p) => ({ ...p, selected: true })),
+                    );
+                  }
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <ShoppingCart className="h-4 w-4" />
+                  <div>
+                    <div className="font-medium text-sm">Venda Parcial</div>
+                    <div className="text-xs text-muted-foreground">Negócio fechado parcialmente</div>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  salesConfirmed === false
+                    ? 'border-destructive bg-destructive/5 text-destructive'
+                    : 'border-border bg-background hover:border-destructive/50'
+                }`}
+                onClick={() => {
+                  setSalesConfirmed(false);
+                  setIsProspect(true);
+                  setSalesType(undefined);
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <XCircle className="h-4 w-4" />
+                  <div>
+                    <div className="font-medium text-sm">Venda Perdida</div>
+                    <div className="text-xs text-muted-foreground">Negócio não realizado</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Motivo da perda */}
+          {salesConfirmed === false && (
+            <div className="space-y-2">
+              <Label htmlFor="tv-loss-reason">Motivo da Perda</Label>
+              <select
+                id="tv-loss-reason"
+                value={prospectNotes || ''}
+                onChange={(e) => {
+                  setProspectNotes(e.target.value);
+                  if (e.target.value !== 'Outros') setProspectNotesJustification('');
+                }}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+              >
+                <option value="">Selecione o motivo</option>
+                <option value="Preço">Preço</option>
+                <option value="Falta de Produto">Falta de Produto</option>
+                <option value="Paralelo">Paralelo</option>
+                <option value="Duplo Domicilio">Duplo Domicilio</option>
+                <option value="Outros">Outros</option>
+              </select>
+              {prospectNotes === 'Outros' && (
+                <Textarea
+                  value={prospectNotesJustification}
+                  onChange={(e) => setProspectNotesJustification(e.target.value)}
+                  placeholder="Descreva o motivo..."
+                  className="min-h-[80px]"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Valor da venda parcial */}
+          {salesConfirmed === true && salesType === 'parcial' && (
+            <div className="space-y-2">
+              <Label htmlFor="tv-partial-value">Valor da Venda Parcial (R$)</Label>
+              <div className="relative">
+                <Input
+                  id="tv-partial-value"
+                  type="text"
+                  value={
+                    partialSalesValue
+                      ? new Intl.NumberFormat('pt-BR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }).format(partialSalesValue)
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    const n = parseFloat(raw) / 100;
+                    setPartialSalesValue(isNaN(n) ? 0 : n);
+                  }}
+                  placeholder="0,00"
+                  className="pl-8"
+                />
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+              </div>
+            </div>
+          )}
         </div>
       </SalesFunnelSection>
 
-      {/* Próxima Ação */}
-      <NextActionSection>
+      {/* === Blocos complementares da Visita Técnica === */}
+
+      {/* Classificação da Oportunidade — adicional */}
+      <OpportunityClassificationSection>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {renderLevel('Interesse do Cliente', interest, setInterest)}
+          {renderLevel('Urgência Operacional', urgency, setUrgency)}
+          {renderLevel('Impacto na Disponibilidade', impact, setImpact)}
+          {renderLevel('Possibilidade de Fechamento', closing, setClosing)}
+        </div>
+      </OpportunityClassificationSection>
+
+      {/* Atendimento Técnico + Estimativa — adicional, compacto em 2 colunas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TechnicalServiceSection>
           <div className="space-y-2">
-            <Label>Ação</Label>
+            <Label>Tipo de Serviço</Label>
+            <Select value={serviceType} onValueChange={setServiceType}>
+              <SelectTrigger><SelectValue placeholder="Selecione o tipo de serviço" /></SelectTrigger>
+              <SelectContent>
+                {SERVICE_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </TechnicalServiceSection>
+
+        <SalesEstimateSection>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Serviços', v: estServicos, set: setEstServicos },
+              { label: 'Peças', v: estPecas, set: setEstPecas },
+              { label: 'Treinamento', v: estTreinamento, set: setEstTreinamento },
+              { label: 'PUK', v: estPuk, set: setEstPuk },
+            ].map((it) => (
+              <div key={it.label} className="space-y-1">
+                <Label className="text-xs">{it.label} (R$)</Label>
+                <Input
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={it.v}
+                  onChange={(e) => it.set(e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-2 mt-2 border-t border-border/60">
+            <span className="text-xs text-muted-foreground">Total estimado</span>
+            <span className="text-base font-semibold text-success">{formatBRL(totalEstimate)}</span>
+          </div>
+        </SalesEstimateSection>
+      </div>
+
+      {/* Funil Técnico + Próxima Ação — bloco complementar compacto */}
+      <SectionCard
+        icon={CalendarClock}
+        title="Funil Técnico & Próxima Ação"
+        description="Etapa interna da oficina e próximo passo planejado"
+        tone="muted"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Etapa no Funil Técnico</Label>
+            <Select value={funnelStage} onValueChange={setFunnelStage}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {FUNNEL_STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Próxima Ação</Label>
             <Select value={nextAction} onValueChange={setNextAction}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
@@ -698,23 +857,15 @@ export const TechnicalVisitForm: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Data prevista</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Data prevista</Label>
             <Input type="date" value={nextActionDate} onChange={(e) => setNextActionDate(e.target.value)} />
           </div>
         </div>
-      </NextActionSection>
-
-      {/* Observações — padrão visual da Visita à Fazenda */}
-      <ObservationsSection>
-        <Textarea
-          value={observations}
-          onChange={(e) => setObservations(e.target.value)}
-          placeholder="Anotações gerais sobre a visita técnica..."
-          rows={6}
-          className="min-h-[140px] resize-y"
-        />
-      </ObservationsSection>
+        <p className="text-xs text-muted-foreground mt-1">
+          Complementar — indicadores comerciais usam apenas o Status da Oportunidade acima.
+        </p>
+      </SectionCard>
 
       {/* Fotos da Visita */}
       <PhotoUpload
@@ -728,6 +879,7 @@ export const TechnicalVisitForm: React.FC = () => {
         checkInLocation={checkInLocation}
         onCheckIn={(loc) => setCheckInLocation(loc)}
       />
+
 
       {/* Rodapé padronizado */}
       <div className="flex flex-col gap-4 mt-6">
