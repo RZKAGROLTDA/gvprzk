@@ -1232,9 +1232,46 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             }}
           />
 
+          {/* Parque de Máquinas — inline vertical para Visita à Fazenda */}
+          {taskCategory === 'field-visit' && (
+            <Card>
+              <CardHeader>
+                <SectionHeader
+                  icon={Tractor}
+                  title="Parque de Máquinas"
+                  description="Equipamentos do cliente (cadastro mestre)"
+                  tone="success"
+                />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
+                  <Input
+                    id="propertyHectares"
+                    type="number"
+                    min="0"
+                    value={task.propertyHectares || ''}
+                    onChange={e => setTask(prev => ({ ...prev, propertyHectares: parseInt(e.target.value) || undefined }))}
+                    placeholder="Digite os hectares da propriedade"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
+                </p>
+                <EquipmentParkBlock
+                  clientCode={task.clientCode || ''}
+                  clientName={task.client || ''}
+                  selectable
+                  selectedIds={selectedEquipmentIds}
+                  onSelectionChange={setSelectedEquipmentIds}
+                />
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Informações de Equipamentos - para ambos: visita a campo e ligação */}
-          {(taskCategory === 'field-visit' || taskCategory === 'call') && <Card>
+          {/* Informações de Equipamentos — legacy (mantido apenas para 'call') */}
+          {taskCategory === 'call' && <Card>
+
               <CardHeader>
                 {taskCategory === 'call' ? (
                   <SectionHeader
