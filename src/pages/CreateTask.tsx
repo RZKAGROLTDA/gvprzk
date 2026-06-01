@@ -1251,20 +1251,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Parque de Máquinas — busca pelo cadastro mestre do cliente */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Parque de Máquinas (cadastro do cliente)</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
-                  </p>
-                  <EquipmentParkBlock
-                    clientCode={task.clientCode || ''}
-                    clientName={task.client || ''}
-                    selectable
-                    selectedIds={selectedEquipmentIds}
-                    onSelectionChange={setSelectedEquipmentIds}
-                  />
-                </div>
+
+
 
                 {/* Hectares da Propriedade */}
                  <div className="space-y-2">
@@ -1456,6 +1444,34 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 </div>
             </ProductsOfferSection>}
         </div>
+
+        {/* Parque de Máquinas — full-width, abaixo das Informações Básicas */}
+        {(taskCategory === 'field-visit' || taskCategory === 'call') && (
+          <Card className="mt-6">
+            <CardHeader>
+              <SectionHeader
+                icon={Tractor}
+                title="Parque de Máquinas"
+                description="Equipamentos do cliente (cadastro mestre)"
+                tone="success"
+              />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">
+                Carregado automaticamente ao selecionar o cliente. Selecione os equipamentos atendidos nesta visita.
+              </p>
+              <EquipmentParkBlock
+                clientCode={task.clientCode || ''}
+                clientName={task.client || ''}
+                selectable
+                selectedIds={selectedEquipmentIds}
+                onSelectionChange={setSelectedEquipmentIds}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+
 
         {/* Observações e Valores */}
         <Card className="mt-6">
