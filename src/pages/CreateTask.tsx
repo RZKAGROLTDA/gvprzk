@@ -1483,7 +1483,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         </div>
 
         {/* Parque de Máquinas — full-width, abaixo das Informações Básicas */}
-        {(taskCategory === 'field-visit' || taskCategory === 'call') && (
+        {taskCategory === 'call' && (
           <Card className="mt-6">
             <CardHeader>
               <SectionHeader
