@@ -924,16 +924,16 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
         </div>
       </SectionCard>
 
-      {/* Botões de Ação */}
-      <div className="flex justify-end space-x-4">
+      {/* Rodapé de ações */}
+      <div className="sticky bottom-0 -mx-6 px-6 py-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex justify-end gap-3">
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="min-w-[120px]"
+          className="min-w-[160px]"
         >
           {isSubmitting ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
               Salvando...
             </>
           ) : (
