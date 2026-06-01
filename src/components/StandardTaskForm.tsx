@@ -225,14 +225,13 @@ export const StandardTaskForm: React.FC<StandardTaskFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Informações da Tarefa */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Informações da Tarefa
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <SectionCard
+        icon={ClipboardList}
+        title="Informações da Tarefa"
+        description="Dados gerais, tipo e agendamento"
+        tone="primary"
+        contentClassName="space-y-4"
+      >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="taskName">Nome da Tarefa</Label>
