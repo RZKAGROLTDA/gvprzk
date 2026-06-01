@@ -1269,95 +1269,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             </Card>
           )}
 
-          {/* Informações de Equipamentos — legacy (mantido apenas para 'call') */}
-          {taskCategory === 'call' && <Card>
+          {/* Bloco legacy "Lista de Equipamentos" removido para 'call' —
+              o Parque de Máquinas (cadastro mestre) é exibido full-width abaixo. */}
 
-              <CardHeader>
-                {taskCategory === 'call' ? (
-                  <SectionHeader
-                    icon={Tractor}
-                    title="Parque de Máquinas"
-                    description="Equipamentos do cliente"
-                    tone="success"
-                  />
-                ) : (
-                  <CardTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5" />
-                    Lista de Equipamentos
-                  </CardTitle>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-4">
-
-
-
-                {/* Hectares da Propriedade */}
-                 <div className="space-y-2">
-                   <Label htmlFor="propertyHectares">Hectares da Propriedade</Label>
-                    <Input id="propertyHectares" type="number" min="0" value={task.propertyHectares || ''} onChange={e => setTask(prev => ({
-                ...prev,
-                propertyHectares: parseInt(e.target.value) || undefined
-              }))} placeholder="Digite os hectares da propriedade" />
-                 </div>
-
-
-                {/* Lista de Equipamentos */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label>Equipamentos do Cliente</Label>
-                    <Button type="button" onClick={addEquipment} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700" size="sm">
-                      <Plus className="h-4 w-4" />
-                      Adicionar Equipamento
-                    </Button>
-                  </div>
-
-                  {equipmentList.length === 0 && <div className="text-center text-muted-foreground py-8 border-2 border-dashed border-border rounded-lg">
-                      <Building className="h-8 w-8 mx-auto mb-2" />
-                      <p>Nenhum equipamento adicionado</p>
-                      <p className="text-sm">Clique em "Adicionar Equipamento" para começar</p>
-                    </div>}
-
-                  {equipmentList.map((equipment, index) => <Card key={equipment.id} className="border border-border/50">
-                      <CardContent className="p-4">
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium">Equipamento {index + 1}</h4>
-                            <Button type="button" onClick={() => removeEquipment(equipment.id)} variant="outline" size="sm" className="h-8 w-8 p-0">
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Família do Produto</Label>
-                              <Select value={equipment.familyProduct} onValueChange={value => updateEquipment(equipment.id, 'familyProduct', value)}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione a família" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="TRATOR">TRATOR</SelectItem>
-                                  <SelectItem value="PLATAFORMA">PLATAFORMA</SelectItem>
-                                  <SelectItem value="COLHEITADEIRA">COLHEITADEIRA</SelectItem>
-                                  <SelectItem value="PLANTADEIRA">PLANTADEIRA</SelectItem>
-                                  <SelectItem value="PULVERIZADOR">PULVERIZADOR</SelectItem>
-                                  <SelectItem value="COLHEDORA">COLHEDORA</SelectItem>
-                                  <SelectItem value="FORRAGEIRA">FORRAGEIRA</SelectItem>
-                                  <SelectItem value="OUTROS">OUTROS</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <Label>Quantidade</Label>
-                              <Input type="number" value={equipment.quantity || ''} onChange={e => updateEquipment(equipment.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="Digite a quantidade" min="0" />
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>)}
-                </div>
-              </CardContent>
-            </Card>}
 
           {/* Produtos / Checklist - apenas para visita a campo e workshop */}
           {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && <Card>
