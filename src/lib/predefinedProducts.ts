@@ -1,6 +1,7 @@
 // Lista de produtos pré-definidos consolidada
-export const predefinedProducts = [
-  // Produtos de visita de campo
+
+// Produtos oficiais para Ofertar (usados em Ligação, Visita à Fazenda e Visita Técnica)
+export const offerProducts = [
   { name: 'Pneus', category: 'tires' },
   { name: 'Lubrificantes', category: 'lubricants' },
   { name: 'Óleos', category: 'oils' },
@@ -11,8 +12,10 @@ export const predefinedProducts = [
   { name: 'Disco', category: 'other' },
   { name: 'Peças', category: 'parts' },
   { name: 'Serviços', category: 'services' },
-  
-  // Produtos de checklist de oficina
+];
+
+// Itens de checklist específicos da oficina
+export const workshopChecklistItems = [
   { name: 'Verificação de Óleo do Motor', category: 'oils' },
   { name: 'Inspeção de Freios', category: 'other' },
   { name: 'Verificação de Pneus', category: 'tires' },
@@ -23,6 +26,9 @@ export const predefinedProducts = [
   { name: 'Diagnóstico Eletrônico', category: 'other' },
   { name: 'Limpeza Geral', category: 'other' },
 ];
+
+// Mantido para retrocompatibilidade (autocomplete e buscas genéricas)
+export const predefinedProducts = [...offerProducts, ...workshopChecklistItems];
 
 export const getProductSuggestions = (query: string, limit: number = 10) => {
   if (!query.trim()) return predefinedProducts.slice(0, limit);
