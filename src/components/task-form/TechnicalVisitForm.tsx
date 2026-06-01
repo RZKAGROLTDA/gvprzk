@@ -461,6 +461,63 @@ export const TechnicalVisitForm: React.FC = () => {
         </div>
       </EquipmentParkSection>
 
+      {/* Produtos para Ofertar — recolhível, mesmo padrão de Ligação/Visita à Fazenda */}
+      <ProductsOfferSection>
+        <CollapsibleProductsBlock products={productsOffer}>
+          <div className="space-y-3">
+            {productsOffer.map((item) => (
+              <div key={item.id} className="rounded-lg border border-border/50 p-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id={`tv-${item.id}`}
+                    checked={item.selected}
+                    onCheckedChange={(v) => updateProduct(item.id, { selected: !!v })}
+                  />
+                  <Label htmlFor={`tv-${item.id}`} className="text-sm font-medium">
+                    {item.name}
+                  </Label>
+                </div>
+                {item.selected && (
+                  <div className="ml-6 mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label>QTD</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={item.quantity || ''}
+                        onChange={(e) => updateProduct(item.id, { quantity: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Valor Unitário (R$)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.price || ''}
+                        onChange={(e) => updateProduct(item.id, { price: parseFloat(e.target.value) || 0 })}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Valor Total</Label>
+                      <Input
+                        type="text"
+                        readOnly
+                        className="bg-muted cursor-not-allowed"
+                        value={formatBRL((item.price || 0) * (item.quantity || 0))}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CollapsibleProductsBlock>
+      </ProductsOfferSection>
+
+
+
       {/* Tipo de Serviço */}
       <TechnicalServiceSection>
         <div className="space-y-2">
