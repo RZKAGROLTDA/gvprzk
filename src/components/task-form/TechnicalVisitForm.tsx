@@ -170,6 +170,23 @@ export const TechnicalVisitForm: React.FC = () => {
   // --- Observações ---
   const [observations, setObservations] = useState('');
 
+  // --- Produtos para Ofertar (mesma estrutura usada em Ligação/Visita à Fazenda) ---
+  const [productsOffer, setProductsOffer] = useState<ProductType[]>(
+    () => predefinedProducts.map((p, i) => ({
+      id: `tv-prod-${i}`,
+      name: p.name,
+      category: p.category as any,
+      selected: false,
+      quantity: 0,
+      price: 0,
+      observations: '',
+    })),
+  );
+  const updateProduct = (id: string, patch: Partial<ProductType>) =>
+    setProductsOffer((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+
+
+
   const persistNewEquipments = async () => {
     if (!clientCode.trim() || !clientName.trim()) return;
     const newOnes = equipments.filter(e =>
