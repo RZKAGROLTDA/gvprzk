@@ -970,8 +970,34 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             />
           )}
 
-          {/* Notas de Prospect */}
-          {fullTask.prospectNotes && (
+          {/* Motivo da Perda */}
+          {salesStatus === 'perdido' && (fullTask.prospectNotes || fullTask.prospectNotesJustification) && (
+            <Card className="border-destructive/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <FileText className="w-5 h-5" />
+                  Motivo da Perda
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {fullTask.prospectNotes && (
+                  <div className="bg-destructive/5 rounded-lg p-4 border-l-4 border-destructive">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Motivo</label>
+                    <p className="text-sm mt-1 leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotes}</p>
+                  </div>
+                )}
+                {fullTask.prospectNotesJustification && (
+                  <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-muted-foreground">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Justificativa</label>
+                    <p className="text-sm mt-1 leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotesJustification}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notas de Prospect (quando NÃO é perdido) */}
+          {salesStatus !== 'perdido' && fullTask.prospectNotes && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -980,9 +1006,108 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-blue-500">
+                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-primary">
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotes}</p>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Próxima Ação */}
+          {(fullTask.nextAction || fullTask.nextActionDate) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Próxima Ação
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {fullTask.nextAction && (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-muted-foreground">Ação</label>
+                      <p className="font-medium whitespace-pre-wrap">{fullTask.nextAction}</p>
+                    </div>
+                  )}
+                  {fullTask.nextActionDate && (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-muted-foreground">Data prevista</label>
+                      <p className="font-medium">{formatDateDisplay(fullTask.nextActionDate as any)}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bloco Visita Técnica — só aparece em tarefas técnicas */}
+          {fullTask.taskType === 'technical_visit' && (
+            fullTask.technicalCategory || fullTask.technicalFunnelStage ||
+            fullTask.opportunityInterest || fullTask.opportunityUrgency ||
+            fullTask.opportunityImpact || fullTask.opportunityClosing ||
+            fullTask.salesEstimate
+          ) && (
+            <Card className="border-warning/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-warning">
+                  <FileText className="w-5 h-5" />
+                  Dados da Visita Técnica
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {(fullTask.technicalCategory || fullTask.technicalFunnelStage) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {fullTask.technicalCategory && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground">Categoria Técnica</label>
+                        <p className="font-medium">{fullTask.technicalCategory}</p>
+                      </div>
+                    )}
+                    {fullTask.technicalFunnelStage && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground">Etapa do Funil Técnico</label>
+                        <p className="font-medium">{fullTask.technicalFunnelStage}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(fullTask.opportunityInterest || fullTask.opportunityUrgency ||
+                  fullTask.opportunityImpact || fullTask.opportunityClosing) && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Classificação da Oportunidade</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        ['Interesse', fullTask.opportunityInterest],
+                        ['Urgência', fullTask.opportunityUrgency],
+                        ['Impacto', fullTask.opportunityImpact],
+                        ['Fechamento', fullTask.opportunityClosing],
+                      ].map(([label, val]) => val ? (
+                        <div key={label} className="border rounded-lg p-2 bg-muted/30">
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className="font-medium capitalize">{val}</p>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </div>
+                )}
+
+                {fullTask.salesEstimate && Object.keys(fullTask.salesEstimate).length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Estimativa de Venda</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {Object.entries(fullTask.salesEstimate).map(([k, v]) => (
+                        <div key={k} className="border rounded-lg p-2 bg-muted/30">
+                          <p className="text-xs text-muted-foreground capitalize">{k}</p>
+                          <p className="font-medium">
+                            R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
