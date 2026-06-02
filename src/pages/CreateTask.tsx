@@ -1222,8 +1222,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             filiais={filiais as any[]}
             onClientSelected={async (code, name) => {
               setTask(prev => ({ ...prev, clientCode: code, client: name }));
-              await loadPreviousClientData(code);
+              await loadPreviousClientData(code, name);
             }}
+
           />
 
           {/* Parque de Máquinas — wrapper padronizado (igual Visita Técnica) */}
