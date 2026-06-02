@@ -135,31 +135,61 @@ export const generateTaskPDF = async (
         ? (partialValue || productsSelected)
         : 0;
 
-  // ===== CABEÇALHO =====
-  pdf.setFontSize(16);
+  // ===== COVER BAND EXECUTIVO =====
+  pdf.setFillColor(30, 64, 124);
+  pdf.rect(0, 0, pageWidth, 38, 'F');
+  pdf.setTextColor(255, 255, 255);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('Detalhes da Oportunidade', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 8;
-
-  pdf.setFontSize(9);
+  pdf.setFontSize(18);
+  pdf.text('Relatório de Oportunidade', marginLeft, 16);
   pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(100, 100, 100);
+  pdf.setFontSize(10);
   pdf.text(
-    `${getTaskTypeLabel(task?.taskType || 'prospection')} • ${task?.startDate ? formatDateDisplay(task.startDate) : 'N/A'}`,
-    pageWidth / 2,
-    yPos,
-    { align: 'center' }
+    `${getTaskTypeLabel(task?.taskType || 'prospection')} · ${task?.startDate ? formatDateDisplay(task.startDate) : 'N/A'}`,
+    marginLeft,
+    24
   );
-  pdf.setTextColor(0, 0, 0);
-  yPos += 10;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(13);
+  pdf.text(task?.client || 'Cliente não informado', marginLeft, 33);
 
-  // ===== RESUMO (Status e Valores) =====
-  writeSectionTitle('Resumo da Oportunidade');
-  writeLine('Status:', statusLabel);
-  writeLine('Valor Potencial:', formatCurrency(potentialValue));
-  writeLine('Valor Fechado:', closedValue > 0 ? formatCurrency(closedValue) : '-');
+  // Status pill (direita)
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(255, 255, 255);
+  const pillW = 46;
+  pdf.roundedRect(pageWidth - marginRight - pillW, 12, pillW, 9, 2, 2, 'F');
+  pdf.setTextColor(30, 64, 124);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(9);
+  pdf.text(statusLabel.toUpperCase(), pageWidth - marginRight - pillW / 2, 18, { align: 'center' });
+  pdf.setTextColor(0, 0, 0);
+  yPos = 48;
+
+  // ===== KPI CARDS =====
   const conversionRate = potentialValue > 0 && closedValue > 0 ? `${((closedValue / potentialValue) * 100).toFixed(0)}%` : '-';
-  writeLine('Conversão:', conversionRate);
+  const kpis: Array<[string, string]> = [
+    ['Valor Potencial', formatCurrency(potentialValue)],
+    ['Valor Fechado', closedValue > 0 ? formatCurrency(closedValue) : '-'],
+    ['Conversão', conversionRate],
+  ];
+  const kpiW = (contentWidth - 8) / 3;
+  kpis.forEach(([label, value], i) => {
+    const x = marginLeft + i * (kpiW + 4);
+    pdf.setFillColor(245, 247, 251);
+    pdf.setDrawColor(220, 226, 235);
+    pdf.roundedRect(x, yPos, kpiW, 18, 2, 2, 'FD');
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(110, 120, 135);
+    pdf.text(label.toUpperCase(), x + 3, yPos + 5);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(30, 64, 124);
+    pdf.text(value, x + 3, yPos + 13);
+  });
+  pdf.setTextColor(0, 0, 0);
+  yPos += 24;
+
 
   // ===== DADOS DO CLIENTE =====
   writeSectionTitle('Dados do Cliente');
