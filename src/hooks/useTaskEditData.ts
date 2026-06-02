@@ -200,7 +200,18 @@ export const useTaskEditData = (taskId: string | null) => {
          partial_sales_value: taskData.partial_sales_value,
          // Prospect/loss reason data
          prospectNotes: taskData.prospect_notes || '',
-         prospectNotesJustification: taskData.prospect_notes_justification || ''
+         prospectNotesJustification: taskData.prospect_notes_justification || '',
+         // Technical visit fields
+         technical_funnel_stage: taskData.technical_funnel_stage || null,
+         technical_category: taskData.technical_category || null,
+         technical_visit_data: taskData.technical_visit_data || null,
+         opportunity_interest: taskData.opportunity_interest || null,
+         opportunity_urgency: taskData.opportunity_urgency || null,
+         opportunity_impact: taskData.opportunity_impact || null,
+         opportunity_closing: taskData.opportunity_closing || null,
+         sales_estimate: taskData.sales_estimate || null,
+         next_action: taskData.next_action || null,
+         next_action_date: taskData.next_action_date || null
        };
 
       // Fetch opportunity data
