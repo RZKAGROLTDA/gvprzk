@@ -53,6 +53,18 @@ export interface TaskEditData {
   sales_value?: number;
   partial_sales_value?: number;
 
+  // Technical visit data
+  technical_funnel_stage?: string | null;
+  technical_category?: string | null;
+  technical_visit_data?: any;
+  opportunity_interest?: string | null;
+  opportunity_urgency?: string | null;
+  opportunity_impact?: string | null;
+  opportunity_closing?: string | null;
+  sales_estimate?: any;
+  next_action?: string | null;
+  next_action_date?: string | null;
+
   // Opportunity data
   opportunity?: {
     id: string;
