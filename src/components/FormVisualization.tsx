@@ -479,684 +479,326 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const displayChecklist = fullTask.checklist || [];
 
 
+  // ============ Helpers de apresentação ============
+  const formatBRL = (n: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0);
+
+  const totalProducts = displayChecklist.length;
+  const selectedCount = displayChecklist.filter(i => i.selected).length;
+  const productsOfferedTotal = displayChecklist.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+  const productsSelectedTotal = displayChecklist
+    .filter(i => i.selected)
+    .reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+
+  const potentialValue = opportunityTotalValue || productsOfferedTotal;
+  const closedValue =
+    salesStatus === 'ganho'
+      ? potentialValue
+      : salesStatus === 'parcial'
+        ? (fullTask.partialSalesValue || productsSelectedTotal)
+        : 0;
+  const conversion = potentialValue > 0 ? Math.round((closedValue / potentialValue) * 100) : 0;
+
+  const typeLabel = getTaskTypeLabel(fullTask.taskType || 'prospection');
+
+  const Field: React.FC<{ label: string; value?: React.ReactNode; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => (
+    <div className="space-y-1 min-w-0">
+      <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</div>
+      <div className="text-sm font-medium text-foreground flex items-center gap-2 min-w-0">
+        {Icon && <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+        <span className="truncate">{value || <span className="text-muted-foreground/60">—</span>}</span>
+      </div>
+    </div>
+  );
+
+  const KpiCard: React.FC<{ label: string; value: string; sub?: string; tone?: 'primary' | 'success' | 'warning' | 'muted' }> = ({ label, value, sub, tone = 'primary' }) => {
+    const toneMap = {
+      primary: 'border-primary/20 bg-primary/5 text-primary',
+      success: 'border-success/20 bg-success/5 text-success',
+      warning: 'border-warning/20 bg-warning/5 text-warning',
+      muted:   'border-border bg-muted/40 text-foreground',
+    } as const;
+    return (
+      <div className={cn('rounded-xl border px-4 py-3', toneMap[tone])}>
+        <div className="text-[11px] font-medium uppercase tracking-wide opacity-80">{label}</div>
+        <div className="text-xl sm:text-2xl font-bold leading-tight mt-1">{value}</div>
+        {sub && <div className="text-[11px] opacity-70 mt-0.5">{sub}</div>}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader className="pb-6 border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-primary rounded-lg shadow-lg">
-                <FileText className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  Relatório Completo de Oportunidade
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto p-0 gap-0">
+        {/* ===== Header executivo sticky ===== */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border-b">
+          <DialogHeader className="px-4 sm:px-6 py-4 space-y-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
+                  <FileText className="w-3.5 h-3.5" />
+                  Relatório · {typeLabel}
+                </div>
+                <DialogTitle className="text-xl sm:text-2xl font-bold leading-tight truncate">
+                  {fullTask.client || 'Cliente não informado'}
                 </DialogTitle>
-                <p className="text-lg text-muted-foreground mt-1">
-                  Visualização detalhada de todas as informações
+                <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                  {fullTask.property || '—'}
+                  <span className="mx-1.5 opacity-50">·</span>
+                  {formatDateDisplay(fullTask.startDate)}
+                  {fullTask.startTime && <span className="opacity-70"> · {fullTask.startTime}{fullTask.endTime ? ` – ${fullTask.endTime}` : ''}</span>}
                 </p>
               </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="gradient" size="sm" onClick={generatePDF} disabled={isGeneratingPDF}>
-                <Download className="w-4 h-4 mr-2" />
-                {isGeneratingPDF ? 'Gerando...' : 'Gerar PDF'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint} className="border-primary text-primary hover:bg-primary hover:text-white">
-                <Printer className="w-4 h-4 mr-2" />
-                Imprimir
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleEmail} className="border-primary text-primary hover:bg-primary hover:text-white">
-                <Mail className="w-4 h-4 mr-2" />
-                Enviar Email
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-8 pt-6">
-          {/* Cabeçalho da Oportunidade com Dados Principais */}
-          <Card className="border-primary shadow-lg bg-gradient-to-r from-primary/5 via-white to-primary/5">
-            <CardHeader className="pb-6">
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
-                    <User className="w-8 h-8 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-primary">{fullTask.client}</h2>
-                    <p className="text-lg text-muted-foreground">{fullTask.property}</p>
-                    <div className="flex items-center gap-4 mt-2">
-                      <span className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDateDisplay(fullTask.startDate)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {fullTask.startTime} - {fullTask.endTime}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <Badge className={`${getStatusColor(salesStatus)} text-lg px-4 py-2 border-2`}>
-                    {getStatusLabel(salesStatus)}
-                  </Badge>
-                  <div className="mt-3">
-                    <p className="text-sm text-muted-foreground">Valor da Oportunidade</p>
-                    <p className="text-2xl font-bold text-primary">
-                      R$ {opportunityTotalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          {/* Informações Básicas */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Informações Gerais
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Tipo de Tarefa</label>
-                  <p className="font-medium">{getTaskTypeLabel(fullTask.taskType || 'prospection')}</p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Responsável</label>
-                  <p className="font-medium flex items-center gap-2">
-                    <User className="w-4 h-4 text-primary" />
-                    {fullTask.responsible}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Filial</label>
-                  <p className="font-medium flex items-center gap-2">
-                    <Building className="w-4 h-4 text-primary" />
-                    {resolveFilialName(fullTask.filial) || 'Não informado'}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Data</label>
-                  <p className="font-medium flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-primary" />
-                    {formatDateDisplay(fullTask.startDate)}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Horário</label>
-                  <p className="font-medium">{fullTask.startTime} - {fullTask.endTime}</p>
-                </div>
-              </div>
-
-              <Separator className="my-6" />
-
-              {/* Informações do Cliente */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-lg flex items-center gap-2">
-                  <User className="w-5 h-5 text-primary" />
-                  Dados do Cliente
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-muted-foreground">Nome do Cliente</label>
-                    <p className="font-medium">{fullTask.client}</p>
-                  </div>
-                  {fullTask.clientCode && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Código do Cliente</label>
-                      <p className="font-medium flex items-center gap-2">
-                        <Hash className="w-4 h-4 text-muted-foreground" />
-                        {fullTask.clientCode}
-                      </p>
-                    </div>
-                  )}
-                  {fullTask.email && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Email</label>
-                      <p className="font-medium flex items-center gap-2">
-                        <AtSign className="w-4 h-4 text-muted-foreground" />
-                        {fullTask.email}
-                      </p>
-                    </div>
-                  )}
-                   <div className="space-y-2">
-                     <label className="text-sm font-medium text-muted-foreground">Propriedade</label>
-                     <p className="font-medium">{fullTask.property}</p>
-                   </div>
-                   <div className="space-y-2">
-                     <label className="text-sm font-medium text-muted-foreground">Hectares da Propriedade</label>
-                     <p className="font-medium flex items-center gap-2">
-                       <Crop className="w-4 h-4 text-success" />
-                       {fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'}
-                     </p>
-                   </div>
-                   {fullTask.phone && (
-                     <div className="space-y-2">
-                       <label className="text-sm font-medium text-muted-foreground">Telefone</label>
-                       <p className="font-medium flex items-center gap-2">
-                         <Phone className="w-4 h-4 text-muted-foreground" />
-                         {fullTask.phone}
-                       </p>
-                     </div>
-                   )}
-                   {fullTask.filialAtendida && (
-                     <div className="space-y-2">
-                       <label className="text-sm font-medium text-muted-foreground">Filial Atendida</label>
-                       <p className="font-medium flex items-center gap-2">
-                         <Building className="w-4 h-4 text-primary" />
-                         {resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida}
-                       </p>
-                     </div>
-                   )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Informações de Equipamentos */}
-          {(fullTask.familyProduct || fullTask.equipmentQuantity || (fullTask.equipmentList && fullTask.equipmentList.length > 0)) && (
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Car className="w-5 h-5" />
-                  Informações de Equipamentos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {fullTask.familyProduct && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Família Principal do Produto</label>
-                      <p className="font-medium flex items-center gap-2">
-                        <Package className="w-4 h-4 text-primary" />
-                        {fullTask.familyProduct}
-                      </p>
-                    </div>
-                  )}
-                  {fullTask.equipmentQuantity && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Quantidade Total de Equipamentos</label>
-                      <p className="font-medium text-lg text-primary">
-                        {fullTask.equipmentQuantity} equipamentos
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {fullTask.equipmentList && fullTask.equipmentList.length > 0 && (
-                  <div className="mt-6">
-                    <Separator className="mb-4" />
-                    <h4 className="font-semibold text-lg mb-4">Lista Detalhada de Equipamentos</h4>
-                    <div className="space-y-3">
-                      {fullTask.equipmentList.map((equipment, index) => (
-                        <div key={equipment.id || index} className="border rounded-lg p-4 bg-muted/30">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-muted-foreground">Família do Produto</label>
-                              <p className="font-medium text-primary">{equipment.familyProduct}</p>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-sm font-medium text-muted-foreground">Quantidade</label>
-                              <p className="font-medium text-lg">{equipment.quantity}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="mt-4 p-4 bg-gradient-card rounded-lg border">
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">Total de Equipamentos Listados</p>
-                        <p className="text-xl font-bold text-primary">
-                          {fullTask.equipmentList.reduce((total, eq) => total + eq.quantity, 0)} equipamentos
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Lista de Equipamentos */}
-          {fullTask.equipmentList && fullTask.equipmentList.length > 0 && (
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  Lista de Equipamentos
-                </CardTitle>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">Total de famílias de equipamentos:</span>
-                  <Badge variant="outline" className="border text-xs">
-                    {fullTask.equipmentList.length} famílias
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {fullTask.equipmentList.map((equipment, index) => (
-                    <div 
-                      key={index} 
-                      className="border rounded-lg p-4 bg-gradient-to-r from-primary/5 to-primary/2 border-primary/20"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-lg text-primary">
-                            {equipment.familyProduct}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Família de equipamentos identificada
-                          </p>
-                        </div>
-                        <Badge variant="default" className="bg-primary text-primary-foreground">
-                          {equipment.quantity} {equipment.quantity === 1 ? 'unidade' : 'unidades'}
-                        </Badge>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-3 bg-muted/30 rounded-lg">
-                          <label className="text-sm font-medium text-muted-foreground">Família do Produto</label>
-                          <p className="font-medium text-lg capitalize">{equipment.familyProduct.toLowerCase()}</p>
-                        </div>
-                        <div className="p-3 bg-muted/30 rounded-lg">
-                          <label className="text-sm font-medium text-muted-foreground">Quantidade Identificada</label>
-                          <p className="font-bold text-xl text-primary">{equipment.quantity}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Resumo Total dos Equipamentos */}
-                  <div className="mt-6 p-4 bg-gradient-to-r from-secondary/10 to-secondary/5 rounded-lg border border-secondary/20">
-                    <h4 className="font-semibold mb-3 text-secondary">Resumo dos Equipamentos</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total de Famílias</p>
-                        <p className="text-2xl font-bold text-secondary">
-                          {fullTask.equipmentList.length}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total de Equipamentos</p>
-                        <p className="text-2xl font-bold text-secondary">
-                          {fullTask.equipmentList.reduce((sum, equipment) => sum + equipment.quantity, 0)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Produtos/Serviços - Visualização - SEMPRE EXIBIR */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  {fullTask.taskType === 'ligacao' ? 'Produtos para Ofertar' : 'Produtos e Serviços'} ({displayChecklist.length})
-                </CardTitle>
-                <Badge variant="outline" className="text-sm">
-                  Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateTaskTotalValue(fullTask as any))}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Badge className={cn(getStatusColor(salesStatus), 'text-xs px-2.5 py-1 border')}>
+                  {getStatusLabel(salesStatus)}
                 </Badge>
+                <Button variant="gradient" size="sm" onClick={generatePDF} disabled={isGeneratingPDF}>
+                  <Download className="w-4 h-4" />
+                  {isGeneratingPDF ? 'Gerando…' : 'PDF'}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrint}>
+                  <Printer className="w-4 h-4" />
+                  Imprimir
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleEmail}>
+                  <Mail className="w-4 h-4" />
+                  E-mail
+                </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {fullTask.taskType === 'ligacao' 
-                  ? 'Lista de produtos ofertados durante a ligação'
-                  : 'Lista de produtos e serviços da oportunidade'
-                }
-              </p>
-            </CardHeader>
-            <CardContent>
-              {displayChecklist.length > 0 ? (
-                <div className="space-y-4">
-                  {displayChecklist.map((item, index) => {
-                    const itemTotal = (item.price || 0) * (item.quantity || 1);
-                    
-                    return (
-                      <div 
-                        key={item.id || index} 
-                        className={`border rounded-lg p-4 ${
-                          item.selected 
-                            ? 'bg-primary/5 border-primary/30 shadow-sm' 
-                            : 'bg-muted/20 border-border'
-                        }`}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-lg">
-                                  {item.name}
-                                </h4>
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  Categoria: <span className="font-medium">{item.category}</span>
-                                </p>
-                              </div>
-                              <Badge 
-                                variant={item.selected ? "default" : "outline"}
-                                className={item.selected ? "bg-success text-success-foreground" : ""}
-                              >
-                                {item.selected ? '✓ Selecionado' : 'Não Selecionado'}
-                              </Badge>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                              <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Quantidade</label>
-                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
-                                  <span className="text-sm font-medium">
-                                    {item.quantity || 1}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Preço Unitário</label>
-                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
-                                  <span className="text-sm font-medium">
-                                    {new Intl.NumberFormat('pt-BR', { 
-                                      style: 'currency', 
-                                      currency: 'BRL' 
-                                    }).format(item.price || 0)}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Subtotal</label>
-                                <div className={`h-8 px-2 rounded-md border flex items-center justify-end ${
-                                  item.selected 
-                                    ? 'bg-green-100 border-green-300 text-green-700 font-bold' 
-                                    : 'bg-gray-50 border-gray-200 text-gray-500'
-                                }`}>
-                                  <span className="text-sm font-medium">
-                                    {new Intl.NumberFormat('pt-BR', { 
-                                      style: 'currency', 
-                                      currency: 'BRL' 
-                                    }).format(itemTotal)}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-col space-y-1">
-                                <label className="text-xs font-medium text-muted-foreground">Status</label>
-                                <div className="h-8 px-2 rounded-md bg-muted border flex items-center">
-                                  <span className={`text-sm font-medium ${item.selected ? 'text-success' : 'text-muted-foreground'}`}>
-                                    {item.selected ? 'Incluído' : 'Não incluído'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {item.observations && (
-                              <div className="mt-4 p-3 bg-muted/50 rounded-md">
-                                <label className="text-sm font-medium text-muted-foreground">Observações do Produto</label>
-                                <p className="text-sm mt-1 text-foreground">{item.observations}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  <Separator className="my-6" />
-                  
-                  {/* Resumo dos Produtos */}
-                  <div className="bg-gradient-card rounded-lg p-6 border">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {fullTask.taskType === 'ligacao' ? 'Produtos Ofertados' : 'Produtos Selecionados'}
-                        </p>
-                        <p className="text-2xl font-bold text-primary">
-                          {displayChecklist.filter(item => item.selected).length}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">Valor Total</p>
-                        <p className="text-3xl font-bold text-success">
-                          R$ {calculateTaskTotalValue(fullTask as any).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-10 text-muted-foreground">
-                  <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>Nenhum produto/serviço cadastrado nesta atividade.</p>
-                </div>
+            </div>
+          </DialogHeader>
+        </div>
+
+        <div className="px-4 sm:px-6 py-6 space-y-6">
+          {/* ===== KPIs executivos ===== */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiCard label="Valor Potencial" value={formatBRL(potentialValue)} tone="primary" />
+            <KpiCard
+              label="Valor Fechado"
+              value={closedValue > 0 ? formatBRL(closedValue) : '—'}
+              tone={salesStatus === 'ganho' ? 'success' : salesStatus === 'parcial' ? 'warning' : 'muted'}
+            />
+            <KpiCard
+              label="Conversão"
+              value={potentialValue > 0 ? `${conversion}%` : '—'}
+              sub={salesStatus === 'prospect' ? 'Em prospecção' : getStatusLabel(salesStatus)}
+              tone={conversion >= 100 ? 'success' : conversion > 0 ? 'warning' : 'muted'}
+            />
+            <KpiCard
+              label="Produtos"
+              value={`${selectedCount}/${totalProducts}`}
+              sub={selectedCount > 0 ? `${formatBRL(productsSelectedTotal)} selecionados` : 'Nenhum selecionado'}
+              tone="muted"
+            />
+          </div>
+
+          {/* ===== Cliente & Propriedade ===== */}
+          <SectionCard icon={User} title="Cliente & Propriedade" description="Identificação, contato e localização" tone="primary">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <Field label="Cliente" value={fullTask.client} icon={User} />
+              <Field label="Código" value={fullTask.clientCode} icon={Hash} />
+              <Field label="Propriedade" value={fullTask.property} icon={Building} />
+              <Field label="Hectares" value={fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : undefined} icon={Crop} />
+              <Field label="E-mail" value={fullTask.email} icon={AtSign} />
+              <Field label="Telefone" value={fullTask.phone} icon={Phone} />
+              <Field label="Responsável" value={fullTask.responsible} icon={User} />
+              <Field label="Filial Responsável" value={resolveFilialName(fullTask.filial)} icon={Building} />
+              {fullTask.filialAtendida && (
+                <Field label="Filial Atendida" value={resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida} icon={Building} />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </SectionCard>
 
-          {/* Fotos */}
-          {fullTask.photos && fullTask.photos.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Camera className="w-5 h-5" />
-                  Fotos Anexadas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {fullTask.photos.map((photo, index) => (
-                    <div key={index} className="aspect-square rounded-lg overflow-hidden border">
-                      <img 
-                        src={photo} 
-                        alt={`Foto ${index + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                        onClick={() => window.open(photo, '_blank')}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          {/* ===== Parque de Máquinas ===== */}
+          {fullTask.equipmentList && fullTask.equipmentList.length > 0 && (
+            <SectionCard
+              icon={Car}
+              title="Parque de Máquinas"
+              description={`${fullTask.equipmentList.length} família(s) · ${fullTask.equipmentList.reduce((s, e) => s + (e.quantity || 0), 0)} equipamento(s)`}
+              tone="success"
+            >
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b">
+                      <th className="px-2 py-2 font-medium">Família</th>
+                      <th className="px-2 py-2 font-medium text-right w-24">Quantidade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fullTask.equipmentList.map((eq, idx) => (
+                      <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                        <td className="px-2 py-2 font-medium">{eq.familyProduct}</td>
+                        <td className="px-2 py-2 text-right font-semibold text-primary">{eq.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </SectionCard>
           )}
 
-          {/* Localização */}
-          {fullTask.checkInLocation && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Dados de Localização
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Coordenadas</label>
-                    <p className="font-medium">
-                      {fullTask.checkInLocation.lat}, {fullTask.checkInLocation.lng}
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-muted-foreground">Data/Hora do Check-in</label>
-                    <p className="font-medium">
-                      {format(parseLocalDate(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Link para Google Maps */}
-                <div className="mt-4">
-                  <Button variant="outline" size="sm" asChild>
-                    <a 
-                      href={`https://www.google.com/maps?q=${fullTask.checkInLocation.lat},${fullTask.checkInLocation.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <MapPin className="w-4 h-4 mr-2" />
-                      Ver no Google Maps
-                    </a>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* ===== Produtos & Serviços ===== */}
+          <SectionCard
+            icon={Package}
+            title={fullTask.taskType === 'ligacao' ? 'Produtos Ofertados' : 'Produtos & Serviços'}
+            description={`${totalProducts} item(ns) · ${selectedCount} selecionado(s)`}
+            tone="primary"
+            headerRight={
+              <Badge variant="outline" className="text-xs">
+                {formatBRL(productsOfferedTotal)}
+              </Badge>
+            }
+          >
+            {displayChecklist.length > 0 ? (
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-wide text-muted-foreground border-b">
+                      <th className="px-2 py-2 font-medium w-8"></th>
+                      <th className="px-2 py-2 font-medium">Produto / Serviço</th>
+                      <th className="px-2 py-2 font-medium hidden md:table-cell">Categoria</th>
+                      <th className="px-2 py-2 font-medium text-center w-16">Qtd</th>
+                      <th className="px-2 py-2 font-medium text-right w-28">Preço</th>
+                      <th className="px-2 py-2 font-medium text-right w-32">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayChecklist.map((item, idx) => {
+                      const sub = (item.price || 0) * (item.quantity || 1);
+                      return (
+                        <tr
+                          key={item.id || idx}
+                          className={cn(
+                            'border-b last:border-0 hover:bg-muted/30',
+                            item.selected && 'bg-success/5'
+                          )}
+                        >
+                          <td className="px-2 py-2">
+                            {item.selected ? (
+                              <CheckCircle2 className="w-4 h-4 text-success" />
+                            ) : (
+                              <div className="w-4 h-4 rounded-full border border-muted-foreground/30" />
+                            )}
+                          </td>
+                          <td className="px-2 py-2 font-medium">{item.name}</td>
+                          <td className="px-2 py-2 hidden md:table-cell text-muted-foreground capitalize">{item.category}</td>
+                          <td className="px-2 py-2 text-center">{item.quantity || 1}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{formatBRL(item.price || 0)}</td>
+                          <td className={cn('px-2 py-2 text-right font-semibold tabular-nums', item.selected ? 'text-success' : 'text-foreground')}>
+                            {formatBRL(sub)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2">
+                      <td colSpan={4} className="px-2 py-3 text-right text-xs uppercase tracking-wide text-muted-foreground font-medium">Selecionado</td>
+                      <td className="px-2 py-3"></td>
+                      <td className="px-2 py-3 text-right font-bold tabular-nums text-success">{formatBRL(productsSelectedTotal)}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={4} className="px-2 py-1 text-right text-xs uppercase tracking-wide text-muted-foreground font-medium">Total Ofertado</td>
+                      <td className="px-2 py-1"></td>
+                      <td className="px-2 py-1 text-right font-bold tabular-nums text-primary">{formatBRL(productsOfferedTotal)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">Nenhum produto/serviço cadastrado.</p>
+              </div>
+            )}
+          </SectionCard>
 
-          {/* Observações */}
-          {fullTask.observations && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Observações Adicionais
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-primary">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{fullTask.observations}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* ===== Status da Oportunidade ===== */}
+          <SalesStatusDisplay task={fullTask} showDetails={true} showLossReason={true} />
 
-          {/* Seção de Deslocamento removida conforme solicitação do usuário */}
-
-          {/* Status da Oportunidade - Componente Padronizado */}
-          <SalesStatusDisplay 
-            task={fullTask} 
-            showDetails={true} 
-            showLossReason={true} 
-          />
-
-          {/* Produtos Vendidos Parcialmente */}
+          {/* ===== Venda Parcial — produtos ===== */}
           {salesStatus === 'parcial' && (fullTask.prospectItems?.some(p => p.selected) || fullTask.checklist?.some(p => p.selected)) && (
             <ProductListComponent
               products={fullTask.prospectItems?.length ? fullTask.prospectItems : fullTask.checklist || []}
-              readOnly={true}
-              showSelectedOnly={true}
+              readOnly
+              showSelectedOnly
               title="Produtos da Venda Parcial"
             />
           )}
 
-          {/* Motivo da Perda */}
+          {/* ===== Motivo da Perda ===== */}
           {salesStatus === 'perdido' && (fullTask.prospectNotes || fullTask.prospectNotesJustification) && (
-            <Card className="border-destructive/30">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-destructive">
-                  <FileText className="w-5 h-5" />
-                  Motivo da Perda
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <SectionCard icon={FileText} title="Motivo da Perda" description="Razão e justificativa registradas" tone="destructive">
+              <div className="space-y-3">
                 {fullTask.prospectNotes && (
-                  <div className="bg-destructive/5 rounded-lg p-4 border-l-4 border-destructive">
-                    <label className="text-xs font-medium text-muted-foreground uppercase">Motivo</label>
-                    <p className="text-sm mt-1 leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotes}</p>
+                  <div className="bg-destructive/5 rounded-lg p-3 border-l-4 border-destructive">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Motivo</div>
+                    <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{fullTask.prospectNotes}</p>
                   </div>
                 )}
                 {fullTask.prospectNotesJustification && (
-                  <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-muted-foreground">
-                    <label className="text-xs font-medium text-muted-foreground uppercase">Justificativa</label>
-                    <p className="text-sm mt-1 leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotesJustification}</p>
+                  <div className="bg-muted/40 rounded-lg p-3 border-l-4 border-muted-foreground/40">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Justificativa</div>
+                    <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{fullTask.prospectNotesJustification}</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
           )}
 
-          {/* Notas de Prospect (quando NÃO é perdido) */}
+          {/* ===== Notas de Prospect (não-perdido) ===== */}
           {salesStatus !== 'perdido' && fullTask.prospectNotes && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Notas de Prospecção
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-primary">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotes}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <SectionCard icon={FileText} title="Notas de Prospecção" tone="primary">
+              <div className="bg-muted/40 rounded-lg p-3 border-l-4 border-primary">
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{fullTask.prospectNotes}</p>
+              </div>
+            </SectionCard>
           )}
 
-          {/* Próxima Ação */}
+          {/* ===== Próxima Ação ===== */}
           {(fullTask.nextAction || fullTask.nextActionDate) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Próxima Ação
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {fullTask.nextAction && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">Ação</label>
-                      <p className="font-medium whitespace-pre-wrap">{fullTask.nextAction}</p>
-                    </div>
-                  )}
-                  {fullTask.nextActionDate && (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">Data prevista</label>
-                      <p className="font-medium">{formatDateDisplay(fullTask.nextActionDate as any)}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <SectionCard icon={CalendarClock} title="Próxima Ação" description="Próximo passo planejado" tone="warning">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Ação" value={fullTask.nextAction as any} />
+                <Field label="Data prevista" value={fullTask.nextActionDate ? formatDateDisplay(fullTask.nextActionDate as any) : undefined} icon={Calendar} />
+              </div>
+            </SectionCard>
           )}
 
-          {/* Bloco Visita Técnica — só aparece em tarefas técnicas */}
+          {/* ===== Visita Técnica ===== */}
           {fullTask.taskType === 'technical_visit' && (
             fullTask.technicalCategory || fullTask.technicalFunnelStage ||
             fullTask.opportunityInterest || fullTask.opportunityUrgency ||
             fullTask.opportunityImpact || fullTask.opportunityClosing ||
             fullTask.salesEstimate
           ) && (
-            <Card className="border-warning/30">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-warning">
-                  <FileText className="w-5 h-5" />
-                  Dados da Visita Técnica
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
+            <SectionCard icon={Wrench} title="Dados da Visita Técnica" description="Categoria, funil e classificação" tone="warning">
+              <div className="space-y-5">
                 {(fullTask.technicalCategory || fullTask.technicalFunnelStage) && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {fullTask.technicalCategory && (
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground">Categoria Técnica</label>
-                        <p className="font-medium">{fullTask.technicalCategory}</p>
-                      </div>
-                    )}
-                    {fullTask.technicalFunnelStage && (
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium text-muted-foreground">Etapa do Funil Técnico</label>
-                        <p className="font-medium">{fullTask.technicalFunnelStage}</p>
-                      </div>
-                    )}
+                    <Field label="Categoria Técnica" value={fullTask.technicalCategory} />
+                    <Field label="Etapa do Funil Técnico" value={fullTask.technicalFunnelStage} />
                   </div>
                 )}
 
                 {(fullTask.opportunityInterest || fullTask.opportunityUrgency ||
                   fullTask.opportunityImpact || fullTask.opportunityClosing) && (
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Classificação da Oportunidade</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" /> Classificação
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {[
                         ['Interesse', fullTask.opportunityInterest],
                         ['Urgência', fullTask.opportunityUrgency],
                         ['Impacto', fullTask.opportunityImpact],
                         ['Fechamento', fullTask.opportunityClosing],
                       ].map(([label, val]) => val ? (
-                        <div key={label} className="border rounded-lg p-2 bg-muted/30">
-                          <p className="text-xs text-muted-foreground">{label}</p>
-                          <p className="font-medium capitalize">{val}</p>
+                        <div key={label as string} className="rounded-lg border bg-muted/30 px-3 py-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+                          <div className="text-sm font-semibold capitalize">{val}</div>
                         </div>
                       ) : null)}
                     </div>
@@ -1165,87 +807,106 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 
                 {fullTask.salesEstimate && Object.keys(fullTask.salesEstimate).length > 0 && (
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Estimativa de Venda</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium mb-2 flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5" /> Estimativa de Venda
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                       {Object.entries(fullTask.salesEstimate).map(([k, v]) => (
-                        <div key={k} className="border rounded-lg p-2 bg-muted/30">
-                          <p className="text-xs text-muted-foreground capitalize">{k}</p>
-                          <p className="font-medium">
-                            R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </p>
+                        <div key={k} className="rounded-lg border bg-muted/30 px-3 py-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground capitalize">{k}</div>
+                          <div className="text-sm font-semibold tabular-nums">{formatBRL(Number(v || 0))}</div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
           )}
 
-          {/* Lembretes */}
-          {fullTask.reminders && fullTask.reminders.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Lembretes Configurados
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {fullTask.reminders.map((reminder, index) => (
-                    <div key={reminder.id || index} className="border rounded-lg p-4 bg-muted/30">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{reminder.title}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{reminder.description}</p>
-                          <div className="flex items-center gap-4 mt-3 text-sm">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              <span>{formatDateDisplay(reminder.date)}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span>{reminder.time}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Badge variant={reminder.completed ? 'default' : 'secondary'} className="ml-4">
-                          {reminder.completed ? 'Concluído' : 'Pendente'}
-                        </Badge>
-                      </div>
+          {/* ===== Observações ===== */}
+          {fullTask.observations && (
+            <SectionCard icon={FileText} title="Observações" tone="muted">
+              <div className="bg-muted/40 rounded-lg p-3 border-l-4 border-primary">
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{fullTask.observations}</p>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* ===== Fotos & Check-in ===== */}
+          {((fullTask.photos && fullTask.photos.length > 0) || fullTask.checkInLocation) && (
+            <SectionCard
+              icon={Camera}
+              title="Fotos & Check-in"
+              description={`${fullTask.photos?.length || 0} foto(s)${fullTask.checkInLocation ? ' · localização registrada' : ''}`}
+              tone="muted"
+            >
+              {fullTask.photos && fullTask.photos.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+                  {fullTask.photos.map((photo, idx) => (
+                    <div key={idx} className="aspect-square rounded-lg overflow-hidden border bg-muted/30">
+                      <img
+                        src={photo}
+                        alt={`Foto ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                        onClick={() => window.open(photo, '_blank')}
+                      />
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+              {fullTask.checkInLocation && (
+                <div className="rounded-lg border bg-muted/30 p-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <span className="font-medium tabular-nums">
+                      {fullTask.checkInLocation.lat?.toFixed?.(5) ?? fullTask.checkInLocation.lat},{' '}
+                      {fullTask.checkInLocation.lng?.toFixed?.(5) ?? fullTask.checkInLocation.lng}
+                    </span>
+                  </div>
+                  {fullTask.checkInLocation.timestamp && (
+                    <div className="text-xs text-muted-foreground">
+                      {format(parseLocalDate(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                    </div>
+                  )}
+                  <Button variant="outline" size="sm" asChild className="ml-auto">
+                    <a
+                      href={`https://www.google.com/maps?q=${fullTask.checkInLocation.lat},${fullTask.checkInLocation.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Google Maps
+                    </a>
+                  </Button>
+                </div>
+              )}
+            </SectionCard>
           )}
 
-          {/* Documentos */}
+          {/* ===== Documentos ===== */}
           {fullTask.documents && fullTask.documents.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Documentos Anexados
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {fullTask.documents.map((doc, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <FileText className="w-5 h-5 text-primary" />
-                      <span className="flex-1 font-medium">Documento {index + 1}</span>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={doc} target="_blank" rel="noopener noreferrer">
-                          Visualizar
-                        </a>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <SectionCard icon={FileText} title="Documentos" description={`${fullTask.documents.length} arquivo(s)`} tone="muted">
+              <div className="space-y-2">
+                {fullTask.documents.map((doc, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/40 transition-colors">
+                    <FileText className="w-4 h-4 text-primary shrink-0" />
+                    <span className="flex-1 text-sm font-medium truncate">Documento {idx + 1}</span>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={doc} target="_blank" rel="noopener noreferrer">Abrir</a>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
           )}
+
+          {/* ===== Rodapé metadados ===== */}
+          <div className="pt-2 text-[11px] text-muted-foreground/70 flex flex-wrap gap-x-4 gap-y-1 justify-end border-t mt-4 pt-3">
+            {fullTask.id && <span>ID: {String(fullTask.id).substring(0, 8)}…</span>}
+            {fullTask.createdAt && <span>Criado: {format(new Date(fullTask.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</span>}
+            {fullTask.updatedAt && <span>Atualizado: {format(new Date(fullTask.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</span>}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
