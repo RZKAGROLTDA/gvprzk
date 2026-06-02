@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2 } from 'lucide-react';
-import { formatDateDisplay, parseLocalDate } from '@/lib/utils';
+import { MapPin, Calendar, User, Building, Crop, Package, Camera, FileText, Download, Printer, Mail, Phone, Hash, AtSign, Car, Loader2, Wrench, Target, TrendingUp, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { formatDateDisplay, parseLocalDate, cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { SalesStatusDisplay } from './SalesStatusDisplay';
 import { ProductListComponent } from './ProductListComponent';
+import { SectionCard } from '@/components/task-form/sections/SectionCard';
 
 // TypeScript module declaration for jsPDF autoTable
 declare module 'jspdf' {
