@@ -424,12 +424,13 @@ export const TechnicalVisitForm: React.FC = () => {
         filialAtendida={filialAtendida}
         onFilialAtendidaChange={setFilialAtendida}
         filiais={filiais as any[]}
-        onClientSelected={async (code) => {
+        onClientSelected={async (code, name) => {
           await Promise.all([
             loadClientEquipments(code),
-            loadPreviousClientData(code),
+            loadPreviousClientData(code, name),
           ]);
         }}
+
       />
 
 
