@@ -238,7 +238,42 @@ export const generateTaskPDF = async (
   // ===== OBSERVAÇÕES E NOTAS =====
   writeTextBlock('Observações Gerais', task?.observations);
   writeTextBlock('Notas de Prospecção', (task as any)?.prospectNotes);
-  writeTextBlock('Justificativa', (task as any)?.prospectNotesJustification);
+  writeTextBlock('Justificativa / Motivo', (task as any)?.prospectNotesJustification);
+
+  // ===== PRÓXIMA AÇÃO =====
+  const nextAction = (task as any)?.nextAction;
+  const nextActionDate = (task as any)?.nextActionDate;
+  if (nextAction || nextActionDate) {
+    writeSectionTitle('Próxima Ação');
+    if (nextAction) writeLine('Ação:', String(nextAction));
+    if (nextActionDate) writeLine('Data prevista:', formatDateDisplay(nextActionDate));
+  }
+
+  // ===== VISITA TÉCNICA =====
+  if (task?.taskType === 'technical_visit') {
+    const tCat = (task as any)?.technicalCategory;
+    const tStage = (task as any)?.technicalFunnelStage;
+    const oi = (task as any)?.opportunityInterest;
+    const ou = (task as any)?.opportunityUrgency;
+    const oimp = (task as any)?.opportunityImpact;
+    const ocl = (task as any)?.opportunityClosing;
+    const est = (task as any)?.salesEstimate;
+    if (tCat || tStage || oi || ou || oimp || ocl || est) {
+      writeSectionTitle('Dados da Visita Técnica');
+      if (tCat) writeLine('Categoria Técnica:', String(tCat));
+      if (tStage) writeLine('Etapa Funil Técnico:', String(tStage));
+      if (oi) writeLine('Interesse:', String(oi));
+      if (ou) writeLine('Urgência:', String(ou));
+      if (oimp) writeLine('Impacto:', String(oimp));
+      if (ocl) writeLine('Fechamento:', String(ocl));
+      if (est && typeof est === 'object') {
+        Object.entries(est).forEach(([k, v]) => {
+          writeLine(`Estimativa ${k}:`, formatCurrency(Number(v || 0)));
+        });
+      }
+    }
+  }
+
 
   // ===== FOTOS (com imagens reais) =====
   if (task?.photos?.length) {
