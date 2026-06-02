@@ -6,7 +6,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Pencil, Tractor } from 'lucide-react';
 import {
   machineStatusLabel,
-  pukLabel,
   statusBadgeVariant,
 } from './equipmentConstants';
 import type { ClientEquipment } from '@/hooks/useClientEquipment';
@@ -53,9 +52,6 @@ export const EquipmentCard: React.FC<Props> = ({
               )}
               <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
                 {machineStatusLabel(eq.machine_status)}
-              </Badge>
-              <Badge variant="secondary" className="text-[10px]">
-                {pukLabel(eq.puk_status)}
               </Badge>
             </div>
             {showClient && (
