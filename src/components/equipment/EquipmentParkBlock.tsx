@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { EquipmentEditDialog } from './EquipmentEditDialog';
 import {
-  machineStatusLabel, pukLabel, statusBadgeVariant,
+  machineStatusLabel, statusBadgeVariant,
 } from './equipmentConstants';
 import {
   useEquipmentByClient, type ClientEquipment,
@@ -266,7 +266,7 @@ const CompactList: React.FC<CompactListProps> = ({
               <th className="px-2 py-2 font-medium text-right">Horas</th>
               <th className="px-2 py-2 font-medium text-right">Ano</th>
               <th className="px-2 py-2 font-medium">Status</th>
-              <th className="px-2 py-2 font-medium">PUK</th>
+              <th className="px-2 py-2 font-medium">Validado em</th>
               <th className="w-10 px-2 py-2"></th>
             </tr>
           </thead>
@@ -312,10 +312,10 @@ const CompactList: React.FC<CompactListProps> = ({
                       {machineStatusLabel(eq.machine_status)}
                     </Badge>
                   </td>
-                  <td className="px-2 py-1.5">
-                    <span className="text-[11px] text-muted-foreground">
-                      {pukLabel(eq.puk_status)}
-                    </span>
+                  <td className="px-2 py-1.5 text-[11px] text-muted-foreground whitespace-nowrap">
+                    {eq.last_validation_at
+                      ? new Date(eq.last_validation_at).toLocaleDateString('pt-BR')
+                      : '—'}
                   </td>
                   <td className="px-2 py-1.5">
                     <Button
@@ -362,7 +362,10 @@ const CompactList: React.FC<CompactListProps> = ({
                   {eq.serial_chassis || '—'}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {eq.hours != null ? `${eq.hours} h` : '— h'} · {eq.year || '—'} · {pukLabel(eq.puk_status)}
+                  {eq.hours != null ? `${eq.hours} h` : '— h'} · {eq.year || '—'}
+                  {eq.last_validation_at && (
+                    <> · val. {new Date(eq.last_validation_at).toLocaleDateString('pt-BR')}</>
+                  )}
                 </p>
               </div>
               <Button

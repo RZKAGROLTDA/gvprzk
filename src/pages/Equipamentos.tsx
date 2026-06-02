@@ -7,11 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { EquipmentCard, EquipmentEditDialog } from '@/components/equipment';
-import { MACHINE_TYPES, MACHINE_STATUSES } from '@/components/equipment/equipmentConstants';
+import { EquipmentEditDialog } from '@/components/equipment';
+import {
+  MACHINE_TYPES, MACHINE_STATUSES,
+  machineStatusLabel, statusBadgeVariant,
+} from '@/components/equipment/equipmentConstants';
 import { useEquipmentSearch, type ClientEquipment } from '@/hooks/useClientEquipment';
 
 const ALL = 'all';
@@ -254,14 +257,110 @@ const Equipamentos: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Desktop: tabela compacta operacional */}
+          <div className="hidden md:block rounded-lg border border-border/60 overflow-hidden">
+            <div className="overflow-auto max-h-[70vh]">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 sticky top-0 z-10">
+                  <tr className="text-left text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Modelo</th>
+                    <th className="px-3 py-2 font-medium">Cliente</th>
+                    <th className="px-3 py-2 font-medium">Chassi/Série</th>
+                    <th className="px-3 py-2 font-medium text-right">Ano</th>
+                    <th className="px-3 py-2 font-medium text-right">Horas</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 font-medium whitespace-nowrap">Validado em</th>
+                    <th className="w-10 px-2 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((eq) => (
+                    <tr key={eq.id} className="border-t border-border/40 hover:bg-muted/30">
+                      <td className="px-3 py-1.5 font-medium truncate max-w-[200px]">
+                        {eq.model || '—'}
+                        {eq.machine_type && (
+                          <span className="ml-1 text-[10px] text-muted-foreground uppercase">
+                            · {eq.machine_type}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5 truncate max-w-[220px]">
+                        {eq.client_code && (
+                          <span className="text-muted-foreground font-mono text-[11px]">
+                            {eq.client_code} ·{' '}
+                          </span>
+                        )}
+                        <span className="truncate">{eq.client_name || '—'}</span>
+                      </td>
+                      <td className="px-3 py-1.5 font-mono text-[11px] truncate max-w-[140px]">
+                        {eq.serial_chassis || '—'}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {eq.year || '—'}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {eq.hours != null ? eq.hours : '—'}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
+                          {machineStatusLabel(eq.machine_status)}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-1.5 text-[11px] text-muted-foreground whitespace-nowrap">
+                        {eq.last_validation_at
+                          ? new Date(eq.last_validation_at).toLocaleDateString('pt-BR')
+                          : '—'}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <Button
+                          type="button" size="sm" variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={() => handleEdit(eq)}
+                          aria-label="Editar"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile: linhas condensadas */}
+          <div className="md:hidden rounded-lg border border-border/60 divide-y divide-border/40">
             {rows.map((eq) => (
-              <EquipmentCard
-                key={eq.id}
-                equipment={eq}
-                showClient
-                onEdit={handleEdit}
-              />
+              <div key={eq.id} className="flex items-start gap-2 px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-sm font-medium truncate">{eq.model || '—'}</p>
+                    <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[9px]">
+                      {machineStatusLabel(eq.machine_status)}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {eq.client_code ? `${eq.client_code} · ` : ''}{eq.client_name || '—'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground font-mono truncate">
+                    {eq.serial_chassis || '—'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {eq.hours != null ? `${eq.hours} h` : '— h'} · {eq.year || '—'}
+                    {eq.last_validation_at && (
+                      <> · val. {new Date(eq.last_validation_at).toLocaleDateString('pt-BR')}</>
+                    )}
+                  </p>
+                </div>
+                <Button
+                  type="button" size="sm" variant="ghost"
+                  className="h-7 w-7 p-0 shrink-0"
+                  onClick={() => handleEdit(eq)}
+                  aria-label="Editar"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             ))}
           </div>
         </>

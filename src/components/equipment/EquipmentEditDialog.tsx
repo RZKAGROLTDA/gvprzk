@@ -15,7 +15,7 @@ import {
   CheckCircle2, PauseCircle, ShoppingCart, Trash2, Save, Loader2,
 } from 'lucide-react';
 import {
-  MACHINE_STATUSES, PUK_STATUSES,
+  MACHINE_STATUSES,
 } from './equipmentConstants';
 import {
   useUpdateEquipment, type ClientEquipment,
@@ -36,7 +36,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
   const [serial, setSerial] = useState('');
   const [observation, setObservation] = useState('');
   const [machineStatus, setMachineStatus] = useState('ativa');
-  const [pukStatus, setPukStatus] = useState<string>('unknown');
+  // puk_status removido da UI; campo permanece intocado no banco
   const [clientCode, setClientCode] = useState('');
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
     setSerial(equipment.serial_chassis ?? '');
     setObservation(equipment.observation ?? '');
     setMachineStatus(equipment.machine_status ?? 'ativa');
-    setPukStatus(equipment.puk_status ?? 'unknown');
+    
     setClientCode(equipment.client_code ?? '');
   }, [equipment]);
 
@@ -60,7 +60,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
     serial_chassis: serial.trim() || null,
     observation: observation.trim() || null,
     machine_status: machineStatus,
-    puk_status: pukStatus || null,
+    
     client_code: equipment.client_code ? equipment.client_code : (clientCode.trim() || null),
   });
 
@@ -187,17 +187,8 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label>PUK</Label>
-            <Select value={pukStatus} onValueChange={setPukStatus}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {PUK_STATUSES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* PUK removido da UI */}
+
           {!equipment.client_code && (
             <div className="space-y-1 md:col-span-2">
               <Label>Código do cliente (vincular)</Label>
