@@ -202,7 +202,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       createdAt: new Date(),
       updatedAt: new Date(),
       isProspect: calculatedStatus === 'prospect',
-      prospectNotes: undefined,
+      prospectNotes: taskEditData.prospectNotes || undefined,
+      prospectNotesJustification: taskEditData.prospectNotesJustification || undefined,
       salesConfirmed: normalizedSalesConfirmed ?? undefined,
       salesType: normalizedSalesType as any,
       // Para exibição, usar o mesmo valor calculado/fixado
@@ -213,6 +214,17 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       propertyHectares: taskEditData.propertyHectares,
       equipmentList: Array.isArray(taskEditData.equipment_list) ? (taskEditData.equipment_list as any) : undefined,
       prospectItems: undefined,
+      // Technical visit fields
+      technicalCategory: taskEditData.technical_category || undefined,
+      technicalFunnelStage: taskEditData.technical_funnel_stage || undefined,
+      technicalVisitData: taskEditData.technical_visit_data || undefined,
+      opportunityInterest: (taskEditData.opportunity_interest as any) || undefined,
+      opportunityUrgency: (taskEditData.opportunity_urgency as any) || undefined,
+      opportunityImpact: (taskEditData.opportunity_impact as any) || undefined,
+      opportunityClosing: (taskEditData.opportunity_closing as any) || undefined,
+      salesEstimate: taskEditData.sales_estimate || undefined,
+      nextAction: taskEditData.next_action || undefined,
+      nextActionDate: taskEditData.next_action_date || undefined,
       isMasked: (task as any).isMasked,
     };
 
