@@ -340,31 +340,46 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Relatório de Oportunidade</title>
+  <title>Relatório de Oportunidade — ${escapeHtml(fullTask.client || '')}</title>
   <style>
     @page { margin: 12mm; }
     body { font-family: Arial, sans-serif; color: #111; }
     h1 { font-size: 18px; margin: 0 0 6px; }
     .sub { color: #555; font-size: 12px; margin: 0 0 14px; }
-    h2 { font-size: 14px; margin: 16px 0 8px; }
-    .box { border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
+    h2 { font-size: 13px; margin: 14px 0 6px; color:#1f4e8a; }
+    .box { border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     .row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; margin: 2px 0; }
     .label { color: #666; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px; }
+    .grid > div > span.label { display:block; font-size:10px; color:#888; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; background:#eef2ff; color:#1e3a8a; }
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
     th, td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
     th { background: #f5f5f5; text-align: left; }
+    pre.note { white-space: pre-wrap; font-family: inherit; font-size:12px; margin:0; }
   </style>
 </head>
 <body>
-  <h1>Relatório Completo de Oportunidade</h1>
-  <p class="sub">${escapeHtml(getTaskTypeLabel(fullTask.taskType || 'prospection'))} • ${escapeHtml(formatDateDisplay(fullTask.startDate))}</p>
+  <h1>Relatório de Oportunidade — ${escapeHtml(fullTask.client || 'N/A')}</h1>
+  <p class="sub">
+    ${escapeHtml(getTaskTypeLabel(fullTask.taskType || 'prospection'))}
+    • ${escapeHtml(formatDateDisplay(fullTask.startDate))}
+    • <span class="badge">${escapeHtml(getStatusLabel(salesStatus))}</span>
+  </p>
 
   <div class="box">
     <h2>Cliente</h2>
-    <div class="row"><span class="label">Nome</span><span>${escapeHtml(fullTask.client || 'N/A')}</span></div>
-    <div class="row"><span class="label">Propriedade</span><span>${escapeHtml(fullTask.property || 'N/A')}</span></div>
-    <div class="row"><span class="label">Responsável</span><span>${escapeHtml(fullTask.responsible || 'N/A')}</span></div>
-    <div class="row"><span class="label">Filial</span><span>${escapeHtml(resolveFilialName(fullTask.filial) || 'Não informado')}</span></div>
+    <div class="grid">
+      <div><span class="label">Nome</span>${escapeHtml(fullTask.client || 'N/A')}</div>
+      <div><span class="label">Código</span>${escapeHtml(fullTask.clientCode || 'N/A')}</div>
+      <div><span class="label">Email</span>${escapeHtml(fullTask.email || 'N/A')}</div>
+      <div><span class="label">Telefone</span>${escapeHtml(fullTask.phone || 'N/A')}</div>
+      <div><span class="label">Propriedade</span>${escapeHtml(fullTask.property || 'N/A')}</div>
+      <div><span class="label">Hectares</span>${fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'N/A'}</div>
+      <div><span class="label">Responsável</span>${escapeHtml(fullTask.responsible || 'N/A')}</div>
+      <div><span class="label">Filial</span>${escapeHtml(resolveFilialName(fullTask.filial) || 'N/A')}</div>
+      ${fullTask.filialAtendida ? `<div><span class="label">Filial Atendida</span>${escapeHtml(resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida)}</div>` : ''}
+    </div>
   </div>
 
   <h2>Produtos e Serviços (${(fullTask.checklist || []).length})</h2>
@@ -383,6 +398,60 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       ${productsRows || '<tr><td colspan="6" style="text-align:center; color:#666;">Nenhum produto/serviço cadastrado.</td></tr>'}
     </tbody>
   </table>
+  <p style="text-align:right; font-size:12px; margin-top:6px;">
+    <strong>Valor da Oportunidade:</strong>
+    R$ ${opportunityTotalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+  </p>
+
+  ${fullTask.observations ? `
+  <div class="box">
+    <h2>Observações</h2>
+    <pre class="note">${escapeHtml(fullTask.observations)}</pre>
+  </div>` : ''}
+
+  ${salesStatus === 'perdido' && (fullTask.prospectNotes || fullTask.prospectNotesJustification) ? `
+  <div class="box" style="border-color:#fca5a5;">
+    <h2 style="color:#b91c1c;">Motivo da Perda</h2>
+    ${fullTask.prospectNotes ? `<p><span class="label">Motivo:</span></p><pre class="note">${escapeHtml(fullTask.prospectNotes)}</pre>` : ''}
+    ${fullTask.prospectNotesJustification ? `<p><span class="label">Justificativa:</span></p><pre class="note">${escapeHtml(fullTask.prospectNotesJustification)}</pre>` : ''}
+  </div>` : ''}
+
+  ${(fullTask.nextAction || fullTask.nextActionDate) ? `
+  <div class="box">
+    <h2>Próxima Ação</h2>
+    <div class="grid">
+      ${fullTask.nextAction ? `<div><span class="label">Ação</span>${escapeHtml(String(fullTask.nextAction))}</div>` : ''}
+      ${fullTask.nextActionDate ? `<div><span class="label">Data prevista</span>${escapeHtml(formatDateDisplay(fullTask.nextActionDate as any))}</div>` : ''}
+    </div>
+  </div>` : ''}
+
+  ${fullTask.taskType === 'technical_visit' && (
+    fullTask.technicalCategory || fullTask.technicalFunnelStage ||
+    fullTask.opportunityInterest || fullTask.opportunityUrgency ||
+    fullTask.opportunityImpact || fullTask.opportunityClosing ||
+    fullTask.salesEstimate
+  ) ? `
+  <div class="box" style="border-color:#fcd34d;">
+    <h2 style="color:#b45309;">Dados da Visita Técnica</h2>
+    <div class="grid">
+      ${fullTask.technicalCategory ? `<div><span class="label">Categoria Técnica</span>${escapeHtml(fullTask.technicalCategory)}</div>` : ''}
+      ${fullTask.technicalFunnelStage ? `<div><span class="label">Etapa Funil Técnico</span>${escapeHtml(fullTask.technicalFunnelStage)}</div>` : ''}
+      ${fullTask.opportunityInterest ? `<div><span class="label">Interesse</span>${escapeHtml(fullTask.opportunityInterest)}</div>` : ''}
+      ${fullTask.opportunityUrgency ? `<div><span class="label">Urgência</span>${escapeHtml(fullTask.opportunityUrgency)}</div>` : ''}
+      ${fullTask.opportunityImpact ? `<div><span class="label">Impacto</span>${escapeHtml(fullTask.opportunityImpact)}</div>` : ''}
+      ${fullTask.opportunityClosing ? `<div><span class="label">Fechamento</span>${escapeHtml(fullTask.opportunityClosing)}</div>` : ''}
+      ${fullTask.salesEstimate ? Object.entries(fullTask.salesEstimate).map(([k, v]) => `<div><span class="label">Estimativa ${escapeHtml(k)}</span>R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>`).join('') : ''}
+    </div>
+  </div>` : ''}
+
+  ${fullTask.checkInLocation ? `
+  <div class="box">
+    <h2>Check-in</h2>
+    <div class="grid">
+      <div><span class="label">Coordenadas</span>${fullTask.checkInLocation.lat}, ${fullTask.checkInLocation.lng}</div>
+      ${fullTask.checkInLocation.timestamp ? `<div><span class="label">Data/Hora</span>${escapeHtml(format(parseLocalDate(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR }))}</div>` : ''}
+    </div>
+  </div>` : ''}
 </body>
 </html>`;
 
