@@ -67,41 +67,32 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     name: string;
   }[]>([]);
 
-  // Função para carregar dados anteriores do cliente
-  const loadPreviousClientData = async (clientCode: string) => {
+  // Função para carregar dados anteriores do cliente (autofill)
+  const loadPreviousClientData = async (clientCode: string, clientName?: string) => {
     try {
-      // Buscar a task mais recente para este código de cliente
-      const {
-        data: previousTasks,
-        error
-      } = await (supabase as any).from('tasks').select('property, email, propertyhectares').eq('clientCode', clientCode).order('created_at', {
-        ascending: false
-      }).limit(1);
-      if (error) {
-        console.error('Erro ao buscar dados anteriores:', error);
-        return;
-      }
-      if (previousTasks && previousTasks.length > 0) {
-        const previousTask = previousTasks[0];
+      const { fetchPreviousClientData } = await import('@/lib/clientAutofill');
+      const previous = await fetchPreviousClientData(clientCode, clientName);
+      if (!previous) return;
 
-        // Preencher automaticamente os campos com os dados anteriores
-        setTask(prev => ({
-          ...prev,
-          property: previousTask.property || prev.property,
-          email: previousTask.email || prev.email,
-          propertyHectares: previousTask.propertyhectares || prev.propertyHectares
-        }));
+      setTask(prev => ({
+        ...prev,
+        responsible: prev.responsible || previous.responsible || '',
+        phone: prev.phone || previous.phone || '',
+        email: prev.email || previous.email || '',
+        property: prev.property || previous.property || '',
+        filialAtendida: prev.filialAtendida || previous.filial_atendida || prev.filialAtendida,
+        propertyHectares: prev.propertyHectares || previous.propertyhectares || prev.propertyHectares,
+      }));
 
-        // Mostrar notificação sobre os dados preenchidos
-        toast({
-          title: "Dados preenchidos automaticamente",
-          description: "Informações de tasks anteriores foram carregadas para este cliente."
-        });
-      }
+      toast({
+        title: 'Dados preenchidos automaticamente',
+        description: 'Últimos dados deste cliente foram carregados. Edite se necessário.',
+      });
     } catch (error) {
       console.error('Erro ao carregar dados anteriores:', error);
     }
   };
+
 
   // Códigos de cliente reais (compartilhados com outros formulários)
   const clientCodes = CLIENT_CODES;
@@ -1231,8 +1222,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             filiais={filiais as any[]}
             onClientSelected={async (code, name) => {
               setTask(prev => ({ ...prev, clientCode: code, client: name }));
-              await loadPreviousClientData(code);
+              await loadPreviousClientData(code, name);
             }}
+
           />
 
           {/* Parque de Máquinas — wrapper padronizado (igual Visita Técnica) */}

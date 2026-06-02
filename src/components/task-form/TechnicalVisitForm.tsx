@@ -107,27 +107,22 @@ export const TechnicalVisitForm: React.FC = () => {
   const [contactFunctionOther, setContactFunctionOther] = useState('');
   const [filialAtendida, setFilialAtendida] = useState('');
 
-  // Carrega dados anteriores do cliente (mesma lógica das outras tarefas)
-  const loadPreviousClientData = async (code: string) => {
-    const c = code.trim();
-    if (!c) return;
+  // Carrega dados anteriores do cliente (autofill com base na última task)
+  const loadPreviousClientData = async (code: string, name?: string) => {
     try {
-      const { data } = await (supabase as any)
-        .from('tasks')
-        .select('property, email, phone')
-        .eq('clientCode', c)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) {
-        if (data.property && !property) setProperty(data.property);
-        if (data.email && !email) setEmail(data.email);
-        if (data.phone && !phone) setPhone(data.phone);
-      }
+      const { fetchPreviousClientData } = await import('@/lib/clientAutofill');
+      const data = await fetchPreviousClientData(code, name);
+      if (!data) return;
+      if (data.responsible && !contactName) setContactName(data.responsible);
+      if (data.property && !property) setProperty(data.property);
+      if (data.email && !email) setEmail(data.email);
+      if (data.phone && !phone) setPhone(data.phone);
+      if (data.filial_atendida && !filialAtendida) setFilialAtendida(data.filial_atendida);
     } catch (err) {
       console.warn('loadPreviousClientData:', err);
     }
   };
+
 
 
   // --- Parque de Máquinas ---
@@ -429,12 +424,13 @@ export const TechnicalVisitForm: React.FC = () => {
         filialAtendida={filialAtendida}
         onFilialAtendidaChange={setFilialAtendida}
         filiais={filiais as any[]}
-        onClientSelected={async (code) => {
+        onClientSelected={async (code, name) => {
           await Promise.all([
             loadClientEquipments(code),
-            loadPreviousClientData(code),
+            loadPreviousClientData(code, name),
           ]);
         }}
+
       />
 
 
