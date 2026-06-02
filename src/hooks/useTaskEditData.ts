@@ -129,7 +129,7 @@ export const useTaskEditData = (taskId: string | null) => {
       // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification')
+        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification, technical_funnel_stage, technical_category, technical_visit_data, opportunity_interest, opportunity_urgency, opportunity_impact, opportunity_closing, sales_estimate, next_action, next_action_date')
         .eq('id', taskId)
         .maybeSingle();
 
