@@ -53,6 +53,18 @@ export interface TaskEditData {
   sales_value?: number;
   partial_sales_value?: number;
 
+  // Technical visit data
+  technical_funnel_stage?: string | null;
+  technical_category?: string | null;
+  technical_visit_data?: any;
+  opportunity_interest?: string | null;
+  opportunity_urgency?: string | null;
+  opportunity_impact?: string | null;
+  opportunity_closing?: string | null;
+  sales_estimate?: any;
+  next_action?: string | null;
+  next_action_date?: string | null;
+
   // Opportunity data
   opportunity?: {
     id: string;
@@ -117,7 +129,7 @@ export const useTaskEditData = (taskId: string | null) => {
       // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification')
+        .select('id, name, responsible, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification, technical_funnel_stage, technical_category, technical_visit_data, opportunity_interest, opportunity_urgency, opportunity_impact, opportunity_closing, sales_estimate, next_action, next_action_date')
         .eq('id', taskId)
         .maybeSingle();
 
@@ -188,7 +200,18 @@ export const useTaskEditData = (taskId: string | null) => {
          partial_sales_value: taskData.partial_sales_value,
          // Prospect/loss reason data
          prospectNotes: taskData.prospect_notes || '',
-         prospectNotesJustification: taskData.prospect_notes_justification || ''
+         prospectNotesJustification: taskData.prospect_notes_justification || '',
+         // Technical visit fields
+         technical_funnel_stage: taskData.technical_funnel_stage || null,
+         technical_category: taskData.technical_category || null,
+         technical_visit_data: taskData.technical_visit_data || null,
+         opportunity_interest: taskData.opportunity_interest || null,
+         opportunity_urgency: taskData.opportunity_urgency || null,
+         opportunity_impact: taskData.opportunity_impact || null,
+         opportunity_closing: taskData.opportunity_closing || null,
+         sales_estimate: taskData.sales_estimate || null,
+         next_action: taskData.next_action || null,
+         next_action_date: taskData.next_action_date || null
        };
 
       // Fetch opportunity data

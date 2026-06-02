@@ -202,7 +202,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       createdAt: new Date(),
       updatedAt: new Date(),
       isProspect: calculatedStatus === 'prospect',
-      prospectNotes: undefined,
+      prospectNotes: taskEditData.prospectNotes || undefined,
+      prospectNotesJustification: taskEditData.prospectNotesJustification || undefined,
       salesConfirmed: normalizedSalesConfirmed ?? undefined,
       salesType: normalizedSalesType as any,
       // Para exibição, usar o mesmo valor calculado/fixado
@@ -213,6 +214,17 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       propertyHectares: taskEditData.propertyHectares,
       equipmentList: Array.isArray(taskEditData.equipment_list) ? (taskEditData.equipment_list as any) : undefined,
       prospectItems: undefined,
+      // Technical visit fields
+      technicalCategory: taskEditData.technical_category || undefined,
+      technicalFunnelStage: taskEditData.technical_funnel_stage || undefined,
+      technicalVisitData: taskEditData.technical_visit_data || undefined,
+      opportunityInterest: (taskEditData.opportunity_interest as any) || undefined,
+      opportunityUrgency: (taskEditData.opportunity_urgency as any) || undefined,
+      opportunityImpact: (taskEditData.opportunity_impact as any) || undefined,
+      opportunityClosing: (taskEditData.opportunity_closing as any) || undefined,
+      salesEstimate: taskEditData.sales_estimate || undefined,
+      nextAction: taskEditData.next_action || undefined,
+      nextActionDate: taskEditData.next_action_date || undefined,
       isMasked: (task as any).isMasked,
     };
 
@@ -328,31 +340,46 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Relatório de Oportunidade</title>
+  <title>Relatório de Oportunidade — ${escapeHtml(fullTask.client || '')}</title>
   <style>
     @page { margin: 12mm; }
     body { font-family: Arial, sans-serif; color: #111; }
     h1 { font-size: 18px; margin: 0 0 6px; }
     .sub { color: #555; font-size: 12px; margin: 0 0 14px; }
-    h2 { font-size: 14px; margin: 16px 0 8px; }
-    .box { border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
+    h2 { font-size: 13px; margin: 14px 0 6px; color:#1f4e8a; }
+    .box { border: 1px solid #ddd; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     .row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; margin: 2px 0; }
     .label { color: #666; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px; }
+    .grid > div > span.label { display:block; font-size:10px; color:#888; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; background:#eef2ff; color:#1e3a8a; }
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
     th, td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
     th { background: #f5f5f5; text-align: left; }
+    pre.note { white-space: pre-wrap; font-family: inherit; font-size:12px; margin:0; }
   </style>
 </head>
 <body>
-  <h1>Relatório Completo de Oportunidade</h1>
-  <p class="sub">${escapeHtml(getTaskTypeLabel(fullTask.taskType || 'prospection'))} • ${escapeHtml(formatDateDisplay(fullTask.startDate))}</p>
+  <h1>Relatório de Oportunidade — ${escapeHtml(fullTask.client || 'N/A')}</h1>
+  <p class="sub">
+    ${escapeHtml(getTaskTypeLabel(fullTask.taskType || 'prospection'))}
+    • ${escapeHtml(formatDateDisplay(fullTask.startDate))}
+    • <span class="badge">${escapeHtml(getStatusLabel(salesStatus))}</span>
+  </p>
 
   <div class="box">
     <h2>Cliente</h2>
-    <div class="row"><span class="label">Nome</span><span>${escapeHtml(fullTask.client || 'N/A')}</span></div>
-    <div class="row"><span class="label">Propriedade</span><span>${escapeHtml(fullTask.property || 'N/A')}</span></div>
-    <div class="row"><span class="label">Responsável</span><span>${escapeHtml(fullTask.responsible || 'N/A')}</span></div>
-    <div class="row"><span class="label">Filial</span><span>${escapeHtml(resolveFilialName(fullTask.filial) || 'Não informado')}</span></div>
+    <div class="grid">
+      <div><span class="label">Nome</span>${escapeHtml(fullTask.client || 'N/A')}</div>
+      <div><span class="label">Código</span>${escapeHtml(fullTask.clientCode || 'N/A')}</div>
+      <div><span class="label">Email</span>${escapeHtml(fullTask.email || 'N/A')}</div>
+      <div><span class="label">Telefone</span>${escapeHtml(fullTask.phone || 'N/A')}</div>
+      <div><span class="label">Propriedade</span>${escapeHtml(fullTask.property || 'N/A')}</div>
+      <div><span class="label">Hectares</span>${fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'N/A'}</div>
+      <div><span class="label">Responsável</span>${escapeHtml(fullTask.responsible || 'N/A')}</div>
+      <div><span class="label">Filial</span>${escapeHtml(resolveFilialName(fullTask.filial) || 'N/A')}</div>
+      ${fullTask.filialAtendida ? `<div><span class="label">Filial Atendida</span>${escapeHtml(resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida)}</div>` : ''}
+    </div>
   </div>
 
   <h2>Produtos e Serviços (${(fullTask.checklist || []).length})</h2>
@@ -371,6 +398,60 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       ${productsRows || '<tr><td colspan="6" style="text-align:center; color:#666;">Nenhum produto/serviço cadastrado.</td></tr>'}
     </tbody>
   </table>
+  <p style="text-align:right; font-size:12px; margin-top:6px;">
+    <strong>Valor da Oportunidade:</strong>
+    R$ ${opportunityTotalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+  </p>
+
+  ${fullTask.observations ? `
+  <div class="box">
+    <h2>Observações</h2>
+    <pre class="note">${escapeHtml(fullTask.observations)}</pre>
+  </div>` : ''}
+
+  ${salesStatus === 'perdido' && (fullTask.prospectNotes || fullTask.prospectNotesJustification) ? `
+  <div class="box" style="border-color:#fca5a5;">
+    <h2 style="color:#b91c1c;">Motivo da Perda</h2>
+    ${fullTask.prospectNotes ? `<p><span class="label">Motivo:</span></p><pre class="note">${escapeHtml(fullTask.prospectNotes)}</pre>` : ''}
+    ${fullTask.prospectNotesJustification ? `<p><span class="label">Justificativa:</span></p><pre class="note">${escapeHtml(fullTask.prospectNotesJustification)}</pre>` : ''}
+  </div>` : ''}
+
+  ${(fullTask.nextAction || fullTask.nextActionDate) ? `
+  <div class="box">
+    <h2>Próxima Ação</h2>
+    <div class="grid">
+      ${fullTask.nextAction ? `<div><span class="label">Ação</span>${escapeHtml(String(fullTask.nextAction))}</div>` : ''}
+      ${fullTask.nextActionDate ? `<div><span class="label">Data prevista</span>${escapeHtml(formatDateDisplay(fullTask.nextActionDate as any))}</div>` : ''}
+    </div>
+  </div>` : ''}
+
+  ${fullTask.taskType === 'technical_visit' && (
+    fullTask.technicalCategory || fullTask.technicalFunnelStage ||
+    fullTask.opportunityInterest || fullTask.opportunityUrgency ||
+    fullTask.opportunityImpact || fullTask.opportunityClosing ||
+    fullTask.salesEstimate
+  ) ? `
+  <div class="box" style="border-color:#fcd34d;">
+    <h2 style="color:#b45309;">Dados da Visita Técnica</h2>
+    <div class="grid">
+      ${fullTask.technicalCategory ? `<div><span class="label">Categoria Técnica</span>${escapeHtml(fullTask.technicalCategory)}</div>` : ''}
+      ${fullTask.technicalFunnelStage ? `<div><span class="label">Etapa Funil Técnico</span>${escapeHtml(fullTask.technicalFunnelStage)}</div>` : ''}
+      ${fullTask.opportunityInterest ? `<div><span class="label">Interesse</span>${escapeHtml(fullTask.opportunityInterest)}</div>` : ''}
+      ${fullTask.opportunityUrgency ? `<div><span class="label">Urgência</span>${escapeHtml(fullTask.opportunityUrgency)}</div>` : ''}
+      ${fullTask.opportunityImpact ? `<div><span class="label">Impacto</span>${escapeHtml(fullTask.opportunityImpact)}</div>` : ''}
+      ${fullTask.opportunityClosing ? `<div><span class="label">Fechamento</span>${escapeHtml(fullTask.opportunityClosing)}</div>` : ''}
+      ${fullTask.salesEstimate ? Object.entries(fullTask.salesEstimate).map(([k, v]) => `<div><span class="label">Estimativa ${escapeHtml(k)}</span>R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>`).join('') : ''}
+    </div>
+  </div>` : ''}
+
+  ${fullTask.checkInLocation ? `
+  <div class="box">
+    <h2>Check-in</h2>
+    <div class="grid">
+      <div><span class="label">Coordenadas</span>${fullTask.checkInLocation.lat}, ${fullTask.checkInLocation.lng}</div>
+      ${fullTask.checkInLocation.timestamp ? `<div><span class="label">Data/Hora</span>${escapeHtml(format(parseLocalDate(fullTask.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR }))}</div>` : ''}
+    </div>
+  </div>` : ''}
 </body>
 </html>`;
 
@@ -553,6 +634,24 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                        {fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'}
                      </p>
                    </div>
+                   {fullTask.phone && (
+                     <div className="space-y-2">
+                       <label className="text-sm font-medium text-muted-foreground">Telefone</label>
+                       <p className="font-medium flex items-center gap-2">
+                         <Phone className="w-4 h-4 text-muted-foreground" />
+                         {fullTask.phone}
+                       </p>
+                     </div>
+                   )}
+                   {fullTask.filialAtendida && (
+                     <div className="space-y-2">
+                       <label className="text-sm font-medium text-muted-foreground">Filial Atendida</label>
+                       <p className="font-medium flex items-center gap-2">
+                         <Building className="w-4 h-4 text-primary" />
+                         {resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida}
+                       </p>
+                     </div>
+                   )}
                 </div>
               </div>
             </CardContent>
@@ -940,8 +1039,34 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
             />
           )}
 
-          {/* Notas de Prospect */}
-          {fullTask.prospectNotes && (
+          {/* Motivo da Perda */}
+          {salesStatus === 'perdido' && (fullTask.prospectNotes || fullTask.prospectNotesJustification) && (
+            <Card className="border-destructive/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <FileText className="w-5 h-5" />
+                  Motivo da Perda
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {fullTask.prospectNotes && (
+                  <div className="bg-destructive/5 rounded-lg p-4 border-l-4 border-destructive">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Motivo</label>
+                    <p className="text-sm mt-1 leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotes}</p>
+                  </div>
+                )}
+                {fullTask.prospectNotesJustification && (
+                  <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-muted-foreground">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">Justificativa</label>
+                    <p className="text-sm mt-1 leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotesJustification}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notas de Prospect (quando NÃO é perdido) */}
+          {salesStatus !== 'perdido' && fullTask.prospectNotes && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -950,9 +1075,108 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-blue-500">
+                <div className="bg-muted/50 rounded-lg p-4 border-l-4 border-primary">
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{fullTask.prospectNotes}</p>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Próxima Ação */}
+          {(fullTask.nextAction || fullTask.nextActionDate) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Próxima Ação
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {fullTask.nextAction && (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-muted-foreground">Ação</label>
+                      <p className="font-medium whitespace-pre-wrap">{fullTask.nextAction}</p>
+                    </div>
+                  )}
+                  {fullTask.nextActionDate && (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-muted-foreground">Data prevista</label>
+                      <p className="font-medium">{formatDateDisplay(fullTask.nextActionDate as any)}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bloco Visita Técnica — só aparece em tarefas técnicas */}
+          {fullTask.taskType === 'technical_visit' && (
+            fullTask.technicalCategory || fullTask.technicalFunnelStage ||
+            fullTask.opportunityInterest || fullTask.opportunityUrgency ||
+            fullTask.opportunityImpact || fullTask.opportunityClosing ||
+            fullTask.salesEstimate
+          ) && (
+            <Card className="border-warning/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-warning">
+                  <FileText className="w-5 h-5" />
+                  Dados da Visita Técnica
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {(fullTask.technicalCategory || fullTask.technicalFunnelStage) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {fullTask.technicalCategory && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground">Categoria Técnica</label>
+                        <p className="font-medium">{fullTask.technicalCategory}</p>
+                      </div>
+                    )}
+                    {fullTask.technicalFunnelStage && (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium text-muted-foreground">Etapa do Funil Técnico</label>
+                        <p className="font-medium">{fullTask.technicalFunnelStage}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(fullTask.opportunityInterest || fullTask.opportunityUrgency ||
+                  fullTask.opportunityImpact || fullTask.opportunityClosing) && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Classificação da Oportunidade</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        ['Interesse', fullTask.opportunityInterest],
+                        ['Urgência', fullTask.opportunityUrgency],
+                        ['Impacto', fullTask.opportunityImpact],
+                        ['Fechamento', fullTask.opportunityClosing],
+                      ].map(([label, val]) => val ? (
+                        <div key={label} className="border rounded-lg p-2 bg-muted/30">
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className="font-medium capitalize">{val}</p>
+                        </div>
+                      ) : null)}
+                    </div>
+                  </div>
+                )}
+
+                {fullTask.salesEstimate && Object.keys(fullTask.salesEstimate).length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Estimativa de Venda</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {Object.entries(fullTask.salesEstimate).map(([k, v]) => (
+                        <div key={k} className="border rounded-lg p-2 bg-muted/30">
+                          <p className="text-xs text-muted-foreground capitalize">{k}</p>
+                          <p className="font-medium">
+                            R$ {Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
