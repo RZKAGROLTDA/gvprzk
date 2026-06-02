@@ -565,6 +565,24 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                        {fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'Não informado'}
                      </p>
                    </div>
+                   {fullTask.phone && (
+                     <div className="space-y-2">
+                       <label className="text-sm font-medium text-muted-foreground">Telefone</label>
+                       <p className="font-medium flex items-center gap-2">
+                         <Phone className="w-4 h-4 text-muted-foreground" />
+                         {fullTask.phone}
+                       </p>
+                     </div>
+                   )}
+                   {fullTask.filialAtendida && (
+                     <div className="space-y-2">
+                       <label className="text-sm font-medium text-muted-foreground">Filial Atendida</label>
+                       <p className="font-medium flex items-center gap-2">
+                         <Building className="w-4 h-4 text-primary" />
+                         {resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida}
+                       </p>
+                     </div>
+                   )}
                 </div>
               </div>
             </CardContent>
