@@ -821,7 +821,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                       <TrendingUp className="w-3.5 h-3.5" /> Estimativa de Venda
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {Object.entries(fullTask.salesEstimate).map(([k, v]) => (
+                      {Object.entries(fullTask.salesEstimate).filter(([k]) => k !== 'puk').map(([k, v]) => (
                         <div key={k} className="rounded-lg border bg-muted/30 px-3 py-2">
                           <div className="text-[10px] uppercase tracking-wide text-muted-foreground capitalize">{k}</div>
                           <div className="text-sm font-semibold tabular-nums">{formatBRL(Number(v || 0))}</div>
