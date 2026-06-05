@@ -315,10 +315,17 @@ export const TechnicalVisitForm: React.FC = () => {
 
     const filialNome = profile?.filial_nome || '';
 
+    const resolvedContactFunction =
+      contactFunction === 'Outros' && contactFunctionOther.trim()
+        ? `Outros: ${contactFunctionOther.trim()}`
+        : (contactFunction || undefined);
+
     const taskData: any = {
       name: 'Visita Técnica',
       taskType: 'technical_visit',
       responsible: profile?.name || 'Vendedor',
+      contactName: contactName.trim() || undefined,
+      contactFunction: resolvedContactFunction,
       client: clientName.trim(),
       clientCode: clientCode.trim(),
       property: property.trim(),
