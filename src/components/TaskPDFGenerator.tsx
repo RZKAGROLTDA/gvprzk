@@ -202,7 +202,13 @@ export const generateTaskPDF = async (
 
   // ===== FILIAL E RESPONSÁVEL =====
   writeSectionTitle('Filial e Responsável');
-  writeLine('Responsável:', task?.responsible || 'N/A');
+  writeLine('Responsável (Vendedor):', task?.responsible || 'N/A');
+  if ((task as any)?.contactName) {
+    writeLine('Contato no Cliente:', String((task as any).contactName));
+  }
+  if ((task as any)?.contactFunction) {
+    writeLine('Função do Contato:', String((task as any).contactFunction));
+  }
   writeLine('Filial:', getFilialNameRobust(task?.filial, filiais));
   writeLine(
     'Filial Atendida:',
