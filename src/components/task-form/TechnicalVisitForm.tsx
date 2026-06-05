@@ -154,15 +154,14 @@ export const TechnicalVisitForm: React.FC = () => {
   // --- Tipo de Serviço ---
   const [serviceType, setServiceType] = useState<string>('');
 
-  // --- Estimativa de Venda ---
+  // --- Estimativa de Venda (PUK removido em definitivo) ---
   const [estServicos, setEstServicos] = useState('');
   const [estPecas, setEstPecas] = useState('');
   const [estTreinamento, setEstTreinamento] = useState('');
-  const [estPuk, setEstPuk] = useState('');
   const totalEstimate = useMemo(() => {
     const n = (v: string) => parseFloat(v.replace(',', '.')) || 0;
-    return n(estServicos) + n(estPecas) + n(estTreinamento) + n(estPuk);
-  }, [estServicos, estPecas, estTreinamento, estPuk]);
+    return n(estServicos) + n(estPecas) + n(estTreinamento);
+  }, [estServicos, estPecas, estTreinamento]);
 
   // --- Classificação ---
   const [interest, setInterest] = useState<Level | ''>('');
