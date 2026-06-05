@@ -318,6 +318,8 @@ export const useTasksOptimized = (includeDetails = false) => {
         .insert({
           name: taskData.name || getDefaultTaskName(taskData.taskType || 'prospection'),
           responsible: taskData.responsible || user.email || '',
+          ...(taskData.contactName !== undefined && { contact_name: taskData.contactName }),
+          ...(taskData.contactFunction !== undefined && { contact_function: taskData.contactFunction }),
           client: taskData.client || '',
           clientcode: taskData.clientCode || '',
           property: standardizedTaskData.property || '',
