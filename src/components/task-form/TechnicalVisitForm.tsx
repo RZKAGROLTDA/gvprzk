@@ -905,7 +905,7 @@ export const TechnicalVisitForm: React.FC = () => {
                     contactName, contactFunction, contactFunctionOther,
                     filialAtendida, serviceType, observations,
                     funnelStage, nextAction, nextActionDate,
-                    estServicos, estPecas, estTreinamento, estPuk,
+                    estServicos, estPecas, estTreinamento,
                     interest, urgency, impact, closing,
                     productsOffer, selectedEquipmentIds,
                   }),
