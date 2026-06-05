@@ -20,6 +20,8 @@ export interface TaskEditData {
   // Additional task data
   name?: string;
   responsible?: string;
+  contactName?: string;
+  contactFunction?: string;
   property?: string;
   phone?: string;
   clientCode?: string;
