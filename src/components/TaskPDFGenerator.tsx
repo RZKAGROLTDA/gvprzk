@@ -303,7 +303,7 @@ export const generateTaskPDF = async (
       if (oimp) writeLine('Impacto:', String(oimp));
       if (ocl) writeLine('Fechamento:', String(ocl));
       if (est && typeof est === 'object') {
-        Object.entries(est).forEach(([k, v]) => {
+        Object.entries(est).filter(([k]) => k !== 'puk').forEach(([k, v]) => {
           writeLine(`Estimativa ${k}:`, formatCurrency(Number(v || 0)));
         });
       }
