@@ -1110,6 +1110,8 @@ export type Database = {
           check_in_location: Json | null
           client: string
           clientcode: string | null
+          contact_function: string | null
+          contact_name: string | null
           created_at: string
           created_by: string
           documents: string[] | null
@@ -1159,6 +1161,8 @@ export type Database = {
           check_in_location?: Json | null
           client: string
           clientcode?: string | null
+          contact_function?: string | null
+          contact_name?: string | null
           created_at?: string
           created_by: string
           documents?: string[] | null
@@ -1208,6 +1212,8 @@ export type Database = {
           check_in_location?: Json | null
           client?: string
           clientcode?: string | null
+          contact_function?: string | null
+          contact_name?: string | null
           created_at?: string
           created_by?: string
           documents?: string[] | null
