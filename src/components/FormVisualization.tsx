@@ -177,6 +177,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       id: taskEditData.id,
       name: taskEditData.name || '',
       responsible: taskEditData.responsible || '',
+      contactName: (taskEditData as any).contactName,
+      contactFunction: (taskEditData as any).contactFunction,
       client: taskEditData.cliente_nome || '',
       clientCode: taskEditData.clientCode,
       property: taskEditData.property || '',
