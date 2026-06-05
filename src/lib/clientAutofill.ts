@@ -26,7 +26,7 @@ export async function fetchPreviousClientData(
   const name = (clientName || '').trim();
 
   const baseSelect =
-    'responsible, phone, email, property, filial_atendida, propertyhectares, observations';
+    'responsible, contact_name, contact_function, phone, email, property, filial_atendida, propertyhectares, observations';
 
   try {
     let query = (supabase as any)
