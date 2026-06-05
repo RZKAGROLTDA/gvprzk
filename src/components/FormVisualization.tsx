@@ -473,7 +473,10 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 
   const handleEmail = () => {
     const subject = `Relatório de Oportunidade - ${fullTask?.client || 'Cliente'}`;
-    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável: ${fullTask?.responsible || 'N/A'}\n- Data: ${fullTask?.startDate ? formatDateDisplay(fullTask.startDate) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
+    const contactLine = (fullTask as any)?.contactName
+      ? `\n- Contato no Cliente: ${(fullTask as any).contactName}${(fullTask as any).contactFunction ? ` (${(fullTask as any).contactFunction})` : ''}`
+      : '';
+    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável (Vendedor): ${fullTask?.responsible || 'N/A'}${contactLine}\n- Data: ${fullTask?.startDate ? formatDateDisplay(fullTask.startDate) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
 
     const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoLink);
