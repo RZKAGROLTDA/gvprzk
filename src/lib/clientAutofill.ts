@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface PreviousClientData {
   responsible?: string | null;
   function?: string | null;
+  contact_name?: string | null;
+  contact_function?: string | null;
   phone?: string | null;
   email?: string | null;
   property?: string | null;
