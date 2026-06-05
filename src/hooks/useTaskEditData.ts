@@ -175,6 +175,8 @@ export const useTaskEditData = (taskId: string | null) => {
          // Include all additional task data
          name: taskData.name,
          responsible: taskData.responsible,
+         contactName: (taskData as any).contact_name || undefined,
+         contactFunction: (taskData as any).contact_function || undefined,
          property: taskData.property,
          phone: taskData.phone,
          clientCode: taskData.clientcode,
