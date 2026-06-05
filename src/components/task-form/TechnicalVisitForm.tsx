@@ -807,12 +807,11 @@ export const TechnicalVisitForm: React.FC = () => {
         </TechnicalServiceSection>
 
         <SalesEstimateSection>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { label: 'Serviços', v: estServicos, set: setEstServicos },
               { label: 'Peças', v: estPecas, set: setEstPecas },
               { label: 'Treinamento', v: estTreinamento, set: setEstTreinamento },
-              { label: 'PUK', v: estPuk, set: setEstPuk },
             ].map((it) => (
               <div key={it.label} className="space-y-1">
                 <Label className="text-xs">{it.label} (R$)</Label>
