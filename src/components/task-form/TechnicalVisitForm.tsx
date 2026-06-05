@@ -113,7 +113,13 @@ export const TechnicalVisitForm: React.FC = () => {
       const { fetchPreviousClientData } = await import('@/lib/clientAutofill');
       const data = await fetchPreviousClientData(code, name);
       if (!data) return;
-      if (data.responsible && !contactName) setContactName(data.responsible);
+      // Contato: preferir colunas dedicadas (novas); fallback para `responsible` legado
+      if ((data.contact_name || data.responsible) && !contactName) {
+        setContactName(data.contact_name || data.responsible || '');
+      }
+      if (data.contact_function && !contactFunction) {
+        setContactFunction(data.contact_function);
+      }
       if (data.property && !property) setProperty(data.property);
       if (data.email && !email) setEmail(data.email);
       if (data.phone && !phone) setPhone(data.phone);
