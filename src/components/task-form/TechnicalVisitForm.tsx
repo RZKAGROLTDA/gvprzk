@@ -113,7 +113,13 @@ export const TechnicalVisitForm: React.FC = () => {
       const { fetchPreviousClientData } = await import('@/lib/clientAutofill');
       const data = await fetchPreviousClientData(code, name);
       if (!data) return;
-      if (data.responsible && !contactName) setContactName(data.responsible);
+      // Contato: preferir colunas dedicadas (novas); fallback para `responsible` legado
+      if ((data.contact_name || data.responsible) && !contactName) {
+        setContactName(data.contact_name || data.responsible || '');
+      }
+      if (data.contact_function && !contactFunction) {
+        setContactFunction(data.contact_function);
+      }
       if (data.property && !property) setProperty(data.property);
       if (data.email && !email) setEmail(data.email);
       if (data.phone && !phone) setPhone(data.phone);
@@ -148,15 +154,14 @@ export const TechnicalVisitForm: React.FC = () => {
   // --- Tipo de Serviço ---
   const [serviceType, setServiceType] = useState<string>('');
 
-  // --- Estimativa de Venda ---
+  // --- Estimativa de Venda (PUK removido em definitivo) ---
   const [estServicos, setEstServicos] = useState('');
   const [estPecas, setEstPecas] = useState('');
   const [estTreinamento, setEstTreinamento] = useState('');
-  const [estPuk, setEstPuk] = useState('');
   const totalEstimate = useMemo(() => {
     const n = (v: string) => parseFloat(v.replace(',', '.')) || 0;
-    return n(estServicos) + n(estPecas) + n(estTreinamento) + n(estPuk);
-  }, [estServicos, estPecas, estTreinamento, estPuk]);
+    return n(estServicos) + n(estPecas) + n(estTreinamento);
+  }, [estServicos, estPecas, estTreinamento]);
 
   // --- Classificação ---
   const [interest, setInterest] = useState<Level | ''>('');
@@ -299,7 +304,6 @@ export const TechnicalVisitForm: React.FC = () => {
       servicos: parseFloat(estServicos.replace(',', '.')) || 0,
       pecas: parseFloat(estPecas.replace(',', '.')) || 0,
       treinamento: parseFloat(estTreinamento.replace(',', '.')) || 0,
-      puk: parseFloat(estPuk.replace(',', '.')) || 0,
     };
 
     // Derivar funil a partir do status (cards visuais) — mantém compatibilidade
@@ -311,10 +315,17 @@ export const TechnicalVisitForm: React.FC = () => {
 
     const filialNome = profile?.filial_nome || '';
 
+    const resolvedContactFunction =
+      contactFunction === 'Outros' && contactFunctionOther.trim()
+        ? `Outros: ${contactFunctionOther.trim()}`
+        : (contactFunction || undefined);
+
     const taskData: any = {
       name: 'Visita Técnica',
       taskType: 'technical_visit',
       responsible: profile?.name || 'Vendedor',
+      contactName: contactName.trim() || undefined,
+      contactFunction: resolvedContactFunction,
       client: clientName.trim(),
       clientCode: clientCode.trim(),
       property: property.trim(),
@@ -803,12 +814,11 @@ export const TechnicalVisitForm: React.FC = () => {
         </TechnicalServiceSection>
 
         <SalesEstimateSection>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { label: 'Serviços', v: estServicos, set: setEstServicos },
               { label: 'Peças', v: estPecas, set: setEstPecas },
               { label: 'Treinamento', v: estTreinamento, set: setEstTreinamento },
-              { label: 'PUK', v: estPuk, set: setEstPuk },
             ].map((it) => (
               <div key={it.label} className="space-y-1">
                 <Label className="text-xs">{it.label} (R$)</Label>
@@ -902,7 +912,7 @@ export const TechnicalVisitForm: React.FC = () => {
                     contactName, contactFunction, contactFunctionOther,
                     filialAtendida, serviceType, observations,
                     funnelStage, nextAction, nextActionDate,
-                    estServicos, estPecas, estTreinamento, estPuk,
+                    estServicos, estPecas, estTreinamento,
                     interest, urgency, impact, closing,
                     productsOffer, selectedEquipmentIds,
                   }),
@@ -942,7 +952,7 @@ export const TechnicalVisitForm: React.FC = () => {
                     setFilialAtendida('');
                     setEquipments([]); setSelectedEquipmentIds([]);
                     setServiceType('');
-                    setEstServicos(''); setEstPecas(''); setEstTreinamento(''); setEstPuk('');
+                    setEstServicos(''); setEstPecas(''); setEstTreinamento('');
                     setInterest(''); setUrgency(''); setImpact(''); setClosing('');
                     setFunnelStage('Prospectado');
                     setNextAction(''); setNextActionDate('');

@@ -177,6 +177,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       id: taskEditData.id,
       name: taskEditData.name || '',
       responsible: taskEditData.responsible || '',
+      contactName: (taskEditData as any).contactName,
+      contactFunction: (taskEditData as any).contactFunction,
       client: taskEditData.cliente_nome || '',
       clientCode: taskEditData.clientCode,
       property: taskEditData.property || '',
@@ -377,7 +379,9 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       <div><span class="label">Telefone</span>${escapeHtml(fullTask.phone || 'N/A')}</div>
       <div><span class="label">Propriedade</span>${escapeHtml(fullTask.property || 'N/A')}</div>
       <div><span class="label">Hectares</span>${fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'N/A'}</div>
-      <div><span class="label">Responsável</span>${escapeHtml(fullTask.responsible || 'N/A')}</div>
+      <div><span class="label">Responsável (Vendedor)</span>${escapeHtml(fullTask.responsible || 'N/A')}</div>
+      ${(fullTask as any).contactName ? `<div><span class="label">Contato no Cliente</span>${escapeHtml((fullTask as any).contactName)}</div>` : ''}
+      ${(fullTask as any).contactFunction ? `<div><span class="label">Função do Contato</span>${escapeHtml((fullTask as any).contactFunction)}</div>` : ''}
       <div><span class="label">Filial</span>${escapeHtml(resolveFilialName(fullTask.filial) || 'N/A')}</div>
       ${fullTask.filialAtendida ? `<div><span class="label">Filial Atendida</span>${escapeHtml(resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida)}</div>` : ''}
     </div>
@@ -441,7 +445,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       ${fullTask.opportunityUrgency ? `<div><span class="label">Urgência</span>${escapeHtml(fullTask.opportunityUrgency)}</div>` : ''}
       ${fullTask.opportunityImpact ? `<div><span class="label">Impacto</span>${escapeHtml(fullTask.opportunityImpact)}</div>` : ''}
       ${fullTask.opportunityClosing ? `<div><span class="label">Fechamento</span>${escapeHtml(fullTask.opportunityClosing)}</div>` : ''}
-      ${fullTask.salesEstimate ? Object.entries(fullTask.salesEstimate).map(([k, v]) => `<div><span class="label">Estimativa ${escapeHtml(k)}</span>R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>`).join('') : ''}
+      ${fullTask.salesEstimate ? Object.entries(fullTask.salesEstimate).filter(([k]) => k !== 'puk').map(([k, v]) => `<div><span class="label">Estimativa ${escapeHtml(k)}</span>R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>`).join('') : ''}
     </div>
   </div>` : ''}
 
@@ -469,7 +473,10 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 
   const handleEmail = () => {
     const subject = `Relatório de Oportunidade - ${fullTask?.client || 'Cliente'}`;
-    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável: ${fullTask?.responsible || 'N/A'}\n- Data: ${fullTask?.startDate ? formatDateDisplay(fullTask.startDate) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
+    const contactLine = (fullTask as any)?.contactName
+      ? `\n- Contato no Cliente: ${(fullTask as any).contactName}${(fullTask as any).contactFunction ? ` (${(fullTask as any).contactFunction})` : ''}`
+      : '';
+    const body = `Olá,\n\nSegue em anexo o relatório da oportunidade para o cliente ${fullTask?.client || 'N/A'}.\n\nDetalhes:\n- Propriedade: ${fullTask?.property || 'N/A'}\n- Responsável (Vendedor): ${fullTask?.responsible || 'N/A'}${contactLine}\n- Data: ${fullTask?.startDate ? formatDateDisplay(fullTask.startDate) : 'N/A'}\n\nAtenciosamente,\n${fullTask?.responsible || 'Equipe'}`;
 
     const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(mailtoLink);
@@ -602,7 +609,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               <Field label="Hectares" value={fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : undefined} icon={Crop} />
               <Field label="E-mail" value={fullTask.email} icon={AtSign} />
               <Field label="Telefone" value={fullTask.phone} icon={Phone} />
-              <Field label="Responsável" value={fullTask.responsible} icon={User} />
+              <Field label="Responsável (Vendedor)" value={fullTask.responsible} icon={User} />
+              {(fullTask as any).contactName && (
+                <Field label="Contato no Cliente" value={(fullTask as any).contactName} icon={User} />
+              )}
+              {(fullTask as any).contactFunction && (
+                <Field label="Função do Contato" value={(fullTask as any).contactFunction} />
+              )}
               <Field label="Filial Responsável" value={resolveFilialName(fullTask.filial)} icon={Building} />
               {fullTask.filialAtendida && (
                 <Field label="Filial Atendida" value={resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida} icon={Building} />
@@ -811,7 +824,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                       <TrendingUp className="w-3.5 h-3.5" /> Estimativa de Venda
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {Object.entries(fullTask.salesEstimate).map(([k, v]) => (
+                      {Object.entries(fullTask.salesEstimate).filter(([k]) => k !== 'puk').map(([k, v]) => (
                         <div key={k} className="rounded-lg border bg-muted/30 px-3 py-2">
                           <div className="text-[10px] uppercase tracking-wide text-muted-foreground capitalize">{k}</div>
                           <div className="text-sm font-semibold tabular-nums">{formatBRL(Number(v || 0))}</div>

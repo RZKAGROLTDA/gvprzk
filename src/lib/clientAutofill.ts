@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface PreviousClientData {
   responsible?: string | null;
   function?: string | null;
+  contact_name?: string | null;
+  contact_function?: string | null;
   phone?: string | null;
   email?: string | null;
   property?: string | null;
@@ -24,7 +26,7 @@ export async function fetchPreviousClientData(
   const name = (clientName || '').trim();
 
   const baseSelect =
-    'responsible, phone, email, property, filial_atendida, propertyhectares, observations';
+    'responsible, contact_name, contact_function, phone, email, property, filial_atendida, propertyhectares, observations';
 
   try {
     let query = (supabase as any)
