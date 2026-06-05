@@ -604,7 +604,13 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
               <Field label="Hectares" value={fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : undefined} icon={Crop} />
               <Field label="E-mail" value={fullTask.email} icon={AtSign} />
               <Field label="Telefone" value={fullTask.phone} icon={Phone} />
-              <Field label="Responsável" value={fullTask.responsible} icon={User} />
+              <Field label="Responsável (Vendedor)" value={fullTask.responsible} icon={User} />
+              {(fullTask as any).contactName && (
+                <Field label="Contato no Cliente" value={(fullTask as any).contactName} icon={User} />
+              )}
+              {(fullTask as any).contactFunction && (
+                <Field label="Função do Contato" value={(fullTask as any).contactFunction} />
+              )}
               <Field label="Filial Responsável" value={resolveFilialName(fullTask.filial)} icon={Building} />
               {fullTask.filialAtendida && (
                 <Field label="Filial Atendida" value={resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida} icon={Building} />
