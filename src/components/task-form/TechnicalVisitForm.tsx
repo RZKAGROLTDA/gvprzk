@@ -945,7 +945,7 @@ export const TechnicalVisitForm: React.FC = () => {
                     setFilialAtendida('');
                     setEquipments([]); setSelectedEquipmentIds([]);
                     setServiceType('');
-                    setEstServicos(''); setEstPecas(''); setEstTreinamento(''); setEstPuk('');
+                    setEstServicos(''); setEstPecas(''); setEstTreinamento('');
                     setInterest(''); setUrgency(''); setImpact(''); setClosing('');
                     setFunnelStage('Prospectado');
                     setNextAction(''); setNextActionDate('');
