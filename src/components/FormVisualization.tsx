@@ -445,7 +445,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       ${fullTask.opportunityUrgency ? `<div><span class="label">Urgência</span>${escapeHtml(fullTask.opportunityUrgency)}</div>` : ''}
       ${fullTask.opportunityImpact ? `<div><span class="label">Impacto</span>${escapeHtml(fullTask.opportunityImpact)}</div>` : ''}
       ${fullTask.opportunityClosing ? `<div><span class="label">Fechamento</span>${escapeHtml(fullTask.opportunityClosing)}</div>` : ''}
-      ${fullTask.salesEstimate ? Object.entries(fullTask.salesEstimate).map(([k, v]) => `<div><span class="label">Estimativa ${escapeHtml(k)}</span>R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>`).join('') : ''}
+      ${fullTask.salesEstimate ? Object.entries(fullTask.salesEstimate).filter(([k]) => k !== 'puk').map(([k, v]) => `<div><span class="label">Estimativa ${escapeHtml(k)}</span>R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>`).join('') : ''}
     </div>
   </div>` : ''}
 
