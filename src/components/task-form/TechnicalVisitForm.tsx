@@ -304,7 +304,6 @@ export const TechnicalVisitForm: React.FC = () => {
       servicos: parseFloat(estServicos.replace(',', '.')) || 0,
       pecas: parseFloat(estPecas.replace(',', '.')) || 0,
       treinamento: parseFloat(estTreinamento.replace(',', '.')) || 0,
-      puk: parseFloat(estPuk.replace(',', '.')) || 0,
     };
 
     // Derivar funil a partir do status (cards visuais) — mantém compatibilidade
