@@ -379,7 +379,9 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
       <div><span class="label">Telefone</span>${escapeHtml(fullTask.phone || 'N/A')}</div>
       <div><span class="label">Propriedade</span>${escapeHtml(fullTask.property || 'N/A')}</div>
       <div><span class="label">Hectares</span>${fullTask.propertyHectares ? `${fullTask.propertyHectares} ha` : 'N/A'}</div>
-      <div><span class="label">Responsável</span>${escapeHtml(fullTask.responsible || 'N/A')}</div>
+      <div><span class="label">Responsável (Vendedor)</span>${escapeHtml(fullTask.responsible || 'N/A')}</div>
+      ${(fullTask as any).contactName ? `<div><span class="label">Contato no Cliente</span>${escapeHtml((fullTask as any).contactName)}</div>` : ''}
+      ${(fullTask as any).contactFunction ? `<div><span class="label">Função do Contato</span>${escapeHtml((fullTask as any).contactFunction)}</div>` : ''}
       <div><span class="label">Filial</span>${escapeHtml(resolveFilialName(fullTask.filial) || 'N/A')}</div>
       ${fullTask.filialAtendida ? `<div><span class="label">Filial Atendida</span>${escapeHtml(resolveFilialName(fullTask.filialAtendida) || fullTask.filialAtendida)}</div>` : ''}
     </div>
