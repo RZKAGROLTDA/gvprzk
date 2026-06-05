@@ -54,7 +54,10 @@ export interface Task {
   opportunityUrgency?: 'baixa' | 'media' | 'alta';
   opportunityImpact?: 'baixa' | 'media' | 'alta';
   opportunityClosing?: 'baixa' | 'media' | 'alta';
-  salesEstimate?: { servicos?: number; pecas?: number; treinamento?: number; puk?: number };
+  salesEstimate?: { servicos?: number; pecas?: number; treinamento?: number };
+  // Visita Técnica — contato atendido no cliente (separado do vendedor `responsible`)
+  contactName?: string;
+  contactFunction?: string;
   nextAction?: string;
   nextActionDate?: Date | string;
   // Security metadata
