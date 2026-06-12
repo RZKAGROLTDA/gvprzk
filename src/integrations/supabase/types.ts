@@ -235,6 +235,10 @@ export type Database = {
           serial_chassis: string | null
           updated_at: string
           validated_by: string | null
+          validation_priority: boolean
+          validation_priority_reason: string | null
+          validation_priority_updated_at: string | null
+          validation_source: string | null
           year: number | null
         }
         Insert: {
@@ -256,6 +260,10 @@ export type Database = {
           serial_chassis?: string | null
           updated_at?: string
           validated_by?: string | null
+          validation_priority?: boolean
+          validation_priority_reason?: string | null
+          validation_priority_updated_at?: string | null
+          validation_source?: string | null
           year?: number | null
         }
         Update: {
@@ -277,6 +285,10 @@ export type Database = {
           serial_chassis?: string | null
           updated_at?: string
           validated_by?: string | null
+          validation_priority?: boolean
+          validation_priority_reason?: string | null
+          validation_priority_updated_at?: string | null
+          validation_source?: string | null
           year?: number | null
         }
         Relationships: [
