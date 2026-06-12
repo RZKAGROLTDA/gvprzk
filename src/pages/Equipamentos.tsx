@@ -409,13 +409,28 @@ const Equipamentos: React.FC = () => {
           {/* Mobile: linhas condensadas */}
           <div className="md:hidden rounded-lg border border-border/60 divide-y divide-border/40">
             {rows.map((eq) => (
-              <div key={eq.id} className="flex items-start gap-2 px-3 py-2">
+              <div
+                key={eq.id}
+                className={`flex items-start gap-2 px-3 py-2 ${
+                  eq.validation_priority
+                    ? 'bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-500'
+                    : ''
+                }`}
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {eq.validation_priority && (
+                      <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                    )}
                     <p className="text-sm font-medium truncate">{eq.model || '—'}</p>
                     <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[9px]">
                       {machineStatusLabel(eq.machine_status)}
                     </Badge>
+                    {eq.validation_priority && (
+                      <Badge variant="warning" className="text-[9px]">
+                        {VALIDATION_PRIORITY_LABEL}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-[11px] text-muted-foreground truncate">
                     {eq.client_code ? `${eq.client_code} · ` : ''}{eq.client_name || '—'}
