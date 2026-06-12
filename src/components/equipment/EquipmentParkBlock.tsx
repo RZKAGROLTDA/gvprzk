@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { EquipmentEditDialog } from './EquipmentEditDialog';
 import {
-  machineStatusLabel, statusBadgeVariant,
+  machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from './equipmentConstants';
 import {
   useEquipmentByClient, type ClientEquipment,
