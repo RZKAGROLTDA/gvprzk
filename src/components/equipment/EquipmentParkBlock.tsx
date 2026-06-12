@@ -62,7 +62,8 @@ export const EquipmentParkBlock: React.FC<Props> = ({
       ['inativa', 'sucateada'].includes(e.machine_status ?? ''),
     ).length;
     const semAtualizacao = equipments.filter((e) => !e.last_validation_at).length;
-    return { total, ativas, paradas, semAtualizacao };
+    const prioridade = equipments.filter((e) => e.validation_priority).length;
+    return { total, ativas, paradas, semAtualizacao, prioridade };
   }, [equipments]);
 
   const selectedEquipments = useMemo(
