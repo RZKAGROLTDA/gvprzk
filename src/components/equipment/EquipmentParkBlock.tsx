@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor,
+  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor, Star,
 } from 'lucide-react';
 import { EquipmentEditDialog } from './EquipmentEditDialog';
 import {
