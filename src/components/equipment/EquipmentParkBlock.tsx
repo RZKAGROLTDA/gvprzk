@@ -108,6 +108,12 @@ export const EquipmentParkBlock: React.FC<Props> = ({
             <Badge variant="outline" className="text-[10px]">
               {summary.semAtualizacao} sem atualização
             </Badge>
+            {summary.prioridade > 0 && (
+              <Badge variant="warning" className="text-[10px] gap-1">
+                <Star className="h-3 w-3 fill-current" />
+                {summary.prioridade} prioridade validação
+              </Badge>
+            )}
             {selectable && selectedIds.length > 0 && (
               <Badge variant="default" className="text-[10px] bg-primary">
                 {selectedIds.length} selecionada{selectedIds.length === 1 ? '' : 's'}
