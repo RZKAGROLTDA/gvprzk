@@ -68,8 +68,9 @@ const Equipamentos: React.FC = () => {
         let q = supabase
           .from('client_equipment' as any)
           .select(
-            'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id',
+            'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at',
           )
+          .order('validation_priority', { ascending: false, nullsFirst: false })
           .order('updated_at', { ascending: false })
           .range(p * EXPORT_PAGE, p * EXPORT_PAGE + EXPORT_PAGE - 1);
 
@@ -78,6 +79,7 @@ const Equipamentos: React.FC = () => {
         if (norm(clientName)) q = q.ilike('client_name', `%${norm(clientName)!}%`);
         if (machineType !== ALL) q = q.eq('machine_type', machineType);
         if (machineStatus !== ALL) q = q.eq('machine_status', machineStatus);
+        if (priorityOnly) q = q.eq('validation_priority', true);
         if (norm(search)) {
           const s = search.replace(/[%,]/g, '');
           q = q.or(
