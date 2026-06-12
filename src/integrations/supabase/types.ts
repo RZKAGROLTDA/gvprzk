@@ -2983,6 +2983,10 @@ export type Database = {
           serial_chassis: string
           updated_at: string
           validated_by: string
+          validation_priority: boolean
+          validation_priority_reason: string
+          validation_priority_updated_at: string
+          validation_source: string
           year: number
         }[]
       }
