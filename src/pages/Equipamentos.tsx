@@ -112,6 +112,12 @@ const Equipamentos: React.FC = () => {
       }
 
       const exportRows = all.map((e) => ({
+        'Prioridade Validação': e.validation_priority ? 'SIM' : 'NÃO',
+        'Origem Prioridade': e.validation_source ?? '',
+        'Motivo Prioridade': e.validation_priority_reason ?? '',
+        'Prioridade Atualizada Em': e.validation_priority_updated_at
+          ? new Date(e.validation_priority_updated_at).toLocaleString('pt-BR')
+          : '',
         'Código Cliente': e.client_code ?? '',
         'Nome Cliente': e.client_name ?? '',
         'Filial': e.filial_id ? filialMap[e.filial_id] ?? '' : '',
