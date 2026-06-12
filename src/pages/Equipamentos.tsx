@@ -26,6 +26,7 @@ const Equipamentos: React.FC = () => {
   const [machineStatus, setMachineStatus] = useState(ALL);
   const [clientCode, setClientCode] = useState('');
   const [clientName, setClientName] = useState('');
+  const [priorityOnly, setPriorityOnly] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -38,8 +39,9 @@ const Equipamentos: React.FC = () => {
       machineStatus: machineStatus === ALL ? null : machineStatus,
       clientCode,
       clientName,
+      validationPriority: priorityOnly ? true : null,
     }),
-    [search, machineType, machineStatus, clientCode, clientName],
+    [search, machineType, machineStatus, clientCode, clientName, priorityOnly],
   );
 
   const { data, isLoading, isFetching } = useEquipmentSearch(filters, page, PAGE_SIZE);
