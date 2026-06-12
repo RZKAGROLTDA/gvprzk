@@ -49,6 +49,21 @@ const Equipamentos: React.FC = () => {
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
 
+  // Contador global de máquinas com prioridade de validação (ignora filtros).
+  const { data: priorityTotal } = useQuery({
+    queryKey: ['client-equipment', 'priority-total'],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('client_equipment' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('validation_priority', true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const resetPage = (fn: (v: string) => void) => (v: string) => { fn(v); setPage(0); };
 
   const handleEdit = (eq: ClientEquipment) => {
