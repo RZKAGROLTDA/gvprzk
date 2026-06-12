@@ -355,10 +355,15 @@ const CompactList: React.FC<CompactListProps> = ({
       <div className={cn('md:hidden overflow-auto divide-y divide-border/40', maxHeightClass)}>
         {equipments.map((eq) => {
           const checked = selectedIds.includes(eq.id);
+          const priority = !!eq.validation_priority;
           return (
             <div
               key={eq.id}
-              className={cn('flex items-start gap-2 px-3 py-2', checked && 'bg-primary/5')}
+              className={cn(
+                'flex items-start gap-2 px-3 py-2',
+                checked && 'bg-primary/5',
+                priority && 'bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-500',
+              )}
             >
               {selectable && (
                 <Checkbox
@@ -370,10 +375,16 @@ const CompactList: React.FC<CompactListProps> = ({
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  {priority && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
                   <p className="text-sm font-medium truncate">{eq.model || '—'}</p>
                   <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[9px]">
                     {machineStatusLabel(eq.machine_status)}
                   </Badge>
+                  {priority && (
+                    <Badge variant="warning" className="text-[9px]">
+                      {VALIDATION_PRIORITY_LABEL}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-[11px] text-muted-foreground font-mono truncate">
                   {eq.serial_chassis || '—'}
