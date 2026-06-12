@@ -101,13 +101,14 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
   const machineStatus = norm(filters.machineStatus);
   const clientCode = norm(filters.clientCode);
   const clientName = norm(filters.clientName);
+  const validationPriority = filters.validationPriority ?? null;
   const isFirstPage = page === 0;
 
   return useQuery({
     queryKey: [
       'client-equipment',
       'search',
-      { search, machineType, machineStatus, clientCode, clientName, page, pageSize },
+      { search, machineType, machineStatus, clientCode, clientName, validationPriority, page, pageSize },
     ],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -115,6 +116,7 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
       let q = supabase
         .from('client_equipment' as any)
         .select(EQUIPMENT_COLUMNS, isFirstPage ? { count: 'exact' } : undefined)
+        .order('validation_priority', { ascending: false, nullsFirst: false })
         .order('updated_at', { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize - 1);
 
@@ -122,6 +124,7 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
       if (clientName) q = q.ilike('client_name', `%${clientName}%`);
       if (machineType) q = q.eq('machine_type', machineType);
       if (machineStatus) q = q.eq('machine_status', machineStatus);
+      if (validationPriority === true) q = q.eq('validation_priority', true);
 
       if (search) {
         // Busca livre: modelo, chassi, nome cliente, código cliente
