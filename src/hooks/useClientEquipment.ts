@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 // =============================================================================
 
 const EQUIPMENT_COLUMNS =
-  'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, created_at, updated_at';
+  'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at, created_at, updated_at';
 
 export interface ClientEquipment {
   id: string;
@@ -31,6 +31,10 @@ export interface ClientEquipment {
   last_validation_at: string | null;
   validated_by: string | null;
   import_batch_id: string | null;
+  validation_priority: boolean | null;
+  validation_source: string | null;
+  validation_priority_reason: string | null;
+  validation_priority_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +45,7 @@ export interface EquipmentFilters {
   machineStatus?: string | null;
   clientCode?: string | null;
   clientName?: string | null;
+  validationPriority?: boolean | null;
 }
 
 const norm = (v?: string | null) => {
@@ -96,13 +101,14 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
   const machineStatus = norm(filters.machineStatus);
   const clientCode = norm(filters.clientCode);
   const clientName = norm(filters.clientName);
+  const validationPriority = filters.validationPriority ?? null;
   const isFirstPage = page === 0;
 
   return useQuery({
     queryKey: [
       'client-equipment',
       'search',
-      { search, machineType, machineStatus, clientCode, clientName, page, pageSize },
+      { search, machineType, machineStatus, clientCode, clientName, validationPriority, page, pageSize },
     ],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -110,6 +116,7 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
       let q = supabase
         .from('client_equipment' as any)
         .select(EQUIPMENT_COLUMNS, isFirstPage ? { count: 'exact' } : undefined)
+        .order('validation_priority', { ascending: false, nullsFirst: false })
         .order('updated_at', { ascending: false })
         .range(page * pageSize, page * pageSize + pageSize - 1);
 
@@ -117,6 +124,7 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
       if (clientName) q = q.ilike('client_name', `%${clientName}%`);
       if (machineType) q = q.eq('machine_type', machineType);
       if (machineStatus) q = q.eq('machine_status', machineStatus);
+      if (validationPriority === true) q = q.eq('validation_priority', true);
 
       if (search) {
         // Busca livre: modelo, chassi, nome cliente, código cliente

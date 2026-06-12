@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,13 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
 import {
   MACHINE_TYPES, MACHINE_STATUSES,
-  machineStatusLabel, statusBadgeVariant,
+  machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from '@/components/equipment/equipmentConstants';
 import { useEquipmentSearch, type ClientEquipment } from '@/hooks/useClientEquipment';
 
@@ -26,6 +27,7 @@ const Equipamentos: React.FC = () => {
   const [machineStatus, setMachineStatus] = useState(ALL);
   const [clientCode, setClientCode] = useState('');
   const [clientName, setClientName] = useState('');
+  const [priorityOnly, setPriorityOnly] = useState(false);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -38,13 +40,29 @@ const Equipamentos: React.FC = () => {
       machineStatus: machineStatus === ALL ? null : machineStatus,
       clientCode,
       clientName,
+      validationPriority: priorityOnly ? true : null,
     }),
-    [search, machineType, machineStatus, clientCode, clientName],
+    [search, machineType, machineStatus, clientCode, clientName, priorityOnly],
   );
 
   const { data, isLoading, isFetching } = useEquipmentSearch(filters, page, PAGE_SIZE);
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
+
+  // Contador global de máquinas com prioridade de validação (ignora filtros).
+  const { data: priorityTotal } = useQuery({
+    queryKey: ['client-equipment', 'priority-total'],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('client_equipment' as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('validation_priority', true);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   const resetPage = (fn: (v: string) => void) => (v: string) => { fn(v); setPage(0); };
 
@@ -66,8 +84,9 @@ const Equipamentos: React.FC = () => {
         let q = supabase
           .from('client_equipment' as any)
           .select(
-            'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id',
+            'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at',
           )
+          .order('validation_priority', { ascending: false, nullsFirst: false })
           .order('updated_at', { ascending: false })
           .range(p * EXPORT_PAGE, p * EXPORT_PAGE + EXPORT_PAGE - 1);
 
@@ -76,6 +95,7 @@ const Equipamentos: React.FC = () => {
         if (norm(clientName)) q = q.ilike('client_name', `%${norm(clientName)!}%`);
         if (machineType !== ALL) q = q.eq('machine_type', machineType);
         if (machineStatus !== ALL) q = q.eq('machine_status', machineStatus);
+        if (priorityOnly) q = q.eq('validation_priority', true);
         if (norm(search)) {
           const s = search.replace(/[%,]/g, '');
           q = q.or(
@@ -108,6 +128,12 @@ const Equipamentos: React.FC = () => {
       }
 
       const exportRows = all.map((e) => ({
+        'Prioridade Validação': e.validation_priority ? 'SIM' : 'NÃO',
+        'Origem Prioridade': e.validation_source ?? '',
+        'Motivo Prioridade': e.validation_priority_reason ?? '',
+        'Prioridade Atualizada Em': e.validation_priority_updated_at
+          ? new Date(e.validation_priority_updated_at).toLocaleString('pt-BR')
+          : '',
         'Código Cliente': e.client_code ?? '',
         'Nome Cliente': e.client_name ?? '',
         'Filial': e.filial_id ? filialMap[e.filial_id] ?? '' : '',
@@ -170,6 +196,39 @@ const Equipamentos: React.FC = () => {
           Exportar Excel
         </Button>
       </div>
+
+      {/* Resumo / Prioridade Validação */}
+      <Card className={priorityOnly ? 'border-amber-500/60' : ''}>
+        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30">
+              <Star className="h-5 w-5 text-amber-600 fill-amber-500" />
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Prioridade Validação
+              </p>
+              <p className="text-xl font-bold">
+                {priorityTotal != null
+                  ? priorityTotal.toLocaleString('pt-BR')
+                  : '—'}{' '}
+                <span className="text-xs font-normal text-muted-foreground">
+                  máquina{priorityTotal === 1 ? '' : 's'} marcada{priorityTotal === 1 ? '' : 's'}
+                </span>
+              </p>
+            </div>
+          </div>
+          <Button
+            variant={priorityOnly ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
+            className={priorityOnly ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
+          >
+            <Star className={`h-4 w-4 mr-1.5 ${priorityOnly ? 'fill-current' : ''}`} />
+            {priorityOnly ? 'Mostrando só prioritárias' : 'Filtrar prioritárias'}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Filtros */}
       <Card>
@@ -263,6 +322,7 @@ const Equipamentos: React.FC = () => {
               <table className="w-full text-xs">
                 <thead className="bg-muted/40 sticky top-0 z-10">
                   <tr className="text-left text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Prio.</th>
                     <th className="px-3 py-2 font-medium">Modelo</th>
                     <th className="px-3 py-2 font-medium">Cliente</th>
                     <th className="px-3 py-2 font-medium">Chassi/Série</th>
@@ -274,8 +334,25 @@ const Equipamentos: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((eq) => (
-                    <tr key={eq.id} className="border-t border-border/40 hover:bg-muted/30">
+                  {rows.map((eq) => {
+                    const priority = !!eq.validation_priority;
+                    return (
+                    <tr
+                      key={eq.id}
+                      className={`border-t border-border/40 hover:bg-muted/30 ${
+                        priority ? 'bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-500' : ''
+                      }`}
+                    >
+                      <td className="px-3 py-1.5">
+                        {priority ? (
+                          <Badge variant="warning" className="text-[9px] gap-1 px-1.5 py-0">
+                            <Star className="h-3 w-3 fill-current" />
+                            {VALIDATION_PRIORITY_LABEL}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-[10px]">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-1.5 font-medium truncate max-w-[200px]">
                         {eq.model || '—'}
                         {eq.machine_type && (
@@ -322,7 +399,8 @@ const Equipamentos: React.FC = () => {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -331,13 +409,28 @@ const Equipamentos: React.FC = () => {
           {/* Mobile: linhas condensadas */}
           <div className="md:hidden rounded-lg border border-border/60 divide-y divide-border/40">
             {rows.map((eq) => (
-              <div key={eq.id} className="flex items-start gap-2 px-3 py-2">
+              <div
+                key={eq.id}
+                className={`flex items-start gap-2 px-3 py-2 ${
+                  eq.validation_priority
+                    ? 'bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-500'
+                    : ''
+                }`}
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {eq.validation_priority && (
+                      <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                    )}
                     <p className="text-sm font-medium truncate">{eq.model || '—'}</p>
                     <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[9px]">
                       {machineStatusLabel(eq.machine_status)}
                     </Badge>
+                    {eq.validation_priority && (
+                      <Badge variant="warning" className="text-[9px]">
+                        {VALIDATION_PRIORITY_LABEL}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-[11px] text-muted-foreground truncate">
                     {eq.client_code ? `${eq.client_code} · ` : ''}{eq.client_name || '—'}

@@ -144,21 +144,34 @@ Deno.serve(async (req) => {
   }
 
   // Normaliza e força import_batch_id em todas as linhas
-  const prepared = rows.map((r) => ({
-    client_code: r.client_code ?? null,
-    client_name: r.client_name,
-    model: r.model ?? null,
-    serial_chassis: r.serial_chassis ?? null,
-    year: r.year ?? null,
-    machine_type: r.machine_type ?? null,
-    product_raw: r.product_raw ?? null,
-    puk_status: r.puk_status ?? null,
-    machine_status: r.machine_status ?? 'ativa',
-    filial_id: r.filial_id ?? null,
-    hours: r.hours ?? null,
-    observation: r.observation ?? null,
-    import_batch_id: batchId,
-  }));
+  const prepared = rows.map((r) => {
+    const isPriority = r.validation_priority === true;
+    return {
+      client_code: r.client_code ?? null,
+      client_name: r.client_name,
+      model: r.model ?? null,
+      serial_chassis: r.serial_chassis ?? null,
+      year: r.year ?? null,
+      machine_type: r.machine_type ?? null,
+      product_raw: r.product_raw ?? null,
+      puk_status: r.puk_status ?? null,
+      machine_status: r.machine_status ?? 'ativa',
+      filial_id: r.filial_id ?? null,
+      hours: r.hours ?? null,
+      observation: r.observation ?? null,
+      import_batch_id: batchId,
+      validation_priority: isPriority,
+      validation_source: isPriority
+        ? (r.validation_source ?? 'TAKE RATE DOC')
+        : (r.validation_source ?? null),
+      validation_priority_reason: isPriority
+        ? (r.validation_priority_reason ?? 'Máquina marcada como VALIDAÇÃO na base importada')
+        : (r.validation_priority_reason ?? null),
+      validation_priority_updated_at: isPriority
+        ? new Date().toISOString()
+        : null,
+    };
+  });
 
   // -----------------------------------------------------------------
   // Insert via service_role (bypass RLS)

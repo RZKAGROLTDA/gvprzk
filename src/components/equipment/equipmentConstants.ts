@@ -52,3 +52,9 @@ export const pukLabel = (s?: string | null) => {
 
 export const machineStatusLabel = (s?: string | null) =>
   MACHINE_STATUSES.find((x) => x.value === s)?.label ?? s ?? '—';
+
+export const VALIDATION_PRIORITY_LABEL = 'Prioridade Validação';
+export const VALIDATION_PRIORITY_DEFAULT_SOURCE = 'TAKE RATE DOC';
+export const VALIDATION_PRIORITY_DEFAULT_REASON =
+  'Máquina marcada como VALIDAÇÃO na base importada';
+
