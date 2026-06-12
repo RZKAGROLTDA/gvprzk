@@ -322,6 +322,7 @@ const Equipamentos: React.FC = () => {
               <table className="w-full text-xs">
                 <thead className="bg-muted/40 sticky top-0 z-10">
                   <tr className="text-left text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Prio.</th>
                     <th className="px-3 py-2 font-medium">Modelo</th>
                     <th className="px-3 py-2 font-medium">Cliente</th>
                     <th className="px-3 py-2 font-medium">Chassi/Série</th>
@@ -333,8 +334,25 @@ const Equipamentos: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((eq) => (
-                    <tr key={eq.id} className="border-t border-border/40 hover:bg-muted/30">
+                  {rows.map((eq) => {
+                    const priority = !!eq.validation_priority;
+                    return (
+                    <tr
+                      key={eq.id}
+                      className={`border-t border-border/40 hover:bg-muted/30 ${
+                        priority ? 'bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-500' : ''
+                      }`}
+                    >
+                      <td className="px-3 py-1.5">
+                        {priority ? (
+                          <Badge variant="warning" className="text-[9px] gap-1 px-1.5 py-0">
+                            <Star className="h-3 w-3 fill-current" />
+                            {VALIDATION_PRIORITY_LABEL}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-[10px]">—</span>
+                        )}
+                      </td>
                       <td className="px-3 py-1.5 font-medium truncate max-w-[200px]">
                         {eq.model || '—'}
                         {eq.machine_type && (
