@@ -399,7 +399,8 @@ const Equipamentos: React.FC = () => {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
