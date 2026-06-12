@@ -45,6 +45,7 @@ export interface EquipmentFilters {
   machineStatus?: string | null;
   clientCode?: string | null;
   clientName?: string | null;
+  validationPriority?: boolean | null;
 }
 
 const norm = (v?: string | null) => {
