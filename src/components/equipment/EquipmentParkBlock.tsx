@@ -280,12 +280,14 @@ const CompactList: React.FC<CompactListProps> = ({
           <tbody>
             {equipments.map((eq) => {
               const checked = selectedIds.includes(eq.id);
+              const priority = !!eq.validation_priority;
               return (
                 <tr
                   key={eq.id}
                   className={cn(
                     'border-t border-border/40 hover:bg-muted/30',
                     checked && 'bg-primary/5',
+                    priority && 'bg-amber-50 dark:bg-amber-950/20 border-l-2 border-l-amber-500',
                   )}
                 >
                   {selectable && (
@@ -297,13 +299,21 @@ const CompactList: React.FC<CompactListProps> = ({
                       />
                     </td>
                   )}
-                  <td className="px-2 py-1.5 font-medium truncate max-w-[180px]">
-                    {eq.model || '—'}
-                    {eq.machine_type && (
-                      <span className="ml-1 text-[10px] text-muted-foreground uppercase">
-                        · {eq.machine_type}
-                      </span>
-                    )}
+                  <td className="px-2 py-1.5 font-medium truncate max-w-[220px]">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {priority && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                      <span className="truncate">{eq.model || '—'}</span>
+                      {eq.machine_type && (
+                        <span className="text-[10px] text-muted-foreground uppercase">
+                          · {eq.machine_type}
+                        </span>
+                      )}
+                      {priority && (
+                        <Badge variant="warning" className="text-[9px] px-1.5 py-0">
+                          {VALIDATION_PRIORITY_LABEL}
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="px-2 py-1.5 font-mono text-[11px] truncate max-w-[140px]">
                     {eq.serial_chassis || '—'}
