@@ -612,6 +612,13 @@ const KpiCard: React.FC<{ label: string; value: string }> = ({ label, value }) =
   </Card>
 );
 
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="min-w-0">
+    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+    <div className="truncate">{children}</div>
+  </div>
+);
+
 const DeleteButton: React.FC<{ disabled?: boolean; onConfirm: () => void }> = ({ disabled, onConfirm }) => {
   const [open, setOpen] = useState(false);
   return (
