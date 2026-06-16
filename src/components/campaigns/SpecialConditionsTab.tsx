@@ -129,6 +129,7 @@ export const SpecialConditionsTab: React.FC = () => {
   const { data: items, isLoading } = useSpecialConditions();
   const del = useDeleteSpecialCondition();
   const approve = useApproveSpecialCondition();
+  const isMobile = useIsMobile();
 
   const role = profile?.role;
   const isManager = role === 'manager' || role === 'admin';
