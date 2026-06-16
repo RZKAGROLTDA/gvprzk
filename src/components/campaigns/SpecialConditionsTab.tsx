@@ -65,6 +65,9 @@ import {
 } from '@/hooks/useSpecialConditions';
 import { cn } from '@/lib/utils';
 import { formatDateDisplay, parseLocalDate } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const PAYMENT_CONDITIONS = [
   'À vista',
