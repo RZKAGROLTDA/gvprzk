@@ -65,6 +65,9 @@ import {
 } from '@/hooks/useSpecialConditions';
 import { cn } from '@/lib/utils';
 import { formatDateDisplay, parseLocalDate } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const PAYMENT_CONDITIONS = [
   'À vista',
@@ -126,6 +129,7 @@ export const SpecialConditionsTab: React.FC = () => {
   const { data: items, isLoading } = useSpecialConditions();
   const del = useDeleteSpecialCondition();
   const approve = useApproveSpecialCondition();
+  const isMobile = useIsMobile();
 
   const role = profile?.role;
   const isManager = role === 'manager' || role === 'admin';
@@ -426,110 +430,166 @@ export const SpecialConditionsTab: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40">
-                  <TableHead>Status</TableHead>
-                  <TableHead className="min-w-[120px]">Código</TableHead>
-                  <TableHead className="min-w-[200px]">Cliente</TableHead>
-                  <TableHead>Filial</TableHead>
-                  <TableHead>Vendedor</TableHead>
-                  <TableHead className="text-right">Valor Venda</TableHead>
-                  <TableHead className="text-right">Desc %</TableHead>
-                  <TableHead className="text-right">Desc Total</TableHead>
-                  <TableHead>NF</TableHead>
-                  <TableHead>Cond. Pgto</TableHead>
-                  <TableHead>Parcelamento</TableHead>
-                  <TableHead>Tipo Pgto</TableHead>
-                  <TableHead>Data Venda</TableHead>
-                  <TableHead>Data Pgto</TableHead>
-                  <TableHead className="text-right w-44">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
-                      Carregando...
-                    </TableCell>
-                  </TableRow>
-                ) : list.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
-                      Nenhuma condição encontrada.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  list.map((e) => (
-                    <TableRow key={e.id}>
-                      <TableCell>{statusBadge(e.status)}</TableCell>
-                      <TableCell className="font-mono text-xs">{e.client_code}</TableCell>
-                      <TableCell className="font-medium">{e.client_name}</TableCell>
-                      <TableCell>{e.filial_name || '—'}</TableCell>
-                      <TableCell>{e.seller_name || sellers.get(e.seller_id) || '—'}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(Number(e.sale_value || 0))}</TableCell>
-                      <TableCell className="text-right">{formatPct(Number(e.discount_percent || 0))}</TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(Number(e.total_discount_value || 0))}
-                      </TableCell>
-                      <TableCell>{e.invoice_number || '—'}</TableCell>
-                      <TableCell>{e.payment_condition || '—'}</TableCell>
-                      <TableCell>{(e as any).installments || '—'}</TableCell>
-                      <TableCell>{paymentTypeBadge((e as any).payment_type)}</TableCell>
-                      <TableCell>{safeDate(e.sale_date)}</TableCell>
-                      <TableCell>{safeDate((e as any).payment_date)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {canApproveRow(e) && (
-                            <>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-green-600 hover:text-green-700"
-                                title="Aprovar"
-                                onClick={() => approve.mutate({ id: e.id, approve: true })}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 hover:text-red-700"
-                                title="Rejeitar"
-                                onClick={() => approve.mutate({ id: e.id, approve: false })}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            title="Editar"
-                            disabled={!canEditRow(e)}
-                            onClick={() => { setEditing(e); setDialogOpen(true); }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <DeleteButton
-                            disabled={!canDeleteRow(e)}
-                            onConfirm={() => del.mutate(e.id)}
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+          {(() => {
+            const renderActions = (e: SpecialCondition) => (
+              <div className="flex justify-end gap-1">
+                {canApproveRow(e) && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-green-600 hover:text-green-700"
+                      title="Aprovar"
+                      onClick={() => approve.mutate({ id: e.id, approve: true })}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-600 hover:text-red-700"
+                      title="Rejeitar"
+                      onClick={() => approve.mutate({ id: e.id, approve: false })}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
-              </TableBody>
-            </Table>
-          </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Editar"
+                  disabled={!canEditRow(e)}
+                  onClick={() => { setEditing(e); setDialogOpen(true); }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <DeleteButton
+                  disabled={!canDeleteRow(e)}
+                  onConfirm={() => del.mutate(e.id)}
+                />
+              </div>
+            );
+
+            if (isMobile) {
+              return (
+                <div className="space-y-2">
+                  {isLoading ? (
+                    <p className="text-center text-sm text-muted-foreground py-6">Carregando...</p>
+                  ) : list.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-6">Nenhuma condição encontrada.</p>
+                  ) : (
+                    list.map((e) => (
+                      <Collapsible key={e.id} className="rounded-md border bg-card">
+                        <CollapsibleTrigger className="w-full flex items-start justify-between gap-2 p-3 text-left">
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {statusBadge(e.status)}
+                              <span className="font-mono text-xs text-muted-foreground">NF {e.invoice_number || '—'}</span>
+                            </div>
+                            <p className="font-medium truncate">{e.client_name}</p>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="font-semibold text-foreground">{formatCurrency(Number(e.sale_value || 0))}</span>
+                              <span>Desc {formatPct(Number(e.discount_percent || 0))}</span>
+                            </div>
+                          </div>
+                          <ChevronDown className="h-4 w-4 mt-1 shrink-0 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="px-3 pb-3 pt-0 border-t grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                            <Field label="Código">{e.client_code}</Field>
+                            <Field label="Filial">{e.filial_name || '—'}</Field>
+                            <Field label="Vendedor">{e.seller_name || sellers.get(e.seller_id) || '—'}</Field>
+                            <Field label="Desc Total">{formatCurrency(Number(e.total_discount_value || 0))}</Field>
+                            <Field label="Cond. Pgto">{e.payment_condition || '—'}</Field>
+                            <Field label="Parcelamento">{(e as any).installments || '—'}</Field>
+                            <Field label="Tipo Pgto">{paymentTypeBadge((e as any).payment_type)}</Field>
+                            <Field label="Data Venda">{safeDate(e.sale_date)}</Field>
+                            <Field label="Data Pgto">{safeDate((e as any).payment_date)}</Field>
+                          </div>
+                          <div className="px-3 pb-3 flex justify-end">{renderActions(e)}</div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))
+                  )}
+                </div>
+              );
+            }
+
+            // Desktop: scroll container + sticky header + frozen left columns
+            // Frozen columns (in order): NF, Cliente, Valor Venda, Desc %
+            // Widths: NF=112, Cliente=240, Valor Venda=128, Desc %=88 → cum offsets: 0, 112, 352, 480
+            const frozenBg = 'bg-background';
+            const stickyHead = 'sticky top-0 z-20 bg-muted/80 backdrop-blur';
+            const cornerHead = 'sticky top-0 z-30 bg-muted/80 backdrop-blur';
+            return (
+              <div className="rounded-md border overflow-x-auto overflow-y-auto max-h-[70vh]">
+                <Table className="min-w-[1400px] border-separate border-spacing-0">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className={cn(cornerHead, 'left-0 w-[112px] min-w-[112px]')}>NF</TableHead>
+                      <TableHead className={cn(cornerHead, 'w-[240px] min-w-[240px]')} style={{ left: 112 }}>Cliente</TableHead>
+                      <TableHead className={cn(cornerHead, 'w-[128px] min-w-[128px] text-right')} style={{ left: 352 }}>Valor Venda</TableHead>
+                      <TableHead className={cn(cornerHead, 'w-[88px] min-w-[88px] text-right shadow-[2px_0_4px_-2px_hsl(var(--border))]')} style={{ left: 480 }}>Desc %</TableHead>
+                      <TableHead className={stickyHead}>Status</TableHead>
+                      <TableHead className={cn(stickyHead, 'min-w-[120px]')}>Código</TableHead>
+                      <TableHead className={stickyHead}>Filial</TableHead>
+                      <TableHead className={stickyHead}>Vendedor</TableHead>
+                      <TableHead className={cn(stickyHead, 'text-right')}>Desc Total</TableHead>
+                      <TableHead className={cn(stickyHead, 'w-[110px]')}>Cond. Pgto</TableHead>
+                      <TableHead className={cn(stickyHead, 'w-[90px]')}>Parcelamento</TableHead>
+                      <TableHead className={cn(stickyHead, 'w-[120px]')}>Tipo Pgto</TableHead>
+                      <TableHead className={cn(stickyHead, 'w-[110px]')}>Data Venda</TableHead>
+                      <TableHead className={cn(stickyHead, 'w-[110px]')}>Data Pgto</TableHead>
+                      <TableHead className={cn(stickyHead, 'text-right w-44')}>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
+                          Carregando...
+                        </TableCell>
+                      </TableRow>
+                    ) : list.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
+                          Nenhuma condição encontrada.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      list.map((e) => (
+                        <TableRow key={e.id} className="group">
+                          <TableCell className={cn('sticky left-0 z-10 border-b', frozenBg, 'group-hover:bg-muted/50')}>{e.invoice_number || '—'}</TableCell>
+                          <TableCell className={cn('sticky z-10 border-b font-medium', frozenBg, 'group-hover:bg-muted/50')} style={{ left: 112 }}>{e.client_name}</TableCell>
+                          <TableCell className={cn('sticky z-10 border-b text-right', frozenBg, 'group-hover:bg-muted/50')} style={{ left: 352 }}>{formatCurrency(Number(e.sale_value || 0))}</TableCell>
+                          <TableCell className={cn('sticky z-10 border-b text-right shadow-[2px_0_4px_-2px_hsl(var(--border))]', frozenBg, 'group-hover:bg-muted/50')} style={{ left: 480 }}>{formatPct(Number(e.discount_percent || 0))}</TableCell>
+                          <TableCell className="border-b">{statusBadge(e.status)}</TableCell>
+                          <TableCell className="border-b font-mono text-xs">{e.client_code}</TableCell>
+                          <TableCell className="border-b">{e.filial_name || '—'}</TableCell>
+                          <TableCell className="border-b">{e.seller_name || sellers.get(e.seller_id) || '—'}</TableCell>
+                          <TableCell className="border-b text-right">{formatCurrency(Number(e.total_discount_value || 0))}</TableCell>
+                          <TableCell className="border-b">{e.payment_condition || '—'}</TableCell>
+                          <TableCell className="border-b">{(e as any).installments || '—'}</TableCell>
+                          <TableCell className="border-b">{paymentTypeBadge((e as any).payment_type)}</TableCell>
+                          <TableCell className="border-b whitespace-nowrap">{safeDate(e.sale_date)}</TableCell>
+                          <TableCell className="border-b whitespace-nowrap">{safeDate((e as any).payment_date)}</TableCell>
+                          <TableCell className="border-b text-right">{renderActions(e)}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
+
 
       <SpecialConditionDialog
         open={dialogOpen}
@@ -550,6 +610,13 @@ const KpiCard: React.FC<{ label: string; value: string }> = ({ label, value }) =
       <p className="text-xl font-bold mt-1">{value}</p>
     </CardContent>
   </Card>
+);
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="min-w-0">
+    <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
+    <div className="truncate">{children}</div>
+  </div>
 );
 
 const DeleteButton: React.FC<{ disabled?: boolean; onConfirm: () => void }> = ({ disabled, onConfirm }) => {
