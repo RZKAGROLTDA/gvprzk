@@ -233,3 +233,48 @@ export const syncTaskEquipment = async (taskId: string, equipmentIds: string[]) 
   const { error: insErr } = await supabase.from('task_equipment' as any).insert(payload);
   if (insErr) throw insErr;
 };
+
+// -----------------------------------------------------------------------------
+// Transferência de máquina (ação operacional, não é status permanente)
+// -----------------------------------------------------------------------------
+export interface EquipmentTransferPayload {
+  id: string;
+  destClientCode: string | null;
+  destClientName: string;
+  transferDate: string; // ISO
+  note?: string | null;
+  current: Pick<ClientEquipment, 'client_code' | 'client_name'>;
+}
+
+export const useTransferEquipment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: EquipmentTransferPayload) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const update: Record<string, any> = {
+        previous_client_code: p.current.client_code,
+        previous_client_name: p.current.client_name,
+        client_code: p.destClientCode,
+        client_name: p.destClientName,
+        transfer_date: p.transferDate,
+        transfer_note: p.note?.trim() || null,
+        transferred_by: auth?.user?.id ?? null,
+        machine_status: 'ativa',
+        updated_at: new Date().toISOString(),
+      };
+      const { data, error } = await supabase
+        .from('client_equipment' as any)
+        .update(update)
+        .eq('id', p.id)
+        .select(EQUIPMENT_COLUMNS)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Não foi possível transferir o equipamento.');
+      return data as unknown as ClientEquipment;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['client-equipment'] });
+    },
+  });
+};
+
