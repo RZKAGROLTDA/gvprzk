@@ -53,7 +53,7 @@ export const EquipmentCard: React.FC<Props> = ({
               <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
                 {machineStatusLabel(eq.machine_status)}
               </Badge>
-              {eq.transfer_date && (
+              {eq.transferred_at && (
                 <Badge variant="outline" className="text-[10px] gap-1">
                   <ArrowRightLeft className="h-3 w-3" /> Transferida
                 </Badge>
@@ -69,7 +69,7 @@ export const EquipmentCard: React.FC<Props> = ({
               <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                 Anterior: {eq.previous_client_code ? `${eq.previous_client_code} · ` : ''}
                 {eq.previous_client_name}
-                {eq.transfer_date && ` · ${new Date(eq.transfer_date).toLocaleDateString('pt-BR')}`}
+                {eq.transferred_at && ` · ${new Date(eq.transferred_at).toLocaleDateString('pt-BR')}`}
               </p>
             )}
           </div>
