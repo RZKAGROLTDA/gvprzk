@@ -12,7 +12,17 @@ import { supabase } from '@/integrations/supabase/client';
 // =============================================================================
 
 const EQUIPMENT_COLUMNS =
-  'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at, previous_client_code, previous_client_name, transfer_date, transfer_note, transferred_by, created_at, updated_at';
+  'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at, previous_client_code, previous_client_name, transferred_at, transfer_observation, transferred_by, transfer_history, created_at, updated_at';
+
+export interface EquipmentTransferHistoryEntry {
+  at: string;
+  by: string | null;
+  from_client_code: string | null;
+  from_client_name: string | null;
+  to_client_code: string | null;
+  to_client_name: string;
+  observation: string | null;
+}
 
 export interface ClientEquipment {
   id: string;
@@ -37,9 +47,10 @@ export interface ClientEquipment {
   validation_priority_updated_at: string | null;
   previous_client_code: string | null;
   previous_client_name: string | null;
-  transfer_date: string | null;
-  transfer_note: string | null;
+  transferred_at: string | null;
+  transfer_observation: string | null;
   transferred_by: string | null;
+  transfer_history: EquipmentTransferHistoryEntry[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -251,14 +262,40 @@ export const useTransferEquipment = () => {
   return useMutation({
     mutationFn: async (p: EquipmentTransferPayload) => {
       const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id ?? null;
+      const at = p.transferDate;
+      const observation = p.note?.trim() || null;
+
+      // Read existing history to append, preserving validação/prioridade intactas.
+      const { data: existing, error: readErr } = await supabase
+        .from('client_equipment' as any)
+        .select('transfer_history')
+        .eq('id', p.id)
+        .maybeSingle();
+      if (readErr) throw readErr;
+
+      const prev = Array.isArray((existing as any)?.transfer_history)
+        ? ((existing as any).transfer_history as EquipmentTransferHistoryEntry[])
+        : [];
+      const entry: EquipmentTransferHistoryEntry = {
+        at,
+        by: userId,
+        from_client_code: p.current.client_code,
+        from_client_name: p.current.client_name,
+        to_client_code: p.destClientCode,
+        to_client_name: p.destClientName,
+        observation,
+      };
+
       const update: Record<string, any> = {
         previous_client_code: p.current.client_code,
         previous_client_name: p.current.client_name,
         client_code: p.destClientCode,
         client_name: p.destClientName,
-        transfer_date: p.transferDate,
-        transfer_note: p.note?.trim() || null,
-        transferred_by: auth?.user?.id ?? null,
+        transferred_at: at,
+        transfer_observation: observation,
+        transferred_by: userId,
+        transfer_history: [...prev, entry],
         machine_status: 'ativa',
         updated_at: new Date().toISOString(),
       };

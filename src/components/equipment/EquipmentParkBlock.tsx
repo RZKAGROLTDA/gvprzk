@@ -63,7 +63,7 @@ export const EquipmentParkBlock: React.FC<Props> = ({
     const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
     const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const transferidas = equipments.filter(
-      (e) => e.transfer_date && new Date(e.transfer_date).getTime() >= since,
+      (e) => e.transferred_at && new Date(e.transferred_at).getTime() >= since,
     ).length;
     return { total, validadas, pendentes, prioridade, pct, transferidas };
   }, [equipments]);
@@ -337,7 +337,7 @@ const CompactList: React.FC<CompactListProps> = ({
                       <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
                         {machineStatusLabel(eq.machine_status)}
                       </Badge>
-                      {eq.transfer_date && (
+                      {eq.transferred_at && (
                         <Badge variant="outline" className="text-[9px] gap-0.5">
                           <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
                         </Badge>
@@ -400,7 +400,7 @@ const CompactList: React.FC<CompactListProps> = ({
                       {VALIDATION_PRIORITY_LABEL}
                     </Badge>
                   )}
-                  {eq.transfer_date && (
+                  {eq.transferred_at && (
                     <Badge variant="outline" className="text-[9px] gap-0.5">
                       <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
                     </Badge>

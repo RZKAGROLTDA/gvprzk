@@ -183,7 +183,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
                 {equipment.machine_type}
               </Badge>
             )}
-            {equipment.transfer_date && (
+            {equipment.transferred_at && (
               <Badge variant="secondary" className="text-[10px] gap-1">
                 <ArrowRightLeft className="h-3 w-3" />
                 Transferida
@@ -310,13 +310,13 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
                 {equipment.previous_client_name}
               </span>
             </p>
-            {equipment.transfer_date && (
+            {equipment.transferred_at && (
               <p>
-                Data: {new Date(equipment.transfer_date).toLocaleDateString('pt-BR')}
+                Data: {new Date(equipment.transferred_at).toLocaleDateString('pt-BR')}
               </p>
             )}
-            {equipment.transfer_note && (
-              <p className="text-muted-foreground">{equipment.transfer_note}</p>
+            {equipment.transfer_observation && (
+              <p className="text-muted-foreground">{equipment.transfer_observation}</p>
             )}
           </div>
         )}

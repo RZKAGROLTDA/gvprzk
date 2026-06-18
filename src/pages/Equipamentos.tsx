@@ -65,7 +65,7 @@ const Equipamentos: React.FC = () => {
         supabase.from(tbl).select('id', { count: 'exact', head: true })
           .eq('validation_priority', true),
         supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('transfer_date', since),
+          .gte('transferred_at', since),
       ]);
       const total = totalRes.count ?? 0;
       const validadas = validadasRes.count ?? 0;
@@ -402,7 +402,7 @@ const Equipamentos: React.FC = () => {
                           <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
                             {machineStatusLabel(eq.machine_status)}
                           </Badge>
-                          {eq.transfer_date && (
+                          {eq.transferred_at && (
                             <Badge variant="outline" className="text-[9px] gap-0.5" title={
                               eq.previous_client_name
                                 ? `Anterior: ${eq.previous_client_name}`
@@ -461,7 +461,7 @@ const Equipamentos: React.FC = () => {
                         {VALIDATION_PRIORITY_LABEL}
                       </Badge>
                     )}
-                    {eq.transfer_date && (
+                    {eq.transferred_at && (
                       <Badge variant="outline" className="text-[9px] gap-0.5">
                         <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
                       </Badge>
