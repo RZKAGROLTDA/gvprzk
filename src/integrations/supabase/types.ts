@@ -230,9 +230,15 @@ export type Database = {
           machine_type: string | null
           model: string | null
           observation: string | null
+          previous_client_code: string | null
+          previous_client_name: string | null
           product_raw: string | null
           puk_status: string | null
           serial_chassis: string | null
+          transfer_history: Json | null
+          transfer_observation: string | null
+          transferred_at: string | null
+          transferred_by: string | null
           updated_at: string
           validated_by: string | null
           validation_priority: boolean
@@ -255,9 +261,15 @@ export type Database = {
           machine_type?: string | null
           model?: string | null
           observation?: string | null
+          previous_client_code?: string | null
+          previous_client_name?: string | null
           product_raw?: string | null
           puk_status?: string | null
           serial_chassis?: string | null
+          transfer_history?: Json | null
+          transfer_observation?: string | null
+          transferred_at?: string | null
+          transferred_by?: string | null
           updated_at?: string
           validated_by?: string | null
           validation_priority?: boolean
@@ -280,9 +292,15 @@ export type Database = {
           machine_type?: string | null
           model?: string | null
           observation?: string | null
+          previous_client_code?: string | null
+          previous_client_name?: string | null
           product_raw?: string | null
           puk_status?: string | null
           serial_chassis?: string | null
+          transfer_history?: Json | null
+          transfer_observation?: string | null
+          transferred_at?: string | null
+          transferred_by?: string | null
           updated_at?: string
           validated_by?: string | null
           validation_priority?: boolean
