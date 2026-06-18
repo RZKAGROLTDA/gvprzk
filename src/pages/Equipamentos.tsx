@@ -461,10 +461,21 @@ const Equipamentos: React.FC = () => {
                         {VALIDATION_PRIORITY_LABEL}
                       </Badge>
                     )}
+                    {eq.transfer_date && (
+                      <Badge variant="outline" className="text-[9px] gap-0.5">
+                        <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-[11px] text-muted-foreground truncate">
                     {eq.client_code ? `${eq.client_code} · ` : ''}{eq.client_name || '—'}
                   </p>
+                  {eq.previous_client_name && (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      Anterior: {eq.previous_client_code ? `${eq.previous_client_code} · ` : ''}
+                      {eq.previous_client_name}
+                    </p>
+                  )}
                   <p className="text-[11px] text-muted-foreground font-mono truncate">
                     {eq.serial_chassis || '—'}
                   </p>
