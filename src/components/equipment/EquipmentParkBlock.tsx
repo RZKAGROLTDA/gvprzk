@@ -102,18 +102,24 @@ export const EquipmentParkBlock: React.FC<Props> = ({
               <span>{summary.total} máquina{summary.total === 1 ? '' : 's'}</span>
             </div>
             <Badge variant="default" className="text-[10px]">
-              {summary.ativas} ativas
-            </Badge>
-            <Badge variant="secondary" className="text-[10px]">
-              {summary.paradas} paradas
+              {summary.validadas} validadas
             </Badge>
             <Badge variant="outline" className="text-[10px]">
-              {summary.semAtualizacao} sem atualização
+              {summary.pendentes} pendentes
+            </Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              {summary.pct}% validado
             </Badge>
             {summary.prioridade > 0 && (
               <Badge variant="warning" className="text-[10px] gap-1">
                 <Star className="h-3 w-3 fill-current" />
-                {summary.prioridade} prioridade validação
+                {summary.prioridade} prioridade
+              </Badge>
+            )}
+            {summary.transferidas > 0 && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <ArrowRightLeft className="h-3 w-3" />
+                {summary.transferidas} transferida{summary.transferidas === 1 ? '' : 's'} (30d)
               </Badge>
             )}
             {selectable && selectedIds.length > 0 && (
