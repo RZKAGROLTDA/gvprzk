@@ -49,20 +49,34 @@ const Equipamentos: React.FC = () => {
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
 
-  // Contador global de máquinas com prioridade de validação (ignora filtros).
-  const { data: priorityTotal } = useQuery({
-    queryKey: ['client-equipment', 'priority-total'],
+  // Resumo global do parque (ignora filtros) — Total, Validadas, Pendentes,
+  // Prioridade, % Validado, Transferidas nos últimos 30 dias.
+  const { data: parkSummary } = useQuery({
+    queryKey: ['client-equipment', 'park-summary-v2'],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('client_equipment' as any)
-        .select('id', { count: 'exact', head: true })
-        .eq('validation_priority', true);
-      if (error) throw error;
-      return count ?? 0;
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const tbl = 'client_equipment' as any;
+      const [totalRes, validadasRes, prioridadeRes, transferidasRes] = await Promise.all([
+        supabase.from(tbl).select('id', { count: 'exact', head: true }),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .not('last_validation_at', 'is', null),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .eq('validation_priority', true),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .gte('transfer_date', since),
+      ]);
+      const total = totalRes.count ?? 0;
+      const validadas = validadasRes.count ?? 0;
+      const pendentes = Math.max(0, total - validadas);
+      const prioridade = prioridadeRes.count ?? 0;
+      const transferidas = transferidasRes.count ?? 0;
+      const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
+      return { total, validadas, pendentes, prioridade, transferidas, pct };
     },
   });
+  const priorityTotal = parkSummary?.prioridade;
 
   const resetPage = (fn: (v: string) => void) => (v: string) => { fn(v); setPage(0); };
 
