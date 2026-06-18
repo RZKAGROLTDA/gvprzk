@@ -35,6 +35,11 @@ export interface ClientEquipment {
   validation_source: string | null;
   validation_priority_reason: string | null;
   validation_priority_updated_at: string | null;
+  previous_client_code: string | null;
+  previous_client_name: string | null;
+  transfer_date: string | null;
+  transfer_note: string | null;
+  transferred_by: string | null;
   created_at: string;
   updated_at: string;
 }
