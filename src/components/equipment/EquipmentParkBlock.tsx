@@ -400,6 +400,11 @@ const CompactList: React.FC<CompactListProps> = ({
                       {VALIDATION_PRIORITY_LABEL}
                     </Badge>
                   )}
+                  {eq.transfer_date && (
+                    <Badge variant="outline" className="text-[9px] gap-0.5">
+                      <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-[11px] text-muted-foreground font-mono truncate">
                   {eq.serial_chassis || '—'}
