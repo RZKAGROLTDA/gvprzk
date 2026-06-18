@@ -176,8 +176,13 @@ export const useUpdateEquipment = () => {
         .update(update)
         .eq('id', id)
         .select(EQUIPMENT_COLUMNS)
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) {
+        throw new Error(
+          'Não foi possível atualizar o equipamento. Verifique se você tem permissão ou recarregue a página.',
+        );
+      }
       return data as unknown as ClientEquipment;
     },
     onSuccess: () => {
