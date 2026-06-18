@@ -57,13 +57,15 @@ export const EquipmentParkBlock: React.FC<Props> = ({
 
   const summary = useMemo(() => {
     const total = equipments.length;
-    const ativas = equipments.filter((e) => e.machine_status === 'ativa').length;
-    const paradas = equipments.filter((e) =>
-      ['inativa', 'sucateada'].includes(e.machine_status ?? ''),
-    ).length;
-    const semAtualizacao = equipments.filter((e) => !e.last_validation_at).length;
+    const validadas = equipments.filter((e) => !!e.last_validation_at).length;
+    const pendentes = total - validadas;
     const prioridade = equipments.filter((e) => e.validation_priority).length;
-    return { total, ativas, paradas, semAtualizacao, prioridade };
+    const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
+    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const transferidas = equipments.filter(
+      (e) => e.transfer_date && new Date(e.transfer_date).getTime() >= since,
+    ).length;
+    return { total, validadas, pendentes, prioridade, pct, transferidas };
   }, [equipments]);
 
   const selectedEquipments = useMemo(
