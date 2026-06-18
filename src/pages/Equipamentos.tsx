@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
@@ -49,20 +49,34 @@ const Equipamentos: React.FC = () => {
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
 
-  // Contador global de máquinas com prioridade de validação (ignora filtros).
-  const { data: priorityTotal } = useQuery({
-    queryKey: ['client-equipment', 'priority-total'],
+  // Resumo global do parque (ignora filtros) — Total, Validadas, Pendentes,
+  // Prioridade, % Validado, Transferidas nos últimos 30 dias.
+  const { data: parkSummary } = useQuery({
+    queryKey: ['client-equipment', 'park-summary-v2'],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('client_equipment' as any)
-        .select('id', { count: 'exact', head: true })
-        .eq('validation_priority', true);
-      if (error) throw error;
-      return count ?? 0;
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const tbl = 'client_equipment' as any;
+      const [totalRes, validadasRes, prioridadeRes, transferidasRes] = await Promise.all([
+        supabase.from(tbl).select('id', { count: 'exact', head: true }),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .not('last_validation_at', 'is', null),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .eq('validation_priority', true),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .gte('transfer_date', since),
+      ]);
+      const total = totalRes.count ?? 0;
+      const validadas = validadasRes.count ?? 0;
+      const pendentes = Math.max(0, total - validadas);
+      const prioridade = prioridadeRes.count ?? 0;
+      const transferidas = transferidasRes.count ?? 0;
+      const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
+      return { total, validadas, pendentes, prioridade, transferidas, pct };
     },
   });
+  const priorityTotal = parkSummary?.prioridade;
 
   const resetPage = (fn: (v: string) => void) => (v: string) => { fn(v); setPage(0); };
 
@@ -197,38 +211,43 @@ const Equipamentos: React.FC = () => {
         </Button>
       </div>
 
-      {/* Resumo / Prioridade Validação */}
-      <Card className={priorityOnly ? 'border-amber-500/60' : ''}>
-        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30">
-              <Star className="h-5 w-5 text-amber-600 fill-amber-500" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Prioridade Validação
-              </p>
-              <p className="text-xl font-bold">
-                {priorityTotal != null
-                  ? priorityTotal.toLocaleString('pt-BR')
-                  : '—'}{' '}
-                <span className="text-xs font-normal text-muted-foreground">
-                  máquina{priorityTotal === 1 ? '' : 's'} marcada{priorityTotal === 1 ? '' : 's'}
-                </span>
-              </p>
-            </div>
-          </div>
-          <Button
-            variant={priorityOnly ? 'default' : 'outline'}
-            size="sm"
+      {/* Resumo do parque */}
+      <Card>
+        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <SummaryCell
+            icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
+            label="Total"
+            value={parkSummary?.total}
+          />
+          <SummaryCell
+            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+            label="Validadas"
+            value={parkSummary?.validadas}
+          />
+          <SummaryCell
+            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+            label="Pendentes"
+            value={parkSummary?.pendentes}
+          />
+          <SummaryCell
+            icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
+            label="Prioridade"
+            value={parkSummary?.prioridade}
+            highlight={priorityOnly}
             onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
-            className={priorityOnly ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
-          >
-            <Star className={`h-4 w-4 mr-1.5 ${priorityOnly ? 'fill-current' : ''}`} />
-            {priorityOnly ? 'Mostrando só prioritárias' : 'Filtrar prioritárias'}
-          </Button>
+          />
+          <SummaryCell
+            label="% Validado"
+            value={parkSummary ? `${parkSummary.pct}%` : undefined}
+          />
+          <SummaryCell
+            icon={<ArrowRightLeft className="h-4 w-4 text-muted-foreground" />}
+            label="Transferidas (30d)"
+            value={parkSummary?.transferidas}
+          />
         </CardContent>
       </Card>
+
 
       {/* Filtros */}
       <Card>
@@ -379,9 +398,20 @@ const Equipamentos: React.FC = () => {
                         {eq.hours != null ? eq.hours : '—'}
                       </td>
                       <td className="px-3 py-1.5">
-                        <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
-                          {machineStatusLabel(eq.machine_status)}
-                        </Badge>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
+                            {machineStatusLabel(eq.machine_status)}
+                          </Badge>
+                          {eq.transfer_date && (
+                            <Badge variant="outline" className="text-[9px] gap-0.5" title={
+                              eq.previous_client_name
+                                ? `Anterior: ${eq.previous_client_name}`
+                                : 'Transferida'
+                            }>
+                              <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-1.5 text-[11px] text-muted-foreground whitespace-nowrap">
                         {eq.last_validation_at
@@ -431,10 +461,21 @@ const Equipamentos: React.FC = () => {
                         {VALIDATION_PRIORITY_LABEL}
                       </Badge>
                     )}
+                    {eq.transfer_date && (
+                      <Badge variant="outline" className="text-[9px] gap-0.5">
+                        <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-[11px] text-muted-foreground truncate">
                     {eq.client_code ? `${eq.client_code} · ` : ''}{eq.client_name || '—'}
                   </p>
+                  {eq.previous_client_name && (
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      Anterior: {eq.previous_client_code ? `${eq.previous_client_code} · ` : ''}
+                      {eq.previous_client_name}
+                    </p>
+                  )}
                   <p className="text-[11px] text-muted-foreground font-mono truncate">
                     {eq.serial_chassis || '—'}
                   </p>
@@ -472,3 +513,38 @@ const Equipamentos: React.FC = () => {
 };
 
 export default Equipamentos;
+
+interface SummaryCellProps {
+  icon?: React.ReactNode;
+  label: string;
+  value?: number | string;
+  highlight?: boolean;
+  onClick?: () => void;
+}
+
+const SummaryCell: React.FC<SummaryCellProps> = ({ icon, label, value, highlight, onClick }) => {
+  const content = (
+    <div
+      className={`rounded-md border px-3 py-2 transition-colors ${
+        highlight ? 'border-amber-500/60 bg-amber-50 dark:bg-amber-950/20' : 'border-border/60'
+      } ${onClick ? 'cursor-pointer hover:bg-muted/40' : ''}`}
+    >
+      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="text-lg font-bold mt-0.5 tabular-nums">
+        {value == null ? '—' : typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
+      </p>
+    </div>
+  );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="text-left">
+        {content}
+      </button>
+    );
+  }
+  return content;
+};
+

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor, Star,
+  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor, Star, ArrowRightLeft,
 } from 'lucide-react';
 import { EquipmentEditDialog } from './EquipmentEditDialog';
 import {
@@ -57,13 +57,15 @@ export const EquipmentParkBlock: React.FC<Props> = ({
 
   const summary = useMemo(() => {
     const total = equipments.length;
-    const ativas = equipments.filter((e) => e.machine_status === 'ativa').length;
-    const paradas = equipments.filter((e) =>
-      ['inativa', 'sucateada'].includes(e.machine_status ?? ''),
-    ).length;
-    const semAtualizacao = equipments.filter((e) => !e.last_validation_at).length;
+    const validadas = equipments.filter((e) => !!e.last_validation_at).length;
+    const pendentes = total - validadas;
     const prioridade = equipments.filter((e) => e.validation_priority).length;
-    return { total, ativas, paradas, semAtualizacao, prioridade };
+    const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
+    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const transferidas = equipments.filter(
+      (e) => e.transfer_date && new Date(e.transfer_date).getTime() >= since,
+    ).length;
+    return { total, validadas, pendentes, prioridade, pct, transferidas };
   }, [equipments]);
 
   const selectedEquipments = useMemo(
@@ -100,18 +102,24 @@ export const EquipmentParkBlock: React.FC<Props> = ({
               <span>{summary.total} máquina{summary.total === 1 ? '' : 's'}</span>
             </div>
             <Badge variant="default" className="text-[10px]">
-              {summary.ativas} ativas
-            </Badge>
-            <Badge variant="secondary" className="text-[10px]">
-              {summary.paradas} paradas
+              {summary.validadas} validadas
             </Badge>
             <Badge variant="outline" className="text-[10px]">
-              {summary.semAtualizacao} sem atualização
+              {summary.pendentes} pendentes
+            </Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              {summary.pct}% validado
             </Badge>
             {summary.prioridade > 0 && (
               <Badge variant="warning" className="text-[10px] gap-1">
                 <Star className="h-3 w-3 fill-current" />
-                {summary.prioridade} prioridade validação
+                {summary.prioridade} prioridade
+              </Badge>
+            )}
+            {summary.transferidas > 0 && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <ArrowRightLeft className="h-3 w-3" />
+                {summary.transferidas} transferida{summary.transferidas === 1 ? '' : 's'} (30d)
               </Badge>
             )}
             {selectable && selectedIds.length > 0 && (
@@ -325,9 +333,16 @@ const CompactList: React.FC<CompactListProps> = ({
                     {eq.year || '—'}
                   </td>
                   <td className="px-2 py-1.5">
-                    <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
-                      {machineStatusLabel(eq.machine_status)}
-                    </Badge>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
+                        {machineStatusLabel(eq.machine_status)}
+                      </Badge>
+                      {eq.transfer_date && (
+                        <Badge variant="outline" className="text-[9px] gap-0.5">
+                          <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="px-2 py-1.5 text-[11px] text-muted-foreground whitespace-nowrap">
                     {eq.last_validation_at
@@ -383,6 +398,11 @@ const CompactList: React.FC<CompactListProps> = ({
                   {priority && (
                     <Badge variant="warning" className="text-[9px]">
                       {VALIDATION_PRIORITY_LABEL}
+                    </Badge>
+                  )}
+                  {eq.transfer_date && (
+                    <Badge variant="outline" className="text-[9px] gap-0.5">
+                      <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
                     </Badge>
                   )}
                 </div>
