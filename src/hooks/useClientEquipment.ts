@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 // =============================================================================
 
 const EQUIPMENT_COLUMNS =
-  'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at, created_at, updated_at';
+  'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at, previous_client_code, previous_client_name, transfer_date, transfer_note, transferred_by, created_at, updated_at';
 
 export interface ClientEquipment {
   id: string;
