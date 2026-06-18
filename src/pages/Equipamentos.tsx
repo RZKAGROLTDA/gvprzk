@@ -211,38 +211,43 @@ const Equipamentos: React.FC = () => {
         </Button>
       </div>
 
-      {/* Resumo / Prioridade Validação */}
-      <Card className={priorityOnly ? 'border-amber-500/60' : ''}>
-        <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30">
-              <Star className="h-5 w-5 text-amber-600 fill-amber-500" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Prioridade Validação
-              </p>
-              <p className="text-xl font-bold">
-                {priorityTotal != null
-                  ? priorityTotal.toLocaleString('pt-BR')
-                  : '—'}{' '}
-                <span className="text-xs font-normal text-muted-foreground">
-                  máquina{priorityTotal === 1 ? '' : 's'} marcada{priorityTotal === 1 ? '' : 's'}
-                </span>
-              </p>
-            </div>
-          </div>
-          <Button
-            variant={priorityOnly ? 'default' : 'outline'}
-            size="sm"
+      {/* Resumo do parque */}
+      <Card>
+        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <SummaryCell
+            icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
+            label="Total"
+            value={parkSummary?.total}
+          />
+          <SummaryCell
+            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+            label="Validadas"
+            value={parkSummary?.validadas}
+          />
+          <SummaryCell
+            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+            label="Pendentes"
+            value={parkSummary?.pendentes}
+          />
+          <SummaryCell
+            icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
+            label="Prioridade"
+            value={parkSummary?.prioridade}
+            highlight={priorityOnly}
             onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
-            className={priorityOnly ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
-          >
-            <Star className={`h-4 w-4 mr-1.5 ${priorityOnly ? 'fill-current' : ''}`} />
-            {priorityOnly ? 'Mostrando só prioritárias' : 'Filtrar prioritárias'}
-          </Button>
+          />
+          <SummaryCell
+            label="% Validado"
+            value={parkSummary ? `${parkSummary.pct}%` : undefined}
+          />
+          <SummaryCell
+            icon={<ArrowRightLeft className="h-4 w-4 text-muted-foreground" />}
+            label="Transferidas (30d)"
+            value={parkSummary?.transferidas}
+          />
         </CardContent>
       </Card>
+
 
       {/* Filtros */}
       <Card>
