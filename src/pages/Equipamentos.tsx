@@ -398,9 +398,20 @@ const Equipamentos: React.FC = () => {
                         {eq.hours != null ? eq.hours : '—'}
                       </td>
                       <td className="px-3 py-1.5">
-                        <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
-                          {machineStatusLabel(eq.machine_status)}
-                        </Badge>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <Badge variant={statusBadgeVariant(eq.machine_status)} className="text-[10px]">
+                            {machineStatusLabel(eq.machine_status)}
+                          </Badge>
+                          {eq.transfer_date && (
+                            <Badge variant="outline" className="text-[9px] gap-0.5" title={
+                              eq.previous_client_name
+                                ? `Anterior: ${eq.previous_client_name}`
+                                : 'Transferida'
+                            }>
+                              <ArrowRightLeft className="h-2.5 w-2.5" /> transf.
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-1.5 text-[11px] text-muted-foreground whitespace-nowrap">
                         {eq.last_validation_at
