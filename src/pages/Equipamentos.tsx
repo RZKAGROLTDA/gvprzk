@@ -491,3 +491,38 @@ const Equipamentos: React.FC = () => {
 };
 
 export default Equipamentos;
+
+interface SummaryCellProps {
+  icon?: React.ReactNode;
+  label: string;
+  value?: number | string;
+  highlight?: boolean;
+  onClick?: () => void;
+}
+
+const SummaryCell: React.FC<SummaryCellProps> = ({ icon, label, value, highlight, onClick }) => {
+  const content = (
+    <div
+      className={`rounded-md border px-3 py-2 transition-colors ${
+        highlight ? 'border-amber-500/60 bg-amber-50 dark:bg-amber-950/20' : 'border-border/60'
+      } ${onClick ? 'cursor-pointer hover:bg-muted/40' : ''}`}
+    >
+      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="text-lg font-bold mt-0.5 tabular-nums">
+        {value == null ? '—' : typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
+      </p>
+    </div>
+  );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="text-left">
+        {content}
+      </button>
+    );
+  }
+  return content;
+};
+
