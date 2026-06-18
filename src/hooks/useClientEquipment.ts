@@ -262,14 +262,40 @@ export const useTransferEquipment = () => {
   return useMutation({
     mutationFn: async (p: EquipmentTransferPayload) => {
       const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id ?? null;
+      const at = p.transferDate;
+      const observation = p.note?.trim() || null;
+
+      // Read existing history to append, preserving validação/prioridade intactas.
+      const { data: existing, error: readErr } = await supabase
+        .from('client_equipment' as any)
+        .select('transfer_history')
+        .eq('id', p.id)
+        .maybeSingle();
+      if (readErr) throw readErr;
+
+      const prev = Array.isArray((existing as any)?.transfer_history)
+        ? ((existing as any).transfer_history as EquipmentTransferHistoryEntry[])
+        : [];
+      const entry: EquipmentTransferHistoryEntry = {
+        at,
+        by: userId,
+        from_client_code: p.current.client_code,
+        from_client_name: p.current.client_name,
+        to_client_code: p.destClientCode,
+        to_client_name: p.destClientName,
+        observation,
+      };
+
       const update: Record<string, any> = {
         previous_client_code: p.current.client_code,
         previous_client_name: p.current.client_name,
         client_code: p.destClientCode,
         client_name: p.destClientName,
-        transfer_date: p.transferDate,
-        transfer_note: p.note?.trim() || null,
-        transferred_by: auth?.user?.id ?? null,
+        transferred_at: at,
+        transfer_observation: observation,
+        transferred_by: userId,
+        transfer_history: [...prev, entry],
         machine_status: 'ativa',
         updated_at: new Date().toISOString(),
       };
