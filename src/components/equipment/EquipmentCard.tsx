@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Pencil, Tractor } from 'lucide-react';
+import { Pencil, Tractor, ArrowRightLeft } from 'lucide-react';
 import {
   machineStatusLabel,
   statusBadgeVariant,
