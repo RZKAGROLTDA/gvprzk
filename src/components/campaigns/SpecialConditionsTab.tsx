@@ -520,70 +520,103 @@ export const SpecialConditionsTab: React.FC = () => {
               );
             }
 
-            // Desktop: scroll container + sticky header + frozen left columns
-            // Frozen columns (in order): NF, Cliente, Valor Venda, Desc %
-            // Widths: NF=112, Cliente=240, Valor Venda=128, Desc %=88 → cum offsets: 0, 112, 352, 480
-            const frozenBg = 'bg-background';
-            const stickyHead = 'sticky top-0 z-20 bg-muted/80 backdrop-blur';
-            const cornerHead = 'sticky top-0 z-30 bg-muted/80 backdrop-blur';
+            // Desktop: lista compacta com linha expansível (sem scroll horizontal)
+            // Grid columns: chevron | Cliente | NF | Valor Venda | Desc % | Desc Total | Tipo Pgto | Status | Ações
+            const gridCols =
+              'grid-cols-[28px_minmax(0,2.2fr)_110px_130px_80px_130px_140px_110px_180px]';
+            if (isLoading) {
+              return <p className="text-center text-sm text-muted-foreground py-8">Carregando...</p>;
+            }
+            if (list.length === 0) {
+              return <p className="text-center text-sm text-muted-foreground py-8">Nenhuma condição encontrada.</p>;
+            }
             return (
-              <div className="rounded-md border overflow-x-auto overflow-y-auto max-h-[70vh]">
-                <Table className="min-w-[1400px] border-separate border-spacing-0">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className={cn(cornerHead, 'left-0 w-[112px] min-w-[112px]')}>NF</TableHead>
-                      <TableHead className={cn(cornerHead, 'w-[240px] min-w-[240px]')} style={{ left: 112 }}>Cliente</TableHead>
-                      <TableHead className={cn(cornerHead, 'w-[128px] min-w-[128px] text-right')} style={{ left: 352 }}>Valor Venda</TableHead>
-                      <TableHead className={cn(cornerHead, 'w-[88px] min-w-[88px] text-right shadow-[2px_0_4px_-2px_hsl(var(--border))]')} style={{ left: 480 }}>Desc %</TableHead>
-                      <TableHead className={stickyHead}>Status</TableHead>
-                      <TableHead className={cn(stickyHead, 'min-w-[120px]')}>Código</TableHead>
-                      <TableHead className={stickyHead}>Filial</TableHead>
-                      <TableHead className={stickyHead}>Vendedor</TableHead>
-                      <TableHead className={cn(stickyHead, 'text-right')}>Desc Total</TableHead>
-                      <TableHead className={cn(stickyHead, 'w-[110px]')}>Cond. Pgto</TableHead>
-                      <TableHead className={cn(stickyHead, 'w-[90px]')}>Parcelamento</TableHead>
-                      <TableHead className={cn(stickyHead, 'w-[120px]')}>Tipo Pgto</TableHead>
-                      <TableHead className={cn(stickyHead, 'w-[110px]')}>Data Venda</TableHead>
-                      <TableHead className={cn(stickyHead, 'w-[110px]')}>Data Pgto</TableHead>
-                      <TableHead className={cn(stickyHead, 'text-right w-44')}>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
-                          Carregando...
-                        </TableCell>
-                      </TableRow>
-                    ) : list.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={15} className="text-center text-sm text-muted-foreground py-6">
-                          Nenhuma condição encontrada.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      list.map((e) => (
-                        <TableRow key={e.id} className="group">
-                          <TableCell className={cn('sticky left-0 z-10 border-b', frozenBg, 'group-hover:bg-muted/50')}>{e.invoice_number || '—'}</TableCell>
-                          <TableCell className={cn('sticky z-10 border-b font-medium', frozenBg, 'group-hover:bg-muted/50')} style={{ left: 112 }}>{e.client_name}</TableCell>
-                          <TableCell className={cn('sticky z-10 border-b text-right', frozenBg, 'group-hover:bg-muted/50')} style={{ left: 352 }}>{formatCurrency(Number(e.sale_value || 0))}</TableCell>
-                          <TableCell className={cn('sticky z-10 border-b text-right shadow-[2px_0_4px_-2px_hsl(var(--border))]', frozenBg, 'group-hover:bg-muted/50')} style={{ left: 480 }}>{formatPct(Number(e.discount_percent || 0))}</TableCell>
-                          <TableCell className="border-b">{statusBadge(e.status)}</TableCell>
-                          <TableCell className="border-b font-mono text-xs">{e.client_code}</TableCell>
-                          <TableCell className="border-b">{e.filial_name || '—'}</TableCell>
-                          <TableCell className="border-b">{e.seller_name || sellers.get(e.seller_id) || '—'}</TableCell>
-                          <TableCell className="border-b text-right">{formatCurrency(Number(e.total_discount_value || 0))}</TableCell>
-                          <TableCell className="border-b">{e.payment_condition || '—'}</TableCell>
-                          <TableCell className="border-b">{(e as any).installments || '—'}</TableCell>
-                          <TableCell className="border-b">{paymentTypeBadge((e as any).payment_type)}</TableCell>
-                          <TableCell className="border-b whitespace-nowrap">{safeDate(e.sale_date)}</TableCell>
-                          <TableCell className="border-b whitespace-nowrap">{safeDate((e as any).payment_date)}</TableCell>
-                          <TableCell className="border-b text-right">{renderActions(e)}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+              <div className="rounded-md border overflow-hidden">
+                <div className={cn('hidden md:grid', gridCols, 'gap-2 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground bg-muted/60 border-b')}>
+                  <span />
+                  <span>Cliente</span>
+                  <span>NF</span>
+                  <span className="text-right">Valor Venda</span>
+                  <span className="text-right">Desc %</span>
+                  <span className="text-right">Desc Total</span>
+                  <span>Tipo Pgto</span>
+                  <span>Status</span>
+                  <span className="text-right">Ações</span>
+                </div>
+                <ul className="divide-y">
+                  {list.map((e) => {
+                    const pd =
+                      e.sale_date && (e as any).payment_date
+                        ? (() => {
+                            const s = parseLocalDate(e.sale_date!);
+                            const p = parseLocalDate((e as any).payment_date);
+                            if (!s || !p) return null;
+                            return Math.round((p.getTime() - s.getTime()) / 86400000);
+                          })()
+                        : null;
+                    return (
+                      <li key={e.id}>
+                        <Collapsible>
+                          <div className={cn('grid', gridCols, 'gap-2 px-3 py-2 items-center hover:bg-muted/40 transition-colors')}>
+                            <CollapsibleTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label="Expandir detalhes"
+                                className="flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:bg-muted [&[data-state=open]>svg]:rotate-180"
+                              >
+                                <ChevronDown className="h-4 w-4 transition-transform" />
+                              </button>
+                            </CollapsibleTrigger>
+                            <CollapsibleTrigger asChild>
+                              <button
+                                type="button"
+                                className="min-w-0 text-left font-medium truncate hover:underline"
+                                title={e.client_name}
+                              >
+                                {e.client_name}
+                                <span className="ml-2 text-xs font-mono text-muted-foreground">{e.client_code}</span>
+                              </button>
+                            </CollapsibleTrigger>
+                            <span className="font-mono text-xs truncate">{e.invoice_number || '—'}</span>
+                            <span className="text-right tabular-nums">{formatCurrency(Number(e.sale_value || 0))}</span>
+                            <span className="text-right tabular-nums">{formatPct(Number(e.discount_percent || 0))}</span>
+                            <span className="text-right tabular-nums">{formatCurrency(Number(e.total_discount_value || 0))}</span>
+                            <span className="truncate">{paymentTypeBadge((e as any).payment_type)}</span>
+                            <span>{statusBadge(e.status)}</span>
+                            <div className="flex justify-end">{renderActions(e)}</div>
+                          </div>
+                          <CollapsibleContent>
+                            <div className="px-3 pb-4 pt-1 bg-muted/20 border-t">
+                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 text-sm">
+                                <Field label="Data Venda">{safeDate(e.sale_date)}</Field>
+                                <Field label="Data Pagamento">{safeDate((e as any).payment_date)}</Field>
+                                <Field label="Cond. Pgto (dias)">{pd !== null ? `${pd} dias` : (e.payment_condition || '—')}</Field>
+                                <Field label="Parcelamento">{(e as any).installments || '—'}</Field>
+                                <Field label="Vendedor">{e.seller_name || sellers.get(e.seller_id) || '—'}</Field>
+                                <Field label="Filial">{e.filial_name || '—'}</Field>
+                                {e.approved_by && (
+                                  <Field label="Aprovação">
+                                    {sellers.get(e.approved_by) || '—'}
+                                    {e.approved_at && (
+                                      <span className="block text-xs text-muted-foreground">
+                                        {new Date(e.approved_at).toLocaleString('pt-BR')}
+                                      </span>
+                                    )}
+                                  </Field>
+                                )}
+                                <div className="col-span-2 lg:col-span-4">
+                                  <Field label="Observação">
+                                    <span className="whitespace-pre-wrap break-words">{e.observation || '—'}</span>
+                                  </Field>
+                                </div>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             );
           })()}
