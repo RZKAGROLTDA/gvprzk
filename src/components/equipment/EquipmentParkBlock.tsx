@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor, Star, ArrowRightLeft,
+  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor, Star, ArrowRightLeft, Plus,
 } from 'lucide-react';
 import { EquipmentEditDialog } from './EquipmentEditDialog';
+import { EquipmentCreateDialog } from './EquipmentCreateDialog';
 import {
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from './equipmentConstants';
@@ -40,6 +41,7 @@ export const EquipmentParkBlock: React.FC<Props> = ({
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const { data: equipments = [], isLoading, refetch, isFetching } =
@@ -128,7 +130,15 @@ export const EquipmentParkBlock: React.FC<Props> = ({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button" size="sm" variant="outline"
+              onClick={() => setCreateOpen(true)}
+              disabled={!hasClient}
+              title="Adicionar uma máquina que não consta na lista"
+            >
+              <Plus className="h-4 w-4 mr-1.5" /> Adicionar nova máquina
+            </Button>
             <Button
               type="button" size="sm" variant="ghost"
               onClick={() => refetch()} disabled={!hasClient || isFetching}
@@ -241,6 +251,19 @@ export const EquipmentParkBlock: React.FC<Props> = ({
         onOpenChange={(o) => {
           setDialogOpen(o);
           if (!o) setEditing(null);
+        }}
+      />
+
+      <EquipmentCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        clientCode={clientCode}
+        clientName={clientName}
+        onCreated={(eq) => {
+          refetch();
+          if (selectable && onSelectionChange) {
+            onSelectionChange(Array.from(new Set([...selectedIds, eq.id])));
+          }
         }}
       />
     </div>

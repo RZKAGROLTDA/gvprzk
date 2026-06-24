@@ -227,6 +227,60 @@ export const useTaskEquipmentIds = (taskId?: string) => {
   });
 };
 
+// -----------------------------------------------------------------------------
+// Criação manual de equipamento (durante visita: máquina não estava na lista)
+// -----------------------------------------------------------------------------
+export interface EquipmentCreatePayload {
+  client_code: string | null;
+  client_name: string;
+  machine_type?: string | null;
+  model?: string | null;
+  serial_chassis?: string | null;
+  year?: number | null;
+  hours?: number | null;
+  machine_status?: string;
+  observation?: string | null;
+}
+
+export const useCreateEquipment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: EquipmentCreatePayload) => {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id ?? null;
+      if (!userId) throw new Error('Usuário não autenticado.');
+      if (!p.client_name?.trim()) throw new Error('Cliente é obrigatório.');
+
+      const insertPayload: Record<string, any> = {
+        client_code: p.client_code?.trim() || null,
+        client_name: p.client_name.trim(),
+        machine_type: p.machine_type?.trim() || null,
+        model: p.model?.trim() || null,
+        serial_chassis: p.serial_chassis?.trim() || null,
+        year: p.year ?? null,
+        hours: p.hours ?? null,
+        machine_status: p.machine_status || 'ativa',
+        observation: p.observation?.trim() || null,
+        validation_priority: false,
+        validation_source: 'manual_visita',
+        created_by: userId,
+      };
+
+      const { data, error } = await supabase
+        .from('client_equipment' as any)
+        .insert(insertPayload)
+        .select(EQUIPMENT_COLUMNS)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('Não foi possível cadastrar o equipamento.');
+      return data as unknown as ClientEquipment;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['client-equipment'] });
+    },
+  });
+};
+
 export const syncTaskEquipment = async (taskId: string, equipmentIds: string[]) => {
   // Estratégia simples: apaga vínculos antigos da task e reinsere os atuais.
   const { error: delErr } = await supabase
