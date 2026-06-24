@@ -278,6 +278,28 @@ export const useCreateEquipment = () => {
         created_by: userId,
       };
 
+      // Validação prévia: evita duplicidade de cliente + chassi/série,
+      // respeitando a normalização de zeros à esquerda do client_code.
+      if (insertPayload.client_code && insertPayload.serial_chassis) {
+        const { data: existing, error: searchErr } = await (supabase as any).rpc(
+          'search_client_equipment',
+          {
+            p_client_code: insertPayload.client_code,
+            p_client_name: null,
+            p_serial: null,
+          },
+        );
+        if (searchErr) throw searchErr;
+        const pCode = normalizeClientCode(insertPayload.client_code);
+        const pSerial = insertPayload.serial_chassis.toLowerCase();
+        const duplicate = (existing as unknown as ClientEquipment[] | null)?.find((e) => {
+          const eCode = normalizeClientCode(e.client_code);
+          const eSerial = e.serial_chassis?.trim().toLowerCase() || '';
+          return eCode === pCode && eSerial && eSerial === pSerial;
+        });
+        if (duplicate) throw new DuplicateEquipmentError();
+      }
+
       const { data, error } = await supabase
         .from('client_equipment' as any)
         .insert(insertPayload)
