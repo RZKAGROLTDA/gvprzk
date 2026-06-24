@@ -12,7 +12,7 @@ import {
 import { Loader2, Plus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { MACHINE_STATUSES, MACHINE_TYPES } from './equipmentConstants';
-import { useCreateEquipment, type ClientEquipment } from '@/hooks/useClientEquipment';
+import { useCreateEquipment, type ClientEquipment, DuplicateEquipmentError } from '@/hooks/useClientEquipment';
 
 interface Props {
   open: boolean;
