@@ -130,7 +130,15 @@ export const EquipmentParkBlock: React.FC<Props> = ({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button" size="sm" variant="outline"
+              onClick={() => setCreateOpen(true)}
+              disabled={!hasClient}
+              title="Adicionar uma máquina que não consta na lista"
+            >
+              <Plus className="h-4 w-4 mr-1.5" /> Adicionar nova máquina
+            </Button>
             <Button
               type="button" size="sm" variant="ghost"
               onClick={() => refetch()} disabled={!hasClient || isFetching}
