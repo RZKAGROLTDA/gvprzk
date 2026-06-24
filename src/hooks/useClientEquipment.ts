@@ -242,6 +242,18 @@ export interface EquipmentCreatePayload {
   observation?: string | null;
 }
 
+export class DuplicateEquipmentError extends Error {
+  constructor(message = 'Já existe uma máquina cadastrada com este chassi/série.') {
+    super(message);
+    this.name = 'DuplicateEquipmentError';
+  }
+}
+
+const normalizeClientCode = (code?: string | null) => {
+  const t = code?.trim() || '';
+  return t.replace(/^0+/, '');
+};
+
 export const useCreateEquipment = () => {
   const qc = useQueryClient();
   return useMutation({
