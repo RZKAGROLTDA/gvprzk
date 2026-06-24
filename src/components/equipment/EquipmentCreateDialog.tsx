@@ -74,6 +74,26 @@ export const EquipmentCreateDialog: React.FC<Props> = ({
       onOpenChange(false);
     } catch (err: any) {
       console.error(err);
+      if (err instanceof DuplicateEquipmentError || err?.name === 'DuplicateEquipmentError') {
+        toast({
+          title: 'Máquina já cadastrada',
+          description: err.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+      const pgMessage = err?.message || err?.error?.message || '';
+      const isUniqueViolation =
+        typeof pgMessage === 'string' &&
+        pgMessage.toLowerCase().includes('duplicate key value violates unique constraint');
+      if (isUniqueViolation) {
+        toast({
+          title: 'Máquina já cadastrada',
+          description: 'Já existe uma máquina cadastrada com este chassi/série.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({
         title: 'Erro ao adicionar máquina',
         description: err?.message ?? 'Tente novamente.',
