@@ -253,6 +253,19 @@ export const EquipmentParkBlock: React.FC<Props> = ({
           if (!o) setEditing(null);
         }}
       />
+
+      <EquipmentCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        clientCode={clientCode}
+        clientName={clientName}
+        onCreated={(eq) => {
+          refetch();
+          if (selectable && onSelectionChange) {
+            onSelectionChange(Array.from(new Set([...selectedIds, eq.id])));
+          }
+        }}
+      />
     </div>
   );
 };
