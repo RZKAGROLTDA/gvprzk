@@ -41,6 +41,7 @@ export const EquipmentParkBlock: React.FC<Props> = ({
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const { data: equipments = [], isLoading, refetch, isFetching } =
