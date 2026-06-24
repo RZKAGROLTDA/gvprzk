@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor, Star, ArrowRightLeft,
+  Loader2, Search, RefreshCw, ChevronDown, ChevronUp, Pencil, Tractor, Star, ArrowRightLeft, Plus,
 } from 'lucide-react';
 import { EquipmentEditDialog } from './EquipmentEditDialog';
+import { EquipmentCreateDialog } from './EquipmentCreateDialog';
 import {
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from './equipmentConstants';
