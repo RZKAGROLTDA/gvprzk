@@ -82,13 +82,41 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filtered, setFiltered] = useState<Array<{ code: string; name: string }>>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return [];
-    return CLIENT_CODES.filter(
-      (c) => c.code.includes(q) || c.name.toLowerCase().includes(q),
-    ).slice(0, 20);
+  useEffect(() => {
+    const q = search.trim();
+    if (!q) { setFiltered([]); return; }
+    let cancelled = false;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        // 1) RPC dinâmica (fonte real: client_equipment)
+        const { data, error } = await supabase.rpc('search_clients', {
+          p_query: q,
+          p_limit: 20,
+        });
+        if (cancelled) return;
+        let results: Array<{ code: string; name: string }> = [];
+        if (!error && Array.isArray(data) && data.length > 0) {
+          results = data.map((r: any) => ({
+            code: String(r.client_code ?? '').trim(),
+            name: String(r.client_name ?? '').trim(),
+          }));
+        } else {
+          // 2) Fallback estático
+          const ql = q.toLowerCase();
+          results = CLIENT_CODES
+            .filter((c) => c.code.includes(q) || c.name.toLowerCase().includes(ql))
+            .slice(0, 20);
+        }
+        setFiltered(results);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [search]);
 
   const handleSelect = async (c: { code: string; name: string }) => {
