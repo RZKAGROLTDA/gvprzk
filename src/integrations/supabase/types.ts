@@ -3020,6 +3020,13 @@ export type Database = {
           year: number
         }[]
       }
+      search_clients: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          client_code: string
+          client_name: string
+        }[]
+      }
       search_clients_for_campaigns: {
         Args: { p_query: string }
         Returns: {
