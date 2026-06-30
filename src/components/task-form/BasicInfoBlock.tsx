@@ -1,12 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { CLIENT_CODES } from '@/lib/clientCodes';
 import { ClientInfoSection } from '@/components/task-form/sections';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * BasicInfoBlock — bloco padronizado de Informações Básicas do cliente.
