@@ -148,8 +148,13 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
               autoComplete="off"
             />
           </div>
-          {showSuggestions && filtered.length > 0 && (
+          {showSuggestions && (loading || filtered.length > 0) && (
             <div className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-lg">
+              {loading && (
+                <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Buscando...
+                </div>
+              )}
               {filtered.map((c) => (
                 <button
                   type="button"
