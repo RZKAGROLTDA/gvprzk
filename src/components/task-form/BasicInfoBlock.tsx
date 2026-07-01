@@ -92,11 +92,14 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
     setLoading(true);
     const t = setTimeout(async () => {
       try {
-        // 1) RPC dinâmica (fonte real: client_equipment)
+        // [DIAG-TEMP] termo digitado
+        console.log('[BasicInfoBlock][search] termo:', q);
         const { data, error } = await supabase.rpc('search_clients', {
           p_query: q,
           p_limit: 20,
         });
+        // [DIAG-TEMP] resposta bruta da RPC
+        console.log('[BasicInfoBlock][search] RPC search_clients =>', { error, data });
         if (cancelled) return;
         let results: Array<{ code: string; name: string }> = [];
         if (!error && Array.isArray(data) && data.length > 0) {
@@ -105,12 +108,15 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
             name: String(r.client_name ?? '').trim(),
           }));
         } else {
-          // 2) Fallback estático
           const ql = q.toLowerCase();
           results = CLIENT_CODES
             .filter((c) => c.code.includes(q) || c.name.toLowerCase().includes(ql))
             .slice(0, 20);
+          // [DIAG-TEMP] fallback ativado
+          console.log('[BasicInfoBlock][search] fallback CLIENT_CODES hits:', results.length);
         }
+        // [DIAG-TEMP] lista mapeada para o autocomplete
+        console.log('[BasicInfoBlock][search] filtered (autocomplete):', results);
         setFiltered(results);
       } finally {
         if (!cancelled) setLoading(false);
@@ -120,11 +126,17 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
   }, [search]);
 
   const handleSelect = async (c: { code: string; name: string }) => {
+    // [DIAG-TEMP] item selecionado
+    console.log('[BasicInfoBlock][select] item selecionado:', c);
     onClientCodeChange(c.code);
     onClientNameChange(c.name);
     setSearch(`${c.code} - ${c.name}`);
     setShowSuggestions(false);
-    if (onClientSelected) await onClientSelected(c.code, c.name);
+    if (onClientSelected) {
+      // [DIAG-TEMP] chamada onClientSelected
+      console.log('[BasicInfoBlock][select] onClientSelected(', c.code, ',', c.name, ')');
+      await onClientSelected(c.code, c.name);
+    }
   };
 
   const today = new Date().toLocaleDateString('pt-BR');
