@@ -57,6 +57,13 @@ export const EquipmentParkBlock: React.FC<Props> = ({
     );
   }, [equipments, filter]);
 
+  // [DIAG-TEMP]
+  React.useEffect(() => {
+    console.log('[EquipmentPark] clientCode:', clientCode, '| clientName:', clientName);
+    console.log('[EquipmentPark] qtd recebidas do hook:', equipments.length);
+    console.log('[EquipmentPark] qtd exibidas (após filtro):', filtered.length);
+  }, [clientCode, clientName, equipments, filtered]);
+
   const summary = useMemo(() => {
     const total = equipments.length;
     const validadas = equipments.filter((e) => !!e.last_validation_at).length;

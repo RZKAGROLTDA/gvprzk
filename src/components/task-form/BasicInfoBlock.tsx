@@ -92,14 +92,14 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
     setLoading(true);
     const t = setTimeout(async () => {
       try {
-        // [DIAG-TEMP] termo digitado
-        console.log('[BasicInfoBlock][search] termo:', q);
+        // [DIAG-TEMP]
+        console.log('[BasicInfoBlock] termo digitado:', q);
         const { data, error } = await supabase.rpc('search_clients', {
           p_query: q,
           p_limit: 20,
         });
-        // [DIAG-TEMP] resposta bruta da RPC
-        console.log('[BasicInfoBlock][search] RPC search_clients =>', { error, data });
+        console.log('[BasicInfoBlock] RPC search_clients resposta bruta:', { error, data });
+        console.log('[BasicInfoBlock] qtd retornados pela RPC:', Array.isArray(data) ? data.length : 0);
         if (cancelled) return;
         let results: Array<{ code: string; name: string }> = [];
         if (!error && Array.isArray(data) && data.length > 0) {
@@ -112,11 +112,9 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
           results = CLIENT_CODES
             .filter((c) => c.code.includes(q) || c.name.toLowerCase().includes(ql))
             .slice(0, 20);
-          // [DIAG-TEMP] fallback ativado
-          console.log('[BasicInfoBlock][search] fallback CLIENT_CODES hits:', results.length);
+          console.log('[BasicInfoBlock] fallback CLIENT_CODES hits:', results.length);
         }
-        // [DIAG-TEMP] lista mapeada para o autocomplete
-        console.log('[BasicInfoBlock][search] filtered (autocomplete):', results);
+        console.log('[BasicInfoBlock] lista mapeada p/ autocomplete:', results);
         setFiltered(results);
       } finally {
         if (!cancelled) setLoading(false);
@@ -126,16 +124,17 @@ export const BasicInfoBlock: React.FC<BasicInfoBlockProps> = ({
   }, [search]);
 
   const handleSelect = async (c: { code: string; name: string }) => {
-    // [DIAG-TEMP] item selecionado
-    console.log('[BasicInfoBlock][select] item selecionado:', c);
+    // [DIAG-TEMP]
+    console.log('[BasicInfoBlock] item selecionado:', c);
     onClientCodeChange(c.code);
     onClientNameChange(c.name);
     setSearch(`${c.code} - ${c.name}`);
     setShowSuggestions(false);
     if (onClientSelected) {
-      // [DIAG-TEMP] chamada onClientSelected
-      console.log('[BasicInfoBlock][select] onClientSelected(', c.code, ',', c.name, ')');
+      console.log('[ClientSelected] client_code:', c.code, '| client_name:', c.name);
+      console.log('[ClientSelected] disparando carregamento das máquinas em', new Date().toISOString());
       await onClientSelected(c.code, c.name);
+      console.log('[ClientSelected] onClientSelected concluído para', c.code);
     }
   };
 
