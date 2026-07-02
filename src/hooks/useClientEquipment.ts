@@ -97,13 +97,28 @@ export const useEquipmentByClient = (
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<ClientEquipment[]> => {
+      // [DIAG-TEMP]
+      console.log('[EquipmentSearch] parâmetros p/ search_client_equipment:', {
+        p_client_code: code,
+        p_client_name: name,
+        p_serial: ser,
+      });
+      console.log('[EquipmentSearch] client_code:', code, '| client_name:', name);
       const { data, error } = await (supabase as any).rpc('search_client_equipment', {
         p_client_code: code,
         p_client_name: name,
         p_serial: ser,
       });
-      if (error) throw error;
-      return ((data as unknown) as ClientEquipment[]) ?? [];
+      if (error) {
+        console.log('[EquipmentRPC] ERRO:', error);
+        throw error;
+      }
+      const rows = ((data as unknown) as ClientEquipment[]) ?? [];
+      console.log('[EquipmentRPC] qtd máquinas retornadas:', rows.length);
+      console.log('[EquipmentRPC] primeiros 5:', rows.slice(0, 5).map((e) => ({
+        model: e.model, serial: e.serial_chassis,
+      })));
+      return rows;
     },
   });
 };
