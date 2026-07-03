@@ -176,6 +176,30 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
 };
 
 // -----------------------------------------------------------------------------
+// Diretório de validadores (para o painel Parque de Máquinas)
+// -----------------------------------------------------------------------------
+export interface EquipmentValidator {
+  user_id: string;
+  name: string | null;
+  filial_id: string | null;
+  filial_nome: string | null;
+  validated_count: number;
+}
+
+export const useEquipmentValidators = () => {
+  return useQuery({
+    queryKey: ['client-equipment', 'validators'],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async (): Promise<EquipmentValidator[]> => {
+      const { data, error } = await (supabase as any).rpc('get_equipment_validators');
+      if (error) throw error;
+      return ((data as unknown) as EquipmentValidator[]) ?? [];
+    },
+  });
+};
+
+// -----------------------------------------------------------------------------
 // Atualização de equipamento (campos editáveis pela UI)
 // -----------------------------------------------------------------------------
 export interface EquipmentUpdatePayload {
