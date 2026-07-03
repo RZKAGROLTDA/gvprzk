@@ -62,6 +62,8 @@ export interface EquipmentFilters {
   clientCode?: string | null;
   clientName?: string | null;
   validationPriority?: boolean | null;
+  validatedBy?: string | null;
+  validatorFilialId?: string | null;
 }
 
 const norm = (v?: string | null) => {
