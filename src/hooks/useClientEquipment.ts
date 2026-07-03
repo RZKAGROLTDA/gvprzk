@@ -62,8 +62,8 @@ export interface EquipmentFilters {
   clientCode?: string | null;
   clientName?: string | null;
   validationPriority?: boolean | null;
-  validatedBy?: string | null;
-  validatorFilialId?: string | null;
+  /** Lista de user_ids de validadores a filtrar (aplica .in em validated_by). */
+  validatedByIn?: string[] | null;
 }
 
 const norm = (v?: string | null) => {
