@@ -62,6 +62,8 @@ export interface EquipmentFilters {
   clientCode?: string | null;
   clientName?: string | null;
   validationPriority?: boolean | null;
+  /** Lista de user_ids de validadores a filtrar (aplica .in em validated_by). */
+  validatedByIn?: string[] | null;
 }
 
 const norm = (v?: string | null) => {
@@ -133,13 +135,15 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
   const clientCode = norm(filters.clientCode);
   const clientName = norm(filters.clientName);
   const validationPriority = filters.validationPriority ?? null;
+  const validatedByIn = (filters.validatedByIn ?? null)?.filter(Boolean) ?? null;
+  const validatedByKey = validatedByIn && validatedByIn.length > 0 ? [...validatedByIn].sort().join(',') : null;
   const isFirstPage = page === 0;
 
   return useQuery({
     queryKey: [
       'client-equipment',
       'search',
-      { search, machineType, machineStatus, clientCode, clientName, validationPriority, page, pageSize },
+      { search, machineType, machineStatus, clientCode, clientName, validationPriority, validatedByKey, page, pageSize },
     ],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -156,6 +160,7 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
       if (machineType) q = q.eq('machine_type', machineType);
       if (machineStatus) q = q.eq('machine_status', machineStatus);
       if (validationPriority === true) q = q.eq('validation_priority', true);
+      if (validatedByIn && validatedByIn.length > 0) q = q.in('validated_by', validatedByIn);
 
       if (search) {
         // Busca livre: modelo, chassi, nome cliente, código cliente
@@ -171,6 +176,30 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
         rows: (data as unknown as ClientEquipment[]) ?? [],
         totalCount: count ?? null,
       };
+    },
+  });
+};
+
+// -----------------------------------------------------------------------------
+// Diretório de validadores (para o painel Parque de Máquinas)
+// -----------------------------------------------------------------------------
+export interface EquipmentValidator {
+  user_id: string;
+  name: string | null;
+  filial_id: string | null;
+  filial_nome: string | null;
+  validated_count: number;
+}
+
+export const useEquipmentValidators = () => {
+  return useQuery({
+    queryKey: ['client-equipment', 'validators'],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async (): Promise<EquipmentValidator[]> => {
+      const { data, error } = await (supabase as any).rpc('get_equipment_validators');
+      if (error) throw error;
+      return ((data as unknown) as EquipmentValidator[]) ?? [];
     },
   });
 };

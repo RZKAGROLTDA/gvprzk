@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
@@ -16,7 +16,10 @@ import {
   MACHINE_TYPES, MACHINE_STATUSES,
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from '@/components/equipment/equipmentConstants';
-import { useEquipmentSearch, type ClientEquipment } from '@/hooks/useClientEquipment';
+import {
+  useEquipmentSearch, useEquipmentValidators,
+  type ClientEquipment, type EquipmentValidator,
+} from '@/hooks/useClientEquipment';
 
 const ALL = 'all';
 const PAGE_SIZE = 50;
@@ -28,10 +31,43 @@ const Equipamentos: React.FC = () => {
   const [clientCode, setClientCode] = useState('');
   const [clientName, setClientName] = useState('');
   const [priorityOnly, setPriorityOnly] = useState(false);
+  const [validatedByFilter, setValidatedByFilter] = useState(ALL);
+  const [validatorFilialFilter, setValidatorFilialFilter] = useState(ALL);
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // Diretório de validadores (id → nome, filial)
+  const { data: validators = [] } = useEquipmentValidators();
+  const validatorMap = useMemo(() => {
+    const map = new Map<string, EquipmentValidator>();
+    validators.forEach((v) => map.set(v.user_id, v));
+    return map;
+  }, [validators]);
+
+  // Lista de filiais únicas dos validadores (para o filtro)
+  const validatorFiliais = useMemo(() => {
+    const seen = new Map<string, string>();
+    validators.forEach((v) => {
+      if (v.filial_id && v.filial_nome) seen.set(v.filial_id, v.filial_nome);
+    });
+    return Array.from(seen.entries())
+      .map(([id, nome]) => ({ id, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [validators]);
+
+  // Resolve o array de user_ids a filtrar: seleção direta, ou todos os
+  // validadores da filial escolhida.
+  const validatedByIn = useMemo(() => {
+    if (validatedByFilter !== ALL) return [validatedByFilter];
+    if (validatorFilialFilter !== ALL) {
+      return validators
+        .filter((v) => v.filial_id === validatorFilialFilter)
+        .map((v) => v.user_id);
+    }
+    return null;
+  }, [validatedByFilter, validatorFilialFilter, validators]);
 
   const filters = useMemo(
     () => ({
@@ -41,48 +77,69 @@ const Equipamentos: React.FC = () => {
       clientCode,
       clientName,
       validationPriority: priorityOnly ? true : null,
+      validatedByIn,
     }),
-    [search, machineType, machineStatus, clientCode, clientName, priorityOnly],
+    [search, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn],
   );
 
   const { data, isLoading, isFetching } = useEquipmentSearch(filters, page, PAGE_SIZE);
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
 
-  // Resumo global do parque (ignora filtros) — Total, Validadas, Pendentes,
-  // Prioridade, % Validado, Transferidas nos últimos 30 dias.
+  // Resumo global do parque (ignora filtros)
   const { data: parkSummary } = useQuery({
-    queryKey: ['client-equipment', 'park-summary-v2'],
+    queryKey: ['client-equipment', 'park-summary-v3'],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const now = Date.now();
+      const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const since7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const todayIso = startOfToday.toISOString();
       const tbl = 'client_equipment' as any;
-      const [totalRes, validadasRes, prioridadeRes, transferidasRes] = await Promise.all([
+      const [totalRes, validadasRes, prioridadeRes, transferidasRes, hojeRes, seteDiasRes] = await Promise.all([
         supabase.from(tbl).select('id', { count: 'exact', head: true }),
         supabase.from(tbl).select('id', { count: 'exact', head: true })
           .not('last_validation_at', 'is', null),
         supabase.from(tbl).select('id', { count: 'exact', head: true })
           .eq('validation_priority', true),
         supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('transferred_at', since),
+          .gte('transferred_at', since30),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .gte('last_validation_at', todayIso),
+        supabase.from(tbl).select('id', { count: 'exact', head: true })
+          .gte('last_validation_at', since7),
       ]);
       const total = totalRes.count ?? 0;
       const validadas = validadasRes.count ?? 0;
       const pendentes = Math.max(0, total - validadas);
       const prioridade = prioridadeRes.count ?? 0;
       const transferidas = transferidasRes.count ?? 0;
+      const hoje = hojeRes.count ?? 0;
+      const seteDias = seteDiasRes.count ?? 0;
       const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
-      return { total, validadas, pendentes, prioridade, transferidas, pct };
+      return { total, validadas, pendentes, prioridade, transferidas, hoje, seteDias, pct };
     },
   });
-  const priorityTotal = parkSummary?.prioridade;
 
-  const resetPage = (fn: (v: string) => void) => (v: string) => { fn(v); setPage(0); };
+  const resetPage = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(0); };
 
   const handleEdit = (eq: ClientEquipment) => {
     setEditing(eq);
     setDialogOpen(true);
+  };
+
+  const validatorName = (userId: string | null) => {
+    if (!userId) return '—';
+    const v = validatorMap.get(userId);
+    return v?.name || '—';
+  };
+  const validatorFilial = (userId: string | null) => {
+    if (!userId) return '—';
+    const v = validatorMap.get(userId);
+    return v?.filial_nome || '—';
   };
 
   // -----------------------------------------------------------------
@@ -110,6 +167,7 @@ const Equipamentos: React.FC = () => {
         if (machineType !== ALL) q = q.eq('machine_type', machineType);
         if (machineStatus !== ALL) q = q.eq('machine_status', machineStatus);
         if (priorityOnly) q = q.eq('validation_priority', true);
+        if (validatedByIn && validatedByIn.length > 0) q = q.in('validated_by', validatedByIn);
         if (norm(search)) {
           const s = search.replace(/[%,]/g, '');
           q = q.or(
@@ -130,41 +188,21 @@ const Equipamentos: React.FC = () => {
         return;
       }
 
-      // Resolver nomes de filial (apenas para os ids presentes)
-      const filialIds = Array.from(new Set(all.map((e) => e.filial_id).filter(Boolean))) as string[];
-      let filialMap: Record<string, string> = {};
-      if (filialIds.length) {
-        const { data: filiais } = await supabase
-          .from('filiais')
-          .select('id, nome')
-          .in('id', filialIds);
-        filialMap = Object.fromEntries((filiais ?? []).map((f: any) => [f.id, f.nome]));
-      }
-
       const exportRows = all.map((e) => ({
-        'Prioridade Validação': e.validation_priority ? 'SIM' : 'NÃO',
-        'Origem Prioridade': e.validation_source ?? '',
-        'Motivo Prioridade': e.validation_priority_reason ?? '',
-        'Prioridade Atualizada Em': e.validation_priority_updated_at
-          ? new Date(e.validation_priority_updated_at).toLocaleString('pt-BR')
-          : '',
         'Código Cliente': e.client_code ?? '',
-        'Nome Cliente': e.client_name ?? '',
-        'Filial': e.filial_id ? filialMap[e.filial_id] ?? '' : '',
-        'Tipo': e.machine_type ?? '',
-        'Produto Original': e.product_raw ?? '',
+        'Cliente': e.client_name ?? '',
         'Modelo': e.model ?? '',
+        'Tipo': e.machine_type ?? '',
         'Chassi/Série': e.serial_chassis ?? '',
         'Ano': e.year ?? '',
         'Horas': e.hours ?? '',
-        'PUK': e.puk_status ?? '',
         'Status': e.machine_status ?? '',
-        'Observação': e.observation ?? '',
-        'Última Validação': e.last_validation_at
+        'Prioridade': e.validation_priority ? 'SIM' : 'NÃO',
+        'Validado em': e.last_validation_at
           ? new Date(e.last_validation_at).toLocaleString('pt-BR')
-          : '',
-        'Validado Por': e.validated_by ?? '',
-        'Import Batch ID': e.import_batch_id ?? '',
+          : '—',
+        'Validado por': validatorName(e.validated_by),
+        'Filial do Validador': validatorFilial(e.validated_by),
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportRows);
@@ -186,6 +224,12 @@ const Equipamentos: React.FC = () => {
   };
 
   const totalPages = total != null ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : null;
+
+  // Resumo por usuário (ordenado desc por validações)
+  const validatorsRanked = useMemo(
+    () => [...validators].sort((a, b) => b.validated_count - a.validated_count),
+    [validators],
+  );
 
   return (
     <div className="space-y-6">
@@ -220,6 +264,13 @@ const Equipamentos: React.FC = () => {
             value={parkSummary?.total}
           />
           <SummaryCell
+            icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
+            label="Prioritárias"
+            value={parkSummary?.prioridade}
+            highlight={priorityOnly}
+            onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
+          />
+          <SummaryCell
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             label="Validadas"
             value={parkSummary?.validadas}
@@ -230,28 +281,75 @@ const Equipamentos: React.FC = () => {
             value={parkSummary?.pendentes}
           />
           <SummaryCell
-            icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
-            label="Prioridade"
-            value={parkSummary?.prioridade}
-            highlight={priorityOnly}
-            onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
+            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+            label="Validações hoje"
+            value={parkSummary?.hoje}
           />
           <SummaryCell
-            label="% Validado"
-            value={parkSummary ? `${parkSummary.pct}%` : undefined}
-          />
-          <SummaryCell
-            icon={<ArrowRightLeft className="h-4 w-4 text-muted-foreground" />}
-            label="Transferidas (30d)"
-            value={parkSummary?.transferidas}
+            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+            label="Validações 7 dias"
+            value={parkSummary?.seteDias}
           />
         </CardContent>
       </Card>
 
+      {/* Execução das Validações — resumo por usuário */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserCheck className="h-4 w-4 text-primary" />
+            Execução das Validações
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {validatorsRanked.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">
+              Nenhuma validação registrada ainda.
+            </p>
+          ) : (
+            <div className="max-h-[280px] overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 sticky top-0 z-10">
+                  <tr className="text-left text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Usuário</th>
+                    <th className="px-3 py-2 font-medium">Filial</th>
+                    <th className="px-3 py-2 font-medium text-right">Máquinas Validadas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {validatorsRanked.map((v) => {
+                    const active = validatedByFilter === v.user_id;
+                    return (
+                      <tr
+                        key={v.user_id}
+                        className={`border-t border-border/40 cursor-pointer hover:bg-muted/30 ${
+                          active ? 'bg-primary/5' : ''
+                        }`}
+                        onClick={() => {
+                          setValidatedByFilter(active ? ALL : v.user_id);
+                          setValidatorFilialFilter(ALL);
+                          setPage(0);
+                        }}
+                        title="Clique para filtrar por este validador"
+                      >
+                        <td className="px-3 py-1.5 font-medium">{v.name || '—'}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{v.filial_nome || '—'}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                          {v.validated_count.toLocaleString('pt-BR')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Filtros */}
       <Card>
-        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+        <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="lg:col-span-2 space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Busca livre</label>
             <Input
@@ -288,6 +386,38 @@ const Equipamentos: React.FC = () => {
                 <SelectItem value={ALL}>Todos</SelectItem>
                 {MACHINE_STATUSES.map((s) => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Validado por</label>
+            <Select
+              value={validatedByFilter}
+              onValueChange={(v) => { setValidatedByFilter(v); setPage(0); }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos</SelectItem>
+                {validatorsRanked.map((v) => (
+                  <SelectItem key={v.user_id} value={v.user_id}>
+                    {v.name || v.user_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Filial do Validador</label>
+            <Select
+              value={validatorFilialFilter}
+              onValueChange={(v) => { setValidatorFilialFilter(v); setValidatedByFilter(ALL); setPage(0); }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas</SelectItem>
+                {validatorFiliais.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -335,7 +465,7 @@ const Equipamentos: React.FC = () => {
               </div>
             )}
           </div>
-          {/* Desktop: tabela compacta operacional */}
+          {/* Desktop */}
           <div className="hidden md:block rounded-lg border border-border/60 overflow-hidden">
             <div className="overflow-auto max-h-[70vh]">
               <table className="w-full text-xs">
@@ -349,6 +479,8 @@ const Equipamentos: React.FC = () => {
                     <th className="px-3 py-2 font-medium text-right">Horas</th>
                     <th className="px-3 py-2 font-medium">Status</th>
                     <th className="px-3 py-2 font-medium whitespace-nowrap">Validado em</th>
+                    <th className="px-3 py-2 font-medium">Validado por</th>
+                    <th className="px-3 py-2 font-medium">Filial Validador</th>
                     <th className="w-10 px-2 py-2"></th>
                   </tr>
                 </thead>
@@ -418,6 +550,12 @@ const Equipamentos: React.FC = () => {
                           ? new Date(eq.last_validation_at).toLocaleDateString('pt-BR')
                           : '—'}
                       </td>
+                      <td className="px-3 py-1.5 text-[11px] truncate max-w-[160px]">
+                        {validatorName(eq.validated_by)}
+                      </td>
+                      <td className="px-3 py-1.5 text-[11px] text-muted-foreground truncate max-w-[140px]">
+                        {validatorFilial(eq.validated_by)}
+                      </td>
                       <td className="px-2 py-1.5">
                         <Button
                           type="button" size="sm" variant="ghost"
@@ -436,7 +574,7 @@ const Equipamentos: React.FC = () => {
             </div>
           </div>
 
-          {/* Mobile: linhas condensadas */}
+          {/* Mobile */}
           <div className="md:hidden rounded-lg border border-border/60 divide-y divide-border/40">
             {rows.map((eq) => (
               <div
@@ -484,6 +622,11 @@ const Equipamentos: React.FC = () => {
                     {eq.last_validation_at && (
                       <> · val. {new Date(eq.last_validation_at).toLocaleDateString('pt-BR')}</>
                     )}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Val. por: {validatorName(eq.validated_by)}
+                    {' · '}
+                    {validatorFilial(eq.validated_by)}
                   </p>
                 </div>
                 <Button
@@ -547,4 +690,3 @@ const SummaryCell: React.FC<SummaryCellProps> = ({ icon, label, value, highlight
   }
   return content;
 };
-
