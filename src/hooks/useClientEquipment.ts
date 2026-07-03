@@ -135,13 +135,15 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
   const clientCode = norm(filters.clientCode);
   const clientName = norm(filters.clientName);
   const validationPriority = filters.validationPriority ?? null;
+  const validatedBy = norm(filters.validatedBy);
+  const validatorFilialId = norm(filters.validatorFilialId);
   const isFirstPage = page === 0;
 
   return useQuery({
     queryKey: [
       'client-equipment',
       'search',
-      { search, machineType, machineStatus, clientCode, clientName, validationPriority, page, pageSize },
+      { search, machineType, machineStatus, clientCode, clientName, validationPriority, validatedBy, validatorFilialId, page, pageSize },
     ],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -158,6 +160,7 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
       if (machineType) q = q.eq('machine_type', machineType);
       if (machineStatus) q = q.eq('machine_status', machineStatus);
       if (validationPriority === true) q = q.eq('validation_priority', true);
+      if (validatedBy) q = q.eq('validated_by', validatedBy);
 
       if (search) {
         // Busca livre: modelo, chassi, nome cliente, código cliente
@@ -169,8 +172,17 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
 
       const { data, error, count } = await q;
       if (error) throw error;
+      let rows = (data as unknown as ClientEquipment[]) ?? [];
+      // Filtro por filial do validador é aplicado client-side, cruzando com o
+      // diretório de validadores carregado separadamente.
+      if (validatorFilialId) {
+        // Marcamos aqui: o filtro final será refinado no componente após o
+        // join com o diretório; retornamos as linhas com validated_by não nulo
+        // para reduzir dados irrelevantes.
+        rows = rows.filter((r) => !!r.validated_by);
+      }
       return {
-        rows: (data as unknown as ClientEquipment[]) ?? [],
+        rows,
         totalCount: count ?? null,
       };
     },
