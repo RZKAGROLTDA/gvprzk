@@ -317,7 +317,7 @@ const Equipamentos: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {validatorsRanked.length === 0 ? (
+          {filialRanked.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">
               Nenhuma validação registrada ainda.
             </p>
@@ -326,31 +326,25 @@ const Equipamentos: React.FC = () => {
               <table className="w-full text-xs">
                 <thead className="bg-muted/40 sticky top-0 z-10">
                   <tr className="text-left text-muted-foreground">
-                    <th className="px-3 py-2 font-medium">Usuário</th>
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Máquinas Validadas</th>
+                    <th className="px-3 py-2 font-medium text-right">%</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {validatorsRanked.map((v) => {
-                    const active = validatedByFilter === v.user_id;
+                  {filialRanked.map((f) => {
+                    const pct = filialTotal > 0 ? (f.validated_count / filialTotal) * 100 : 0;
                     return (
                       <tr
-                        key={v.user_id}
-                        className={`border-t border-border/40 cursor-pointer hover:bg-muted/30 ${
-                          active ? 'bg-primary/5' : ''
-                        }`}
-                        onClick={() => {
-                          setValidatedByFilter(active ? ALL : v.user_id);
-                          setValidatorFilialFilter(ALL);
-                          setPage(0);
-                        }}
-                        title="Clique para filtrar por este validador"
+                        key={f.filial_nome}
+                        className="border-t border-border/40"
                       >
-                        <td className="px-3 py-1.5 font-medium">{v.name || '—'}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{v.filial_nome || '—'}</td>
+                        <td className="px-3 py-1.5 font-medium">{f.filial_nome}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {v.validated_count.toLocaleString('pt-BR')}
+                          {f.validated_count.toLocaleString('pt-BR')}
+                        </td>
+                        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                          {pct.toFixed(1)}%
                         </td>
                       </tr>
                     );
@@ -359,6 +353,7 @@ const Equipamentos: React.FC = () => {
               </table>
             </div>
           )}
+
         </CardContent>
       </Card>
 
