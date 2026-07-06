@@ -345,7 +345,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setLightboxPhoto(photo)}
+                        onClick={() => setLightboxIndex(i)}
                         className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                       >
                         <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
