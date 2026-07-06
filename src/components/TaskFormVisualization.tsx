@@ -375,6 +375,26 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   tone="muted"
                   description={`${equipmentCount} item${equipmentCount > 1 ? 'ns' : ''} • ${equipmentTotalUnits} unidade${equipmentTotalUnits !== 1 ? 's' : ''}`}
                 >
+                  {(() => {
+                    const validatedCount = (currentTask.equipmentList || []).filter((eq: any) => {
+                      const v = eq.validated ?? eq.validado ?? eq.is_validated;
+                      return v === true || v === 'true';
+                    }).length;
+                    const pendingCount = equipmentCount - validatedCount;
+                    return (
+                      <div className="grid grid-cols-3 gap-3 mb-3">
+                        <MiniStat label="Total" value={String(equipmentCount)} />
+                        <div className="rounded-lg border bg-success/10 p-3">
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Validados</p>
+                          <p className="font-semibold text-success tabular-nums">{validatedCount}</p>
+                        </div>
+                        <div className="rounded-lg border bg-warning/10 p-3">
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Pendentes</p>
+                          <p className="font-semibold text-warning tabular-nums">{pendingCount}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
                       <TableHeader>
