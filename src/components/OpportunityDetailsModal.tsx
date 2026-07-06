@@ -1082,6 +1082,23 @@ const Field: React.FC<{
   </div>
 );
 
+const HeaderMeta: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value?: string | number | null;
+  mono?: boolean;
+  highlight?: boolean;
+}> = ({ icon: Icon, label, value, mono, highlight }) => (
+  <div className="min-w-0">
+    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
+      <Icon className="w-3 h-3" /> {label}
+    </p>
+    <p className={`text-sm font-semibold truncate ${mono ? 'font-mono' : ''} ${highlight ? 'text-primary' : 'text-foreground'}`}>
+      {value ? String(value) : <span className="text-muted-foreground italic font-normal">—</span>}
+    </p>
+  </div>
+);
+
 const TimelineItem: React.FC<{
   color: string;
   title: string;
