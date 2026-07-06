@@ -394,6 +394,13 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                             baixa: 'secondary', low: 'secondary',
                           };
                           const validated = eq.validated ?? eq.validado ?? eq.is_validated;
+                          const validatedAtRaw = eq.validatedAt ?? eq.validated_at ?? eq.validadoEm ?? eq.validado_em;
+                          let validatedAtStr: string | null = null;
+                          if (validatedAtRaw) {
+                            try {
+                              validatedAtStr = format(new Date(validatedAtRaw), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+                            } catch { validatedAtStr = String(validatedAtRaw); }
+                          }
                           return (
                             <TableRow key={eq.id || idx}>
                               <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
