@@ -628,7 +628,7 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                   tone="success"
                 />
                 <SummaryCard
-                  icon={CalendarClockIcon}
+                  icon={Calendar}
                   label="Próxima ação"
                   value={currentTask.nextActionDate ? formatDateDisplay(currentTask.nextActionDate as any) : '—'}
                   sub={currentTask.nextAction ? String(currentTask.nextAction).slice(0, 22) : undefined}
