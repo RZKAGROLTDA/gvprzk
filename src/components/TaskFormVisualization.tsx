@@ -437,6 +437,9 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                                   <span className="text-muted-foreground text-xs">—</span>
                                 )}
                               </TableCell>
+                              <TableCell className="text-xs tabular-nums whitespace-nowrap">
+                                {validatedAtStr ? validatedAtStr : <span className="text-muted-foreground italic">—</span>}
+                              </TableCell>
                               <TableCell className="text-xs text-muted-foreground max-w-[240px]">
                                 {eq.observation || eq.observations || eq.observacao || eq.notes || <span className="italic">—</span>}
                               </TableCell>
