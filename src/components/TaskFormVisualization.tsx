@@ -50,7 +50,7 @@ const formatDuration = (start?: string | null, end?: string | null): string => {
 export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { data: filiais = [] } = useFiliais();
 
   // Fresh full task (photos, checkInLocation, equipmentList, products)
