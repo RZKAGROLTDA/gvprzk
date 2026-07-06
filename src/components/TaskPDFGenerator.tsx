@@ -383,16 +383,33 @@ export const generateTaskPDF = async (
   if (task.nextAction || task.nextActionDate) {
     sectionTitle('Próxima Ação');
     if (task.nextAction) paragraph(String(task.nextAction));
-    if (task.nextActionDate) {
+    if (task.nextActionDate || task.responsible) {
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(9);
       pdf.setTextColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
       ensureSpace(6);
-      pdf.text(`Data prevista: ${formatDateDisplay(task.nextActionDate as any)}`, marginLeft, yPos);
+      const parts: string[] = [];
+      if (task.nextActionDate) parts.push(`Data prevista: ${formatDateDisplay(task.nextActionDate as any)}`);
+      if (task.responsible) parts.push(`Responsável: ${task.responsible}`);
+      pdf.text(parts.join('    ·    '), marginLeft, yPos);
       pdf.setTextColor(0, 0, 0);
       yPos += 6;
     }
   }
+
+  // ===== 10. OBSERVAÇÕES =====
+  {
+    sectionTitle('Observações e Notas');
+    const hasObs = task.observations || task.prospectNotes || (task as any).prospectNotesJustification;
+    if (!hasObs) {
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(9);
+      pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+      ensureSpace(6);
+      pdf.text('Nenhuma observação registrada', marginLeft, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 6;
+    } else {
 
   // ===== 10. OBSERVAÇÕES =====
   const hasObs = task.observations || task.prospectNotes || (task as any).prospectNotesJustification;
