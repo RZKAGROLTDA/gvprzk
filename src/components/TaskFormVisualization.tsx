@@ -637,18 +637,39 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
         </DialogContent>
       </Dialog>
 
-      {lightboxPhoto && (
-        <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
+      {lightboxIndex !== null && currentTask.photos && currentTask.photos[lightboxIndex] && (
+        <Dialog open={lightboxIndex !== null} onOpenChange={() => setLightboxIndex(null)}>
           <DialogContent className="max-w-5xl w-[95vw] p-2 bg-background">
             <div className="relative">
               <button
-                onClick={() => setLightboxPhoto(null)}
+                onClick={() => setLightboxIndex(null)}
                 className="absolute top-2 right-2 z-10 bg-background/80 hover:bg-background rounded-full p-2 border shadow"
                 aria-label="Fechar"
               >
                 <X className="w-4 h-4" />
               </button>
-              <img src={lightboxPhoto} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
+              {photoCount > 1 && (
+                <>
+                  <button
+                    onClick={() => setLightboxIndex((idx) => (idx === null ? 0 : (idx - 1 + photoCount) % photoCount))}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 hover:bg-background rounded-full px-3 py-2 border shadow text-sm font-semibold"
+                    aria-label="Anterior"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => setLightboxIndex((idx) => (idx === null ? 0 : (idx + 1) % photoCount))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 hover:bg-background rounded-full px-3 py-2 border shadow text-sm font-semibold"
+                    aria-label="Próxima"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+              <img src={currentTask.photos[lightboxIndex]} alt={`Foto ${lightboxIndex + 1}`} className="w-full max-h-[85vh] object-contain rounded" />
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/80 border rounded-full px-3 py-1 text-xs font-mono">
+                {lightboxIndex + 1} / {photoCount}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
