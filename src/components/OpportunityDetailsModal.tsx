@@ -943,46 +943,69 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                 )}
               </SectionCard>
 
-              {/* Próxima Ação */}
+              {/* Próxima Ação — destaque */}
               {(currentTask.nextAction || currentTask.nextActionDate) && (
-                <SectionCard icon={Sparkles} title="Próxima Ação" tone="warning">
-                  <div className="space-y-2 text-sm">
-                    {currentTask.nextAction && <p className="whitespace-pre-wrap">{currentTask.nextAction}</p>}
-                    {currentTask.nextActionDate && (
-                      <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {formatDateDisplay(currentTask.nextActionDate as any)}
-                      </p>
-                    )}
+                <div className="relative overflow-hidden rounded-2xl border-2 border-warning/40 bg-gradient-to-br from-warning/15 via-warning/5 to-background p-5 sm:p-6 shadow-sm">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-warning/10 blur-3xl pointer-events-none" />
+                  <div className="relative flex items-start gap-4">
+                    <div className="w-12 h-12 bg-warning text-warning-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-wider font-bold text-warning mb-1">Próxima Ação</p>
+                      {currentTask.nextAction && (
+                        <p className="text-base sm:text-lg font-semibold text-foreground whitespace-pre-wrap leading-snug">
+                          {currentTask.nextAction}
+                        </p>
+                      )}
+                      {currentTask.nextActionDate && (
+                        <p className="mt-2 text-sm text-muted-foreground inline-flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-warning" />
+                          <span className="font-medium text-foreground">
+                            {formatDateDisplay(currentTask.nextActionDate as any)}
+                          </span>
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </SectionCard>
+                </div>
               )}
 
-              {/* Observações */}
+              {/* Observações — destaque */}
               {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) && (
-                <SectionCard icon={MessageSquare} title="Observações e Notas" tone="primary">
+                <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider font-bold text-primary">Observações da Visita</p>
+                      <p className="text-sm text-muted-foreground">Anotações registradas em campo</p>
+                    </div>
+                  </div>
                   <div className="space-y-3">
                     {currentTask.observations && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wide">Observações da atividade</p>
-                        <p className="text-sm bg-muted/40 p-3 rounded-lg whitespace-pre-wrap leading-relaxed">{currentTask.observations}</p>
+                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Observações da atividade</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.observations}</p>
                       </div>
                     )}
                     {currentTask.prospectNotes && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wide">Notas do prospect</p>
-                        <p className="text-sm bg-primary/5 p-3 rounded-lg whitespace-pre-wrap leading-relaxed">{currentTask.prospectNotes}</p>
+                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Notas do prospect</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotes}</p>
                       </div>
                     )}
                     {currentTask.prospectNotesJustification && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wide">Justificativa</p>
-                        <p className="text-sm bg-warning/10 p-3 rounded-lg whitespace-pre-wrap leading-relaxed">{currentTask.prospectNotesJustification}</p>
+                      <div className="rounded-xl bg-warning/10 border border-warning/30 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Justificativa</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotesJustification}</p>
                       </div>
                     )}
                   </div>
-                </SectionCard>
+                </div>
               )}
+
 
               {/* Timeline */}
               <SectionCard icon={History} title="Timeline da Visita" tone="muted">
