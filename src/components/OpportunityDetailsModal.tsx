@@ -553,29 +553,26 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-h-[95vh] overflow-y-auto overflow-x-hidden p-0 w-[96vw] max-w-[96vw] sm:w-full sm:max-w-6xl">
           <div ref={printRef} className="print:p-4">
-            {/* Cabeçalho executivo */}
+            {/* 1. CABEÇALHO EXECUTIVO */}
             <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/15 via-primary/5 to-background">
               <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
               <div className="relative p-5 sm:p-7">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
                   <div className="flex items-start gap-4 min-w-0 flex-1">
                     <div className="w-14 h-14 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/30">
                       <FileText className="w-6 h-6" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
                         <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold">
                           {getTaskTypeLabel(currentTask.taskType)}
                         </Badge>
                         <Badge className={`${getStatusColor(selectedStatus)} text-[10px] uppercase tracking-wider`}>
                           {getStatusLabel(selectedStatus)}
                         </Badge>
-                        {currentTask.clientCode && (
-                          <span className="text-xs text-muted-foreground font-mono">#{currentTask.clientCode}</span>
-                        )}
                       </div>
                       <h2 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
-                        {currentTask.client || 'Oportunidade'}
+                        {currentTask.client || 'Cliente'}
                       </h2>
                       {currentTask.property && (
                         <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
@@ -583,21 +580,6 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                           {currentTask.property}
                         </p>
                       )}
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-primary" />
-                          <span className="font-medium text-foreground">{formatDateDisplay(currentTask.startDate)}</span>
-                          {currentTask.startTime && <span>{currentTask.startTime}{currentTask.endTime ? `–${currentTask.endTime}` : ''}</span>}
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-primary" />
-                          <span className="font-medium text-foreground">{currentTask.responsible || '—'}</span>
-                        </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <Building2 className="w-3.5 h-3.5 text-primary" />
-                          <span className="font-medium text-foreground">{getFilialNameRobust(currentTask.filial, filiais)}</span>
-                        </span>
-                      </div>
                     </div>
                   </div>
 
@@ -613,22 +595,44 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                     </Button>
                   </div>
                 </div>
+
+                {/* Grade de metadados do cabeçalho */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-3 rounded-xl border bg-background/60 backdrop-blur-sm p-4">
+                  <HeaderMeta icon={FileText} label="Código" value={currentTask.clientCode} mono />
+                  <HeaderMeta icon={Calendar} label="Data" value={formatDateDisplay(currentTask.startDate)} />
+                  <HeaderMeta icon={Clock} label="Início" value={currentTask.startTime} />
+                  <HeaderMeta icon={Clock} label="Fim" value={currentTask.endTime} />
+                  <HeaderMeta icon={Activity} label="Duração" value={duration} highlight />
+                  <HeaderMeta icon={User} label="Responsável" value={currentTask.responsible} />
+                  <HeaderMeta icon={Building2} label="Filial" value={getFilialNameRobust(currentTask.filial, filiais)} />
+                </div>
               </div>
             </div>
 
-            {/* Cards resumo */}
+            {/* 2. RESUMO DA VISITA */}
             <div className="px-5 sm:px-7 pt-5">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <SummaryCard icon={Clock} label="Duração" value={duration} tone="primary" />
-                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone="muted" />
-                <SummaryCard icon={CheckCircle2} label="Itens vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone="success" />
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                <SummaryCard icon={Tractor} label="Equip. selecionados" value={String(equipmentCount)} tone="primary" />
+                <SummaryCard icon={CheckCircle2} label="Equip. validados" value="—" tone="success" />
+                <SummaryCard icon={Sparkles} label="Novas máquinas" value="—" tone="muted" />
                 <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone="warning" />
-                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Registrada' : '—'} tone={hasLocation ? 'success' : 'muted'} />
+                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'muted'} />
+                <SummaryCard icon={Package} label="Produtos" value={String(itemsCount)} sub={itemsCount ? `${selectedItemsCount} vendidos` : undefined} tone="primary" />
                 <SummaryCard
                   icon={DollarSign}
                   label="Valor potencial"
                   value={`R$ ${totalOpportunityValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
-                  tone="primary"
+                  tone="success"
+                />
+                <SummaryCard
+                  icon={Calendar}
+                  label="Próxima ação"
+                  value={currentTask.nextActionDate ? formatDateDisplay(currentTask.nextActionDate as any) : '—'}
+                  sub={currentTask.nextAction ? String(currentTask.nextAction).slice(0, 22) : undefined}
+                  tone="warning"
                 />
               </div>
 
@@ -654,22 +658,24 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
 
             {/* Conteúdo */}
             <div className="p-5 sm:p-7 space-y-4">
-              {/* Dados do cliente + contato */}
+              {/* 3. DADOS DO CLIENTE + 4. CONTATO DA VISITA */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <SectionCard icon={User} title="Dados do Cliente" tone="primary" className="lg:col-span-2">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                    <Field label="Nome" value={currentTask.client} />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                    <Field label="Cliente" value={currentTask.client} />
                     <Field label="Código" value={currentTask.clientCode} mono />
-                    <Field label="Propriedade" value={currentTask.property} />
-                    <Field label="Hectares" value={currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : undefined} />
-                    <Field label="Email" value={currentTask.email} icon={AtSign} />
                     <Field label="Telefone" value={currentTask.phone} icon={Phone} />
+                    <Field label="Email" value={currentTask.email} icon={AtSign} />
+                    <Field label="Propriedade" value={currentTask.property} />
+                    <Field label="Cidade" value={(currentTask as any).city} />
+                    <Field label="Estado" value={(currentTask as any).state} />
+                    <Field label="Hectares" value={currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : undefined} />
                   </div>
                 </SectionCard>
 
                 <SectionCard icon={UserCheck} title="Contato da Visita" tone="success">
-                  <div className="space-y-3 text-sm">
-                    <Field label="Nome do contato" value={currentTask.contactName} />
+                  <div className="grid grid-cols-1 gap-4 text-sm">
+                    <Field label="Nome" value={currentTask.contactName} />
                     <Field label="Função" value={currentTask.contactFunction} />
                     {!currentTask.contactName && !currentTask.contactFunction && (
                       <p className="text-xs text-muted-foreground italic">Sem contato registrado nesta visita.</p>
@@ -677,6 +683,7 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                   </div>
                 </SectionCard>
               </div>
+
 
               {/* Mapa */}
               {hasLocation && mapEmbedUrl && (
@@ -1070,6 +1077,23 @@ const Field: React.FC<{
     <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">{label}</p>
     <p className={`font-medium text-sm flex items-center gap-1.5 ${mono ? 'font-mono' : ''}`}>
       {Icon && value && <Icon className="w-3.5 h-3.5 text-muted-foreground" />}
+      {value ? String(value) : <span className="text-muted-foreground italic font-normal">—</span>}
+    </p>
+  </div>
+);
+
+const HeaderMeta: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value?: string | number | null;
+  mono?: boolean;
+  highlight?: boolean;
+}> = ({ icon: Icon, label, value, mono, highlight }) => (
+  <div className="min-w-0">
+    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
+      <Icon className="w-3 h-3" /> {label}
+    </p>
+    <p className={`text-sm font-semibold truncate ${mono ? 'font-mono' : ''} ${highlight ? 'text-primary' : 'text-foreground'}`}>
       {value ? String(value) : <span className="text-muted-foreground italic font-normal">—</span>}
     </p>
   </div>
