@@ -711,8 +711,28 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                       loading="lazy"
                     />
                   </div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Latitude</p>
+                      <p className="font-mono tabular-nums font-semibold">{currentTask.checkInLocation!.lat.toFixed(6)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Longitude</p>
+                      <p className="font-mono tabular-nums font-semibold">{currentTask.checkInLocation!.lng.toFixed(6)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Horário do check-in</p>
+                      <p className="font-semibold inline-flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-success" />
+                        {currentTask.checkInLocation!.timestamp
+                          ? format(new Date(currentTask.checkInLocation!.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
                 </SectionCard>
               )}
+
 
               {/* Galeria de Fotos */}
               {photoCount > 0 && (
