@@ -1995,6 +1995,16 @@ export type Database = {
         }
         Returns: Json
       }
+      get_equipment_validators: {
+        Args: never
+        Returns: {
+          filial_id: string
+          filial_nome: string
+          name: string
+          user_id: string
+          validated_count: number
+        }[]
+      }
       get_filiais_for_registration: {
         Args: never
         Returns: {
