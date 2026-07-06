@@ -555,12 +555,20 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                           {String(currentTask.nextAction)}
                         </p>
                       )}
-                      {currentTask.nextActionDate && (
-                        <p className="mt-2 text-sm text-muted-foreground inline-flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-warning" />
-                          <span className="font-medium text-foreground">{formatDateDisplay(currentTask.nextActionDate as any)}</span>
-                        </p>
-                      )}
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        {currentTask.nextActionDate && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4 text-warning" />
+                            <span className="font-medium text-foreground">{formatDateDisplay(currentTask.nextActionDate as any)}</span>
+                          </span>
+                        )}
+                        {currentTask.responsible && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <User className="w-4 h-4 text-warning" />
+                            <span className="font-medium text-foreground">{currentTask.responsible}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
