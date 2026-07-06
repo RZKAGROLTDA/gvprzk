@@ -50,7 +50,7 @@ const formatDuration = (start?: string | null, end?: string | null): string => {
 export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { data: filiais = [] } = useFiliais();
 
   // Fresh full task (photos, checkInLocation, equipmentList, products)
@@ -331,6 +331,14 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   </div>
                 </SectionCard>
               )}
+              {!hasLocation && (
+                <SectionCard icon={MapPin} title="Localização da Visita" tone="muted">
+                  <div className="text-center py-6 text-sm text-muted-foreground italic">
+                    <Navigation className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                    Localização não registrada
+                  </div>
+                </SectionCard>
+              )}
 
               {/* 6. FOTOS */}
               {photoCount > 0 && (
@@ -345,7 +353,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setLightboxPhoto(photo)}
+                        onClick={() => setLightboxIndex(i)}
                         className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                       >
                         <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
@@ -367,6 +375,26 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   tone="muted"
                   description={`${equipmentCount} item${equipmentCount > 1 ? 'ns' : ''} • ${equipmentTotalUnits} unidade${equipmentTotalUnits !== 1 ? 's' : ''}`}
                 >
+                  {(() => {
+                    const validatedCount = (currentTask.equipmentList || []).filter((eq: any) => {
+                      const v = eq.validated ?? eq.validado ?? eq.is_validated;
+                      return v === true || v === 'true';
+                    }).length;
+                    const pendingCount = equipmentCount - validatedCount;
+                    return (
+                      <div className="grid grid-cols-3 gap-3 mb-3">
+                        <MiniStat label="Total" value={String(equipmentCount)} />
+                        <div className="rounded-lg border bg-success/10 p-3">
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Validados</p>
+                          <p className="font-semibold text-success tabular-nums">{validatedCount}</p>
+                        </div>
+                        <div className="rounded-lg border bg-warning/10 p-3">
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Pendentes</p>
+                          <p className="font-semibold text-warning tabular-nums">{pendingCount}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="overflow-x-auto rounded-lg border">
                     <Table>
                       <TableHeader>
@@ -549,7 +577,21 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                       <Sparkles className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] uppercase tracking-wider font-bold text-warning mb-1">Próxima Ação</p>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <p className="text-[11px] uppercase tracking-wider font-bold text-warning">Próxima Ação</p>
+                        {(() => {
+                          if (!currentTask.nextActionDate) return null;
+                          const d = new Date(currentTask.nextActionDate as any);
+                          const today = new Date(); today.setHours(0,0,0,0);
+                          const dd = new Date(d); dd.setHours(0,0,0,0);
+                          const diff = (dd.getTime() - today.getTime()) / 86400000;
+                          const [label, variant]: [string, any] =
+                            diff < 0 ? ['Atrasada', 'destructive'] :
+                            diff === 0 ? ['Hoje', 'warning'] :
+                            ['Prevista', 'success'];
+                          return <Badge variant={variant} className="text-[10px] uppercase tracking-wider">{label}</Badge>;
+                        })()}
+                      </div>
                       {currentTask.nextAction && (
                         <p className="text-base sm:text-lg font-semibold text-foreground whitespace-pre-wrap leading-snug">
                           {String(currentTask.nextAction)}
@@ -637,18 +679,39 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
         </DialogContent>
       </Dialog>
 
-      {lightboxPhoto && (
-        <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
+      {lightboxIndex !== null && currentTask.photos && currentTask.photos[lightboxIndex] && (
+        <Dialog open={lightboxIndex !== null} onOpenChange={() => setLightboxIndex(null)}>
           <DialogContent className="max-w-5xl w-[95vw] p-2 bg-background">
             <div className="relative">
               <button
-                onClick={() => setLightboxPhoto(null)}
+                onClick={() => setLightboxIndex(null)}
                 className="absolute top-2 right-2 z-10 bg-background/80 hover:bg-background rounded-full p-2 border shadow"
                 aria-label="Fechar"
               >
                 <X className="w-4 h-4" />
               </button>
-              <img src={lightboxPhoto} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
+              {photoCount > 1 && (
+                <>
+                  <button
+                    onClick={() => setLightboxIndex((idx) => (idx === null ? 0 : (idx - 1 + photoCount) % photoCount))}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 hover:bg-background rounded-full px-3 py-2 border shadow text-sm font-semibold"
+                    aria-label="Anterior"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => setLightboxIndex((idx) => (idx === null ? 0 : (idx + 1) % photoCount))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 hover:bg-background rounded-full px-3 py-2 border shadow text-sm font-semibold"
+                    aria-label="Próxima"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+              <img src={currentTask.photos[lightboxIndex]} alt={`Foto ${lightboxIndex + 1}`} className="w-full max-h-[85vh] object-contain rounded" />
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/80 border rounded-full px-3 py-1 text-xs font-mono">
+                {lightboxIndex + 1} / {photoCount}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
