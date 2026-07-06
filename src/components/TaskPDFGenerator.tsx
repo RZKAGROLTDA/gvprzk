@@ -262,8 +262,8 @@ export const generateTaskPDF = async (
   if (task.equipmentList && task.equipmentList.length > 0) {
     sectionTitle(`Parque de Máquinas (${equipmentCount} itens · ${equipmentUnits} unidades)`);
 
-    const headers = ['#', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Validado'];
-    const widths = [8, 42, 26, 28, 14, 18, 12, 22];
+    const headers = ['#', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Valid.', 'Validado em'];
+    const widths = [7, 38, 22, 24, 12, 16, 10, 14, 39];
     const startX = marginLeft;
 
     ensureSpace(8);
