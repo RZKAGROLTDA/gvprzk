@@ -607,6 +607,11 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                     )}
                   </div>
                 </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-muted bg-muted/20 p-6 text-center">
+                  <MessageSquare className="w-6 h-6 mx-auto text-muted-foreground/60 mb-2" />
+                  <p className="text-sm text-muted-foreground italic">Nenhuma observação registrada</p>
+                </div>
               )}
 
               {/* 12. TIMELINE */}
