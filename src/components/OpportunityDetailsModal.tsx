@@ -711,8 +711,28 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                       loading="lazy"
                     />
                   </div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Latitude</p>
+                      <p className="font-mono tabular-nums font-semibold">{currentTask.checkInLocation!.lat.toFixed(6)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Longitude</p>
+                      <p className="font-mono tabular-nums font-semibold">{currentTask.checkInLocation!.lng.toFixed(6)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Horário do check-in</p>
+                      <p className="font-semibold inline-flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-success" />
+                        {currentTask.checkInLocation!.timestamp
+                          ? format(new Date(currentTask.checkInLocation!.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
                 </SectionCard>
               )}
+
 
               {/* Galeria de Fotos */}
               {photoCount > 0 && (
@@ -754,21 +774,73 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead className="w-10">#</TableHead>
-                          <TableHead>Família / Modelo</TableHead>
-                          <TableHead className="text-right">Quantidade</TableHead>
+                          <TableHead className="whitespace-nowrap">Prioridade</TableHead>
+                          <TableHead className="whitespace-nowrap">Modelo / Família</TableHead>
+                          <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                          <TableHead className="whitespace-nowrap">Nº de Série</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Ano</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Horas</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Status</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Validado</TableHead>
+                          <TableHead className="min-w-[160px]">Observação</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {currentTask.equipmentList.map((eq: any, idx: number) => (
-                          <TableRow key={eq.id || idx}>
-                            <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
-                            <TableCell className="text-sm font-medium">{eq.familyProduct || '—'}</TableCell>
-                            <TableCell className="text-right tabular-nums font-semibold">{eq.quantity || 0}</TableCell>
-                          </TableRow>
-                        ))}
+                        {currentTask.equipmentList.map((eq: any, idx: number) => {
+                          const priority = eq.priority || eq.prioridade;
+                          const priorityColors: Record<string, string> = {
+                            alta: 'destructive', high: 'destructive',
+                            media: 'warning', média: 'warning', medium: 'warning',
+                            baixa: 'secondary', low: 'secondary',
+                          };
+                          const validated = eq.validated ?? eq.validado ?? eq.is_validated;
+                          return (
+                            <TableRow key={eq.id || idx}>
+                              <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                              <TableCell>
+                                {priority ? (
+                                  <Badge variant={(priorityColors[String(priority).toLowerCase()] as any) || 'outline'} className="text-[10px] uppercase">
+                                    {String(priority)}
+                                  </Badge>
+                                ) : <span className="text-muted-foreground text-xs">—</span>}
+                              </TableCell>
+                              <TableCell className="text-sm font-medium">{eq.model || eq.modelo || eq.familyProduct || '—'}</TableCell>
+                              <TableCell className="text-sm">{eq.type || eq.tipo || eq.equipmentType || '—'}</TableCell>
+                              <TableCell className="text-xs font-mono">{eq.serialNumber || eq.serial_number || eq.numeroSerie || '—'}</TableCell>
+                              <TableCell className="text-center tabular-nums text-sm">{eq.year || eq.ano || '—'}</TableCell>
+                              <TableCell className="text-right tabular-nums text-sm">
+                                {eq.hours ?? eq.horas ?? eq.workHours
+                                  ? Number(eq.hours ?? eq.horas ?? eq.workHours).toLocaleString('pt-BR')
+                                  : '—'}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold">{eq.quantity || 0}</TableCell>
+                              <TableCell className="text-center">
+                                {eq.status ? (
+                                  <Badge variant="outline" className="text-[10px] capitalize">{String(eq.status)}</Badge>
+                                ) : <span className="text-muted-foreground text-xs">—</span>}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {validated === true || validated === 'true' ? (
+                                  <Badge variant="success" className="text-[10px] inline-flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" /> Sim
+                                  </Badge>
+                                ) : validated === false || validated === 'false' ? (
+                                  <Badge variant="secondary" className="text-[10px]">Não</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground max-w-[240px]">
+                                {eq.observation || eq.observations || eq.observacao || eq.notes || <span className="italic">—</span>}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
+
                 </SectionCard>
               )}
 
@@ -871,46 +943,69 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                 )}
               </SectionCard>
 
-              {/* Próxima Ação */}
+              {/* Próxima Ação — destaque */}
               {(currentTask.nextAction || currentTask.nextActionDate) && (
-                <SectionCard icon={Sparkles} title="Próxima Ação" tone="warning">
-                  <div className="space-y-2 text-sm">
-                    {currentTask.nextAction && <p className="whitespace-pre-wrap">{currentTask.nextAction}</p>}
-                    {currentTask.nextActionDate && (
-                      <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {formatDateDisplay(currentTask.nextActionDate as any)}
-                      </p>
-                    )}
+                <div className="relative overflow-hidden rounded-2xl border-2 border-warning/40 bg-gradient-to-br from-warning/15 via-warning/5 to-background p-5 sm:p-6 shadow-sm">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-warning/10 blur-3xl pointer-events-none" />
+                  <div className="relative flex items-start gap-4">
+                    <div className="w-12 h-12 bg-warning text-warning-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-wider font-bold text-warning mb-1">Próxima Ação</p>
+                      {currentTask.nextAction && (
+                        <p className="text-base sm:text-lg font-semibold text-foreground whitespace-pre-wrap leading-snug">
+                          {currentTask.nextAction}
+                        </p>
+                      )}
+                      {currentTask.nextActionDate && (
+                        <p className="mt-2 text-sm text-muted-foreground inline-flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-warning" />
+                          <span className="font-medium text-foreground">
+                            {formatDateDisplay(currentTask.nextActionDate as any)}
+                          </span>
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </SectionCard>
+                </div>
               )}
 
-              {/* Observações */}
+              {/* Observações — destaque */}
               {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) && (
-                <SectionCard icon={MessageSquare} title="Observações e Notas" tone="primary">
+                <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider font-bold text-primary">Observações da Visita</p>
+                      <p className="text-sm text-muted-foreground">Anotações registradas em campo</p>
+                    </div>
+                  </div>
                   <div className="space-y-3">
                     {currentTask.observations && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wide">Observações da atividade</p>
-                        <p className="text-sm bg-muted/40 p-3 rounded-lg whitespace-pre-wrap leading-relaxed">{currentTask.observations}</p>
+                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Observações da atividade</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.observations}</p>
                       </div>
                     )}
                     {currentTask.prospectNotes && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wide">Notas do prospect</p>
-                        <p className="text-sm bg-primary/5 p-3 rounded-lg whitespace-pre-wrap leading-relaxed">{currentTask.prospectNotes}</p>
+                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Notas do prospect</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotes}</p>
                       </div>
                     )}
                     {currentTask.prospectNotesJustification && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wide">Justificativa</p>
-                        <p className="text-sm bg-warning/10 p-3 rounded-lg whitespace-pre-wrap leading-relaxed">{currentTask.prospectNotesJustification}</p>
+                      <div className="rounded-xl bg-warning/10 border border-warning/30 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Justificativa</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotesJustification}</p>
                       </div>
                     )}
                   </div>
-                </SectionCard>
+                </div>
               )}
+
 
               {/* Timeline */}
               <SectionCard icon={History} title="Timeline da Visita" tone="muted">
