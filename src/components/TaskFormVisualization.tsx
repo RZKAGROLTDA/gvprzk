@@ -381,6 +381,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                           <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
                           <TableHead className="whitespace-nowrap text-center">Status</TableHead>
                           <TableHead className="whitespace-nowrap text-center">Validado</TableHead>
+                          <TableHead className="whitespace-nowrap">Validado em</TableHead>
                           <TableHead className="min-w-[160px]">Observação</TableHead>
                         </TableRow>
                       </TableHeader>
