@@ -283,6 +283,12 @@ export const generateTaskPDF = async (
       ensureSpace(6);
       const validated = eq.validated ?? eq.validado ?? eq.is_validated;
       const validatedStr = validated === true || validated === 'true' ? 'Sim' : validated === false || validated === 'false' ? 'Não' : '—';
+      const validatedAtRaw = eq.validatedAt ?? eq.validated_at ?? eq.validadoEm ?? eq.validado_em;
+      let validatedAtStr = '—';
+      if (validatedAtRaw) {
+        try { validatedAtStr = format(new Date(validatedAtRaw), 'dd/MM/yyyy HH:mm', { locale: ptBR }); }
+        catch { validatedAtStr = String(validatedAtRaw); }
+      }
       const row = [
         String(idx + 1),
         String(eq.model || eq.modelo || eq.familyProduct || '—'),
@@ -292,6 +298,7 @@ export const generateTaskPDF = async (
         eq.hours || eq.horas || eq.workHours ? Number(eq.hours || eq.horas || eq.workHours).toLocaleString('pt-BR') : '—',
         String(eq.quantity || 0),
         validatedStr,
+        validatedAtStr,
       ];
       cx = startX + 2;
       row.forEach((cell, i) => {
