@@ -774,21 +774,73 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                       <TableHeader>
                         <TableRow className="bg-muted/50">
                           <TableHead className="w-10">#</TableHead>
-                          <TableHead>Família / Modelo</TableHead>
-                          <TableHead className="text-right">Quantidade</TableHead>
+                          <TableHead className="whitespace-nowrap">Prioridade</TableHead>
+                          <TableHead className="whitespace-nowrap">Modelo / Família</TableHead>
+                          <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                          <TableHead className="whitespace-nowrap">Nº de Série</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Ano</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Horas</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Status</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Validado</TableHead>
+                          <TableHead className="min-w-[160px]">Observação</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {currentTask.equipmentList.map((eq: any, idx: number) => (
-                          <TableRow key={eq.id || idx}>
-                            <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
-                            <TableCell className="text-sm font-medium">{eq.familyProduct || '—'}</TableCell>
-                            <TableCell className="text-right tabular-nums font-semibold">{eq.quantity || 0}</TableCell>
-                          </TableRow>
-                        ))}
+                        {currentTask.equipmentList.map((eq: any, idx: number) => {
+                          const priority = eq.priority || eq.prioridade;
+                          const priorityColors: Record<string, string> = {
+                            alta: 'destructive', high: 'destructive',
+                            media: 'warning', média: 'warning', medium: 'warning',
+                            baixa: 'secondary', low: 'secondary',
+                          };
+                          const validated = eq.validated ?? eq.validado ?? eq.is_validated;
+                          return (
+                            <TableRow key={eq.id || idx}>
+                              <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                              <TableCell>
+                                {priority ? (
+                                  <Badge variant={(priorityColors[String(priority).toLowerCase()] as any) || 'outline'} className="text-[10px] uppercase">
+                                    {String(priority)}
+                                  </Badge>
+                                ) : <span className="text-muted-foreground text-xs">—</span>}
+                              </TableCell>
+                              <TableCell className="text-sm font-medium">{eq.model || eq.modelo || eq.familyProduct || '—'}</TableCell>
+                              <TableCell className="text-sm">{eq.type || eq.tipo || eq.equipmentType || '—'}</TableCell>
+                              <TableCell className="text-xs font-mono">{eq.serialNumber || eq.serial_number || eq.numeroSerie || '—'}</TableCell>
+                              <TableCell className="text-center tabular-nums text-sm">{eq.year || eq.ano || '—'}</TableCell>
+                              <TableCell className="text-right tabular-nums text-sm">
+                                {eq.hours ?? eq.horas ?? eq.workHours
+                                  ? Number(eq.hours ?? eq.horas ?? eq.workHours).toLocaleString('pt-BR')
+                                  : '—'}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold">{eq.quantity || 0}</TableCell>
+                              <TableCell className="text-center">
+                                {eq.status ? (
+                                  <Badge variant="outline" className="text-[10px] capitalize">{String(eq.status)}</Badge>
+                                ) : <span className="text-muted-foreground text-xs">—</span>}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {validated === true || validated === 'true' ? (
+                                  <Badge variant="success" className="text-[10px] inline-flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" /> Sim
+                                  </Badge>
+                                ) : validated === false || validated === 'false' ? (
+                                  <Badge variant="secondary" className="text-[10px]">Não</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground max-w-[240px]">
+                                {eq.observation || eq.observations || eq.observacao || eq.notes || <span className="italic">—</span>}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
+
                 </SectionCard>
               )}
 
