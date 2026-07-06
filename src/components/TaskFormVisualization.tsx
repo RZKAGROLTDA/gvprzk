@@ -577,7 +577,21 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                       <Sparkles className="w-6 h-6" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] uppercase tracking-wider font-bold text-warning mb-1">Próxima Ação</p>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <p className="text-[11px] uppercase tracking-wider font-bold text-warning">Próxima Ação</p>
+                        {(() => {
+                          if (!currentTask.nextActionDate) return null;
+                          const d = new Date(currentTask.nextActionDate as any);
+                          const today = new Date(); today.setHours(0,0,0,0);
+                          const dd = new Date(d); dd.setHours(0,0,0,0);
+                          const diff = (dd.getTime() - today.getTime()) / 86400000;
+                          const [label, variant]: [string, any] =
+                            diff < 0 ? ['Atrasada', 'destructive'] :
+                            diff === 0 ? ['Hoje', 'warning'] :
+                            ['Prevista', 'success'];
+                          return <Badge variant={variant} className="text-[10px] uppercase tracking-wider">{label}</Badge>;
+                        })()}
+                      </div>
                       {currentTask.nextAction && (
                         <p className="text-base sm:text-lg font-semibold text-foreground whitespace-pre-wrap leading-snug">
                           {String(currentTask.nextAction)}
