@@ -575,7 +575,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
               )}
 
               {/* 11. OBSERVAÇÕES */}
-              {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) && (
+              {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) ? (
                 <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
