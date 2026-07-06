@@ -331,6 +331,14 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   </div>
                 </SectionCard>
               )}
+              {!hasLocation && (
+                <SectionCard icon={MapPin} title="Localização da Visita" tone="muted">
+                  <div className="text-center py-6 text-sm text-muted-foreground italic">
+                    <Navigation className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                    Localização não registrada
+                  </div>
+                </SectionCard>
+              )}
 
               {/* 6. FOTOS */}
               {photoCount > 0 && (
