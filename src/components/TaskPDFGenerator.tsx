@@ -471,7 +471,7 @@ export const generateTaskPDF = async (
     pdf.addPage(); yPos = 20;
     sectionTitle(`Registro Fotográfico (${task.photos.length})`);
 
-    const maxPhotos = 6;
+    const maxPhotos = 12;
     const photosToProcess = task.photos.slice(0, maxPhotos);
     const loaded = await Promise.all(photosToProcess.map(p => loadImageAsBase64(p)));
 
