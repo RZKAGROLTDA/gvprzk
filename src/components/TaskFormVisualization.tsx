@@ -381,6 +381,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                           <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
                           <TableHead className="whitespace-nowrap text-center">Status</TableHead>
                           <TableHead className="whitespace-nowrap text-center">Validado</TableHead>
+                          <TableHead className="whitespace-nowrap">Validado em</TableHead>
                           <TableHead className="min-w-[160px]">Observação</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -393,6 +394,13 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                             baixa: 'secondary', low: 'secondary',
                           };
                           const validated = eq.validated ?? eq.validado ?? eq.is_validated;
+                          const validatedAtRaw = eq.validatedAt ?? eq.validated_at ?? eq.validadoEm ?? eq.validado_em;
+                          let validatedAtStr: string | null = null;
+                          if (validatedAtRaw) {
+                            try {
+                              validatedAtStr = format(new Date(validatedAtRaw), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+                            } catch { validatedAtStr = String(validatedAtRaw); }
+                          }
                           return (
                             <TableRow key={eq.id || idx}>
                               <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
@@ -428,6 +436,9 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                                 ) : (
                                   <span className="text-muted-foreground text-xs">—</span>
                                 )}
+                              </TableCell>
+                              <TableCell className="text-xs tabular-nums whitespace-nowrap">
+                                {validatedAtStr ? validatedAtStr : <span className="text-muted-foreground italic">—</span>}
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground max-w-[240px]">
                                 {eq.observation || eq.observations || eq.observacao || eq.notes || <span className="italic">—</span>}
@@ -544,19 +555,27 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                           {String(currentTask.nextAction)}
                         </p>
                       )}
-                      {currentTask.nextActionDate && (
-                        <p className="mt-2 text-sm text-muted-foreground inline-flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-warning" />
-                          <span className="font-medium text-foreground">{formatDateDisplay(currentTask.nextActionDate as any)}</span>
-                        </p>
-                      )}
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                        {currentTask.nextActionDate && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4 text-warning" />
+                            <span className="font-medium text-foreground">{formatDateDisplay(currentTask.nextActionDate as any)}</span>
+                          </span>
+                        )}
+                        {currentTask.responsible && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <User className="w-4 h-4 text-warning" />
+                            <span className="font-medium text-foreground">{currentTask.responsible}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* 11. OBSERVAÇÕES */}
-              {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) && (
+              {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) ? (
                 <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
@@ -587,6 +606,11 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                       </div>
                     )}
                   </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-muted bg-muted/20 p-6 text-center">
+                  <MessageSquare className="w-6 h-6 mx-auto text-muted-foreground/60 mb-2" />
+                  <p className="text-sm text-muted-foreground italic">Nenhuma observação registrada</p>
                 </div>
               )}
 

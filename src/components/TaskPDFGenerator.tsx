@@ -262,8 +262,8 @@ export const generateTaskPDF = async (
   if (task.equipmentList && task.equipmentList.length > 0) {
     sectionTitle(`Parque de Máquinas (${equipmentCount} itens · ${equipmentUnits} unidades)`);
 
-    const headers = ['#', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Validado'];
-    const widths = [8, 42, 26, 28, 14, 18, 12, 22];
+    const headers = ['#', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Valid.', 'Validado em'];
+    const widths = [7, 38, 22, 24, 12, 16, 10, 14, 39];
     const startX = marginLeft;
 
     ensureSpace(8);
@@ -283,6 +283,12 @@ export const generateTaskPDF = async (
       ensureSpace(6);
       const validated = eq.validated ?? eq.validado ?? eq.is_validated;
       const validatedStr = validated === true || validated === 'true' ? 'Sim' : validated === false || validated === 'false' ? 'Não' : '—';
+      const validatedAtRaw = eq.validatedAt ?? eq.validated_at ?? eq.validadoEm ?? eq.validado_em;
+      let validatedAtStr = '—';
+      if (validatedAtRaw) {
+        try { validatedAtStr = format(new Date(validatedAtRaw), 'dd/MM/yyyy HH:mm', { locale: ptBR }); }
+        catch { validatedAtStr = String(validatedAtRaw); }
+      }
       const row = [
         String(idx + 1),
         String(eq.model || eq.modelo || eq.familyProduct || '—'),
@@ -292,6 +298,7 @@ export const generateTaskPDF = async (
         eq.hours || eq.horas || eq.workHours ? Number(eq.hours || eq.horas || eq.workHours).toLocaleString('pt-BR') : '—',
         String(eq.quantity || 0),
         validatedStr,
+        validatedAtStr,
       ];
       cx = startX + 2;
       row.forEach((cell, i) => {
@@ -376,35 +383,48 @@ export const generateTaskPDF = async (
   if (task.nextAction || task.nextActionDate) {
     sectionTitle('Próxima Ação');
     if (task.nextAction) paragraph(String(task.nextAction));
-    if (task.nextActionDate) {
+    if (task.nextActionDate || task.responsible) {
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(9);
       pdf.setTextColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
       ensureSpace(6);
-      pdf.text(`Data prevista: ${formatDateDisplay(task.nextActionDate as any)}`, marginLeft, yPos);
+      const parts: string[] = [];
+      if (task.nextActionDate) parts.push(`Data prevista: ${formatDateDisplay(task.nextActionDate as any)}`);
+      if (task.responsible) parts.push(`Responsável: ${task.responsible}`);
+      pdf.text(parts.join('    ·    '), marginLeft, yPos);
       pdf.setTextColor(0, 0, 0);
       yPos += 6;
     }
   }
 
   // ===== 10. OBSERVAÇÕES =====
-  const hasObs = task.observations || task.prospectNotes || (task as any).prospectNotesJustification;
-  if (hasObs) {
+  {
     sectionTitle('Observações e Notas');
-    if (task.observations) {
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
-      ensureSpace(6); pdf.text('Observações da atividade:', marginLeft, yPos); yPos += 5;
-      paragraph(task.observations);
-    }
-    if (task.prospectNotes) {
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
-      ensureSpace(6); pdf.text('Notas do prospect:', marginLeft, yPos); yPos += 5;
-      paragraph(String(task.prospectNotes));
-    }
-    if ((task as any).prospectNotesJustification) {
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
-      ensureSpace(6); pdf.text('Justificativa:', marginLeft, yPos); yPos += 5;
-      paragraph(String((task as any).prospectNotesJustification));
+    const hasObs = task.observations || task.prospectNotes || (task as any).prospectNotesJustification;
+    if (!hasObs) {
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(9);
+      pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+      ensureSpace(6);
+      pdf.text('Nenhuma observação registrada', marginLeft, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 6;
+    } else {
+      if (task.observations) {
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
+        ensureSpace(6); pdf.text('Observações da atividade:', marginLeft, yPos); yPos += 5;
+        paragraph(task.observations);
+      }
+      if (task.prospectNotes) {
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
+        ensureSpace(6); pdf.text('Notas do prospect:', marginLeft, yPos); yPos += 5;
+        paragraph(String(task.prospectNotes));
+      }
+      if ((task as any).prospectNotesJustification) {
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8);
+        ensureSpace(6); pdf.text('Justificativa:', marginLeft, yPos); yPos += 5;
+        paragraph(String((task as any).prospectNotesJustification));
+      }
     }
   }
 
