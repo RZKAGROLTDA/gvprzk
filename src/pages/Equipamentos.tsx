@@ -230,6 +230,21 @@ const Equipamentos: React.FC = () => {
     () => [...validators].sort((a, b) => b.validated_count - a.validated_count),
     [validators],
   );
+  const filialRanked = useMemo(() => {
+    const map = new Map<string, { filial_nome: string; validated_count: number }>();
+    validators.forEach((v) => {
+      const key = v.filial_nome || '—';
+      const cur = map.get(key);
+      if (cur) cur.validated_count += v.validated_count;
+      else map.set(key, { filial_nome: key, validated_count: v.validated_count });
+    });
+    return [...map.values()].sort((a, b) => b.validated_count - a.validated_count);
+  }, [validators]);
+  const filialTotal = useMemo(
+    () => filialRanked.reduce((sum, f) => sum + f.validated_count, 0),
+    [filialRanked],
+  );
+
 
   return (
     <div className="space-y-6">
