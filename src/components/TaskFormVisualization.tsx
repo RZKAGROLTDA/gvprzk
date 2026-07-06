@@ -1,1051 +1,740 @@
 import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { 
-  MapPin, Calendar, User, Building, Package, Camera, FileText, Download, 
-  Printer, Mail, Phone, Hash, AtSign, Car, Loader2, CheckCircle, Clock, 
-  TrendingUp, DollarSign, AlertTriangle, Target, ShoppingCart, Percent,
-  MapPinned, Tag
+import {
+  FileText, Download, Printer, Mail, Loader2,
+  Target, TrendingUp, DollarSign, Percent, User, Building2,
+  Calendar, Clock, MapPin, Phone, AtSign, Package, MessageSquare,
+  Tractor, Image as ImageIcon, Activity, Navigation, Camera,
+  CheckCircle2, X, History, Sparkles, UserCheck, Wrench,
 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
-import { Task, ProductType } from "@/types/task";
-import { useToast } from "@/hooks/use-toast";
-import { useFiliais } from '@/hooks/useTasksOptimized';
+  Dialog, DialogContent,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SectionCard } from '@/components/task-form/sections/SectionCard';
+import { Task } from '@/types/task';
+import { useToast } from '@/hooks/use-toast';
+import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
-import { parseLocalDate, formatDateDisplay } from '@/lib/utils';
+import { formatDateDisplay } from '@/lib/utils';
 
-interface TaskFormVisualizationProps {
+interface Props {
   task: Task | null;
   isOpen: boolean;
   onClose: () => void;
   onTaskUpdated?: () => void;
 }
 
-export const TaskFormVisualization: React.FC<TaskFormVisualizationProps> = ({
-  task: taskProp,
-  isOpen,
-  onClose,
-  onTaskUpdated
-}) => {
+const formatCurrency = (v: number) =>
+  `R$ ${(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+const formatDuration = (start?: string | null, end?: string | null): string => {
+  if (!start || !end) return '—';
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  if (isNaN(sh) || isNaN(eh)) return '—';
+  let mins = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0));
+  if (mins < 0) mins += 24 * 60;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+};
+
+export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const { data: filiais = [] } = useFiliais();
 
-  // USAR EXATAMENTE A MESMA LÓGICA DO TaskEditModal - hook useTaskEditData
-  const { data: taskEditData, loading: isLoadingDetails, error } = useTaskEditData(
-    isOpen ? taskProp?.id || null : null
+  // Fresh full task (photos, checkInLocation, equipmentList, products)
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
+    isOpen && taskProp ? taskProp.id : null,
   );
 
-  // Montar task a partir dos dados do hook (mesma lógica do TaskEditModal)
-  const task = useMemo((): Task | null => {
-    if (!taskEditData) {
-      return taskProp;
+  // Extra fields (technical visit, contact, nextAction) via edit-data hook
+  const { data: editData, loading: loadingEdit } = useTaskEditData(
+    isOpen ? taskProp?.id || null : null,
+  );
+
+  const currentTask = useMemo<Task | null>(() => {
+    if (!taskProp) return null;
+    const base: Task = { ...taskProp, ...(taskDetails || {}) } as Task;
+    if (editData) {
+      (base as any).contactName = base.contactName ?? editData.contactName;
+      (base as any).contactFunction = base.contactFunction ?? editData.contactFunction;
+      (base as any).nextAction = base.nextAction ?? (editData as any).next_action;
+      (base as any).nextActionDate = base.nextActionDate ?? (editData as any).next_action_date;
+      (base as any).technicalCategory = base.technicalCategory ?? editData.technical_category ?? undefined;
+      (base as any).technicalFunnelStage = base.technicalFunnelStage ?? editData.technical_funnel_stage ?? undefined;
+      (base as any).opportunityInterest = base.opportunityInterest ?? (editData.opportunity_interest as any);
+      (base as any).opportunityUrgency = base.opportunityUrgency ?? (editData.opportunity_urgency as any);
+      (base as any).opportunityImpact = base.opportunityImpact ?? (editData.opportunity_impact as any);
+      (base as any).opportunityClosing = base.opportunityClosing ?? (editData.opportunity_closing as any);
+      (base as any).salesEstimate = base.salesEstimate ?? (editData as any).sales_estimate;
+      (base as any).prospectNotesJustification =
+        (base as any).prospectNotesJustification ?? (editData as any).prospect_notes_justification;
     }
+    return base;
+  }, [taskProp, taskDetails, editData]);
 
-    // Mapear items para checklist (ProductType[])
-    const mappedChecklist: ProductType[] = (taskEditData.items || []).map((item) => ({
-      id: item.id,
-      name: item.produto,
-      category: (item.sku || 'other') as ProductType['category'],
-      selected: item.qtd_vendida > 0,
-      quantity: item.qtd_ofertada,
-      price: item.preco_unit,
-      observations: '',
-      photos: [],
-    }));
+  const salesStatus = currentTask ? mapSalesStatus(currentTask) : 'prospect';
 
-    return {
-      id: taskEditData.id,
-      name: taskEditData.name || '',
-      client: taskEditData.cliente_nome,
-      clientCode: taskEditData.clientCode,
-      property: taskEditData.property || '',
-      propertyHectares: taskEditData.propertyHectares,
-      responsible: taskEditData.responsible || '',
-      startDate: taskEditData.startDate ? parseLocalDate(taskEditData.startDate) : new Date(),
-      endDate: taskEditData.endDate ? parseLocalDate(taskEditData.endDate) : new Date(),
-      startTime: taskEditData.startTime || '',
-      endTime: taskEditData.endTime || '',
-      priority: (taskEditData.priority || 'medium') as Task['priority'],
-      status: (taskProp?.status || 'pending') as Task['status'],
-      taskType: (taskEditData.taskType || taskEditData.tipo || 'prospection') as Task['taskType'],
-      observations: taskEditData.notas || taskEditData.observations || '',
-      photos: taskProp?.photos || [],
-      documents: taskProp?.documents || [],
-      initialKm: taskProp?.initialKm || 0,
-      finalKm: taskProp?.finalKm || 0,
-      equipmentQuantity: taskEditData.equipmentQuantity,
-      equipmentList: taskProp?.equipmentList,
-      familyProduct: taskEditData.familyProduct,
-      email: taskEditData.cliente_email,
-      phone: taskEditData.phone,
-      filial: taskEditData.filial,
-      filialAtendida: taskEditData.filialAtendida,
-      isProspect: !taskEditData.sales_confirmed,
-      prospectNotes: taskProp?.prospectNotes,
-      salesConfirmed: taskEditData.sales_confirmed,
-      salesType: taskEditData.sales_type as Task['salesType'],
-      salesValue: taskEditData.sales_value,
-      partialSalesValue: taskEditData.partial_sales_value,
-      checkInLocation: taskProp?.checkInLocation,
-      createdAt: taskProp?.createdAt || new Date(),
-      updatedAt: taskProp?.updatedAt || new Date(),
-      createdBy: taskEditData.vendedor_id,
-      checklist: mappedChecklist,
-      reminders: taskProp?.reminders || [],
-    };
-  }, [taskEditData, taskProp]);
-
-  // IMPORTANTE: hooks (ex.: useMemo) não podem ficar depois de returns condicionais.
-  // Então, todos os cálculos com hooks ficam ANTES de qualquer early-return.
-  const salesStatus = task ? mapSalesStatus(task) : 'prospect';
-
-  const calculatedValues = useMemo(() => {
-    if (!task) return { total: 0, closed: 0, partial: 0, products: 0 };
-
-    const total = getSalesValueAsNumber(task.salesValue) || 0;
-    const partial = task.partialSalesValue || 0;
-
-    // Calculate from products if available
+  const values = useMemo(() => {
+    if (!currentTask) return { total: 0, closed: 0, partial: 0, products: 0 };
+    const total = getSalesValueAsNumber(currentTask.salesValue) || 0;
+    const partial = currentTask.partialSalesValue || 0;
     let productsTotal = 0;
     let productsSelected = 0;
-
-    if (task.checklist && task.checklist.length > 0) {
-      task.checklist.forEach((item) => {
-        const itemTotal = (item.price || 0) * (item.quantity || 1);
-        productsTotal += itemTotal;
-        if (item.selected) {
-          productsSelected += itemTotal;
-        }
-      });
-    }
-
+    (currentTask.checklist || []).forEach((i) => {
+      const t = (i.price || 0) * (i.quantity || 1);
+      productsTotal += t;
+      if (i.selected) productsSelected += t;
+    });
     const closed =
-      salesStatus === 'ganho'
-        ? total || productsTotal
-        : salesStatus === 'parcial'
-          ? partial || productsSelected
-          : 0;
+      salesStatus === 'ganho' ? (total || productsTotal)
+      : salesStatus === 'parcial' ? (partial || productsSelected)
+      : 0;
+    return { total: total || productsTotal, closed, partial: partial || productsSelected, products: productsTotal };
+  }, [currentTask, salesStatus]);
 
-    return {
-      total: total || productsTotal,
-      closed,
-      partial: partial || productsSelected,
-      products: productsTotal,
-    };
-  }, [task, salesStatus]);
+  if (!isOpen) return null;
+  if (!taskProp) return null;
 
-  // Enquanto os produtos/itens (taskEditData.items) não terminaram de carregar,
-  // manter o modal aberto e mostrar um loading *dentro* dele (mesma UX do Editar).
-  const isWaitingForProducts = isOpen && !!taskProp && (!taskEditData || isLoadingDetails) && !error;
-  if (isWaitingForProducts) {
+  const isWaiting = (loadingDetails && !taskDetails) || (loadingEdit && !editData);
+  if (isWaiting) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-5xl">
-          <DialogHeader className="pb-4 border-b">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-muted rounded-lg">
-                <FileText className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-semibold">
-                  Detalhes da Oportunidade
-                </DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Carregando informações…
-                </p>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="flex flex-col items-center justify-center py-14 space-y-4">
-            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">
-              Carregando produtos e valores…
-            </p>
+          <div className="flex flex-col items-center justify-center py-14 space-y-3">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">Carregando relatório da visita…</p>
           </div>
         </DialogContent>
       </Dialog>
     );
   }
+  if (!currentTask) return null;
 
+  const itemsCount = currentTask.checklist?.length || 0;
+  const selectedItemsCount = currentTask.checklist?.filter(i => i.selected).length || 0;
+  const equipmentCount = currentTask.equipmentList?.length || 0;
+  const equipmentTotalUnits = (currentTask.equipmentList || []).reduce((s, e: any) => s + (Number(e.quantity) || 0), 0);
+  const photoCount = currentTask.photos?.length || 0;
+  const hasLocation = !!(currentTask.checkInLocation?.lat && currentTask.checkInLocation?.lng);
+  const duration = formatDuration(currentTask.startTime, currentTask.endTime);
+  const conversionRate = values.total > 0 ? (values.closed / values.total) * 100 : 0;
 
-  // Em caso de erro, exibir um dialog simples para permitir fechar.
-  if (isOpen && taskProp && error) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Erro ao carregar detalhes</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-destructive">{error}</p>
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={onClose}>
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  console.log('TaskFormVisualization - Dados carregados via useTaskEditData:', {
-    taskId: taskProp?.id,
-    hasTaskEditData: !!taskEditData,
-    itemsCount: taskEditData?.items?.length || 0,
-    salesType: taskEditData?.sales_type,
-    salesConfirmed: taskEditData?.sales_confirmed,
-    isLoadingDetails,
-    error,
-  });
-
-  // Early return if no task is provided
-  if (!task) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nenhuma tarefa selecionada</DialogTitle>
-          </DialogHeader>
-          <div className="p-4 text-center text-muted-foreground">
-            Selecione uma tarefa para visualizar os detalhes.
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  const mapEmbedUrl = hasLocation
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${currentTask.checkInLocation!.lng - 0.005}%2C${currentTask.checkInLocation!.lat - 0.003}%2C${currentTask.checkInLocation!.lng + 0.005}%2C${currentTask.checkInLocation!.lat + 0.003}&layer=mapnik&marker=${currentTask.checkInLocation!.lat}%2C${currentTask.checkInLocation!.lng}`
+    : null;
 
   const handleGeneratePDF = async () => {
-    if (!task) return;
-    
     setIsGeneratingPDF(true);
     try {
-      // Passar filiais para resolver nomes corretamente (igual ao modal)
-      await generateTaskPDF(task, calculateTaskTotalValue, getTaskTypeLabel, filiais);
-      
-      toast({
-        title: "PDF gerado com sucesso!",
-        description: "O arquivo foi baixado automaticamente.",
-      });
-    } catch (error) {
-      console.error('❌ Erro ao gerar PDF:', error);
-      toast({
-        title: "Erro ao gerar PDF",
-        description: "Ocorreu um erro ao gerar o arquivo. Verifique os dados e tente novamente.",
-        variant: "destructive"
-      });
+      await generateTaskPDF(currentTask, calculateTaskTotalValue, getTaskTypeLabel, filiais);
+      toast({ title: 'PDF gerado com sucesso!', description: 'O arquivo foi baixado automaticamente.' });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Erro ao gerar PDF', description: 'Tente novamente.', variant: 'destructive' });
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
-  const handlePrint = () => {
-    if (!task) return;
-
-    const escapeHtml = (value: string) =>
-      String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-
-    const conversion =
-      calculatedValues.total > 0 && calculatedValues.closed > 0
-        ? `${((calculatedValues.closed / calculatedValues.total) * 100).toFixed(0)}%`
-        : '-';
-
-    const productsRows = (task.checklist || [])
-      .map((item) => {
-        const subtotal = (item.price || 0) * (item.quantity || 1);
-        return `<tr>
-          <td style="text-align:center;">${item.selected ? '✓' : ''}</td>
-          <td>${escapeHtml(item.name || 'N/A')}</td>
-          <td>${escapeHtml(item.category || 'N/A')}</td>
-          <td style="text-align:center;">${item.quantity || 1}</td>
-          <td style="text-align:right;">${formatCurrency(item.price || 0)}</td>
-          <td style="text-align:right; font-weight:600;">${formatCurrency(subtotal)}</td>
-        </tr>`;
-      })
-      .join('');
-
-    const photosList = (task.photos || [])
-      .map((url, idx) => `<li><a href="${url}" target="_blank">Foto ${idx + 1}</a></li>`)
-      .join('');
-
-    const docsList = (task.documents || [])
-      .map((url, idx) => `<li><a href="${url}" target="_blank">Documento ${idx + 1}</a></li>`)
-      .join('');
-
-    const observacoesHtml = [
-      task.observations ? `<p><strong>Observações Gerais:</strong><br/>${escapeHtml(task.observations).replace(/\n/g, '<br/>')}</p>` : '',
-      task.prospectNotes ? `<p><strong>Notas de Prospecção:</strong><br/>${escapeHtml(String(task.prospectNotes)).replace(/\n/g, '<br/>')}</p>` : '',
-      (task as any).prospectNotesJustification ? `<p><strong>Justificativa:</strong><br/>${escapeHtml(String((task as any).prospectNotesJustification)).replace(/\n/g, '<br/>')}</p>` : '',
-    ].filter(Boolean).join('');
-
-    const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>Detalhes da Oportunidade</title>
-<style>
-@page{margin:12mm}
-*{box-sizing:border-box}
-body{font-family:Arial,sans-serif;color:#111;margin:0;padding:20px}
-h1{font-size:18px;margin:0 0 4px}
-.sub{color:#555;font-size:12px;margin:0 0 14px}
-h2{font-size:14px;margin:16px 0 8px}
-.grid{display:flex;gap:12px}
-.grid>div{flex:1}
-.box{border:1px solid #ddd;padding:10px;border-radius:8px;margin-bottom:12px}
-.row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0}
-.label{color:#666}
-table{width:100%;border-collapse:collapse;font-size:11px}
-th,td{border:1px solid #ddd;padding:6px}
-th{background:#f5f5f5;text-align:left}
-ul{margin:6px 0 0 18px}
-a{color:#0b57d0}
-</style>
-</head>
-<body>
-<h1>Detalhes da Oportunidade</h1>
-<p class="sub">${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))} • ${task.startDate ? formatDateDisplay(task.startDate) : 'N/A'}</p>
-
-<div class="grid">
-<div class="box">
-<h2>Resumo</h2>
-<div class="row"><span class="label">Status</span><span>${escapeHtml(getStatusLabel(salesStatus))}</span></div>
-<div class="row"><span class="label">Valor Potencial</span><span>${formatCurrency(calculatedValues.total)}</span></div>
-<div class="row"><span class="label">Valor Fechado</span><span>${calculatedValues.closed > 0 ? formatCurrency(calculatedValues.closed) : '-'}</span></div>
-<div class="row"><span class="label">Conversão</span><span>${conversion}</span></div>
-</div>
-<div class="box">
-<h2>Cliente</h2>
-<div class="row"><span class="label">Nome</span><span>${escapeHtml(task.client || 'N/A')}</span></div>
-<div class="row"><span class="label">Código</span><span>${escapeHtml(task.clientCode || 'N/A')}</span></div>
-<div class="row"><span class="label">Email</span><span>${escapeHtml(task.email || 'N/A')}</span></div>
-<div class="row"><span class="label">Telefone</span><span>${escapeHtml(task.phone || 'N/A')}</span></div>
-<div class="row"><span class="label">Propriedade</span><span>${escapeHtml(task.property || 'N/A')}</span></div>
-<div class="row"><span class="label">Hectares</span><span>${task.propertyHectares ? task.propertyHectares + ' ha' : 'N/A'}</span></div>
-</div>
-</div>
-
-<div class="box">
-<h2>Filial e Responsável</h2>
-<div class="row"><span class="label">Responsável</span><span>${escapeHtml(task.responsible || 'N/A')}</span></div>
-<div class="row"><span class="label">Filial do Responsável</span><span>${escapeHtml(getFilialNameRobust(task.filial, filiais))}</span></div>
-<div class="row"><span class="label">Filial Atendida</span><span>${task.filialAtendida ? escapeHtml(getFilialNameRobust(task.filialAtendida, filiais)) : 'Mesma do responsável'}</span></div>
-<div class="row"><span class="label">Tipo de Atividade</span><span>${escapeHtml(getTaskTypeLabel(task.taskType || 'prospection'))}</span></div>
-<div class="row"><span class="label">Prioridade</span><span>${task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Média' : 'Baixa'}</span></div>
-</div>
-
-<h2>Produtos e Serviços (${(task.checklist || []).length})</h2>
-<table>
-<thead><tr>
-<th style="width:28px;text-align:center">✓</th>
-<th>Produto / Serviço</th>
-<th style="width:120px">Categoria</th>
-<th style="width:44px;text-align:center">Qtd</th>
-<th style="width:90px;text-align:right">Preço</th>
-<th style="width:90px;text-align:right">Subtotal</th>
-</tr></thead>
-<tbody>${productsRows || '<tr><td colspan="6" style="text-align:center;color:#666">Nenhum produto/serviço cadastrado.</td></tr>'}</tbody>
-</table>
-
-${observacoesHtml ? '<div class="box"><h2>Observações e Notas</h2>' + observacoesHtml + '</div>' : ''}
-
-${(task.photos || []).length ? '<div class="box"><h2>Fotos (' + task.photos.length + ')</h2><ul>' + photosList + '</ul></div>' : ''}
-
-${(task.documents || []).length ? '<div class="box"><h2>Documentos (' + task.documents.length + ')</h2><ul>' + docsList + '</ul></div>' : ''}
-
-<div class="box" style="font-size:11px;color:#666">
-Criado em: ${task.createdAt ? format(parseLocalDate(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
-Atualizado em: ${task.updatedAt ? format(parseLocalDate(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'} | 
-ID: ${task.id ? task.id.substring(0, 8) : 'N/A'}...
-</div>
-</body>
-</html>`;
-
-    // Criar iframe oculto para impressão (mais confiável que window.open)
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) {
-      toast({
-        title: "Erro ao imprimir",
-        description: "Não foi possível criar a janela de impressão.",
-        variant: "destructive"
-      });
-      document.body.removeChild(iframe);
-      return;
-    }
-
-    iframeDoc.open();
-    iframeDoc.write(html);
-    iframeDoc.close();
-
-    // Flag para evitar impressão duplicada
-    let printed = false;
-
-    const doPrint = () => {
-      if (printed) return;
-      printed = true;
-      iframe.contentWindow?.print();
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 500);
-    };
-
-    // Aguardar carregamento e imprimir
-    iframe.onload = () => {
-      setTimeout(doPrint, 100);
-    };
-
-    // Fallback caso onload não dispare (alguns browsers)
-    setTimeout(doPrint, 600);
-  };
+  const handlePrint = () => window.print();
 
   const handleEmail = () => {
-    const statusLabel = getStatusLabel(salesStatus);
-    const valorPotencial = formatCurrency(calculatedValues.total);
-    const valorFechado = calculatedValues.closed > 0 ? formatCurrency(calculatedValues.closed) : '-';
-    const taxaConversao = calculatedValues.total > 0 && calculatedValues.closed > 0 
-      ? `${((calculatedValues.closed / calculatedValues.total) * 100).toFixed(0)}%`
-      : '-';
-
-    // Montar lista de produtos se existir
-    let produtosSection = '';
-    if (task?.checklist && task.checklist.length > 0) {
-      const selectedCount = task.checklist.filter(i => i.selected).length;
-      const selectedValue = task.checklist.reduce((sum, i) => i.selected ? sum + ((i.price || 0) * (i.quantity || 1)) : sum, 0);
-      
-      produtosSection = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🛒 PRODUTOS E SERVIÇOS (${task.checklist.length} itens)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${task.checklist.map(item => {
-  const subtotal = (item.price || 0) * (item.quantity || 1);
-  return `${item.selected ? '✓' : '○'} ${item.name} - Qtd: ${item.quantity || 1} - ${formatCurrency(subtotal)}`;
-}).join('\n')}
-
-Resumo: ${selectedCount}/${task.checklist.length} selecionados | Valor Selecionado: ${formatCurrency(selectedValue)} | Total: ${formatCurrency(calculatedValues.products)}
-`;
-    }
-
-    // Montar seção de equipamentos se existir
-    let equipamentosSection = '';
-    if (task?.familyProduct || task?.equipmentQuantity || (task?.equipmentList && task.equipmentList.length > 0)) {
-      equipamentosSection = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 EQUIPAMENTOS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-      if (task.familyProduct) equipamentosSection += `\n• Família Principal: ${task.familyProduct}`;
-      if (task.equipmentQuantity) equipamentosSection += `\n• Quantidade Total: ${task.equipmentQuantity}`;
-      if (task.equipmentList && task.equipmentList.length > 0) {
-        equipamentosSection += '\n' + task.equipmentList.map(eq => `• ${eq.familyProduct || 'N/A'} - Qtd: ${eq.quantity || 0}`).join('\n');
-      }
-      equipamentosSection += '\n';
-    }
-
-    // Montar seção de observações
-    let observacoesSection = '';
-    if (task?.observations || task?.prospectNotes || task?.prospectNotesJustification) {
-      observacoesSection = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 OBSERVAÇÕES E NOTAS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-      if (task.observations) observacoesSection += `\nObservações Gerais:\n${task.observations}\n`;
-      if (task.prospectNotes) observacoesSection += `\nNotas de Prospecção:\n${task.prospectNotes}\n`;
-      if (task.prospectNotesJustification) observacoesSection += `\nJustificativa:\n${task.prospectNotesJustification}\n`;
-    }
-
-    // Montar seção de localização
-    let localizacaoSection = '';
-    if (task?.checkInLocation) {
-      localizacaoSection = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📍 LOCALIZAÇÃO DO CHECK-IN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Coordenadas: ${task.checkInLocation.lat}, ${task.checkInLocation.lng}
-• Data/Hora: ${format(new Date(task.checkInLocation.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-• Link: https://www.google.com/maps?q=${task.checkInLocation.lat},${task.checkInLocation.lng}
-`;
-    }
-    
-    const subject = `Relatório de Oportunidade - ${task?.client || 'Cliente'} - ${statusLabel}`;
-    const body = `Olá,
-
-Segue o relatório completo da oportunidade:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 RESUMO DA OPORTUNIDADE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Status: ${statusLabel}
-• Valor Potencial: ${valorPotencial}
-• Valor Fechado: ${valorFechado}
-• Taxa de Conversão: ${taxaConversao}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 DADOS DO CLIENTE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Nome: ${task?.client || 'N/A'}
-• Código: ${task?.clientCode || 'N/A'}
-• Email: ${task?.email || 'N/A'}
-• Telefone: ${task?.phone || 'N/A'}
-• Propriedade: ${task?.property || 'N/A'}
-• Hectares: ${task?.propertyHectares ? `${task.propertyHectares} ha` : 'N/A'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏢 FILIAL E RESPONSÁVEL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-• Responsável: ${task?.responsible || 'N/A'}
-• Filial do Responsável: ${getFilialNameRobust(task?.filial, filiais)}
-• Filial Atendida: ${task?.filialAtendida ? getFilialNameRobust(task.filialAtendida, filiais) : 'Mesma do responsável'}
-• Tipo de Atividade: ${getTaskTypeLabel(task?.taskType || 'prospection')}
-• Prioridade: ${task?.priority === 'high' ? 'Alta' : task?.priority === 'medium' ? 'Média' : 'Baixa'}
-• Data: ${task?.startDate ? formatDateDisplay(task.startDate) : 'N/A'}
-${produtosSection}${equipamentosSection}${observacoesSection}${localizacaoSection}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Relatório gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-
-Atenciosamente,
-${task?.responsible || 'Equipe Comercial'}`;
-    
-    const mailtoLink = `mailto:${task?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(mailtoLink);
-  };
-
-  // Get status badge style
-  const getStatusBadgeStyle = () => {
-    switch (salesStatus) {
-      case 'ganho':
-        return 'bg-green-500 text-white hover:bg-green-600';
-      case 'parcial':
-        return 'bg-amber-500 text-white hover:bg-amber-600';
-      case 'perdido':
-        return 'bg-red-500 text-white hover:bg-red-600';
-      default:
-        return 'bg-blue-500 text-white hover:bg-blue-600';
-    }
-  };
-
-  const formatCurrency = (value: number) => {
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    const subject = `Relatório de Visita - ${currentTask.client} - ${getStatusLabel(salesStatus)}`;
+    const body = [
+      `Cliente: ${currentTask.client || '—'}`,
+      `Código: ${currentTask.clientCode || '—'}`,
+      `Propriedade: ${currentTask.property || '—'}`,
+      `Data: ${currentTask.startDate ? formatDateDisplay(currentTask.startDate) : '—'}`,
+      `Duração: ${duration}`,
+      `Responsável: ${currentTask.responsible || '—'}`,
+      `Filial: ${getFilialNameRobust(currentTask.filial, filiais)}`,
+      `Status: ${getStatusLabel(salesStatus)}`,
+      '',
+      `Valor potencial: ${formatCurrency(values.total)}`,
+      `Valor fechado:   ${formatCurrency(values.closed)}`,
+      `Equipamentos: ${equipmentCount}`,
+      `Fotos: ${photoCount}`,
+      `Localização: ${hasLocation ? `${currentTask.checkInLocation!.lat}, ${currentTask.checkInLocation!.lng}` : '—'}`,
+      '',
+      'Observações:',
+      currentTask.observations || currentTask.prospectNotes || '—',
+    ].join('\n');
+    window.open(`mailto:${currentTask.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto">
-        <DialogHeader className="pb-4 border-b">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="p-3 bg-gradient-primary rounded-lg shadow-lg flex-shrink-0">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div className="min-w-0">
-                <DialogTitle className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
-                  Detalhes da Oportunidade
-                </DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1 truncate">
-                  {getTaskTypeLabel(task?.taskType || 'prospection')} • {task?.startDate ? formatDateDisplay(task.startDate) : 'N/A'}
-                </p>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-h-[95vh] overflow-y-auto overflow-x-hidden p-0 w-[96vw] max-w-[96vw] sm:w-full sm:max-w-6xl">
+          <div className="print:p-4">
+            {/* 1. CABEÇALHO EXECUTIVO */}
+            <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/15 via-primary/5 to-background">
+              <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+              <div className="relative p-5 sm:p-7">
+                <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
+                  <div className="flex items-start gap-4 min-w-0 flex-1">
+                    <div className="w-14 h-14 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 flex-shrink-0">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-semibold">
+                          {getTaskTypeLabel(currentTask.taskType)}
+                        </Badge>
+                        <Badge className={`${getStatusColor(salesStatus)} text-[10px] uppercase tracking-wider`}>
+                          {getStatusLabel(salesStatus)}
+                        </Badge>
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight tracking-tight">
+                        {currentTask.client || 'Cliente'}
+                      </h2>
+                      {currentTask.property && (
+                        <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5" />{currentTask.property}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 print:hidden">
+                    <Button variant="default" size="sm" onClick={handleGeneratePDF} disabled={isGeneratingPDF}>
+                      <Download className="w-4 h-4 mr-1" /> {isGeneratingPDF ? 'Gerando…' : 'PDF'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handlePrint}>
+                      <Printer className="w-4 h-4 mr-1" /> Imprimir
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleEmail}>
+                      <Mail className="w-4 h-4 mr-1" /> Email
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-3 rounded-xl border bg-background/60 backdrop-blur-sm p-4">
+                  <HeaderMeta icon={FileText} label="Código" value={currentTask.clientCode} mono />
+                  <HeaderMeta icon={Calendar} label="Data" value={currentTask.startDate ? formatDateDisplay(currentTask.startDate) : undefined} />
+                  <HeaderMeta icon={Clock} label="Início" value={currentTask.startTime} />
+                  <HeaderMeta icon={Clock} label="Fim" value={currentTask.endTime} />
+                  <HeaderMeta icon={Activity} label="Duração" value={duration} highlight />
+                  <HeaderMeta icon={User} label="Responsável" value={currentTask.responsible} />
+                  <HeaderMeta icon={Building2} label="Filial" value={getFilialNameRobust(currentTask.filial, filiais)} />
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:flex-nowrap">
-              <Button
-                variant="gradient"
-                size="sm"
-                onClick={handleGeneratePDF}
-                disabled={isGeneratingPDF}
-                className="flex-1 sm:flex-none"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {isGeneratingPDF ? 'Gerando...' : 'PDF'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint} className="flex-1 sm:flex-none">
-                <Printer className="w-4 h-4 mr-2" />
-                Imprimir
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleEmail} className="flex-1 sm:flex-none">
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-6 pt-4">
-          {/* STATUS E VALORES - Destaque Principal */}
-          <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 via-background to-primary/5">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Status */}
-                <div className="flex flex-col items-center justify-center p-4 bg-background rounded-lg border">
-                  <Target className="w-8 h-8 text-primary mb-2" />
-                  <span className="text-xs text-muted-foreground mb-1">Status</span>
-                  <Badge className={`text-sm px-4 py-1 ${getStatusBadgeStyle()}`}>
-                    {getStatusLabel(salesStatus)}
-                  </Badge>
-                </div>
-                
-                {/* Valor Potencial */}
-                <div className="flex flex-col items-center justify-center p-4 bg-background rounded-lg border">
-                  <TrendingUp className="w-8 h-8 text-blue-500 mb-2" />
-                  <span className="text-xs text-muted-foreground mb-1">Valor Potencial</span>
-                  <span className="text-lg font-bold text-blue-600">
-                    {formatCurrency(calculatedValues.total)}
-                  </span>
-                </div>
-                
-                {/* Valor Fechado */}
-                <div className="flex flex-col items-center justify-center p-4 bg-background rounded-lg border">
-                  <DollarSign className="w-8 h-8 text-green-500 mb-2" />
-                  <span className="text-xs text-muted-foreground mb-1">Valor Fechado</span>
-                  <span className={`text-lg font-bold ${calculatedValues.closed > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    {calculatedValues.closed > 0 ? formatCurrency(calculatedValues.closed) : '-'}
-                  </span>
-                </div>
-                
-                {/* Taxa de Conversão */}
-                <div className="flex flex-col items-center justify-center p-4 bg-background rounded-lg border">
-                  <Percent className="w-8 h-8 text-amber-500 mb-2" />
-                  <span className="text-xs text-muted-foreground mb-1">Conversão</span>
-                  <span className={`text-lg font-bold ${calculatedValues.total > 0 && calculatedValues.closed > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                    {calculatedValues.total > 0 && calculatedValues.closed > 0 
-                      ? `${((calculatedValues.closed / calculatedValues.total) * 100).toFixed(0)}%`
-                      : '-'}
-                  </span>
-                </div>
+            {/* 2. RESUMO */}
+            <div className="px-5 sm:px-7 pt-5">
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                <SummaryCard icon={Tractor} label="Equip. registrados" value={String(equipmentCount)} tone="primary" />
+                <SummaryCard icon={CheckCircle2} label="Unidades" value={String(equipmentTotalUnits)} tone="success" />
+                <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone="warning" />
+                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'muted'} />
+                <SummaryCard icon={Package} label="Produtos" value={String(itemsCount)} sub={itemsCount ? `${selectedItemsCount} vendidos` : undefined} tone="primary" />
+                <SummaryCard icon={Target} label="Status" value={getStatusLabel(salesStatus)} tone="muted" />
+                <SummaryCard icon={DollarSign} label="Valor potencial" value={`R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`} tone="success" />
+                <SummaryCard
+                  icon={Calendar}
+                  label="Próxima ação"
+                  value={currentTask.nextActionDate ? formatDateDisplay(currentTask.nextActionDate as any) : '—'}
+                  sub={currentTask.nextAction ? String(currentTask.nextAction).slice(0, 22) : undefined}
+                  tone="warning"
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* DADOS DO CLIENTE E FILIAL */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Cliente */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <User className="w-5 h-5 text-primary" />
-                  Dados do Cliente
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Nome</Label>
-                    <p className="font-medium">{task?.client || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Código</Label>
-                    <p className="font-medium">{task?.clientCode || 'N/A'}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Email</Label>
-                    <p className="font-medium text-sm truncate">{task?.email || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Telefone</Label>
-                    <p className="font-medium">{task?.phone || 'N/A'}</p>
-                  </div>
-                </div>
-                <Separator />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Propriedade</Label>
-                    <p className="font-medium">{task?.property || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Hectares</Label>
-                    <p className="font-medium">{task?.propertyHectares ? `${task.propertyHectares} ha` : 'N/A'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Filial e Responsável */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Building className="w-5 h-5 text-primary" />
-                  Filial e Responsável
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Responsável</Label>
-                  <p className="font-medium">{task?.responsible || 'N/A'}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Filial do Responsável</Label>
-                    <p className="font-medium">{getFilialNameRobust(task?.filial, filiais)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Filial Atendida</Label>
-                    <p className="font-medium">
-                      {task?.filialAtendida 
-                        ? getFilialNameRobust(task.filialAtendida, filiais)
-                        : <span className="text-muted-foreground italic">Mesma do responsável</span>
-                      }
-                    </p>
-                  </div>
-                </div>
-                <Separator />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Tipo de Atividade</Label>
-                    <Badge variant="outline" className="mt-1">
-                      {getTaskTypeLabel(task?.taskType || 'prospection')}
-                    </Badge>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Prioridade</Label>
-                    <Badge 
-                      className="mt-1"
-                      variant={task?.priority === 'high' ? 'destructive' : task?.priority === 'medium' ? 'default' : 'secondary'}
-                    >
-                      {task?.priority === 'high' ? 'Alta' : task?.priority === 'medium' ? 'Média' : 'Baixa'}
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* PRODUTOS E SERVIÇOS */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-base">
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-primary" />
-                  Produtos e Serviços ({task?.checklist?.length || 0})
-                </div>
-                <Badge variant="outline" className="text-sm">
-                  Total: {formatCurrency(calculatedValues.products)}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingDetails ? (
-                <div className="flex items-center justify-center py-10 text-muted-foreground">
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                  Carregando produtos e serviços...
-                </div>
-              ) : task?.checklist && task.checklist.length > 0 ? (
-                <>
-                  {/* Desktop: Tabela */}
-                  <div className="hidden md:block border rounded-lg overflow-hidden">
-                    <div className="bg-muted p-3 grid grid-cols-12 gap-2 font-medium text-xs">
-                      <div className="col-span-1">Status</div>
-                      <div className="col-span-4">Produto / Serviço</div>
-                      <div className="col-span-2">Categoria</div>
-                      <div className="col-span-1 text-center">Qtd</div>
-                      <div className="col-span-2 text-right">Preço Unit.</div>
-                      <div className="col-span-2 text-right">Subtotal</div>
+              {(values.closed > 0 || salesStatus !== 'prospect') && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <MetricStrip icon={TrendingUp} label="Valor potencial" value={values.total} tone="primary" />
+                  <MetricStrip icon={DollarSign} label="Valor fechado" value={values.closed} tone="success" />
+                  <div className="rounded-xl border bg-gradient-to-br from-warning/10 to-transparent p-4">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                      <Percent className="w-3.5 h-3.5 text-warning" /> Taxa de conversão
                     </div>
-                    {task.checklist.map((item, index) => {
-                      const itemTotal = (item.price || 0) * (item.quantity || 1);
-                      return (
-                        <div
-                          key={index}
-                          className={`p-3 grid grid-cols-12 gap-2 border-t text-sm items-start ${
-                            item.selected ? 'bg-primary/5' : ''
-                          }`}
-                        >
-                          <div className="col-span-1 pt-0.5">
-                            {item.selected ? (
-                              <CheckCircle className="w-5 h-5 text-primary" />
-                            ) : (
-                              <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
-                            )}
-                          </div>
-                          <div className="col-span-4">
-                            <p className="font-medium leading-5">{item.name}</p>
-                            {item.observations ? (
-                              <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">
-                                {item.observations}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="col-span-2">
-                            <Badge variant="secondary" className="text-xs">
-                              {item.category}
-                            </Badge>
-                          </div>
-                          <div className="col-span-1 text-center pt-0.5">{item.quantity || 1}</div>
-                          <div className="col-span-2 text-right pt-0.5">{formatCurrency(item.price || 0)}</div>
-                          <div className={`col-span-2 text-right font-medium pt-0.5 ${item.selected ? 'text-primary' : ''}`}>
-                            {formatCurrency(itemTotal)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Mobile: Cards */}
-                  <div className="md:hidden space-y-3">
-                    {task.checklist.map((item, index) => {
-                      const itemTotal = (item.price || 0) * (item.quantity || 1);
-                      return (
-                        <div
-                          key={index}
-                          className={`border rounded-lg p-3 ${
-                            item.selected ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3 mb-2">
-                            <div className="pt-0.5">
-                              {item.selected ? (
-                                <CheckCircle className="w-5 h-5 text-primary" />
-                              ) : (
-                                <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm leading-5">{item.name}</p>
-                              <Badge variant="secondary" className="text-xs mt-1">
-                                {item.category}
-                              </Badge>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-2 text-xs border-t pt-2 mt-2">
-                            <div>
-                              <span className="text-muted-foreground block">Qtd</span>
-                              <span className="font-medium">{item.quantity || 1}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground block">Preço Unit.</span>
-                              <span className="font-medium">{formatCurrency(item.price || 0)}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground block">Subtotal</span>
-                              <span className={`font-bold ${item.selected ? 'text-primary' : ''}`}>
-                                {formatCurrency(itemTotal)}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {item.observations && (
-                            <p className="mt-2 text-xs text-muted-foreground italic border-t pt-2">
-                              {item.observations}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Resumo de Produtos */}
-                  <div className="mt-4 p-3 sm:p-4 bg-muted/50 rounded-lg grid grid-cols-3 gap-2 sm:gap-4 text-center">
-                    <div>
-                      <span className="text-[10px] sm:text-xs text-muted-foreground block">Selecionados</span>
-                      <p className="font-bold text-primary text-sm sm:text-base">
-                        {task.checklist.filter(i => i.selected).length} de {task.checklist.length}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] sm:text-xs text-muted-foreground block">Valor Selecionado</span>
-                      <p className="font-bold text-primary text-sm sm:text-base">
-                        {formatCurrency(
-                          task.checklist.reduce(
-                            (sum, i) =>
-                              i.selected ? sum + ((i.price || 0) * (i.quantity || 1)) : sum,
-                            0
-                          )
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] sm:text-xs text-muted-foreground block">Valor Total</span>
-                      <p className="font-bold text-sm sm:text-base">{formatCurrency(calculatedValues.products)}</p>
+                    <p className="text-2xl font-bold text-warning tabular-nums">{conversionRate.toFixed(1)}%</p>
+                    <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-warning rounded-full transition-all" style={{ width: `${Math.min(conversionRate, 100)}%` }} />
                     </div>
                   </div>
-                </>
-              ) : (
-                <div className="py-10 text-center text-sm text-muted-foreground">
-                  Nenhum produto/serviço cadastrado nesta atividade.
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* EQUIPAMENTOS (se existirem) */}
-          {(task?.familyProduct || task?.equipmentQuantity || (task?.equipmentList && task.equipmentList.length > 0)) && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Package className="w-5 h-5 text-primary" />
-                  Equipamentos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  {task?.familyProduct && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Família Principal</Label>
-                      <p className="font-medium">{task.familyProduct}</p>
-                    </div>
-                  )}
-                  {task?.equipmentQuantity && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Quantidade Total</Label>
-                      <p className="font-medium">{task.equipmentQuantity}</p>
-                    </div>
-                  )}
-                </div>
-                
-                {task?.equipmentList && task.equipmentList.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="bg-muted p-3 grid grid-cols-3 font-medium text-xs">
-                      <div>Família do Produto</div>
-                      <div className="text-center">Quantidade</div>
-                      <div>ID</div>
-                    </div>
-                    {task.equipmentList.map((eq, index) => (
-                      <div key={index} className="p-3 grid grid-cols-3 border-t text-sm">
-                        <div>{eq.familyProduct || 'N/A'}</div>
-                        <div className="text-center font-medium">{eq.quantity || 0}</div>
-                        <div className="text-muted-foreground text-xs">{eq.id || 'N/A'}</div>
-                      </div>
+            <div className="p-5 sm:p-7 space-y-4">
+              {/* 3. CLIENTE + 4. CONTATO */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <SectionCard icon={User} title="Dados do Cliente" tone="primary" className="lg:col-span-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                    <Field label="Cliente" value={currentTask.client} />
+                    <Field label="Código" value={currentTask.clientCode} mono />
+                    <Field label="Telefone" value={currentTask.phone} icon={Phone} />
+                    <Field label="Email" value={currentTask.email} icon={AtSign} />
+                    <Field label="Propriedade" value={currentTask.property} />
+                    <Field label="Cidade" value={(currentTask as any).city} />
+                    <Field label="Estado" value={(currentTask as any).state} />
+                    <Field label="Hectares" value={currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : undefined} />
+                  </div>
+                </SectionCard>
+
+                <SectionCard icon={UserCheck} title="Contato da Visita" tone="success">
+                  <div className="grid grid-cols-1 gap-4 text-sm">
+                    <Field label="Nome" value={currentTask.contactName} />
+                    <Field label="Função" value={currentTask.contactFunction} />
+                    {!currentTask.contactName && !currentTask.contactFunction && (
+                      <p className="text-xs text-muted-foreground italic">Sem contato registrado nesta visita.</p>
+                    )}
+                  </div>
+                </SectionCard>
+              </div>
+
+              {/* 5. LOCALIZAÇÃO */}
+              {hasLocation && mapEmbedUrl && (
+                <SectionCard
+                  icon={MapPin}
+                  title="Localização da Visita"
+                  tone="success"
+                  description={`${currentTask.checkInLocation!.lat.toFixed(6)}, ${currentTask.checkInLocation!.lng.toFixed(6)}`}
+                  headerRight={
+                    <Button
+                      variant="outline" size="sm" className="print:hidden"
+                      onClick={() => window.open(`https://www.google.com/maps?q=${currentTask.checkInLocation!.lat},${currentTask.checkInLocation!.lng}`, '_blank')}
+                    >
+                      <Navigation className="w-3.5 h-3.5 mr-1" /> Google Maps
+                    </Button>
+                  }
+                >
+                  <div className="rounded-lg overflow-hidden border bg-muted">
+                    <iframe title="Mapa da Localização" src={mapEmbedUrl} className="w-full h-64 sm:h-80" loading="lazy" />
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <MiniStat label="Latitude" value={currentTask.checkInLocation!.lat.toFixed(6)} mono />
+                    <MiniStat label="Longitude" value={currentTask.checkInLocation!.lng.toFixed(6)} mono />
+                    <MiniStat
+                      label="Horário do check-in"
+                      value={currentTask.checkInLocation!.timestamp
+                        ? format(new Date(currentTask.checkInLocation!.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                        : '—'}
+                      icon={Clock}
+                    />
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* 6. FOTOS */}
+              {photoCount > 0 && (
+                <SectionCard
+                  icon={ImageIcon}
+                  title="Registro Fotográfico"
+                  tone="warning"
+                  description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
+                >
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                    {currentTask.photos!.map((photo, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setLightboxPhoto(photo)}
+                        className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                      >
+                        <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          {i + 1}/{photoCount}
+                        </span>
+                      </button>
                     ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                </SectionCard>
+              )}
 
-          {/* OBSERVAÇÕES E NOTAS */}
-          {(task?.observations || task?.prospectNotes) && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="w-5 h-5 text-primary" />
-                  Observações e Notas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {task?.observations && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Observações Gerais</Label>
-                    <p className="text-sm mt-1 whitespace-pre-wrap bg-muted/50 p-3 rounded-lg">
-                      {task.observations}
-                    </p>
+              {/* 7. EQUIPAMENTOS */}
+              {currentTask.equipmentList && currentTask.equipmentList.length > 0 && (
+                <SectionCard
+                  icon={Tractor}
+                  title="Parque de Máquinas Registrado"
+                  tone="muted"
+                  description={`${equipmentCount} item${equipmentCount > 1 ? 'ns' : ''} • ${equipmentTotalUnits} unidade${equipmentTotalUnits !== 1 ? 's' : ''}`}
+                >
+                  <div className="overflow-x-auto rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-10">#</TableHead>
+                          <TableHead className="whitespace-nowrap">Prioridade</TableHead>
+                          <TableHead className="whitespace-nowrap">Modelo / Família</TableHead>
+                          <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                          <TableHead className="whitespace-nowrap">Nº de Série</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Ano</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Horas</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Qtd</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Status</TableHead>
+                          <TableHead className="whitespace-nowrap text-center">Validado</TableHead>
+                          <TableHead className="min-w-[160px]">Observação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {currentTask.equipmentList.map((eq: any, idx: number) => {
+                          const pr = eq.priority || eq.prioridade;
+                          const prColors: Record<string, string> = {
+                            alta: 'destructive', high: 'destructive',
+                            media: 'warning', média: 'warning', medium: 'warning',
+                            baixa: 'secondary', low: 'secondary',
+                          };
+                          const validated = eq.validated ?? eq.validado ?? eq.is_validated;
+                          return (
+                            <TableRow key={eq.id || idx}>
+                              <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                              <TableCell>
+                                {pr ? (
+                                  <Badge variant={(prColors[String(pr).toLowerCase()] as any) || 'outline'} className="text-[10px] uppercase">
+                                    {String(pr)}
+                                  </Badge>
+                                ) : <span className="text-muted-foreground text-xs">—</span>}
+                              </TableCell>
+                              <TableCell className="text-sm font-medium">{eq.model || eq.modelo || eq.familyProduct || '—'}</TableCell>
+                              <TableCell className="text-sm">{eq.type || eq.tipo || eq.equipmentType || '—'}</TableCell>
+                              <TableCell className="text-xs font-mono">{eq.serialNumber || eq.serial_number || eq.numeroSerie || '—'}</TableCell>
+                              <TableCell className="text-center tabular-nums text-sm">{eq.year || eq.ano || '—'}</TableCell>
+                              <TableCell className="text-right tabular-nums text-sm">
+                                {eq.hours ?? eq.horas ?? eq.workHours
+                                  ? Number(eq.hours ?? eq.horas ?? eq.workHours).toLocaleString('pt-BR')
+                                  : '—'}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold">{eq.quantity || 0}</TableCell>
+                              <TableCell className="text-center">
+                                {eq.status ? (
+                                  <Badge variant="outline" className="text-[10px] capitalize">{String(eq.status)}</Badge>
+                                ) : <span className="text-muted-foreground text-xs">—</span>}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {validated === true || validated === 'true' ? (
+                                  <Badge variant="success" className="text-[10px] inline-flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" /> Sim
+                                  </Badge>
+                                ) : validated === false || validated === 'false' ? (
+                                  <Badge variant="secondary" className="text-[10px]">Não</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground max-w-[240px]">
+                                {eq.observation || eq.observations || eq.observacao || eq.notes || <span className="italic">—</span>}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
-                )}
-                {task?.prospectNotes && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Notas de Prospecção</Label>
-                    <p className="text-sm mt-1 whitespace-pre-wrap bg-muted/50 p-3 rounded-lg">
-                      {task.prospectNotes}
-                    </p>
-                  </div>
-                )}
-                {task?.prospectNotesJustification && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Justificativa</Label>
-                    <p className="text-sm mt-1 whitespace-pre-wrap bg-muted/50 p-3 rounded-lg">
-                      {task.prospectNotesJustification}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                </SectionCard>
+              )}
 
-          {/* FOTOS */}
-          {task?.photos && task.photos.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Camera className="w-5 h-5 text-primary" />
-                  Fotos ({task.photos.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-                  {task.photos.map((photo, index) => (
-                    <a 
-                      key={index} 
-                      href={photo} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="aspect-square border rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
-                    >
-                      <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
-                    </a>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* DOCUMENTOS */}
-          {task?.documents && task.documents.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="w-5 h-5 text-primary" />
-                  Documentos ({task.documents.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {task.documents.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="font-medium text-sm">Documento {index + 1}</span>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={doc} target="_blank" rel="noopener noreferrer">
-                          <Download className="w-4 h-4 mr-2" />
-                          Baixar
-                        </a>
-                      </Button>
+              {/* 8. PRODUTOS E SERVIÇOS (read-only) */}
+              <SectionCard
+                icon={Package}
+                title="Produtos e Serviços"
+                tone="primary"
+                description={itemsCount > 0 ? `${selectedItemsCount} vendido${selectedItemsCount !== 1 ? 's' : ''} de ${itemsCount}` : undefined}
+              >
+                {currentTask.checklist && currentTask.checklist.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="overflow-x-auto rounded-lg border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Produto</TableHead>
+                            <TableHead className="text-right">Qtd</TableHead>
+                            <TableHead className="text-right">Unit.</TableHead>
+                            <TableHead className="text-right">Subtotal</TableHead>
+                            <TableHead className="text-center">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {currentTask.checklist.map(item => {
+                            const qty = item.quantity || 1;
+                            const subtotal = (item.price || 0) * qty;
+                            return (
+                              <React.Fragment key={item.id}>
+                                <TableRow className={item.selected ? 'bg-success/5' : ''}>
+                                  <TableCell>
+                                    <div className="font-medium text-sm">{item.name}</div>
+                                    <div className="text-xs text-muted-foreground capitalize">{item.category}</div>
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums">{qty}</TableCell>
+                                  <TableCell className="text-right tabular-nums text-sm">{formatCurrency(item.price || 0)}</TableCell>
+                                  <TableCell className="text-right tabular-nums font-semibold text-primary">{formatCurrency(subtotal)}</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant={item.selected ? 'success' : 'secondary'} className="text-xs">
+                                      {item.selected ? 'Vendido' : 'Ofertado'}
+                                    </Badge>
+                                  </TableCell>
+                                </TableRow>
+                                {item.observations && (
+                                  <TableRow className="bg-muted/30">
+                                    <TableCell colSpan={5} className="text-xs italic text-muted-foreground py-2">
+                                      Obs: {item.observations}
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    <div className="flex justify-between items-end pt-1">
+                      <p className="text-xs text-muted-foreground">{currentTask.checklist.length} item(ns)</p>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Total da Oportunidade</p>
+                        <p className="text-xl font-bold text-primary tabular-nums">{formatCurrency(values.total)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground text-sm">
+                    <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    Nenhum produto oferecido
+                  </div>
+                )}
+              </SectionCard>
 
-          {/* METADADOS */}
-          <Card className="bg-muted/30">
-            <CardContent className="pt-4">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Criado em: {task?.createdAt ? format(parseLocalDate(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}</span>
-                <span>Atualizado em: {task?.updatedAt ? format(parseLocalDate(task.updatedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : 'N/A'}</span>
-                <span>ID: {task?.id?.substring(0, 8)}...</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </DialogContent>
-    </Dialog>
+              {/* 9. VISITA TÉCNICA (quando aplicável) */}
+              {currentTask.taskType === 'technical_visit' && (
+                <SectionCard icon={Wrench} title="Dados da Visita Técnica" tone="primary">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                    <Field label="Categoria Técnica" value={currentTask.technicalCategory} />
+                    <Field label="Etapa Funil Técnico" value={currentTask.technicalFunnelStage} />
+                    <Field label="Interesse" value={currentTask.opportunityInterest} />
+                    <Field label="Urgência" value={currentTask.opportunityUrgency} />
+                    <Field label="Impacto" value={currentTask.opportunityImpact} />
+                    <Field label="Fechamento" value={currentTask.opportunityClosing} />
+                    {currentTask.salesEstimate && typeof currentTask.salesEstimate === 'object' && Object.entries(currentTask.salesEstimate)
+                      .filter(([k]) => k !== 'puk')
+                      .map(([k, v]) => (
+                        <Field key={k} label={`Estimativa ${k}`} value={formatCurrency(Number(v || 0))} />
+                      ))}
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* 10. PRÓXIMA AÇÃO */}
+              {(currentTask.nextAction || currentTask.nextActionDate) && (
+                <div className="relative overflow-hidden rounded-2xl border-2 border-warning/40 bg-gradient-to-br from-warning/15 via-warning/5 to-background p-5 sm:p-6 shadow-sm">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-warning/10 blur-3xl pointer-events-none" />
+                  <div className="relative flex items-start gap-4">
+                    <div className="w-12 h-12 bg-warning text-warning-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-wider font-bold text-warning mb-1">Próxima Ação</p>
+                      {currentTask.nextAction && (
+                        <p className="text-base sm:text-lg font-semibold text-foreground whitespace-pre-wrap leading-snug">
+                          {String(currentTask.nextAction)}
+                        </p>
+                      )}
+                      {currentTask.nextActionDate && (
+                        <p className="mt-2 text-sm text-muted-foreground inline-flex items-center gap-1.5">
+                          <Calendar className="w-4 h-4 text-warning" />
+                          <span className="font-medium text-foreground">{formatDateDisplay(currentTask.nextActionDate as any)}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 11. OBSERVAÇÕES */}
+              {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) && (
+                <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider font-bold text-primary">Observações da Visita</p>
+                      <p className="text-sm text-muted-foreground">Anotações registradas em campo</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {currentTask.observations && (
+                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Observações da atividade</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.observations}</p>
+                      </div>
+                    )}
+                    {currentTask.prospectNotes && (
+                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Notas do prospect</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotes}</p>
+                      </div>
+                    )}
+                    {currentTask.prospectNotesJustification && (
+                      <div className="rounded-xl bg-warning/10 border border-warning/30 p-4">
+                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Justificativa</p>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotesJustification}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 12. TIMELINE */}
+              <SectionCard icon={History} title="Timeline da Visita" tone="muted">
+                <ol className="relative border-l-2 border-muted ml-3 space-y-4">
+                  <TimelineItem color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
+                  <TimelineItem color="bg-warning" title="Visita agendada" date={currentTask.startDate}
+                    detail={currentTask.startTime ? `${currentTask.startTime}${currentTask.endTime ? ` – ${currentTask.endTime}` : ''}` : undefined} />
+                  {currentTask.checkInLocation?.timestamp && (
+                    <TimelineItem color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
+                      detail={hasLocation ? `${currentTask.checkInLocation.lat.toFixed(4)}, ${currentTask.checkInLocation.lng.toFixed(4)}` : undefined} />
+                  )}
+                  {currentTask.updatedAt && (
+                    <TimelineItem color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
+                  )}
+                  {currentTask.nextActionDate && (
+                    <TimelineItem color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
+                  )}
+                </ol>
+              </SectionCard>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {lightboxPhoto && (
+        <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
+          <DialogContent className="max-w-5xl w-[95vw] p-2 bg-background">
+            <div className="relative">
+              <button
+                onClick={() => setLightboxPhoto(null)}
+                className="absolute top-2 right-2 z-10 bg-background/80 hover:bg-background rounded-full p-2 border shadow"
+                aria-label="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <img src={lightboxPhoto} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+};
+
+// ================= Subcomponents =================
+
+const SummaryCard: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  label: string; value: string; sub?: string;
+  tone: 'primary' | 'success' | 'warning' | 'muted';
+}> = ({ icon: Icon, label, value, sub, tone }) => {
+  const toneMap = {
+    primary: 'from-primary/10 to-transparent text-primary border-primary/20',
+    success: 'from-success/10 to-transparent text-success border-success/20',
+    warning: 'from-warning/10 to-transparent text-warning border-warning/20',
+    muted: 'from-muted to-transparent text-muted-foreground border-border',
+  };
+  return (
+    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} p-3.5`}>
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2 uppercase tracking-wider font-semibold">
+        <Icon className="w-3.5 h-3.5" />{label}
+      </div>
+      <p className="text-lg font-bold text-foreground tabular-nums leading-none">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    </div>
+  );
+};
+
+const MetricStrip: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  label: string; value: number; tone: 'primary' | 'success';
+}> = ({ icon: Icon, label, value, tone }) => {
+  const toneMap = {
+    primary: 'from-primary/10 text-primary',
+    success: 'from-success/10 text-success',
+  };
+  return (
+    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} to-transparent p-4`}>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+        <Icon className="w-3.5 h-3.5" /> {label}
+      </div>
+      <p className={`text-2xl font-bold tabular-nums ${tone === 'primary' ? 'text-primary' : 'text-success'}`}>
+        {formatCurrency(value)}
+      </p>
+    </div>
+  );
+};
+
+const Field: React.FC<{
+  label: string; value?: string | number | null;
+  icon?: React.ComponentType<{ className?: string }>; mono?: boolean;
+}> = ({ label, value, icon: Icon, mono }) => (
+  <div>
+    <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">{label}</p>
+    <p className={`font-medium text-sm flex items-center gap-1.5 ${mono ? 'font-mono' : ''}`}>
+      {Icon && value ? <Icon className="w-3.5 h-3.5 text-muted-foreground" /> : null}
+      {value ? String(value) : <span className="text-muted-foreground italic font-normal">—</span>}
+    </p>
+  </div>
+);
+
+const HeaderMeta: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  label: string; value?: string | number | null;
+  mono?: boolean; highlight?: boolean;
+}> = ({ icon: Icon, label, value, mono, highlight }) => (
+  <div className="min-w-0">
+    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
+      <Icon className="w-3 h-3" /> {label}
+    </p>
+    <p className={`text-sm font-semibold truncate ${mono ? 'font-mono' : ''} ${highlight ? 'text-primary' : 'text-foreground'}`}>
+      {value ? String(value) : <span className="text-muted-foreground italic font-normal">—</span>}
+    </p>
+  </div>
+);
+
+const MiniStat: React.FC<{
+  label: string; value: string; mono?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
+}> = ({ label, value, mono, icon: Icon }) => (
+  <div className="rounded-lg border bg-muted/30 p-3">
+    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">{label}</p>
+    <p className={`font-semibold inline-flex items-center gap-1.5 ${mono ? 'font-mono tabular-nums' : ''}`}>
+      {Icon && <Icon className="w-3.5 h-3.5 text-success" />}{value}
+    </p>
+  </div>
+);
+
+const TimelineItem: React.FC<{
+  color: string; title: string; date?: Date | string; detail?: string; future?: boolean;
+}> = ({ color, title, date, detail, future }) => {
+  let dateStr = '—';
+  if (date) {
+    try {
+      const d = typeof date === 'string' ? new Date(date) : date;
+      dateStr = format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    } catch { dateStr = String(date); }
+  }
+  return (
+    <li className="ml-4 relative">
+      <span className={`absolute -left-[22px] top-1 w-3 h-3 rounded-full ${color} ring-4 ring-background`} />
+      <div className="flex items-baseline justify-between gap-2 flex-wrap">
+        <p className={`text-sm font-semibold ${future ? 'text-primary' : 'text-foreground'}`}>{title}</p>
+        <p className="text-xs text-muted-foreground tabular-nums">{dateStr}</p>
+      </div>
+      {detail && <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>}
+    </li>
   );
 };
