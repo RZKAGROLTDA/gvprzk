@@ -256,11 +256,25 @@ export const generateTaskPDF = async (
       { url: `https://www.google.com/maps?q=${task.checkInLocation!.lat},${task.checkInLocation!.lng}` });
     pdf.setTextColor(0, 0, 0);
     yPos += 6;
+  } else {
+    sectionTitle('Localização do Check-in');
+    pdf.setFont('helvetica', 'italic');
+    pdf.setFontSize(9);
+    pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+    ensureSpace(6);
+    pdf.text('Localização não registrada', marginLeft, yPos);
+    pdf.setTextColor(0, 0, 0);
+    yPos += 6;
   }
 
   // ===== 6. EQUIPAMENTOS =====
   if (task.equipmentList && task.equipmentList.length > 0) {
-    sectionTitle(`Parque de Máquinas (${equipmentCount} itens · ${equipmentUnits} unidades)`);
+    const validatedCount = task.equipmentList.filter((eq: any) => {
+      const v = eq.validated ?? eq.validado ?? eq.is_validated;
+      return v === true || v === 'true';
+    }).length;
+    const pendingCount = equipmentCount - validatedCount;
+    sectionTitle(`Parque de Máquinas (${equipmentCount} itens · ${equipmentUnits} unidades · ${validatedCount} validados · ${pendingCount} pendentes)`);
 
     const headers = ['#', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Valid.', 'Validado em'];
     const widths = [7, 38, 22, 24, 12, 16, 10, 14, 39];
