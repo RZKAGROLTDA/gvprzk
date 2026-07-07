@@ -481,6 +481,10 @@ export const generateTaskPDF = async (
 
     task.equipmentList.forEach((eq: any, idx: number) => {
       ensureSpace(6);
+      if (idx % 2 === 1) {
+        pdf.setFillColor(247, 249, 252);
+        pdf.rect(startX, yPos - 4, contentWidth, 5, 'F');
+      }
       const validated = eq.validated ?? eq.validado ?? eq.is_validated;
       const validatedStr = validated === true || validated === 'true' ? 'Sim' : validated === false || validated === 'false' ? 'Não' : '—';
       const validatedAtRaw = eq.validatedAt ?? eq.validated_at ?? eq.validadoEm ?? eq.validado_em;
@@ -507,7 +511,13 @@ export const generateTaskPDF = async (
       cx = startX + 2;
       row.forEach((cell, i) => {
         const t = pdf.splitTextToSize(cell, widths[i] - 2);
+        // color the "Valid." column
+        if (i === 9) {
+          if (validatedStr === 'Sim') pdf.setTextColor(SUCCESS[0], SUCCESS[1], SUCCESS[2]);
+          else if (validatedStr === 'Não') pdf.setTextColor(WARNING[0], WARNING[1], WARNING[2]);
+        }
         pdf.text(t[0] || '—', cx, yPos);
+        pdf.setTextColor(0, 0, 0);
         cx += widths[i];
       });
       yPos += 5;
