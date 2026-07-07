@@ -96,7 +96,8 @@ const Management: React.FC = () => {
   const managementContextReady = canRunManagementQueries;
 
   // Filters (filialId is UUID)
-  const [period, setPeriod] = useState('90');
+  // Período padronizado — usa componente PeriodFilter (mesmo do CRM/Performance).
+  const [periodValue, setPeriodValue] = useState<PeriodValue>(() => buildPeriodValue('90'));
   const [filialId, setFilialId] = useState<string>('all');
   const [sellerRole, setSellerRole] = useState('all');
   const [sellerId, setSellerId] = useState('all');
@@ -121,16 +122,6 @@ const Management: React.FC = () => {
 
   // Build filters
   const filters: ManagementFilters = useMemo(() => {
-    const end = new Date();
-    const start = new Date();
-    if (period === '0') {
-      start.setHours(0, 0, 0, 0);
-    } else if (period !== 'all') {
-      start.setDate(start.getDate() - parseInt(period));
-    } else {
-      start.setFullYear(start.getFullYear() - 5);
-    }
-
     const taskTypes = taskTypeFilter === 'all' ? undefined :
       taskTypeFilter === 'visita' ? ['visita', 'prospection'] : [taskTypeFilter];
 
@@ -144,15 +135,15 @@ const Management: React.FC = () => {
       : (isSupervisor ? undefined : (sellerId === 'all' ? undefined : sellerId));
 
     return {
-      startDate: start.toISOString().substring(0, 10),
-      endDate: end.toISOString().substring(0, 10),
+      startDate: periodValue.startStr ?? undefined,
+      endDate: periodValue.endStr ?? undefined,
       filialId: effectiveFilialId,
       sellerRole: isSeller ? 'all' : sellerRole,
       sellerId: effectiveSellerId,
       taskTypes: taskTypes,
         enabled: managementContextReady,
     };
-  }, [period, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, managementContextReady]);
+  }, [periodValue, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, managementContextReady, profile?.filial_id]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
