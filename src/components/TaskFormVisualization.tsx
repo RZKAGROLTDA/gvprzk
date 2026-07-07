@@ -181,17 +181,28 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
     { label: 'Nova máquina cadastrada', ok: newMachineCount > 0 },
   ];
 
-  // Alertas
-  const alerts: string[] = [];
-  if (photoCount === 0) alerts.push('Nenhuma foto registrada');
-  if (equipmentCount > 0 && validatedEqCount === 0) alerts.push('Nenhum equipamento validado');
-  if (!hasNextAction) alerts.push('Próxima ação não definida');
-  if (itemsCount === 0) alerts.push('Nenhum produto registrado');
-  if (!hasLocation) alerts.push('Visita sem localização');
-  if (!hasContact) alerts.push('Contato da visita não informado');
+  // Alertas priorizados: 🔴 Crítico > 🟡 Atenção > 🔵 Informativo
+  type AlertSeverity = 'critical' | 'warning' | 'info';
+  type PrioritizedAlert = { message: string; severity: AlertSeverity };
+  const alertsPrioritized: PrioritizedAlert[] = [];
+  // Críticos — comprometem a validade da visita
+  if (!hasLocation) alertsPrioritized.push({ message: 'Visita sem localização registrada', severity: 'critical' });
+  if (!hasContact) alertsPrioritized.push({ message: 'Contato da visita não informado', severity: 'critical' });
+  if (values.total > 0 && !hasNextAction) alertsPrioritized.push({ message: 'Oportunidade identificada sem próxima ação definida', severity: 'critical' });
+  // Atenção — dados operacionais incompletos
+  if (photoCount === 0) alertsPrioritized.push({ message: 'Nenhuma foto registrada durante a visita', severity: 'warning' });
+  if (equipmentCount > 0 && validatedEqCount === 0) alertsPrioritized.push({ message: 'Nenhum equipamento validado', severity: 'warning' });
+  if (values.total === 0 && !hasNextAction) alertsPrioritized.push({ message: 'Próxima ação não definida', severity: 'warning' });
+  // Informativo — ausências não bloqueantes
+  if (itemsCount === 0) alertsPrioritized.push({ message: 'Nenhum produto registrado', severity: 'info' });
+  if (!hasObservations) alertsPrioritized.push({ message: 'Nenhuma observação registrada', severity: 'info' });
 
-  // Conclusão
-  const conclusionParts: string[] = [];
+  const severityOrder: Record<AlertSeverity, number> = { critical: 0, warning: 1, info: 2 };
+  alertsPrioritized.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+  const alertsCount = alertsPrioritized.length;
+  const criticalCount = alertsPrioritized.filter(a => a.severity === 'critical').length;
+
+  // Conclusão — integrada ao Resumo Executivo (evita duplicação)
   const completedItems: string[] = [];
   if (hasLocation) completedItems.push('registro de localização');
   if (photoCount > 0) completedItems.push('fotos');
@@ -200,23 +211,12 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
     const list = completedItems.length === 1
       ? completedItems[0]
       : `${completedItems.slice(0, -1).join(', ')} e ${completedItems.slice(-1)}`;
-    conclusionParts.push(`A visita foi concluída com ${list}.`);
-  } else {
-    conclusionParts.push('A visita ainda não possui registros de campo relevantes.');
+    summarySentences.push(`A visita foi concluída com ${list}.`);
   }
-  if (values.total > 0) {
-    conclusionParts.push(
-      hasNextAction
-        ? `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} e programado retorno para o cliente.`
-        : `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`
-    );
-  } else if (hasNextAction) {
-    conclusionParts.push('Foi programado retorno para o cliente.');
-  }
-  conclusionParts.push(
-    alerts.length === 0
+  summarySentences.push(
+    alertsCount === 0
       ? 'A documentação da visita está completa.'
-      : `Ainda existe${alerts.length > 1 ? 'm' : ''} ${alerts.length} ponto${alerts.length > 1 ? 's' : ''} de atenção a ser tratado${alerts.length > 1 ? 's' : ''}.`
+      : `Ainda existe${alertsCount > 1 ? 'm' : ''} ${alertsCount} ponto${alertsCount > 1 ? 's' : ''} de atenção a ser tratado${alertsCount > 1 ? 's' : ''}${criticalCount > 0 ? ` (${criticalCount} crítico${criticalCount > 1 ? 's' : ''})` : ''}.`
   );
 
 
@@ -325,19 +325,16 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
             {/* 2. RESUMO */}
             <div className="px-5 sm:px-7 pt-5">
               <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
+                <Sparkles className="w-3.5 h-3.5" /> Indicadores Operacionais
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
-                <SummaryCard icon={Activity} label="Duração" value={duration} tone="primary" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
                 <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
                 <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
-                <SummaryCard icon={DollarSign} label="Valor Potencial" value={values.total > 0 ? `R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.total > 0 ? 'primary' : 'muted'} />
-                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.closed > 0 ? 'success' : 'muted'} />
-                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${conversionRate.toFixed(0)}%` : '—'} tone={conversionRate >= 70 ? 'success' : conversionRate > 0 ? 'warning' : 'muted'} />
                 <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
               </div>
             </div>
+
 
             {/* 2.1 RESUMO EXECUTIVO */}
             <div className="px-5 sm:px-7 pt-5">
@@ -384,29 +381,41 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 </SectionCard>
 
                 <SectionCard
-                  icon={alerts.length ? AlertTriangle : ShieldCheck}
+                  icon={alertsCount ? AlertTriangle : ShieldCheck}
                   title="Pontos de Atenção"
-                  tone={alerts.length ? 'warning' : 'success'}
-                  description={alerts.length ? `${alerts.length} pendência${alerts.length > 1 ? 's' : ''} identificada${alerts.length > 1 ? 's' : ''}` : undefined}
+                  tone={criticalCount ? 'destructive' : alertsCount ? 'warning' : 'success'}
+                  description={alertsCount ? `${alertsCount} pendência${alertsCount > 1 ? 's' : ''}${criticalCount ? ` • ${criticalCount} crítica${criticalCount > 1 ? 's' : ''}` : ''}` : undefined}
                 >
-                  {alerts.length === 0 ? (
+                  {alertsCount === 0 ? (
                     <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-4 text-sm text-foreground">
                       <ShieldCheck className="w-5 h-5 text-success" />
                       Não há pendências nesta visita.
                     </div>
                   ) : (
                     <ul className="space-y-2">
-                      {alerts.map((a) => (
-                        <li key={a} className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm">
-                          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-                          <span className="text-foreground">{a}</span>
-                        </li>
-                      ))}
+                      {alertsPrioritized.map((a) => {
+                        const cfg = a.severity === 'critical'
+                          ? { icon: AlertTriangle, tag: '🔴 Crítico', wrap: 'border-destructive/40 bg-destructive/5', iconColor: 'text-destructive', badge: 'bg-destructive/10 text-destructive border-destructive/30' }
+                          : a.severity === 'warning'
+                          ? { icon: AlertTriangle, tag: '🟡 Atenção', wrap: 'border-warning/30 bg-warning/5', iconColor: 'text-warning', badge: 'bg-warning/10 text-warning border-warning/30' }
+                          : { icon: Lightbulb, tag: '🔵 Informativo', wrap: 'border-primary/20 bg-primary/5', iconColor: 'text-primary', badge: 'bg-primary/10 text-primary border-primary/30' };
+                        const Ic = cfg.icon;
+                        return (
+                          <li key={a.message} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${cfg.wrap}`}>
+                            <Ic className={`w-4 h-4 flex-shrink-0 mt-0.5 ${cfg.iconColor}`} />
+                            <div className="flex-1 min-w-0">
+                              <span className={`inline-block text-[10px] font-bold uppercase tracking-wider mb-0.5 px-1.5 py-0.5 rounded border ${cfg.badge}`}>{cfg.tag}</span>
+                              <p className="text-foreground">{a.message}</p>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </SectionCard>
               </div>
             </div>
+
 
             {/* 2.3 OPORTUNIDADE */}
             <div className="px-5 sm:px-7 pt-4">
@@ -441,7 +450,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                     <Field label="Email" value={currentTask.email} icon={AtSign} />
                     <Field label="Propriedade" value={currentTask.property} />
                     <Field label="Hectares" value={currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : undefined} />
-                    <Field label="Filial" value={getFilialNameRobust(currentTask.filial, filiais)} />
+                    <Field label="Filial Atendida" value={currentTask.filialAtendida ? getFilialNameRobust(currentTask.filialAtendida, filiais) : undefined} />
+
                     <Field label="Filial Atendida" value={currentTask.filialAtendida ? getFilialNameRobust(currentTask.filialAtendida, filiais) : undefined} />
                   </div>
                 </SectionCard>
@@ -457,73 +467,81 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 </SectionCard>
               </div>
 
-              {/* 5. LOCALIZAÇÃO */}
-              {hasLocation && mapEmbedUrl && (
-                <SectionCard
-                  icon={MapPin}
-                  title="Localização da Visita"
-                  tone="success"
-                  description={`${currentTask.checkInLocation!.lat.toFixed(6)}, ${currentTask.checkInLocation!.lng.toFixed(6)}`}
-                  headerRight={
-                    <Button
-                      variant="outline" size="sm" className="print:hidden"
-                      onClick={() => window.open(`https://www.google.com/maps?q=${currentTask.checkInLocation!.lat},${currentTask.checkInLocation!.lng}`, '_blank')}
-                    >
-                      <Navigation className="w-3.5 h-3.5 mr-1" /> Google Maps
-                    </Button>
-                  }
-                >
-                  <div className="rounded-lg overflow-hidden border bg-muted">
-                    <iframe title="Mapa da Localização" src={mapEmbedUrl} className="w-full h-64 sm:h-80" loading="lazy" />
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                    <MiniStat label="Latitude" value={currentTask.checkInLocation!.lat.toFixed(6)} mono />
-                    <MiniStat label="Longitude" value={currentTask.checkInLocation!.lng.toFixed(6)} mono />
-                    <MiniStat
-                      label="Horário do check-in"
-                      value={currentTask.checkInLocation!.timestamp
-                        ? format(new Date(currentTask.checkInLocation!.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                        : '—'}
-                      icon={Clock}
-                    />
-                  </div>
-                </SectionCard>
-              )}
-              {!hasLocation && (
-                <SectionCard icon={MapPin} title="Localização da Visita" tone="muted">
-                  <div className="text-center py-6 text-sm text-muted-foreground italic">
-                    <Navigation className="w-8 h-8 mx-auto opacity-30 mb-2" />
-                    Localização não registrada
-                  </div>
-                </SectionCard>
-              )}
-
-              {/* 6. FOTOS */}
-              {photoCount > 0 && (
-                <SectionCard
-                  icon={ImageIcon}
-                  title="Registro Fotográfico"
-                  tone="warning"
-                  description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
-                >
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                    {currentTask.photos!.map((photo, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setLightboxIndex(i)}
-                        className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+              {/* 5+6. LOCALIZAÇÃO + FOTOS — 2 colunas em xl */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {hasLocation && mapEmbedUrl ? (
+                  <SectionCard
+                    icon={MapPin}
+                    title="Localização da Visita"
+                    tone="success"
+                    description={`${currentTask.checkInLocation!.lat.toFixed(6)}, ${currentTask.checkInLocation!.lng.toFixed(6)}`}
+                    headerRight={
+                      <Button
+                        variant="outline" size="sm" className="print:hidden"
+                        onClick={() => window.open(`https://www.google.com/maps?q=${currentTask.checkInLocation!.lat},${currentTask.checkInLocation!.lng}`, '_blank')}
                       >
-                        <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                          {i + 1}/{photoCount}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </SectionCard>
-              )}
+                        <Navigation className="w-3.5 h-3.5 mr-1" /> Google Maps
+                      </Button>
+                    }
+                  >
+                    <div className="rounded-lg overflow-hidden border bg-muted">
+                      <iframe title="Mapa da Localização" src={mapEmbedUrl} className="w-full h-64 sm:h-80" loading="lazy" />
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                      <MiniStat label="Latitude" value={currentTask.checkInLocation!.lat.toFixed(6)} mono />
+                      <MiniStat label="Longitude" value={currentTask.checkInLocation!.lng.toFixed(6)} mono />
+                      <MiniStat
+                        label="Horário do check-in"
+                        value={currentTask.checkInLocation!.timestamp
+                          ? format(new Date(currentTask.checkInLocation!.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : '—'}
+                        icon={Clock}
+                      />
+                    </div>
+                  </SectionCard>
+                ) : (
+                  <SectionCard icon={MapPin} title="Localização da Visita" tone="muted">
+                    <div className="text-center py-6 text-sm text-muted-foreground italic">
+                      <Navigation className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                      Localização não registrada
+                    </div>
+                  </SectionCard>
+                )}
+
+                {photoCount > 0 ? (
+                  <SectionCard
+                    icon={ImageIcon}
+                    title="Registro Fotográfico"
+                    tone="warning"
+                    description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3">
+                      {currentTask.photos!.map((photo, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setLightboxIndex(i)}
+                          className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            {i + 1}/{photoCount}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </SectionCard>
+                ) : (
+                  <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
+                    <div className="text-center py-6 text-sm text-muted-foreground italic">
+                      <ImageIcon className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                      Nenhuma foto registrada
+                    </div>
+                  </SectionCard>
+                )}
+              </div>
+
 
               {/* 7. EQUIPAMENTOS */}
               {currentTask.equipmentList && currentTask.equipmentList.length > 0 && (
@@ -713,10 +731,6 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                     <Field label="Categoria Técnica" value={currentTask.technicalCategory} />
                     <Field label="Etapa Funil Técnico" value={currentTask.technicalFunnelStage} />
-                    <Field label="Interesse" value={currentTask.opportunityInterest} />
-                    <Field label="Urgência" value={currentTask.opportunityUrgency} />
-                    <Field label="Impacto" value={currentTask.opportunityImpact} />
-                    <Field label="Fechamento" value={currentTask.opportunityClosing} />
                     {currentTask.salesEstimate && typeof currentTask.salesEstimate === 'object' && Object.entries(currentTask.salesEstimate)
                       .filter(([k]) => k !== 'puk')
                       .map(([k, v]) => (
@@ -784,82 +798,69 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 </div>
               )}
 
-              {/* 11. OBSERVAÇÕES */}
-              {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) ? (
-                <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                      <MessageSquare className="w-5 h-5" />
+              {/* 11+12. OBSERVAÇÕES + TIMELINE — 2 colunas em xl */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) ? (
+                  <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                        <MessageSquare className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider font-bold text-primary">Observações da Visita</p>
+                        <p className="text-sm text-muted-foreground">Anotações registradas em campo</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[11px] uppercase tracking-wider font-bold text-primary">Observações da Visita</p>
-                      <p className="text-sm text-muted-foreground">Anotações registradas em campo</p>
+                    <div className="space-y-3">
+                      {currentTask.observations && (
+                        <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                          <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Observações da atividade</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.observations}</p>
+                        </div>
+                      )}
+                      {currentTask.prospectNotes && (
+                        <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                          <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Notas do prospect</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotes}</p>
+                        </div>
+                      )}
+                      {currentTask.prospectNotesJustification && (
+                        <div className="rounded-xl bg-warning/10 border border-warning/30 p-4">
+                          <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Justificativa</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotesJustification}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {currentTask.observations && (
-                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
-                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Observações da atividade</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.observations}</p>
-                      </div>
-                    )}
-                    {currentTask.prospectNotes && (
-                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
-                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Notas do prospect</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotes}</p>
-                      </div>
-                    )}
-                    {currentTask.prospectNotesJustification && (
-                      <div className="rounded-xl bg-warning/10 border border-warning/30 p-4">
-                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Justificativa</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotesJustification}</p>
-                      </div>
-                    )}
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-muted bg-muted/20 p-6 flex flex-col items-center justify-center text-center">
+                    <MessageSquare className="w-6 h-6 mx-auto text-muted-foreground/60 mb-2" />
+                    <p className="text-sm text-muted-foreground italic">Nenhuma observação registrada</p>
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-muted bg-muted/20 p-6 text-center">
-                  <MessageSquare className="w-6 h-6 mx-auto text-muted-foreground/60 mb-2" />
-                  <p className="text-sm text-muted-foreground italic">Nenhuma observação registrada</p>
-                </div>
-              )}
+                )}
 
-              {/* 12. TIMELINE */}
-              <SectionCard icon={History} title="Timeline da Visita" tone="muted">
-                <ol className="relative border-l-2 border-border ml-4 space-y-5 py-1">
-                  <TimelineItem icon={FileText} color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
-                  <TimelineItem icon={Calendar} color="bg-warning" title="Visita agendada" date={currentTask.startDate}
-                    detail={currentTask.startTime ? `${currentTask.startTime}${currentTask.endTime ? ` – ${currentTask.endTime}` : ''}` : undefined} />
-                  {currentTask.checkInLocation?.timestamp && (
-                    <TimelineItem icon={MapPin} color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
-                      detail={hasLocation ? `${currentTask.checkInLocation.lat.toFixed(4)}, ${currentTask.checkInLocation.lng.toFixed(4)}` : undefined} />
-                  )}
-                  {currentTask.updatedAt && (
-                    <TimelineItem icon={Activity} color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
-                  )}
-                  {currentTask.nextActionDate && (
-                    <TimelineItem icon={Sparkles} color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
-                  )}
-                </ol>
-              </SectionCard>
-
-              {/* 13. CONCLUSÃO DA VISITA */}
-              <div className="relative overflow-hidden rounded-2xl border-2 border-success/40 bg-gradient-to-br from-success/15 via-success/5 to-background p-5 sm:p-6 shadow-sm">
-                <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-success/10 blur-3xl pointer-events-none" />
-                <div className="relative flex items-start gap-4">
-                  <div className="w-12 h-12 bg-success text-success-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                    <Award className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] uppercase tracking-wider font-bold text-success mb-2">Conclusão da Visita</p>
-                    <div className="space-y-1.5">
-                      {conclusionParts.map((p, i) => (
-                        <p key={i} className="text-sm sm:text-[15px] leading-relaxed text-foreground">{p}</p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <SectionCard icon={History} title="Timeline da Visita" tone="muted">
+                  <ol className="relative border-l-2 border-border ml-4 space-y-5 py-1">
+                    <TimelineItem icon={FileText} color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
+                    <TimelineItem icon={Calendar} color="bg-warning" title="Visita agendada" date={currentTask.startDate}
+                      detail={currentTask.startTime ? `${currentTask.startTime}${currentTask.endTime ? ` – ${currentTask.endTime}` : ''}` : undefined} />
+                    {currentTask.checkInLocation?.timestamp && (
+                      <TimelineItem icon={MapPin} color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
+                        detail={hasLocation ? `${currentTask.checkInLocation.lat.toFixed(4)}, ${currentTask.checkInLocation.lng.toFixed(4)}` : undefined} />
+                    )}
+                    {currentTask.updatedAt && (
+                      <TimelineItem icon={Activity} color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
+                    )}
+                    {currentTask.nextActionDate && (
+                      <TimelineItem icon={Sparkles} color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
+                    )}
+                  </ol>
+                </SectionCard>
               </div>
+
+              {/* Conclusão foi integrada ao Resumo Executivo para evitar duplicação */}
+
+
             </div>
 
           </div>
