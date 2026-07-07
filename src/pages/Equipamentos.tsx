@@ -335,7 +335,7 @@ const Equipamentos: React.FC = () => {
 
       {/* Resumo do parque */}
       <Card>
-        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           <SummaryCell
             icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
             label="Total"
@@ -352,6 +352,11 @@ const Equipamentos: React.FC = () => {
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             label="Validadas"
             value={parkSummary?.validadas}
+          />
+          <SummaryCell
+            icon={<UserCheck className="h-4 w-4 text-primary" />}
+            label="Clientes Validados"
+            value={distinctValidatedClientsTotal}
           />
           <SummaryCell
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
