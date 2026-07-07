@@ -276,8 +276,8 @@ export const generateTaskPDF = async (
     const pendingCount = equipmentCount - validatedCount;
     sectionTitle(`Parque de Máquinas (${equipmentCount} itens · ${equipmentUnits} unidades · ${validatedCount} validados · ${pendingCount} pendentes)`);
 
-    const headers = ['#', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Valid.', 'Validado em'];
-    const widths = [7, 38, 22, 24, 12, 16, 10, 14, 39];
+    const headers = ['#', 'Prio.', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Status', 'Valid.', 'Validado em'];
+    const widths = [7, 14, 34, 20, 22, 10, 14, 9, 15, 12, 25];
     const startX = marginLeft;
 
     ensureSpace(8);
@@ -303,14 +303,18 @@ export const generateTaskPDF = async (
         try { validatedAtStr = format(new Date(validatedAtRaw), 'dd/MM/yyyy HH:mm', { locale: ptBR }); }
         catch { validatedAtStr = String(validatedAtRaw); }
       }
+      const priority = eq.priority || eq.prioridade || '—';
+      const status = eq.status || '—';
       const row = [
         String(idx + 1),
+        String(priority),
         String(eq.model || eq.modelo || eq.familyProduct || '—'),
         String(eq.type || eq.tipo || eq.equipmentType || '—'),
         String(eq.serialNumber || eq.serial_number || eq.numeroSerie || '—'),
         String(eq.year || eq.ano || '—'),
         eq.hours || eq.horas || eq.workHours ? Number(eq.hours || eq.horas || eq.workHours).toLocaleString('pt-BR') : '—',
         String(eq.quantity || 0),
+        String(status),
         validatedStr,
         validatedAtStr,
       ];
@@ -321,6 +325,19 @@ export const generateTaskPDF = async (
         cx += widths[i];
       });
       yPos += 5;
+      const obs = eq.observation || eq.observations || eq.observacao || eq.notes;
+      if (obs) {
+        ensureSpace(5);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+        const obsLines = pdf.splitTextToSize(`Obs: ${String(obs)}`, contentWidth - 4);
+        pdf.text(obsLines[0], startX + 4, yPos);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        yPos += 4;
+      }
     });
     yPos += 2;
   }
