@@ -303,7 +303,100 @@ export const generateTaskPDF = async (
   pdf.setTextColor(0, 0, 0);
   yPos += Math.ceil(kpis.length / cols) * (cardH + 3) + 3;
 
+  // ===== 2.1 RESUMO EXECUTIVO =====
+  sectionTitle('Resumo Executivo');
+  {
+    ensureSpace(summarySentences.length * 5 + 6);
+    const boxY = yPos - 2;
+    pdf.setFillColor(240, 245, 255);
+    pdf.setDrawColor(200, 215, 240);
+    const boxH = summarySentences.length * 4.6 + 6;
+    pdf.roundedRect(marginLeft, boxY, contentWidth, boxH, 2, 2, 'FD');
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(0, 0, 0);
+    let ty = boxY + 5;
+    summarySentences.forEach((s) => {
+      const lines = pdf.splitTextToSize(s, contentWidth - 6);
+      lines.forEach((ln: string) => { pdf.text(ln, marginLeft + 3, ty); ty += 4.6; });
+    });
+    yPos = boxY + boxH + 3;
+  }
+
+  // ===== 2.2 INDICADORES DA VISITA =====
+  sectionTitle('Indicadores da Visita');
+  {
+    const colsInd = 2;
+    const colW = (contentWidth - 4) / colsInd;
+    const rowH = 6;
+    indicators.forEach(([label, ok], i) => {
+      const col = i % colsInd;
+      const row = Math.floor(i / colsInd);
+      const x = marginLeft + col * (colW + 4);
+      const y = yPos + row * rowH;
+      ensureSpace(rowH);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      if (ok) { pdf.setTextColor(22, 163, 74); pdf.text('OK', x, y); }
+      else    { pdf.setTextColor(148, 163, 184); pdf.text('--', x, y); }
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(label, x + 8, y);
+    });
+    yPos += Math.ceil(indicators.length / colsInd) * rowH + 3;
+  }
+
+  // ===== 2.3 PONTOS DE ATENÇÃO =====
+  sectionTitle('Pontos de Atenção');
+  {
+    if (alerts.length === 0) {
+      ensureSpace(8);
+      pdf.setFillColor(230, 250, 235);
+      pdf.setDrawColor(180, 220, 190);
+      pdf.roundedRect(marginLeft, yPos - 4, contentWidth, 7, 2, 2, 'FD');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9);
+      pdf.setTextColor(22, 101, 52);
+      pdf.text('Não há pendências nesta visita.', marginLeft + 3, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 6;
+    } else {
+      alerts.forEach((a) => {
+        ensureSpace(6);
+        pdf.setFillColor(255, 247, 230);
+        pdf.setDrawColor(240, 200, 130);
+        pdf.roundedRect(marginLeft, yPos - 4, contentWidth, 6, 1.5, 1.5, 'FD');
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.setTextColor(180, 90, 0);
+        pdf.text('!', marginLeft + 3, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(a, marginLeft + 8, yPos);
+        yPos += 6;
+      });
+    }
+    yPos += 2;
+  }
+
+  // ===== 2.4 OPORTUNIDADE =====
+  sectionTitle('Oportunidade');
+  fourColRow([
+    ['Valor Potencial', potentialValue > 0 ? currency(potentialValue) : '—'],
+    ['Valor Fechado', closedValue > 0 ? currency(closedValue) : '—'],
+    ['Valor Parcial', partialValue > 0 ? currency(partialValue) : '—'],
+    ['Taxa de Conversão', conversion],
+  ]);
+  fourColRow([
+    ['Classificação', statusLabel],
+    ['Interesse', String(task.opportunityInterest || '—')],
+    ['Urgência', String(task.opportunityUrgency || '—')],
+    ['Impacto', String(task.opportunityImpact || '—')],
+  ]);
+  twoColRow('Possibilidade de Fechamento', String(task.opportunityClosing || '—'), '', '');
+
   // ===== 3. DADOS DO CLIENTE =====
+
   sectionTitle('Dados do Cliente');
   twoColRow('Nome', task.client || '—', 'Código', task.clientCode || '—');
   twoColRow('Propriedade', task.property || '—', 'Hectares', task.propertyHectares ? `${task.propertyHectares} ha` : '—');
