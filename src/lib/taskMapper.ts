@@ -50,6 +50,8 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     filialAtendida: supabaseTask.filial_atendida || undefined,
     email: customerData?.email || supabaseTask.email || '',
     phone: supabaseTask.phone || '',
+    contactName: supabaseTask.contact_name || '',
+    contactFunction: supabaseTask.contact_function || '',
     taskType: supabaseTask.task_type || 'prospection',
     checklist: checklist,
     startDate: parseLocalDate(supabaseTask.start_date),
