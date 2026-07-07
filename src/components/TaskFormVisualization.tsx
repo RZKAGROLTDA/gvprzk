@@ -327,32 +327,16 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
               <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
                 <SummaryCard icon={Activity} label="Duração" value={duration} tone="primary" />
-                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone="primary" />
-                <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone="warning" />
-                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'muted'} />
-                <SummaryCard icon={DollarSign} label="Valor Potencial" value={`R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`} tone="success" />
-                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone="success" />
-                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${((values.closed / values.total) * 100).toFixed(0)}%` : '—'} tone="warning" />
-                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone="primary" />
+                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
+                <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
+                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
+                <SummaryCard icon={DollarSign} label="Valor Potencial" value={values.total > 0 ? `R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.total > 0 ? 'primary' : 'muted'} />
+                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.closed > 0 ? 'success' : 'muted'} />
+                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${conversionRate.toFixed(0)}%` : '—'} tone={conversionRate >= 70 ? 'success' : conversionRate > 0 ? 'warning' : 'muted'} />
+                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
               </div>
-
-              {(values.closed > 0 || salesStatus !== 'prospect') && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <MetricStrip icon={TrendingUp} label="Valor potencial" value={values.total} tone="primary" />
-                  <MetricStrip icon={DollarSign} label="Valor fechado" value={values.closed} tone="success" />
-                  <div className="rounded-xl border bg-gradient-to-br from-warning/10 to-transparent p-4">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <Percent className="w-3.5 h-3.5 text-warning" /> Taxa de conversão
-                    </div>
-                    <p className="text-2xl font-bold text-warning tabular-nums">{conversionRate.toFixed(1)}%</p>
-                    <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-warning rounded-full transition-all" style={{ width: `${Math.min(conversionRate, 100)}%` }} />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* 2.1 RESUMO EXECUTIVO */}
@@ -604,7 +588,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                             } catch { validatedAtStr = String(validatedAtRaw); }
                           }
                           return (
-                            <TableRow key={eq.id || idx}>
+                            <TableRow key={eq.id || idx} className={idx % 2 === 1 ? 'bg-muted/20' : ''}>
                               <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                               <TableCell>
                                 {pr ? (
@@ -675,12 +659,12 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {currentTask.checklist.map(item => {
+                          {currentTask.checklist.map((item, idx) => {
                             const qty = item.quantity || 1;
                             const subtotal = (item.price || 0) * qty;
                             return (
                               <React.Fragment key={item.id}>
-                                <TableRow className={item.selected ? 'bg-success/5' : ''}>
+                                <TableRow className={item.selected ? 'bg-success/5' : idx % 2 === 1 ? 'bg-muted/20' : ''}>
                                   <TableCell>
                                     <div className="font-medium text-sm">{item.name}</div>
                                     <div className="text-xs text-muted-foreground capitalize">{item.category}</div>
@@ -842,19 +826,19 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
 
               {/* 12. TIMELINE */}
               <SectionCard icon={History} title="Timeline da Visita" tone="muted">
-                <ol className="relative border-l-2 border-muted ml-3 space-y-4">
-                  <TimelineItem color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
-                  <TimelineItem color="bg-warning" title="Visita agendada" date={currentTask.startDate}
+                <ol className="relative border-l-2 border-border ml-4 space-y-5 py-1">
+                  <TimelineItem icon={FileText} color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
+                  <TimelineItem icon={Calendar} color="bg-warning" title="Visita agendada" date={currentTask.startDate}
                     detail={currentTask.startTime ? `${currentTask.startTime}${currentTask.endTime ? ` – ${currentTask.endTime}` : ''}` : undefined} />
                   {currentTask.checkInLocation?.timestamp && (
-                    <TimelineItem color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
+                    <TimelineItem icon={MapPin} color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
                       detail={hasLocation ? `${currentTask.checkInLocation.lat.toFixed(4)}, ${currentTask.checkInLocation.lng.toFixed(4)}` : undefined} />
                   )}
                   {currentTask.updatedAt && (
-                    <TimelineItem color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
+                    <TimelineItem icon={Activity} color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
                   )}
                   {currentTask.nextActionDate && (
-                    <TimelineItem color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
+                    <TimelineItem icon={Sparkles} color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
                   )}
                 </ol>
               </SectionCard>
@@ -928,41 +912,24 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
 const SummaryCard: React.FC<{
   icon: React.ComponentType<{ className?: string }>;
   label: string; value: string; sub?: string;
-  tone: 'primary' | 'success' | 'warning' | 'muted';
+  tone: 'primary' | 'success' | 'warning' | 'muted' | 'destructive';
 }> = ({ icon: Icon, label, value, sub, tone }) => {
   const toneMap = {
-    primary: 'from-primary/10 to-transparent text-primary border-primary/20',
-    success: 'from-success/10 to-transparent text-success border-success/20',
-    warning: 'from-warning/10 to-transparent text-warning border-warning/20',
-    muted: 'from-muted to-transparent text-muted-foreground border-border',
+    primary:     'from-primary/10 to-transparent text-primary border-primary/20',
+    success:     'from-success/10 to-transparent text-success border-success/20',
+    warning:     'from-warning/10 to-transparent text-warning border-warning/20',
+    destructive: 'from-destructive/10 to-transparent text-destructive border-destructive/20',
+    muted:       'from-muted to-transparent text-muted-foreground border-border',
   };
   return (
-    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} p-3.5`}>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2 uppercase tracking-wider font-semibold">
+    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} p-3.5 min-h-[92px] flex flex-col justify-between`}>
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
         <Icon className="w-3.5 h-3.5" />{label}
       </div>
-      <p className="text-lg font-bold text-foreground tabular-nums leading-none">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-    </div>
-  );
-};
-
-const MetricStrip: React.FC<{
-  icon: React.ComponentType<{ className?: string }>;
-  label: string; value: number; tone: 'primary' | 'success';
-}> = ({ icon: Icon, label, value, tone }) => {
-  const toneMap = {
-    primary: 'from-primary/10 text-primary',
-    success: 'from-success/10 text-success',
-  };
-  return (
-    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} to-transparent p-4`}>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-        <Icon className="w-3.5 h-3.5" /> {label}
+      <div>
+        <p className="text-lg font-bold text-foreground tabular-nums leading-none">{value}</p>
+        {sub && <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>}
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${tone === 'primary' ? 'text-primary' : 'text-success'}`}>
-        {formatCurrency(value)}
-      </p>
     </div>
   );
 };
@@ -1009,7 +976,8 @@ const MiniStat: React.FC<{
 
 const TimelineItem: React.FC<{
   color: string; title: string; date?: Date | string; detail?: string; future?: boolean;
-}> = ({ color, title, date, detail, future }) => {
+  icon?: React.ComponentType<{ className?: string }>;
+}> = ({ color, title, date, detail, future, icon: Icon }) => {
   let dateStr = '—';
   if (date) {
     try {
@@ -1018,8 +986,10 @@ const TimelineItem: React.FC<{
     } catch { dateStr = String(date); }
   }
   return (
-    <li className="ml-4 relative">
-      <span className={`absolute -left-[22px] top-1 w-3 h-3 rounded-full ${color} ring-4 ring-background`} />
+    <li className="ml-6 relative">
+      <span className={`absolute -left-[30px] top-0 w-6 h-6 rounded-full ${color} ring-4 ring-background flex items-center justify-center text-white shadow`}>
+        {Icon ? <Icon className="w-3 h-3" /> : null}
+      </span>
       <div className="flex items-baseline justify-between gap-2 flex-wrap">
         <p className={`text-sm font-semibold ${future ? 'text-primary' : 'text-foreground'}`}>{title}</p>
         <p className="text-xs text-muted-foreground tabular-nums">{dateStr}</p>

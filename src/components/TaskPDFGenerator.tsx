@@ -69,6 +69,9 @@ export const generateTaskPDF = async (
 
   const PRIMARY: [number, number, number] = [37, 99, 235];
   const MUTED: [number, number, number] = [110, 120, 135];
+  const SUCCESS: [number, number, number] = [22, 163, 74];
+  const WARNING: [number, number, number] = [217, 119, 6];
+  const DANGER: [number, number, number] = [220, 38, 38];
 
   const currency = (v: number) => `R$ ${(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
@@ -271,36 +274,45 @@ export const generateTaskPDF = async (
   yPos = 50;
 
   // ===== 2. KPI CARDS =====
-  const kpis: Array<[string, string]> = [
-    ['Duração', duration],
-    ['Equipamentos', String(equipmentCount)],
-    ['Fotos', String(photoCount)],
-    ['Localização', hasLocation ? 'Sim' : '—'],
-    ['Valor Potencial', currency(potentialValue)],
-    ['Valor Fechado', closedValue > 0 ? currency(closedValue) : '—'],
-    ['Conversão', conversion],
-    ['Itens Vendidos', `${task.checklist?.filter(i => i.selected).length || 0}/${task.checklist?.length || 0}`],
+  const kpis: Array<{ label: string; value: string; tone: 'primary' | 'success' | 'warning' | 'danger' | 'muted' }> = [
+    { label: 'Duração', value: duration, tone: 'primary' },
+    { label: 'Equipamentos', value: String(equipmentCount), tone: equipmentCount > 0 ? 'success' : 'muted' },
+    { label: 'Fotos', value: String(photoCount), tone: photoCount > 0 ? 'success' : 'warning' },
+    { label: 'Localização', value: hasLocation ? 'Sim' : '—', tone: hasLocation ? 'success' : 'danger' },
+    { label: 'Valor Potencial', value: currency(potentialValue), tone: potentialValue > 0 ? 'primary' : 'muted' },
+    { label: 'Valor Fechado', value: closedValue > 0 ? currency(closedValue) : '—', tone: closedValue > 0 ? 'success' : 'muted' },
+    { label: 'Conversão', value: conversion, tone: closedValue > 0 ? (potentialValue > 0 && closedValue / potentialValue >= 0.7 ? 'success' : 'warning') : 'muted' },
+    { label: 'Itens Vendidos', value: `${task.checklist?.filter(i => i.selected).length || 0}/${task.checklist?.length || 0}`, tone: (task.checklist?.filter(i => i.selected).length || 0) > 0 ? 'success' : 'muted' },
   ];
+  const toneRgb: Record<string, [number, number, number]> = {
+    primary: PRIMARY, success: SUCCESS, warning: WARNING, danger: DANGER, muted: MUTED,
+  };
   const cols = 4;
   const cardW = (contentWidth - (cols - 1) * 3) / cols;
   const cardH = 15;
-  kpis.forEach(([label, value], i) => {
+  kpis.forEach(({ label, value, tone }, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
     const x = marginLeft + col * (cardW + 3);
     const y = yPos + row * (cardH + 3);
-    pdf.setFillColor(245, 247, 252);
-    pdf.setDrawColor(220, 226, 235);
+    const [r, g, b] = toneRgb[tone];
+    pdf.setFillColor(248, 250, 253);
+    pdf.setDrawColor(r, g, b);
+    pdf.setLineWidth(0.3);
     pdf.roundedRect(x, y, cardW, cardH, 2, 2, 'FD');
+    // left accent bar
+    pdf.setFillColor(r, g, b);
+    pdf.rect(x, y, 1.2, cardH, 'F');
     pdf.setFontSize(7);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-    pdf.text(label.toUpperCase(), x + 3, y + 5);
+    pdf.text(label.toUpperCase(), x + 4, y + 5);
     pdf.setFontSize(10);
-    pdf.setTextColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
-    pdf.text(value, x + 3, y + 11.5);
+    pdf.setTextColor(r, g, b);
+    pdf.text(value, x + 4, y + 11.5);
   });
   pdf.setTextColor(0, 0, 0);
+  pdf.setLineWidth(0.2);
   yPos += Math.ceil(kpis.length / cols) * (cardH + 3) + 3;
 
   // ===== 2.1 RESUMO EXECUTIVO =====
@@ -469,6 +481,10 @@ export const generateTaskPDF = async (
 
     task.equipmentList.forEach((eq: any, idx: number) => {
       ensureSpace(6);
+      if (idx % 2 === 1) {
+        pdf.setFillColor(247, 249, 252);
+        pdf.rect(startX, yPos - 4, contentWidth, 5, 'F');
+      }
       const validated = eq.validated ?? eq.validado ?? eq.is_validated;
       const validatedStr = validated === true || validated === 'true' ? 'Sim' : validated === false || validated === 'false' ? 'Não' : '—';
       const validatedAtRaw = eq.validatedAt ?? eq.validated_at ?? eq.validadoEm ?? eq.validado_em;
@@ -495,7 +511,13 @@ export const generateTaskPDF = async (
       cx = startX + 2;
       row.forEach((cell, i) => {
         const t = pdf.splitTextToSize(cell, widths[i] - 2);
+        // color the "Valid." column
+        if (i === 9) {
+          if (validatedStr === 'Sim') pdf.setTextColor(SUCCESS[0], SUCCESS[1], SUCCESS[2]);
+          else if (validatedStr === 'Não') pdf.setTextColor(WARNING[0], WARNING[1], WARNING[2]);
+        }
         pdf.text(t[0] || '—', cx, yPos);
+        pdf.setTextColor(0, 0, 0);
         cx += widths[i];
       });
       yPos += 5;
@@ -538,16 +560,28 @@ export const generateTaskPDF = async (
 
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
-    task.checklist.forEach((item) => {
+    task.checklist.forEach((item, idx) => {
       ensureSpace(6);
+      if (item.selected) {
+        pdf.setFillColor(232, 250, 238);
+        pdf.rect(marginLeft, yPos - 4, contentWidth, 5, 'F');
+      } else if (idx % 2 === 1) {
+        pdf.setFillColor(247, 249, 252);
+        pdf.rect(marginLeft, yPos - 4, contentWidth, 5, 'F');
+      }
       const subtotal = (item.price || 0) * (item.quantity || 1);
-      pdf.text(item.selected ? '✓' : '·', marginLeft + 2, yPos);
+      if (item.selected) pdf.setTextColor(SUCCESS[0], SUCCESS[1], SUCCESS[2]);
+      pdf.text(item.selected ? 'v' : '·', marginLeft + 2, yPos);
+      pdf.setTextColor(0, 0, 0);
       const name = pdf.splitTextToSize(item.name || '—', 88);
       pdf.text(name[0], marginLeft + 8, yPos);
-      pdf.text(String(item.quantity || 1), marginLeft + 100, yPos);
-      pdf.text(currency(item.price || 0), marginLeft + 115, yPos);
-      pdf.text(currency(subtotal), marginLeft + 142, yPos);
-      pdf.text(item.selected ? 'Vendido' : 'Ofertado', marginLeft + 170, yPos);
+      pdf.text(String(item.quantity || 1), marginLeft + 100, yPos, { align: 'right' as any });
+      pdf.text(currency(item.price || 0), marginLeft + 140, yPos, { align: 'right' as any });
+      pdf.text(currency(subtotal), marginLeft + 168, yPos, { align: 'right' as any });
+      if (item.selected) pdf.setTextColor(SUCCESS[0], SUCCESS[1], SUCCESS[2]);
+      else pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+      pdf.text(item.selected ? 'Vendido' : 'Ofertado', marginLeft + 172, yPos);
+      pdf.setTextColor(0, 0, 0);
       yPos += 5;
       if ((item as any).category) {
         ensureSpace(4);
@@ -764,17 +798,34 @@ export const generateTaskPDF = async (
     yPos = y0 + boxH + 3;
   }
 
-  // ===== FOOTER =====
+  // ===== FOOTER + running header on pages 2+ =====
   const pageCount = pdf.getNumberOfPages();
+  const genStamp = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR });
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
+    // running header (skip on page 1 — it has the hero band)
+    if (i > 1) {
+      pdf.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
+      pdf.rect(0, 0, pageWidth, 8, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      pdf.text('Relatório da Visita', marginLeft, 5.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(task.client || '', pageWidth / 2, 5.5, { align: 'center' });
+      pdf.text(task.startDate ? formatDateDisplay(task.startDate) : '', pageWidth - marginRight, 5.5, { align: 'right' });
+      pdf.setTextColor(0, 0, 0);
+    }
+    // footer divider + text
+    pdf.setDrawColor(220, 226, 235);
+    pdf.setLineWidth(0.2);
+    pdf.line(marginLeft, pageHeight - 14, pageWidth - marginRight, pageHeight - 14);
     pdf.setFontSize(7);
     pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-    pdf.setFont('helvetica', 'italic');
-    pdf.text(
-      `Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })} · ${task.client || ''} · Página ${i} de ${pageCount}`,
-      pageWidth / 2, pageHeight - 10, { align: 'center' }
-    );
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Gerado em ${genStamp}`, marginLeft, pageHeight - 9);
+    pdf.text(task.client || '', pageWidth / 2, pageHeight - 9, { align: 'center' });
+    pdf.text(`Página ${i} de ${pageCount}`, pageWidth - marginRight, pageHeight - 9, { align: 'right' });
   }
   pdf.setTextColor(0, 0, 0);
 
