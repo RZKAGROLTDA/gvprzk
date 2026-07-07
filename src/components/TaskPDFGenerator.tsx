@@ -167,7 +167,7 @@ export const generateTaskPDF = async (
   const newMachineCount = (task.equipmentList || []).filter((eq: any) =>
     eq.isNew === true || eq.novo === true || eq.is_new === true || eq.new === true
   ).length;
-  const hasContact = !!(task.contactName || task.contactFunction);
+  const hasContact = !!(task.contactName || task.contactFunction || task.email || task.phone);
   const hasObservations = !!(task.observations || task.prospectNotes);
   const hasNextAction = !!(task.nextAction || task.nextActionDate);
   const hasCheckIn = !!task.checkInLocation?.timestamp;
@@ -420,9 +420,19 @@ export const generateTaskPDF = async (
   }
 
   // ===== 4. CONTATO DA VISITA =====
-  if (task.contactName || task.contactFunction) {
+  if (hasContact) {
     sectionTitle('Contato da Visita');
     twoColRow('Nome', task.contactName || '—', 'Função', task.contactFunction || '—');
+    twoColRow('Email', task.email || '—', 'Telefone', task.phone || '—');
+  } else {
+    sectionTitle('Contato da Visita');
+    pdf.setFont('helvetica', 'italic');
+    pdf.setFontSize(9);
+    pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+    ensureSpace(6);
+    pdf.text('Contato não informado', marginLeft, yPos);
+    pdf.setTextColor(0, 0, 0);
+    yPos += 6;
   }
 
   // ===== 5. LOCALIZAÇÃO =====
