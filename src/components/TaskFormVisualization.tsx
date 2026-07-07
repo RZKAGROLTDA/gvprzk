@@ -826,19 +826,19 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
 
               {/* 12. TIMELINE */}
               <SectionCard icon={History} title="Timeline da Visita" tone="muted">
-                <ol className="relative border-l-2 border-muted ml-3 space-y-4">
-                  <TimelineItem color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
-                  <TimelineItem color="bg-warning" title="Visita agendada" date={currentTask.startDate}
+                <ol className="relative border-l-2 border-border ml-4 space-y-5 py-1">
+                  <TimelineItem icon={FileText} color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
+                  <TimelineItem icon={Calendar} color="bg-warning" title="Visita agendada" date={currentTask.startDate}
                     detail={currentTask.startTime ? `${currentTask.startTime}${currentTask.endTime ? ` – ${currentTask.endTime}` : ''}` : undefined} />
                   {currentTask.checkInLocation?.timestamp && (
-                    <TimelineItem color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
+                    <TimelineItem icon={MapPin} color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
                       detail={hasLocation ? `${currentTask.checkInLocation.lat.toFixed(4)}, ${currentTask.checkInLocation.lng.toFixed(4)}` : undefined} />
                   )}
                   {currentTask.updatedAt && (
-                    <TimelineItem color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
+                    <TimelineItem icon={Activity} color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
                   )}
                   {currentTask.nextActionDate && (
-                    <TimelineItem color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
+                    <TimelineItem icon={Sparkles} color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
                   )}
                 </ol>
               </SectionCard>
