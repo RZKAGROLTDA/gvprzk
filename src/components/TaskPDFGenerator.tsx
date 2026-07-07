@@ -69,6 +69,9 @@ export const generateTaskPDF = async (
 
   const PRIMARY: [number, number, number] = [37, 99, 235];
   const MUTED: [number, number, number] = [110, 120, 135];
+  const SUCCESS: [number, number, number] = [22, 163, 74];
+  const WARNING: [number, number, number] = [217, 119, 6];
+  const DANGER: [number, number, number] = [220, 38, 38];
 
   const currency = (v: number) => `R$ ${(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
