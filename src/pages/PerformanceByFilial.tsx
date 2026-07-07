@@ -129,54 +129,13 @@ const PerformanceByFilial: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data Inicial</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !dateFrom && 'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? formatDateDisplay(dateFrom) : <span>Selecionar data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data Final</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !dateTo && 'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? formatDateDisplay(dateTo) : <span>Selecionar data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                    disabled={(date) => (dateFrom ? date < dateFrom : false)}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PeriodFilter
+              preset={periodValue.preset}
+              customStart={periodValue.startDate ?? undefined}
+              customEnd={periodValue.endDate ?? undefined}
+              onChange={setPeriodValue}
+            />
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Consultor</label>
