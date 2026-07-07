@@ -139,7 +139,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const newMachineCount = (currentTask.equipmentList || []).filter((eq: any) =>
     eq.isNew === true || eq.novo === true || eq.is_new === true || eq.new === true
   ).length;
-  const hasContact = !!(currentTask.contactName || currentTask.contactFunction);
+  const hasContact = !!(currentTask.contactName || currentTask.contactFunction || currentTask.email || currentTask.phone);
   const hasObservations = !!(currentTask.observations || currentTask.prospectNotes);
   const hasNextAction = !!(currentTask.nextAction || currentTask.nextActionDate);
   const hasCheckIn = !!currentTask.checkInLocation?.timestamp;
