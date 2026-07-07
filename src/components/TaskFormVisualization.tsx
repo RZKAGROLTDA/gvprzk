@@ -239,20 +239,14 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                <SummaryCard icon={Tractor} label="Equip. registrados" value={String(equipmentCount)} tone="primary" />
-                <SummaryCard icon={CheckCircle2} label="Unidades" value={String(equipmentTotalUnits)} tone="success" />
+                <SummaryCard icon={Activity} label="Duração" value={duration} tone="primary" />
+                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone="primary" />
                 <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone="warning" />
                 <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'muted'} />
-                <SummaryCard icon={Package} label="Produtos" value={String(itemsCount)} sub={itemsCount ? `${selectedItemsCount} vendidos` : undefined} tone="primary" />
-                <SummaryCard icon={Target} label="Status" value={getStatusLabel(salesStatus)} tone="muted" />
-                <SummaryCard icon={DollarSign} label="Valor potencial" value={`R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`} tone="success" />
-                <SummaryCard
-                  icon={Calendar}
-                  label="Próxima ação"
-                  value={currentTask.nextActionDate ? formatDateDisplay(currentTask.nextActionDate as any) : '—'}
-                  sub={currentTask.nextAction ? String(currentTask.nextAction).slice(0, 22) : undefined}
-                  tone="warning"
-                />
+                <SummaryCard icon={DollarSign} label="Valor Potencial" value={`R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`} tone="success" />
+                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone="success" />
+                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${((values.closed / values.total) * 100).toFixed(0)}%` : '—'} tone="warning" />
+                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone="primary" />
               </div>
 
               {(values.closed > 0 || salesStatus !== 'prospect') && (
@@ -282,9 +276,9 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                     <Field label="Telefone" value={currentTask.phone} icon={Phone} />
                     <Field label="Email" value={currentTask.email} icon={AtSign} />
                     <Field label="Propriedade" value={currentTask.property} />
-                    <Field label="Cidade" value={(currentTask as any).city} />
-                    <Field label="Estado" value={(currentTask as any).state} />
                     <Field label="Hectares" value={currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : undefined} />
+                    <Field label="Filial" value={getFilialNameRobust(currentTask.filial, filiais)} />
+                    <Field label="Filial Atendida" value={currentTask.filialAtendida ? getFilialNameRobust(currentTask.filialAtendida, filiais) : undefined} />
                   </div>
                 </SectionCard>
 
@@ -564,6 +558,16 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                       .map(([k, v]) => (
                         <Field key={k} label={`Estimativa ${k}`} value={formatCurrency(Number(v || 0))} />
                       ))}
+                    {currentTask.salesEstimate && typeof currentTask.salesEstimate === 'object' && (
+                      <Field
+                        label="Total Estimativa"
+                        value={formatCurrency(
+                          Object.entries(currentTask.salesEstimate)
+                            .filter(([k]) => k !== 'puk')
+                            .reduce((s, [, v]) => s + Number(v || 0), 0)
+                        )}
+                      />
+                    )}
                   </div>
                 </SectionCard>
               )}

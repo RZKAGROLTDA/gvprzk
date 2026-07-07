@@ -246,7 +246,7 @@ export const generateTaskPDF = async (
       ['Latitude', task.checkInLocation!.lat.toFixed(6)],
       ['Longitude', task.checkInLocation!.lng.toFixed(6)],
       ['Horário', task.checkInLocation!.timestamp ? format(new Date(task.checkInLocation!.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'],
-      ['Precisão', '—'],
+      ['Status', 'Registrado'],
     ]);
     pdf.setTextColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
     pdf.setFont('helvetica', 'normal');
@@ -276,8 +276,8 @@ export const generateTaskPDF = async (
     const pendingCount = equipmentCount - validatedCount;
     sectionTitle(`Parque de Máquinas (${equipmentCount} itens · ${equipmentUnits} unidades · ${validatedCount} validados · ${pendingCount} pendentes)`);
 
-    const headers = ['#', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Valid.', 'Validado em'];
-    const widths = [7, 38, 22, 24, 12, 16, 10, 14, 39];
+    const headers = ['#', 'Prio.', 'Modelo', 'Tipo', 'Nº Série', 'Ano', 'Horas', 'Qtd', 'Status', 'Valid.', 'Validado em'];
+    const widths = [7, 14, 34, 20, 22, 10, 14, 9, 15, 12, 25];
     const startX = marginLeft;
 
     ensureSpace(8);
@@ -303,14 +303,18 @@ export const generateTaskPDF = async (
         try { validatedAtStr = format(new Date(validatedAtRaw), 'dd/MM/yyyy HH:mm', { locale: ptBR }); }
         catch { validatedAtStr = String(validatedAtRaw); }
       }
+      const priority = eq.priority || eq.prioridade || '—';
+      const status = eq.status || '—';
       const row = [
         String(idx + 1),
+        String(priority),
         String(eq.model || eq.modelo || eq.familyProduct || '—'),
         String(eq.type || eq.tipo || eq.equipmentType || '—'),
         String(eq.serialNumber || eq.serial_number || eq.numeroSerie || '—'),
         String(eq.year || eq.ano || '—'),
         eq.hours || eq.horas || eq.workHours ? Number(eq.hours || eq.horas || eq.workHours).toLocaleString('pt-BR') : '—',
         String(eq.quantity || 0),
+        String(status),
         validatedStr,
         validatedAtStr,
       ];
@@ -321,6 +325,19 @@ export const generateTaskPDF = async (
         cx += widths[i];
       });
       yPos += 5;
+      const obs = eq.observation || eq.observations || eq.observacao || eq.notes;
+      if (obs) {
+        ensureSpace(5);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+        const obsLines = pdf.splitTextToSize(`Obs: ${String(obs)}`, contentWidth - 4);
+        pdf.text(obsLines[0], startX + 4, yPos);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        yPos += 4;
+      }
     });
     yPos += 2;
   }
@@ -358,6 +375,29 @@ export const generateTaskPDF = async (
       pdf.text(currency(subtotal), marginLeft + 142, yPos);
       pdf.text(item.selected ? 'Vendido' : 'Ofertado', marginLeft + 170, yPos);
       yPos += 5;
+      if ((item as any).category) {
+        ensureSpace(4);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+        pdf.text(`Categoria: ${String((item as any).category)}`, marginLeft + 8, yPos);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        yPos += 4;
+      }
+      if ((item as any).observations) {
+        ensureSpace(4);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+        const obsLines = pdf.splitTextToSize(`Obs: ${String((item as any).observations)}`, contentWidth - 10);
+        pdf.text(obsLines[0], marginLeft + 8, yPos);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        yPos += 4;
+      }
     });
     yPos += 2;
     pdf.setFont('helvetica', 'bold');
@@ -389,6 +429,10 @@ export const generateTaskPDF = async (
         Object.entries(est).filter(([k]) => k !== 'puk').forEach(([k, v]) => {
           twoColRow(`Estimativa ${k}`, currency(Number(v || 0)), '', '');
         });
+        const totalEst = Object.entries(est)
+          .filter(([k]) => k !== 'puk')
+          .reduce((s, [, v]) => s + Number(v || 0), 0);
+        twoColRow('Total Estimativa', currency(totalEst), '', '');
       }
     }
   }
