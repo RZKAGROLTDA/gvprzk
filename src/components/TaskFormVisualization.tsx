@@ -355,7 +355,98 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
               )}
             </div>
 
+            {/* 2.1 RESUMO EXECUTIVO */}
+            <div className="px-5 sm:px-7 pt-5">
+              <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
+                <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+                <div className="relative flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Lightbulb className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-primary mb-2">Resumo Executivo</p>
+                    <div className="space-y-1.5">
+                      {summarySentences.map((s, i) => (
+                        <p key={i} className="text-sm sm:text-[15px] leading-relaxed text-foreground">{s}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2.2 INDICADORES + ALERTAS */}
+            <div className="px-5 sm:px-7 pt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <SectionCard icon={ClipboardCheck} title="Indicadores da Visita" tone="success">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {indicators.map((ind) => (
+                      <div
+                        key={ind.label}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                          ind.ok
+                            ? 'bg-success/5 border-success/20 text-foreground'
+                            : 'bg-muted/30 border-border text-muted-foreground'
+                        }`}
+                      >
+                        {ind.ok
+                          ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                          : <XCircle className="w-4 h-4 text-muted-foreground/60 flex-shrink-0" />
+                        }
+                        <span className={ind.ok ? 'font-medium' : ''}>{ind.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+
+                <SectionCard
+                  icon={alerts.length ? AlertTriangle : ShieldCheck}
+                  title="Pontos de Atenção"
+                  tone={alerts.length ? 'warning' : 'success'}
+                  description={alerts.length ? `${alerts.length} pendência${alerts.length > 1 ? 's' : ''} identificada${alerts.length > 1 ? 's' : ''}` : undefined}
+                >
+                  {alerts.length === 0 ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-4 text-sm text-foreground">
+                      <ShieldCheck className="w-5 h-5 text-success" />
+                      Não há pendências nesta visita.
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {alerts.map((a) => (
+                        <li key={a} className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm">
+                          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+                          <span className="text-foreground">{a}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </SectionCard>
+              </div>
+            </div>
+
+            {/* 2.3 OPORTUNIDADE */}
+            <div className="px-5 sm:px-7 pt-4">
+              <SectionCard icon={Target} title="Oportunidade" tone="primary">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <OppMetric label="Valor Potencial" value={values.total > 0 ? formatCurrency(values.total) : '—'} tone="primary" />
+                  <OppMetric label="Valor Fechado" value={values.closed > 0 ? formatCurrency(values.closed) : '—'} tone="success" />
+                  <OppMetric label="Valor Parcial" value={values.partial > 0 ? formatCurrency(values.partial) : '—'} tone="warning" />
+                  <OppMetric label="Taxa de Conversão" value={values.total > 0 && values.closed > 0 ? `${conversionRate.toFixed(1)}%` : '—'} tone="warning" />
+                  <OppMetric label="Classificação" value={getStatusLabel(salesStatus)} tone="primary" />
+                </div>
+                {(currentTask.opportunityInterest || currentTask.opportunityUrgency || currentTask.opportunityImpact || currentTask.opportunityClosing) && (
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <OppMetric label="Interesse" value={currentTask.opportunityInterest || '—'} tone="muted" capitalize />
+                    <OppMetric label="Urgência" value={currentTask.opportunityUrgency || '—'} tone="muted" capitalize />
+                    <OppMetric label="Impacto" value={currentTask.opportunityImpact || '—'} tone="muted" capitalize />
+                    <OppMetric label="Fechamento" value={currentTask.opportunityClosing || '—'} tone="muted" capitalize />
+                  </div>
+                )}
+              </SectionCard>
+            </div>
+
             <div className="p-5 sm:p-7 space-y-4">
+
               {/* 3. CLIENTE + 4. CONTATO */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <SectionCard icon={User} title="Dados do Cliente" tone="primary" className="lg:col-span-2">
