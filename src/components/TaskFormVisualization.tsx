@@ -7,6 +7,7 @@ import {
   Calendar, Clock, MapPin, Phone, AtSign, Package, MessageSquare,
   Tractor, Image as ImageIcon, Activity, Navigation, Camera,
   CheckCircle2, X, History, Sparkles, UserCheck, Wrench,
+  AlertTriangle, ClipboardCheck, Award, Lightbulb, ShieldCheck, XCircle,
 } from 'lucide-react';
 import {
   Dialog, DialogContent,
