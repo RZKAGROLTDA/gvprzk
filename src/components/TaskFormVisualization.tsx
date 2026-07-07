@@ -181,17 +181,28 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
     { label: 'Nova máquina cadastrada', ok: newMachineCount > 0 },
   ];
 
-  // Alertas
-  const alerts: string[] = [];
-  if (photoCount === 0) alerts.push('Nenhuma foto registrada');
-  if (equipmentCount > 0 && validatedEqCount === 0) alerts.push('Nenhum equipamento validado');
-  if (!hasNextAction) alerts.push('Próxima ação não definida');
-  if (itemsCount === 0) alerts.push('Nenhum produto registrado');
-  if (!hasLocation) alerts.push('Visita sem localização');
-  if (!hasContact) alerts.push('Contato da visita não informado');
+  // Alertas priorizados: 🔴 Crítico > 🟡 Atenção > 🔵 Informativo
+  type AlertSeverity = 'critical' | 'warning' | 'info';
+  type PrioritizedAlert = { message: string; severity: AlertSeverity };
+  const alertsPrioritized: PrioritizedAlert[] = [];
+  // Críticos — comprometem a validade da visita
+  if (!hasLocation) alertsPrioritized.push({ message: 'Visita sem localização registrada', severity: 'critical' });
+  if (!hasContact) alertsPrioritized.push({ message: 'Contato da visita não informado', severity: 'critical' });
+  if (values.total > 0 && !hasNextAction) alertsPrioritized.push({ message: 'Oportunidade identificada sem próxima ação definida', severity: 'critical' });
+  // Atenção — dados operacionais incompletos
+  if (photoCount === 0) alertsPrioritized.push({ message: 'Nenhuma foto registrada durante a visita', severity: 'warning' });
+  if (equipmentCount > 0 && validatedEqCount === 0) alertsPrioritized.push({ message: 'Nenhum equipamento validado', severity: 'warning' });
+  if (values.total === 0 && !hasNextAction) alertsPrioritized.push({ message: 'Próxima ação não definida', severity: 'warning' });
+  // Informativo — ausências não bloqueantes
+  if (itemsCount === 0) alertsPrioritized.push({ message: 'Nenhum produto registrado', severity: 'info' });
+  if (!hasObservations) alertsPrioritized.push({ message: 'Nenhuma observação registrada', severity: 'info' });
 
-  // Conclusão
-  const conclusionParts: string[] = [];
+  const severityOrder: Record<AlertSeverity, number> = { critical: 0, warning: 1, info: 2 };
+  alertsPrioritized.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+  const alertsCount = alertsPrioritized.length;
+  const criticalCount = alertsPrioritized.filter(a => a.severity === 'critical').length;
+
+  // Conclusão — integrada ao Resumo Executivo (evita duplicação)
   const completedItems: string[] = [];
   if (hasLocation) completedItems.push('registro de localização');
   if (photoCount > 0) completedItems.push('fotos');
@@ -200,23 +211,12 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
     const list = completedItems.length === 1
       ? completedItems[0]
       : `${completedItems.slice(0, -1).join(', ')} e ${completedItems.slice(-1)}`;
-    conclusionParts.push(`A visita foi concluída com ${list}.`);
-  } else {
-    conclusionParts.push('A visita ainda não possui registros de campo relevantes.');
+    summarySentences.push(`A visita foi concluída com ${list}.`);
   }
-  if (values.total > 0) {
-    conclusionParts.push(
-      hasNextAction
-        ? `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} e programado retorno para o cliente.`
-        : `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`
-    );
-  } else if (hasNextAction) {
-    conclusionParts.push('Foi programado retorno para o cliente.');
-  }
-  conclusionParts.push(
-    alerts.length === 0
+  summarySentences.push(
+    alertsCount === 0
       ? 'A documentação da visita está completa.'
-      : `Ainda existe${alerts.length > 1 ? 'm' : ''} ${alerts.length} ponto${alerts.length > 1 ? 's' : ''} de atenção a ser tratado${alerts.length > 1 ? 's' : ''}.`
+      : `Ainda existe${alertsCount > 1 ? 'm' : ''} ${alertsCount} ponto${alertsCount > 1 ? 's' : ''} de atenção a ser tratado${alertsCount > 1 ? 's' : ''}${criticalCount > 0 ? ` (${criticalCount} crítico${criticalCount > 1 ? 's' : ''})` : ''}.`
   );
 
 
