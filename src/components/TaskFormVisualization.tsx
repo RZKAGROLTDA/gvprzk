@@ -723,10 +723,6 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                     <Field label="Categoria Técnica" value={currentTask.technicalCategory} />
                     <Field label="Etapa Funil Técnico" value={currentTask.technicalFunnelStage} />
-                    <Field label="Interesse" value={currentTask.opportunityInterest} />
-                    <Field label="Urgência" value={currentTask.opportunityUrgency} />
-                    <Field label="Impacto" value={currentTask.opportunityImpact} />
-                    <Field label="Fechamento" value={currentTask.opportunityClosing} />
                     {currentTask.salesEstimate && typeof currentTask.salesEstimate === 'object' && Object.entries(currentTask.salesEstimate)
                       .filter(([k]) => k !== 'puk')
                       .map(([k, v]) => (
