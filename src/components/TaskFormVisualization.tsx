@@ -790,66 +790,68 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 </div>
               )}
 
-              {/* 11. OBSERVAÇÕES */}
-              {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) ? (
-                <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                      <MessageSquare className="w-5 h-5" />
+              {/* 11+12. OBSERVAÇÕES + TIMELINE — 2 colunas em xl */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {(currentTask.observations || currentTask.prospectNotes || currentTask.prospectNotesJustification) ? (
+                  <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                        <MessageSquare className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wider font-bold text-primary">Observações da Visita</p>
+                        <p className="text-sm text-muted-foreground">Anotações registradas em campo</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[11px] uppercase tracking-wider font-bold text-primary">Observações da Visita</p>
-                      <p className="text-sm text-muted-foreground">Anotações registradas em campo</p>
+                    <div className="space-y-3">
+                      {currentTask.observations && (
+                        <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                          <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Observações da atividade</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.observations}</p>
+                        </div>
+                      )}
+                      {currentTask.prospectNotes && (
+                        <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
+                          <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Notas do prospect</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotes}</p>
+                        </div>
+                      )}
+                      {currentTask.prospectNotesJustification && (
+                        <div className="rounded-xl bg-warning/10 border border-warning/30 p-4">
+                          <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Justificativa</p>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotesJustification}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {currentTask.observations && (
-                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
-                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Observações da atividade</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.observations}</p>
-                      </div>
-                    )}
-                    {currentTask.prospectNotes && (
-                      <div className="rounded-xl bg-background/70 border border-primary/20 p-4">
-                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Notas do prospect</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotes}</p>
-                      </div>
-                    )}
-                    {currentTask.prospectNotesJustification && (
-                      <div className="rounded-xl bg-warning/10 border border-warning/30 p-4">
-                        <p className="text-[10px] text-muted-foreground mb-1.5 font-bold uppercase tracking-wider">Justificativa</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">{currentTask.prospectNotesJustification}</p>
-                      </div>
-                    )}
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-muted bg-muted/20 p-6 flex flex-col items-center justify-center text-center">
+                    <MessageSquare className="w-6 h-6 mx-auto text-muted-foreground/60 mb-2" />
+                    <p className="text-sm text-muted-foreground italic">Nenhuma observação registrada</p>
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-muted bg-muted/20 p-6 text-center">
-                  <MessageSquare className="w-6 h-6 mx-auto text-muted-foreground/60 mb-2" />
-                  <p className="text-sm text-muted-foreground italic">Nenhuma observação registrada</p>
-                </div>
-              )}
+                )}
 
-              {/* 12. TIMELINE */}
-              <SectionCard icon={History} title="Timeline da Visita" tone="muted">
-                <ol className="relative border-l-2 border-border ml-4 space-y-5 py-1">
-                  <TimelineItem icon={FileText} color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
-                  <TimelineItem icon={Calendar} color="bg-warning" title="Visita agendada" date={currentTask.startDate}
-                    detail={currentTask.startTime ? `${currentTask.startTime}${currentTask.endTime ? ` – ${currentTask.endTime}` : ''}` : undefined} />
-                  {currentTask.checkInLocation?.timestamp && (
-                    <TimelineItem icon={MapPin} color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
-                      detail={hasLocation ? `${currentTask.checkInLocation.lat.toFixed(4)}, ${currentTask.checkInLocation.lng.toFixed(4)}` : undefined} />
-                  )}
-                  {currentTask.updatedAt && (
-                    <TimelineItem icon={Activity} color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
-                  )}
-                  {currentTask.nextActionDate && (
-                    <TimelineItem icon={Sparkles} color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
-                  )}
-                </ol>
-              </SectionCard>
+                <SectionCard icon={History} title="Timeline da Visita" tone="muted">
+                  <ol className="relative border-l-2 border-border ml-4 space-y-5 py-1">
+                    <TimelineItem icon={FileText} color="bg-primary" title="Visita criada" date={currentTask.createdAt} detail={currentTask.responsible ? `por ${currentTask.responsible}` : undefined} />
+                    <TimelineItem icon={Calendar} color="bg-warning" title="Visita agendada" date={currentTask.startDate}
+                      detail={currentTask.startTime ? `${currentTask.startTime}${currentTask.endTime ? ` – ${currentTask.endTime}` : ''}` : undefined} />
+                    {currentTask.checkInLocation?.timestamp && (
+                      <TimelineItem icon={MapPin} color="bg-success" title="Check-in realizado" date={currentTask.checkInLocation.timestamp}
+                        detail={hasLocation ? `${currentTask.checkInLocation.lat.toFixed(4)}, ${currentTask.checkInLocation.lng.toFixed(4)}` : undefined} />
+                    )}
+                    {currentTask.updatedAt && (
+                      <TimelineItem icon={Activity} color="bg-muted-foreground" title="Última atualização" date={currentTask.updatedAt} detail={getStatusLabel(salesStatus)} />
+                    )}
+                    {currentTask.nextActionDate && (
+                      <TimelineItem icon={Sparkles} color="bg-primary" title="Próxima ação prevista" date={currentTask.nextActionDate as any} detail={currentTask.nextAction as any} future />
+                    )}
+                  </ol>
+                </SectionCard>
+              </div>
 
               {/* Conclusão foi integrada ao Resumo Executivo para evitar duplicação */}
+
 
             </div>
 
