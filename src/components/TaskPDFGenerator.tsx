@@ -420,9 +420,19 @@ export const generateTaskPDF = async (
   }
 
   // ===== 4. CONTATO DA VISITA =====
-  if (task.contactName || task.contactFunction) {
+  if (hasContact) {
     sectionTitle('Contato da Visita');
     twoColRow('Nome', task.contactName || '—', 'Função', task.contactFunction || '—');
+    twoColRow('Email', task.email || '—', 'Telefone', task.phone || '—');
+  } else {
+    sectionTitle('Contato da Visita');
+    pdf.setFont('helvetica', 'italic');
+    pdf.setFontSize(9);
+    pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+    ensureSpace(6);
+    pdf.text('Contato não informado', marginLeft, yPos);
+    pdf.setTextColor(0, 0, 0);
+    yPos += 6;
   }
 
   // ===== 5. LOCALIZAÇÃO =====
