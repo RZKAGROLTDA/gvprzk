@@ -16,6 +16,7 @@ import { useSellerSummary, useClientDetails, useFiliais, useProductAnalysis, use
 import { useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { PeriodFilter, buildPeriodValue, type PeriodValue, type PeriodPreset } from '@/components/ui/PeriodFilter';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
