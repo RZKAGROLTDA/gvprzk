@@ -659,12 +659,12 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {currentTask.checklist.map(item => {
+                          {currentTask.checklist.map((item, idx) => {
                             const qty = item.quantity || 1;
                             const subtotal = (item.price || 0) * qty;
                             return (
                               <React.Fragment key={item.id}>
-                                <TableRow className={item.selected ? 'bg-success/5' : ''}>
+                                <TableRow className={item.selected ? 'bg-success/5' : idx % 2 === 1 ? 'bg-muted/20' : ''}>
                                   <TableCell>
                                     <div className="font-medium text-sm">{item.name}</div>
                                     <div className="text-xs text-muted-foreground capitalize">{item.category}</div>
