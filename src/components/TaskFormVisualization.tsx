@@ -239,20 +239,14 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                <SummaryCard icon={Tractor} label="Equip. registrados" value={String(equipmentCount)} tone="primary" />
-                <SummaryCard icon={CheckCircle2} label="Unidades" value={String(equipmentTotalUnits)} tone="success" />
+                <SummaryCard icon={Activity} label="Duração" value={duration} tone="primary" />
+                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone="primary" />
                 <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone="warning" />
                 <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'muted'} />
-                <SummaryCard icon={Package} label="Produtos" value={String(itemsCount)} sub={itemsCount ? `${selectedItemsCount} vendidos` : undefined} tone="primary" />
-                <SummaryCard icon={Target} label="Status" value={getStatusLabel(salesStatus)} tone="muted" />
-                <SummaryCard icon={DollarSign} label="Valor potencial" value={`R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`} tone="success" />
-                <SummaryCard
-                  icon={Calendar}
-                  label="Próxima ação"
-                  value={currentTask.nextActionDate ? formatDateDisplay(currentTask.nextActionDate as any) : '—'}
-                  sub={currentTask.nextAction ? String(currentTask.nextAction).slice(0, 22) : undefined}
-                  tone="warning"
-                />
+                <SummaryCard icon={DollarSign} label="Valor Potencial" value={`R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`} tone="success" />
+                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone="success" />
+                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${((values.closed / values.total) * 100).toFixed(0)}%` : '—'} tone="warning" />
+                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone="primary" />
               </div>
 
               {(values.closed > 0 || salesStatus !== 'prospect') && (
