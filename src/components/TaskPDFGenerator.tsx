@@ -429,6 +429,10 @@ export const generateTaskPDF = async (
         Object.entries(est).filter(([k]) => k !== 'puk').forEach(([k, v]) => {
           twoColRow(`Estimativa ${k}`, currency(Number(v || 0)), '', '');
         });
+        const totalEst = Object.entries(est)
+          .filter(([k]) => k !== 'puk')
+          .reduce((s, [, v]) => s + Number(v || 0), 0);
+        twoColRow('Total Estimativa', currency(totalEst), '', '');
       }
     }
   }
