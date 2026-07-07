@@ -740,6 +740,30 @@ export const generateTaskPDF = async (
     }
   }
 
+  // ===== 13. CONCLUSÃO DA VISITA =====
+  sectionTitle('Conclusão da Visita');
+  {
+    const boxY = yPos - 2;
+    const boxH = conclusionParts.reduce((h, s) => {
+      const lines = pdf.splitTextToSize(s, contentWidth - 6);
+      return h + lines.length * 4.6;
+    }, 6);
+    ensureSpace(boxH + 4);
+    const y0 = yPos - 2;
+    pdf.setFillColor(232, 250, 238);
+    pdf.setDrawColor(180, 220, 190);
+    pdf.roundedRect(marginLeft, y0, contentWidth, boxH, 2, 2, 'FD');
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(0, 0, 0);
+    let ty = y0 + 5;
+    conclusionParts.forEach((s) => {
+      const lines = pdf.splitTextToSize(s, contentWidth - 6);
+      lines.forEach((ln: string) => { pdf.text(ln, marginLeft + 3, ty); ty += 4.6; });
+    });
+    yPos = y0 + boxH + 3;
+  }
+
   // ===== FOOTER =====
   const pageCount = pdf.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
