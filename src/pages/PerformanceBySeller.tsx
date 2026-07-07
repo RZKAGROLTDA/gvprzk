@@ -226,14 +226,15 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
 const PerformanceBySeller: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [periodValue, setPeriodValue] = useState<PeriodValue>(() => buildPeriodValue('30'));
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
 
   const { consultants } = useFilteredConsultants();
 
-  const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
-  const endStr = dateTo ? formatDateToLocal(dateTo) : null;
+  const startStr = periodValue.startStr;
+  const endStr = periodValue.endStr;
+  const dateFrom = periodValue.startDate ?? undefined;
+  const dateTo = periodValue.endDate ?? undefined;
   const responsibleUserId =
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
 
