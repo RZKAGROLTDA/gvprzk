@@ -588,7 +588,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                             } catch { validatedAtStr = String(validatedAtRaw); }
                           }
                           return (
-                            <TableRow key={eq.id || idx}>
+                            <TableRow key={eq.id || idx} className={idx % 2 === 1 ? 'bg-muted/20' : ''}>
                               <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                               <TableCell>
                                 {pr ? (
