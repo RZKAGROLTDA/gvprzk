@@ -230,6 +230,69 @@ const Equipamentos: React.FC = () => {
     () => [...validators].sort((a, b) => b.validated_count - a.validated_count),
     [validators],
   );
+
+  // Distintos: buscar validated_by + client_code/client_name em client_equipment
+  // (apenas registros com last_validation_at). Paginação segura, teto 20k linhas.
+  const { data: validatedClientsRaw = [] } = useQuery({
+    queryKey: ['client-equipment', 'validated-clients-index'],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const PAGE = 1000;
+      const MAX = 20000;
+      const rows: { validated_by: string | null; client_code: string | null; client_name: string | null }[] = [];
+      let p = 0;
+      while (rows.length < MAX) {
+        const { data, error } = await supabase
+          .from('client_equipment' as any)
+          .select('validated_by, client_code, client_name')
+          .not('last_validation_at', 'is', null)
+          .range(p * PAGE, p * PAGE + PAGE - 1);
+        if (error) throw error;
+        const batch = (data as unknown as typeof rows) ?? [];
+        rows.push(...batch);
+        if (batch.length < PAGE) break;
+        p += 1;
+      }
+      return rows;
+    },
+  });
+
+  const clientKey = (r: { client_code: string | null; client_name: string | null }) => {
+    const code = (r.client_code ?? '').trim().toLowerCase();
+    if (code) return `c:${code}`;
+    const name = (r.client_name ?? '').trim().toLowerCase();
+    return name ? `n:${name}` : '';
+  };
+
+  // Distinct clients per validator's filial (usando validatorMap para mapear
+  // validated_by → filial_nome, mesma regra usada em filialRanked)
+  const distinctClientsByFilial = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    validatedClientsRaw.forEach((r) => {
+      if (!r.validated_by) return;
+      const v = validatorMap.get(r.validated_by);
+      const filial = v?.filial_nome || '—';
+      const k = clientKey(r);
+      if (!k) return;
+      if (!map.has(filial)) map.set(filial, new Set());
+      map.get(filial)!.add(k);
+    });
+    const out: Record<string, number> = {};
+    map.forEach((set, filial) => { out[filial] = set.size; });
+    return out;
+  }, [validatedClientsRaw, validatorMap]);
+
+  // Total distinct clients com pelo menos uma máquina validada (KPI do topo)
+  const distinctValidatedClientsTotal = useMemo(() => {
+    const set = new Set<string>();
+    validatedClientsRaw.forEach((r) => {
+      const k = clientKey(r);
+      if (k) set.add(k);
+    });
+    return set.size;
+  }, [validatedClientsRaw]);
+
   const filialRanked = useMemo(() => {
     const map = new Map<string, { filial_nome: string; validated_count: number }>();
     validators.forEach((v) => {
@@ -272,7 +335,7 @@ const Equipamentos: React.FC = () => {
 
       {/* Resumo do parque */}
       <Card>
-        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
           <SummaryCell
             icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
             label="Total"
@@ -289,6 +352,11 @@ const Equipamentos: React.FC = () => {
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             label="Validadas"
             value={parkSummary?.validadas}
+          />
+          <SummaryCell
+            icon={<UserCheck className="h-4 w-4 text-primary" />}
+            label="Clientes Validados"
+            value={distinctValidatedClientsTotal}
           />
           <SummaryCell
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
@@ -328,12 +396,14 @@ const Equipamentos: React.FC = () => {
                   <tr className="text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Máquinas Validadas</th>
+                    <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
                     <th className="px-3 py-2 font-medium text-right">%</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filialRanked.map((f) => {
                     const pct = filialTotal > 0 ? (f.validated_count / filialTotal) * 100 : 0;
+                    const distinctClients = distinctClientsByFilial[f.filial_nome] ?? 0;
                     return (
                       <tr
                         key={f.filial_nome}
@@ -342,6 +412,9 @@ const Equipamentos: React.FC = () => {
                         <td className="px-3 py-1.5 font-medium">{f.filial_nome}</td>
                         <td className="px-3 py-1.5 text-right tabular-nums font-medium">
                           {f.validated_count.toLocaleString('pt-BR')}
+                        </td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                          {distinctClients.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                           {pct.toFixed(1)}%

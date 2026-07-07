@@ -4,19 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn, formatDateDisplay, formatDateToLocal } from '@/lib/utils';
+import { formatDateToLocal } from '@/lib/utils';
 import {
   Users,
   RefreshCw,
-  Calendar as CalendarIcon,
   ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { PeriodFilter, buildPeriodValue, type PeriodValue } from '@/components/ui/PeriodFilter';
 
 interface SellerStat {
   name: string;
@@ -228,14 +226,15 @@ const UserPerformanceItem: React.FC<UserPerformanceItemProps> = ({ user, index, 
 const PerformanceBySeller: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [periodValue, setPeriodValue] = useState<PeriodValue>(() => buildPeriodValue('30'));
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
 
   const { consultants } = useFilteredConsultants();
 
-  const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
-  const endStr = dateTo ? formatDateToLocal(dateTo) : null;
+  const startStr = periodValue.startStr;
+  const endStr = periodValue.endStr;
+  const dateFrom = periodValue.startDate ?? undefined;
+  const dateTo = periodValue.endDate ?? undefined;
   const responsibleUserId =
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
 
@@ -319,54 +318,13 @@ const PerformanceBySeller: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data Inicial</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !dateFrom && 'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? formatDateDisplay(dateFrom) : <span>Selecionar data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data Final</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !dateTo && 'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? formatDateDisplay(dateTo) : <span>Selecionar data</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                    disabled={(date) => (dateFrom ? date < dateFrom : false)}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PeriodFilter
+              preset={periodValue.preset}
+              customStart={periodValue.startDate ?? undefined}
+              customEnd={periodValue.endDate ?? undefined}
+              onChange={setPeriodValue}
+            />
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Consultor</label>
