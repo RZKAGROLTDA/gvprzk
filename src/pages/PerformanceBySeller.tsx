@@ -4,19 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn, formatDateDisplay, formatDateToLocal } from '@/lib/utils';
+import { formatDateToLocal } from '@/lib/utils';
 import {
   Users,
   RefreshCw,
-  Calendar as CalendarIcon,
   ArrowLeft,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { PeriodFilter, buildPeriodValue, type PeriodValue } from '@/components/ui/PeriodFilter';
 
 interface SellerStat {
   name: string;
