@@ -167,7 +167,7 @@ export const generateTaskPDF = async (
   const newMachineCount = (task.equipmentList || []).filter((eq: any) =>
     eq.isNew === true || eq.novo === true || eq.is_new === true || eq.new === true
   ).length;
-  const hasContact = !!(task.contactName || task.contactFunction);
+  const hasContact = !!(task.contactName || task.contactFunction || task.email || task.phone);
   const hasObservations = !!(task.observations || task.prospectNotes);
   const hasNextAction = !!(task.nextAction || task.nextActionDate);
   const hasCheckIn = !!task.checkInLocation?.timestamp;
