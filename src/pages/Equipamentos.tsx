@@ -818,6 +818,16 @@ const Equipamentos: React.FC = () => {
 
 export default Equipamentos;
 
+const KPI_LABELS: Record<string, string> = {
+  Total: 'Total',
+  Prioritárias: 'Prioritárias',
+  Validadas: 'Validadas',
+  'Clientes Validados': 'Clientes',
+  Pendentes: 'Pendentes',
+  'Validações hoje': 'Validações (hoje)',
+  'Validações 7 dias': 'Validações (7d)',
+};
+
 interface SummaryCellProps {
   icon?: React.ReactNode;
   label: string;
@@ -827,24 +837,27 @@ interface SummaryCellProps {
 }
 
 const SummaryCell: React.FC<SummaryCellProps> = ({ icon, label, value, highlight, onClick }) => {
+  const displayLabel = KPI_LABELS[label] ?? label;
   const content = (
     <div
-      className={`rounded-md border px-3 py-2 transition-colors ${
+      className={`rounded-md border px-3 py-2 transition-colors h-full flex flex-col justify-between ${
         highlight ? 'border-amber-500/60 bg-amber-50 dark:bg-amber-950/20' : 'border-border/60'
       } ${onClick ? 'cursor-pointer hover:bg-muted/40' : ''}`}
     >
-      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {icon}
-        <span>{label}</span>
+      <div className="flex items-center gap-1.5 min-w-0 h-4">
+        <span className="shrink-0">{icon}</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis leading-none">
+          {displayLabel}
+        </span>
       </div>
-      <p className="text-lg font-bold mt-0.5 tabular-nums">
+      <p className="text-lg font-bold tabular-nums leading-none">
         {value == null ? '—' : typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
       </p>
     </div>
   );
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="text-left">
+      <button type="button" onClick={onClick} className="text-left h-full w-full">
         {content}
       </button>
     );
