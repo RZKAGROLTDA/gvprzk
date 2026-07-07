@@ -858,7 +858,26 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   )}
                 </ol>
               </SectionCard>
+
+              {/* 13. CONCLUSÃO DA VISITA */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-success/40 bg-gradient-to-br from-success/15 via-success/5 to-background p-5 sm:p-6 shadow-sm">
+                <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-success/10 blur-3xl pointer-events-none" />
+                <div className="relative flex items-start gap-4">
+                  <div className="w-12 h-12 bg-success text-success-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-success mb-2">Conclusão da Visita</p>
+                    <div className="space-y-1.5">
+                      {conclusionParts.map((p, i) => (
+                        <p key={i} className="text-sm sm:text-[15px] leading-relaxed text-foreground">{p}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
           </div>
         </DialogContent>
       </Dialog>
