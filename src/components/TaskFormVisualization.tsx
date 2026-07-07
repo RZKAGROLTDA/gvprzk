@@ -912,41 +912,24 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
 const SummaryCard: React.FC<{
   icon: React.ComponentType<{ className?: string }>;
   label: string; value: string; sub?: string;
-  tone: 'primary' | 'success' | 'warning' | 'muted';
+  tone: 'primary' | 'success' | 'warning' | 'muted' | 'destructive';
 }> = ({ icon: Icon, label, value, sub, tone }) => {
   const toneMap = {
-    primary: 'from-primary/10 to-transparent text-primary border-primary/20',
-    success: 'from-success/10 to-transparent text-success border-success/20',
-    warning: 'from-warning/10 to-transparent text-warning border-warning/20',
-    muted: 'from-muted to-transparent text-muted-foreground border-border',
+    primary:     'from-primary/10 to-transparent text-primary border-primary/20',
+    success:     'from-success/10 to-transparent text-success border-success/20',
+    warning:     'from-warning/10 to-transparent text-warning border-warning/20',
+    destructive: 'from-destructive/10 to-transparent text-destructive border-destructive/20',
+    muted:       'from-muted to-transparent text-muted-foreground border-border',
   };
   return (
-    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} p-3.5`}>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2 uppercase tracking-wider font-semibold">
+    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} p-3.5 min-h-[92px] flex flex-col justify-between`}>
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
         <Icon className="w-3.5 h-3.5" />{label}
       </div>
-      <p className="text-lg font-bold text-foreground tabular-nums leading-none">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-    </div>
-  );
-};
-
-const MetricStrip: React.FC<{
-  icon: React.ComponentType<{ className?: string }>;
-  label: string; value: number; tone: 'primary' | 'success';
-}> = ({ icon: Icon, label, value, tone }) => {
-  const toneMap = {
-    primary: 'from-primary/10 text-primary',
-    success: 'from-success/10 text-success',
-  };
-  return (
-    <div className={`rounded-xl border bg-gradient-to-br ${toneMap[tone]} to-transparent p-4`}>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-        <Icon className="w-3.5 h-3.5" /> {label}
+      <div>
+        <p className="text-lg font-bold text-foreground tabular-nums leading-none">{value}</p>
+        {sub && <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>}
       </div>
-      <p className={`text-2xl font-bold tabular-nums ${tone === 'primary' ? 'text-primary' : 'text-success'}`}>
-        {formatCurrency(value)}
-      </p>
     </div>
   );
 };
