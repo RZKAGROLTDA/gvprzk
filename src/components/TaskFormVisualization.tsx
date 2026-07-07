@@ -464,7 +464,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                     />
                     <Field
                       label="Função"
-                      value={currentTask.contactFunction || currentTask.function || (currentTask.contactFunctionOther ? `Outros: ${currentTask.contactFunctionOther}` : undefined)}
+                      value={currentTask.contactFunction || currentTask.function}
                     />
                     <Field label="Email" value={currentTask.email} icon={AtSign} />
                     <Field label="Telefone" value={currentTask.phone} icon={Phone} />
