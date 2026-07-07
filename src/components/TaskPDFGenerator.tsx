@@ -274,36 +274,45 @@ export const generateTaskPDF = async (
   yPos = 50;
 
   // ===== 2. KPI CARDS =====
-  const kpis: Array<[string, string]> = [
-    ['Duração', duration],
-    ['Equipamentos', String(equipmentCount)],
-    ['Fotos', String(photoCount)],
-    ['Localização', hasLocation ? 'Sim' : '—'],
-    ['Valor Potencial', currency(potentialValue)],
-    ['Valor Fechado', closedValue > 0 ? currency(closedValue) : '—'],
-    ['Conversão', conversion],
-    ['Itens Vendidos', `${task.checklist?.filter(i => i.selected).length || 0}/${task.checklist?.length || 0}`],
+  const kpis: Array<{ label: string; value: string; tone: 'primary' | 'success' | 'warning' | 'danger' | 'muted' }> = [
+    { label: 'Duração', value: duration, tone: 'primary' },
+    { label: 'Equipamentos', value: String(equipmentCount), tone: equipmentCount > 0 ? 'success' : 'muted' },
+    { label: 'Fotos', value: String(photoCount), tone: photoCount > 0 ? 'success' : 'warning' },
+    { label: 'Localização', value: hasLocation ? 'Sim' : '—', tone: hasLocation ? 'success' : 'danger' },
+    { label: 'Valor Potencial', value: currency(potentialValue), tone: potentialValue > 0 ? 'primary' : 'muted' },
+    { label: 'Valor Fechado', value: closedValue > 0 ? currency(closedValue) : '—', tone: closedValue > 0 ? 'success' : 'muted' },
+    { label: 'Conversão', value: conversion, tone: closedValue > 0 ? (potentialValue > 0 && closedValue / potentialValue >= 0.7 ? 'success' : 'warning') : 'muted' },
+    { label: 'Itens Vendidos', value: `${task.checklist?.filter(i => i.selected).length || 0}/${task.checklist?.length || 0}`, tone: (task.checklist?.filter(i => i.selected).length || 0) > 0 ? 'success' : 'muted' },
   ];
+  const toneRgb: Record<string, [number, number, number]> = {
+    primary: PRIMARY, success: SUCCESS, warning: WARNING, danger: DANGER, muted: MUTED,
+  };
   const cols = 4;
   const cardW = (contentWidth - (cols - 1) * 3) / cols;
   const cardH = 15;
-  kpis.forEach(([label, value], i) => {
+  kpis.forEach(({ label, value, tone }, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
     const x = marginLeft + col * (cardW + 3);
     const y = yPos + row * (cardH + 3);
-    pdf.setFillColor(245, 247, 252);
-    pdf.setDrawColor(220, 226, 235);
+    const [r, g, b] = toneRgb[tone];
+    pdf.setFillColor(248, 250, 253);
+    pdf.setDrawColor(r, g, b);
+    pdf.setLineWidth(0.3);
     pdf.roundedRect(x, y, cardW, cardH, 2, 2, 'FD');
+    // left accent bar
+    pdf.setFillColor(r, g, b);
+    pdf.rect(x, y, 1.2, cardH, 'F');
     pdf.setFontSize(7);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-    pdf.text(label.toUpperCase(), x + 3, y + 5);
+    pdf.text(label.toUpperCase(), x + 4, y + 5);
     pdf.setFontSize(10);
-    pdf.setTextColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
-    pdf.text(value, x + 3, y + 11.5);
+    pdf.setTextColor(r, g, b);
+    pdf.text(value, x + 4, y + 11.5);
   });
   pdf.setTextColor(0, 0, 0);
+  pdf.setLineWidth(0.2);
   yPos += Math.ceil(kpis.length / cols) * (cardH + 3) + 3;
 
   // ===== 2.1 RESUMO EXECUTIVO =====
