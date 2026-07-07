@@ -621,23 +621,20 @@ const Management: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {/* Período */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Período</label>
-            <Select value={period} onValueChange={v => { setPeriod(v); setSellerPage(0); setClientPage(0); setProductPage(0); }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Hoje</SelectItem>
-                  <SelectItem value="7">Últimos 7 dias</SelectItem>
-                  <SelectItem value="30">Últimos 30 dias</SelectItem>
-                  <SelectItem value="60">Últimos 60 dias</SelectItem>
-                  <SelectItem value="90">Últimos 90 dias</SelectItem>
-                  <SelectItem value="180">Últimos 180 dias</SelectItem>
-                  <SelectItem value="365">Último ano</SelectItem>
-                  <SelectItem value="all">Todos</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Período — componente padronizado (mesmo do CRM/Performance) */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <PeriodFilter
+                preset={periodValue.preset}
+                customStart={periodValue.startDate ?? undefined}
+                customEnd={periodValue.endDate ?? undefined}
+                onChange={(v) => {
+                  setPeriodValue(v);
+                  setSellerPage(0);
+                  setClientPage(0);
+                  setProductPage(0);
+                }}
+              />
             </div>
 
             {/* Filial - only for managers */}
