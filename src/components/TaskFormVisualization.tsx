@@ -132,6 +132,94 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const duration = formatDuration(currentTask.startTime, currentTask.endTime);
   const conversionRate = values.total > 0 ? (values.closed / values.total) * 100 : 0;
 
+  const validatedEqCount = (currentTask.equipmentList || []).filter((eq: any) => {
+    const v = eq.validated ?? eq.validado ?? eq.is_validated;
+    return v === true || v === 'true';
+  }).length;
+  const newMachineCount = (currentTask.equipmentList || []).filter((eq: any) =>
+    eq.isNew === true || eq.novo === true || eq.is_new === true || eq.new === true
+  ).length;
+  const hasContact = !!(currentTask.contactName || currentTask.contactFunction);
+  const hasObservations = !!(currentTask.observations || currentTask.prospectNotes);
+  const hasNextAction = !!(currentTask.nextAction || currentTask.nextActionDate);
+  const hasCheckIn = !!currentTask.checkInLocation?.timestamp;
+
+  // Resumo executivo dinâmico
+  const summarySentences: string[] = [];
+  if (currentTask.startDate) {
+    const dateStr = formatDateDisplay(currentTask.startDate);
+    summarySentences.push(
+      currentTask.property
+        ? `Visita realizada em ${dateStr} na ${currentTask.property}.`
+        : `Visita realizada em ${dateStr}.`
+    );
+  }
+  if (equipmentCount > 0) {
+    summarySentences.push(
+      validatedEqCount > 0
+        ? `Foram vistoriados ${equipmentCount} equipamento${equipmentCount > 1 ? 's' : ''}, sendo ${validatedEqCount} validado${validatedEqCount > 1 ? 's' : ''}.`
+        : `Foram vistoriados ${equipmentCount} equipamento${equipmentCount > 1 ? 's' : ''}.`
+    );
+  }
+  if (photoCount > 0) summarySentences.push(`Foram registradas ${photoCount} foto${photoCount > 1 ? 's' : ''}.`);
+  if (newMachineCount > 0) summarySentences.push(`Foi cadastrada${newMachineCount > 1 ? 's' : ''} ${newMachineCount} nova${newMachineCount > 1 ? 's' : ''} máquina${newMachineCount > 1 ? 's' : ''}.`);
+  if (selectedItemsCount > 0) summarySentences.push(`Foram vendidos ${selectedItemsCount} de ${itemsCount} itens ofertados.`);
+  if (values.total > 0) summarySentences.push(`Existe potencial estimado de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`);
+  if (values.closed > 0) summarySentences.push(`Valor fechado de R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`);
+  if (currentTask.nextActionDate) summarySentences.push(`Próxima ação programada para ${formatDateDisplay(currentTask.nextActionDate as any)}.`);
+  if (summarySentences.length === 0) summarySentences.push('Ainda não há dados suficientes para gerar um resumo desta visita.');
+
+  // Indicadores
+  const indicators: Array<{ label: string; ok: boolean }> = [
+    { label: 'Check-in realizado', ok: hasCheckIn || hasLocation },
+    { label: 'Fotos anexadas', ok: photoCount > 0 },
+    { label: 'Equipamentos validados', ok: validatedEqCount > 0 },
+    { label: 'Contato da visita informado', ok: hasContact },
+    { label: 'Observações preenchidas', ok: hasObservations },
+    { label: 'Próxima ação definida', ok: hasNextAction },
+    { label: 'Produtos registrados', ok: itemsCount > 0 },
+    { label: 'Nova máquina cadastrada', ok: newMachineCount > 0 },
+  ];
+
+  // Alertas
+  const alerts: string[] = [];
+  if (photoCount === 0) alerts.push('Nenhuma foto registrada');
+  if (equipmentCount > 0 && validatedEqCount === 0) alerts.push('Nenhum equipamento validado');
+  if (!hasNextAction) alerts.push('Próxima ação não definida');
+  if (itemsCount === 0) alerts.push('Nenhum produto registrado');
+  if (!hasLocation) alerts.push('Visita sem localização');
+  if (!hasContact) alerts.push('Contato da visita não informado');
+
+  // Conclusão
+  const conclusionParts: string[] = [];
+  const completedItems: string[] = [];
+  if (hasLocation) completedItems.push('registro de localização');
+  if (photoCount > 0) completedItems.push('fotos');
+  if (validatedEqCount > 0) completedItems.push('validação de equipamentos');
+  if (completedItems.length > 0) {
+    const list = completedItems.length === 1
+      ? completedItems[0]
+      : `${completedItems.slice(0, -1).join(', ')} e ${completedItems.slice(-1)}`;
+    conclusionParts.push(`A visita foi concluída com ${list}.`);
+  } else {
+    conclusionParts.push('A visita ainda não possui registros de campo relevantes.');
+  }
+  if (values.total > 0) {
+    conclusionParts.push(
+      hasNextAction
+        ? `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} e programado retorno para o cliente.`
+        : `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`
+    );
+  } else if (hasNextAction) {
+    conclusionParts.push('Foi programado retorno para o cliente.');
+  }
+  conclusionParts.push(
+    alerts.length === 0
+      ? 'A documentação da visita está completa.'
+      : `Ainda existe${alerts.length > 1 ? 'm' : ''} ${alerts.length} ponto${alerts.length > 1 ? 's' : ''} de atenção a ser tratado${alerts.length > 1 ? 's' : ''}.`
+  );
+
+
   const mapEmbedUrl = hasLocation
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${currentTask.checkInLocation!.lng - 0.005}%2C${currentTask.checkInLocation!.lat - 0.003}%2C${currentTask.checkInLocation!.lng + 0.005}%2C${currentTask.checkInLocation!.lat + 0.003}&layer=mapnik&marker=${currentTask.checkInLocation!.lat}%2C${currentTask.checkInLocation!.lng}`
     : null;
