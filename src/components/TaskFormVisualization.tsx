@@ -558,6 +558,16 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                       .map(([k, v]) => (
                         <Field key={k} label={`Estimativa ${k}`} value={formatCurrency(Number(v || 0))} />
                       ))}
+                    {currentTask.salesEstimate && typeof currentTask.salesEstimate === 'object' && (
+                      <Field
+                        label="Total Estimativa"
+                        value={formatCurrency(
+                          Object.entries(currentTask.salesEstimate)
+                            .filter(([k]) => k !== 'puk')
+                            .reduce((s, [, v]) => s + Number(v || 0), 0)
+                        )}
+                      />
+                    )}
                   </div>
                 </SectionCard>
               )}
