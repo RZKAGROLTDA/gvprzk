@@ -1028,3 +1028,22 @@ const TimelineItem: React.FC<{
     </li>
   );
 };
+
+const OppMetric: React.FC<{
+  label: string; value: string;
+  tone: 'primary' | 'success' | 'warning' | 'muted';
+  capitalize?: boolean;
+}> = ({ label, value, tone, capitalize }) => {
+  const toneMap = {
+    primary: 'border-primary/20 bg-primary/5 text-primary',
+    success: 'border-success/20 bg-success/5 text-success',
+    warning: 'border-warning/20 bg-warning/5 text-warning',
+    muted: 'border-border bg-muted/30 text-foreground',
+  };
+  return (
+    <div className={`rounded-lg border p-3 ${toneMap[tone]}`}>
+      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">{label}</p>
+      <p className={`text-base font-bold tabular-nums leading-tight ${capitalize ? 'capitalize' : ''}`}>{value}</p>
+    </div>
+  );
+};
