@@ -302,7 +302,13 @@ export const useTasks = () => {
           is_prospect: standardizedTaskData.isProspect || false,
           prospect_notes: standardizedTaskData.prospectNotes || '',
           sales_value: standardizedTaskData.salesValue || 0,
-          sales_confirmed: standardizedTaskData.salesConfirmed
+          sales_confirmed: standardizedTaskData.salesConfirmed,
+          ...(taskData.nextAction !== undefined && { next_action: taskData.nextAction || null }),
+          ...(taskData.nextActionDate !== undefined && {
+            next_action_date: typeof taskData.nextActionDate === 'string'
+              ? (taskData.nextActionDate || null)
+              : ((taskData.nextActionDate as Date)?.toISOString().split('T')[0] || null)
+          })
         })
         .select()
         .single();
