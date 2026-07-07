@@ -1,7 +1,7 @@
 /**
  * Version configuration for the application
  * Handles version display and management
- * (rebuild trigger)
+ * (rebuild trigger 2)
  */
 
 // Version info injected at build time
