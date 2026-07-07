@@ -450,7 +450,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                     <Field label="Email" value={currentTask.email} icon={AtSign} />
                     <Field label="Propriedade" value={currentTask.property} />
                     <Field label="Hectares" value={currentTask.propertyHectares ? `${currentTask.propertyHectares} ha` : undefined} />
-                    <Field label="Filial" value={getFilialNameRobust(currentTask.filial, filiais)} />
+                    <Field label="Filial Atendida" value={currentTask.filialAtendida ? getFilialNameRobust(currentTask.filialAtendida, filiais) : getFilialNameRobust(currentTask.filial, filiais)} />
                     <Field label="Filial Atendida" value={currentTask.filialAtendida ? getFilialNameRobust(currentTask.filialAtendida, filiais) : undefined} />
                   </div>
                 </SectionCard>
