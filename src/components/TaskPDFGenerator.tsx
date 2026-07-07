@@ -157,6 +157,87 @@ export const generateTaskPDF = async (
   const equipmentUnits = (task.equipmentList || []).reduce((s: number, e: any) => s + (Number(e.quantity) || 0), 0);
   const photoCount = task.photos?.length || 0;
   const hasLocation = !!(task.checkInLocation?.lat && task.checkInLocation?.lng);
+  const validatedEqCount = (task.equipmentList || []).filter((eq: any) => {
+    const v = eq.validated ?? eq.validado ?? eq.is_validated;
+    return v === true || v === 'true';
+  }).length;
+  const newMachineCount = (task.equipmentList || []).filter((eq: any) =>
+    eq.isNew === true || eq.novo === true || eq.is_new === true || eq.new === true
+  ).length;
+  const hasContact = !!(task.contactName || task.contactFunction);
+  const hasObservations = !!(task.observations || task.prospectNotes);
+  const hasNextAction = !!(task.nextAction || task.nextActionDate);
+  const hasCheckIn = !!task.checkInLocation?.timestamp;
+  const itemsCount = task.checklist?.length || 0;
+  const selectedItemsCount = task.checklist?.filter(i => i.selected).length || 0;
+
+  // Resumo executivo
+  const summarySentences: string[] = [];
+  if (task.startDate) {
+    const dateStr = formatDateDisplay(task.startDate);
+    summarySentences.push(task.property
+      ? `Visita realizada em ${dateStr} na ${task.property}.`
+      : `Visita realizada em ${dateStr}.`);
+  }
+  if (equipmentCount > 0) {
+    summarySentences.push(validatedEqCount > 0
+      ? `Foram vistoriados ${equipmentCount} equipamento${equipmentCount > 1 ? 's' : ''}, sendo ${validatedEqCount} validado${validatedEqCount > 1 ? 's' : ''}.`
+      : `Foram vistoriados ${equipmentCount} equipamento${equipmentCount > 1 ? 's' : ''}.`);
+  }
+  if (photoCount > 0) summarySentences.push(`Foram registradas ${photoCount} foto${photoCount > 1 ? 's' : ''}.`);
+  if (newMachineCount > 0) summarySentences.push(`Foi cadastrada${newMachineCount > 1 ? 's' : ''} ${newMachineCount} nova${newMachineCount > 1 ? 's' : ''} máquina${newMachineCount > 1 ? 's' : ''}.`);
+  if (selectedItemsCount > 0) summarySentences.push(`Foram vendidos ${selectedItemsCount} de ${itemsCount} itens ofertados.`);
+  if (potentialValue > 0) summarySentences.push(`Existe potencial estimado de R$ ${potentialValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`);
+  if (closedValue > 0) summarySentences.push(`Valor fechado de R$ ${closedValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`);
+  if (task.nextActionDate) summarySentences.push(`Próxima ação programada para ${formatDateDisplay(task.nextActionDate as any)}.`);
+  if (summarySentences.length === 0) summarySentences.push('Ainda não há dados suficientes para gerar um resumo desta visita.');
+
+  // Indicadores
+  const indicators: Array<[string, boolean]> = [
+    ['Check-in realizado', hasCheckIn || hasLocation],
+    ['Fotos anexadas', photoCount > 0],
+    ['Equipamentos validados', validatedEqCount > 0],
+    ['Contato da visita informado', hasContact],
+    ['Observações preenchidas', hasObservations],
+    ['Próxima ação definida', hasNextAction],
+    ['Produtos registrados', itemsCount > 0],
+    ['Nova máquina cadastrada', newMachineCount > 0],
+  ];
+
+  // Alertas
+  const alerts: string[] = [];
+  if (photoCount === 0) alerts.push('Nenhuma foto registrada');
+  if (equipmentCount > 0 && validatedEqCount === 0) alerts.push('Nenhum equipamento validado');
+  if (!hasNextAction) alerts.push('Próxima ação não definida');
+  if (itemsCount === 0) alerts.push('Nenhum produto registrado');
+  if (!hasLocation) alerts.push('Visita sem localização');
+  if (!hasContact) alerts.push('Contato da visita não informado');
+
+  // Conclusão
+  const conclusionParts: string[] = [];
+  const completedItems: string[] = [];
+  if (hasLocation) completedItems.push('registro de localização');
+  if (photoCount > 0) completedItems.push('fotos');
+  if (validatedEqCount > 0) completedItems.push('validação de equipamentos');
+  if (completedItems.length > 0) {
+    const list = completedItems.length === 1
+      ? completedItems[0]
+      : `${completedItems.slice(0, -1).join(', ')} e ${completedItems.slice(-1)}`;
+    conclusionParts.push(`A visita foi concluída com ${list}.`);
+  } else {
+    conclusionParts.push('A visita ainda não possui registros de campo relevantes.');
+  }
+  if (potentialValue > 0) {
+    conclusionParts.push(hasNextAction
+      ? `Foi identificada oportunidade comercial de R$ ${potentialValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} e programado retorno para o cliente.`
+      : `Foi identificada oportunidade comercial de R$ ${potentialValue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`);
+  } else if (hasNextAction) {
+    conclusionParts.push('Foi programado retorno para o cliente.');
+  }
+  conclusionParts.push(alerts.length === 0
+    ? 'A documentação da visita está completa.'
+    : `Ainda existe${alerts.length > 1 ? 'm' : ''} ${alerts.length} ponto${alerts.length > 1 ? 's' : ''} de atenção a ser tratado${alerts.length > 1 ? 's' : ''}.`);
+
 
   // ===== 1. HEADER BAND =====
   pdf.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
