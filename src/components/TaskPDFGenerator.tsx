@@ -798,17 +798,34 @@ export const generateTaskPDF = async (
     yPos = y0 + boxH + 3;
   }
 
-  // ===== FOOTER =====
+  // ===== FOOTER + running header on pages 2+ =====
   const pageCount = pdf.getNumberOfPages();
+  const genStamp = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR });
   for (let i = 1; i <= pageCount; i++) {
     pdf.setPage(i);
+    // running header (skip on page 1 — it has the hero band)
+    if (i > 1) {
+      pdf.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
+      pdf.rect(0, 0, pageWidth, 8, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      pdf.text('Relatório da Visita', marginLeft, 5.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(task.client || '', pageWidth / 2, 5.5, { align: 'center' });
+      pdf.text(task.startDate ? formatDateDisplay(task.startDate) : '', pageWidth - marginRight, 5.5, { align: 'right' });
+      pdf.setTextColor(0, 0, 0);
+    }
+    // footer divider + text
+    pdf.setDrawColor(220, 226, 235);
+    pdf.setLineWidth(0.2);
+    pdf.line(marginLeft, pageHeight - 14, pageWidth - marginRight, pageHeight - 14);
     pdf.setFontSize(7);
     pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-    pdf.setFont('helvetica', 'italic');
-    pdf.text(
-      `Gerado em ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })} · ${task.client || ''} · Página ${i} de ${pageCount}`,
-      pageWidth / 2, pageHeight - 10, { align: 'center' }
-    );
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Gerado em ${genStamp}`, marginLeft, pageHeight - 9);
+    pdf.text(task.client || '', pageWidth / 2, pageHeight - 9, { align: 'center' });
+    pdf.text(`Página ${i} de ${pageCount}`, pageWidth - marginRight, pageHeight - 9, { align: 'right' });
   }
   pdf.setTextColor(0, 0, 0);
 
