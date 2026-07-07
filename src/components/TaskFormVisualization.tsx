@@ -460,7 +460,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   <div className="grid grid-cols-1 gap-4 text-sm">
                     <Field
                       label="Nome"
-                      value={currentTask.contactName || currentTask.responsible || (hasContact ? undefined : undefined)}
+                      value={currentTask.contactName || currentTask.responsible}
                     />
                     <Field
                       label="Função"
