@@ -375,6 +375,29 @@ export const generateTaskPDF = async (
       pdf.text(currency(subtotal), marginLeft + 142, yPos);
       pdf.text(item.selected ? 'Vendido' : 'Ofertado', marginLeft + 170, yPos);
       yPos += 5;
+      if ((item as any).category) {
+        ensureSpace(4);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+        pdf.text(`Categoria: ${String((item as any).category)}`, marginLeft + 8, yPos);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        yPos += 4;
+      }
+      if ((item as any).observations) {
+        ensureSpace(4);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setFontSize(7);
+        pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+        const obsLines = pdf.splitTextToSize(`Obs: ${String((item as any).observations)}`, contentWidth - 10);
+        pdf.text(obsLines[0], marginLeft + 8, yPos);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        yPos += 4;
+      }
     });
     yPos += 2;
     pdf.setFont('helvetica', 'bold');
