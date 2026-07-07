@@ -467,73 +467,81 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 </SectionCard>
               </div>
 
-              {/* 5. LOCALIZAÇÃO */}
-              {hasLocation && mapEmbedUrl && (
-                <SectionCard
-                  icon={MapPin}
-                  title="Localização da Visita"
-                  tone="success"
-                  description={`${currentTask.checkInLocation!.lat.toFixed(6)}, ${currentTask.checkInLocation!.lng.toFixed(6)}`}
-                  headerRight={
-                    <Button
-                      variant="outline" size="sm" className="print:hidden"
-                      onClick={() => window.open(`https://www.google.com/maps?q=${currentTask.checkInLocation!.lat},${currentTask.checkInLocation!.lng}`, '_blank')}
-                    >
-                      <Navigation className="w-3.5 h-3.5 mr-1" /> Google Maps
-                    </Button>
-                  }
-                >
-                  <div className="rounded-lg overflow-hidden border bg-muted">
-                    <iframe title="Mapa da Localização" src={mapEmbedUrl} className="w-full h-64 sm:h-80" loading="lazy" />
-                  </div>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                    <MiniStat label="Latitude" value={currentTask.checkInLocation!.lat.toFixed(6)} mono />
-                    <MiniStat label="Longitude" value={currentTask.checkInLocation!.lng.toFixed(6)} mono />
-                    <MiniStat
-                      label="Horário do check-in"
-                      value={currentTask.checkInLocation!.timestamp
-                        ? format(new Date(currentTask.checkInLocation!.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                        : '—'}
-                      icon={Clock}
-                    />
-                  </div>
-                </SectionCard>
-              )}
-              {!hasLocation && (
-                <SectionCard icon={MapPin} title="Localização da Visita" tone="muted">
-                  <div className="text-center py-6 text-sm text-muted-foreground italic">
-                    <Navigation className="w-8 h-8 mx-auto opacity-30 mb-2" />
-                    Localização não registrada
-                  </div>
-                </SectionCard>
-              )}
-
-              {/* 6. FOTOS */}
-              {photoCount > 0 && (
-                <SectionCard
-                  icon={ImageIcon}
-                  title="Registro Fotográfico"
-                  tone="warning"
-                  description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
-                >
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                    {currentTask.photos!.map((photo, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setLightboxIndex(i)}
-                        className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+              {/* 5+6. LOCALIZAÇÃO + FOTOS — 2 colunas em xl */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {hasLocation && mapEmbedUrl ? (
+                  <SectionCard
+                    icon={MapPin}
+                    title="Localização da Visita"
+                    tone="success"
+                    description={`${currentTask.checkInLocation!.lat.toFixed(6)}, ${currentTask.checkInLocation!.lng.toFixed(6)}`}
+                    headerRight={
+                      <Button
+                        variant="outline" size="sm" className="print:hidden"
+                        onClick={() => window.open(`https://www.google.com/maps?q=${currentTask.checkInLocation!.lat},${currentTask.checkInLocation!.lng}`, '_blank')}
                       >
-                        <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                          {i + 1}/{photoCount}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </SectionCard>
-              )}
+                        <Navigation className="w-3.5 h-3.5 mr-1" /> Google Maps
+                      </Button>
+                    }
+                  >
+                    <div className="rounded-lg overflow-hidden border bg-muted">
+                      <iframe title="Mapa da Localização" src={mapEmbedUrl} className="w-full h-64 sm:h-80" loading="lazy" />
+                    </div>
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                      <MiniStat label="Latitude" value={currentTask.checkInLocation!.lat.toFixed(6)} mono />
+                      <MiniStat label="Longitude" value={currentTask.checkInLocation!.lng.toFixed(6)} mono />
+                      <MiniStat
+                        label="Horário do check-in"
+                        value={currentTask.checkInLocation!.timestamp
+                          ? format(new Date(currentTask.checkInLocation!.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : '—'}
+                        icon={Clock}
+                      />
+                    </div>
+                  </SectionCard>
+                ) : (
+                  <SectionCard icon={MapPin} title="Localização da Visita" tone="muted">
+                    <div className="text-center py-6 text-sm text-muted-foreground italic">
+                      <Navigation className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                      Localização não registrada
+                    </div>
+                  </SectionCard>
+                )}
+
+                {photoCount > 0 ? (
+                  <SectionCard
+                    icon={ImageIcon}
+                    title="Registro Fotográfico"
+                    tone="warning"
+                    description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3">
+                      {currentTask.photos!.map((photo, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setLightboxIndex(i)}
+                          className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            {i + 1}/{photoCount}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </SectionCard>
+                ) : (
+                  <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
+                    <div className="text-center py-6 text-sm text-muted-foreground italic">
+                      <ImageIcon className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                      Nenhuma foto registrada
+                    </div>
+                  </SectionCard>
+                )}
+              </div>
+
 
               {/* 7. EQUIPAMENTOS */}
               {currentTask.equipmentList && currentTask.equipmentList.length > 0 && (
