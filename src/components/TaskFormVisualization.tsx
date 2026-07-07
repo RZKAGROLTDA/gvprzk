@@ -325,19 +325,16 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
             {/* 2. RESUMO */}
             <div className="px-5 sm:px-7 pt-5">
               <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
+                <Sparkles className="w-3.5 h-3.5" /> Indicadores Operacionais
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
-                <SummaryCard icon={Activity} label="Duração" value={duration} tone="primary" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
                 <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
                 <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
-                <SummaryCard icon={DollarSign} label="Valor Potencial" value={values.total > 0 ? `R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.total > 0 ? 'primary' : 'muted'} />
-                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.closed > 0 ? 'success' : 'muted'} />
-                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${conversionRate.toFixed(0)}%` : '—'} tone={conversionRate >= 70 ? 'success' : conversionRate > 0 ? 'warning' : 'muted'} />
                 <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
               </div>
             </div>
+
 
             {/* 2.1 RESUMO EXECUTIVO */}
             <div className="px-5 sm:px-7 pt-5">
