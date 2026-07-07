@@ -7,6 +7,7 @@ import {
   Calendar, Clock, MapPin, Phone, AtSign, Package, MessageSquare,
   Tractor, Image as ImageIcon, Activity, Navigation, Camera,
   CheckCircle2, X, History, Sparkles, UserCheck, Wrench,
+  AlertTriangle, ClipboardCheck, Award, Lightbulb, ShieldCheck, XCircle,
 } from 'lucide-react';
 import {
   Dialog, DialogContent,
@@ -130,6 +131,94 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const hasLocation = !!(currentTask.checkInLocation?.lat && currentTask.checkInLocation?.lng);
   const duration = formatDuration(currentTask.startTime, currentTask.endTime);
   const conversionRate = values.total > 0 ? (values.closed / values.total) * 100 : 0;
+
+  const validatedEqCount = (currentTask.equipmentList || []).filter((eq: any) => {
+    const v = eq.validated ?? eq.validado ?? eq.is_validated;
+    return v === true || v === 'true';
+  }).length;
+  const newMachineCount = (currentTask.equipmentList || []).filter((eq: any) =>
+    eq.isNew === true || eq.novo === true || eq.is_new === true || eq.new === true
+  ).length;
+  const hasContact = !!(currentTask.contactName || currentTask.contactFunction);
+  const hasObservations = !!(currentTask.observations || currentTask.prospectNotes);
+  const hasNextAction = !!(currentTask.nextAction || currentTask.nextActionDate);
+  const hasCheckIn = !!currentTask.checkInLocation?.timestamp;
+
+  // Resumo executivo dinâmico
+  const summarySentences: string[] = [];
+  if (currentTask.startDate) {
+    const dateStr = formatDateDisplay(currentTask.startDate);
+    summarySentences.push(
+      currentTask.property
+        ? `Visita realizada em ${dateStr} na ${currentTask.property}.`
+        : `Visita realizada em ${dateStr}.`
+    );
+  }
+  if (equipmentCount > 0) {
+    summarySentences.push(
+      validatedEqCount > 0
+        ? `Foram vistoriados ${equipmentCount} equipamento${equipmentCount > 1 ? 's' : ''}, sendo ${validatedEqCount} validado${validatedEqCount > 1 ? 's' : ''}.`
+        : `Foram vistoriados ${equipmentCount} equipamento${equipmentCount > 1 ? 's' : ''}.`
+    );
+  }
+  if (photoCount > 0) summarySentences.push(`Foram registradas ${photoCount} foto${photoCount > 1 ? 's' : ''}.`);
+  if (newMachineCount > 0) summarySentences.push(`Foi cadastrada${newMachineCount > 1 ? 's' : ''} ${newMachineCount} nova${newMachineCount > 1 ? 's' : ''} máquina${newMachineCount > 1 ? 's' : ''}.`);
+  if (selectedItemsCount > 0) summarySentences.push(`Foram vendidos ${selectedItemsCount} de ${itemsCount} itens ofertados.`);
+  if (values.total > 0) summarySentences.push(`Existe potencial estimado de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`);
+  if (values.closed > 0) summarySentences.push(`Valor fechado de R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`);
+  if (currentTask.nextActionDate) summarySentences.push(`Próxima ação programada para ${formatDateDisplay(currentTask.nextActionDate as any)}.`);
+  if (summarySentences.length === 0) summarySentences.push('Ainda não há dados suficientes para gerar um resumo desta visita.');
+
+  // Indicadores
+  const indicators: Array<{ label: string; ok: boolean }> = [
+    { label: 'Check-in realizado', ok: hasCheckIn || hasLocation },
+    { label: 'Fotos anexadas', ok: photoCount > 0 },
+    { label: 'Equipamentos validados', ok: validatedEqCount > 0 },
+    { label: 'Contato da visita informado', ok: hasContact },
+    { label: 'Observações preenchidas', ok: hasObservations },
+    { label: 'Próxima ação definida', ok: hasNextAction },
+    { label: 'Produtos registrados', ok: itemsCount > 0 },
+    { label: 'Nova máquina cadastrada', ok: newMachineCount > 0 },
+  ];
+
+  // Alertas
+  const alerts: string[] = [];
+  if (photoCount === 0) alerts.push('Nenhuma foto registrada');
+  if (equipmentCount > 0 && validatedEqCount === 0) alerts.push('Nenhum equipamento validado');
+  if (!hasNextAction) alerts.push('Próxima ação não definida');
+  if (itemsCount === 0) alerts.push('Nenhum produto registrado');
+  if (!hasLocation) alerts.push('Visita sem localização');
+  if (!hasContact) alerts.push('Contato da visita não informado');
+
+  // Conclusão
+  const conclusionParts: string[] = [];
+  const completedItems: string[] = [];
+  if (hasLocation) completedItems.push('registro de localização');
+  if (photoCount > 0) completedItems.push('fotos');
+  if (validatedEqCount > 0) completedItems.push('validação de equipamentos');
+  if (completedItems.length > 0) {
+    const list = completedItems.length === 1
+      ? completedItems[0]
+      : `${completedItems.slice(0, -1).join(', ')} e ${completedItems.slice(-1)}`;
+    conclusionParts.push(`A visita foi concluída com ${list}.`);
+  } else {
+    conclusionParts.push('A visita ainda não possui registros de campo relevantes.');
+  }
+  if (values.total > 0) {
+    conclusionParts.push(
+      hasNextAction
+        ? `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} e programado retorno para o cliente.`
+        : `Foi identificada oportunidade comercial de R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}.`
+    );
+  } else if (hasNextAction) {
+    conclusionParts.push('Foi programado retorno para o cliente.');
+  }
+  conclusionParts.push(
+    alerts.length === 0
+      ? 'A documentação da visita está completa.'
+      : `Ainda existe${alerts.length > 1 ? 'm' : ''} ${alerts.length} ponto${alerts.length > 1 ? 's' : ''} de atenção a ser tratado${alerts.length > 1 ? 's' : ''}.`
+  );
+
 
   const mapEmbedUrl = hasLocation
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${currentTask.checkInLocation!.lng - 0.005}%2C${currentTask.checkInLocation!.lat - 0.003}%2C${currentTask.checkInLocation!.lng + 0.005}%2C${currentTask.checkInLocation!.lat + 0.003}&layer=mapnik&marker=${currentTask.checkInLocation!.lat}%2C${currentTask.checkInLocation!.lng}`
@@ -266,7 +355,98 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
               )}
             </div>
 
+            {/* 2.1 RESUMO EXECUTIVO */}
+            <div className="px-5 sm:px-7 pt-5">
+              <div className="relative overflow-hidden rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-background p-5 sm:p-6 shadow-sm">
+                <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+                <div className="relative flex items-start gap-4">
+                  <div className="w-12 h-12 bg-primary text-primary-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Lightbulb className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-primary mb-2">Resumo Executivo</p>
+                    <div className="space-y-1.5">
+                      {summarySentences.map((s, i) => (
+                        <p key={i} className="text-sm sm:text-[15px] leading-relaxed text-foreground">{s}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2.2 INDICADORES + ALERTAS */}
+            <div className="px-5 sm:px-7 pt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <SectionCard icon={ClipboardCheck} title="Indicadores da Visita" tone="success">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {indicators.map((ind) => (
+                      <div
+                        key={ind.label}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                          ind.ok
+                            ? 'bg-success/5 border-success/20 text-foreground'
+                            : 'bg-muted/30 border-border text-muted-foreground'
+                        }`}
+                      >
+                        {ind.ok
+                          ? <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
+                          : <XCircle className="w-4 h-4 text-muted-foreground/60 flex-shrink-0" />
+                        }
+                        <span className={ind.ok ? 'font-medium' : ''}>{ind.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+
+                <SectionCard
+                  icon={alerts.length ? AlertTriangle : ShieldCheck}
+                  title="Pontos de Atenção"
+                  tone={alerts.length ? 'warning' : 'success'}
+                  description={alerts.length ? `${alerts.length} pendência${alerts.length > 1 ? 's' : ''} identificada${alerts.length > 1 ? 's' : ''}` : undefined}
+                >
+                  {alerts.length === 0 ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-4 text-sm text-foreground">
+                      <ShieldCheck className="w-5 h-5 text-success" />
+                      Não há pendências nesta visita.
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {alerts.map((a) => (
+                        <li key={a} className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm">
+                          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+                          <span className="text-foreground">{a}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </SectionCard>
+              </div>
+            </div>
+
+            {/* 2.3 OPORTUNIDADE */}
+            <div className="px-5 sm:px-7 pt-4">
+              <SectionCard icon={Target} title="Oportunidade" tone="primary">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <OppMetric label="Valor Potencial" value={values.total > 0 ? formatCurrency(values.total) : '—'} tone="primary" />
+                  <OppMetric label="Valor Fechado" value={values.closed > 0 ? formatCurrency(values.closed) : '—'} tone="success" />
+                  <OppMetric label="Valor Parcial" value={values.partial > 0 ? formatCurrency(values.partial) : '—'} tone="warning" />
+                  <OppMetric label="Taxa de Conversão" value={values.total > 0 && values.closed > 0 ? `${conversionRate.toFixed(1)}%` : '—'} tone="warning" />
+                  <OppMetric label="Classificação" value={getStatusLabel(salesStatus)} tone="primary" />
+                </div>
+                {(currentTask.opportunityInterest || currentTask.opportunityUrgency || currentTask.opportunityImpact || currentTask.opportunityClosing) && (
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <OppMetric label="Interesse" value={currentTask.opportunityInterest || '—'} tone="muted" capitalize />
+                    <OppMetric label="Urgência" value={currentTask.opportunityUrgency || '—'} tone="muted" capitalize />
+                    <OppMetric label="Impacto" value={currentTask.opportunityImpact || '—'} tone="muted" capitalize />
+                    <OppMetric label="Fechamento" value={currentTask.opportunityClosing || '—'} tone="muted" capitalize />
+                  </div>
+                )}
+              </SectionCard>
+            </div>
+
             <div className="p-5 sm:p-7 space-y-4">
+
               {/* 3. CLIENTE + 4. CONTATO */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <SectionCard icon={User} title="Dados do Cliente" tone="primary" className="lg:col-span-2">
@@ -678,7 +858,26 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   )}
                 </ol>
               </SectionCard>
+
+              {/* 13. CONCLUSÃO DA VISITA */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-success/40 bg-gradient-to-br from-success/15 via-success/5 to-background p-5 sm:p-6 shadow-sm">
+                <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-success/10 blur-3xl pointer-events-none" />
+                <div className="relative flex items-start gap-4">
+                  <div className="w-12 h-12 bg-success text-success-foreground rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-success mb-2">Conclusão da Visita</p>
+                    <div className="space-y-1.5">
+                      {conclusionParts.map((p, i) => (
+                        <p key={i} className="text-sm sm:text-[15px] leading-relaxed text-foreground">{p}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
           </div>
         </DialogContent>
       </Dialog>
@@ -827,5 +1026,24 @@ const TimelineItem: React.FC<{
       </div>
       {detail && <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>}
     </li>
+  );
+};
+
+const OppMetric: React.FC<{
+  label: string; value: string;
+  tone: 'primary' | 'success' | 'warning' | 'muted';
+  capitalize?: boolean;
+}> = ({ label, value, tone, capitalize }) => {
+  const toneMap = {
+    primary: 'border-primary/20 bg-primary/5 text-primary',
+    success: 'border-success/20 bg-success/5 text-success',
+    warning: 'border-warning/20 bg-warning/5 text-warning',
+    muted: 'border-border bg-muted/30 text-foreground',
+  };
+  return (
+    <div className={`rounded-lg border p-3 ${toneMap[tone]}`}>
+      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">{label}</p>
+      <p className={`text-base font-bold tabular-nums leading-tight ${capitalize ? 'capitalize' : ''}`}>{value}</p>
+    </div>
   );
 };
