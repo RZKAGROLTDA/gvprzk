@@ -384,29 +384,41 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 </SectionCard>
 
                 <SectionCard
-                  icon={alerts.length ? AlertTriangle : ShieldCheck}
+                  icon={alertsCount ? AlertTriangle : ShieldCheck}
                   title="Pontos de Atenção"
-                  tone={alerts.length ? 'warning' : 'success'}
-                  description={alerts.length ? `${alerts.length} pendência${alerts.length > 1 ? 's' : ''} identificada${alerts.length > 1 ? 's' : ''}` : undefined}
+                  tone={criticalCount ? 'destructive' : alertsCount ? 'warning' : 'success'}
+                  description={alertsCount ? `${alertsCount} pendência${alertsCount > 1 ? 's' : ''}${criticalCount ? ` • ${criticalCount} crítica${criticalCount > 1 ? 's' : ''}` : ''}` : undefined}
                 >
-                  {alerts.length === 0 ? (
+                  {alertsCount === 0 ? (
                     <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-4 text-sm text-foreground">
                       <ShieldCheck className="w-5 h-5 text-success" />
                       Não há pendências nesta visita.
                     </div>
                   ) : (
                     <ul className="space-y-2">
-                      {alerts.map((a) => (
-                        <li key={a} className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm">
-                          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
-                          <span className="text-foreground">{a}</span>
-                        </li>
-                      ))}
+                      {alertsPrioritized.map((a) => {
+                        const cfg = a.severity === 'critical'
+                          ? { icon: AlertTriangle, tag: '🔴 Crítico', wrap: 'border-destructive/40 bg-destructive/5', iconColor: 'text-destructive', badge: 'bg-destructive/10 text-destructive border-destructive/30' }
+                          : a.severity === 'warning'
+                          ? { icon: AlertTriangle, tag: '🟡 Atenção', wrap: 'border-warning/30 bg-warning/5', iconColor: 'text-warning', badge: 'bg-warning/10 text-warning border-warning/30' }
+                          : { icon: Lightbulb, tag: '🔵 Informativo', wrap: 'border-primary/20 bg-primary/5', iconColor: 'text-primary', badge: 'bg-primary/10 text-primary border-primary/30' };
+                        const Ic = cfg.icon;
+                        return (
+                          <li key={a.message} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${cfg.wrap}`}>
+                            <Ic className={`w-4 h-4 flex-shrink-0 mt-0.5 ${cfg.iconColor}`} />
+                            <div className="flex-1 min-w-0">
+                              <span className={`inline-block text-[10px] font-bold uppercase tracking-wider mb-0.5 px-1.5 py-0.5 rounded border ${cfg.badge}`}>{cfg.tag}</span>
+                              <p className="text-foreground">{a.message}</p>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </SectionCard>
               </div>
             </div>
+
 
             {/* 2.3 OPORTUNIDADE */}
             <div className="px-5 sm:px-7 pt-4">
