@@ -327,32 +327,16 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
               <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Resumo da Visita
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
                 <SummaryCard icon={Activity} label="Duração" value={duration} tone="primary" />
-                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone="primary" />
-                <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone="warning" />
-                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'muted'} />
-                <SummaryCard icon={DollarSign} label="Valor Potencial" value={`R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`} tone="success" />
-                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone="success" />
-                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${((values.closed / values.total) * 100).toFixed(0)}%` : '—'} tone="warning" />
-                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone="primary" />
+                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
+                <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
+                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
+                <SummaryCard icon={DollarSign} label="Valor Potencial" value={values.total > 0 ? `R$ ${values.total.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.total > 0 ? 'primary' : 'muted'} />
+                <SummaryCard icon={TrendingUp} label="Valor Fechado" value={values.closed > 0 ? `R$ ${values.closed.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : '—'} tone={values.closed > 0 ? 'success' : 'muted'} />
+                <SummaryCard icon={Percent} label="Conversão" value={values.total > 0 && values.closed > 0 ? `${conversionRate.toFixed(0)}%` : '—'} tone={conversionRate >= 70 ? 'success' : conversionRate > 0 ? 'warning' : 'muted'} />
+                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
               </div>
-
-              {(values.closed > 0 || salesStatus !== 'prospect') && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <MetricStrip icon={TrendingUp} label="Valor potencial" value={values.total} tone="primary" />
-                  <MetricStrip icon={DollarSign} label="Valor fechado" value={values.closed} tone="success" />
-                  <div className="rounded-xl border bg-gradient-to-br from-warning/10 to-transparent p-4">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <Percent className="w-3.5 h-3.5 text-warning" /> Taxa de conversão
-                    </div>
-                    <p className="text-2xl font-bold text-warning tabular-nums">{conversionRate.toFixed(1)}%</p>
-                    <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-warning rounded-full transition-all" style={{ width: `${Math.min(conversionRate, 100)}%` }} />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* 2.1 RESUMO EXECUTIVO */}
