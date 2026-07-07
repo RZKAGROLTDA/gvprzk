@@ -976,7 +976,8 @@ const MiniStat: React.FC<{
 
 const TimelineItem: React.FC<{
   color: string; title: string; date?: Date | string; detail?: string; future?: boolean;
-}> = ({ color, title, date, detail, future }) => {
+  icon?: React.ComponentType<{ className?: string }>;
+}> = ({ color, title, date, detail, future, icon: Icon }) => {
   let dateStr = '—';
   if (date) {
     try {
@@ -985,8 +986,10 @@ const TimelineItem: React.FC<{
     } catch { dateStr = String(date); }
   }
   return (
-    <li className="ml-4 relative">
-      <span className={`absolute -left-[22px] top-1 w-3 h-3 rounded-full ${color} ring-4 ring-background`} />
+    <li className="ml-6 relative">
+      <span className={`absolute -left-[30px] top-0 w-6 h-6 rounded-full ${color} ring-4 ring-background flex items-center justify-center text-white shadow`}>
+        {Icon ? <Icon className="w-3 h-3" /> : null}
+      </span>
       <div className="flex items-baseline justify-between gap-2 flex-wrap">
         <p className={`text-sm font-semibold ${future ? 'text-primary' : 'text-foreground'}`}>{title}</p>
         <p className="text-xs text-muted-foreground tabular-nums">{dateStr}</p>
