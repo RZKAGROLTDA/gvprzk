@@ -246,7 +246,7 @@ export const generateTaskPDF = async (
       ['Latitude', task.checkInLocation!.lat.toFixed(6)],
       ['Longitude', task.checkInLocation!.lng.toFixed(6)],
       ['Horário', task.checkInLocation!.timestamp ? format(new Date(task.checkInLocation!.timestamp), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'],
-      ['Precisão', '—'],
+      ['Status', 'Registrado'],
     ]);
     pdf.setTextColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
     pdf.setFont('helvetica', 'normal');
