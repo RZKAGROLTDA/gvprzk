@@ -1736,10 +1736,56 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             
           </CardContent>
         </Card>
+        {/* Próxima Ação - visita a campo e ligação */}
+        {(taskCategory === 'field-visit' || taskCategory === 'call') && (
+          <Card className="mt-6 border-warning/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-warning" />
+                Próxima Ação
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Registre o próximo passo planejado com este cliente para acompanhamento futuro.
+              </p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="nextAction">Ação / Descrição</Label>
+                <Textarea
+                  id="nextAction"
+                  value={(task.nextAction as string) || ''}
+                  onChange={(e) => setTask(prev => ({ ...prev, nextAction: e.target.value }))}
+                  placeholder="Ex.: Enviar proposta comercial, retornar visita para fechamento, apresentar simulação..."
+                  className="min-h-[80px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nextActionDate">Data Prevista</Label>
+                <Input
+                  id="nextActionDate"
+                  type="date"
+                  value={
+                    typeof task.nextActionDate === 'string'
+                      ? task.nextActionDate
+                      : task.nextActionDate instanceof Date
+                        ? task.nextActionDate.toISOString().split('T')[0]
+                        : ''
+                  }
+                  onChange={(e) => setTask(prev => ({ ...prev, nextActionDate: e.target.value || undefined }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Deixe em branco se não houver ação planejada.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <PhotoUpload photos={task.photos || []} onPhotosChange={photos => setTask(prev => ({
         ...prev,
         photos
       }))} maxPhotos={10} hidePhotoUpload={taskCategory === 'call'} />
+
 
         {/* Check-in de Localização - apenas para visita a campo */}
         {taskCategory === 'field-visit' && <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />}
