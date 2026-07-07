@@ -456,12 +456,20 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   </div>
                 </SectionCard>
 
-                <SectionCard icon={UserCheck} title="Contato da Visita" tone="success">
+                <SectionCard icon={UserCheck} title="Contato da Visita" tone={hasContact ? 'success' : 'muted'}>
                   <div className="grid grid-cols-1 gap-4 text-sm">
-                    <Field label="Nome" value={currentTask.contactName} />
-                    <Field label="Função" value={currentTask.contactFunction} />
-                    {!currentTask.contactName && !currentTask.contactFunction && (
-                      <p className="text-xs text-muted-foreground italic">Sem contato registrado nesta visita.</p>
+                    <Field
+                      label="Nome"
+                      value={currentTask.contactName || currentTask.responsible || (hasContact ? undefined : undefined)}
+                    />
+                    <Field
+                      label="Função"
+                      value={currentTask.contactFunction || currentTask.function || (currentTask.contactFunctionOther ? `Outros: ${currentTask.contactFunctionOther}` : undefined)}
+                    />
+                    <Field label="Email" value={currentTask.email} icon={AtSign} />
+                    <Field label="Telefone" value={currentTask.phone} icon={Phone} />
+                    {!hasContact && (
+                      <p className="text-xs text-muted-foreground italic">Não informado</p>
                     )}
                   </div>
                 </SectionCard>
