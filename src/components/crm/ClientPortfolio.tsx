@@ -1,18 +1,22 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  AlertTriangle, Building2, CalendarClock, CalendarIcon, Clock, Flame, Search,
-  Snowflake, Thermometer, User as UserIcon, X,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  AlertTriangle, Building2, CalendarClock, CalendarIcon, ChevronLeft, ChevronRight,
+  Clock, Flame, Search, Snowflake, Thermometer, User as UserIcon, X, ExternalLink,
 } from 'lucide-react';
 import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
@@ -35,16 +39,19 @@ type ClientAggregate = {
   temperature: FollowupRow['client_temperature'];
   total: number;
   latest_task_id: string | null;
+  nextAction: string | null;
+  daysOverdue: number;
+  items: FollowupRow[];
 };
 
 const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const fmt = (d: Date) => d.toLocaleDateString('pt-BR');
 
-const tempStyle = (t: FollowupRow['client_temperature']) => {
-  if (t === 'quente') return { cls: 'bg-destructive/15 text-destructive border-destructive/30', icon: <Flame className="h-3 w-3" /> };
-  if (t === 'morno') return { cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30', icon: <Thermometer className="h-3 w-3" /> };
-  if (t === 'frio') return { cls: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30', icon: <Snowflake className="h-3 w-3" /> };
-  return { cls: 'bg-muted text-muted-foreground border-border', icon: null };
+const tempBadge = (t: FollowupRow['client_temperature']) => {
+  if (t === 'quente') return { cls: 'bg-destructive/15 text-destructive border-destructive/30', icon: <Flame className="h-3 w-3" />, label: 'Quente' };
+  if (t === 'morno') return { cls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30', icon: <Thermometer className="h-3 w-3" />, label: 'Morno' };
+  if (t === 'frio') return { cls: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30', icon: <Snowflake className="h-3 w-3" />, label: 'Frio' };
+  return { cls: 'bg-muted text-muted-foreground border-border', icon: null, label: 'n/d' };
 };
 
 const priorityStyle = (p: FollowupRow['priority']) => {
@@ -60,14 +67,14 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
   return 'bg-muted text-muted-foreground';
 };
 
-const initials = (name: string) =>
-  name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
+const PAGE_SIZE_OPTIONS = [50, 100, 200];
 
 export const ClientPortfolio: React.FC = () => {
   const { data = [], isLoading } = useFollowups();
   const { consultants } = useFilteredConsultants();
   const queryClient = useQueryClient();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [detailClient, setDetailClient] = useState<ClientAggregate | null>(null);
 
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-options'],
@@ -78,6 +85,20 @@ export const ClientPortfolio: React.FC = () => {
       return data ?? [];
     },
   });
+
+  // ============ Realtime: atualiza ao criar/atualizar/concluir/cancelar ============
+  useEffect(() => {
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ['task_followups'] });
+      queryClient.invalidateQueries({ queryKey: ['weekly-agenda'] });
+    };
+    const ch = supabase
+      .channel('portfolio-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_followups' }, invalidate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, invalidate)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   const consultantById = useMemo(() => {
     const m = new Map<string, string>();
@@ -100,8 +121,9 @@ export const ClientPortfolio: React.FC = () => {
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
   const [quickFilter, setQuickFilter] = useState<'all' | 'overdue' | 'inactive' | 'hot' | 'highPriority'>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
-  // Aplica filtros básicos no nível das atividades antes de agregar
   const filteredFollowups = useMemo(() => {
     return data.filter((f) => {
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
@@ -132,7 +154,6 @@ export const ClientPortfolio: React.FC = () => {
       const last = sorted[0];
       const lastContact = new Date(last.activity_date);
 
-      // Próximo retorno (>= hoje); senão o mais recente vencido
       const allReturns = items
         .map((i) => i.next_return_date)
         .filter(Boolean)
@@ -149,6 +170,7 @@ export const ClientPortfolio: React.FC = () => {
         : null;
 
       const latestWithTask = sorted.find((i) => !!i.task_id) ?? null;
+      const latestWithReturnNotes = sorted.find((i) => !!i.return_notes) ?? null;
 
       result.push({
         key,
@@ -166,6 +188,9 @@ export const ClientPortfolio: React.FC = () => {
         temperature: last.client_temperature,
         total: items.length,
         latest_task_id: latestWithTask?.task_id ?? null,
+        nextAction: latestWithReturnNotes?.return_notes ?? null,
+        daysOverdue: daysToReturn !== null && daysToReturn < 0 ? Math.abs(daysToReturn) : 0,
+        items: sorted,
       });
     });
     return result;
@@ -180,9 +205,8 @@ export const ClientPortfolio: React.FC = () => {
       if (status !== 'all' && a.lastStatus !== status) return false;
       if (priority !== 'all' && a.priority !== priority) return false;
       if (temperature !== 'all') {
-        if (temperature === 'none') {
-          if (a.temperature) return false;
-        } else if (a.temperature !== temperature) return false;
+        if (temperature === 'none') { if (a.temperature) return false; }
+        else if (a.temperature !== temperature) return false;
       }
       if (quickFilter === 'overdue') return a.daysToReturn !== null && a.daysToReturn < 0;
       if (quickFilter === 'inactive') return a.daysSinceContact > 30;
@@ -190,16 +214,22 @@ export const ClientPortfolio: React.FC = () => {
       if (quickFilter === 'highPriority') return a.priority === 'alta';
       return true;
     }).sort((a, b) => {
-      // Prioriza vencidos, depois quentes/alta prioridade, depois mais inativos
+      const priRank = (p: FollowupRow['priority']) => (p === 'alta' ? 3 : p === 'media' ? 2 : 1);
       const aOverdue = a.daysToReturn !== null && a.daysToReturn < 0 ? 1 : 0;
       const bOverdue = b.daysToReturn !== null && b.daysToReturn < 0 ? 1 : 0;
       if (aOverdue !== bOverdue) return bOverdue - aOverdue;
-      const aHot = (a.temperature === 'quente' || a.priority === 'alta') ? 1 : 0;
-      const bHot = (b.temperature === 'quente' || b.priority === 'alta') ? 1 : 0;
-      if (aHot !== bHot) return bHot - aHot;
+      if (priRank(b.priority) !== priRank(a.priority)) return priRank(b.priority) - priRank(a.priority);
       return b.daysSinceContact - a.daysSinceContact;
     });
   }, [aggregates, search, status, priority, temperature, quickFilter]);
+
+  // Reset page on filter change
+  useEffect(() => { setPage(1); }, [search, seller, filial, status, priority, temperature, quickFilter, from, to, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * pageSize;
+  const pageRows = filtered.slice(pageStart, pageStart + pageSize);
 
   const stats = useMemo(() => ({
     total: aggregates.length,
@@ -210,14 +240,8 @@ export const ClientPortfolio: React.FC = () => {
   }), [aggregates]);
 
   const clearFilters = () => {
-    setSearch('');
-    setSeller('all');
-    setFilial('all');
-    setStatus('all');
-    setPriority('all');
-    setTemperature('all');
-    setFrom(undefined);
-    setTo(undefined);
+    setSearch(''); setSeller('all'); setFilial('all'); setStatus('all');
+    setPriority('all'); setTemperature('all'); setFrom(undefined); setTo(undefined);
     setQuickFilter('all');
   };
   const hasFilter =
@@ -226,7 +250,7 @@ export const ClientPortfolio: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Quick stats / filtros rápidos */}
+      {/* KPIs / filtros rápidos */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <StatTile label="Clientes" value={stats.total} active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
         <StatTile label="Retorno vencido" value={stats.overdue} tone="destructive" active={quickFilter === 'overdue'} onClick={() => setQuickFilter('overdue')} />
@@ -235,19 +259,13 @@ export const ClientPortfolio: React.FC = () => {
         <StatTile label="Prioridade alta" value={stats.highPriority} tone="destructive" active={quickFilter === 'highPriority'} onClick={() => setQuickFilter('highPriority')} />
       </div>
 
-      {/* Filtros avançados */}
+      {/* Filtros */}
       <Card>
         <CardContent className="flex flex-col gap-2 p-3 lg:flex-row lg:flex-wrap lg:items-center">
           <div className="relative w-full sm:w-[240px]">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar nome ou código..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
+            <Input placeholder="Buscar nome ou código..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
           </div>
-
           <Select value={seller} onValueChange={setSeller}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Vendedor" /></SelectTrigger>
             <SelectContent>
@@ -255,7 +273,6 @@ export const ClientPortfolio: React.FC = () => {
               {consultants.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
             </SelectContent>
           </Select>
-
           <Select value={filial} onValueChange={setFilial}>
             <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
@@ -263,7 +280,6 @@ export const ClientPortfolio: React.FC = () => {
               {filiais.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>))}
             </SelectContent>
           </Select>
-
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -274,7 +290,6 @@ export const ClientPortfolio: React.FC = () => {
               <SelectItem value="cancelado">Cancelado</SelectItem>
             </SelectContent>
           </Select>
-
           <Select value={priority} onValueChange={setPriority}>
             <SelectTrigger className="w-full sm:w-[140px]"><SelectValue placeholder="Prioridade" /></SelectTrigger>
             <SelectContent>
@@ -284,7 +299,6 @@ export const ClientPortfolio: React.FC = () => {
               <SelectItem value="baixa">Baixa</SelectItem>
             </SelectContent>
           </Select>
-
           <Select value={temperature} onValueChange={setTemperature}>
             <SelectTrigger className="w-full sm:w-[150px]"><SelectValue placeholder="Temperatura" /></SelectTrigger>
             <SelectContent>
@@ -295,10 +309,8 @@ export const ClientPortfolio: React.FC = () => {
               <SelectItem value="none">Sem definição</SelectItem>
             </SelectContent>
           </Select>
-
           <DateField label="De" value={from} onChange={setFrom} />
           <DateField label="Até" value={to} onChange={setTo} />
-
           {hasFilter && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="lg:ml-auto">
               <X className="mr-1 h-3 w-3" /> Limpar
@@ -307,172 +319,228 @@ export const ClientPortfolio: React.FC = () => {
         </CardContent>
       </Card>
 
-      <div className="text-sm text-muted-foreground">
-        {filtered.length} cliente(s)
-      </div>
+      {/* Tabela */}
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-10 animate-pulse rounded bg-muted/50" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              Nenhum cliente encontrado com os filtros atuais.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[80px]">Prio.</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="w-[100px]">Código</TableHead>
+                    <TableHead>Vendedor</TableHead>
+                    <TableHead>Filial</TableHead>
+                    <TableHead className="w-[130px]">Último contato</TableHead>
+                    <TableHead className="w-[130px]">Próximo retorno</TableHead>
+                    <TableHead className="w-[110px]">Status</TableHead>
+                    <TableHead className="w-[110px]">Tipo</TableHead>
+                    <TableHead className="min-w-[180px]">Próxima ação</TableHead>
+                    <TableHead className="w-[90px] text-right">Atraso</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pageRows.map((c) => {
+                    const isOverdueReturn = c.daysToReturn !== null && c.daysToReturn < 0;
+                    const temp = tempBadge(c.temperature);
+                    return (
+                      <TableRow
+                        key={c.key}
+                        onClick={() => setDetailClient(c)}
+                        className={cn(
+                          'cursor-pointer',
+                          isOverdueReturn && 'bg-destructive/5 hover:bg-destructive/10'
+                        )}
+                      >
+                        <TableCell>
+                          <span className={cn('inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase', priorityStyle(c.priority))}>
+                            {c.priority}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate max-w-[220px]">{c.client_name}</span>
+                            {c.temperature && (
+                              <span className={cn('inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] uppercase', temp.cls)}>
+                                {temp.icon}{temp.label}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{c.client_code ?? '—'}</TableCell>
+                        <TableCell className="text-sm">{consultantById.get(c.responsible_user_id) ?? '—'}</TableCell>
+                        <TableCell className="text-sm">{c.filial_id ? (filialById.get(c.filial_id) ?? '—') : '—'}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">{fmt(c.lastContact)}</div>
+                          <div className={cn('text-[10px]', c.daysSinceContact > 30 ? 'text-destructive' : 'text-muted-foreground')}>
+                            {c.daysSinceContact}d atrás
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {c.nextReturn ? (
+                            <>
+                              <div className="text-sm">{fmt(c.nextReturn)}</div>
+                              <div className={cn('text-[10px]',
+                                isOverdueReturn ? 'text-destructive font-medium' :
+                                c.daysToReturn === 0 ? 'text-primary' : 'text-muted-foreground'
+                              )}>
+                                {c.daysToReturn === 0 ? 'hoje' : c.daysToReturn! < 0 ? `${Math.abs(c.daysToReturn!)}d vencido` : `em ${c.daysToReturn}d`}
+                              </div>
+                            </>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell>
+                          <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-medium uppercase', statusStyle(c.lastStatus))}>
+                            {c.lastStatus}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">{c.lastActivityType}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[240px]">
+                          <div className="truncate text-xs text-muted-foreground" title={c.nextAction ?? ''}>
+                            {c.nextAction ?? '—'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {c.daysOverdue > 0 ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-destructive/15 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                              <AlertTriangle className="h-3 w-3" />{c.daysOverdue}d
+                            </span>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Cards */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-56 animate-pulse rounded-lg bg-muted/50" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Nenhum cliente encontrado com os filtros atuais.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((c) => {
-            const temp = tempStyle(c.temperature);
-            const isOverdueReturn = c.daysToReturn !== null && c.daysToReturn < 0;
-            const isInactive = c.daysSinceContact > 30;
-            const isHot = c.temperature === 'quente';
-            const isHighPriority = c.priority === 'alta';
-            const highlight = isOverdueReturn || isInactive || isHot || isHighPriority;
-            const sellerName = consultantById.get(c.responsible_user_id) ?? '—';
-            const filialName = c.filial_id ? (filialById.get(c.filial_id) ?? '—') : '—';
-            const hasTask = !!c.latest_task_id;
-            const cardEl = (
-              <Card
-                key={c.key}
-                role={hasTask ? 'button' : undefined}
-                tabIndex={hasTask ? 0 : undefined}
-                onClick={hasTask ? () => setSelectedTaskId(c.latest_task_id) : undefined}
-                onKeyDown={
-                  hasTask
-                    ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setSelectedTaskId(c.latest_task_id);
-                        }
-                      }
-                    : undefined
-                }
-                className={cn(
-                  'transition-shadow',
-                  hasTask
-                    ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
-                    : 'cursor-not-allowed opacity-90',
-                  isOverdueReturn && 'border-destructive/50',
-                  !isOverdueReturn && (isHot || isHighPriority) && 'border-amber-500/50',
-                  !isOverdueReturn && !isHot && !isHighPriority && isInactive && 'border-sky-500/40'
-                )}
-              >
-                <CardContent className="space-y-3 p-4">
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {initials(c.client_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-semibold">{c.client_name}</div>
-                      {c.client_code && (
-                        <div className="truncate text-xs text-muted-foreground">Cód: {c.client_code}</div>
-                      )}
-                    </div>
-                    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase', temp.cls)}>
-                      {temp.icon}
-                      {c.temperature ?? 'n/d'}
-                    </span>
-                  </div>
-
-                  {/* Responsável + filial */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><UserIcon className="h-3 w-3" /> {sellerName}</span>
-                    <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {filialName}</span>
-                  </div>
-
-                  {/* Métricas */}
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Metric
-                      icon={<Clock className="h-3.5 w-3.5" />}
-                      label="Último contato"
-                      value={fmt(c.lastContact)}
-                      hint={`${c.daysSinceContact}d atrás`}
-                      hintTone={isInactive ? 'destructive' : 'muted'}
-                    />
-                    <Metric
-                      icon={<CalendarClock className="h-3.5 w-3.5" />}
-                      label="Próximo retorno"
-                      value={c.nextReturn ? fmt(c.nextReturn) : '—'}
-                      hint={
-                        c.daysToReturn === null
-                          ? 'sem retorno'
-                          : c.daysToReturn < 0
-                            ? `${Math.abs(c.daysToReturn)}d vencido`
-                            : c.daysToReturn === 0
-                              ? 'hoje'
-                              : `em ${c.daysToReturn}d`
-                      }
-                      hintTone={isOverdueReturn ? 'destructive' : c.daysToReturn === 0 ? 'primary' : 'muted'}
-                    />
-                  </div>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={cn('rounded-md border px-2 py-0.5 text-[10px] font-medium uppercase', priorityStyle(c.priority))}>
-                      Prio: {c.priority}
-                    </span>
-                    <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-medium uppercase', statusStyle(c.lastStatus))}>
-                      {c.lastStatus}
-                    </span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {c.lastActivityType}
-                    </Badge>
-                    <span className="ml-auto text-[10px] text-muted-foreground">
-                      {c.total} ativ.
-                    </span>
-                  </div>
-
-                  {highlight && (
-                    <div
-                      className={cn(
-                        'flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]',
-                        isOverdueReturn
-                          ? 'border-destructive/30 bg-destructive/5 text-destructive'
-                          : isHot || isHighPriority
-                            ? 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300'
-                            : 'border-sky-500/30 bg-sky-500/5 text-sky-700 dark:text-sky-300'
-                      )}
-                    >
-                      <AlertTriangle className="h-3 w-3" />
-                      {isOverdueReturn
-                        ? 'Retorno vencido'
-                        : isHot
-                          ? 'Cliente quente — priorizar contato'
-                          : isHighPriority
-                            ? 'Prioridade alta'
-                            : 'Cliente inativo (30+ dias)'}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-            return hasTask ? (
-              <React.Fragment key={c.key}>{cardEl}</React.Fragment>
-            ) : (
-              <TooltipProvider key={c.key} delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>{cardEl}</TooltipTrigger>
-                  <TooltipContent>Sem atividade vinculada</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })}
+      {/* Paginação */}
+      {filtered.length > 0 && (
+        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
+          <div className="text-xs text-muted-foreground">
+            Exibindo {pageStart + 1}-{Math.min(pageStart + pageSize, filtered.length)} de {filtered.length} clientes
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Por página:</span>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft className="h-3 w-3" />
+            </Button>
+            <span className="text-xs tabular-nums">{currentPage} / {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
       )}
+
+      {/* Painel lateral de detalhes */}
+      <Sheet open={!!detailClient} onOpenChange={(o) => !o && setDetailClient(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          {detailClient && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{detailClient.client_name}</SheetTitle>
+                <SheetDescription>
+                  {detailClient.client_code ? `Código: ${detailClient.client_code} · ` : ''}
+                  {detailClient.total} atividade(s) registrada(s)
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <InfoBox icon={<UserIcon className="h-3 w-3" />} label="Vendedor" value={consultantById.get(detailClient.responsible_user_id) ?? '—'} />
+                <InfoBox icon={<Building2 className="h-3 w-3" />} label="Filial" value={detailClient.filial_id ? (filialById.get(detailClient.filial_id) ?? '—') : '—'} />
+                <InfoBox icon={<Clock className="h-3 w-3" />} label="Último contato" value={`${fmt(detailClient.lastContact)} (${detailClient.daysSinceContact}d)`} />
+                <InfoBox icon={<CalendarClock className="h-3 w-3" />} label="Próximo retorno" value={detailClient.nextReturn ? `${fmt(detailClient.nextReturn)}` : '—'} />
+              </div>
+
+              {detailClient.nextAction && (
+                <div className="mt-4 rounded-md border bg-muted/30 p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground mb-1">Próxima ação</div>
+                  <div className="text-sm">{detailClient.nextAction}</div>
+                </div>
+              )}
+
+              {detailClient.latest_task_id && (
+                <div className="mt-4">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedTaskId(detailClient.latest_task_id);
+                      setDetailClient(null);
+                    }}
+                  >
+                    <ExternalLink className="mr-2 h-3 w-3" />
+                    Abrir última atividade
+                  </Button>
+                </div>
+              )}
+
+              <div className="mt-6">
+                <div className="text-sm font-semibold mb-2">Histórico</div>
+                <div className="space-y-2">
+                  {detailClient.items.map((it) => (
+                    <div key={it.id} className="rounded-md border p-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">{it.activity_type}</Badge>
+                          <span className={cn('rounded-md px-2 py-0.5 text-[9px] font-medium uppercase', statusStyle(it.followup_status))}>
+                            {it.followup_status}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {fmt(new Date(it.activity_date))}
+                        </div>
+                      </div>
+                      {it.return_notes && (
+                        <div className="mt-1.5 text-muted-foreground">
+                          <span className="font-medium text-foreground">Próxima ação: </span>{it.return_notes}
+                        </div>
+                      )}
+                      {it.next_return_date && (
+                        <div className="mt-1 text-[10px] text-muted-foreground">
+                          Retorno em {fmt(new Date(it.next_return_date))}
+                        </div>
+                      )}
+                      {it.notes && <div className="mt-1 text-muted-foreground italic">{it.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <TaskEditModal
         taskId={selectedTaskId}
         isOpen={!!selectedTaskId}
         onClose={() => setSelectedTaskId(null)}
         onTaskUpdate={() => {
-          queryClient.invalidateQueries({ queryKey: ['followups'] });
+          queryClient.invalidateQueries({ queryKey: ['task_followups'] });
           queryClient.invalidateQueries({ queryKey: ['weekly-agenda'] });
         }}
       />
@@ -508,36 +576,17 @@ const StatTile: React.FC<{
   );
 };
 
-const Metric: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  hint?: string;
-  hintTone?: 'muted' | 'destructive' | 'primary';
-}> = ({ icon, label, value, hint, hintTone = 'muted' }) => {
-  const hintCls = {
-    muted: 'text-muted-foreground',
-    destructive: 'text-destructive',
-    primary: 'text-primary',
-  }[hintTone];
-  return (
-    <div className="rounded-md border bg-muted/30 p-2">
-      <div className="flex items-center gap-1 text-[10px] uppercase text-muted-foreground">
-        {icon} {label}
-      </div>
-      <div className="mt-0.5 text-sm font-medium">{value}</div>
-      {hint && <div className={cn('text-[10px]', hintCls)}>{hint}</div>}
-    </div>
-  );
-};
+const InfoBox: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+  <div className="rounded-md border bg-muted/30 p-2">
+    <div className="flex items-center gap-1 text-[10px] uppercase text-muted-foreground">{icon}{label}</div>
+    <div className="mt-0.5 text-sm font-medium truncate" title={value}>{value}</div>
+  </div>
+);
 
 const DateField: React.FC<{ label: string; value?: Date; onChange: (d?: Date) => void }> = ({ label, value, onChange }) => (
   <Popover>
     <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        className={cn('w-full justify-start text-left font-normal sm:w-[140px]', !value && 'text-muted-foreground')}
-      >
+      <Button variant="outline" className={cn('w-full justify-start text-left font-normal sm:w-[140px]', !value && 'text-muted-foreground')}>
         <CalendarIcon className="mr-2 h-4 w-4" />
         {value ? fmt(value) : label}
       </Button>
