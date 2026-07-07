@@ -560,16 +560,28 @@ export const generateTaskPDF = async (
 
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
-    task.checklist.forEach((item) => {
+    task.checklist.forEach((item, idx) => {
       ensureSpace(6);
+      if (item.selected) {
+        pdf.setFillColor(232, 250, 238);
+        pdf.rect(marginLeft, yPos - 4, contentWidth, 5, 'F');
+      } else if (idx % 2 === 1) {
+        pdf.setFillColor(247, 249, 252);
+        pdf.rect(marginLeft, yPos - 4, contentWidth, 5, 'F');
+      }
       const subtotal = (item.price || 0) * (item.quantity || 1);
-      pdf.text(item.selected ? '✓' : '·', marginLeft + 2, yPos);
+      if (item.selected) pdf.setTextColor(SUCCESS[0], SUCCESS[1], SUCCESS[2]);
+      pdf.text(item.selected ? 'v' : '·', marginLeft + 2, yPos);
+      pdf.setTextColor(0, 0, 0);
       const name = pdf.splitTextToSize(item.name || '—', 88);
       pdf.text(name[0], marginLeft + 8, yPos);
-      pdf.text(String(item.quantity || 1), marginLeft + 100, yPos);
-      pdf.text(currency(item.price || 0), marginLeft + 115, yPos);
-      pdf.text(currency(subtotal), marginLeft + 142, yPos);
-      pdf.text(item.selected ? 'Vendido' : 'Ofertado', marginLeft + 170, yPos);
+      pdf.text(String(item.quantity || 1), marginLeft + 100, yPos, { align: 'right' as any });
+      pdf.text(currency(item.price || 0), marginLeft + 140, yPos, { align: 'right' as any });
+      pdf.text(currency(subtotal), marginLeft + 168, yPos, { align: 'right' as any });
+      if (item.selected) pdf.setTextColor(SUCCESS[0], SUCCESS[1], SUCCESS[2]);
+      else pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+      pdf.text(item.selected ? 'Vendido' : 'Ofertado', marginLeft + 172, yPos);
+      pdf.setTextColor(0, 0, 0);
       yPos += 5;
       if ((item as any).category) {
         ensureSpace(4);
