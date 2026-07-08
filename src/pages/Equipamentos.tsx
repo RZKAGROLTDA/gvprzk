@@ -461,8 +461,7 @@ const Equipamentos: React.FC = () => {
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Máquinas Validadas</th>
                     <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
-                    <th className="px-3 py-2 font-medium text-right">Clientes Pendentes</th>
-                    <th className="px-3 py-2 font-medium text-right">%</th>
+                    <th className="px-3 py-2 font-medium text-right">% Máquinas Validadas</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -470,7 +469,6 @@ const Equipamentos: React.FC = () => {
                     const totalPriority = priorityByFilial.totals.get(f.filial_nome) ?? 0;
                     const pct = totalPriority > 0 ? (f.validated_count / totalPriority) * 100 : 0;
                     const distinctClients = distinctClientsByFilial[f.filial_nome] ?? 0;
-                    const pendingClients = priorityByFilial.pendingClients.get(f.filial_nome)?.size ?? 0;
                     return (
                       <tr
                         key={f.filial_nome}
@@ -482,9 +480,6 @@ const Equipamentos: React.FC = () => {
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums font-medium">
                           {distinctClients.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {pendingClients.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                           {pct.toFixed(1)}%
