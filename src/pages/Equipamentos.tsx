@@ -302,7 +302,7 @@ const Equipamentos: React.FC = () => {
     return set.size;
   }, [validatedClientsRaw]);
 
-  // Máquinas prioritárias — base para Clientes Pendentes e % de execução por filial
+  // Máquinas prioritárias — base para % de execução por filial
   const { data: priorityRaw = [] } = useQuery({
     queryKey: ['client-equipment', 'priority-index'],
     staleTime: 5 * 60 * 1000,
@@ -315,13 +315,12 @@ const Equipamentos: React.FC = () => {
         validated_by: string | null;
         client_code: string | null;
         client_name: string | null;
-        last_validation_at: string | null;
       }[] = [];
       let p = 0;
       while (rows.length < MAX) {
         const { data, error } = await supabase
           .from('client_equipment' as any)
-          .select('filial_id, validated_by, client_code, client_name, last_validation_at')
+          .select('filial_id, validated_by, client_code, client_name')
           .eq('validation_priority', true)
           .range(p * PAGE, p * PAGE + PAGE - 1);
         if (error) throw error;
@@ -336,7 +335,6 @@ const Equipamentos: React.FC = () => {
 
   const priorityByFilial = useMemo(() => {
     const totals = new Map<string, number>();
-    const pendingClients = new Map<string, Set<string>>();
     const resolveFilialName = (r: { filial_id: string | null; validated_by: string | null }) => {
       if (r.validated_by) {
         const v = validatorMap.get(r.validated_by);
@@ -348,14 +346,8 @@ const Equipamentos: React.FC = () => {
     priorityRaw.forEach((r) => {
       const filial = resolveFilialName(r);
       totals.set(filial, (totals.get(filial) ?? 0) + 1);
-      if (!r.last_validation_at) {
-        const k = clientKey(r);
-        if (!k) return;
-        if (!pendingClients.has(filial)) pendingClients.set(filial, new Set());
-        pendingClients.get(filial)!.add(k);
-      }
     });
-    return { totals, pendingClients };
+    return { totals };
   }, [priorityRaw, validatorMap, filialIdToName]);
 
   const filialRanked = useMemo(() => {
@@ -469,8 +461,7 @@ const Equipamentos: React.FC = () => {
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Máquinas Validadas</th>
                     <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
-                    <th className="px-3 py-2 font-medium text-right">Clientes Pendentes</th>
-                    <th className="px-3 py-2 font-medium text-right">%</th>
+                    <th className="px-3 py-2 font-medium text-right">% Máquinas Validadas</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -478,7 +469,6 @@ const Equipamentos: React.FC = () => {
                     const totalPriority = priorityByFilial.totals.get(f.filial_nome) ?? 0;
                     const pct = totalPriority > 0 ? (f.validated_count / totalPriority) * 100 : 0;
                     const distinctClients = distinctClientsByFilial[f.filial_nome] ?? 0;
-                    const pendingClients = priorityByFilial.pendingClients.get(f.filial_nome)?.size ?? 0;
                     return (
                       <tr
                         key={f.filial_nome}
@@ -490,9 +480,6 @@ const Equipamentos: React.FC = () => {
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums font-medium">
                           {distinctClients.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {pendingClients.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                           {pct.toFixed(1)}%
