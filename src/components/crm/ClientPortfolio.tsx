@@ -218,6 +218,7 @@ export const ClientPortfolio: React.FC = () => {
       const aOverdue = a.daysToReturn !== null && a.daysToReturn < 0 ? 1 : 0;
       const bOverdue = b.daysToReturn !== null && b.daysToReturn < 0 ? 1 : 0;
       if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+      if (aOverdue && bOverdue && a.daysOverdue !== b.daysOverdue) return b.daysOverdue - a.daysOverdue;
       if (priRank(b.priority) !== priRank(a.priority)) return priRank(b.priority) - priRank(a.priority);
       return b.daysSinceContact - a.daysSinceContact;
     });
