@@ -67,7 +67,7 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
   return 'bg-muted text-muted-foreground';
 };
 
-const PAGE_SIZE_OPTIONS = [50, 100, 200];
+const PAGE_SIZE_OPTIONS = [30, 50, 100, 200];
 
 export const ClientPortfolio: React.FC = () => {
   const { data = [], isLoading } = useFollowups();
@@ -120,9 +120,9 @@ export const ClientPortfolio: React.FC = () => {
   const [temperature, setTemperature] = useState<string>('all');
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
-  const [quickFilter, setQuickFilter] = useState<'all' | 'overdue' | 'inactive' | 'hot' | 'highPriority'>('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'overdue' | 'inactive' | 'hot' | 'highPriority'>('overdue');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(30);
 
   const filteredFollowups = useMemo(() => {
     return data.filter((f) => {
@@ -218,6 +218,7 @@ export const ClientPortfolio: React.FC = () => {
       const aOverdue = a.daysToReturn !== null && a.daysToReturn < 0 ? 1 : 0;
       const bOverdue = b.daysToReturn !== null && b.daysToReturn < 0 ? 1 : 0;
       if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+      if (aOverdue && bOverdue && a.daysOverdue !== b.daysOverdue) return b.daysOverdue - a.daysOverdue;
       if (priRank(b.priority) !== priRank(a.priority)) return priRank(b.priority) - priRank(a.priority);
       return b.daysSinceContact - a.daysSinceContact;
     });
@@ -252,7 +253,7 @@ export const ClientPortfolio: React.FC = () => {
     <div className="space-y-4">
       {/* KPIs / filtros rápidos */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <StatTile label="Clientes" value={stats.total} active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
+        <StatTile label="Todos" value={stats.total} active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
         <StatTile label="Retorno vencido" value={stats.overdue} tone="destructive" active={quickFilter === 'overdue'} onClick={() => setQuickFilter('overdue')} />
         <StatTile label="Sem contato 30d+" value={stats.inactive} tone="warning" active={quickFilter === 'inactive'} onClick={() => setQuickFilter('inactive')} />
         <StatTile label="Quentes" value={stats.hot} tone="hot" active={quickFilter === 'hot'} onClick={() => setQuickFilter('hot')} />
