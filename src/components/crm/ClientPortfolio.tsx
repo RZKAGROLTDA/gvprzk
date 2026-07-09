@@ -67,7 +67,7 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
   return 'bg-muted text-muted-foreground';
 };
 
-const PAGE_SIZE_OPTIONS = [50, 100, 200];
+const PAGE_SIZE_OPTIONS = [30, 50, 100, 200];
 
 export const ClientPortfolio: React.FC = () => {
   const { data = [], isLoading } = useFollowups();
