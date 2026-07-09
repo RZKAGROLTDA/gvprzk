@@ -120,9 +120,9 @@ export const ClientPortfolio: React.FC = () => {
   const [temperature, setTemperature] = useState<string>('all');
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
-  const [quickFilter, setQuickFilter] = useState<'all' | 'overdue' | 'inactive' | 'hot' | 'highPriority'>('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'overdue' | 'inactive' | 'hot' | 'highPriority'>('overdue');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(30);
 
   const filteredFollowups = useMemo(() => {
     return data.filter((f) => {
