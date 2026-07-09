@@ -253,7 +253,7 @@ export const ClientPortfolio: React.FC = () => {
     <div className="space-y-4">
       {/* KPIs / filtros rápidos */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        <StatTile label="Clientes" value={stats.total} active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
+        <StatTile label="Todos" value={stats.total} active={quickFilter === 'all'} onClick={() => setQuickFilter('all')} />
         <StatTile label="Retorno vencido" value={stats.overdue} tone="destructive" active={quickFilter === 'overdue'} onClick={() => setQuickFilter('overdue')} />
         <StatTile label="Sem contato 30d+" value={stats.inactive} tone="warning" active={quickFilter === 'inactive'} onClick={() => setQuickFilter('inactive')} />
         <StatTile label="Quentes" value={stats.hot} tone="hot" active={quickFilter === 'hot'} onClick={() => setQuickFilter('hot')} />
