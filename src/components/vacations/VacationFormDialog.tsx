@@ -27,7 +27,7 @@ const roleLabels: Record<string, string> = {
   consultant: 'Consultor',
 };
 
-export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, lockedFilialId, allowAnyFilial }) => {
+export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, lockedFilialId, allowAnyFilial, successMessage }) => {
   const { data: filiais = [] } = useFiliaisList();
   const [filialId, setFilialId] = useState<string>(lockedFilialId || '');
   const { data: employees = [] } = useEmployeeOptions(filialId || null);
