@@ -179,6 +179,16 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                     className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
                   />
                 ))}
+
+                {canSeeVacations && (
+                  <NavLink
+                    key={vacationItem.path}
+                    item={vacationItem}
+                    isActive={isActive(vacationItem.path)}
+                    className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
+                  />
+                )}
+                
                 
                 {isAdmin && (
                   <>
@@ -229,6 +239,16 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                     className="flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap min-w-fit"
                   />
                 ))}
+
+                {canSeeVacations && (
+                  <NavLink
+                    key={vacationItem.path}
+                    item={vacationItem}
+                    isActive={isActive(vacationItem.path)}
+                    className="flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap min-w-fit"
+                  />
+                )}
+
               </nav>
             </Card>
           </div>
