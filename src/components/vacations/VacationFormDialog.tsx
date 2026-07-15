@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,8 @@ interface Props {
   lockedFilialId?: string | null;
   /** Admin/manager podem escolher qualquer filial. */
   allowAnyFilial: boolean;
+  /** Mensagem custom exibida após criar (ex.: supervisor/RAC). */
+  successMessage?: string;
 }
 
 const roleLabels: Record<string, string> = {
@@ -25,7 +28,7 @@ const roleLabels: Record<string, string> = {
   consultant: 'Consultor',
 };
 
-export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, lockedFilialId, allowAnyFilial }) => {
+export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, lockedFilialId, allowAnyFilial, successMessage }) => {
   const { data: filiais = [] } = useFiliaisList();
   const [filialId, setFilialId] = useState<string>(lockedFilialId || '');
   const { data: employees = [] } = useEmployeeOptions(filialId || null);
@@ -94,6 +97,7 @@ export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, locked
     };
     try {
       await create.mutateAsync(payload);
+      if (successMessage) toast.success(successMessage);
       onOpenChange(false);
     } catch {
       /* toast já exibido no hook */
