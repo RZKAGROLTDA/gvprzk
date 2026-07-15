@@ -3,9 +3,10 @@ import React, { memo, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, LogOut, Users, Building, TrendingUp, Briefcase, Megaphone, Tractor } from 'lucide-react';
+import { LayoutDashboard, Plus, CheckSquare, BarChart3, Car, User, LogOut, Users, Building, TrendingUp, Briefcase, Megaphone, Tractor, PlaneTakeoff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useSessionSecurity } from '@/hooks/useSessionSecurity';
 import { getVersionInfo, formatVersion } from '@/config/version';
 import { ForceUpdateButton } from '@/components/ForceUpdateButton';
@@ -97,6 +98,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { profile, isAdmin } = useProfile();
+  const { isAdmin: hasAdminRole, isManager, isSupervisor, rawRoles } = useUserRole();
   
   // Initialize session security monitoring
   useSessionSecurity();
@@ -104,6 +106,8 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   const { navItems, managementItems, adminItems } = useNavigationItems();
   // All roles can access Management - simplified view for consultants/RAC
   const canSeeManagement = !!profile;
+  const canSeeVacations = hasAdminRole || isManager || isSupervisor || rawRoles.includes('rac' as any);
+  const vacationItem = { path: '/vacations', icon: PlaneTakeoff, label: 'Agenda de Férias' };
   
   // Memoize active path check to prevent recalculation on every render
   const isActive = useMemo(() => (path: string) => location.pathname === path, [location.pathname]);

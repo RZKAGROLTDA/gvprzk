@@ -37,6 +37,7 @@ import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import CRM from "./pages/CRM";
+import Vacations from "./pages/Vacations";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
@@ -85,6 +86,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/create-technical-visit" element={<Layout><CreateTechnicalVisit /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
       <Route path="/crm" element={<Layout><CRM /></Layout>} />
+      <Route path="/vacations" element={<Layout><Vacations /></Layout>} />
       <Route path="/campaigns" element={<Layout><Campaigns /></Layout>} />
       <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
