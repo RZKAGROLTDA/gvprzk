@@ -1528,6 +1528,69 @@ export type Database = {
         }
         Relationships: []
       }
+      team_vacations: {
+        Row: {
+          created_at: string
+          created_by: string
+          employee_name: string
+          employee_role: string | null
+          employee_user_id: string | null
+          end_date: string
+          filial_id: string
+          id: string
+          is_cancelled: boolean
+          observation: string | null
+          start_date: string
+          total_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          employee_name: string
+          employee_role?: string | null
+          employee_user_id?: string | null
+          end_date: string
+          filial_id: string
+          id?: string
+          is_cancelled?: boolean
+          observation?: string | null
+          start_date: string
+          total_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          employee_name?: string
+          employee_role?: string | null
+          employee_user_id?: string | null
+          end_date?: string
+          filial_id?: string
+          id?: string
+          is_cancelled?: boolean
+          observation?: string | null
+          start_date?: string
+          total_days?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_vacations_employee_user_id_fkey"
+            columns: ["employee_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "team_vacations_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_directory_cache: {
         Row: {
           approval_status: string
@@ -1706,7 +1769,41 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      team_vacations_view: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          employee_name: string | null
+          employee_role: string | null
+          employee_user_id: string | null
+          end_date: string | null
+          filial_id: string | null
+          filial_name: string | null
+          id: string | null
+          is_cancelled: boolean | null
+          observation: string | null
+          start_date: string | null
+          status: string | null
+          total_days: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_vacations_employee_user_id_fkey"
+            columns: ["employee_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "team_vacations_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_task_partial_sales_value: {
@@ -1721,6 +1818,7 @@ export type Database = {
         Args: { p_task_id: string }
         Returns: boolean
       }
+      can_insert_vacation: { Args: { p_filial_id: string }; Returns: boolean }
       can_modify_user_role: {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
