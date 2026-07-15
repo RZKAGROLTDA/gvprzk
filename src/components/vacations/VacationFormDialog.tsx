@@ -97,6 +97,7 @@ export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, locked
     };
     try {
       await create.mutateAsync(payload);
+      if (successMessage) toast.success(successMessage);
       onOpenChange(false);
     } catch {
       /* toast já exibido no hook */
