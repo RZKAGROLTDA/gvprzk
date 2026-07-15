@@ -14,6 +14,8 @@ interface Props {
   lockedFilialId?: string | null;
   /** Admin/manager podem escolher qualquer filial. */
   allowAnyFilial: boolean;
+  /** Mensagem custom exibida após criar (ex.: supervisor/RAC). */
+  successMessage?: string;
 }
 
 const roleLabels: Record<string, string> = {
