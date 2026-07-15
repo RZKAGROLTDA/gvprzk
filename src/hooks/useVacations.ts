@@ -181,3 +181,24 @@ export const useFiliaisList = () => {
     refetchOnWindowFocus: false,
   });
 };
+
+export const useCreatorNames = (ids: string[]) => {
+  const key = Array.from(new Set(ids)).sort().join(',');
+  return useQuery({
+    queryKey: ['vacation-creators', key],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const unique = Array.from(new Set(ids));
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, name')
+        .in('user_id', unique);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((r: any) => { map[r.user_id] = r.name; });
+      return map;
+    },
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
