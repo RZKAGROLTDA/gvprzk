@@ -275,7 +275,7 @@ export const generateTaskPDF = async (
   pdf.setTextColor(255, 255, 255);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(18);
-  pdf.text('Relatório da Visita', marginLeft, 15);
+  pdf.text(isChecklistPDF ? 'Relatório de Checklist da Oficina' : 'Relatório da Visita', marginLeft, 15);
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(10);
   pdf.text(
