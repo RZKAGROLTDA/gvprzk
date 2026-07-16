@@ -218,6 +218,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                       </div>
                     )}
                   </>
+                ) : (
                   <p className="text-sm italic text-muted-foreground">
                     Máquina não informada.
                   </p>
