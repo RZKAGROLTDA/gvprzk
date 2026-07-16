@@ -25,6 +25,8 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
       price: product.price || 0,
       observations: product.observations || '',
       photos: product.photos || [],
+      responseStatus: product.response_status || null,
+      responseNotes: product.response_notes || '',
     };
     
     // Log removido para performance
