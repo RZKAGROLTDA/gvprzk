@@ -25,6 +25,7 @@ import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateDisplay } from '@/lib/utils';
+import { WorkshopChecklistView } from './WorkshopChecklistView';
 
 interface Props {
   task: Task | null;
@@ -123,6 +124,19 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   }
   if (!currentTask) return null;
 
+  // ⚙️ Checklist da Oficina — relatório técnico com fluxo isolado.
+  // Não reutiliza blocos comerciais (oportunidade, prospect, próxima ação, timeline, duração).
+  if (currentTask.taskType === 'checklist') {
+    return (
+      <WorkshopChecklistView
+        task={currentTask}
+        filiais={filiais}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
+    );
+  }
+
   const itemsCount = currentTask.checklist?.length || 0;
   const selectedItemsCount = currentTask.checklist?.filter(i => i.selected).length || 0;
   const equipmentCount = currentTask.equipmentList?.length || 0;
@@ -145,7 +159,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const hasCheckIn = !!currentTask.checkInLocation?.timestamp;
 
   // === CHECKLIST DA OFICINA — métricas específicas ===
-  const isChecklist = currentTask.taskType === 'checklist';
+  const isChecklist = false; // handled by early return above (WorkshopChecklistView)
   const machine: any = (currentTask as any).checklistMachine || {};
   const checklistItems = (currentTask.checklist || []) as any[];
   const cCount = {

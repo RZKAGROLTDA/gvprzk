@@ -1809,8 +1809,10 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       }))} maxPhotos={10} hidePhotoUpload={taskCategory === 'call'} />
 
 
-        {/* Check-in de Localização - apenas para visita a campo */}
-        {taskCategory === 'field-visit' && <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />}
+        {/* Check-in de Localização - visita a campo e checklist da oficina */}
+        {(taskCategory === 'field-visit' || taskCategory === 'workshop-checklist') && (
+          <CheckInLocation checkInLocation={task.checkInLocation} onCheckIn={handleCheckIn} />
+        )}
 
          <div className="flex flex-col gap-4 mt-6">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">

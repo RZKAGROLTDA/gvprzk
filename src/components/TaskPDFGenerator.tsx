@@ -59,6 +59,12 @@ export const generateTaskPDF = async (
   getTaskTypeLabel: (type: string) => string = defaultGetTaskTypeLabel,
   filiais: any[] = []
 ) => {
+  // ⚙️ Checklist da Oficina — usa fluxo técnico isolado (sem conteúdo comercial).
+  if (task.taskType === 'checklist') {
+    const { generateWorkshopChecklistPDF } = await import('@/lib/workshopChecklistPdf');
+    return generateWorkshopChecklistPDF(task, filiais);
+  }
+
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.width;
   const pageHeight = pdf.internal.pageSize.height;
@@ -175,7 +181,7 @@ export const generateTaskPDF = async (
   const selectedItemsCount = task.checklist?.filter(i => i.selected).length || 0;
 
   // === Checklist da Oficina — específico ===
-  const isChecklistPDF = task.taskType === 'checklist';
+  const isChecklistPDF = false; // handled by early dispatch above (generateWorkshopChecklistPDF)
   const machinePDF: any = (task as any).checklistMachine || {};
   const checklistItemsPDF = (task.checklist || []) as any[];
   const cCountPDF = {
