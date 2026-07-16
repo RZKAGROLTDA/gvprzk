@@ -476,6 +476,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 )}
               </SectionCard>
             </div>
+            )}
 
             <div className="p-5 sm:p-7 space-y-4">
 
