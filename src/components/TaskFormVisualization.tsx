@@ -144,6 +144,34 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const hasNextAction = !!(currentTask.nextAction || currentTask.nextActionDate);
   const hasCheckIn = !!currentTask.checkInLocation?.timestamp;
 
+  // === CHECKLIST DA OFICINA — métricas específicas ===
+  const isChecklist = currentTask.taskType === 'checklist';
+  const machine: any = (currentTask as any).checklistMachine || {};
+  const checklistItems = (currentTask.checklist || []) as any[];
+  const cCount = {
+    total: checklistItems.length,
+    conforme: checklistItems.filter(i => i.responseStatus === 'conforme').length,
+    atencao: checklistItems.filter(i => i.responseStatus === 'atencao').length,
+    naoConforme: checklistItems.filter(i => i.responseStatus === 'nao_conforme').length,
+    na: checklistItems.filter(i => i.responseStatus === 'na').length,
+    semStatus: checklistItems.filter(i => !i.responseStatus).length,
+  };
+  const checklistConclusion =
+    cCount.total === 0
+      ? 'Nenhum item avaliado no checklist.'
+      : cCount.naoConforme > 0
+        ? `Foram identificadas ${cCount.naoConforme} não conformidade${cCount.naoConforme > 1 ? 's' : ''} que ${cCount.naoConforme > 1 ? 'precisam' : 'precisa'} de correção.`
+        : cCount.atencao > 0
+          ? `Foram identificados ${cCount.atencao} item${cCount.atencao > 1 ? 'ns' : ''} que exige${cCount.atencao > 1 ? 'm' : ''} atenção.`
+          : 'Máquina aprovada no checklist, sem não conformidades.';
+  const recommendations = checklistItems
+    .filter(i => i.responseStatus === 'atencao' || i.responseStatus === 'nao_conforme')
+    .map(i => ({
+      name: i.name as string,
+      status: i.responseStatus as 'atencao' | 'nao_conforme',
+      note: (i.responseNotes || i.observations || '') as string,
+    }));
+
   // Resumo executivo dinâmico
   const summarySentences: string[] = [];
   if (currentTask.startDate) {
