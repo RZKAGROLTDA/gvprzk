@@ -123,6 +123,19 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   }
   if (!currentTask) return null;
 
+  // ⚙️ Checklist da Oficina — relatório técnico com fluxo isolado.
+  // Não reutiliza blocos comerciais (oportunidade, prospect, próxima ação, timeline, duração).
+  if (currentTask.taskType === 'checklist') {
+    return (
+      <WorkshopChecklistView
+        task={currentTask}
+        filiais={filiais}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
+    );
+  }
+
   const itemsCount = currentTask.checklist?.length || 0;
   const selectedItemsCount = currentTask.checklist?.filter(i => i.selected).length || 0;
   const equipmentCount = currentTask.equipmentList?.length || 0;
