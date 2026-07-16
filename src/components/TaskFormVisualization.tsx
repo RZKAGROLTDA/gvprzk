@@ -144,6 +144,34 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const hasNextAction = !!(currentTask.nextAction || currentTask.nextActionDate);
   const hasCheckIn = !!currentTask.checkInLocation?.timestamp;
 
+  // === CHECKLIST DA OFICINA — métricas específicas ===
+  const isChecklist = currentTask.taskType === 'checklist';
+  const machine: any = (currentTask as any).checklistMachine || {};
+  const checklistItems = (currentTask.checklist || []) as any[];
+  const cCount = {
+    total: checklistItems.length,
+    conforme: checklistItems.filter(i => i.responseStatus === 'conforme').length,
+    atencao: checklistItems.filter(i => i.responseStatus === 'atencao').length,
+    naoConforme: checklistItems.filter(i => i.responseStatus === 'nao_conforme').length,
+    na: checklistItems.filter(i => i.responseStatus === 'na').length,
+    semStatus: checklistItems.filter(i => !i.responseStatus).length,
+  };
+  const checklistConclusion =
+    cCount.total === 0
+      ? 'Nenhum item avaliado no checklist.'
+      : cCount.naoConforme > 0
+        ? `Foram identificadas ${cCount.naoConforme} não conformidade${cCount.naoConforme > 1 ? 's' : ''} que ${cCount.naoConforme > 1 ? 'precisam' : 'precisa'} de correção.`
+        : cCount.atencao > 0
+          ? `Foram identificados ${cCount.atencao} item${cCount.atencao > 1 ? 'ns' : ''} que exige${cCount.atencao > 1 ? 'm' : ''} atenção.`
+          : 'Máquina aprovada no checklist, sem não conformidades.';
+  const recommendations = checklistItems
+    .filter(i => i.responseStatus === 'atencao' || i.responseStatus === 'nao_conforme')
+    .map(i => ({
+      name: i.name as string,
+      status: i.responseStatus as 'atencao' | 'nao_conforme',
+      note: (i.responseNotes || i.observations || '') as string,
+    }));
+
   // Resumo executivo dinâmico
   const summarySentences: string[] = [];
   if (currentTask.startDate) {
@@ -325,14 +353,24 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
             {/* 2. RESUMO */}
             <div className="px-5 sm:px-7 pt-5">
               <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Indicadores Operacionais
+                <Sparkles className="w-3.5 h-3.5" /> {isChecklist ? 'Resumo do Checklist' : 'Indicadores Operacionais'}
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
-                <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
-                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
-                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
-              </div>
+              {isChecklist ? (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <SummaryCard icon={ClipboardCheck} label="Itens Avaliados" value={String(cCount.total)} tone="primary" />
+                  <SummaryCard icon={CheckCircle2} label="Conformes" value={String(cCount.conforme)} tone={cCount.conforme > 0 ? 'success' : 'muted'} />
+                  <SummaryCard icon={AlertTriangle} label="Atenção" value={String(cCount.atencao)} tone={cCount.atencao > 0 ? 'warning' : 'muted'} />
+                  <SummaryCard icon={XCircle} label="Não Conformes" value={String(cCount.naoConforme)} tone={cCount.naoConforme > 0 ? 'destructive' : 'muted'} />
+                  <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'muted'} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
+                  <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
+                  <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
+                  <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
+                </div>
+              )}
             </div>
 
 
@@ -417,7 +455,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
             </div>
 
 
-            {/* 2.3 OPORTUNIDADE */}
+            {/* 2.3 OPORTUNIDADE — não se aplica ao Checklist da Oficina */}
+            {!isChecklist && (
             <div className="px-5 sm:px-7 pt-4">
               <SectionCard icon={Target} title="Oportunidade" tone="primary">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -437,6 +476,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 )}
               </SectionCard>
             </div>
+            )}
 
             <div className="p-5 sm:p-7 space-y-4">
 
@@ -665,85 +705,167 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
               )}
 
               {/* 8. PRODUTOS E SERVIÇOS ou CHECKLIST DA OFICINA */}
-              {currentTask.taskType === 'checklist' ? (
-                <SectionCard
-                  icon={ClipboardCheck}
-                  title="Checklist da Oficina"
-                  tone="primary"
-                  description={itemsCount > 0 ? `${itemsCount} item(ns) avaliado(s)` : undefined}
-                >
-                  {/* Máquina do Checklist (snapshot) */}
-                  {currentTask.checklistMachine ? (
-                    <div className="mb-4 rounded-lg border bg-muted/30 p-3">
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                        Máquina do Checklist
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                        <div><span className="text-muted-foreground">Tipo:</span> <span className="font-medium">{currentTask.checklistMachine.tipo || '—'}</span></div>
-                        <div><span className="text-muted-foreground">Modelo:</span> <span className="font-medium">{currentTask.checklistMachine.modelo || '—'}</span></div>
-                        <div><span className="text-muted-foreground">Chassi/Série:</span> <span className="font-medium">{currentTask.checklistMachine.chassi_serie || '—'}</span></div>
-                        <div><span className="text-muted-foreground">Ano:</span> <span className="font-medium">{currentTask.checklistMachine.ano || '—'}</span></div>
-                        <div><span className="text-muted-foreground">Horímetro:</span> <span className="font-medium">{currentTask.checklistMachine.horimetro || '—'}</span></div>
-                        <div><span className="text-muted-foreground">Status:</span> <span className="font-medium capitalize">{currentTask.checklistMachine.status || '—'}</span></div>
-                      </div>
-                      {currentTask.checklistMachine.observacao && (
-                        <div className="mt-2 text-xs italic text-muted-foreground">
-                          Obs: {currentTask.checklistMachine.observacao}
+              {isChecklist ? (
+                <>
+                  {/* IDENTIFICAÇÃO DA MÁQUINA */}
+                  <SectionCard
+                    icon={Wrench}
+                    title="Identificação da Máquina"
+                    tone="primary"
+                    description={machine.modelo || machine.tipo || undefined}
+                  >
+                    {currentTask.checklistMachine ? (
+                      <>
+                        <div className="mb-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-primary mb-1">Chassi / Nº de Série</p>
+                          <p className="text-2xl font-bold font-mono text-foreground break-all">
+                            {machine.chassi_serie || <span className="text-muted-foreground italic text-base font-normal">Não informado</span>}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mb-4 text-xs text-muted-foreground italic">
-                      Máquina não informada (registro anterior à padronização do checklist).
-                    </div>
-                  )}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <Field label="Tipo" value={machine.tipo} />
+                          <Field label="Modelo" value={machine.modelo} />
+                          <Field label="Ano" value={machine.ano} />
+                          <Field label="Horímetro" value={machine.horimetro} />
+                          <Field label="Status" value={machine.status ? String(machine.status).replace(/^./, c => c.toUpperCase()) : undefined} />
+                        </div>
+                        {machine.observacao && (
+                          <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+                            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1">Observação da máquina</p>
+                            <p className="text-sm whitespace-pre-wrap">{machine.observacao}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Máquina não informada (registro anterior à padronização do checklist).
+                      </p>
+                    )}
+                  </SectionCard>
 
-                  {currentTask.checklist && currentTask.checklist.length > 0 ? (
-                    <div className="overflow-x-auto rounded-lg border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Item</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
-                            <TableHead>Observação</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {currentTask.checklist.map((item, idx) => {
-                            const status = (item as any).responseStatus as string | null | undefined;
-                            const statusMap: Record<string, { label: string; variant: any }> = {
-                              conforme: { label: 'Conforme', variant: 'success' },
-                              atencao: { label: 'Atenção', variant: 'warning' },
-                              nao_conforme: { label: 'Não conforme', variant: 'destructive' },
-                              na: { label: 'N/A', variant: 'secondary' },
-                            };
-                            const s = status ? statusMap[status] : null;
-                            return (
-                              <TableRow key={item.id} className={idx % 2 === 1 ? 'bg-muted/20' : ''}>
-                                <TableCell className="text-sm font-medium">{item.name}</TableCell>
-                                <TableCell className="text-center">
-                                  {s ? (
-                                    <Badge variant={s.variant} className="text-xs">{s.label}</Badge>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">—</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-xs text-muted-foreground">
-                                  {(item as any).responseNotes || item.observations || '—'}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                  {/* RESULTADO DOS ITENS */}
+                  <SectionCard
+                    icon={ClipboardCheck}
+                    title="Resultado do Checklist"
+                    tone={cCount.naoConforme > 0 ? 'destructive' : cCount.atencao > 0 ? 'warning' : 'success'}
+                    description={cCount.total > 0 ? `${cCount.total} item(ns) avaliado(s)` : undefined}
+                  >
+                    {/* Conclusão automática */}
+                    <div className={`mb-4 rounded-lg border p-3 text-sm font-medium ${
+                      cCount.naoConforme > 0 ? 'border-destructive/30 bg-destructive/5 text-destructive'
+                      : cCount.atencao > 0 ? 'border-warning/30 bg-warning/5 text-warning'
+                      : 'border-success/30 bg-success/5 text-success'
+                    }`}>
+                      {checklistConclusion}
                     </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground text-sm">
-                      <ClipboardCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                      Nenhum item avaliado
-                    </div>
-                  )}
-                </SectionCard>
+
+                    {cCount.total > 0 ? (
+                      <div className="overflow-x-auto rounded-lg border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/50">
+                              <TableHead className="w-10">#</TableHead>
+                              <TableHead>Item</TableHead>
+                              <TableHead className="text-center whitespace-nowrap">Resultado</TableHead>
+                              <TableHead className="min-w-[220px]">Observação / Fotos</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {checklistItems.map((item: any, idx) => {
+                              const status = item.responseStatus as string | null | undefined;
+                              const statusMap: Record<string, { label: string; sym: string; variant: any }> = {
+                                conforme: { label: 'Conforme', sym: '✓', variant: 'success' },
+                                atencao: { label: 'Atenção', sym: '!', variant: 'warning' },
+                                nao_conforme: { label: 'Não conforme', sym: '✕', variant: 'destructive' },
+                                na: { label: 'Não se aplica', sym: '—', variant: 'secondary' },
+                              };
+                              const s = status ? statusMap[status] : null;
+                              const note = item.responseNotes || item.observations || '';
+                              const itemPhotos: string[] = Array.isArray(item.photos) ? item.photos : [];
+                              return (
+                                <TableRow key={item.id} className={idx % 2 === 1 ? 'bg-muted/20 align-top' : 'align-top'}>
+                                  <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                                  <TableCell className="text-sm font-medium">{item.name}</TableCell>
+                                  <TableCell className="text-center whitespace-nowrap">
+                                    {s ? (
+                                      <Badge variant={s.variant} className="text-xs inline-flex items-center gap-1">
+                                        <span className="font-mono font-bold">{s.sym}</span> {s.label}
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs">Item registrado</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-xs">
+                                    {note ? (
+                                      <p className="text-foreground whitespace-pre-wrap mb-2">{note}</p>
+                                    ) : (
+                                      <p className="text-muted-foreground italic mb-2">Sem observação</p>
+                                    )}
+                                    {itemPhotos.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {itemPhotos.map((ph, pi) => (
+                                          <img
+                                            key={pi}
+                                            src={ph}
+                                            alt={`${item.name} — foto ${pi + 1}`}
+                                            className="w-14 h-14 object-cover rounded border"
+                                            loading="lazy"
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                        <ClipboardCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        Nenhum item avaliado
+                      </div>
+                    )}
+                  </SectionCard>
+
+                  {/* RECOMENDAÇÕES TÉCNICAS */}
+                  <SectionCard
+                    icon={AlertTriangle}
+                    title="Recomendações Técnicas"
+                    tone={recommendations.length > 0 ? 'warning' : 'success'}
+                    description={recommendations.length > 0 ? `${recommendations.length} recomendação(ões)` : undefined}
+                  >
+                    {recommendations.length === 0 ? (
+                      <p className="text-sm text-muted-foreground italic">
+                        Nenhuma recomendação técnica registrada.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {recommendations.map((r, i) => (
+                          <li
+                            key={i}
+                            className={`rounded-lg border px-3 py-2 text-sm ${
+                              r.status === 'nao_conforme'
+                                ? 'border-destructive/30 bg-destructive/5'
+                                : 'border-warning/30 bg-warning/5'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <Badge variant={r.status === 'nao_conforme' ? 'destructive' : 'warning'} className="text-[10px] uppercase">
+                                {r.status === 'nao_conforme' ? 'Não conforme' : 'Atenção'}
+                              </Badge>
+                              <span className="font-semibold text-foreground">{r.name}</span>
+                            </div>
+                            {r.note && (
+                              <p className="text-xs text-muted-foreground pl-1">{r.note}</p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </SectionCard>
+                </>
               ) : (
               <SectionCard
                 icon={Package}
