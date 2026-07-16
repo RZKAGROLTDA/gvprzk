@@ -286,6 +286,16 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const [checklist, setChecklist] = useState<ProductType[]>([]);
   const [callProducts, setCallProducts] = useState<ProductType[]>([]);
 
+  // Workshop Checklist — snapshot da máquina auditada
+  const [checklistMachine, setChecklistMachine] = useState<{
+    tipo: string; modelo: string; chassi_serie: string; ano: string; horimetro: string; status: string; observacao: string;
+  }>({ tipo: '', modelo: '', chassi_serie: '', ano: '', horimetro: '', status: 'ativo', observacao: '' });
+  const [registerMachineInClient, setRegisterMachineInClient] = useState<boolean>(true);
+  const updateChecklistItem = (id: string, patch: Partial<ProductType>) => {
+    setChecklist(prev => prev.map(it => it.id === id ? { ...it, ...patch, selected: (patch.responseStatus ?? it.responseStatus) ? true : it.selected } : it));
+  };
+
+
   // Função para calcular valor total automático
   const calculateTotalSalesValue = () => {
     let total = 0;
