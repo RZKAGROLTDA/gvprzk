@@ -350,7 +350,9 @@ export const useTasks = () => {
           quantity: product.quantity || 0,
           price: product.price || 0,
           observations: product.observations || '',
-          photos: product.photos || []
+          photos: product.photos || [],
+          response_status: product.responseStatus || null,
+          response_notes: product.responseNotes || '',
         }));
 
         const { error: productsError } = await supabase
@@ -358,6 +360,54 @@ export const useTasks = () => {
           .insert(products);
 
         if (productsError) throw productsError;
+      }
+
+      // Workshop Checklist: opcionalmente adicionar a máquina ao cadastro do cliente.
+      // Falha aqui NÃO cancela o salvamento do checklist — apenas emite aviso.
+      if (
+        taskData.taskType === 'checklist' &&
+        taskData.registerMachineInClient &&
+        taskData.checklistMachine &&
+        (taskData.checklistMachine.modelo || taskData.checklistMachine.chassi_serie || taskData.checklistMachine.tipo)
+      ) {
+        try {
+          const m = taskData.checklistMachine;
+          const normalizedCode = (taskData.clientCode || '').trim();
+          const normalizedSerial = (m.chassi_serie || '').trim();
+          let existingId: string | null = null;
+          if (normalizedSerial) {
+            const { data: existing } = await supabase
+              .from('client_equipment')
+              .select('id')
+              .eq('serial_chassis', normalizedSerial)
+              .maybeSingle();
+            if (existing?.id) existingId = existing.id;
+          }
+          if (!existingId) {
+            const yearNum = m.ano ? parseInt(String(m.ano).replace(/\D/g, ''), 10) : null;
+            const hoursNum = m.horimetro ? parseFloat(String(m.horimetro).replace(/[^\d.,]/g, '').replace(',', '.')) : null;
+            await supabase.from('client_equipment').insert({
+              client_code: normalizedCode || null,
+              client_name: taskData.client || '',
+              filial_id: (taskData as any).filial_id || null,
+              machine_type: m.tipo || null,
+              model: m.modelo || null,
+              serial_chassis: normalizedSerial || null,
+              year: Number.isFinite(yearNum as number) ? yearNum : null,
+              hours: Number.isFinite(hoursNum as number) ? hoursNum : null,
+              machine_status: m.status || 'ativo',
+              observation: m.observacao || null,
+              created_by: user.id,
+            });
+          }
+        } catch (equipError: any) {
+          console.warn('⚠️ Falha ao adicionar máquina ao cadastro do cliente:', equipError);
+          toast({
+            title: '⚠️ Máquina não adicionada',
+            description: 'Checklist salvo, mas não foi possível adicionar a máquina ao cadastro do cliente.',
+            variant: 'destructive',
+          });
+        }
       }
 
       // Criar lembretes
