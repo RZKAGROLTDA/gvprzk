@@ -454,88 +454,16 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     observations: '',
     photos: []
   }];
-  const workshopChecklistItems: ProductType[] = [{
-    id: '1',
-    name: 'Verificação de Óleo do Motor',
-    category: 'oils',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '2',
-    name: 'Inspeção de Freios',
-    category: 'other',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '3',
-    name: 'Verificação de Pneus',
-    category: 'tires',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '4',
-    name: 'Teste de Bateria',
-    category: 'batteries',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '5',
-    name: 'Verificação de Luzes',
-    category: 'other',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '6',
-    name: 'Inspeção de Suspensão',
-    category: 'other',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '7',
-    name: 'Verificação de Líquidos',
-    category: 'oils',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '8',
-    name: 'Diagnóstico Eletrônico',
-    category: 'other',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }, {
-    id: '9',
-    name: 'Limpeza Geral',
-    category: 'other',
-    selected: false,
-    quantity: 1,
-    price: 0,
-    observations: '',
-    photos: []
-  }];
+  const workshopChecklistItems: ProductType[] = [
+    { id: '1', name: 'Verificação de Óleo do Motor', category: 'oils', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+    { id: '2', name: 'Nível de Óleo da Transmissão', category: 'oils', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+    { id: '3', name: 'Verificação de Pneus', category: 'tires', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+    { id: '4', name: 'Teste de Bateria', category: 'batteries', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+    { id: '5', name: 'Verificação de Luzes', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+    { id: '6', name: 'Inspeção de Suspensão', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+    { id: '7', name: 'Verificação de Líquidos', category: 'oils', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+    { id: '8', name: 'Limpeza Geral', category: 'other', selected: false, quantity: 1, price: 0, observations: '', photos: [], responseStatus: null, responseNotes: '' },
+  ];
   const getProductsForCategory = () => {
     switch (taskCategory) {
       case 'field-visit':
