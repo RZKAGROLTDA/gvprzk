@@ -159,7 +159,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const hasCheckIn = !!currentTask.checkInLocation?.timestamp;
 
   // === CHECKLIST DA OFICINA — métricas específicas ===
-  const isChecklist = currentTask.taskType === 'checklist';
+  const isChecklist = false; // handled by early return above (WorkshopChecklistView)
   const machine: any = (currentTask as any).checklistMachine || {};
   const checklistItems = (currentTask.checklist || []) as any[];
   const cCount = {
