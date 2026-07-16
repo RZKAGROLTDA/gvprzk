@@ -353,14 +353,24 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
             {/* 2. RESUMO */}
             <div className="px-5 sm:px-7 pt-5">
               <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Indicadores Operacionais
+                <Sparkles className="w-3.5 h-3.5" /> {isChecklist ? 'Resumo do Checklist' : 'Indicadores Operacionais'}
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
-                <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
-                <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
-                <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
-              </div>
+              {isChecklist ? (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <SummaryCard icon={ClipboardCheck} label="Itens Avaliados" value={String(cCount.total)} tone="primary" />
+                  <SummaryCard icon={CheckCircle2} label="Conformes" value={String(cCount.conforme)} tone={cCount.conforme > 0 ? 'success' : 'muted'} />
+                  <SummaryCard icon={AlertTriangle} label="Atenção" value={String(cCount.atencao)} tone={cCount.atencao > 0 ? 'warning' : 'muted'} />
+                  <SummaryCard icon={XCircle} label="Não Conformes" value={String(cCount.naoConforme)} tone={cCount.naoConforme > 0 ? 'destructive' : 'muted'} />
+                  <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'muted'} />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <SummaryCard icon={Tractor} label="Equipamentos" value={String(equipmentCount)} sub={equipmentTotalUnits ? `${equipmentTotalUnits} un.` : undefined} tone={equipmentCount > 0 ? 'success' : 'muted'} />
+                  <SummaryCard icon={Camera} label="Fotos" value={String(photoCount)} tone={photoCount > 0 ? 'success' : 'warning'} />
+                  <SummaryCard icon={Navigation} label="Localização" value={hasLocation ? 'Sim' : '—'} tone={hasLocation ? 'success' : 'destructive'} />
+                  <SummaryCard icon={Package} label="Itens Vendidos" value={`${selectedItemsCount}/${itemsCount}`} tone={itemsCount === 0 ? 'muted' : selectedItemsCount > 0 ? 'success' : 'warning'} />
+                </div>
+              )}
             </div>
 
 
