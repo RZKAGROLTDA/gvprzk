@@ -25,6 +25,7 @@ import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateDisplay } from '@/lib/utils';
+import { WorkshopChecklistView } from './WorkshopChecklistView';
 
 interface Props {
   task: Task | null;
