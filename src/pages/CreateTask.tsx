@@ -925,9 +925,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       // Horário atual exato
       endTime: currentTime,
       // Horário atual exato
-      checklist: checklist.filter(item => item.selected),
+      checklist: taskCategory === 'workshop-checklist'
+        ? checklist.filter(item => item.responseStatus)
+        : checklist.filter(item => item.selected),
       reminders,
-      equipmentList
+      equipmentList,
+      ...(taskCategory === 'workshop-checklist' ? {
+        checklistMachine,
+        registerMachineInClient,
+      } : {})
     };
     try {
       const finalTaskData = {
