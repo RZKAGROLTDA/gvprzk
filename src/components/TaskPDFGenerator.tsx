@@ -181,7 +181,7 @@ export const generateTaskPDF = async (
   const selectedItemsCount = task.checklist?.filter(i => i.selected).length || 0;
 
   // === Checklist da Oficina — específico ===
-  const isChecklistPDF = task.taskType === 'checklist';
+  const isChecklistPDF = false; // handled by early dispatch above (generateWorkshopChecklistPDF)
   const machinePDF: any = (task as any).checklistMachine || {};
   const checklistItemsPDF = (task.checklist || []) as any[];
   const cCountPDF = {
