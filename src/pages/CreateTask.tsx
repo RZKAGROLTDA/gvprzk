@@ -1267,71 +1267,140 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           )}
 
           {/* Workshop Checklist mantém layout próprio (não comercial) */}
-          {taskCategory === 'workshop-checklist' && <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  Checklist da Oficina
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CollapsibleProductsBlock products={checklist}>
-                <div className="space-y-6">
-                  {checklist.map(item => <Card key={item.id} className="border border-border/50">
-                      <CardContent className="p-4">
-                        <div className="space-y-4">
-                          <div className="flex items-center space-x-2">
-                            <Checkbox id={item.id} checked={item.selected} onCheckedChange={checked => handleChecklistChange(item.id, checked as boolean)} />
-                            <Label htmlFor={item.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                              {item.name}
-                            </Label>
-                          </div>
+          {taskCategory === 'workshop-checklist' && (
+            <div className="space-y-6">
+              {/* Bloco: Máquina do Checklist */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Máquina do Checklist
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Tipo da máquina</Label>
+                      <Input value={checklistMachine.tipo} onChange={e => setChecklistMachine(m => ({ ...m, tipo: e.target.value }))} placeholder="Ex: Trator, Colheitadeira" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Modelo</Label>
+                      <Input value={checklistMachine.modelo} onChange={e => setChecklistMachine(m => ({ ...m, modelo: e.target.value }))} placeholder="Ex: 6110J" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Chassi / Série</Label>
+                      <Input value={checklistMachine.chassi_serie} onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))} placeholder="Chassi/Nº de série" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ano</Label>
+                      <Input value={checklistMachine.ano} onChange={e => setChecklistMachine(m => ({ ...m, ano: e.target.value }))} placeholder="Ex: 2022" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Horímetro</Label>
+                      <Input value={checklistMachine.horimetro} onChange={e => setChecklistMachine(m => ({ ...m, horimetro: e.target.value }))} placeholder="Ex: 1245" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <select
+                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        value={checklistMachine.status}
+                        onChange={e => setChecklistMachine(m => ({ ...m, status: e.target.value }))}
+                      >
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                        <option value="manutencao">Em manutenção</option>
+                        <option value="parada">Parada</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Observação da máquina</Label>
+                    <Textarea
+                      value={checklistMachine.observacao}
+                      onChange={e => setChecklistMachine(m => ({ ...m, observacao: e.target.value }))}
+                      placeholder="Observações sobre a máquina auditada..."
+                      className="min-h-[70px]"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={registerMachineInClient}
+                      onCheckedChange={c => setRegisterMachineInClient(Boolean(c))}
+                    />
+                    <span>Adicionar esta máquina ao cadastro do cliente</span>
+                  </label>
+                </CardContent>
+              </Card>
 
-                          {item.selected && <div className="ml-6 space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor={`qty-${item.id}`}>QTD</Label>
-                                  <Input id={`qty-${item.id}`} type="number" min="0" value={item.quantity || ''} onChange={e => handleProductChange(item.id, 'quantity', parseInt(e.target.value) || 0)} placeholder="" />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor={`price-${item.id}`}>Valor Unitário</Label>
-                                  <div className="relative">
-                                    <Input id={`price-${item.id}`} type="text" value={item.price ? new Intl.NumberFormat('pt-BR', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            }).format(item.price) : ''} onChange={e => {
-                              const value = e.target.value.replace(/\D/g, '');
-                              const numericValue = parseFloat(value) / 100;
-                              handleProductChange(item.id, 'price', isNaN(numericValue) ? 0 : numericValue);
-                            }} placeholder="0,00" className="pl-8" />
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <Label>Valor Total</Label>
-                                  <div className="relative">
-                                    <Input type="text" className="pl-8 bg-muted cursor-not-allowed" value={item.selected && item.price && item.quantity ? new Intl.NumberFormat('pt-BR', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2
-                            }).format(item.price * item.quantity) : '0,00'} readOnly />
-                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                                  </div>
-                                </div>
+              {/* Bloco: Itens do Checklist */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Checklist da Oficina
+                  </CardTitle>
+                  {(checklistMachine.modelo || checklistMachine.chassi_serie || checklistMachine.ano || checklistMachine.horimetro) && (
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {checklistMachine.modelo && <span><strong>Modelo:</strong> {checklistMachine.modelo}</span>}
+                      {checklistMachine.chassi_serie && <span><strong>Chassi:</strong> {checklistMachine.chassi_serie}</span>}
+                      {checklistMachine.ano && <span><strong>Ano:</strong> {checklistMachine.ano}</span>}
+                      {checklistMachine.horimetro && <span><strong>Horímetro:</strong> {checklistMachine.horimetro}</span>}
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {checklist.map(item => {
+                      const status = item.responseStatus || null;
+                      const options: { key: 'conforme'|'atencao'|'nao_conforme'|'na'; label: string; cls: string }[] = [
+                        { key: 'conforme', label: 'Conforme', cls: 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600' },
+                        { key: 'atencao', label: 'Atenção', cls: 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500' },
+                        { key: 'nao_conforme', label: 'Não conforme', cls: 'bg-red-600 hover:bg-red-700 text-white border-red-600' },
+                        { key: 'na', label: 'N/A', cls: 'bg-muted text-foreground border-muted' },
+                      ];
+                      return (
+                        <Card key={item.id} className="border border-border/50">
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                              <div className="text-sm font-medium">{item.name}</div>
+                              <div className="flex flex-wrap gap-2">
+                                {options.map(o => {
+                                  const active = status === o.key;
+                                  return (
+                                    <button
+                                      key={o.key}
+                                      type="button"
+                                      onClick={() => updateChecklistItem(item.id, { responseStatus: o.key })}
+                                      className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${active ? o.cls : 'bg-background border-input hover:bg-muted'}`}
+                                    >
+                                      {o.label}
+                                    </button>
+                                  );
+                                })}
                               </div>
-
+                            </div>
+                            {status && (
                               <div className="space-y-2">
-                                <Label htmlFor={`obs-${item.id}`}>Observações</Label>
-                                <Textarea id={`obs-${item.id}`} value={item.observations || ''} onChange={e => handleProductChange(item.id, 'observations', e.target.value)} placeholder="Observações sobre este produto..." className="min-h-[80px]" />
+                                <Label htmlFor={`notes-${item.id}`} className="text-xs text-muted-foreground">Observação (opcional)</Label>
+                                <Textarea
+                                  id={`notes-${item.id}`}
+                                  value={item.responseNotes || ''}
+                                  onChange={e => updateChecklistItem(item.id, { responseNotes: e.target.value })}
+                                  placeholder="Descreva o que foi observado..."
+                                  className="min-h-[60px]"
+                                />
                               </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-                            </div>}
-                        </div>
-                      </CardContent>
-                    </Card>)}
-                </div>
-                </CollapsibleProductsBlock>
-              </CardContent>
-            </Card>}
 
           {/* Produtos para Ligação — wrapper modernizado (Fase 2) */}
           {taskCategory === 'call' && <ProductsOfferSection>
