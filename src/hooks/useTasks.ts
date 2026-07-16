@@ -308,7 +308,8 @@ export const useTasks = () => {
             next_action_date: typeof taskData.nextActionDate === 'string'
               ? (taskData.nextActionDate || null)
               : ((taskData.nextActionDate as Date)?.toISOString().split('T')[0] || null)
-          })
+          }),
+          ...(taskData.checklistMachine !== undefined && { checklist_machine: taskData.checklistMachine || null })
         })
         .select()
         .single();
