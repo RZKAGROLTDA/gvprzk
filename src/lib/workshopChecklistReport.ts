@@ -113,18 +113,19 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
     naoPreenchido: allItems.filter(i => i.status === null).length,
   };
 
-  // Conclusão — SOMENTE com base em response_status (nunca declara aprovado se houver itens sem resposta).
+  // Conclusão — baseada apenas nos itens efetivamente respondidos.
+  // Não é considerado "incompleto" quando itens ficam sem resposta:
+  // nem toda máquina precisa avaliar todos os itens (bateria, transmissão etc.).
+  const respondidos = counts.conforme + counts.atencao + counts.naoConforme + counts.na;
   let conclusion: string;
   if (counts.naoConforme > 0) {
     conclusion = 'Foram identificadas não conformidades que necessitam de correção.';
   } else if (counts.atencao > 0) {
     conclusion = 'Foram identificados pontos que exigem atenção.';
-  } else if (counts.naoPreenchido > 0) {
-    conclusion = 'Checklist incompleto: existem itens sem avaliação.';
-  } else if (counts.conforme + counts.na === counts.total && counts.total > 0) {
+  } else if (respondidos > 0) {
     conclusion = 'Checklist concluído sem não conformidades.';
   } else {
-    conclusion = 'Checklist ainda não foi avaliado.';
+    conclusion = 'Nenhum item do checklist foi avaliado.';
   }
 
   const recommendations = allItems
