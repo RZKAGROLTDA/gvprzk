@@ -180,7 +180,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                   />
                 ))}
 
-                {canSeeVacations && (
+                {!isAdmin && canSeeVacations && (
                   <NavLink
                     key={vacationItem.path}
                     item={vacationItem}
@@ -188,13 +188,20 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                     className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
                   />
                 )}
-                
-                
+
                 {isAdmin && (
                   <>
                     <div className="border-t pt-2 mt-2">
                       <p className="text-xs font-semibold text-muted-foreground px-3 py-2">ADMINISTRAÇÃO</p>
                     </div>
+                    {canSeeVacations && (
+                      <NavLink
+                        key={vacationItem.path}
+                        item={vacationItem}
+                        isActive={isActive(vacationItem.path)}
+                        className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
+                      />
+                    )}
                     {adminItems.map(item => (
                       <NavLink 
                         key={item.path}
