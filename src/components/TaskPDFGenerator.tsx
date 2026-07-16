@@ -1102,5 +1102,6 @@ export const generateTaskPDF = async (
   pdf.setTextColor(0, 0, 0);
 
   const clientName = (task.client || 'cliente').replace(/\s+/g, '-').toLowerCase();
-  pdf.save(`visita-${clientName}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+  const filePrefix = isChecklistPDF ? 'checklist-oficina' : 'visita';
+  pdf.save(`${filePrefix}-${clientName}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
 };
