@@ -86,6 +86,9 @@ export interface ProductType {
   price?: number;
   observations?: string;
   photos?: string[];
+  // Workshop Checklist — status por item
+  responseStatus?: 'conforme' | 'atencao' | 'nao_conforme' | 'na' | null;
+  responseNotes?: string;
 }
 
 export interface Reminder {
