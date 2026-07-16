@@ -548,8 +548,64 @@ export const generateTaskPDF = async (
     yPos += 2;
   }
 
-  // ===== 7. PRODUTOS E SERVIÇOS =====
-  if (task.checklist && task.checklist.length > 0) {
+  // ===== 7. PRODUTOS E SERVIÇOS / CHECKLIST DA OFICINA =====
+  if (task.taskType === 'checklist') {
+    // Máquina do Checklist
+    sectionTitle('Máquina do Checklist');
+    const m: any = (task as any).checklistMachine || {};
+    twoColRow('Tipo', String(m.tipo || '—'), 'Modelo', String(m.modelo || '—'));
+    twoColRow('Chassi/Série', String(m.chassi_serie || '—'), 'Ano', String(m.ano || '—'));
+    twoColRow('Horímetro', String(m.horimetro || '—'), 'Status', String(m.status || '—'));
+    if (m.observacao) {
+      ensureSpace(6);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(8);
+      pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
+      const lines = pdf.splitTextToSize(`Obs máquina: ${String(m.observacao)}`, contentWidth);
+      pdf.text(lines, marginLeft, yPos);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      yPos += 4 * lines.length + 2;
+    }
+
+    if (task.checklist && task.checklist.length > 0) {
+      sectionTitle(`Itens do Checklist (${task.checklist.length})`);
+      ensureSpace(8);
+      pdf.setFillColor(PRIMARY[0], PRIMARY[1], PRIMARY[2]);
+      pdf.rect(marginLeft, yPos - 4, contentWidth, 6, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
+      pdf.text('Item', marginLeft + 2, yPos);
+      pdf.text('Status', marginLeft + 100, yPos);
+      pdf.text('Observação', marginLeft + 130, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 5;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      const statusLabels: Record<string, string> = {
+        conforme: 'Conforme',
+        atencao: 'Atenção',
+        nao_conforme: 'Não conforme',
+        na: 'N/A',
+      };
+      task.checklist.forEach((item: any, idx) => {
+        ensureSpace(6);
+        if (idx % 2 === 1) {
+          pdf.setFillColor(247, 249, 252);
+          pdf.rect(marginLeft, yPos - 4, contentWidth, 5, 'F');
+        }
+        const name = pdf.splitTextToSize(item.name || '—', 94);
+        pdf.text(name[0], marginLeft + 2, yPos);
+        pdf.text(statusLabels[item.responseStatus] || '—', marginLeft + 100, yPos);
+        const notes = pdf.splitTextToSize(String(item.responseNotes || item.observations || '—'), contentWidth - 130);
+        pdf.text(notes[0], marginLeft + 130, yPos);
+        yPos += 5;
+      });
+      yPos += 2;
+    }
+  } else if (task.checklist && task.checklist.length > 0) {
     const selectedCount = task.checklist.filter(i => i.selected).length;
     sectionTitle(`Produtos e Serviços (${task.checklist.length})`);
 

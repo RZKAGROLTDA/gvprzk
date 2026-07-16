@@ -25,6 +25,8 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
       price: product.price || 0,
       observations: product.observations || '',
       photos: product.photos || [],
+      responseStatus: product.response_status || null,
+      responseNotes: product.response_notes || '',
     };
     
     // Log removido para performance
@@ -95,6 +97,7 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     equipmentQuantity: supabaseTask.equipment_quantity || 0,
     propertyHectares: supabaseTask.propertyhectares || 0,
     equipmentList: Array.isArray(supabaseTask.equipment_list) ? supabaseTask.equipment_list : [],
+    checklistMachine: supabaseTask.checklist_machine || undefined,
     // Add security metadata
     isMasked
   };

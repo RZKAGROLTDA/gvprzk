@@ -664,7 +664,87 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                 </SectionCard>
               )}
 
-              {/* 8. PRODUTOS E SERVIÇOS (read-only) */}
+              {/* 8. PRODUTOS E SERVIÇOS ou CHECKLIST DA OFICINA */}
+              {currentTask.taskType === 'checklist' ? (
+                <SectionCard
+                  icon={ClipboardCheck}
+                  title="Checklist da Oficina"
+                  tone="primary"
+                  description={itemsCount > 0 ? `${itemsCount} item(ns) avaliado(s)` : undefined}
+                >
+                  {/* Máquina do Checklist (snapshot) */}
+                  {currentTask.checklistMachine ? (
+                    <div className="mb-4 rounded-lg border bg-muted/30 p-3">
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                        Máquina do Checklist
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div><span className="text-muted-foreground">Tipo:</span> <span className="font-medium">{currentTask.checklistMachine.tipo || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Modelo:</span> <span className="font-medium">{currentTask.checklistMachine.modelo || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Chassi/Série:</span> <span className="font-medium">{currentTask.checklistMachine.chassi_serie || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Ano:</span> <span className="font-medium">{currentTask.checklistMachine.ano || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Horímetro:</span> <span className="font-medium">{currentTask.checklistMachine.horimetro || '—'}</span></div>
+                        <div><span className="text-muted-foreground">Status:</span> <span className="font-medium capitalize">{currentTask.checklistMachine.status || '—'}</span></div>
+                      </div>
+                      {currentTask.checklistMachine.observacao && (
+                        <div className="mt-2 text-xs italic text-muted-foreground">
+                          Obs: {currentTask.checklistMachine.observacao}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mb-4 text-xs text-muted-foreground italic">
+                      Máquina não informada (registro anterior à padronização do checklist).
+                    </div>
+                  )}
+
+                  {currentTask.checklist && currentTask.checklist.length > 0 ? (
+                    <div className="overflow-x-auto rounded-lg border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Item</TableHead>
+                            <TableHead className="text-center">Status</TableHead>
+                            <TableHead>Observação</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {currentTask.checklist.map((item, idx) => {
+                            const status = (item as any).responseStatus as string | null | undefined;
+                            const statusMap: Record<string, { label: string; variant: any }> = {
+                              conforme: { label: 'Conforme', variant: 'success' },
+                              atencao: { label: 'Atenção', variant: 'warning' },
+                              nao_conforme: { label: 'Não conforme', variant: 'destructive' },
+                              na: { label: 'N/A', variant: 'secondary' },
+                            };
+                            const s = status ? statusMap[status] : null;
+                            return (
+                              <TableRow key={item.id} className={idx % 2 === 1 ? 'bg-muted/20' : ''}>
+                                <TableCell className="text-sm font-medium">{item.name}</TableCell>
+                                <TableCell className="text-center">
+                                  {s ? (
+                                    <Badge variant={s.variant} className="text-xs">{s.label}</Badge>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground">
+                                  {(item as any).responseNotes || item.observations || '—'}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <ClipboardCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                      Nenhum item avaliado
+                    </div>
+                  )}
+                </SectionCard>
+              ) : (
               <SectionCard
                 icon={Package}
                 title="Produtos e Serviços"
@@ -732,6 +812,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   </div>
                 )}
               </SectionCard>
+              )}
 
               {/* 9. VISITA TÉCNICA (quando aplicável) */}
               {currentTask.taskType === 'technical_visit' && (

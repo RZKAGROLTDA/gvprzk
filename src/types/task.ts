@@ -60,6 +60,19 @@ export interface Task {
   contactFunction?: string;
   nextAction?: string;
   nextActionDate?: Date | string;
+  // Workshop Checklist — snapshot da máquina específica auditada
+  checklistMachine?: {
+    equipment_id?: string;
+    tipo?: string;
+    modelo?: string;
+    chassi_serie?: string;
+    ano?: string;
+    horimetro?: string;
+    status?: string;
+    observacao?: string;
+  };
+  // Se marcado, tentar adicionar a máquina em client_equipment ao salvar
+  registerMachineInClient?: boolean;
   // Security metadata
   isMasked?: boolean; // Indicates if customer data is masked for security
 }
@@ -73,6 +86,9 @@ export interface ProductType {
   price?: number;
   observations?: string;
   photos?: string[];
+  // Workshop Checklist — status por item
+  responseStatus?: 'conforme' | 'atencao' | 'nao_conforme' | 'na' | null;
+  responseNotes?: string;
 }
 
 export interface Reminder {
