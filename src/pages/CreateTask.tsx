@@ -1391,6 +1391,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                 />
                               </div>
                             )}
+                            {status && (
+                              <div className="pt-2 border-t border-border/40">
+                                <PhotoUpload
+                                  photos={item.photos || []}
+                                  onPhotosChange={(photos) => updateChecklistItem(item.id, { photos })}
+                                  maxPhotos={6}
+                                />
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       );
