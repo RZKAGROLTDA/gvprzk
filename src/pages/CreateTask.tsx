@@ -1136,7 +1136,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
 
       {(selectedTaskType || propTaskType) && <form onSubmit={handleSubmit}>
 
-        <div className={`grid grid-cols-1 gap-6 ${taskCategory === 'workshop-checklist' ? 'lg:grid-cols-2' : ''}`}>
+        <div className="grid grid-cols-1 gap-6">
           {/* Informações Básicas */}
           {/* Informações Básicas (bloco padronizado) */}
           <BasicInfoBlock
@@ -1388,6 +1388,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                                   onChange={e => updateChecklistItem(item.id, { responseNotes: e.target.value })}
                                   placeholder="Descreva o que foi observado..."
                                   className="min-h-[60px]"
+                                />
+                              </div>
+                            )}
+                            {status && (
+                              <div className="pt-2 border-t border-border/40">
+                                <PhotoUpload
+                                  photos={item.photos || []}
+                                  onPhotosChange={(photos) => updateChecklistItem(item.id, { photos })}
+                                  maxPhotos={6}
                                 />
                               </div>
                             )}
