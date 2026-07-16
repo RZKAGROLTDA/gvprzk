@@ -455,7 +455,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
             </div>
 
 
-            {/* 2.3 OPORTUNIDADE */}
+            {/* 2.3 OPORTUNIDADE — não se aplica ao Checklist da Oficina */}
+            {!isChecklist && (
             <div className="px-5 sm:px-7 pt-4">
               <SectionCard icon={Target} title="Oportunidade" tone="primary">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
