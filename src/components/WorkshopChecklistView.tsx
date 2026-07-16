@@ -220,7 +220,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                   </>
                 ) : (
                   <p className="text-sm italic text-muted-foreground">
-                    Máquina não informada (registro anterior à padronização do checklist).
+                    Máquina não informada.
                   </p>
                 )}
               </SectionCard>

@@ -231,7 +231,7 @@ export const generateWorkshopChecklistPDF = async (
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'italic');
     ensureSpace(6);
-    pdf.text('Máquina não informada (registro anterior à padronização do checklist).', marginLeft, yPos);
+    pdf.text('Máquina não informada.', marginLeft, yPos);
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(0, 0, 0);
     yPos += 7;
