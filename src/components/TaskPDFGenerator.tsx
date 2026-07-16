@@ -429,21 +429,23 @@ export const generateTaskPDF = async (
     yPos += 2;
   }
 
-  // ===== 2.4 OPORTUNIDADE =====
-  sectionTitle('Oportunidade');
-  fourColRow([
-    ['Valor Potencial', potentialValue > 0 ? currency(potentialValue) : '—'],
-    ['Valor Fechado', closedValue > 0 ? currency(closedValue) : '—'],
-    ['Valor Parcial', partialValue > 0 ? currency(partialValue) : '—'],
-    ['Taxa de Conversão', conversion],
-  ]);
-  fourColRow([
-    ['Classificação', statusLabel],
-    ['Interesse', String(task.opportunityInterest || '—')],
-    ['Urgência', String(task.opportunityUrgency || '—')],
-    ['Impacto', String(task.opportunityImpact || '—')],
-  ]);
-  twoColRow('Possibilidade de Fechamento', String(task.opportunityClosing || '—'), '', '');
+  // ===== 2.4 OPORTUNIDADE — não se aplica ao Checklist da Oficina =====
+  if (!isChecklistPDF) {
+    sectionTitle('Oportunidade');
+    fourColRow([
+      ['Valor Potencial', potentialValue > 0 ? currency(potentialValue) : '—'],
+      ['Valor Fechado', closedValue > 0 ? currency(closedValue) : '—'],
+      ['Valor Parcial', partialValue > 0 ? currency(partialValue) : '—'],
+      ['Taxa de Conversão', conversion],
+    ]);
+    fourColRow([
+      ['Classificação', statusLabel],
+      ['Interesse', String(task.opportunityInterest || '—')],
+      ['Urgência', String(task.opportunityUrgency || '—')],
+      ['Impacto', String(task.opportunityImpact || '—')],
+    ]);
+    twoColRow('Possibilidade de Fechamento', String(task.opportunityClosing || '—'), '', '');
+  }
 
   // ===== 3. DADOS DO CLIENTE =====
 
