@@ -639,6 +639,8 @@ export type Database = {
           photos: string[] | null
           price: number | null
           quantity: number | null
+          response_notes: string | null
+          response_status: string | null
           selected: boolean | null
           task_id: string
           updated_at: string
@@ -652,6 +654,8 @@ export type Database = {
           photos?: string[] | null
           price?: number | null
           quantity?: number | null
+          response_notes?: string | null
+          response_status?: string | null
           selected?: boolean | null
           task_id: string
           updated_at?: string
@@ -665,6 +669,8 @@ export type Database = {
           photos?: string[] | null
           price?: number | null
           quantity?: number | null
+          response_notes?: string | null
+          response_status?: string | null
           selected?: boolean | null
           task_id?: string
           updated_at?: string
@@ -1138,6 +1144,7 @@ export type Database = {
       tasks: {
         Row: {
           check_in_location: Json | null
+          checklist_machine: Json | null
           client: string
           clientcode: string | null
           contact_function: string | null
@@ -1189,6 +1196,7 @@ export type Database = {
         }
         Insert: {
           check_in_location?: Json | null
+          checklist_machine?: Json | null
           client: string
           clientcode?: string | null
           contact_function?: string | null
@@ -1240,6 +1248,7 @@ export type Database = {
         }
         Update: {
           check_in_location?: Json | null
+          checklist_machine?: Json | null
           client?: string
           clientcode?: string | null
           contact_function?: string | null
