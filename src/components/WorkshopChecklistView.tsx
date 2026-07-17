@@ -85,9 +85,10 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
   const [editMachineOpen, setEditMachineOpen] = useState(false);
   const { isAdmin, isManager } = useUserRole();
-  const canEditMachine = isAdmin || isManager;
 
   const report = buildWorkshopChecklistReport(task);
+  // Registros legados NUNCA permitem edição posterior da máquina — evita informação incorreta no histórico.
+  const canEditMachine = (isAdmin || isManager) && !report.isLegacy;
 
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
