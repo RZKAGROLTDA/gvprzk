@@ -443,13 +443,8 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                 </div>
               )}
 
-              {/* MARCO DE TRANSIÇÃO — nota discreta em registros legados */}
-              {report.isLegacy && (
-                <div className="rounded-lg border border-dashed bg-muted/30 p-3 flex gap-2 text-xs text-muted-foreground">
-                  <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <p>{LEGACY_TRANSITION_NOTE}</p>
-                </div>
-              )}
+              {/* Marco removido — mensagem canônica agora vive no bloco Máquina. */}
+
 
               {/* REGISTRO FOTOGRÁFICO GERAL — apenas se houver */}
               {report.generalPhotos.length > 0 && (
