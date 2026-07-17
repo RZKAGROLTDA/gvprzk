@@ -216,6 +216,8 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
 
   return {
     isLegacy,
+    isPersistenceError,
+    machineState,
     machine,
     location,
     items: allItems,
