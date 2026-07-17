@@ -237,6 +237,16 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                       </div>
                     )}
                   </>
+                ) : report.isLegacy ? (
+                  <div className="rounded-lg border border-dashed bg-muted/30 p-4 flex gap-2 items-start">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-foreground">Máquina não identificada no registro original.</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Este checklist foi criado antes do marco de padronização e não permite edição posterior da máquina.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm italic text-muted-foreground">
