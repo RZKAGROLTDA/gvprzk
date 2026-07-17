@@ -15,12 +15,12 @@ import { Task } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateDisplay } from '@/lib/utils';
 import { getFilialNameRobust } from '@/lib/taskStandardization';
-import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus } from '@/lib/workshopChecklistReport';
+import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus, LEGACY_TRANSITION_NOTE } from '@/lib/workshopChecklistReport';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { useUserRole } from '@/hooks/useUserRole';
 import { EditChecklistMachineDialog } from './workshop/EditChecklistMachineDialog';
-import { PencilLine } from 'lucide-react';
+import { PencilLine, Info } from 'lucide-react';
 
 interface Props {
   task: Task;
