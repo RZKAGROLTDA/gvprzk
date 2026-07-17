@@ -301,7 +301,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     let total = 0;
 
     // Somar valores dos produtos selecionados (todos os tipos de tarefa usam checklist)
-    if (taskCategory === 'field-visit' || taskCategory === 'workshop-checklist' || taskCategory === 'call') {
+    if (taskCategory === 'field-visit' || taskCategory === 'call') {
       total += checklist.reduce((sum, item) => {
         return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
       }, 0);
