@@ -66,6 +66,8 @@ export const LEGACY_TRANSITION_NOTE = LEGACY_MACHINE_MESSAGE;
 
 export interface ChecklistReport {
   isLegacy: boolean;
+  isPersistenceError: boolean;
+  machineState: 'filled' | 'legacy' | 'persistence_error';
   machine: ChecklistReportMachine;
   location: ChecklistReportLocation;
   items: ChecklistReportItem[];
