@@ -18,6 +18,9 @@ import { getFilialNameRobust } from '@/lib/taskStandardization';
 import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus } from '@/lib/workshopChecklistReport';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
+import { useUserRole } from '@/hooks/useUserRole';
+import { EditChecklistMachineDialog } from './workshop/EditChecklistMachineDialog';
+import { PencilLine } from 'lucide-react';
 
 interface Props {
   task: Task;
