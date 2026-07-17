@@ -55,9 +55,14 @@ export interface ChecklistReportLocation {
  */
 export const WORKSHOP_MACHINE_CUTOFF_DATE = new Date('2026-07-17T00:00:00');
 
-export const LEGACY_TRANSITION_NOTE =
-  `Registros anteriores a ${WORKSHOP_MACHINE_CUTOFF_DATE.toLocaleDateString('pt-BR')} ` +
-  `podem não conter identificação da máquina devido ao modelo antigo de gravação.`;
+export const LEGACY_MACHINE_MESSAGE =
+  'Máquina não registrada neste modelo de checklist.';
+
+export const PERSISTENCE_ERROR_MESSAGE =
+  'Erro de persistência do sistema: máquina não foi registrada neste checklist. Contate o suporte técnico.';
+
+// Compat alias — mantido para não quebrar imports antigos.
+export const LEGACY_TRANSITION_NOTE = LEGACY_MACHINE_MESSAGE;
 
 export interface ChecklistReport {
   isLegacy: boolean;
