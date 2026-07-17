@@ -178,44 +178,81 @@ export const useOffline = () => {
           console.log('Sincronizando item:', item);
           
           if (item.action === 'create' && item.data) {
-            // Sincronizar tarefa criada offline
+            // Sincronizar tarefa criada offline — paridade com useTasksOptimized.createTask
             const taskData = item.data;
-            
-            // Criar tarefa no Supabase com campos alinhados
+
+            const toDateStr = (v: any) =>
+              v instanceof Date ? v.toISOString().split('T')[0] : v;
+
+            // Equipment data (mesmo mapeamento do fluxo online)
+            const equipmentData = Array.isArray(taskData.equipmentList) && taskData.equipmentList.length > 0
+              ? {
+                  family_product: taskData.equipmentList[0]?.familyProduct || null,
+                  equipment_quantity: taskData.equipmentList.reduce(
+                    (sum: number, eq: any) => sum + (eq.quantity || 0),
+                    0
+                  ),
+                  equipment_list: taskData.equipmentList,
+                }
+              : {
+                  family_product: taskData.familyProduct || null,
+                  equipment_quantity: taskData.equipmentQuantity || 0,
+                  equipment_list: [],
+                };
+
+            const insertPayload: any = {
+              name: taskData.name,
+              responsible: taskData.responsible,
+              client: taskData.client,
+              clientcode: taskData.clientCode || '',
+              property: taskData.property || '',
+              email: taskData.email || '',
+              propertyhectares: taskData.propertyHectares || 0,
+              filial: taskData.filial || '',
+              filial_atendida: taskData.filialAtendida || null,
+              task_type: taskData.taskType || 'prospection',
+              start_date: toDateStr(taskData.startDate),
+              end_date: toDateStr(taskData.endDate),
+              start_time: taskData.startTime,
+              end_time: taskData.endTime,
+              observations: taskData.observations || '',
+              priority: taskData.priority,
+              photos: taskData.photos || [],
+              documents: taskData.documents || [],
+              check_in_location: taskData.checkInLocation,
+              initial_km: taskData.initialKm || 0,
+              final_km: taskData.finalKm || 0,
+              status: taskData.status || 'pending',
+              created_by: taskData.createdBy,
+              is_prospect: taskData.isProspect || false,
+              prospect_notes: taskData.prospectNotes || '',
+              sales_value: taskData.salesValue || null,
+              sales_confirmed: taskData.salesConfirmed || null,
+              sales_type: taskData.salesType || null,
+              ...equipmentData,
+            };
+
+            if (taskData.contactName !== undefined) insertPayload.contact_name = taskData.contactName;
+            if (taskData.contactFunction !== undefined) insertPayload.contact_function = taskData.contactFunction;
+            if (taskData.technicalCategory !== undefined) insertPayload.technical_category = taskData.technicalCategory;
+            if (taskData.technicalFunnelStage !== undefined) insertPayload.technical_funnel_stage = taskData.technicalFunnelStage;
+            if (taskData.technicalVisitData !== undefined) insertPayload.technical_visit_data = taskData.technicalVisitData;
+            if (taskData.opportunityInterest !== undefined) insertPayload.opportunity_interest = taskData.opportunityInterest;
+            if (taskData.opportunityUrgency !== undefined) insertPayload.opportunity_urgency = taskData.opportunityUrgency;
+            if (taskData.opportunityImpact !== undefined) insertPayload.opportunity_impact = taskData.opportunityImpact;
+            if (taskData.opportunityClosing !== undefined) insertPayload.opportunity_closing = taskData.opportunityClosing;
+            if (taskData.salesEstimate !== undefined) insertPayload.sales_estimate = taskData.salesEstimate;
+            if (taskData.nextAction !== undefined) insertPayload.next_action = taskData.nextAction;
+            if (taskData.nextActionDate !== undefined) {
+              insertPayload.next_action_date = toDateStr(taskData.nextActionDate);
+            }
+            if (taskData.checklistMachine !== undefined) {
+              insertPayload.checklist_machine = taskData.checklistMachine;
+            }
+
             const { data: insertedTask, error: taskError } = await supabase
               .from('tasks')
-              .insert([{
-                name: taskData.name,
-                responsible: taskData.responsible,
-                client: taskData.client,
-                clientcode: taskData.clientCode || '',
-                property: taskData.property || '',
-                email: taskData.email || '',
-                propertyhectares: taskData.propertyHectares || 0,
-                filial: taskData.filial || '',
-                task_type: taskData.taskType || 'prospection',
-                start_date: taskData.startDate instanceof Date ? 
-                  taskData.startDate.toISOString().split('T')[0] : 
-                  taskData.startDate,
-                end_date: taskData.endDate instanceof Date ? 
-                  taskData.endDate.toISOString().split('T')[0] : 
-                  taskData.endDate,
-                start_time: taskData.startTime,
-                end_time: taskData.endTime,
-                observations: taskData.observations || '',
-                priority: taskData.priority,
-                photos: taskData.photos || [],
-                documents: taskData.documents || [],
-                check_in_location: taskData.checkInLocation,
-                initial_km: taskData.initialKm || 0,
-                final_km: taskData.finalKm || 0,
-                status: taskData.status || 'pending',
-                created_by: taskData.createdBy,
-                is_prospect: taskData.isProspect || false,
-                prospect_notes: taskData.prospectNotes || '',
-                sales_value: taskData.salesValue || null,
-                sales_confirmed: taskData.salesConfirmed || null
-              }])
+              .insert([insertPayload])
               .select()
               .single();
 
