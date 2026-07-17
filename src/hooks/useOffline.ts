@@ -260,15 +260,18 @@ export const useOffline = () => {
 
             // Sincronizar produtos/checklist se existirem
             if (taskData.checklist && taskData.checklist.length > 0) {
-              const products = taskData.checklist.map(product => ({
+              const validCategories = ['tires', 'lubricants', 'oils', 'greases', 'batteries', 'other'];
+              const products = taskData.checklist.map((product: any) => ({
                 task_id: insertedTask.id,
                 name: product.name,
-                category: product.category,
+                category: validCategories.includes(product.category) ? product.category : 'other',
                 selected: product.selected,
                 quantity: product.quantity || 0,
                 price: product.price || 0,
                 observations: product.observations || '',
-                photos: product.photos || []
+                photos: product.photos || [],
+                response_status: product.responseStatus ?? null,
+                response_notes: product.responseNotes ?? '',
               }));
 
               const { error: productsError } = await supabase
