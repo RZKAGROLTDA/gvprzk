@@ -314,17 +314,19 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                 </SectionCard>
               )}
 
-              {/* RESUMO */}
-              <SectionCard icon={ClipboardCheck} title="Resumo" tone="primary">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  <SummaryCard label="Total" value={String(report.counts.total)} tone="primary" />
-                  <SummaryCard label="Conformes" value={String(report.counts.conforme)} tone={report.counts.conforme > 0 ? 'success' : 'muted'} />
-                  <SummaryCard label="Atenção" value={String(report.counts.atencao)} tone={report.counts.atencao > 0 ? 'warning' : 'muted'} />
-                  <SummaryCard label="Não conformes" value={String(report.counts.naoConforme)} tone={report.counts.naoConforme > 0 ? 'destructive' : 'muted'} />
-                  <SummaryCard label="N/A" value={String(report.counts.na)} tone="muted" />
-                  <SummaryCard label="Não preenchidos" value={String(report.counts.naoPreenchido)} tone={report.counts.naoPreenchido > 0 ? 'warning' : 'muted'} />
-                </div>
-              </SectionCard>
+              {/* RESUMO — oculto em checklists legados */}
+              {!report.isLegacy && (
+                <SectionCard icon={ClipboardCheck} title="Resumo" tone="primary">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <SummaryCard label="Total" value={String(report.counts.total)} tone="primary" />
+                    <SummaryCard label="Conformes" value={String(report.counts.conforme)} tone={report.counts.conforme > 0 ? 'success' : 'muted'} />
+                    <SummaryCard label="Atenção" value={String(report.counts.atencao)} tone={report.counts.atencao > 0 ? 'warning' : 'muted'} />
+                    <SummaryCard label="Não conformes" value={String(report.counts.naoConforme)} tone={report.counts.naoConforme > 0 ? 'destructive' : 'muted'} />
+                    <SummaryCard label="N/A" value={String(report.counts.na)} tone="muted" />
+                    <SummaryCard label="Não preenchidos" value={String(report.counts.naoPreenchido)} tone={report.counts.naoPreenchido > 0 ? 'warning' : 'muted'} />
+                  </div>
+                </SectionCard>
+              )}
 
               {/* SERVIÇOS VERIFICADOS */}
               <SectionCard
