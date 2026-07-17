@@ -97,6 +97,16 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
   const exportTaskToPDF = async () => {
     try {
       setIsExporting(true);
+
+      // ⚙️ Fluxo único: Checklist da Oficina utiliza EXCLUSIVAMENTE workshopChecklistPdf.
+      if (fullTask.taskType === 'checklist') {
+        const { generateWorkshopChecklistPDF } = await import('@/lib/workshopChecklistPdf');
+        await generateWorkshopChecklistPDF(fullTask, []);
+        toast({ title: '✅ Relatório Exportado', description: 'PDF do checklist gerado com sucesso!' });
+        setIsExporting(false);
+        return;
+      }
+
       
       // Mapear dados para formato padronizado
       const standardData = await mapTaskToStandardFields(fullTask);
