@@ -232,7 +232,13 @@ export const generateWorkshopChecklistPDF = async (
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'italic');
     ensureSpace(6);
-    pdf.text('Máquina não informada.', marginLeft, yPos);
+    pdf.text(
+      report.isLegacy
+        ? 'Dados da máquina não disponíveis no registro original.'
+        : 'Máquina não informada.',
+      marginLeft,
+      yPos,
+    );
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(0, 0, 0);
     yPos += 7;
