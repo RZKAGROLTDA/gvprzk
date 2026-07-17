@@ -48,7 +48,19 @@ export interface ChecklistReportLocation {
   googleMapsUrl?: string;
 }
 
+/**
+ * Marco de transição do modelo de gravação da máquina do checklist.
+ * Registros criados antes desta data podem não conter identificação
+ * da máquina por limitação do modelo antigo. Não inferir, não editar.
+ */
+export const WORKSHOP_MACHINE_CUTOFF_DATE = new Date('2026-07-17T00:00:00');
+
+export const LEGACY_TRANSITION_NOTE =
+  `Registros anteriores a ${WORKSHOP_MACHINE_CUTOFF_DATE.toLocaleDateString('pt-BR')} ` +
+  `podem não conter identificação da máquina devido ao modelo antigo de gravação.`;
+
 export interface ChecklistReport {
+  isLegacy: boolean;
   machine: ChecklistReportMachine;
   location: ChecklistReportLocation;
   items: ChecklistReportItem[];
@@ -79,8 +91,20 @@ const norm = (s: string) => (s || '').toLowerCase().trim().replace(/\s+/g, ' ');
 export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
   const rawProducts: any[] = Array.isArray(task.checklist) ? (task.checklist as any[]) : [];
 
-  // Merge canônico: 8 itens SEMPRE presentes, casados por nome com produtos salvos.
-  const items: ChecklistReportItem[] = CANONICAL_CHECKLIST_ITEMS.map((canon) => {
+  const m: any = (task as any).checklistMachine || {};
+  const machineHasAny = !!(
+    m.tipo || m.modelo || m.chassi_serie || m.ano || m.horimetro || m.status || m.observacao
+  );
+
+  const createdAt = task.createdAt ? new Date(task.createdAt) : null;
+  const isBeforeCutoff = !!createdAt && createdAt < WORKSHOP_MACHINE_CUTOFF_DATE;
+  // Legacy = registros anteriores ao marco sem máquina persistida.
+  // Não permite edição posterior nem inferência — só exibe o que foi realmente gravado.
+  const isLegacy = isBeforeCutoff && !machineHasAny;
+
+  // Itens: no fluxo novo, preenchemos os 8 canônicos.
+  // No legado, mostramos APENAS itens realmente gravados (sem forçar "não preenchido").
+  const canonicalItems: ChecklistReportItem[] = CANONICAL_CHECKLIST_ITEMS.map((canon) => {
     const match = rawProducts.find(p => norm(p.name) === norm(canon));
     const status = (match?.responseStatus ?? null) as ChecklistStatus;
     return {
@@ -91,7 +115,6 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
     };
   });
 
-  // Preserva itens antigos (fora dos 8 canônicos) para não quebrar checklists legados.
   const extras: ChecklistReportItem[] = rawProducts
     .filter(p => !CANONICAL_CHECKLIST_ITEMS.some(c => norm(c) === norm(p.name)))
     .filter(p => p?.responseStatus || (p?.responseNotes && String(p.responseNotes).trim()) || (Array.isArray(p?.photos) && p.photos.length))
@@ -102,7 +125,12 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
       photos: Array.isArray(p.photos) ? p.photos.filter(Boolean) : [],
     }));
 
-  const allItems = [...items, ...extras];
+  const hasData = (i: ChecklistReportItem) =>
+    i.status !== null || !!i.notes || i.photos.length > 0;
+
+  const allItems = isLegacy
+    ? [...canonicalItems.filter(hasData), ...extras]
+    : [...canonicalItems, ...extras];
 
   const counts = {
     total: allItems.length,
@@ -113,9 +141,6 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
     naoPreenchido: allItems.filter(i => i.status === null).length,
   };
 
-  // Conclusão — baseada apenas nos itens efetivamente respondidos.
-  // Não é considerado "incompleto" quando itens ficam sem resposta:
-  // nem toda máquina precisa avaliar todos os itens (bateria, transmissão etc.).
   const respondidos = counts.conforme + counts.atencao + counts.naoConforme + counts.na;
   let conclusion: string;
   if (counts.naoConforme > 0) {
@@ -136,7 +161,6 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
       note: i.notes,
     }));
 
-  const m: any = (task as any).checklistMachine || {};
   const machine: ChecklistReportMachine = {
     tipo: String(m.tipo || ''),
     modelo: String(m.modelo || ''),
@@ -145,7 +169,7 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
     horimetro: String(m.horimetro || ''),
     status: String(m.status || ''),
     observacao: String(m.observacao || ''),
-    hasAny: !!(m.tipo || m.modelo || m.chassi_serie || m.ano || m.horimetro || m.status || m.observacao),
+    hasAny: machineHasAny,
   };
 
   const ci = task.checkInLocation;
@@ -166,6 +190,7 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
   const hasContact = !!(task.contactName || task.contactFunction || task.email || task.phone);
 
   return {
+    isLegacy,
     machine,
     location,
     items: allItems,
@@ -184,6 +209,7 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
     },
   };
 }
+
 
 export const STATUS_META: Record<Exclude<ChecklistStatus, null>, { label: string; sym: string }> & {
   none: { label: string; sym: string };
