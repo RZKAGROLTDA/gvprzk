@@ -509,6 +509,16 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
         </DialogContent>
       </Dialog>
 
+      {editMachineOpen && (
+        <EditChecklistMachineDialog
+          task={task}
+          isOpen={editMachineOpen}
+          onClose={() => setEditMachineOpen(false)}
+        />
+      )}
+
+
+
       {lightboxPhoto && (
         <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
           <DialogContent className="max-w-5xl w-[95vw] p-2 bg-background">
