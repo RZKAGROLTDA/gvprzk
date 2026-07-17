@@ -8,7 +8,8 @@ import {
   buildWorkshopChecklistReport,
   STATUS_META,
   ChecklistStatus,
-  LEGACY_TRANSITION_NOTE,
+  LEGACY_MACHINE_MESSAGE,
+  PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
 
 const loadImageAsBase64 = async (url: string): Promise<string | null> => {
@@ -228,21 +229,27 @@ export const generateWorkshopChecklistPDF = async (
       paragraph(report.machine.observacao);
     }
   } else {
-    pdf.setTextColor(...MUTED);
+    const msg = report.machineState === 'legacy'
+      ? LEGACY_MACHINE_MESSAGE
+      : PERSISTENCE_ERROR_MESSAGE;
+    const color: [number, number, number] = report.machineState === 'legacy' ? MUTED : DANGER;
+    ensureSpace(12);
+    pdf.setDrawColor(...color);
+    pdf.setLineWidth(0.4);
+    const lines = pdf.splitTextToSize(msg, contentWidth - 8);
+    const h = 6 + lines.length * 4.2;
+    pdf.roundedRect(marginLeft, yPos, contentWidth, h, 2, 2);
+    pdf.setTextColor(...color);
+    pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'italic');
-    ensureSpace(6);
-    pdf.text(
-      report.isLegacy
-        ? 'Dados da máquina não disponíveis no registro original.'
-        : 'Máquina não informada.',
-      marginLeft,
-      yPos,
-    );
+    lines.forEach((ln: string, i: number) => {
+      pdf.text(ln, marginLeft + 4, yPos + 5 + i * 4.2);
+    });
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(0, 0, 0);
-    yPos += 7;
+    yPos += h + 4;
   }
+
 
   // ================= 4. LOCALIZAÇÃO =================
   sectionTitle('Localização do Checklist');
@@ -494,25 +501,9 @@ export const generateWorkshopChecklistPDF = async (
       pdf.text(ln, marginLeft + 4, yPos + 10 + i * 5.2);
     });
     yPos += concH + 6;
-  } else {
-    // Nota discreta de marco de transição para registros legados
-    ensureSpace(10);
-    yPos += 2;
-    pdf.setDrawColor(...BORDER);
-    pdf.setLineWidth(0.3);
-    const noteLines = pdf.splitTextToSize(LEGACY_TRANSITION_NOTE, contentWidth - 8);
-    const noteH = 6 + noteLines.length * 3.8;
-    pdf.roundedRect(marginLeft, yPos, contentWidth, noteH, 1.5, 1.5);
-    pdf.setTextColor(...MUTED);
-    pdf.setFont('helvetica', 'italic');
-    pdf.setFontSize(8);
-    noteLines.forEach((ln: string, i: number) => {
-      pdf.text(ln, marginLeft + 4, yPos + 4.5 + i * 3.8);
-    });
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(0, 0, 0);
-    yPos += noteH + 4;
   }
+  // Nota de marco removida — mensagem canônica agora vive no bloco Máquina.
+
 
   // ================= 9.1 REGISTRO FOTOGRÁFICO GERAL =================
   if (report.generalPhotos.length > 0) {

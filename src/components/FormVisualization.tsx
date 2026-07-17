@@ -23,6 +23,8 @@ import { generateTaskPDF } from './TaskPDFGenerator';
 import { SalesStatusDisplay } from './SalesStatusDisplay';
 import { ProductListComponent } from './ProductListComponent';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
+import { WorkshopChecklistView } from '@/components/WorkshopChecklistView';
+import { useFiliais } from '@/hooks/useTasksOptimized';
 
 // TypeScript module declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -47,6 +49,21 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const filiaisQuery = useFiliais();
+  const filiaisForChecklist = Array.isArray(filiaisQuery) ? filiaisQuery : (filiaisQuery as any)?.data || [];
+
+  // ⚙️ Fluxo único: qualquer Checklist da Oficina é renderizado pela WorkshopChecklistView.
+  if (task?.taskType === 'checklist') {
+    return (
+      <WorkshopChecklistView
+        task={task}
+        filiais={filiaisForChecklist || []}
+        isOpen={isOpen}
+        onClose={onClose}
+      />
+    );
+  }
+
 
   // MESMA fonte de dados do "Editar" (useTaskEditData) — e congelar em snapshot para não "mudar" depois de carregar
   const { data: taskEditData, loading, error } = useTaskEditData(isOpen ? task?.id : null);

@@ -55,12 +55,19 @@ export interface ChecklistReportLocation {
  */
 export const WORKSHOP_MACHINE_CUTOFF_DATE = new Date('2026-07-17T00:00:00');
 
-export const LEGACY_TRANSITION_NOTE =
-  `Registros anteriores a ${WORKSHOP_MACHINE_CUTOFF_DATE.toLocaleDateString('pt-BR')} ` +
-  `podem não conter identificação da máquina devido ao modelo antigo de gravação.`;
+export const LEGACY_MACHINE_MESSAGE =
+  'Máquina não registrada neste modelo de checklist.';
+
+export const PERSISTENCE_ERROR_MESSAGE =
+  'Erro de persistência do sistema: máquina não foi registrada neste checklist. Contate o suporte técnico.';
+
+// Compat alias — mantido para não quebrar imports antigos.
+export const LEGACY_TRANSITION_NOTE = LEGACY_MACHINE_MESSAGE;
 
 export interface ChecklistReport {
   isLegacy: boolean;
+  isPersistenceError: boolean;
+  machineState: 'filled' | 'legacy' | 'persistence_error';
   machine: ChecklistReportMachine;
   location: ChecklistReportLocation;
   items: ChecklistReportItem[];
@@ -98,9 +105,27 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
 
   const createdAt = task.createdAt ? new Date(task.createdAt) : null;
   const isBeforeCutoff = !!createdAt && createdAt < WORKSHOP_MACHINE_CUTOFF_DATE;
-  // Legacy = registros anteriores ao marco sem máquina persistida.
-  // Não permite edição posterior nem inferência — só exibe o que foi realmente gravado.
-  const isLegacy = isBeforeCutoff && !machineHasAny;
+
+  // Fingerprint do modelo novo: indícios técnicos de que o checklist foi criado
+  // sob o modelo padronizado (check-in de localização OU respostas por item).
+  // Isso evita classificar exclusivamente pela data de calendário.
+  const hasCheckIn = !!(task.checkInLocation && task.checkInLocation.lat && task.checkInLocation.lng);
+  const hasAnyResponseData = rawProducts.some(
+    p => p?.responseStatus || (p?.responseNotes && String(p.responseNotes).trim()),
+  );
+  const usesNewModel = !isBeforeCutoff || hasCheckIn || hasAnyResponseData;
+
+  // Três estados canônicos:
+  // 1) filled → máquina registrada → relatório completo.
+  // 2) legacy → sem máquina + registro comprovadamente do modelo antigo.
+  // 3) persistence_error → sem máquina + fingerprint do modelo novo.
+  const machineState: 'filled' | 'legacy' | 'persistence_error' = machineHasAny
+    ? 'filled'
+    : usesNewModel
+      ? 'persistence_error'
+      : 'legacy';
+  const isLegacy = machineState === 'legacy';
+  const isPersistenceError = machineState === 'persistence_error';
 
   // Itens: no fluxo novo, preenchemos os 8 canônicos.
   // No legado, mostramos APENAS itens realmente gravados (sem forçar "não preenchido").
@@ -191,6 +216,8 @@ export function buildWorkshopChecklistReport(task: Task): ChecklistReport {
 
   return {
     isLegacy,
+    isPersistenceError,
+    machineState,
     machine,
     location,
     items: allItems,

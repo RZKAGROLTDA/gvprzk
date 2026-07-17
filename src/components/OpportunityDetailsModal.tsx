@@ -50,6 +50,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { WorkshopChecklistView } from '@/components/WorkshopChecklistView';
 
 interface OpportunityDetailsModalProps {
   task: Task | null;
@@ -111,6 +112,12 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   onClose,
   onTaskUpdated,
 }) => {
+  // ⚙️ Fluxo único: Checklist da Oficina não usa esta modal comercial.
+  if (task?.taskType === 'checklist') {
+    return (
+      <WorkshopChecklistView task={task} filiais={[]} isOpen={isOpen} onClose={onClose} />
+    );
+  }
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
