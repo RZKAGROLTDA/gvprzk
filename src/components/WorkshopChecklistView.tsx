@@ -18,6 +18,9 @@ import { getFilialNameRobust } from '@/lib/taskStandardization';
 import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus } from '@/lib/workshopChecklistReport';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
+import { useUserRole } from '@/hooks/useUserRole';
+import { EditChecklistMachineDialog } from './workshop/EditChecklistMachineDialog';
+import { PencilLine } from 'lucide-react';
 
 interface Props {
   task: Task;
@@ -80,6 +83,9 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  const [editMachineOpen, setEditMachineOpen] = useState(false);
+  const { isAdmin, isManager } = useUserRole();
+  const canEditMachine = isAdmin || isManager;
 
   const report = buildWorkshopChecklistReport(task);
 
@@ -190,6 +196,18 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                 title="Máquina"
                 tone="primary"
                 description={report.machine.modelo || report.machine.tipo || undefined}
+                headerRight={
+                  canEditMachine && report.machine.hasAny ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="print:hidden"
+                      onClick={() => setEditMachineOpen(true)}
+                    >
+                      <PencilLine className="w-3.5 h-3.5 mr-1" /> Editar máquina
+                    </Button>
+                  ) : undefined
+                }
               >
                 {report.machine.hasAny ? (
                   <>
@@ -219,9 +237,25 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                     )}
                   </>
                 ) : (
-                  <p className="text-sm italic text-muted-foreground">
-                    Máquina não informada.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm italic text-muted-foreground">
+                      Máquina não informada.
+                    </p>
+                    {canEditMachine ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="print:hidden"
+                        onClick={() => setEditMachineOpen(true)}
+                      >
+                        <PencilLine className="w-4 h-4 mr-1" /> Informar máquina
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Solicite a um gerente ou administrador para complementar os dados da máquina deste checklist.
+                      </p>
+                    )}
+                  </div>
                 )}
               </SectionCard>
 
@@ -474,6 +508,16 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
           </div>
         </DialogContent>
       </Dialog>
+
+      {editMachineOpen && (
+        <EditChecklistMachineDialog
+          task={task}
+          isOpen={editMachineOpen}
+          onClose={() => setEditMachineOpen(false)}
+        />
+      )}
+
+
 
       {lightboxPhoto && (
         <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
