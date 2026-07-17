@@ -882,8 +882,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       return;
     }
 
-    // Validação obrigatória do status da oportunidade
-    if (task.salesConfirmed === undefined && !task.isProspect) {
+    // Validação obrigatória do status da oportunidade (não se aplica ao Checklist da Oficina)
+    if (taskCategory !== 'workshop-checklist' && task.salesConfirmed === undefined && !task.isProspect) {
       submissionLockRef.current = false;
       setIsSubmitting(false);
       toast({
