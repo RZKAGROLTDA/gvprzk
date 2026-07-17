@@ -301,7 +301,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     let total = 0;
 
     // Somar valores dos produtos selecionados (todos os tipos de tarefa usam checklist)
-    if (taskCategory === 'field-visit' || taskCategory === 'workshop-checklist' || taskCategory === 'call') {
+    if (taskCategory === 'field-visit' || taskCategory === 'call') {
       total += checklist.reduce((sum, item) => {
         return sum + (item.selected && item.price ? item.price * (item.quantity || 1) : 0);
       }, 0);
@@ -882,8 +882,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       return;
     }
 
-    // Validação obrigatória do status da oportunidade
-    if (task.salesConfirmed === undefined && !task.isProspect) {
+    // Validação obrigatória do status da oportunidade (não se aplica ao Checklist da Oficina)
+    if (taskCategory !== 'workshop-checklist' && task.salesConfirmed === undefined && !task.isProspect) {
       submissionLockRef.current = false;
       setIsSubmitting(false);
       toast({
@@ -933,6 +933,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       ...(taskCategory === 'workshop-checklist' ? {
         checklistMachine,
         registerMachineInClient,
+        // Checklist da Oficina não tem lógica comercial
+        isProspect: false,
+        salesConfirmed: null,
+        salesType: null,
+        salesValue: 0,
+        partialSalesValue: 0,
+        prospectItems: [],
+        prospectNotes: '',
+        prospectNotesJustification: '',
       } : {})
     };
     try {
@@ -1505,7 +1514,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             }))} placeholder="Observações sobre a tarefa..." className="min-h-[80px]" />
             </div>
 
+            {taskCategory !== 'workshop-checklist' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
               <div className="space-y-2">
                 <Label htmlFor="salesValue">Valor de Venda/Oportunidade (R$)</Label>
                 <div className="relative">
@@ -1746,6 +1757,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   </div>}
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
 

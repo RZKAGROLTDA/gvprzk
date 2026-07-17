@@ -360,6 +360,9 @@ export const useTasksOptimized = (includeDetails = false) => {
               ? taskData.nextActionDate
               : (taskData.nextActionDate as Date)?.toISOString().split('T')[0],
           }),
+          ...((taskData as any).checklistMachine !== undefined && {
+            checklist_machine: (taskData as any).checklistMachine,
+          }),
           ...equipmentData
         })
         .select()
@@ -374,8 +377,12 @@ export const useTasksOptimized = (includeDetails = false) => {
         checklist: taskData.checklist
       });
 
-      // Auto-criar opportunity se task tem valor de venda
-      if (standardizedTaskData.salesValue && standardizedTaskData.salesValue > 0) {
+      // Auto-criar opportunity se task tem valor de venda (nunca para checklist da oficina)
+      if (
+        standardizedTaskData.taskType !== 'checklist' &&
+        standardizedTaskData.salesValue &&
+        standardizedTaskData.salesValue > 0
+      ) {
         try {
           // Importar dinamicamente para evitar circular dependency
           const { useOpportunityManager } = await import('./useOpportunityManager');
@@ -423,7 +430,9 @@ export const useTasksOptimized = (includeDetails = false) => {
             quantity: product.quantity || 0,
             price: product.price || 0,
             observations: product.observations || '',
-            photos: product.photos || []
+            photos: product.photos || [],
+            response_status: (product as any).responseStatus ?? null,
+            response_notes: (product as any).responseNotes ?? '',
           };
         });
         
