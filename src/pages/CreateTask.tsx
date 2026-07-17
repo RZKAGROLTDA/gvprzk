@@ -933,6 +933,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       ...(taskCategory === 'workshop-checklist' ? {
         checklistMachine,
         registerMachineInClient,
+        // Checklist da Oficina não tem lógica comercial
+        isProspect: false,
+        salesConfirmed: null,
+        salesType: null,
+        salesValue: 0,
+        partialSalesValue: 0,
+        prospectItems: [],
+        prospectNotes: '',
+        prospectNotesJustification: '',
       } : {})
     };
     try {
