@@ -430,7 +430,9 @@ export const useTasksOptimized = (includeDetails = false) => {
             quantity: product.quantity || 0,
             price: product.price || 0,
             observations: product.observations || '',
-            photos: product.photos || []
+            photos: product.photos || [],
+            response_status: (product as any).responseStatus ?? null,
+            response_notes: (product as any).responseNotes ?? '',
           };
         });
         
