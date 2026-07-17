@@ -501,25 +501,9 @@ export const generateWorkshopChecklistPDF = async (
       pdf.text(ln, marginLeft + 4, yPos + 10 + i * 5.2);
     });
     yPos += concH + 6;
-  } else {
-    // Nota discreta de marco de transição para registros legados
-    ensureSpace(10);
-    yPos += 2;
-    pdf.setDrawColor(...BORDER);
-    pdf.setLineWidth(0.3);
-    const noteLines = pdf.splitTextToSize(LEGACY_TRANSITION_NOTE, contentWidth - 8);
-    const noteH = 6 + noteLines.length * 3.8;
-    pdf.roundedRect(marginLeft, yPos, contentWidth, noteH, 1.5, 1.5);
-    pdf.setTextColor(...MUTED);
-    pdf.setFont('helvetica', 'italic');
-    pdf.setFontSize(8);
-    noteLines.forEach((ln: string, i: number) => {
-      pdf.text(ln, marginLeft + 4, yPos + 4.5 + i * 3.8);
-    });
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(0, 0, 0);
-    yPos += noteH + 4;
   }
+  // Nota de marco removida — mensagem canônica agora vive no bloco Máquina.
+
 
   // ================= 9.1 REGISTRO FOTOGRÁFICO GERAL =================
   if (report.generalPhotos.length > 0) {
