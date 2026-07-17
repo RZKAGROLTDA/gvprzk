@@ -1514,7 +1514,9 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             }))} placeholder="Observações sobre a tarefa..." className="min-h-[80px]" />
             </div>
 
+            {taskCategory !== 'workshop-checklist' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
               <div className="space-y-2">
                 <Label htmlFor="salesValue">Valor de Venda/Oportunidade (R$)</Label>
                 <div className="relative">
