@@ -493,13 +493,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
         </DialogContent>
       </Dialog>
 
-      {editMachineOpen && (
-        <EditChecklistMachineDialog
-          task={task}
-          isOpen={editMachineOpen}
-          onClose={() => setEditMachineOpen(false)}
-        />
-      )}
+
 
 
 
