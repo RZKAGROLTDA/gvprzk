@@ -111,6 +111,14 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   onClose,
   onTaskUpdated,
 }) => {
+  // ⚙️ Fluxo único: Checklist da Oficina não usa esta modal comercial.
+  if (task?.taskType === 'checklist') {
+    // Import dinâmico evita ciclo e mantém isolamento.
+    const { WorkshopChecklistView } = require('@/components/WorkshopChecklistView');
+    return (
+      <WorkshopChecklistView task={task} filiais={[]} isOpen={isOpen} onClose={onClose} />
+    );
+  }
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<'prospect' | 'ganho' | 'perdido' | 'parcial'>('prospect');
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
