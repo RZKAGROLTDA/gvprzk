@@ -273,36 +273,38 @@ export const generateWorkshopChecklistPDF = async (
     yPos += 7;
   }
 
-  // ================= 5. RESUMO =================
-  sectionTitle('Resumo');
-  const summary = [
-    { label: 'Total', value: String(report.counts.total), color: PRIMARY },
-    { label: 'Conformes', value: String(report.counts.conforme), color: SUCCESS },
-    { label: 'Atenção', value: String(report.counts.atencao), color: WARNING },
-    { label: 'Não conformes', value: String(report.counts.naoConforme), color: DANGER },
-    { label: 'N/A', value: String(report.counts.na), color: MUTED },
-    { label: 'Não preenchidos', value: String(report.counts.naoPreenchido), color: MUTED },
-  ];
-  ensureSpace(22);
-  const cardW = (contentWidth - 5 * 2) / 6;
-  const cardH = 18;
-  summary.forEach((s, i) => {
-    const x = marginLeft + i * (cardW + 2);
-    pdf.setDrawColor(...s.color);
-    pdf.setLineWidth(0.5);
-    pdf.setFillColor(255, 255, 255);
-    pdf.roundedRect(x, yPos, cardW, cardH, 1.5, 1.5, 'FD');
-    pdf.setTextColor(...MUTED);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(6);
-    pdf.text(s.label.toUpperCase(), x + 2, yPos + 4.5);
-    pdf.setTextColor(...s.color);
-    pdf.setFontSize(14);
-    pdf.text(s.value, x + 2, yPos + 13);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(0, 0, 0);
-  });
-  yPos += cardH + 6;
+  // ================= 5. RESUMO — oculto em legados =================
+  if (!report.isLegacy) {
+    sectionTitle('Resumo');
+    const summary = [
+      { label: 'Total', value: String(report.counts.total), color: PRIMARY },
+      { label: 'Conformes', value: String(report.counts.conforme), color: SUCCESS },
+      { label: 'Atenção', value: String(report.counts.atencao), color: WARNING },
+      { label: 'Não conformes', value: String(report.counts.naoConforme), color: DANGER },
+      { label: 'N/A', value: String(report.counts.na), color: MUTED },
+      { label: 'Não preenchidos', value: String(report.counts.naoPreenchido), color: MUTED },
+    ];
+    ensureSpace(22);
+    const cardW = (contentWidth - 5 * 2) / 6;
+    const cardH = 18;
+    summary.forEach((s, i) => {
+      const x = marginLeft + i * (cardW + 2);
+      pdf.setDrawColor(...s.color);
+      pdf.setLineWidth(0.5);
+      pdf.setFillColor(255, 255, 255);
+      pdf.roundedRect(x, yPos, cardW, cardH, 1.5, 1.5, 'FD');
+      pdf.setTextColor(...MUTED);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(6);
+      pdf.text(s.label.toUpperCase(), x + 2, yPos + 4.5);
+      pdf.setTextColor(...s.color);
+      pdf.setFontSize(14);
+      pdf.text(s.value, x + 2, yPos + 13);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(0, 0, 0);
+    });
+    yPos += cardH + 6;
+  }
 
   // ================= 6. SERVIÇOS VERIFICADOS =================
   sectionTitle('Serviços Verificados');
