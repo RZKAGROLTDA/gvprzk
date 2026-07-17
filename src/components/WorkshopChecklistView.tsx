@@ -196,6 +196,18 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                 title="Máquina"
                 tone="primary"
                 description={report.machine.modelo || report.machine.tipo || undefined}
+                headerRight={
+                  canEditMachine && report.machine.hasAny ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="print:hidden"
+                      onClick={() => setEditMachineOpen(true)}
+                    >
+                      <PencilLine className="w-3.5 h-3.5 mr-1" /> Editar máquina
+                    </Button>
+                  ) : undefined
+                }
               >
                 {report.machine.hasAny ? (
                   <>
@@ -225,9 +237,25 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                     )}
                   </>
                 ) : (
-                  <p className="text-sm italic text-muted-foreground">
-                    Máquina não informada.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm italic text-muted-foreground">
+                      Máquina não informada.
+                    </p>
+                    {canEditMachine ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="print:hidden"
+                        onClick={() => setEditMachineOpen(true)}
+                      >
+                        <PencilLine className="w-4 h-4 mr-1" /> Informar máquina
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Solicite a um gerente ou administrador para complementar os dados da máquina deste checklist.
+                      </p>
+                    )}
+                  </div>
                 )}
               </SectionCard>
 
