@@ -8,7 +8,8 @@ import {
   buildWorkshopChecklistReport,
   STATUS_META,
   ChecklistStatus,
-  LEGACY_TRANSITION_NOTE,
+  LEGACY_MACHINE_MESSAGE,
+  PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
 
 const loadImageAsBase64 = async (url: string): Promise<string | null> => {
