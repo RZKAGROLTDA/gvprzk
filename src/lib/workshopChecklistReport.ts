@@ -48,7 +48,19 @@ export interface ChecklistReportLocation {
   googleMapsUrl?: string;
 }
 
+/**
+ * Marco de transição do modelo de gravação da máquina do checklist.
+ * Registros criados antes desta data podem não conter identificação
+ * da máquina por limitação do modelo antigo. Não inferir, não editar.
+ */
+export const WORKSHOP_MACHINE_CUTOFF_DATE = new Date('2026-07-17T00:00:00');
+
+export const LEGACY_TRANSITION_NOTE =
+  `Registros anteriores a ${WORKSHOP_MACHINE_CUTOFF_DATE.toLocaleDateString('pt-BR')} ` +
+  `podem não conter identificação da máquina devido ao modelo antigo de gravação.`;
+
 export interface ChecklistReport {
+  isLegacy: boolean;
   machine: ChecklistReportMachine;
   location: ChecklistReportLocation;
   items: ChecklistReportItem[];
