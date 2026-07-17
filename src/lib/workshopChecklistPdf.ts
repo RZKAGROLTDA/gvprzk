@@ -8,6 +8,7 @@ import {
   buildWorkshopChecklistReport,
   STATUS_META,
   ChecklistStatus,
+  LEGACY_TRANSITION_NOTE,
 } from '@/lib/workshopChecklistReport';
 
 const loadImageAsBase64 = async (url: string): Promise<string | null> => {
