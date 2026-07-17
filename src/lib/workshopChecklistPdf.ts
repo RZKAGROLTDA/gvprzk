@@ -229,21 +229,27 @@ export const generateWorkshopChecklistPDF = async (
       paragraph(report.machine.observacao);
     }
   } else {
-    pdf.setTextColor(...MUTED);
+    const msg = report.machineState === 'legacy'
+      ? LEGACY_MACHINE_MESSAGE
+      : PERSISTENCE_ERROR_MESSAGE;
+    const color: [number, number, number] = report.machineState === 'legacy' ? MUTED : DANGER;
+    ensureSpace(12);
+    pdf.setDrawColor(...color);
+    pdf.setLineWidth(0.4);
+    const lines = pdf.splitTextToSize(msg, contentWidth - 8);
+    const h = 6 + lines.length * 4.2;
+    pdf.roundedRect(marginLeft, yPos, contentWidth, h, 2, 2);
+    pdf.setTextColor(...color);
+    pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'italic');
-    ensureSpace(6);
-    pdf.text(
-      report.isLegacy
-        ? 'Dados da máquina não disponíveis no registro original.'
-        : 'Máquina não informada.',
-      marginLeft,
-      yPos,
-    );
+    lines.forEach((ln: string, i: number) => {
+      pdf.text(ln, marginLeft + 4, yPos + 5 + i * 4.2);
+    });
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(0, 0, 0);
-    yPos += 7;
+    yPos += h + 4;
   }
+
 
   // ================= 4. LOCALIZAÇÃO =================
   sectionTitle('Localização do Checklist');
