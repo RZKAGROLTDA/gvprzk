@@ -49,7 +49,8 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
 }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const filiaisForChecklist = useFiliais();
+  const filiaisQuery = useFiliais();
+  const filiaisForChecklist = Array.isArray(filiaisQuery) ? filiaisQuery : (filiaisQuery as any)?.data || [];
 
   // ⚙️ Fluxo único: qualquer Checklist da Oficina é renderizado pela WorkshopChecklistView.
   if (task?.taskType === 'checklist') {
