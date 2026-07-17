@@ -50,6 +50,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { WorkshopChecklistView } from '@/components/WorkshopChecklistView';
 
 interface OpportunityDetailsModalProps {
   task: Task | null;
