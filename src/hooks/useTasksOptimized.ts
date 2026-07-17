@@ -360,6 +360,9 @@ export const useTasksOptimized = (includeDetails = false) => {
               ? taskData.nextActionDate
               : (taskData.nextActionDate as Date)?.toISOString().split('T')[0],
           }),
+          ...((taskData as any).checklistMachine !== undefined && {
+            checklist_machine: (taskData as any).checklistMachine,
+          }),
           ...equipmentData
         })
         .select()
