@@ -400,80 +400,92 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                 </SectionCard>
               )}
 
-              {/* RECOMENDAÇÕES TÉCNICAS */}
-              <SectionCard
-                icon={AlertTriangle}
-                title="Recomendações técnicas"
-                tone={report.recommendations.length > 0 ? 'warning' : 'success'}
-                description={report.recommendations.length > 0 ? `${report.recommendations.length} recomendação(ões)` : undefined}
-              >
-                {report.recommendations.length === 0 ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-4 text-sm text-foreground">
-                    <ShieldCheck className="w-5 h-5 text-success" />
-                    Nenhuma recomendação técnica registrada.
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {report.recommendations.map((r, i) => (
-                      <li
-                        key={i}
-                        className={`rounded-lg border px-3 py-2 text-sm ${
-                          r.status === 'nao_conforme'
-                            ? 'border-destructive/30 bg-destructive/5'
-                            : 'border-warning/30 bg-warning/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <Badge variant={r.status === 'nao_conforme' ? 'destructive' : 'warning'} className="text-[10px] uppercase">
-                            {r.status === 'nao_conforme' ? 'Não conforme' : 'Atenção'}
-                          </Badge>
-                          <span className="font-semibold text-foreground">{r.name}</span>
-                        </div>
-                        {r.note ? (
-                          <p className="text-xs text-muted-foreground pl-1">{r.note}</p>
-                        ) : (
-                          <p className="text-xs italic text-muted-foreground pl-1">Sem observação registrada.</p>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </SectionCard>
+              {/* RECOMENDAÇÕES TÉCNICAS — em legados, só mostra se houver dados reais */}
+              {(!report.isLegacy || report.recommendations.length > 0) && (
+                <SectionCard
+                  icon={AlertTriangle}
+                  title="Recomendações técnicas"
+                  tone={report.recommendations.length > 0 ? 'warning' : 'success'}
+                  description={report.recommendations.length > 0 ? `${report.recommendations.length} recomendação(ões)` : undefined}
+                >
+                  {report.recommendations.length === 0 ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-4 text-sm text-foreground">
+                      <ShieldCheck className="w-5 h-5 text-success" />
+                      Nenhuma recomendação técnica registrada.
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {report.recommendations.map((r, i) => (
+                        <li
+                          key={i}
+                          className={`rounded-lg border px-3 py-2 text-sm ${
+                            r.status === 'nao_conforme'
+                              ? 'border-destructive/30 bg-destructive/5'
+                              : 'border-warning/30 bg-warning/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Badge variant={r.status === 'nao_conforme' ? 'destructive' : 'warning'} className="text-[10px] uppercase">
+                              {r.status === 'nao_conforme' ? 'Não conforme' : 'Atenção'}
+                            </Badge>
+                            <span className="font-semibold text-foreground">{r.name}</span>
+                          </div>
+                          {r.note ? (
+                            <p className="text-xs text-muted-foreground pl-1">{r.note}</p>
+                          ) : (
+                            <p className="text-xs italic text-muted-foreground pl-1">Sem observação registrada.</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </SectionCard>
+              )}
 
-              {/* CONCLUSÃO TÉCNICA */}
-              <div
-                className={`rounded-2xl border-2 p-5 sm:p-6 shadow-sm ${
-                  conclusionTone === 'destructive'
-                    ? 'border-destructive/40 bg-destructive/5'
-                    : conclusionTone === 'warning'
-                    ? 'border-warning/40 bg-warning/5'
-                    : 'border-success/40 bg-success/5'
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
-                      conclusionTone === 'destructive'
-                        ? 'bg-destructive text-destructive-foreground'
-                        : conclusionTone === 'warning'
-                        ? 'bg-warning text-warning-foreground'
-                        : 'bg-success text-success-foreground'
-                    }`}
-                  >
-                    {conclusionTone === 'destructive' ? (
-                      <XCircle className="w-6 h-6" />
-                    ) : conclusionTone === 'warning' ? (
-                      <AlertTriangle className="w-6 h-6" />
-                    ) : (
-                      <CheckCircle2 className="w-6 h-6" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Conclusão técnica</p>
-                    <p className="text-base sm:text-lg font-semibold text-foreground leading-snug">{report.conclusion}</p>
+              {/* CONCLUSÃO TÉCNICA — oculto em legados (não usar "checklist incompleto") */}
+              {!report.isLegacy && (
+                <div
+                  className={`rounded-2xl border-2 p-5 sm:p-6 shadow-sm ${
+                    conclusionTone === 'destructive'
+                      ? 'border-destructive/40 bg-destructive/5'
+                      : conclusionTone === 'warning'
+                      ? 'border-warning/40 bg-warning/5'
+                      : 'border-success/40 bg-success/5'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
+                        conclusionTone === 'destructive'
+                          ? 'bg-destructive text-destructive-foreground'
+                          : conclusionTone === 'warning'
+                          ? 'bg-warning text-warning-foreground'
+                          : 'bg-success text-success-foreground'
+                      }`}
+                    >
+                      {conclusionTone === 'destructive' ? (
+                        <XCircle className="w-6 h-6" />
+                      ) : conclusionTone === 'warning' ? (
+                        <AlertTriangle className="w-6 h-6" />
+                      ) : (
+                        <CheckCircle2 className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground mb-1">Conclusão técnica</p>
+                      <p className="text-base sm:text-lg font-semibold text-foreground leading-snug">{report.conclusion}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* MARCO DE TRANSIÇÃO — nota discreta em registros legados */}
+              {report.isLegacy && (
+                <div className="rounded-lg border border-dashed bg-muted/30 p-3 flex gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <p>{LEGACY_TRANSITION_NOTE}</p>
+                </div>
+              )}
 
               {/* REGISTRO FOTOGRÁFICO GERAL — apenas se houver */}
               {report.generalPhotos.length > 0 && (
