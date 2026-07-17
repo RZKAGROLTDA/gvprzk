@@ -185,26 +185,14 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                 )}
               </SectionCard>
 
-              {/* MÁQUINA */}
+              {/* MÁQUINA — três estados: filled | legacy | persistence_error */}
               <SectionCard
                 icon={Wrench}
                 title="Máquina"
                 tone="primary"
                 description={report.machine.modelo || report.machine.tipo || undefined}
-                headerRight={
-                  canEditMachine && report.machine.hasAny ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="print:hidden"
-                      onClick={() => setEditMachineOpen(true)}
-                    >
-                      <PencilLine className="w-3.5 h-3.5 mr-1" /> Editar máquina
-                    </Button>
-                  ) : undefined
-                }
               >
-                {report.machine.hasAny ? (
+                {report.machineState === 'filled' ? (
                   <>
                     <div className="mb-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
                       <p className="text-[10px] uppercase tracking-wider font-bold text-primary mb-1">Chassi / Nº de Série</p>
@@ -231,38 +219,20 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
                       </div>
                     )}
                   </>
-                ) : report.isLegacy ? (
+                ) : report.machineState === 'legacy' ? (
                   <div className="rounded-lg border border-dashed bg-muted/30 p-4 flex gap-2 items-start">
                     <Info className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-medium text-foreground">Máquina não identificada no registro original.</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Este checklist foi criado antes do marco de padronização e não permite edição posterior da máquina.
-                      </p>
-                    </div>
+                    <p className="text-sm font-medium text-foreground">{LEGACY_MACHINE_MESSAGE}</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm italic text-muted-foreground">
-                      Máquina não informada.
-                    </p>
-                    {canEditMachine ? (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="print:hidden"
-                        onClick={() => setEditMachineOpen(true)}
-                      >
-                        <PencilLine className="w-4 h-4 mr-1" /> Informar máquina
-                      </Button>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Solicite a um gerente ou administrador para complementar os dados da máquina deste checklist.
-                      </p>
-                    )}
+                  <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-4 flex gap-2 items-start">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 text-destructive shrink-0" />
+                    <p className="text-sm font-medium text-destructive">{PERSISTENCE_ERROR_MESSAGE}</p>
                   </div>
                 )}
               </SectionCard>
+
+
 
               {/* LOCALIZAÇÃO */}
               {report.location.hasLocation ? (
