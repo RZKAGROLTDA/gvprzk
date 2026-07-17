@@ -23,6 +23,8 @@ import { generateTaskPDF } from './TaskPDFGenerator';
 import { SalesStatusDisplay } from './SalesStatusDisplay';
 import { ProductListComponent } from './ProductListComponent';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
+import { WorkshopChecklistView } from '@/components/WorkshopChecklistView';
+import { useFiliais } from '@/hooks/useTasksOptimized';
 
 // TypeScript module declaration for jsPDF autoTable
 declare module 'jspdf' {
