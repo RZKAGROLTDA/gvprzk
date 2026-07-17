@@ -432,65 +432,87 @@ export const generateWorkshopChecklistPDF = async (
     paragraph(report.generalObservations);
   }
 
-  // ================= 8. RECOMENDAÇÕES TÉCNICAS =================
-  sectionTitle('Recomendações Técnicas');
-  if (report.recommendations.length === 0) {
-    pdf.setTextColor(...SUCCESS);
-    pdf.setFontSize(9);
-    ensureSpace(6);
-    pdf.text('Nenhuma recomendação técnica registrada.', marginLeft, yPos);
-    pdf.setTextColor(0, 0, 0);
-    yPos += 7;
-  } else {
-    report.recommendations.forEach((r) => {
-      const color = r.status === 'nao_conforme' ? DANGER : WARNING;
-      const noteLines = pdf.splitTextToSize(r.note || 'Sem observação registrada.', contentWidth - 10);
-      const rowH = 8 + noteLines.length * 4.2;
-      ensureSpace(rowH + 2);
-      pdf.setDrawColor(...color);
-      pdf.setFillColor(color[0], color[1], color[2]);
-      pdf.rect(marginLeft, yPos, 1.5, rowH, 'F');
-      pdf.setTextColor(...color);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(7);
-      pdf.text(r.status === 'nao_conforme' ? 'NÃO CONFORME' : 'ATENÇÃO', marginLeft + 4, yPos + 4);
-      pdf.setTextColor(0, 0, 0);
+  // ================= 8. RECOMENDAÇÕES TÉCNICAS — em legados, só se houver =================
+  if (!report.isLegacy || report.recommendations.length > 0) {
+    sectionTitle('Recomendações Técnicas');
+    if (report.recommendations.length === 0) {
+      pdf.setTextColor(...SUCCESS);
       pdf.setFontSize(9);
-      pdf.text(r.name, marginLeft + 34, yPos + 4);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
-      noteLines.forEach((ln: string, i: number) => {
-        pdf.text(ln, marginLeft + 4, yPos + 9 + i * 4.2);
+      ensureSpace(6);
+      pdf.text('Nenhuma recomendação técnica registrada.', marginLeft, yPos);
+      pdf.setTextColor(0, 0, 0);
+      yPos += 7;
+    } else {
+      report.recommendations.forEach((r) => {
+        const color = r.status === 'nao_conforme' ? DANGER : WARNING;
+        const noteLines = pdf.splitTextToSize(r.note || 'Sem observação registrada.', contentWidth - 10);
+        const rowH = 8 + noteLines.length * 4.2;
+        ensureSpace(rowH + 2);
+        pdf.setDrawColor(...color);
+        pdf.setFillColor(color[0], color[1], color[2]);
+        pdf.rect(marginLeft, yPos, 1.5, rowH, 'F');
+        pdf.setTextColor(...color);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(7);
+        pdf.text(r.status === 'nao_conforme' ? 'NÃO CONFORME' : 'ATENÇÃO', marginLeft + 4, yPos + 4);
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFontSize(9);
+        pdf.text(r.name, marginLeft + 34, yPos + 4);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        noteLines.forEach((ln: string, i: number) => {
+          pdf.text(ln, marginLeft + 4, yPos + 9 + i * 4.2);
+        });
+        yPos += rowH + 2;
       });
-      yPos += rowH + 2;
-    });
+    }
   }
 
-  // ================= 9. CONCLUSÃO TÉCNICA =================
-  ensureSpace(20);
-  yPos += 2;
-  const conclusionColor =
-    report.counts.naoConforme > 0 ? DANGER
-    : report.counts.atencao > 0 ? WARNING
-    : report.counts.naoPreenchido > 0 ? WARNING
-    : SUCCESS;
-  pdf.setDrawColor(...conclusionColor);
-  pdf.setFillColor(255, 255, 255);
-  pdf.setLineWidth(0.6);
-  const concLines = pdf.splitTextToSize(report.conclusion, contentWidth - 10);
-  const concH = 10 + concLines.length * 5.2;
-  pdf.roundedRect(marginLeft, yPos, contentWidth, concH, 2, 2, 'FD');
-  pdf.setTextColor(...conclusionColor);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(7);
-  pdf.text('CONCLUSÃO TÉCNICA', marginLeft + 4, yPos + 5);
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(10);
-  concLines.forEach((ln: string, i: number) => {
-    pdf.text(ln, marginLeft + 4, yPos + 10 + i * 5.2);
-  });
-  yPos += concH + 6;
+  // ================= 9. CONCLUSÃO TÉCNICA — oculto em legados =================
+  if (!report.isLegacy) {
+    ensureSpace(20);
+    yPos += 2;
+    const conclusionColor =
+      report.counts.naoConforme > 0 ? DANGER
+      : report.counts.atencao > 0 ? WARNING
+      : report.counts.naoPreenchido > 0 ? WARNING
+      : SUCCESS;
+    pdf.setDrawColor(...conclusionColor);
+    pdf.setFillColor(255, 255, 255);
+    pdf.setLineWidth(0.6);
+    const concLines = pdf.splitTextToSize(report.conclusion, contentWidth - 10);
+    const concH = 10 + concLines.length * 5.2;
+    pdf.roundedRect(marginLeft, yPos, contentWidth, concH, 2, 2, 'FD');
+    pdf.setTextColor(...conclusionColor);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(7);
+    pdf.text('CONCLUSÃO TÉCNICA', marginLeft + 4, yPos + 5);
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    concLines.forEach((ln: string, i: number) => {
+      pdf.text(ln, marginLeft + 4, yPos + 10 + i * 5.2);
+    });
+    yPos += concH + 6;
+  } else {
+    // Nota discreta de marco de transição para registros legados
+    ensureSpace(10);
+    yPos += 2;
+    pdf.setDrawColor(...BORDER);
+    pdf.setLineWidth(0.3);
+    const noteLines = pdf.splitTextToSize(LEGACY_TRANSITION_NOTE, contentWidth - 8);
+    const noteH = 6 + noteLines.length * 3.8;
+    pdf.roundedRect(marginLeft, yPos, contentWidth, noteH, 1.5, 1.5);
+    pdf.setTextColor(...MUTED);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setFontSize(8);
+    noteLines.forEach((ln: string, i: number) => {
+      pdf.text(ln, marginLeft + 4, yPos + 4.5 + i * 3.8);
+    });
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(0, 0, 0);
+    yPos += noteH + 4;
+  }
 
   // ================= 9.1 REGISTRO FOTOGRÁFICO GERAL =================
   if (report.generalPhotos.length > 0) {
