@@ -1757,6 +1757,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                   </div>}
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
 
