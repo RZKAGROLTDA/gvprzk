@@ -94,8 +94,6 @@ export const useTasks = () => {
             sales_confirmed,
             sales_type,
             prospect_notes,
-            photos,
-            documents,
             check_in_location,
             initial_km,
             final_km
@@ -118,7 +116,7 @@ export const useTasks = () => {
           // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
           const { data: productsData } = await supabase
             .from('products')
-            .select('id, task_id, name, category, selected, quantity, price, observations, photos')
+            .select('id, task_id, name, category, selected, quantity, price, observations')
             .in('task_id', tasksData.map(t => t.id));
 
           // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários

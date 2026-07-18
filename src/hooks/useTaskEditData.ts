@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchTaskMedia, taskMediaQueryKey } from '@/lib/taskMedia';
 
 export interface TaskEditData {
   // Unified task data from tasks table
@@ -100,6 +102,7 @@ export const useTaskEditData = (taskId: string | null) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Force clear data when taskId or user changes to avoid stale cache
   useEffect(() => {
@@ -128,10 +131,12 @@ export const useTaskEditData = (taskId: string | null) => {
 
       console.log('🔍 Session verified for user:', session.user.id);
       
-      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
+      // OTIMIZAÇÃO Disk IO: Colunas pesadas (photos, documents, technical_visit_data)
+      // NÃO são mais lidas aqui — vêm exclusivamente da RPC get_secure_task_media
+      // via fetchTaskMedia, executada em paralelo abaixo.
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, name, responsible, contact_name, contact_function, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification, technical_funnel_stage, technical_category, technical_visit_data, opportunity_interest, opportunity_urgency, opportunity_impact, opportunity_closing, sales_estimate, next_action, next_action_date')
+        .select('id, name, responsible, contact_name, contact_function, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification, technical_funnel_stage, technical_category, opportunity_interest, opportunity_urgency, opportunity_impact, opportunity_closing, sales_estimate, next_action, next_action_date')
         .eq('id', taskId)
         .maybeSingle();
 
@@ -191,8 +196,9 @@ export const useTaskEditData = (taskId: string | null) => {
          propertyHectares: taskData.propertyhectares,
          status: taskData.status,
          is_prospect: taskData.is_prospect,
-         photos: taskData.photos || [],
-         documents: taskData.documents || [],
+         // Mídia: carregada abaixo via fetchTaskMedia — placeholders vazios até o merge
+         photos: [],
+         documents: [],
          check_in_location: taskData.check_in_location,
          initialKm: taskData.initial_km,
          finalKm: taskData.final_km,
@@ -208,7 +214,7 @@ export const useTaskEditData = (taskId: string | null) => {
          // Technical visit fields
          technical_funnel_stage: taskData.technical_funnel_stage || null,
          technical_category: taskData.technical_category || null,
-         technical_visit_data: taskData.technical_visit_data || null,
+         technical_visit_data: null, // preenchido via fetchTaskMedia
          opportunity_interest: taskData.opportunity_interest || null,
          opportunity_urgency: taskData.opportunity_urgency || null,
          opportunity_impact: taskData.opportunity_impact || null,
@@ -286,13 +292,24 @@ export const useTaskEditData = (taskId: string | null) => {
       // são preservados como salvos (o save nunca mais sobrescreve qtd_ofertada).
 
       // Buscar produtos originais para mapeamento de nomes
-      const { data: originalProducts } = await supabase
-        .from('products')
-        .select('id, name, category')
-        .eq('task_id', taskId);
+      // + carregar mídia pesada em paralelo via RPC segura (compartilha cache com useTaskMedia)
+      const [{ data: originalProducts }, media] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, name, category')
+          .eq('task_id', taskId),
+        queryClient.fetchQuery({
+          queryKey: taskMediaQueryKey(taskId),
+          queryFn: () => fetchTaskMedia(taskId),
+          staleTime: 5 * 60 * 1000,
+        }),
+      ]);
 
       const fullData = {
         ...unifiedTaskData,
+        photos: media.photos,
+        documents: media.documents,
+        technical_visit_data: media.technicalVisitData,
         opportunity: opportunityData,
         items: itemsData || [],
         originalProducts: originalProducts || []
