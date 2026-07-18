@@ -102,6 +102,7 @@ export const useTaskEditData = (taskId: string | null) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Force clear data when taskId or user changes to avoid stale cache
   useEffect(() => {
