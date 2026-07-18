@@ -87,7 +87,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      await generateTaskPDF(task, calculateTaskTotalValue, getTaskTypeLabel, filiais);
+      await generateReportPDF(task, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel, filiais });
       toast({ title: 'PDF gerado com sucesso!', description: 'O arquivo foi baixado automaticamente.' });
     } catch (e) {
       console.error(e);
