@@ -156,7 +156,7 @@ export const useTasksOptimized = (includeDetails = false) => {
             const [productsResult, remindersResult] = await Promise.all([
               supabase
                 .from('products')
-                .select('id, task_id, name, category, selected, quantity, price, observations, photos')
+                .select('id, task_id, name, category, selected, quantity, price, observations')
                 .in('task_id', taskIds),
               supabase
                 .from('reminders')
