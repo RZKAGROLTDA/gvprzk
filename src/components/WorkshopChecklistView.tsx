@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDateDisplay } from '@/lib/utils';
 import { getFilialNameRobust } from '@/lib/taskStandardization';
 import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus, LEGACY_MACHINE_MESSAGE, PERSISTENCE_ERROR_MESSAGE } from '@/lib/workshopChecklistReport';
-import { generateTaskPDF } from './TaskPDFGenerator';
+import { generateReportPDF } from '@/lib/generateReportPDF';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { Info } from 'lucide-react';
 
