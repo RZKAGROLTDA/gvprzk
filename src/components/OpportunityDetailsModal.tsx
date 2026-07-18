@@ -343,8 +343,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const handlePDF = async () => {
     if (!currentTask) return;
     const { generateReportPDF } = await import('@/lib/generateReportPDF');
-    await generateReportPDF(currentTask, {
-      fallback: async () => {
+    await generateReportPDF(currentTask.id, {
+      fallback: async (currentTask) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 0;
