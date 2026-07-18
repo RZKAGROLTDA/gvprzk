@@ -822,35 +822,9 @@ export const generateTaskPDF = async (
     yPos = y0 + boxH + 3;
   }
 
-  // ===== ASSINATURAS (Checklist da Oficina) =====
-  if (isChecklistPDF) {
-    ensureSpace(38);
-    yPos += 6;
-    sectionTitle('Assinaturas');
-    const colW = (contentWidth - 8) / 2;
-    const lineY = yPos + 14;
-    // Linhas
-    pdf.setDrawColor(120, 120, 120);
-    pdf.setLineWidth(0.3);
-    pdf.line(marginLeft, lineY, marginLeft + colW, lineY);
-    pdf.line(marginLeft + colW + 8, lineY, marginLeft + colW * 2 + 8, lineY);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8);
-    pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-    pdf.text('RESPONSÁVEL TÉCNICO', marginLeft, lineY + 4);
-    pdf.text('CLIENTE', marginLeft + colW + 8, lineY + 4);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(String(task.responsible || 'Nome:'), marginLeft, lineY + 9);
-    pdf.text(String(task.contactName || 'Nome:'), marginLeft + colW + 8, lineY + 9);
-    pdf.setFontSize(7);
-    pdf.setTextColor(MUTED[0], MUTED[1], MUTED[2]);
-    pdf.text(`Data: ${format(new Date(), 'dd/MM/yyyy', { locale: ptBR })}`, marginLeft, lineY + 14);
-    pdf.text('Data: ____/____/________', marginLeft + colW + 8, lineY + 14);
-    pdf.setTextColor(0, 0, 0);
-    yPos = lineY + 18;
-  }
+  // Assinaturas do Checklist da Oficina foram removidas — o gerador técnico
+  // (generateWorkshopChecklistPDF) é responsável pelo bloco de assinaturas.
+
 
 
   // ===== FOOTER + running header on pages 2+ =====
