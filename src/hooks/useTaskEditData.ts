@@ -292,13 +292,24 @@ export const useTaskEditData = (taskId: string | null) => {
       // são preservados como salvos (o save nunca mais sobrescreve qtd_ofertada).
 
       // Buscar produtos originais para mapeamento de nomes
-      const { data: originalProducts } = await supabase
-        .from('products')
-        .select('id, name, category')
-        .eq('task_id', taskId);
+      // + carregar mídia pesada em paralelo via RPC segura (compartilha cache com useTaskMedia)
+      const [{ data: originalProducts }, media] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, name, category')
+          .eq('task_id', taskId),
+        queryClient.fetchQuery({
+          queryKey: taskMediaQueryKey(taskId),
+          queryFn: () => fetchTaskMedia(taskId),
+          staleTime: 5 * 60 * 1000,
+        }),
+      ]);
 
       const fullData = {
         ...unifiedTaskData,
+        photos: media.photos,
+        documents: media.documents,
+        technical_visit_data: media.technicalVisitData,
         opportunity: opportunityData,
         items: itemsData || [],
         originalProducts: originalProducts || []
