@@ -311,7 +311,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      await generateTaskPDF(fullTask, calculateTaskTotalValue, getTaskTypeLabel);
+      await generateReportPDF(fullTask, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel });
 
       toast({
         title: "PDF gerado com sucesso!",
