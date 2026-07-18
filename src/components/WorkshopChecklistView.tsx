@@ -137,6 +137,21 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
     window.open(`mailto:${task.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
+  // Loading state — evita renderizar o relatório antes da hidratação completa.
+  if (isOpen && (loadingDetails || !report)) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-5xl">
+          <div className="flex flex-col items-center justify-center py-14 space-y-3">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">Carregando checklist da oficina…</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  if (!report) return null;
+
   const conclusionTone =
     report.counts.naoConforme > 0 ? 'destructive'
     : report.counts.atencao > 0 ? 'warning'
