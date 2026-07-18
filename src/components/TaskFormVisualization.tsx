@@ -269,7 +269,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      await generateTaskPDF(currentTask, calculateTaskTotalValue, getTaskTypeLabel, filiais);
+      await generateReportPDF(currentTask, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel, filiais });
       toast({ title: 'PDF gerado com sucesso!', description: 'O arquivo foi baixado automaticamente.' });
     } catch (e) {
       console.error(e);
