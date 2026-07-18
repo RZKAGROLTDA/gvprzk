@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Wrench, FileText, Download, Printer, Mail, User, Building2, Calendar,
   MapPin, Navigation, Clock, ClipboardCheck, AlertTriangle, CheckCircle2,
   XCircle, Camera, Phone, AtSign, Image as ImageIcon, ShieldCheck, X,
+  Loader2,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { formatDateDisplay } from '@/lib/utils';
 import { getFilialNameRobust } from '@/lib/taskStandardization';
 import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus, LEGACY_MACHINE_MESSAGE, PERSISTENCE_ERROR_MESSAGE } from '@/lib/workshopChecklistReport';
 import { generateReportPDF } from '@/lib/generateReportPDF';
+import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { Info } from 'lucide-react';
 
@@ -77,17 +79,37 @@ const SummaryCard: React.FC<{ label: string; value: string; tone: 'primary' | 's
   );
 };
 
-export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, onClose }) => {
+export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
-  const report = buildWorkshopChecklistReport(task);
+  // Hidratação obrigatória: garante que a tarefa exibida no relatório é sempre
+  // a versão completa (checklistMachine, responseStatus/Notes por item, fotos
+  // por item, mídia, checkInLocation), independentemente de a `taskProp` ter
+  // vindo de listagem, card ou funil.
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
+    isOpen && taskProp?.id ? taskProp.id : null,
+  );
+  const task = useMemo<Task>(() => {
+    if (!taskProp) return taskProp as any;
+    return taskDetails ? { ...taskProp, ...taskDetails } as Task : taskProp;
+  }, [taskProp, taskDetails]);
+
+  // Só constrói o relatório quando a task detalhada já veio (evita render
+  // inicial classificando erradamente como "persistence_error" ou "legacy"
+  // por falta de checklist_machine na task parcial).
+  const report = useMemo(
+    () => (taskDetails ? buildWorkshopChecklistReport(task) : null),
+    [task, taskDetails],
+  );
 
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      await generateReportPDF(task, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel, filiais });
+      // Passa o taskId — o dispatcher re-hidrata via fetchTaskForReport e chama
+      // generateWorkshopChecklistPDF garantindo dados completos e uniformes.
+      await generateReportPDF(task.id, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel, filiais });
       toast({ title: 'PDF gerado com sucesso!', description: 'O arquivo foi baixado automaticamente.' });
     } catch (e) {
       console.error(e);
@@ -114,6 +136,21 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, 
     ].join('\n');
     window.open(`mailto:${task.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
+
+  // Loading state — evita renderizar o relatório antes da hidratação completa.
+  if (isOpen && (loadingDetails || !report)) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-5xl">
+          <div className="flex flex-col items-center justify-center py-14 space-y-3">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">Carregando checklist da oficina…</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  if (!report) return null;
 
   const conclusionTone =
     report.counts.naoConforme > 0 ? 'destructive'

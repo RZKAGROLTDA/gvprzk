@@ -102,7 +102,7 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       const { generateReportPDF } = await import('@/lib/generateReportPDF');
       const handled = await (async () => {
         let usedFallback = false;
-        await generateReportPDF(fullTask, { fallback: async () => { usedFallback = true; } });
+        await generateReportPDF(fullTask.id, { fallback: async () => { usedFallback = true; } });
         return !usedFallback;
       })();
       if (handled) {

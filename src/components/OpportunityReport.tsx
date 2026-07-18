@@ -79,7 +79,7 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
       // Dispatcher único (src/lib/generateReportPDF.ts) roteia por taskType.
       // Checklist da Oficina → generateWorkshopChecklistPDF; demais → fallback abaixo.
       const { generateReportPDF } = await import('@/lib/generateReportPDF');
-      await generateReportPDF(task, { fallback: async () => {
+      await generateReportPDF(task.id, { fallback: async (task) => {
 
       // Usar sistema padronizado de relatórios
       const { generateStandardReport } = await import('@/lib/reportFieldMapping');
