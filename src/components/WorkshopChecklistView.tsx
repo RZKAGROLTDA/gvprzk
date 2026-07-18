@@ -79,16 +79,36 @@ const SummaryCard: React.FC<{ label: string; value: string; tone: 'primary' | 's
   );
 };
 
-export const WorkshopChecklistView: React.FC<Props> = ({ task, filiais, isOpen, onClose }) => {
+export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
 
-  const report = buildWorkshopChecklistReport(task);
+  // Hidratação obrigatória: garante que a tarefa exibida no relatório é sempre
+  // a versão completa (checklistMachine, responseStatus/Notes por item, fotos
+  // por item, mídia, checkInLocation), independentemente de a `taskProp` ter
+  // vindo de listagem, card ou funil.
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
+    isOpen && taskProp?.id ? taskProp.id : null,
+  );
+  const task = useMemo<Task>(() => {
+    if (!taskProp) return taskProp as any;
+    return taskDetails ? { ...taskProp, ...taskDetails } as Task : taskProp;
+  }, [taskProp, taskDetails]);
+
+  // Só constrói o relatório quando a task detalhada já veio (evita render
+  // inicial classificando erradamente como "persistence_error" ou "legacy"
+  // por falta de checklist_machine na task parcial).
+  const report = useMemo(
+    () => (taskDetails ? buildWorkshopChecklistReport(task) : null),
+    [task, taskDetails],
+  );
 
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
+      // Passa o taskId — o dispatcher re-hidrata via fetchTaskForReport e chama
+      // generateWorkshopChecklistPDF garantindo dados completos e uniformes.
       await generateReportPDF(task.id, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel, filiais });
       toast({ title: 'PDF gerado com sucesso!', description: 'O arquivo foi baixado automaticamente.' });
     } catch (e) {
