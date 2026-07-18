@@ -22,7 +22,7 @@ import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
-import { generateTaskPDF } from './TaskPDFGenerator';
+import { generateReportPDF } from '@/lib/generateReportPDF';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateDisplay } from '@/lib/utils';
 import { WorkshopChecklistView } from './WorkshopChecklistView';
