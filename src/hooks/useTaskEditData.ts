@@ -131,10 +131,12 @@ export const useTaskEditData = (taskId: string | null) => {
 
       console.log('🔍 Session verified for user:', session.user.id);
       
-      // OTIMIZAÇÃO Disk IO: Selecionar apenas campos necessários
+      // OTIMIZAÇÃO Disk IO: Colunas pesadas (photos, documents, technical_visit_data)
+      // NÃO são mais lidas aqui — vêm exclusivamente da RPC get_secure_task_media
+      // via fetchTaskMedia, executada em paralelo abaixo.
       let { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, name, responsible, contact_name, contact_function, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, photos, documents, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification, technical_funnel_stage, technical_category, technical_visit_data, opportunity_interest, opportunity_urgency, opportunity_impact, opportunity_closing, sales_estimate, next_action, next_action_date')
+        .select('id, name, responsible, contact_name, contact_function, client, clientcode, property, email, phone, propertyhectares, filial, filial_atendida, task_type, start_date, end_date, start_time, end_time, observations, priority, status, created_at, updated_at, created_by, is_prospect, sales_value, sales_confirmed, sales_type, partial_sales_value, family_product, equipment_quantity, check_in_location, initial_km, final_km, equipment_list, prospect_notes, prospect_notes_justification, technical_funnel_stage, technical_category, opportunity_interest, opportunity_urgency, opportunity_impact, opportunity_closing, sales_estimate, next_action, next_action_date')
         .eq('id', taskId)
         .maybeSingle();
 
