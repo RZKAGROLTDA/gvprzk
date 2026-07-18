@@ -613,12 +613,14 @@ export const useTaskDetails = (taskId: string | null) => {
     queryFn: async () => {
       if (!taskId) return null;
 
-      const [taskResult, taskExtraResult, productsResult, remindersResult] = await Promise.all([
+      const [taskResult, taskExtraResult, productsResult, remindersResult, media] = await Promise.all([
         supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
         // Campos que a RPC segura não retorna (checklist_machine é essencial para o Checklist da Oficina)
         supabase.from('tasks').select('checklist_machine').eq('id', taskId).maybeSingle(),
         supabase.from('products').select('id, task_id, name, category, selected, quantity, price, observations, photos, response_status, response_notes').eq('task_id', taskId),
         supabase.from('reminders').select('id, task_id, title, description, date, time, completed').eq('task_id', taskId),
+        // Mídia pesada: RPC segura (fonte única). Compartilha cache com useTaskMedia.
+        (await import('@/lib/taskMedia')).fetchTaskMedia(taskId),
       ]);
 
       if (taskResult.error) throw taskResult.error;
@@ -629,6 +631,10 @@ export const useTaskDetails = (taskId: string | null) => {
       const taskWithProducts = {
         ...taskData,
         checklist_machine: taskExtraResult.data?.checklist_machine ?? null,
+        // Sobrescreve mídia devolvida pela RPC principal com a versão sob demanda
+        photos: media.photos,
+        documents: media.documents,
+        technical_visit_data: media.technicalVisitData,
         products: productsResult.data || [],
         reminders: remindersResult.data || [],
       };
