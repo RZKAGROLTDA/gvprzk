@@ -98,21 +98,25 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
     try {
       setIsExporting(true);
 
-      // ⚙️ Fluxo único: Checklist da Oficina utiliza EXCLUSIVAMENTE workshopChecklistPdf.
-      if (fullTask.taskType === 'checklist') {
-        const { generateWorkshopChecklistPDF } = await import('@/lib/workshopChecklistPdf');
-        await generateWorkshopChecklistPDF(fullTask, []);
-        toast({ title: '✅ Relatório Exportado', description: 'PDF do checklist gerado com sucesso!' });
+      // Dispatcher único: src/lib/generateReportPDF.ts decide o gerador por taskType.
+      const { generateReportPDF } = await import('@/lib/generateReportPDF');
+      const handled = await (async () => {
+        let usedFallback = false;
+        await generateReportPDF(fullTask, { fallback: async () => { usedFallback = true; } });
+        return !usedFallback;
+      })();
+      if (handled) {
+        toast({ title: '✅ Relatório Exportado', description: 'PDF gerado com sucesso!' });
         setIsExporting(false);
         return;
       }
 
-      
       // Mapear dados para formato padronizado
       const standardData = await mapTaskToStandardFields(fullTask);
       const salesStatus = mapSalesStatus(fullTask);
       
       const doc = new jsPDF();
+
       let yPosition = 20;
 
       // Header com informações da filial e vendedor

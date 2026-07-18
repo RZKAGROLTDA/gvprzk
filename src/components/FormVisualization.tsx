@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { getStatusLabel, getStatusColor, resolveFilialName } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
-import { generateTaskPDF } from './TaskPDFGenerator';
+import { generateReportPDF } from '@/lib/generateReportPDF';
 import { SalesStatusDisplay } from './SalesStatusDisplay';
 import { ProductListComponent } from './ProductListComponent';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
@@ -311,7 +311,7 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
     try {
-      await generateTaskPDF(fullTask, calculateTaskTotalValue, getTaskTypeLabel);
+      await generateReportPDF(fullTask, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel });
 
       toast({
         title: "PDF gerado com sucesso!",

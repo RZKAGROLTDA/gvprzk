@@ -338,11 +338,17 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
   const duration = formatDuration(currentTask?.startTime, currentTask?.endTime);
 
   // ============ PDF ============
+  // Dispatcher único (src/lib/generateReportPDF.ts) decide o gerador por taskType.
+  // Checklist da Oficina → generateWorkshopChecklistPDF; demais → fallback abaixo.
   const handlePDF = async () => {
     if (!currentTask) return;
+    const { generateReportPDF } = await import('@/lib/generateReportPDF');
+    await generateReportPDF(currentTask, {
+      fallback: async () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 0;
+
 
     // Header band
     doc.setFillColor(37, 99, 235);
@@ -504,7 +510,10 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
     doc.save(`visita-${currentTask.client || 'cliente'}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
     toast.success('PDF gerado com sucesso!');
+      },
+    });
   };
+
 
   const handlePrint = () => window.print();
 
