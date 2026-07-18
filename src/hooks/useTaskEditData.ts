@@ -196,8 +196,9 @@ export const useTaskEditData = (taskId: string | null) => {
          propertyHectares: taskData.propertyhectares,
          status: taskData.status,
          is_prospect: taskData.is_prospect,
-         photos: taskData.photos || [],
-         documents: taskData.documents || [],
+         // Mídia: carregada abaixo via fetchTaskMedia — placeholders vazios até o merge
+         photos: [],
+         documents: [],
          check_in_location: taskData.check_in_location,
          initialKm: taskData.initial_km,
          finalKm: taskData.final_km,
@@ -213,7 +214,7 @@ export const useTaskEditData = (taskId: string | null) => {
          // Technical visit fields
          technical_funnel_stage: taskData.technical_funnel_stage || null,
          technical_category: taskData.technical_category || null,
-         technical_visit_data: taskData.technical_visit_data || null,
+         technical_visit_data: null, // preenchido via fetchTaskMedia
          opportunity_interest: taskData.opportunity_interest || null,
          opportunity_urgency: taskData.opportunity_urgency || null,
          opportunity_impact: taskData.opportunity_impact || null,
