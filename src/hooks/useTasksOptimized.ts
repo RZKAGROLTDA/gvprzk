@@ -621,7 +621,7 @@ export const useTaskDetails = (taskId: string | null) => {
         supabase.from('products').select('id, task_id, name, category, selected, quantity, price, observations, photos, response_status, response_notes').eq('task_id', taskId),
         supabase.from('reminders').select('id, task_id, title, description, date, time, completed').eq('task_id', taskId),
         // Mídia pesada: RPC segura (fonte única). Compartilha cache com useTaskMedia.
-        (await import('@/lib/taskMedia')).fetchTaskMedia(taskId),
+        fetchTaskMedia(taskId),
       ]);
 
       if (taskResult.error) throw taskResult.error;
