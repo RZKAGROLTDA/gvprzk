@@ -408,6 +408,8 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
       const fileName = `relatorio-oportunidade-${task.client.replace(/[^a-zA-Z0-9]/g, '')}-${format(new Date(), 'yyyy-MM-dd-HHmm')}.pdf`;
       doc.save(fileName);
 
+      }});
+
       toast({
         title: "PDF gerado com sucesso!",
         description: "O relatório foi baixado automaticamente.",
@@ -423,6 +425,8 @@ export const OpportunityReport: React.FC<OpportunityReportProps> = ({
       setIsGeneratingPDF(false);
     }
   };
+
+
 
   const handlePrint = () => {
     window.print();
