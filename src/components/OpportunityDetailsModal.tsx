@@ -510,7 +510,10 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
 
     doc.save(`visita-${currentTask.client || 'cliente'}-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
     toast.success('PDF gerado com sucesso!');
+      },
+    });
   };
+
 
   const handlePrint = () => window.print();
 
