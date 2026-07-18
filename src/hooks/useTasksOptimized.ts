@@ -609,10 +609,19 @@ export const useFiliais = () => {
 // Hook para carregar detalhes completos de uma task específica.
 // Usa get_secure_task_by_id (1 linha) em vez de get_secure_tasks_with_customer_protection (500 linhas) para reduzir Disk I/O.
 export const useTaskDetails = (taskId: string | null) => {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: taskId ? QUERY_KEYS.taskDetails(taskId) : ['task-details-empty'],
     queryFn: async () => {
       if (!taskId) return null;
+
+      // Mídia pesada: usa cache do React Query — se useTaskMedia já buscou,
+      // não faz nova chamada. Chave compartilhada com useTaskMedia.
+      const mediaPromise = queryClient.fetchQuery({
+        queryKey: ['task-media', taskId] as const,
+        queryFn: () => fetchTaskMedia(taskId),
+        staleTime: 5 * 60 * 1000,
+      });
 
       const [taskResult, taskExtraResult, productsResult, remindersResult, media] = await Promise.all([
         supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
@@ -620,8 +629,7 @@ export const useTaskDetails = (taskId: string | null) => {
         supabase.from('tasks').select('checklist_machine').eq('id', taskId).maybeSingle(),
         supabase.from('products').select('id, task_id, name, category, selected, quantity, price, observations, photos, response_status, response_notes').eq('task_id', taskId),
         supabase.from('reminders').select('id, task_id, title, description, date, time, completed').eq('task_id', taskId),
-        // Mídia pesada: RPC segura (fonte única). Compartilha cache com useTaskMedia.
-        fetchTaskMedia(taskId),
+        mediaPromise,
       ]);
 
       if (taskResult.error) throw taskResult.error;
