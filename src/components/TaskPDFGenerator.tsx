@@ -404,7 +404,7 @@ export const generateTaskPDF = async (
   }
 
   // ===== 2.4 OPORTUNIDADE — não se aplica ao Checklist da Oficina =====
-  if (!isChecklistPDF) {
+  {
     sectionTitle('Oportunidade');
     fourColRow([
       ['Valor Potencial', potentialValue > 0 ? currency(potentialValue) : '—'],
