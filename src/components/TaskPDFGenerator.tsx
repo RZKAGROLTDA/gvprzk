@@ -182,32 +182,9 @@ export const generateTaskPDF = async (
   const itemsCount = task.checklist?.length || 0;
   const selectedItemsCount = task.checklist?.filter(i => i.selected).length || 0;
 
-  // === Checklist da Oficina — específico ===
-  const isChecklistPDF = false; // handled by early dispatch above (generateWorkshopChecklistPDF)
-  const machinePDF: any = (task as any).checklistMachine || {};
-  const checklistItemsPDF = (task.checklist || []) as any[];
-  const cCountPDF = {
-    total: checklistItemsPDF.length,
-    conforme: checklistItemsPDF.filter(i => i.responseStatus === 'conforme').length,
-    atencao: checklistItemsPDF.filter(i => i.responseStatus === 'atencao').length,
-    naoConforme: checklistItemsPDF.filter(i => i.responseStatus === 'nao_conforme').length,
-    na: checklistItemsPDF.filter(i => i.responseStatus === 'na').length,
-  };
-  const checklistConclusionPDF =
-    cCountPDF.total === 0
-      ? 'Nenhum item avaliado no checklist.'
-      : cCountPDF.naoConforme > 0
-        ? `Foram identificadas ${cCountPDF.naoConforme} não conformidade(s) que precisam de correção.`
-        : cCountPDF.atencao > 0
-          ? `Foram identificados ${cCountPDF.atencao} item(ns) que exige(m) atenção.`
-          : 'Máquina aprovada no checklist, sem não conformidades.';
-  const recommendationsPDF = checklistItemsPDF
-    .filter(i => i.responseStatus === 'atencao' || i.responseStatus === 'nao_conforme')
-    .map(i => ({
-      name: i.name as string,
-      status: i.responseStatus as 'atencao' | 'nao_conforme',
-      note: (i.responseNotes || i.observations || '') as string,
-    }));
+  // Checklist da Oficina é roteado pelo dispatcher (generateReportPDF) para
+  // generateWorkshopChecklistPDF — este gerador não trata mais checklist.
+
 
   // Resumo executivo
   const summarySentences: string[] = [];
