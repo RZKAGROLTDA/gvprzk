@@ -53,17 +53,19 @@ const formatDuration = (start?: string | null, end?: string | null): string => {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 };
 
+/**
+ * Gerador geral de PDF para tarefas NÃO especializadas (visitas, ligações, etc.).
+ * NÃO chamar diretamente pela UI — use `generateReportPDF` (src/lib/generateReportPDF.ts),
+ * que decide qual gerador aplicar por `taskType`. Este export permanece apenas
+ * para ser invocado pelo dispatcher.
+ */
 export const generateTaskPDF = async (
   task: Task,
   _calculateTotalValue?: (task: any) => number,
   getTaskTypeLabel: (type: string) => string = defaultGetTaskTypeLabel,
   filiais: any[] = []
 ) => {
-  // ⚙️ Checklist da Oficina — usa fluxo técnico isolado (sem conteúdo comercial).
-  if (task.taskType === 'checklist') {
-    const { generateWorkshopChecklistPDF } = await import('@/lib/workshopChecklistPdf');
-    return generateWorkshopChecklistPDF(task, filiais);
-  }
+
 
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.width;
