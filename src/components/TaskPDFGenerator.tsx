@@ -286,27 +286,16 @@ export const generateTaskPDF = async (
   yPos = 50;
 
   // ===== 2. KPI CARDS =====
-  const kpis: Array<{ label: string; value: string; tone: 'primary' | 'success' | 'warning' | 'danger' | 'muted' }> = isChecklistPDF
-    ? [
-        { label: 'Itens Avaliados', value: String(cCountPDF.total), tone: 'primary' },
-        { label: 'Conformes', value: String(cCountPDF.conforme), tone: cCountPDF.conforme > 0 ? 'success' : 'muted' },
-        { label: 'Atenção', value: String(cCountPDF.atencao), tone: cCountPDF.atencao > 0 ? 'warning' : 'muted' },
-        { label: 'Não Conformes', value: String(cCountPDF.naoConforme), tone: cCountPDF.naoConforme > 0 ? 'danger' : 'muted' },
-        { label: 'Não se Aplica', value: String(cCountPDF.na), tone: 'muted' },
-        { label: 'Fotos', value: String(photoCount), tone: photoCount > 0 ? 'success' : 'muted' },
-        { label: 'Duração', value: duration, tone: 'primary' },
-        { label: 'Check-in', value: hasLocation ? 'Sim' : '—', tone: hasLocation ? 'success' : 'muted' },
-      ]
-    : [
-        { label: 'Duração', value: duration, tone: 'primary' },
-        { label: 'Equipamentos', value: String(equipmentCount), tone: equipmentCount > 0 ? 'success' : 'muted' },
-        { label: 'Fotos', value: String(photoCount), tone: photoCount > 0 ? 'success' : 'warning' },
-        { label: 'Localização', value: hasLocation ? 'Sim' : '—', tone: hasLocation ? 'success' : 'danger' },
-        { label: 'Valor Potencial', value: currency(potentialValue), tone: potentialValue > 0 ? 'primary' : 'muted' },
-        { label: 'Valor Fechado', value: closedValue > 0 ? currency(closedValue) : '—', tone: closedValue > 0 ? 'success' : 'muted' },
-        { label: 'Conversão', value: conversion, tone: closedValue > 0 ? (potentialValue > 0 && closedValue / potentialValue >= 0.7 ? 'success' : 'warning') : 'muted' },
-        { label: 'Itens Vendidos', value: `${selectedItemsCount}/${itemsCount}`, tone: selectedItemsCount > 0 ? 'success' : 'muted' },
-      ];
+  const kpis: Array<{ label: string; value: string; tone: 'primary' | 'success' | 'warning' | 'danger' | 'muted' }> = [
+    { label: 'Duração', value: duration, tone: 'primary' },
+    { label: 'Equipamentos', value: String(equipmentCount), tone: equipmentCount > 0 ? 'success' : 'muted' },
+    { label: 'Fotos', value: String(photoCount), tone: photoCount > 0 ? 'success' : 'warning' },
+    { label: 'Localização', value: hasLocation ? 'Sim' : '—', tone: hasLocation ? 'success' : 'danger' },
+    { label: 'Valor Potencial', value: currency(potentialValue), tone: potentialValue > 0 ? 'primary' : 'muted' },
+    { label: 'Valor Fechado', value: closedValue > 0 ? currency(closedValue) : '—', tone: closedValue > 0 ? 'success' : 'muted' },
+    { label: 'Conversão', value: conversion, tone: closedValue > 0 ? (potentialValue > 0 && closedValue / potentialValue >= 0.7 ? 'success' : 'warning') : 'muted' },
+    { label: 'Itens Vendidos', value: `${selectedItemsCount}/${itemsCount}`, tone: selectedItemsCount > 0 ? 'success' : 'muted' },
+  ];
   const toneRgb: Record<string, [number, number, number]> = {
     primary: PRIMARY, success: SUCCESS, warning: WARNING, danger: DANGER, muted: MUTED,
   };
