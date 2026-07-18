@@ -94,8 +94,6 @@ export const useTasks = () => {
             sales_confirmed,
             sales_type,
             prospect_notes,
-            photos,
-            documents,
             check_in_location,
             initial_km,
             final_km
