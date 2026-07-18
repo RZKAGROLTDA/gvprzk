@@ -839,7 +839,7 @@ export const generateTaskPDF = async (
       pdf.setTextColor(255, 255, 255);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(8);
-      pdf.text(isChecklistPDF ? 'Checklist da Oficina' : 'Relatório da Visita', marginLeft, 5.5);
+      pdf.text('Relatório da Visita', marginLeft, 5.5);
       pdf.setFont('helvetica', 'normal');
       pdf.text(task.client || '', pageWidth / 2, 5.5, { align: 'center' });
       pdf.text(task.startDate ? formatDateDisplay(task.startDate) : '', pageWidth - marginRight, 5.5, { align: 'right' });
