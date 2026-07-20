@@ -302,9 +302,9 @@ const Equipamentos: React.FC = () => {
     return set.size;
   }, [validatedClientsRaw]);
 
-  // Máquinas prioritárias — base para % de execução por filial
+  // Máquinas prioritárias JÁ VALIDADAS — base para a tabela por filial
   const { data: priorityRaw = [] } = useQuery({
-    queryKey: ['client-equipment', 'priority-index'],
+    queryKey: ['client-equipment', 'priority-validated-index'],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
@@ -322,6 +322,7 @@ const Equipamentos: React.FC = () => {
           .from('client_equipment' as any)
           .select('filial_id, validated_by, client_code, client_name')
           .eq('validation_priority', true)
+          .not('last_validation_at', 'is', null)
           .range(p * PAGE, p * PAGE + PAGE - 1);
         if (error) throw error;
         const batch = (data as unknown as typeof rows) ?? [];
@@ -333,7 +334,7 @@ const Equipamentos: React.FC = () => {
     },
   });
 
-  const priorityByFilial = useMemo(() => {
+  const priorityValidatedByFilial = useMemo(() => {
     const totals = new Map<string, number>();
     const resolveFilialName = (r: { filial_id: string | null; validated_by: string | null }) => {
       if (r.validated_by) {
@@ -347,8 +348,14 @@ const Equipamentos: React.FC = () => {
       const filial = resolveFilialName(r);
       totals.set(filial, (totals.get(filial) ?? 0) + 1);
     });
-    return { totals };
+    return totals;
   }, [priorityRaw, validatorMap, filialIdToName]);
+
+  const priorityValidatedTotal = priorityRaw.length;
+  const nonPriorityValidatedTotal = Math.max(
+    0,
+    (parkSummary?.validadas ?? 0) - priorityValidatedTotal,
+  );
 
   const filialRanked = useMemo(() => {
     const map = new Map<string, { filial_nome: string; validated_count: number }>();
@@ -358,19 +365,11 @@ const Equipamentos: React.FC = () => {
       if (cur) cur.validated_count += v.validated_count;
       else map.set(key, { filial_nome: key, validated_count: v.validated_count });
     });
-    // Inclui filiais que só têm máquinas prioritárias (sem validações ainda)
-    priorityByFilial.totals.forEach((_, filial) => {
+    priorityValidatedByFilial.forEach((_, filial) => {
       if (!map.has(filial)) map.set(filial, { filial_nome: filial, validated_count: 0 });
     });
-    return [...map.values()].sort((a, b) => {
-      const ta = priorityByFilial.totals.get(a.filial_nome) ?? 0;
-      const tb = priorityByFilial.totals.get(b.filial_nome) ?? 0;
-      const pa = ta > 0 ? a.validated_count / ta : 0;
-      const pb = tb > 0 ? b.validated_count / tb : 0;
-      if (pb !== pa) return pb - pa;
-      return b.validated_count - a.validated_count;
-    });
-  }, [validators, priorityByFilial]);
+    return [...map.values()].sort((a, b) => b.validated_count - a.validated_count);
+  }, [validators, priorityValidatedByFilial]);
 
 
   return (
