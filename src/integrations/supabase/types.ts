@@ -2584,11 +2584,11 @@ export type Database = {
         Returns: {
           access_level: string
           check_in_location: Json
+          checklist_machine: Json
           client: string
           clientcode: string
           created_at: string
           created_by: string
-          documents: string[]
           email: string
           end_date: string
           end_time: string
@@ -2606,7 +2606,6 @@ export type Database = {
           observations: string
           partial_sales_value: number
           phone: string
-          photos: string[]
           priority: string
           property: string
           propertyhectares: number
