@@ -148,36 +148,35 @@ export const Users: React.FC = () => {
     }
   };
 
-  const deleteUser = async (userId: string, userName: string) => {
-    // Confirmação antes de deletar
-    if (!confirm(`Tem certeza que deseja deletar permanentemente o usuário "${userName}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
+  const deactivateUser = async (userId: string, userName: string) => {
+    const confirmMsg =
+      `Desativar o usuário "${userName}"?\n\n` +
+      `• O login será bloqueado imediatamente.\n` +
+      `• Todo o histórico (tarefas, clientes, follow-ups) será preservado.\n` +
+      `• Para reativar, será necessária nova aprovação manual.\n\n` +
+      `O usuário NÃO será excluído fisicamente.`;
+    if (!confirm(confirmMsg)) return;
 
     try {
-      // Chamar a Edge Function segura para deletar usuário
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { profileId: userId }
+      const { data, error } = await supabase.functions.invoke('deactivate-user', {
+        body: { profileId: userId },
       });
 
       if (error) {
-        console.error('Erro ao deletar usuário:', error);
-        toast.error(error.message || 'Erro ao deletar usuário');
+        console.error('Erro ao desativar usuário:', error);
+        toast.error(error.message || 'Erro ao desativar usuário');
         return;
       }
-
       if (data?.error) {
-        console.error('Erro na resposta:', data.error);
         toast.error(data.error);
         return;
       }
 
-      toast.success(data?.message || `Usuário "${userName}" deletado com sucesso`);
-      // Invalidate cache to trigger fresh data fetch
+      toast.success(data?.message || `Usuário "${userName}" desativado`);
       await queryClient.invalidateQueries({ queryKey: ['secure-user-directory'] });
     } catch (error) {
-      console.error('Erro ao deletar usuário:', error);
-      toast.error('Erro ao deletar usuário');
+      console.error('Erro ao desativar usuário:', error);
+      toast.error('Erro ao desativar usuário');
     }
   };
 
@@ -517,14 +516,15 @@ export const Users: React.FC = () => {
                    </TableCell>
                    {isManager && (
                      <TableCell>
-                       <Button
-                         size="sm"
-                         variant="outline"
-                         onClick={() => deleteUser(profile.id, profile.name)}
-                         className="text-red-600 hover:text-red-700 hover:border-red-300"
-                       >
-                         <Trash2 className="h-4 w-4" />
-                       </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deactivateUser(profile.id, profile.name)}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          title="Desativar usuário (preserva histórico)"
+                        >
+                          Desativar
+                        </Button>
                      </TableCell>
                    )}
                  </TableRow>
