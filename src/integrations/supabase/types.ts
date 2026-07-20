@@ -327,7 +327,7 @@ export type Database = {
           attachments: string[] | null
           budget_date: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           email: string
           gallery_date: string | null
           id: string
@@ -350,7 +350,7 @@ export type Database = {
           attachments?: string[] | null
           budget_date?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           email: string
           gallery_date?: string | null
           id?: string
@@ -373,7 +373,7 @@ export type Database = {
           attachments?: string[] | null
           budget_date?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           email?: string
           gallery_date?: string | null
           id?: string
@@ -732,7 +732,10 @@ export type Database = {
           approval_status: string
           avatar: string | null
           created_at: string
+          deactivated_at: string | null
+          deactivated_by: string | null
           email: string
+          employment_status: Database["public"]["Enums"]["employment_status"]
           filial_id: string | null
           id: string
           name: string
@@ -745,7 +748,10 @@ export type Database = {
           approval_status?: string
           avatar?: string | null
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email: string
+          employment_status?: Database["public"]["Enums"]["employment_status"]
           filial_id?: string | null
           id?: string
           name: string
@@ -758,7 +764,10 @@ export type Database = {
           approval_status?: string
           avatar?: string | null
           created_at?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
           email?: string
+          employment_status?: Database["public"]["Enums"]["employment_status"]
           filial_id?: string | null
           id?: string
           name?: string
@@ -1150,7 +1159,7 @@ export type Database = {
           contact_function: string | null
           contact_name: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           documents: string[] | null
           email: string | null
           end_date: string
@@ -1202,7 +1211,7 @@ export type Database = {
           contact_function?: string | null
           contact_name?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           documents?: string[] | null
           email?: string | null
           end_date: string
@@ -1254,7 +1263,7 @@ export type Database = {
           contact_function?: string | null
           contact_name?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           documents?: string[] | null
           email?: string | null
           end_date?: string
@@ -3235,6 +3244,7 @@ export type Database = {
         | "technical_consultant"
         | "admin"
       client_temperature: "frio" | "morno" | "quente"
+      employment_status: "active" | "inactive"
       followup_activity_type:
         | "visita"
         | "ligacao"
@@ -3381,6 +3391,7 @@ export const Constants = {
         "admin",
       ],
       client_temperature: ["frio", "morno", "quente"],
+      employment_status: ["active", "inactive"],
       followup_activity_type: [
         "visita",
         "ligacao",
