@@ -458,15 +458,16 @@ const Equipamentos: React.FC = () => {
                 <thead className="bg-muted/40 sticky top-0 z-10">
                   <tr className="text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Filial</th>
-                    <th className="px-3 py-2 font-medium text-right">Máquinas Validadas</th>
+                    <th className="px-3 py-2 font-medium text-right">Total Validadas</th>
+                    <th className="px-3 py-2 font-medium text-right">Prioridades</th>
+                    <th className="px-3 py-2 font-medium text-right">Não Prioridades</th>
                     <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
-                    <th className="px-3 py-2 font-medium text-right">% Máquinas Validadas</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filialRanked.map((f) => {
-                    const totalPriority = priorityByFilial.totals.get(f.filial_nome) ?? 0;
-                    const pct = totalPriority > 0 ? (f.validated_count / totalPriority) * 100 : 0;
+                    const priority = priorityValidatedByFilial.get(f.filial_nome) ?? 0;
+                    const nonPriority = Math.max(0, f.validated_count - priority);
                     const distinctClients = distinctClientsByFilial[f.filial_nome] ?? 0;
                     return (
                       <tr
@@ -478,10 +479,13 @@ const Equipamentos: React.FC = () => {
                           {f.validated_count.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {distinctClients.toLocaleString('pt-BR')}
+                          {priority.toLocaleString('pt-BR')}
+                        </td>
+                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                          {nonPriority.toLocaleString('pt-BR')}
                         </td>
                         <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
-                          {pct.toFixed(1)}%
+                          {distinctClients.toLocaleString('pt-BR')}
                         </td>
                       </tr>
                     );
