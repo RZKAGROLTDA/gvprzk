@@ -405,16 +405,21 @@ const Equipamentos: React.FC = () => {
             value={parkSummary?.total}
           />
           <SummaryCell
+            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+            label="Total Validadas"
+            value={parkSummary?.validadas}
+          />
+          <SummaryCell
             icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
-            label="Prioritárias"
-            value={parkSummary?.prioridade}
+            label="Prioridades"
+            value={priorityValidatedTotal}
             highlight={priorityOnly}
             onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
           />
           <SummaryCell
-            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-            label="Validadas"
-            value={parkSummary?.validadas}
+            icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
+            label="Não Prioridades"
+            value={nonPriorityValidatedTotal}
           />
           <SummaryCell
             icon={<UserCheck className="h-4 w-4 text-primary" />}
@@ -425,11 +430,6 @@ const Equipamentos: React.FC = () => {
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
             label="Pendentes"
             value={parkSummary?.pendentes}
-          />
-          <SummaryCell
-            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-            label="Validações hoje"
-            value={parkSummary?.hoje}
           />
           <SummaryCell
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
