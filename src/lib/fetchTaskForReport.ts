@@ -29,9 +29,8 @@ import type { Task } from '@/types/task';
 export async function fetchTaskForReport(taskId: string): Promise<Task | null> {
   if (!taskId) return null;
 
-  const [taskResult, extraResult, productsResult, remindersResult, media] = await Promise.all([
+  const [taskResult, productsResult, remindersResult, media] = await Promise.all([
     supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
-    supabase.from('tasks').select('checklist_machine').eq('id', taskId).maybeSingle(),
     supabase
       .from('products')
       .select('id, task_id, name, category, selected, quantity, price, observations, photos, response_status, response_notes')
@@ -49,7 +48,6 @@ export async function fetchTaskForReport(taskId: string): Promise<Task | null> {
 
   const merged = {
     ...taskRow,
-    checklist_machine: extraResult.data?.checklist_machine ?? null,
     photos: media.photos,
     documents: media.documents,
     technical_visit_data: media.technicalVisitData,
