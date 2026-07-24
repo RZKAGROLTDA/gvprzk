@@ -46,6 +46,14 @@ export async function fetchTaskForReport(taskId: string): Promise<Task | null> {
   const taskRow = taskResult.data?.[0] ?? null;
   if (!taskRow) return null;
 
+  if (!media.ok) {
+    // Não silenciar: sinaliza para o gerador de relatório que a mídia falhou.
+    console.error('[fetchTaskForReport] Falha ao carregar mídia da tarefa', {
+      taskId,
+      error: media.error,
+    });
+  }
+
   const merged = {
     ...taskRow,
     photos: media.photos,
@@ -53,6 +61,7 @@ export async function fetchTaskForReport(taskId: string): Promise<Task | null> {
     technical_visit_data: media.technicalVisitData,
     products: productsResult.data || [],
     reminders: remindersResult.data || [],
+    __mediaLoadError: media.ok ? null : (media.error || 'Erro desconhecido'),
   };
 
   return mapSupabaseTaskToTask(merged);
