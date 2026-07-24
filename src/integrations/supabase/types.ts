@@ -2644,6 +2644,14 @@ export type Database = {
           sales_value: number
         }[]
       }
+      get_secure_task_media: {
+        Args: { p_task_id: string }
+        Returns: {
+          documents: string[]
+          photos: string[]
+          technical_visit_data: Json
+        }[]
+      }
       get_secure_tasks_enhanced: {
         Args: { limit_count?: number; offset_count?: number }
         Returns: {
