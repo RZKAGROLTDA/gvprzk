@@ -38,6 +38,7 @@ import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import CRM from "./pages/CRM";
 import Vacations from "./pages/Vacations";
+import MediaDiagnostics from "./pages/MediaDiagnostics";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
