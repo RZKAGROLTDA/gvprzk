@@ -269,14 +269,20 @@ function cacheKey(bucket: MediaBucket, path: string) {
   return `${bucket}:${path}`;
 }
 
+/** Invalida a signed URL em cache (usada quando o browser rejeita a URL). */
+export function invalidateSignedUrl(value: string, bucket: MediaBucket = TASK_PHOTOS_BUCKET) {
+  signedUrlCache.delete(cacheKey(bucket, value));
+}
+
 /** Gera (ou reaproveita) uma signed URL. NUNCA persistir esse valor. */
 export async function getSignedUrl(
   bucket: MediaBucket,
   path: string,
+  force = false,
 ): Promise<string | null> {
   const key = cacheKey(bucket, path);
   const cached = signedUrlCache.get(key);
-  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
+  if (!force && cached && cached.expiresAt > Date.now() + 60_000) return cached.url;
 
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -303,10 +309,11 @@ export async function getSignedUrl(
 export async function resolveMediaUrl(
   value: string,
   bucket: MediaBucket = TASK_PHOTOS_BUCKET,
+  options?: { force?: boolean },
 ): Promise<string | null> {
   if (!value) return null;
   if (isBase64Image(value) || isAbsoluteUrl(value)) return value;
-  return getSignedUrl(bucket, value);
+  return getSignedUrl(bucket, value, options?.force);
 }
 
 /** Resolve uma lista mista. Falhas individuais viram `null` (não quebram o todo). */
