@@ -16,9 +16,15 @@ const defaultGetTaskTypeLabel = (type: string) => {
   }
 };
 
-const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+const loadImageAsBase64 = async (
+  value: string,
+  bucket: MediaBucket = TASK_PHOTOS_BUCKET,
+): Promise<string | null> => {
   try {
-    if (url.startsWith('data:image')) return url;
+    if (value.startsWith('data:image')) return value;
+    // Paths do Storage são resolvidos em signed URL só na geração do PDF.
+    const url = await resolveMediaUrl(value, bucket);
+    if (!url) return null;
     const response = await fetch(url);
     if (!response.ok) return null;
     const blob = await response.blob();
@@ -32,6 +38,7 @@ const loadImageAsBase64 = async (url: string): Promise<string | null> => {
     return null;
   }
 };
+
 
 const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> =>
   new Promise((resolve) => {
