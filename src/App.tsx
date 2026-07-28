@@ -38,6 +38,7 @@ import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import CRM from "./pages/CRM";
 import Vacations from "./pages/Vacations";
+import MediaDiagnostics from "./pages/MediaDiagnostics";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
@@ -93,6 +94,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/users" element={<Layout><Users /></Layout>} />
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
       <Route path="/equipamentos" element={<Layout><Equipamentos /></Layout>} />
+      <Route path="/diagnostico-midia" element={<Layout><MediaDiagnostics /></Layout>} />
       <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
