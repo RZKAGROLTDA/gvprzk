@@ -80,6 +80,6 @@ export const MediaImage: React.FC<MediaImageProps> = ({
     return <div className={fallbackClassName || 'w-full h-full bg-muted animate-pulse'} />;
   }
 
-  return <img src={src} alt={alt} className={className} onError={handleError} {...rest} />;
+  return <img {...rest} src={src} alt={alt} className={className} onError={handleError} />;
 };
 
