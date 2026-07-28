@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadPendingPhotos, TASK_PHOTOS_BUCKET, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 
 export interface OfflineData {
   tasks: any[];
@@ -217,7 +218,8 @@ export const useOffline = () => {
               end_time: taskData.endTime,
               observations: taskData.observations || '',
               priority: taskData.priority,
-              photos: taskData.photos || [],
+              // Fotos vão para o Storage após o insert (precisamos do id da tarefa).
+              photos: [],
               documents: taskData.documents || [],
               check_in_location: taskData.checkInLocation,
               initial_km: taskData.initialKm || 0,
@@ -258,10 +260,49 @@ export const useOffline = () => {
 
             if (taskError) throw taskError;
 
+            // ---- Upload das fotos locais para o Storage ----
+            // Só consideramos a sincronização concluída após o upload confirmar.
+            const offlinePhotos = (taskData.photos || []).filter(Boolean);
+            if (offlinePhotos.length > 0) {
+              const { photos: storedPhotos, failed } = await uploadPendingPhotos(
+                TASK_PHOTOS_BUCKET,
+                insertedTask.id,
+                offlinePhotos,
+              );
+              if (failed > 0) {
+                // Preserva a imagem local para nova tentativa (item continua na fila).
+                throw new Error(`Falha ao enviar ${failed} foto(s) da tarefa ao Storage`);
+              }
+              const { error: photosError } = await supabase
+                .from('tasks')
+                .update({ photos: storedPhotos })
+                .eq('id', insertedTask.id);
+              if (photosError) throw photosError;
+              // Evita reenvio duplicado caso o item volte à fila por outro erro.
+              taskData.photos = storedPhotos;
+            }
+
             // Sincronizar produtos/checklist se existirem
             if (taskData.checklist && taskData.checklist.length > 0) {
               const validCategories = ['tires', 'lubricants', 'oils', 'greases', 'batteries', 'other'];
-              const products = taskData.checklist.map((product: any) => ({
+              const checklistWithStoredPhotos = await Promise.all(
+                taskData.checklist.map(async (product: any) => {
+                  if (!product.photos?.length) return product;
+                  const { photos, failed } = await uploadPendingPhotos(
+                    PRODUCT_PHOTOS_BUCKET,
+                    insertedTask.id,
+                    product.photos,
+                    { prefix: 'item' },
+                  );
+                  if (failed > 0) {
+                    throw new Error('Falha ao enviar fotos do checklist ao Storage');
+                  }
+                  product.photos = photos; // evita reenvio em nova tentativa
+                  return { ...product, photos };
+                }),
+              );
+
+              const products = checklistWithStoredPhotos.map((product: any) => ({
                 task_id: insertedTask.id,
                 name: product.name,
                 category: validCategories.includes(product.category) ? product.category : 'other',
