@@ -26,6 +26,7 @@ import { generateReportPDF } from '@/lib/generateReportPDF';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateDisplay } from '@/lib/utils';
 import { WorkshopChecklistView } from './WorkshopChecklistView';
+import { MediaImage } from '@/components/MediaImage';
 
 interface Props {
   task: Task | null;
@@ -585,7 +586,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                           onClick={() => setLightboxIndex(i)}
                           className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                         >
-                          <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <MediaImage value={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
                             {i + 1}/{photoCount}
@@ -1121,7 +1122,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   </button>
                 </>
               )}
-              <img src={currentTask.photos[lightboxIndex]} alt={`Foto ${lightboxIndex + 1}`} className="w-full max-h-[85vh] object-contain rounded" />
+              <MediaImage value={currentTask.photos[lightboxIndex]} alt={`Foto ${lightboxIndex + 1}`} className="w-full max-h-[85vh] object-contain rounded" />
               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-background/80 border rounded-full px-3 py-1 text-xs font-mono">
                 {lightboxIndex + 1} / {photoCount}
               </div>
