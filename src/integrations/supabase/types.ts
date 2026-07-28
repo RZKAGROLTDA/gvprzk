@@ -1832,6 +1832,7 @@ export type Database = {
         Args: { task_owner_id: string }
         Returns: boolean
       }
+      can_access_media_object: { Args: { p_name: string }; Returns: boolean }
       can_access_task_related_data: {
         Args: { p_task_id: string }
         Returns: boolean
@@ -2953,9 +2954,11 @@ export type Database = {
         Returns: boolean
       }
       internal_cleanup_security_logs_cron: { Args: never; Returns: number }
+      is_active_approved_user: { Args: never; Returns: boolean }
       is_admin_by_email: { Args: { check_email: string }; Returns: boolean }
       is_high_value_task: { Args: { sales_value: number }; Returns: boolean }
       is_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_media_task_owner: { Args: { p_name: string }; Returns: boolean }
       is_user_admin: { Args: { _user_id: string }; Returns: boolean }
       log_client_data_access:
         | {
