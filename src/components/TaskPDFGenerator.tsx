@@ -5,6 +5,8 @@ import jsPDF from 'jspdf';
 import { mapSalesStatus, getStatusLabel, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateDisplay } from '@/lib/utils';
+import { resolveMediaUrl, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
+
 
 const defaultGetTaskTypeLabel = (type: string) => {
   switch (type) {
