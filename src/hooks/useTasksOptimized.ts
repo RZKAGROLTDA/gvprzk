@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadPendingPhotos, TASK_PHOTOS_BUCKET, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useOffline } from '@/hooks/useOffline';
 import { Task, ProductType, Reminder } from '@/types/task';
@@ -335,7 +336,9 @@ export const useTasksOptimized = (includeDetails = false) => {
           end_time: standardizedTaskData.endTime,
           observations: standardizedTaskData.observations || '',
           priority: standardizedTaskData.priority,
-          photos: standardizedTaskData.photos || [],
+          // Fotos são enviadas ao Storage logo após o insert (precisamos do task.id).
+          // NUNCA gravar Base64 aqui.
+          photos: [],
           documents: standardizedTaskData.documents || [],
           check_in_location: standardizedTaskData.checkInLocation,
           initial_km: standardizedTaskData.initialKm || 0,
@@ -372,6 +375,33 @@ export const useTasksOptimized = (includeDetails = false) => {
       if (taskError) throw taskError;
 
       console.log('✅ Task criada com sucesso:', task.id);
+
+      // ---- Upload das fotos da tarefa para o Storage (path {task_id}/{arquivo}) ----
+      const pendingTaskPhotos = (standardizedTaskData.photos || []).filter(Boolean);
+      if (pendingTaskPhotos.length > 0) {
+        const { photos: storedPhotos, failed } = await uploadPendingPhotos(
+          TASK_PHOTOS_BUCKET,
+          task.id,
+          pendingTaskPhotos,
+        );
+        const onlyPaths = storedPhotos.filter(v => !v.startsWith('data:'));
+        if (onlyPaths.length > 0) {
+          const { error: photoUpdateError } = await supabase
+            .from('tasks')
+            .update({ photos: onlyPaths })
+            .eq('id', task.id);
+          if (photoUpdateError) {
+            console.error('❌ Erro ao vincular fotos à tarefa:', photoUpdateError);
+          }
+        }
+        if (failed > 0) {
+          toast({
+            title: '⚠️ Fotos',
+            description: `${failed} foto(s) não puderam ser enviadas. Edite a tarefa e tente novamente.`,
+            variant: 'destructive',
+          });
+        }
+      }
       console.log('📦 Verificando produtos para salvar:', {
         hasChecklist: !!taskData.checklist,
         checklistLength: taskData.checklist?.length || 0,
@@ -413,7 +443,22 @@ export const useTasksOptimized = (includeDetails = false) => {
         // Categorias válidas permitidas pela constraint do banco
         const validCategories = ['tires', 'lubricants', 'oils', 'greases', 'batteries', 'other'];
         
-        const products = taskData.checklist.map(product => {
+        // Upload das fotos dos itens do checklist (bucket product-photos,
+        // mantendo o UUID da tarefa como primeiro nível do path).
+        const checklistWithStoredPhotos = await Promise.all(
+          taskData.checklist.map(async (product: any) => {
+            if (!product.photos?.length) return product;
+            const { photos } = await uploadPendingPhotos(
+              PRODUCT_PHOTOS_BUCKET,
+              task.id,
+              product.photos,
+              { prefix: 'item' },
+            );
+            return { ...product, photos: photos.filter((v: string) => !v.startsWith('data:')) };
+          }),
+        );
+
+        const products = checklistWithStoredPhotos.map(product => {
           // Validar e corrigir categoria se necessário
           const category = validCategories.includes(product.category) 
             ? product.category 
@@ -502,6 +547,19 @@ export const useTasksOptimized = (includeDetails = false) => {
 
       if (updates.salesConfirmed !== undefined || (updates.salesValue && getSalesValueAsNumber(updates.salesValue) > 0)) {
         finalUpdates.isProspect = true;
+      }
+
+      // Fotos novas (Base64 em memória) vão para o Storage antes do update.
+      if (Array.isArray(finalUpdates.photos) && finalUpdates.photos.length > 0) {
+        const { photos, failed } = await uploadPendingPhotos(
+          TASK_PHOTOS_BUCKET,
+          taskId,
+          finalUpdates.photos,
+        );
+        if (failed > 0) {
+          throw new Error('Falha ao enviar uma ou mais fotos. Nenhuma alteração de foto foi perdida — tente novamente.');
+        }
+        finalUpdates.photos = photos;
       }
 
       const { error } = await supabase
