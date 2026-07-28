@@ -309,10 +309,11 @@ export async function getSignedUrl(
 export async function resolveMediaUrl(
   value: string,
   bucket: MediaBucket = TASK_PHOTOS_BUCKET,
+  options?: { force?: boolean },
 ): Promise<string | null> {
   if (!value) return null;
   if (isBase64Image(value) || isAbsoluteUrl(value)) return value;
-  return getSignedUrl(bucket, value);
+  return getSignedUrl(bucket, value, options?.force);
 }
 
 /** Resolve uma lista mista. Falhas individuais viram `null` (não quebram o todo). */
