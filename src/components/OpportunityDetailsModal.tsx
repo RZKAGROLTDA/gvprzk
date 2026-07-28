@@ -51,6 +51,7 @@ import 'jspdf-autotable';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { WorkshopChecklistView } from '@/components/WorkshopChecklistView';
+import { MediaImage } from '@/components/MediaImage';
 
 interface OpportunityDetailsModalProps {
   task: Task | null;
@@ -766,7 +767,7 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
                         onClick={() => setLightboxPhoto(photo)}
                         className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                       >
-                        <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
+                        <MediaImage value={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
                           {index + 1}/{photoCount}
@@ -1120,7 +1121,7 @@ ${currentTask.observations || currentTask.prospectNotes || '—'}
               >
                 <X className="w-4 h-4" />
               </button>
-              <img src={lightboxPhoto} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
+              <MediaImage value={lightboxPhoto} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
             </div>
           </DialogContent>
         </Dialog>

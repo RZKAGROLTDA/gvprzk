@@ -13,6 +13,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { resolveFilialName } from '@/lib/taskStandardization';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getSalesValueAsNumber, formatSalesValue } from '@/lib/securityUtils';
+import { MediaImage } from '@/components/MediaImage';
+import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 interface TaskDetailsModalProps {
   task: Task | null;
   open: boolean;
@@ -337,7 +339,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                           <p className="text-sm font-medium mb-2">Fotos do produto:</p>
                           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                             {product.photos.map((photo, photoIndex) => <div key={photoIndex} className="aspect-square border rounded overflow-hidden bg-muted">
-                                <img src={photo} alt={`Foto ${photoIndex + 1} do produto ${product.name}`} className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" onClick={() => window.open(photo, '_blank')} onError={e => {
+                                <MediaImage value={photo} bucket={PRODUCT_PHOTOS_BUCKET} alt={`Foto ${photoIndex + 1} do produto ${product.name}`} className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" onClick={async () => { const u = await resolveMediaUrl(photo, PRODUCT_PHOTOS_BUCKET); if (u) window.open(u, '_blank'); }} onError={e => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement;
@@ -575,7 +577,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {currentTask.photos.map((photo, index) => <div key={index} className="aspect-square border rounded-lg overflow-hidden bg-muted">
-                      <img src={photo} alt={`Foto ${index + 1} da tarefa`} className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" onClick={() => window.open(photo, '_blank')} onError={e => {
+                      <MediaImage value={photo} alt={`Foto ${index + 1} da tarefa`} className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" onClick={async () => { const u = await resolveMediaUrl(photo); if (u) window.open(u, '_blank'); }} onError={e => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                   const parent = target.parentElement;

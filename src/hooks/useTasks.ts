@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadPendingPhotos, TASK_PHOTOS_BUCKET, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useOffline } from '@/hooks/useOffline';
 import { Task, ProductType, Reminder } from '@/types/task';
@@ -291,7 +292,7 @@ export const useTasks = () => {
           end_time: standardizedTaskData.endTime,
           observations: standardizedTaskData.observations || '',
           priority: standardizedTaskData.priority,
-          photos: standardizedTaskData.photos || [],
+          photos: [], // fotos vão para o Storage após o insert
           documents: standardizedTaskData.documents || [],
           check_in_location: standardizedTaskData.checkInLocation,
           initial_km: standardizedTaskData.initialKm || 0,
@@ -313,6 +314,16 @@ export const useTasks = () => {
         .single();
 
       if (taskError) throw taskError;
+
+      // Upload das fotos ao Storage (nunca Base64 no banco)
+      const pendingPhotos = (standardizedTaskData.photos || []).filter(Boolean);
+      if (pendingPhotos.length > 0) {
+        const { photos: stored } = await uploadPendingPhotos(TASK_PHOTOS_BUCKET, task.id, pendingPhotos);
+        const paths = stored.filter((v: string) => !v.startsWith('data:'));
+        if (paths.length > 0) {
+          await supabase.from('tasks').update({ photos: paths }).eq('id', task.id);
+        }
+      }
 
       // Auto-criar opportunity se task tem valor de venda
       if (standardizedTaskData.salesValue && standardizedTaskData.salesValue > 0) {
@@ -340,7 +351,15 @@ export const useTasks = () => {
 
       // Criar produtos (checklist)
       if (taskData.checklist && taskData.checklist.length > 0) {
-        const products = taskData.checklist.map(product => ({
+        const checklistWithStoredPhotos = await Promise.all(
+          taskData.checklist.map(async (product: any) => {
+            if (!product.photos?.length) return product;
+            const { photos } = await uploadPendingPhotos(PRODUCT_PHOTOS_BUCKET, task.id, product.photos, { prefix: 'item' });
+            return { ...product, photos: photos.filter((v: string) => !v.startsWith('data:')) };
+          }),
+        );
+
+        const products = checklistWithStoredPhotos.map(product => ({
           task_id: task.id,
           name: product.name,
           category: product.category,

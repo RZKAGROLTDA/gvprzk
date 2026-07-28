@@ -21,6 +21,8 @@ import { generateReportPDF } from '@/lib/generateReportPDF';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { Info } from 'lucide-react';
+import { MediaImage } from '@/components/MediaImage';
+import { PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 
 interface Props {
   task: Task;
@@ -499,7 +501,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                         onClick={() => setLightboxPhoto(photo)}
                         className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                       >
-                        <img src={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <MediaImage value={photo} bucket={PRODUCT_PHOTOS_BUCKET} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                       </button>
                     ))}
                   </div>
@@ -544,7 +546,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
               >
                 <X className="w-5 h-5" />
               </button>
-              <img src={lightboxPhoto} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
+              <MediaImage value={lightboxPhoto} bucket={PRODUCT_PHOTOS_BUCKET} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
             </div>
           </DialogContent>
         </Dialog>

@@ -16,6 +16,7 @@ import { Calendar as CalendarIcon, Clock, MapPin, User, Building, CheckSquare, C
 import { Task, ProductType, Reminder } from '@/types/task';
 import { cn } from '@/lib/utils';
 import { PhotoUpload } from '@/components/PhotoUpload';
+import { PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 import { CheckInLocation } from '@/components/CheckInLocation';
 import { useOffline } from '@/hooks/useOffline';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
@@ -1403,6 +1404,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                             {status && (
                               <div className="pt-2 border-t border-border/40">
                                 <PhotoUpload
+                                  bucket={PRODUCT_PHOTOS_BUCKET}
                                   photos={item.photos || []}
                                   onPhotosChange={(photos) => updateChecklistItem(item.id, { photos })}
                                   maxPhotos={6}

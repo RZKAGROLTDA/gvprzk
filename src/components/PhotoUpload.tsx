@@ -1,61 +1,84 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { 
   Camera, 
   Upload, 
   X, 
   Eye,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
+import { compressToDataUrl, deletePhoto, isStoragePath, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
+import { useResolvedPhotos } from '@/hooks/useResolvedPhotos';
+import { toast } from 'sonner';
 
 interface PhotoUploadProps {
   photos: string[];
   onPhotosChange: (photos: string[]) => void;
   maxPhotos?: number;
   hidePhotoUpload?: boolean; // New prop to hide photo functionality
+  /** Bucket usado quando a foto já está no Storage (leitura/exclusão) */
+  bucket?: MediaBucket;
 }
 
 export const PhotoUpload: React.FC<PhotoUploadProps> = ({ 
   photos, 
   onPhotosChange, 
   maxPhotos = 10,
-  hidePhotoUpload = false // Default to false to maintain existing behavior
+  hidePhotoUpload = false, // Default to false to maintain existing behavior
+  bucket = TASK_PHOTOS_BUCKET,
 }) => {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Lista mista: Base64 histórico + paths do Storage (resolvidos em signed URL)
+  const { resolved } = useResolvedPhotos(photos, bucket);
 
   // If hidePhotoUpload is true, don't render anything
   if (hidePhotoUpload) {
     return null;
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const newPhoto = e.target?.result as string;
-          if (photos.length < maxPhotos) {
-            onPhotosChange([...photos, newPhoto]);
-          }
-        };
-        reader.readAsDataURL(file);
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (files.length === 0) return;
+
+    setProcessing(true);
+    try {
+      const available = Math.max(0, maxPhotos - photos.length);
+      const accepted = files.slice(0, available);
+      const compressed: string[] = [];
+      for (const file of accepted) {
+        try {
+          // Compressão obrigatória antes de qualquer persistência.
+          compressed.push(await compressToDataUrl(file));
+        } catch (err) {
+          console.error('[PhotoUpload] Falha ao comprimir imagem:', err);
+          toast.error(`Não foi possível processar "${file.name}"`);
+        }
       }
-    });
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      if (compressed.length > 0) {
+        onPhotosChange([...photos, ...compressed]);
+      }
+    } finally {
+      setProcessing(false);
     }
   };
 
-  const removePhoto = (index: number) => {
-    const newPhotos = photos.filter((_, i) => i !== index);
-    onPhotosChange(newPhotos);
+  const removePhoto = async (index: number) => {
+    const value = photos[index];
+    // Foto já no Storage: só removemos a referência após o Storage confirmar.
+    if (isStoragePath(value)) {
+      const ok = await deletePhoto(value, bucket);
+      if (!ok) {
+        toast.error('Não foi possível excluir a foto do armazenamento. Tente novamente.');
+        return;
+      }
+    }
+    onPhotosChange(photos.filter((_, i) => i !== index));
   };
 
   const openCamera = () => {
@@ -80,20 +103,20 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
             type="button" 
             variant="outline" 
             onClick={openCamera}
-            disabled={photos.length >= maxPhotos}
+            disabled={photos.length >= maxPhotos || processing}
             className="flex-1"
           >
-            <Camera className="h-4 w-4 mr-2" />
+            {processing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Camera className="h-4 w-4 mr-2" />}
             Tirar Foto
           </Button>
           <Button 
             type="button" 
             variant="outline" 
             onClick={() => fileInputRef.current?.click()}
-            disabled={photos.length >= maxPhotos}
+            disabled={photos.length >= maxPhotos || processing}
             className="flex-1"
           >
-            <Upload className="h-4 w-4 mr-2" />
+            {processing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
             Enviar Imagem
           </Button>
         </div>
@@ -111,40 +134,52 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
         {/* Informações */}
         <div className="text-sm text-muted-foreground">
           {photos.length} / {maxPhotos} fotos adicionadas
+          {processing && ' • otimizando imagens...'}
         </div>
 
         {/* Grid de Fotos */}
         {photos.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {photos.map((photo, index) => (
-              <div key={index} className="relative group">
-                <img 
-                  src={photo} 
-                  alt={`Foto ${index + 1}`}
-                  className="w-full h-24 object-cover rounded-md border"
-                />
+            {photos.map((photo, index) => {
+              const src = resolved[index] ?? null;
+              return (
+              <div key={`${photo.slice(0, 32)}-${index}`} className="relative group">
+                {src ? (
+                  <img 
+                    src={src} 
+                    alt={`Foto ${index + 1}`}
+                    className="w-full h-24 object-cover rounded-md border"
+                  />
+                ) : (
+                  <div className="w-full h-24 rounded-md border bg-muted flex items-center justify-center text-[10px] text-muted-foreground text-center px-2">
+                    Foto indisponível
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPreviewPhoto(photo)}
-                    className="h-8 w-8 p-0 text-white hover:bg-white/20"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
+                  {src && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPreviewPhoto(src)}
+                      className="h-8 w-8 p-0 text-primary-foreground hover:bg-white/20"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => removePhoto(index)}
-                    className="h-8 w-8 p-0 text-white hover:bg-white/20"
+                    className="h-8 w-8 p-0 text-primary-foreground hover:bg-white/20"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -161,7 +196,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setPreviewPhoto(null)}
-                className="absolute top-2 right-2 text-white hover:bg-white/20"
+                className="absolute top-2 right-2 text-primary-foreground hover:bg-white/20"
               >
                 <X className="h-4 w-4" />
               </Button>

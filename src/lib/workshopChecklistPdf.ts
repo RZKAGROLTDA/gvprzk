@@ -11,10 +11,16 @@ import {
   LEGACY_MACHINE_MESSAGE,
   PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
+import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 
-const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+
+
+const loadImageAsBase64 = async (value: string): Promise<string | null> => {
   try {
-    if (url.startsWith('data:image')) return url;
+    if (value.startsWith('data:image')) return value;
+    // Paths do Storage precisam de signed URL na hora da geração do PDF.
+    const url = await resolveMediaUrl(value, PRODUCT_PHOTOS_BUCKET);
+    if (!url) return null;
     const response = await fetch(url);
     if (!response.ok) return null;
     const blob = await response.blob();
@@ -28,6 +34,7 @@ const loadImageAsBase64 = async (url: string): Promise<string | null> => {
     return null;
   }
 };
+
 
 const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> =>
   new Promise((resolve) => {

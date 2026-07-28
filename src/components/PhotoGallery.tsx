@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { MediaImage } from '@/components/MediaImage';
 import { 
   Camera, 
   Eye, 
@@ -50,8 +51,8 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
                 setIsGalleryOpen(true);
               }}
             >
-              <img 
-                src={photo} 
+              <MediaImage 
+                value={photo} 
                 alt={`Foto ${index + 1}`}
                 className="w-full h-full object-cover"
               />
@@ -77,8 +78,8 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
           <div className="relative w-full max-w-4xl">
             {/* Imagem principal */}
             <div className="relative">
-              <img 
-                src={photos[currentPhotoIndex]} 
+              <MediaImage 
+                value={photos[currentPhotoIndex]} 
                 alt={`Foto ${currentPhotoIndex + 1}`}
                 className="w-full max-h-[80vh] object-contain rounded-md"
               />
@@ -136,8 +137,8 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({
                     }`}
                     onClick={() => setCurrentPhotoIndex(index)}
                   >
-                    <img 
-                      src={photo} 
+                    <MediaImage 
+                      value={photo} 
                       alt={`Miniatura ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
