@@ -11,6 +11,9 @@ import {
   LEGACY_MACHINE_MESSAGE,
   PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
+import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
+
+
 
 const loadImageAsBase64 = async (value: string): Promise<string | null> => {
   try {
