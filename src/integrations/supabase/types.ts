@@ -2239,6 +2239,7 @@ export type Database = {
           visitas: number
         }[]
       }
+      get_media_migration_report: { Args: never; Returns: Json }
       get_performance_by_filial: {
         Args: { p_date_from?: string; p_date_to?: string }
         Returns: {
