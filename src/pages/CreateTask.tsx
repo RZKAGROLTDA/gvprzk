@@ -42,6 +42,7 @@ import { EquipmentParkBlock } from '@/components/equipment';
 import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
 
 import { syncTaskEquipment } from '@/hooks/useClientEquipment';
+import { newSubmissionId } from '@/lib/taskSubmission';
 import { User as UserIcon, Tractor, MessageSquare } from 'lucide-react';
 
 interface CreateTaskProps {
@@ -158,7 +159,9 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionLockRef = useRef(false);
-  const lastSubmissionRef = useRef<string>('');
+  // Identificador único desta operação de criação. Gerado quando o formulário
+  // é iniciado e mantido durante toda a sua vida — inclusive em retries.
+  const submissionIdRef = useRef<string>(newSubmissionId());
   const {
     isOnline,
     saveTaskOffline,
@@ -292,6 +295,23 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     tipo: string; modelo: string; chassi_serie: string; ano: string; horimetro: string; status: string; observacao: string;
   }>({ tipo: '', modelo: '', chassi_serie: '', ano: '', horimetro: '', status: 'ativo', observacao: '' });
   const [registerMachineInClient, setRegisterMachineInClient] = useState<boolean>(true);
+
+  /**
+   * Preenche automaticamente tipo, modelo, ano, horímetro e chassi ao
+   * selecionar um equipamento do Parque de Máquinas.
+   */
+  const autofillChecklistMachine = (eq: any) => {
+    setChecklistMachine(prev => ({
+      ...prev,
+      tipo: eq.machine_type || eq.product_raw || prev.tipo,
+      modelo: eq.model || prev.modelo,
+      chassi_serie: eq.serial_chassis || prev.chassi_serie,
+      ano: eq.year != null ? String(eq.year) : prev.ano,
+      horimetro: eq.hours != null ? String(eq.hours) : prev.horimetro,
+      status: eq.machine_status || prev.status,
+    }));
+  };
+
   const updateChecklistItem = (id: string, patch: Partial<ProductType>) => {
     setChecklist(prev => prev.map(it => it.id === id ? { ...it, ...patch, selected: (patch.responseStatus ?? it.responseStatus) ? true : it.selected } : it));
   };
@@ -817,30 +837,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Prevent double submissions with debounce protection
+    // Botão bloqueado durante todo o pipeline
     if (submissionLockRef.current || isSubmitting) {
       console.log('Submission blocked - already in progress');
       return;
     }
 
-    // Generate unique submission fingerprint for duplicate detection
-    const submissionHash = `${task.client}_${task.property}_${task.startDate}_${task.startTime}_${Date.now()}`;
-
-    // Check if this is a duplicate submission (within 5 seconds)
-    if (lastSubmissionRef.current === submissionHash) {
-      console.log('Duplicate submission blocked');
-      toast({
-        title: "Submissão duplicada",
-        description: "Esta tarefa já foi enviada recentemente",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Lock submission
+    // Lock submission (a idempotência real é garantida pelo submission_id)
     submissionLockRef.current = true;
     setIsSubmitting(true);
-    lastSubmissionRef.current = submissionHash;
 
     // Validação completa de campos obrigatórios
     const requiredFields = [{
@@ -865,6 +870,12 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       requiredFields.push({
         field: task.filialAtendida?.trim(),
         name: 'Filial Atendida'
+      });
+    } else if (taskCategory === 'workshop-checklist') {
+      // Chassi/Nº de série é obrigatório para o Checklist da Oficina
+      requiredFields.push({
+        field: checklistMachine.chassi_serie?.trim(),
+        name: 'Chassi / Nº de Série da máquina'
       });
     }
 
@@ -945,6 +956,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         prospectNotesJustification: '',
       } : {})
     };
+    const postFailures: string[] = [];
     try {
       const finalTaskData = {
         ...taskData,
@@ -955,12 +967,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         createdAt: now,
         updatedAt: now,
         status: 'pending' as const,
-        createdBy: profile?.name || 'Usuário'
+        createdBy: profile?.name || 'Usuário',
+        // Idempotência: mesma operação nunca gera duas tarefas
+        submissionId: submissionIdRef.current,
       };
 
-      // Use the useTasks hook which has built-in duplicate prevention
       console.log('Creating task with data:', finalTaskData);
       const createdTask: any = await createTask(finalTaskData);
+
+      // ---- Etapas pós-criação: independentes, nunca cancelam a tarefa ----
 
       // Vincular equipamentos selecionados do parque (cadastro mestre) à task
       if (createdTask?.id && selectedEquipmentIds.length > 0) {
@@ -968,13 +983,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           await syncTaskEquipment(createdTask.id, selectedEquipmentIds);
         } catch (linkErr) {
           console.warn('Falha ao vincular equipamentos à task:', linkErr);
+          postFailures.push('vínculo de equipamentos');
         }
       }
 
       // Enviar para WhatsApp se webhook configurado
       if (whatsappWebhook) {
-        await sendToWhatsApp(finalTaskData);
+        try {
+          await sendToWhatsApp(finalTaskData);
+        } catch (waErr) {
+          console.warn('Falha no envio para WhatsApp:', waErr);
+          postFailures.push('envio para WhatsApp');
+        }
       }
+
+      // Sucesso: novo formulário recebe um novo submission_id
+      submissionIdRef.current = newSubmissionId();
 
       // Reset completo do formulário e voltar à seleção de tipo de tarefa
       resetAllFields();
@@ -992,14 +1016,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         behavior: 'smooth'
       });
       toast({
-        title: "✅ Tarefa Criada com Sucesso!",
-        description: isOnline ? "Tarefa salva no servidor. Você pode criar uma nova tarefa." : "Tarefa salva offline - será sincronizada quando conectar. Você pode criar uma nova tarefa."
+        title: postFailures.length ? "⚠️ Tarefa Salva com Pendências" : "✅ Tarefa Criada com Sucesso!",
+        description: postFailures.length
+          ? `Tarefa salva com sucesso, porém ocorreram falhas em: ${postFailures.join(', ')}.`
+          : (isOnline ? "Tarefa salva no servidor. Você pode criar uma nova tarefa." : "Tarefa salva offline - será sincronizada quando conectar. Você pode criar uma nova tarefa."),
+        variant: postFailures.length ? "destructive" : undefined,
       });
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
+      // O submission_id é MANTIDO: um novo clique em Salvar continua
+      // exatamente a mesma tarefa, sem nunca criar outra.
       toast({
         title: "Erro",
-        description: "Não foi possível criar a tarefa",
+        description: "Não foi possível concluir o salvamento. Clique em Salvar novamente para continuar a mesma tarefa.",
         variant: "destructive"
       });
     } finally {
@@ -1206,6 +1235,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 selectable
                 selectedIds={selectedEquipmentIds}
                 onSelectionChange={setSelectedEquipmentIds}
+                onEquipmentPicked={autofillChecklistMachine}
               />
             </EquipmentParkSection>
           )}
@@ -1298,8 +1328,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Input value={checklistMachine.modelo} onChange={e => setChecklistMachine(m => ({ ...m, modelo: e.target.value }))} placeholder="Ex: 6110J" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Chassi / Série</Label>
-                      <Input value={checklistMachine.chassi_serie} onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))} placeholder="Chassi/Nº de série" />
+                      <Label>Chassi / Série <span className="text-destructive">*</span></Label>
+                      <Input required value={checklistMachine.chassi_serie} onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))} placeholder="Chassi/Nº de série" />
                     </div>
                     <div className="space-y-2">
                       <Label>Ano</Label>

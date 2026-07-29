@@ -23,6 +23,8 @@ interface Props {
   selectable?: boolean;
   selectedIds?: string[];
   onSelectionChange?: (ids: string[]) => void;
+  /** Disparado ao marcar um equipamento — permite autofill do bloco "Máquina". */
+  onEquipmentPicked?: (equipment: ClientEquipment) => void;
 }
 
 /**
@@ -37,6 +39,7 @@ export const EquipmentParkBlock: React.FC<Props> = ({
   selectable,
   selectedIds = [],
   onSelectionChange,
+  onEquipmentPicked,
 }) => {
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
@@ -88,6 +91,10 @@ export const EquipmentParkBlock: React.FC<Props> = ({
     if (next) set.add(id);
     else set.delete(id);
     onSelectionChange(Array.from(set));
+    if (next) {
+      const picked = equipments.find((e) => e.id === id);
+      if (picked) onEquipmentPicked?.(picked);
+    }
   };
 
   const selectAll = () => onSelectionChange?.(filtered.map((e) => e.id));

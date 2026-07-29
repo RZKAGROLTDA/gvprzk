@@ -10,6 +10,7 @@ import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateToLocal } from '@/lib/utils';
+import { insertTaskIdempotent } from '@/lib/taskSubmission';
 
 // Função helper para gerar nome padrão da tarefa
 const getDefaultTaskName = (taskType: string): string => {
@@ -165,9 +166,6 @@ export const useTasks = () => {
     }
   }, [user, isOnline, getOfflineTasks]); // Dependências do useCallback
 
-  // Lock map to prevent duplicate submissions
-  const createTaskLocks = new Map<string, boolean>();
-
   const createTask = async (taskData: Partial<Task>) => {
     if (!user) {
       toast({
@@ -178,48 +176,14 @@ export const useTasks = () => {
       return null;
     }
 
-    // Create a unique lock key based on task data to prevent duplicates
-    const lockKey = `${taskData.client || ''}-${taskData.responsible || ''}-${taskData.startDate?.getTime() || ''}-${taskData.salesValue || 0}`;
-    
-    // Check if this exact task is already being created
-    if (createTaskLocks.get(lockKey)) {
-      console.warn('🔒 createTask: Task creation already in progress for:', lockKey);
-      toast({
-        title: "Aguarde",
-        description: "Esta tarefa já está sendo criada, aguarde um momento...",
-        variant: "destructive",
-      });
-      return null;
-    }
-
-    // Set lock to prevent duplicate submissions
-    createTaskLocks.set(lockKey, true);
+    // Identificador único da operação de criação, gerado no formulário.
+    // É o ÚNICO mecanismo de idempotência (sem regras por cliente/tempo/chassi).
+    const submissionId: string | undefined = (taskData as any).submissionId;
 
     try {
-      // Check for recent duplicates in the database
-      if (isOnline) {
-        const { data: existingTasks } = await supabase
-          .from('tasks')
-          .select('id, created_at')
-          .eq('client', taskData.client || '')
-          .eq('responsible', taskData.responsible || '')
-          .eq('start_date', taskData.startDate ? formatDateToLocal(taskData.startDate) : '')
-          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
-          .limit(10);
-
-        if (existingTasks && existingTasks.length > 0) {
-          console.warn('🚫 createTask: Duplicate task found, preventing creation');
-          toast({
-            title: "Tarefa duplicada",
-            description: "Uma tarefa similar foi criada recentemente",
-            variant: "destructive",
-          });
-          return null;
-        }
-      }
-
       // Create task with unique ID using crypto.randomUUID() if available
       const tempTask: Task = {
+
         id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: taskData.name || '',
         responsible: taskData.responsible || '',
@@ -248,8 +212,10 @@ export const useTasks = () => {
         prospectNotes: taskData.prospectNotes || '',
         prospectItems: [],
         salesValue: taskData.salesValue || 0,
-        salesConfirmed: taskData.salesConfirmed
-      };
+        salesConfirmed: taskData.salesConfirmed,
+        // Mesmo submission_id é reutilizado ao sincronizar.
+        submissionId,
+      } as any;
 
       // Modo offline - salvar localmente
       if (!isOnline) {
@@ -273,10 +239,9 @@ export const useTasks = () => {
         throw new Error('Cliente é obrigatório');
       }
 
-      // Tentar salvar online
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
+      // Tentar salvar online (idempotente via submission_id)
+      const { task, reused } = await insertTaskIdempotent(
+        {
           name: requiredFields.name,
           responsible: requiredFields.responsible,
           client: requiredFields.client,
@@ -309,11 +274,19 @@ export const useTasks = () => {
               : ((taskData.nextActionDate as Date)?.toISOString().split('T')[0] || null)
           }),
           ...(taskData.checklistMachine !== undefined && { checklist_machine: taskData.checklistMachine || null })
-        })
-        .select()
-        .single();
+        },
+        submissionId,
+      );
 
-      if (taskError) throw taskError;
+      // Em retomada, não duplicar registros filhos já persistidos.
+      const alreadyHasChild = async (table: 'products' | 'reminders') => {
+        if (!reused) return false;
+        const { count } = await supabase
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .eq('task_id', task.id);
+        return (count ?? 0) > 0;
+      };
 
       // Upload das fotos ao Storage (nunca Base64 no banco)
       const pendingPhotos = (standardizedTaskData.photos || []).filter(Boolean);
@@ -350,7 +323,7 @@ export const useTasks = () => {
       }
 
       // Criar produtos (checklist)
-      if (taskData.checklist && taskData.checklist.length > 0) {
+      if (taskData.checklist && taskData.checklist.length > 0 && !(await alreadyHasChild('products'))) {
         const checklistWithStoredPhotos = await Promise.all(
           taskData.checklist.map(async (product: any) => {
             if (!product.photos?.length) return product;
@@ -428,7 +401,7 @@ export const useTasks = () => {
       }
 
       // Criar lembretes
-      if (taskData.reminders && taskData.reminders.length > 0) {
+      if (taskData.reminders && taskData.reminders.length > 0 && !(await alreadyHasChild('reminders'))) {
         const reminders = taskData.reminders.map(reminder => ({
           task_id: task.id,
           title: reminder.title,
@@ -474,11 +447,6 @@ export const useTasks = () => {
       });
 
       return null;
-    } finally {
-      // Always release the lock after 2 seconds
-      setTimeout(() => {
-        createTaskLocks.delete(lockKey);
-      }, 2000);
     }
   };
 

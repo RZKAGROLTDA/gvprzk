@@ -9,6 +9,7 @@ import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber, canPerformNumericOperation } from '@/lib/securityUtils';
 import { fetchTaskMedia } from '@/lib/taskMedia';
+import { insertTaskIdempotent } from '@/lib/taskSubmission';
 
 // Query Keys para cache
 export const QUERY_KEYS = {
@@ -244,6 +245,9 @@ export const useTasksOptimized = (includeDetails = false) => {
     mutationFn: async (taskData: Partial<Task>) => {
       if (!user) throw new Error('User not authenticated');
 
+      // Identificador único da operação de criação (gerado no formulário).
+      const submissionId: string | undefined = (taskData as any).submissionId;
+
       const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
 
       // ✅ Suporte a criação OFFLINE
@@ -295,7 +299,9 @@ export const useTasksOptimized = (includeDetails = false) => {
           equipmentQuantity: taskData.equipmentQuantity,
           propertyHectares: taskData.propertyHectares,
           equipmentList: taskData.equipmentList,
-        };
+          // Mesmo submission_id será usado na sincronização online.
+          submissionId,
+        } as any;
 
         saveTaskOffline(offlineTask);
         return offlineTask;
@@ -314,10 +320,9 @@ export const useTasksOptimized = (includeDetails = false) => {
             equipment_list: []
           };
 
-      // Criar task no Supabase
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
+      // Criar task no Supabase (idempotente via submission_id)
+      const { task, reused } = await insertTaskIdempotent(
+        {
           name: taskData.name || getDefaultTaskName(taskData.taskType || 'prospection'),
           responsible: taskData.responsible || user.email || '',
           ...(taskData.contactName !== undefined && { contact_name: taskData.contactName }),
@@ -368,13 +373,11 @@ export const useTasksOptimized = (includeDetails = false) => {
             checklist_machine: (taskData as any).checklistMachine,
           }),
           ...equipmentData
-        })
-        .select()
-        .single();
+        },
+        submissionId,
+      );
 
-      if (taskError) throw taskError;
-
-      console.log('✅ Task criada com sucesso:', task.id);
+      console.log(reused ? '♻️ Continuando tarefa existente:' : '✅ Task criada com sucesso:', task.id);
 
       // ---- Upload das fotos da tarefa para o Storage (path {task_id}/{arquivo}) ----
       const pendingTaskPhotos = (standardizedTaskData.photos || []).filter(Boolean);
@@ -436,8 +439,18 @@ export const useTasksOptimized = (includeDetails = false) => {
         }
       }
 
+      // Em retomada (mesmo submission_id), não duplicar filhos já persistidos.
+      const alreadyHasChild = async (table: 'products' | 'reminders') => {
+        if (!reused) return false;
+        const { count } = await supabase
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .eq('task_id', task.id);
+        return (count ?? 0) > 0;
+      };
+
       // Criar products e reminders com tratamento de erro adequado
-      if (taskData.checklist?.length) {
+      if (taskData.checklist?.length && !(await alreadyHasChild('products'))) {
         console.log('🔄 Preparando para salvar produtos:', taskData.checklist.length);
         
         // Categorias válidas permitidas pela constraint do banco
@@ -499,7 +512,7 @@ export const useTasksOptimized = (includeDetails = false) => {
         console.log('⚠️ Nenhum produto na checklist para salvar');
       }
 
-      if (taskData.reminders?.length) {
+      if (taskData.reminders?.length && !(await alreadyHasChild('reminders'))) {
         const reminders = taskData.reminders.map(reminder => ({
           task_id: task.id,
           title: reminder.title,
