@@ -1329,8 +1329,26 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </div>
                     <div className="space-y-2">
                       <Label>Chassi / Série <span className="text-destructive">*</span></Label>
-                      <Input required value={checklistMachine.chassi_serie} onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))} placeholder="Chassi/Nº de série" />
+                      <Input
+                        required
+                        disabled={semChassi}
+                        value={semChassi ? SEM_CHASSI_LABEL : checklistMachine.chassi_serie}
+                        onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))}
+                        placeholder="Chassi/Nº de série"
+                      />
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Checkbox
+                          checked={semChassi}
+                          onCheckedChange={checked => {
+                            const on = checked as boolean;
+                            setSemChassi(on);
+                            setChecklistMachine(m => ({ ...m, chassi_serie: on ? SEM_CHASSI_LABEL : '' }));
+                          }}
+                        />
+                        Sem chassi/série
+                      </label>
                     </div>
+
                     <div className="space-y-2">
                       <Label>Ano</Label>
                       <Input value={checklistMachine.ano} onChange={e => setChecklistMachine(m => ({ ...m, ano: e.target.value }))} placeholder="Ex: 2022" />
