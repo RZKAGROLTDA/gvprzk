@@ -1328,8 +1328,8 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                       <Input value={checklistMachine.modelo} onChange={e => setChecklistMachine(m => ({ ...m, modelo: e.target.value }))} placeholder="Ex: 6110J" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Chassi / Série</Label>
-                      <Input value={checklistMachine.chassi_serie} onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))} placeholder="Chassi/Nº de série" />
+                      <Label>Chassi / Série <span className="text-destructive">*</span></Label>
+                      <Input required value={checklistMachine.chassi_serie} onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))} placeholder="Chassi/Nº de série" />
                     </div>
                     <div className="space-y-2">
                       <Label>Ano</Label>
