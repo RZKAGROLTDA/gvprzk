@@ -439,8 +439,18 @@ export const useTasksOptimized = (includeDetails = false) => {
         }
       }
 
+      // Em retomada (mesmo submission_id), não duplicar filhos já persistidos.
+      const alreadyHasChild = async (table: 'products' | 'reminders') => {
+        if (!reused) return false;
+        const { count } = await supabase
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .eq('task_id', task.id);
+        return (count ?? 0) > 0;
+      };
+
       // Criar products e reminders com tratamento de erro adequado
-      if (taskData.checklist?.length) {
+      if (taskData.checklist?.length && !(await alreadyHasChild('products'))) {
         console.log('🔄 Preparando para salvar produtos:', taskData.checklist.length);
         
         // Categorias válidas permitidas pela constraint do banco
