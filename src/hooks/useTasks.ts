@@ -165,9 +165,6 @@ export const useTasks = () => {
     }
   }, [user, isOnline, getOfflineTasks]); // Dependências do useCallback
 
-  // Lock map to prevent duplicate submissions
-  const createTaskLocks = new Map<string, boolean>();
-
   const createTask = async (taskData: Partial<Task>) => {
     if (!user) {
       toast({
@@ -178,48 +175,14 @@ export const useTasks = () => {
       return null;
     }
 
-    // Create a unique lock key based on task data to prevent duplicates
-    const lockKey = `${taskData.client || ''}-${taskData.responsible || ''}-${taskData.startDate?.getTime() || ''}-${taskData.salesValue || 0}`;
-    
-    // Check if this exact task is already being created
-    if (createTaskLocks.get(lockKey)) {
-      console.warn('🔒 createTask: Task creation already in progress for:', lockKey);
-      toast({
-        title: "Aguarde",
-        description: "Esta tarefa já está sendo criada, aguarde um momento...",
-        variant: "destructive",
-      });
-      return null;
-    }
-
-    // Set lock to prevent duplicate submissions
-    createTaskLocks.set(lockKey, true);
+    // Identificador único da operação de criação, gerado no formulário.
+    // É o ÚNICO mecanismo de idempotência (sem regras por cliente/tempo/chassi).
+    const submissionId: string | undefined = (taskData as any).submissionId;
 
     try {
-      // Check for recent duplicates in the database
-      if (isOnline) {
-        const { data: existingTasks } = await supabase
-          .from('tasks')
-          .select('id, created_at')
-          .eq('client', taskData.client || '')
-          .eq('responsible', taskData.responsible || '')
-          .eq('start_date', taskData.startDate ? formatDateToLocal(taskData.startDate) : '')
-          .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
-          .limit(10);
-
-        if (existingTasks && existingTasks.length > 0) {
-          console.warn('🚫 createTask: Duplicate task found, preventing creation');
-          toast({
-            title: "Tarefa duplicada",
-            description: "Uma tarefa similar foi criada recentemente",
-            variant: "destructive",
-          });
-          return null;
-        }
-      }
-
       // Create task with unique ID using crypto.randomUUID() if available
       const tempTask: Task = {
+
         id: crypto.randomUUID ? crypto.randomUUID() : `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: taskData.name || '',
         responsible: taskData.responsible || '',
