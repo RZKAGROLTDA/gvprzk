@@ -299,7 +299,9 @@ export const useTasksOptimized = (includeDetails = false) => {
           equipmentQuantity: taskData.equipmentQuantity,
           propertyHectares: taskData.propertyHectares,
           equipmentList: taskData.equipmentList,
-        };
+          // Mesmo submission_id será usado na sincronização online.
+          submissionId,
+        } as any;
 
         saveTaskOffline(offlineTask);
         return offlineTask;
