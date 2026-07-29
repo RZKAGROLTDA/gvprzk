@@ -933,6 +933,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         prospectNotesJustification: '',
       } : {})
     };
+    const postFailures: string[] = [];
     try {
       const finalTaskData = {
         ...taskData,
@@ -943,12 +944,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         createdAt: now,
         updatedAt: now,
         status: 'pending' as const,
-        createdBy: profile?.name || 'Usuário'
+        createdBy: profile?.name || 'Usuário',
+        // Idempotência: mesma operação nunca gera duas tarefas
+        submissionId: submissionIdRef.current,
       };
 
-      // Use the useTasks hook which has built-in duplicate prevention
       console.log('Creating task with data:', finalTaskData);
       const createdTask: any = await createTask(finalTaskData);
+
+      // ---- Etapas pós-criação: independentes, nunca cancelam a tarefa ----
 
       // Vincular equipamentos selecionados do parque (cadastro mestre) à task
       if (createdTask?.id && selectedEquipmentIds.length > 0) {
@@ -956,13 +960,22 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
           await syncTaskEquipment(createdTask.id, selectedEquipmentIds);
         } catch (linkErr) {
           console.warn('Falha ao vincular equipamentos à task:', linkErr);
+          postFailures.push('vínculo de equipamentos');
         }
       }
 
       // Enviar para WhatsApp se webhook configurado
       if (whatsappWebhook) {
-        await sendToWhatsApp(finalTaskData);
+        try {
+          await sendToWhatsApp(finalTaskData);
+        } catch (waErr) {
+          console.warn('Falha no envio para WhatsApp:', waErr);
+          postFailures.push('envio para WhatsApp');
+        }
       }
+
+      // Sucesso: novo formulário recebe um novo submission_id
+      submissionIdRef.current = newSubmissionId();
 
       // Reset completo do formulário e voltar à seleção de tipo de tarefa
       resetAllFields();
@@ -980,14 +993,19 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         behavior: 'smooth'
       });
       toast({
-        title: "✅ Tarefa Criada com Sucesso!",
-        description: isOnline ? "Tarefa salva no servidor. Você pode criar uma nova tarefa." : "Tarefa salva offline - será sincronizada quando conectar. Você pode criar uma nova tarefa."
+        title: postFailures.length ? "⚠️ Tarefa Salva com Pendências" : "✅ Tarefa Criada com Sucesso!",
+        description: postFailures.length
+          ? `Tarefa salva com sucesso, porém ocorreram falhas em: ${postFailures.join(', ')}.`
+          : (isOnline ? "Tarefa salva no servidor. Você pode criar uma nova tarefa." : "Tarefa salva offline - será sincronizada quando conectar. Você pode criar uma nova tarefa."),
+        variant: postFailures.length ? "destructive" : undefined,
       });
     } catch (error) {
       console.error('Erro ao criar tarefa:', error);
+      // O submission_id é MANTIDO: um novo clique em Salvar continua
+      // exatamente a mesma tarefa, sem nunca criar outra.
       toast({
         title: "Erro",
-        description: "Não foi possível criar a tarefa",
+        description: "Não foi possível concluir o salvamento. Clique em Salvar novamente para continuar a mesma tarefa.",
         variant: "destructive"
       });
     } finally {
