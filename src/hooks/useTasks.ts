@@ -437,11 +437,6 @@ export const useTasks = () => {
       });
 
       return null;
-    } finally {
-      // Always release the lock after 2 seconds
-      setTimeout(() => {
-        createTaskLocks.delete(lockKey);
-      }, 2000);
     }
   };
 
