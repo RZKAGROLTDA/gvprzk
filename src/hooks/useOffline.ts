@@ -292,7 +292,7 @@ export const useOffline = () => {
             }
 
             // Sincronizar produtos/checklist se existirem
-            if (taskData.checklist && taskData.checklist.length > 0) {
+            if (taskData.checklist && taskData.checklist.length > 0 && !(await alreadyHasChild('products'))) {
               const validCategories = ['tires', 'lubricants', 'oils', 'greases', 'batteries', 'other'];
               const checklistWithStoredPhotos = await Promise.all(
                 taskData.checklist.map(async (product: any) => {
