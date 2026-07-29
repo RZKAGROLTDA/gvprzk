@@ -817,30 +817,15 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Prevent double submissions with debounce protection
+    // Botão bloqueado durante todo o pipeline
     if (submissionLockRef.current || isSubmitting) {
       console.log('Submission blocked - already in progress');
       return;
     }
 
-    // Generate unique submission fingerprint for duplicate detection
-    const submissionHash = `${task.client}_${task.property}_${task.startDate}_${task.startTime}_${Date.now()}`;
-
-    // Check if this is a duplicate submission (within 5 seconds)
-    if (lastSubmissionRef.current === submissionHash) {
-      console.log('Duplicate submission blocked');
-      toast({
-        title: "Submissão duplicada",
-        description: "Esta tarefa já foi enviada recentemente",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Lock submission
+    // Lock submission (a idempotência real é garantida pelo submission_id)
     submissionLockRef.current = true;
     setIsSubmitting(true);
-    lastSubmissionRef.current = submissionHash;
 
     // Validação completa de campos obrigatórios
     const requiredFields = [{
