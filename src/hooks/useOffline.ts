@@ -252,13 +252,21 @@ export const useOffline = () => {
               insertPayload.checklist_machine = taskData.checklistMachine;
             }
 
-            const { data: insertedTask, error: taskError } = await supabase
-              .from('tasks')
-              .insert([insertPayload])
-              .select()
-              .single();
+            // Idempotente: um retry da fila nunca cria uma segunda tarefa.
+            const { task: insertedTask, reused: taskReused } = await insertTaskIdempotent(
+              insertPayload,
+              (taskData as any).submissionId,
+            );
 
-            if (taskError) throw taskError;
+            // Em retomada, não duplicar registros filhos já persistidos.
+            const alreadyHasChild = async (table: 'products' | 'reminders') => {
+              if (!taskReused) return false;
+              const { count } = await supabase
+                .from(table)
+                .select('id', { count: 'exact', head: true })
+                .eq('task_id', insertedTask.id);
+              return (count ?? 0) > 0;
+            };
 
             // ---- Upload das fotos locais para o Storage ----
             // Só consideramos a sincronização concluída após o upload confirmar.
