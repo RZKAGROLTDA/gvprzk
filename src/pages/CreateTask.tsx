@@ -673,9 +673,14 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       time: '09:00'
     });
 
+    // Reset máquina do checklist
+    setChecklistMachine({ tipo: '', modelo: '', chassi_serie: '', ano: '', horimetro: '', status: 'ativo', observacao: '' });
+    setSemChassi(false);
+
     // Reset WhatsApp webhook
     setWhatsappWebhook('');
   };
+
 
   // Atualiza o checklist e taskType quando o tipo de tarefa muda
   useEffect(() => {
