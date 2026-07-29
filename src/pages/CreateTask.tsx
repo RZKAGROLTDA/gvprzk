@@ -42,6 +42,7 @@ import { EquipmentParkBlock } from '@/components/equipment';
 import { CollapsibleProductsBlock } from '@/components/task-form/CollapsibleProductsBlock';
 
 import { syncTaskEquipment } from '@/hooks/useClientEquipment';
+import { newSubmissionId } from '@/lib/taskSubmission';
 import { User as UserIcon, Tractor, MessageSquare } from 'lucide-react';
 
 interface CreateTaskProps {
