@@ -23,6 +23,8 @@ interface Props {
   selectable?: boolean;
   selectedIds?: string[];
   onSelectionChange?: (ids: string[]) => void;
+  /** Disparado ao marcar um equipamento — permite autofill do bloco "Máquina". */
+  onEquipmentPicked?: (equipment: ClientEquipment) => void;
 }
 
 /**
