@@ -91,6 +91,10 @@ export const EquipmentParkBlock: React.FC<Props> = ({
     if (next) set.add(id);
     else set.delete(id);
     onSelectionChange(Array.from(set));
+    if (next) {
+      const picked = equipments.find((e) => e.id === id);
+      if (picked) onEquipmentPicked?.(picked);
+    }
   };
 
   const selectAll = () => onSelectionChange?.(filtered.map((e) => e.id));
