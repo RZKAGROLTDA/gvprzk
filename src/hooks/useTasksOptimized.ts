@@ -314,10 +314,9 @@ export const useTasksOptimized = (includeDetails = false) => {
             equipment_list: []
           };
 
-      // Criar task no Supabase
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
+      // Criar task no Supabase (idempotente via submission_id)
+      const { task, reused } = await insertTaskIdempotent(
+        {
           name: taskData.name || getDefaultTaskName(taskData.taskType || 'prospection'),
           responsible: taskData.responsible || user.email || '',
           ...(taskData.contactName !== undefined && { contact_name: taskData.contactName }),
@@ -368,13 +367,11 @@ export const useTasksOptimized = (includeDetails = false) => {
             checklist_machine: (taskData as any).checklistMachine,
           }),
           ...equipmentData
-        })
-        .select()
-        .single();
+        },
+        submissionId,
+      );
 
-      if (taskError) throw taskError;
-
-      console.log('✅ Task criada com sucesso:', task.id);
+      console.log(reused ? '♻️ Continuando tarefa existente:' : '✅ Task criada com sucesso:', task.id);
 
       // ---- Upload das fotos da tarefa para o Storage (path {task_id}/{arquivo}) ----
       const pendingTaskPhotos = (standardizedTaskData.photos || []).filter(Boolean);
