@@ -287,7 +287,9 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   });
 
   // Estado para o checklist (deve ser declarado antes das funções que o usam)
+  const SEM_CHASSI_LABEL = 'SEM CHASSI/SÉRIE';
   const [checklist, setChecklist] = useState<ProductType[]>([]);
+
   const [callProducts, setCallProducts] = useState<ProductType[]>([]);
 
   // Workshop Checklist — snapshot da máquina auditada
@@ -295,6 +297,9 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     tipo: string; modelo: string; chassi_serie: string; ano: string; horimetro: string; status: string; observacao: string;
   }>({ tipo: '', modelo: '', chassi_serie: '', ano: '', horimetro: '', status: 'ativo', observacao: '' });
   const [registerMachineInClient, setRegisterMachineInClient] = useState<boolean>(true);
+  // Checklist sem chassi: exige marcação explícita do usuário.
+  const [semChassi, setSemChassi] = useState<boolean>(false);
+
 
   /**
    * Preenche automaticamente tipo, modelo, ano, horímetro e chassi ao
@@ -668,9 +673,14 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       time: '09:00'
     });
 
+    // Reset máquina do checklist
+    setChecklistMachine({ tipo: '', modelo: '', chassi_serie: '', ano: '', horimetro: '', status: 'ativo', observacao: '' });
+    setSemChassi(false);
+
     // Reset WhatsApp webhook
     setWhatsappWebhook('');
   };
+
 
   // Atualiza o checklist e taskType quando o tipo de tarefa muda
   useEffect(() => {
@@ -1329,8 +1339,26 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                     </div>
                     <div className="space-y-2">
                       <Label>Chassi / Série <span className="text-destructive">*</span></Label>
-                      <Input required value={checklistMachine.chassi_serie} onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))} placeholder="Chassi/Nº de série" />
+                      <Input
+                        required
+                        disabled={semChassi}
+                        value={semChassi ? SEM_CHASSI_LABEL : checklistMachine.chassi_serie}
+                        onChange={e => setChecklistMachine(m => ({ ...m, chassi_serie: e.target.value }))}
+                        placeholder="Chassi/Nº de série"
+                      />
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Checkbox
+                          checked={semChassi}
+                          onCheckedChange={checked => {
+                            const on = checked as boolean;
+                            setSemChassi(on);
+                            setChecklistMachine(m => ({ ...m, chassi_serie: on ? SEM_CHASSI_LABEL : '' }));
+                          }}
+                        />
+                        Sem chassi/série
+                      </label>
                     </div>
+
                     <div className="space-y-2">
                       <Label>Ano</Label>
                       <Input value={checklistMachine.ano} onChange={e => setChecklistMachine(m => ({ ...m, ano: e.target.value }))} placeholder="Ex: 2022" />
