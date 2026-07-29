@@ -39,6 +39,7 @@ export const EquipmentParkBlock: React.FC<Props> = ({
   selectable,
   selectedIds = [],
   onSelectionChange,
+  onEquipmentPicked,
 }) => {
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
