@@ -1212,6 +1212,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
                 selectable
                 selectedIds={selectedEquipmentIds}
                 onSelectionChange={setSelectedEquipmentIds}
+                onEquipmentPicked={autofillChecklistMachine}
               />
             </EquipmentParkSection>
           )}
