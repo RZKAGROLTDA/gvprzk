@@ -332,7 +332,7 @@ export const useOffline = () => {
             }
 
             // Sincronizar lembretes se existirem
-            if (taskData.reminders && taskData.reminders.length > 0) {
+            if (taskData.reminders && taskData.reminders.length > 0 && !(await alreadyHasChild('reminders'))) {
               const reminders = taskData.reminders.map(reminder => ({
                 task_id: insertedTask.id,
                 title: reminder.title,
