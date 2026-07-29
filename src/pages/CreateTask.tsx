@@ -158,7 +158,9 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const [whatsappWebhook, setWhatsappWebhook] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submissionLockRef = useRef(false);
-  const lastSubmissionRef = useRef<string>('');
+  // Identificador único desta operação de criação. Gerado quando o formulário
+  // é iniciado e mantido durante toda a sua vida — inclusive em retries.
+  const submissionIdRef = useRef<string>(newSubmissionId());
   const {
     isOnline,
     saveTaskOffline,
