@@ -1197,6 +1197,7 @@ export type Database = {
           start_date: string
           start_time: string
           status: string
+          submission_id: string | null
           task_type: string
           technical_category: string | null
           technical_funnel_stage: string | null
@@ -1249,6 +1250,7 @@ export type Database = {
           start_date: string
           start_time: string
           status?: string
+          submission_id?: string | null
           task_type?: string
           technical_category?: string | null
           technical_funnel_stage?: string | null
@@ -1301,6 +1303,7 @@ export type Database = {
           start_date?: string
           start_time?: string
           status?: string
+          submission_id?: string | null
           task_type?: string
           technical_category?: string | null
           technical_funnel_stage?: string | null
