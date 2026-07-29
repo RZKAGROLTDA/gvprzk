@@ -10,6 +10,7 @@ import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateToLocal } from '@/lib/utils';
+import { insertTaskIdempotent } from '@/lib/taskSubmission';
 
 // Função helper para gerar nome padrão da tarefa
 const getDefaultTaskName = (taskType: string): string => {
