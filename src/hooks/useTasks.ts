@@ -401,7 +401,7 @@ export const useTasks = () => {
       }
 
       // Criar lembretes
-      if (taskData.reminders && taskData.reminders.length > 0) {
+      if (taskData.reminders && taskData.reminders.length > 0 && !(await alreadyHasChild('reminders'))) {
         const reminders = taskData.reminders.map(reminder => ({
           task_id: task.id,
           title: reminder.title,
