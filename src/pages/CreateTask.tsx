@@ -287,7 +287,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   });
 
   // Estado para o checklist (deve ser declarado antes das funções que o usam)
-  const [checklist, setChecklist] = useState<ProductType[]>([]);
+  const SEM_CHASSI_LABEL = 'SEM CHASSI/SÉRIE';
   const [callProducts, setCallProducts] = useState<ProductType[]>([]);
 
   // Workshop Checklist — snapshot da máquina auditada
@@ -295,6 +295,9 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     tipo: string; modelo: string; chassi_serie: string; ano: string; horimetro: string; status: string; observacao: string;
   }>({ tipo: '', modelo: '', chassi_serie: '', ano: '', horimetro: '', status: 'ativo', observacao: '' });
   const [registerMachineInClient, setRegisterMachineInClient] = useState<boolean>(true);
+  // Checklist sem chassi: exige marcação explícita do usuário.
+  const [semChassi, setSemChassi] = useState<boolean>(false);
+
 
   /**
    * Preenche automaticamente tipo, modelo, ano, horímetro e chassi ao
