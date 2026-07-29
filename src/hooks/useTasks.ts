@@ -236,10 +236,9 @@ export const useTasks = () => {
         throw new Error('Cliente é obrigatório');
       }
 
-      // Tentar salvar online
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
+      // Tentar salvar online (idempotente via submission_id)
+      const { task, reused } = await insertTaskIdempotent(
+        {
           name: requiredFields.name,
           responsible: requiredFields.responsible,
           client: requiredFields.client,
@@ -272,11 +271,19 @@ export const useTasks = () => {
               : ((taskData.nextActionDate as Date)?.toISOString().split('T')[0] || null)
           }),
           ...(taskData.checklistMachine !== undefined && { checklist_machine: taskData.checklistMachine || null })
-        })
-        .select()
-        .single();
+        },
+        submissionId,
+      );
 
-      if (taskError) throw taskError;
+      // Em retomada, não duplicar registros filhos já persistidos.
+      const alreadyHasChild = async (table: 'products' | 'reminders') => {
+        if (!reused) return false;
+        const { count } = await supabase
+          .from(table)
+          .select('id', { count: 'exact', head: true })
+          .eq('task_id', task.id);
+        return (count ?? 0) > 0;
+      };
 
       // Upload das fotos ao Storage (nunca Base64 no banco)
       const pendingPhotos = (standardizedTaskData.photos || []).filter(Boolean);
