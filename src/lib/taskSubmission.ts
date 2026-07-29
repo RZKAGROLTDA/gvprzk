@@ -29,7 +29,8 @@ export async function findTaskBySubmissionId(submissionId?: string | null) {
 
   const { data, error } = await supabase
     .from('tasks')
-    .select('*')
+    // Nunca selecionar colunas de mídia (photos/documents/technical_visit_data).
+    .select('id, name, client, clientcode, filial, task_type, status, start_date, created_at, created_by, submission_id')
     .eq('submission_id', submissionId)
     .maybeSingle();
 
