@@ -9,6 +9,7 @@ import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
 import { getSalesValueAsNumber, canPerformNumericOperation } from '@/lib/securityUtils';
 import { fetchTaskMedia } from '@/lib/taskMedia';
+import { insertTaskIdempotent } from '@/lib/taskSubmission';
 
 // Query Keys para cache
 export const QUERY_KEYS = {
