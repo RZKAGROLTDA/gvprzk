@@ -871,6 +871,12 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         field: task.filialAtendida?.trim(),
         name: 'Filial Atendida'
       });
+    } else if (taskCategory === 'workshop-checklist') {
+      // Chassi/Nº de série é obrigatório para o Checklist da Oficina
+      requiredFields.push({
+        field: checklistMachine.chassi_serie?.trim(),
+        name: 'Chassi / Nº de Série da máquina'
+      });
     }
 
     // Verificar se algum campo obrigatório está vazio
