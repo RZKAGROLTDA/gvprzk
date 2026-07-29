@@ -212,8 +212,10 @@ export const useTasks = () => {
         prospectNotes: taskData.prospectNotes || '',
         prospectItems: [],
         salesValue: taskData.salesValue || 0,
-        salesConfirmed: taskData.salesConfirmed
-      };
+        salesConfirmed: taskData.salesConfirmed,
+        // Mesmo submission_id é reutilizado ao sincronizar.
+        submissionId,
+      } as any;
 
       // Modo offline - salvar localmente
       if (!isOnline) {
