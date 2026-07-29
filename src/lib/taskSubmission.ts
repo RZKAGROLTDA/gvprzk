@@ -61,8 +61,7 @@ export async function insertTaskIdempotent(
     }
   }
 
-  const { data, error } = await supabase
-    .from('tasks')
+  const { data, error } = await (supabase.from('tasks') as any)
     .insert({ ...payload, ...(submissionId ? { submission_id: submissionId } : {}) })
     .select()
     .single();
