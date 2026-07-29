@@ -323,7 +323,7 @@ export const useTasks = () => {
       }
 
       // Criar produtos (checklist)
-      if (taskData.checklist && taskData.checklist.length > 0) {
+      if (taskData.checklist && taskData.checklist.length > 0 && !(await alreadyHasChild('products'))) {
         const checklistWithStoredPhotos = await Promise.all(
           taskData.checklist.map(async (product: any) => {
             if (!product.photos?.length) return product;
