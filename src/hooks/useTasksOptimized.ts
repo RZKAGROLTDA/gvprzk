@@ -245,6 +245,9 @@ export const useTasksOptimized = (includeDetails = false) => {
     mutationFn: async (taskData: Partial<Task>) => {
       if (!user) throw new Error('User not authenticated');
 
+      // Identificador único da operação de criação (gerado no formulário).
+      const submissionId: string | undefined = (taskData as any).submissionId;
+
       const standardizedTaskData = await createTaskWithFilialSnapshot(taskData);
 
       // ✅ Suporte a criação OFFLINE
