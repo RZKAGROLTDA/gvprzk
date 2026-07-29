@@ -295,6 +295,23 @@ const CreateTask: React.FC<CreateTaskProps> = ({
     tipo: string; modelo: string; chassi_serie: string; ano: string; horimetro: string; status: string; observacao: string;
   }>({ tipo: '', modelo: '', chassi_serie: '', ano: '', horimetro: '', status: 'ativo', observacao: '' });
   const [registerMachineInClient, setRegisterMachineInClient] = useState<boolean>(true);
+
+  /**
+   * Preenche automaticamente tipo, modelo, ano, horímetro e chassi ao
+   * selecionar um equipamento do Parque de Máquinas.
+   */
+  const autofillChecklistMachine = (eq: any) => {
+    setChecklistMachine(prev => ({
+      ...prev,
+      tipo: eq.machine_type || eq.product_raw || prev.tipo,
+      modelo: eq.model || prev.modelo,
+      chassi_serie: eq.serial_chassis || prev.chassi_serie,
+      ano: eq.year != null ? String(eq.year) : prev.ano,
+      horimetro: eq.hours != null ? String(eq.hours) : prev.horimetro,
+      status: eq.machine_status || prev.status,
+    }));
+  };
+
   const updateChecklistItem = (id: string, patch: Partial<ProductType>) => {
     setChecklist(prev => prev.map(it => it.id === id ? { ...it, ...patch, selected: (patch.responseStatus ?? it.responseStatus) ? true : it.selected } : it));
   };
