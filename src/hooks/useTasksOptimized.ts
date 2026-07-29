@@ -512,7 +512,7 @@ export const useTasksOptimized = (includeDetails = false) => {
         console.log('⚠️ Nenhum produto na checklist para salvar');
       }
 
-      if (taskData.reminders?.length) {
+      if (taskData.reminders?.length && !(await alreadyHasChild('reminders'))) {
         const reminders = taskData.reminders.map(reminder => ({
           task_id: task.id,
           title: reminder.title,
