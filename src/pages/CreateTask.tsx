@@ -288,6 +288,8 @@ const CreateTask: React.FC<CreateTaskProps> = ({
 
   // Estado para o checklist (deve ser declarado antes das funções que o usam)
   const SEM_CHASSI_LABEL = 'SEM CHASSI/SÉRIE';
+  const [checklist, setChecklist] = useState<ProductType[]>([]);
+
   const [callProducts, setCallProducts] = useState<ProductType[]>([]);
 
   // Workshop Checklist — snapshot da máquina auditada
