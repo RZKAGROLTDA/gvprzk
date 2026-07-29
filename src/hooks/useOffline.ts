@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadPendingPhotos, TASK_PHOTOS_BUCKET, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
+import { insertTaskIdempotent } from '@/lib/taskSubmission';
 
 export interface OfflineData {
   tasks: any[];
