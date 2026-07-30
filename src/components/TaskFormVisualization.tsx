@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -20,6 +20,7 @@ import { Task } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
+import { useTaskMedia } from '@/hooks/useTaskMedia';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateReportPDF } from '@/lib/generateReportPDF';
@@ -56,19 +57,60 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { data: filiais = [] } = useFiliais();
 
-  // Fresh full task (photos, checkInLocation, equipmentList, products)
-  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
-    isOpen && taskProp ? taskProp.id : null,
+  // Checklist da Oficina tem fluxo próprio (WorkshopChecklistView faz seu próprio fetch).
+  const isChecklistTask = taskProp?.taskType === 'checklist';
+  const activeTaskId = isOpen && taskProp && !isChecklistTask ? taskProp.id : null;
+
+  // Dados complementares (produtos, lembretes, equipamentos) — SEM mídia pesada
+  // e SEM products.photos: o modal abre imediatamente com o taskProp.
+  const { data: taskDetails, isLoading: loadingDetails, isError: detailsError } = useTaskDetails(
+    activeTaskId,
+    { includeMedia: false, includeProductPhotos: false },
   );
 
   // Extra fields (technical visit, contact, nextAction) via edit-data hook
-  const { data: editData, loading: loadingEdit } = useTaskEditData(
-    isOpen ? taskProp?.id || null : null,
+  const { data: editData, loading: loadingEdit } = useTaskEditData(activeTaskId);
+
+  // === MÍDIA LAZY ===
+  // Só busca get_secure_task_media quando a seção da galeria entra na viewport.
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const gallerySentinel = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) setGalleryVisible(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || galleryVisible) return;
+    const el = gallerySentinel.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setGalleryVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isOpen, galleryVisible, taskDetails]);
+
+  const { data: media, isLoading: loadingMedia, isError: mediaError } = useTaskMedia(
+    activeTaskId,
+    { enabled: galleryVisible },
   );
+  const mediaLoaded = !!media;
 
   const currentTask = useMemo<Task | null>(() => {
     if (!taskProp) return null;
     const base: Task = { ...taskProp, ...(taskDetails || {}) } as Task;
+    if (media) {
+      base.photos = media.photos;
+      (base as any).documents = media.documents;
+      if (media.technicalVisitData) (base as any).technicalVisitData = media.technicalVisitData;
+    }
     if (editData) {
       (base as any).contactName = base.contactName ?? editData.contactName;
       (base as any).contactFunction = base.contactFunction ?? editData.contactFunction;
@@ -82,10 +124,10 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
       (base as any).opportunityClosing = base.opportunityClosing ?? (editData.opportunity_closing as any);
       (base as any).salesEstimate = base.salesEstimate ?? (editData as any).sales_estimate;
       (base as any).prospectNotesJustification =
-        (base as any).prospectNotesJustification ?? (editData as any).prospect_notes_justification;
+        (base as any).prospectNotesJustification ?? (editData as any).prospectNotesJustification ?? (editData as any).prospect_notes_justification;
     }
     return base;
-  }, [taskProp, taskDetails, editData]);
+  }, [taskProp, taskDetails, editData, media]);
 
   const salesStatus = currentTask ? mapSalesStatus(currentTask) : 'prospect';
 
@@ -110,19 +152,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (!isOpen) return null;
   if (!taskProp) return null;
 
-  const isWaiting = (loadingDetails && !taskDetails) || (loadingEdit && !editData);
-  if (isWaiting) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl">
-          <div className="flex flex-col items-center justify-center py-14 space-y-3">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Carregando relatório da visita…</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  // Renderização progressiva: o modal abre imediatamente com o taskProp.
+  const loadingComplements = (loadingDetails && !taskDetails) || (loadingEdit && !editData);
   if (!currentTask) return null;
 
   // ⚙️ Checklist da Oficina — relatório técnico com fluxo isolado.
@@ -212,10 +243,10 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (currentTask.nextActionDate) summarySentences.push(`Próxima ação programada para ${formatDateDisplay(currentTask.nextActionDate as any)}.`);
   if (summarySentences.length === 0) summarySentences.push('Ainda não há dados suficientes para gerar um resumo desta visita.');
 
-  // Indicadores
+  // Indicadores (indicador de fotos só após a mídia ser carregada — lazy)
   const indicators: Array<{ label: string; ok: boolean }> = [
     { label: 'Check-in realizado', ok: hasCheckIn || hasLocation },
-    { label: 'Fotos anexadas', ok: photoCount > 0 },
+    ...(mediaLoaded ? [{ label: 'Fotos anexadas', ok: photoCount > 0 }] : []),
     { label: 'Equipamentos validados', ok: validatedEqCount > 0 },
     { label: 'Contato da visita informado', ok: hasContact },
     { label: 'Observações preenchidas', ok: hasObservations },
@@ -233,7 +264,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (!hasContact) alertsPrioritized.push({ message: 'Contato da visita não informado', severity: 'critical' });
   if (values.total > 0 && !hasNextAction) alertsPrioritized.push({ message: 'Oportunidade identificada sem próxima ação definida', severity: 'critical' });
   // Atenção — dados operacionais incompletos
-  if (photoCount === 0) alertsPrioritized.push({ message: 'Nenhuma foto registrada durante a visita', severity: 'warning' });
+  if (mediaLoaded && photoCount === 0) alertsPrioritized.push({ message: 'Nenhuma foto registrada durante a visita', severity: 'warning' });
   if (equipmentCount > 0 && validatedEqCount === 0) alertsPrioritized.push({ message: 'Nenhum equipamento validado', severity: 'warning' });
   if (values.total === 0 && !hasNextAction) alertsPrioritized.push({ message: 'Próxima ação não definida', severity: 'warning' });
   // Informativo — ausências não bloqueantes
@@ -311,6 +342,19 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-h-[95vh] overflow-y-auto overflow-x-hidden p-0 w-[96vw] max-w-[96vw] sm:w-full sm:max-w-6xl">
           <div className="print:p-4">
+            {/* Aviso não bloqueante: dados complementares ainda carregando/falharam */}
+            {loadingComplements && (
+              <div className="flex items-center gap-2 px-5 py-2 text-xs text-muted-foreground bg-muted/40 border-b">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Carregando dados complementares (produtos, equipamentos e contato)…
+              </div>
+            )}
+            {detailsError && !loadingComplements && (
+              <div className="flex items-center gap-2 px-5 py-2 text-xs text-warning bg-warning/10 border-b">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Alguns dados complementares não puderam ser carregados. Os dados principais desta visita continuam exibidos.
+              </div>
+            )}
             {/* 1. CABEÇALHO EXECUTIVO */}
             <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/15 via-primary/5 to-background">
               <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
@@ -571,38 +615,56 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   </SectionCard>
                 )}
 
-                {photoCount > 0 ? (
-                  <SectionCard
-                    icon={ImageIcon}
-                    title="Registro Fotográfico"
-                    tone="warning"
-                    description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
-                  >
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3">
-                      {currentTask.photos!.map((photo, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setLightboxIndex(i)}
-                          className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                        >
-                          <MediaImage value={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            {i + 1}/{photoCount}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </SectionCard>
-                ) : (
-                  <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
-                    <div className="text-center py-6 text-sm text-muted-foreground italic">
-                      <ImageIcon className="w-8 h-8 mx-auto opacity-30 mb-2" />
-                      Nenhuma foto registrada
-                    </div>
-                  </SectionCard>
-                )}
+                {/* Galeria lazy: só busca a mídia quando a seção entra na viewport */}
+                <div ref={gallerySentinel}>
+                  {!mediaLoaded ? (
+                    <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
+                      {mediaError ? (
+                        <div className="text-center py-6 text-sm text-muted-foreground">
+                          <AlertTriangle className="w-8 h-8 mx-auto opacity-40 mb-2 text-warning" />
+                          Não foi possível carregar as fotos desta visita.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {[0, 1, 2].map((i) => (
+                            <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
+                          ))}
+                        </div>
+                      )}
+                    </SectionCard>
+                  ) : photoCount > 0 ? (
+                    <SectionCard
+                      icon={ImageIcon}
+                      title="Registro Fotográfico"
+                      tone="warning"
+                      description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
+                    >
+                      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3">
+                        {currentTask.photos!.map((photo, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setLightboxIndex(i)}
+                            className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                          >
+                            <MediaImage value={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                              {i + 1}/{photoCount}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </SectionCard>
+                  ) : (
+                    <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
+                      <div className="text-center py-6 text-sm text-muted-foreground italic">
+                        <ImageIcon className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                        Nenhuma foto registrada
+                      </div>
+                    </SectionCard>
+                  )}
+                </div>
               </div>
 
 
