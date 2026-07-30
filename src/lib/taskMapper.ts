@@ -98,6 +98,16 @@ export const mapSupabaseTaskToTask = (supabaseTask: any): Task => {
     propertyHectares: supabaseTask.propertyhectares || 0,
     equipmentList: Array.isArray(supabaseTask.equipment_list) ? supabaseTask.equipment_list : [],
     checklistMachine: supabaseTask.checklist_machine || undefined,
+    prospectNotesJustification: supabaseTask.prospect_notes_justification || '',
+    technicalCategory: supabaseTask.technical_category || undefined,
+    technicalFunnelStage: supabaseTask.technical_funnel_stage || undefined,
+    opportunityInterest: supabaseTask.opportunity_interest || undefined,
+    opportunityUrgency: supabaseTask.opportunity_urgency || undefined,
+    opportunityImpact: supabaseTask.opportunity_impact || undefined,
+    opportunityClosing: supabaseTask.opportunity_closing || undefined,
+    salesEstimate: supabaseTask.sales_estimate || undefined,
+    nextAction: supabaseTask.next_action || undefined,
+    nextActionDate: supabaseTask.next_action_date || undefined,
     // Add security metadata
     isMasked
   };

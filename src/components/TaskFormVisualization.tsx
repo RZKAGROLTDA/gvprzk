@@ -19,7 +19,6 @@ import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { Task } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
-import { useTaskEditData } from '@/hooks/useTaskEditData';
 import { useTaskMedia } from '@/hooks/useTaskMedia';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
@@ -68,8 +67,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
     { includeMedia: false, includeProductPhotos: false },
   );
 
-  // Extra fields (technical visit, contact, nextAction) via edit-data hook
-  const { data: editData, loading: loadingEdit } = useTaskEditData(activeTaskId);
+  // Campos extras (contato, próxima ação, visita técnica) já vêm do useTaskDetails.
+  // useTaskEditData permanece exclusivo do modo de edição.
 
   // === MÍDIA LAZY ===
   // Só busca get_secure_task_media quando a seção da galeria entra na viewport.
@@ -111,23 +110,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
       (base as any).documents = media.documents;
       if (media.technicalVisitData) (base as any).technicalVisitData = media.technicalVisitData;
     }
-    if (editData) {
-      (base as any).contactName = base.contactName ?? editData.contactName;
-      (base as any).contactFunction = base.contactFunction ?? editData.contactFunction;
-      (base as any).nextAction = base.nextAction ?? (editData as any).next_action;
-      (base as any).nextActionDate = base.nextActionDate ?? (editData as any).next_action_date;
-      (base as any).technicalCategory = base.technicalCategory ?? editData.technical_category ?? undefined;
-      (base as any).technicalFunnelStage = base.technicalFunnelStage ?? editData.technical_funnel_stage ?? undefined;
-      (base as any).opportunityInterest = base.opportunityInterest ?? (editData.opportunity_interest as any);
-      (base as any).opportunityUrgency = base.opportunityUrgency ?? (editData.opportunity_urgency as any);
-      (base as any).opportunityImpact = base.opportunityImpact ?? (editData.opportunity_impact as any);
-      (base as any).opportunityClosing = base.opportunityClosing ?? (editData.opportunity_closing as any);
-      (base as any).salesEstimate = base.salesEstimate ?? (editData as any).sales_estimate;
-      (base as any).prospectNotesJustification =
-        (base as any).prospectNotesJustification ?? (editData as any).prospectNotesJustification ?? (editData as any).prospect_notes_justification;
-    }
     return base;
-  }, [taskProp, taskDetails, editData, media]);
+  }, [taskProp, taskDetails, media]);
 
   const salesStatus = currentTask ? mapSalesStatus(currentTask) : 'prospect';
 
@@ -153,7 +137,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (!taskProp) return null;
 
   // Renderização progressiva: o modal abre imediatamente com o taskProp.
-  const loadingComplements = (loadingDetails && !taskDetails) || (loadingEdit && !editData);
+  const loadingComplements = loadingDetails && !taskDetails;
   if (!currentTask) return null;
 
   // ⚙️ Checklist da Oficina — relatório técnico com fluxo isolado.

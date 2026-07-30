@@ -716,8 +716,17 @@ export const useTaskDetails = (taskId: string | null, options: UseTaskDetailsOpt
         ? `${PRODUCT_COLUMNS_BASE}, photos`
         : PRODUCT_COLUMNS_BASE;
 
-      const [taskResult, productsResult, remindersResult, media] = await Promise.all([
+      const [taskResult, extrasResult, productsResult, remindersResult, media] = await Promise.all([
         supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
+        // 12 campos leves ausentes na RPC (contato, próxima ação, visita técnica).
+        // Consulta direta em `tasks` sob RLS normal — substitui o useTaskEditData na visualização.
+        supabase
+          .from('tasks')
+          .select(
+            'contact_name, contact_function, next_action, next_action_date, technical_category, technical_funnel_stage, opportunity_interest, opportunity_urgency, opportunity_impact, opportunity_closing, sales_estimate, prospect_notes_justification',
+          )
+          .eq('id', taskId)
+          .maybeSingle(),
         supabase.from('products').select(productColumns).eq('task_id', taskId),
         supabase.from('reminders').select('id, task_id, title, description, date, time, completed').eq('task_id', taskId),
         mediaPromise,
@@ -730,6 +739,7 @@ export const useTaskDetails = (taskId: string | null, options: UseTaskDetailsOpt
 
       const taskWithProducts = {
         ...taskData,
+        ...(extrasResult.data || {}),
         // Mídia pesada carregada sob demanda via get_secure_task_media
         ...(media
           ? {
