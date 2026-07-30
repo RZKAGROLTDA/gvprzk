@@ -243,10 +243,10 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (currentTask.nextActionDate) summarySentences.push(`Próxima ação programada para ${formatDateDisplay(currentTask.nextActionDate as any)}.`);
   if (summarySentences.length === 0) summarySentences.push('Ainda não há dados suficientes para gerar um resumo desta visita.');
 
-  // Indicadores
+  // Indicadores (indicador de fotos só após a mídia ser carregada — lazy)
   const indicators: Array<{ label: string; ok: boolean }> = [
     { label: 'Check-in realizado', ok: hasCheckIn || hasLocation },
-    { label: 'Fotos anexadas', ok: photoCount > 0 },
+    ...(mediaLoaded ? [{ label: 'Fotos anexadas', ok: photoCount > 0 }] : []),
     { label: 'Equipamentos validados', ok: validatedEqCount > 0 },
     { label: 'Contato da visita informado', ok: hasContact },
     { label: 'Observações preenchidas', ok: hasObservations },
