@@ -137,7 +137,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (!taskProp) return null;
 
   // Renderização progressiva: o modal abre imediatamente com o taskProp.
-  const loadingComplements = (loadingDetails && !taskDetails) || (loadingEdit && !editData);
+  const loadingComplements = loadingDetails && !taskDetails;
   if (!currentTask) return null;
 
   // ⚙️ Checklist da Oficina — relatório técnico com fluxo isolado.
