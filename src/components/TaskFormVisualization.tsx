@@ -342,6 +342,19 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-h-[95vh] overflow-y-auto overflow-x-hidden p-0 w-[96vw] max-w-[96vw] sm:w-full sm:max-w-6xl">
           <div className="print:p-4">
+            {/* Aviso não bloqueante: dados complementares ainda carregando/falharam */}
+            {loadingComplements && (
+              <div className="flex items-center gap-2 px-5 py-2 text-xs text-muted-foreground bg-muted/40 border-b">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Carregando dados complementares (produtos, equipamentos e contato)…
+              </div>
+            )}
+            {detailsError && !loadingComplements && (
+              <div className="flex items-center gap-2 px-5 py-2 text-xs text-warning bg-warning/10 border-b">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Alguns dados complementares não puderam ser carregados. Os dados principais desta visita continuam exibidos.
+              </div>
+            )}
             {/* 1. CABEÇALHO EXECUTIVO */}
             <div className="relative overflow-hidden border-b bg-gradient-to-br from-primary/15 via-primary/5 to-background">
               <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
