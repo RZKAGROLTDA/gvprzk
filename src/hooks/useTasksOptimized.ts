@@ -679,24 +679,46 @@ export const useFiliais = () => {
 
 // Hook para carregar detalhes completos de uma task específica.
 // Usa get_secure_task_by_id (1 linha) em vez de get_secure_tasks_with_customer_protection (500 linhas) para reduzir Disk I/O.
-export const useTaskDetails = (taskId: string | null) => {
+//
+// PERFORMANCE (modal "Ver Relatório"):
+//  - `includeMedia: false`  -> NÃO chama get_secure_task_media (mídia lazy via useTaskMedia)
+//  - `includeProductPhotos: false` -> NÃO seleciona products.photos (coluna pesada/TOAST)
+// PDF e checklist continuam usando os defaults (true), garantindo documento completo.
+interface UseTaskDetailsOptions {
+  includeMedia?: boolean;
+  includeProductPhotos?: boolean;
+}
+
+const PRODUCT_COLUMNS_BASE =
+  'id, task_id, name, category, selected, quantity, price, observations, response_status, response_notes';
+
+export const useTaskDetails = (taskId: string | null, options: UseTaskDetailsOptions = {}) => {
+  const { includeMedia = true, includeProductPhotos = true } = options;
   const queryClient = useQueryClient();
   return useQuery({
-    queryKey: taskId ? QUERY_KEYS.taskDetails(taskId) : ['task-details-empty'],
+    queryKey: taskId
+      ? ([...QUERY_KEYS.taskDetails(taskId), includeMedia ? 'media' : 'nomedia', includeProductPhotos ? 'pphotos' : 'nopphotos'] as const)
+      : ['task-details-empty'],
     queryFn: async () => {
       if (!taskId) return null;
 
       // Mídia pesada: usa cache do React Query — se useTaskMedia já buscou,
       // não faz nova chamada. Chave compartilhada com useTaskMedia.
-      const mediaPromise = queryClient.fetchQuery({
-        queryKey: ['task-media', taskId] as const,
-        queryFn: () => fetchTaskMedia(taskId),
-        staleTime: 5 * 60 * 1000,
-      });
+      const mediaPromise = includeMedia
+        ? queryClient.fetchQuery({
+            queryKey: ['task-media', taskId] as const,
+            queryFn: () => fetchTaskMedia(taskId),
+            staleTime: 5 * 60 * 1000,
+          })
+        : Promise.resolve(null);
+
+      const productColumns = includeProductPhotos
+        ? `${PRODUCT_COLUMNS_BASE}, photos`
+        : PRODUCT_COLUMNS_BASE;
 
       const [taskResult, productsResult, remindersResult, media] = await Promise.all([
         supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
-        supabase.from('products').select('id, task_id, name, category, selected, quantity, price, observations, photos, response_status, response_notes').eq('task_id', taskId),
+        supabase.from('products').select(productColumns).eq('task_id', taskId),
         supabase.from('reminders').select('id, task_id, title, description, date, time, completed').eq('task_id', taskId),
         mediaPromise,
       ]);
@@ -709,9 +731,13 @@ export const useTaskDetails = (taskId: string | null) => {
       const taskWithProducts = {
         ...taskData,
         // Mídia pesada carregada sob demanda via get_secure_task_media
-        photos: media.photos,
-        documents: media.documents,
-        technical_visit_data: media.technicalVisitData,
+        ...(media
+          ? {
+              photos: media.photos,
+              documents: media.documents,
+              technical_visit_data: media.technicalVisitData,
+            }
+          : {}),
         products: productsResult.data || [],
         reminders: remindersResult.data || [],
       };
