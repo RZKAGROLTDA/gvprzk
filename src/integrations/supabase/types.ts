@@ -2162,6 +2162,13 @@ export type Database = {
         }
         Returns: Json
       }
+      get_incomplete_duplicate_task_ids: {
+        Args: never
+        Returns: {
+          duplicate_of: string
+          task_id: string
+        }[]
+      }
       get_invitation_by_token: {
         Args: { p_token: string }
         Returns: {
