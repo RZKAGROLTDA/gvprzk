@@ -264,7 +264,7 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (!hasContact) alertsPrioritized.push({ message: 'Contato da visita não informado', severity: 'critical' });
   if (values.total > 0 && !hasNextAction) alertsPrioritized.push({ message: 'Oportunidade identificada sem próxima ação definida', severity: 'critical' });
   // Atenção — dados operacionais incompletos
-  if (photoCount === 0) alertsPrioritized.push({ message: 'Nenhuma foto registrada durante a visita', severity: 'warning' });
+  if (mediaLoaded && photoCount === 0) alertsPrioritized.push({ message: 'Nenhuma foto registrada durante a visita', severity: 'warning' });
   if (equipmentCount > 0 && validatedEqCount === 0) alertsPrioritized.push({ message: 'Nenhum equipamento validado', severity: 'warning' });
   if (values.total === 0 && !hasNextAction) alertsPrioritized.push({ message: 'Próxima ação não definida', severity: 'warning' });
   // Informativo — ausências não bloqueantes
