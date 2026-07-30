@@ -25,6 +25,8 @@ import { ProductListComponent } from './ProductListComponent';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { WorkshopChecklistView } from '@/components/WorkshopChecklistView';
 import { useFiliais } from '@/hooks/useTasksOptimized';
+import { MediaImage } from '@/components/MediaImage';
+import { TASK_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 
 // TypeScript module declaration for jsPDF autoTable
 declare module 'jspdf' {
@@ -875,12 +877,14 @@ export const FormVisualization: React.FC<FormVisualizationProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
                   {fullTask.photos.map((photo, idx) => (
                     <div key={idx} className="aspect-square rounded-lg overflow-hidden border bg-muted/30">
-                      <img
-                        src={photo}
+                      <MediaImage
+                        value={photo}
+                        bucket={TASK_PHOTOS_BUCKET}
                         alt={`Foto ${idx + 1}`}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                        onClick={() => window.open(photo, '_blank')}
+                        loading="lazy"
+                        className="w-full h-full object-cover hover:scale-105 transition-transform"
                       />
+
                     </div>
                   ))}
                 </div>

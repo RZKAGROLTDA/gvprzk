@@ -20,6 +20,7 @@ import { Task } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
 import { useTaskMedia } from '@/hooks/useTaskMedia';
+import { useProductPhotos } from '@/hooks/useProductPhotos';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateReportPDF } from '@/lib/generateReportPDF';
@@ -27,6 +28,8 @@ import { getSalesValueAsNumber } from '@/lib/securityUtils';
 import { formatDateDisplay } from '@/lib/utils';
 import { WorkshopChecklistView } from './WorkshopChecklistView';
 import { MediaImage } from '@/components/MediaImage';
+import { PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
+
 
 interface Props {
   task: Task | null;
@@ -102,6 +105,9 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   );
   const mediaLoaded = !!media;
 
+  // Fotos dos itens/produtos: consulta leve (id + photos), também sob demanda.
+  const { data: productPhotos } = useProductPhotos(activeTaskId, { enabled: galleryVisible });
+
   const currentTask = useMemo<Task | null>(() => {
     if (!taskProp) return null;
     const base: Task = { ...taskProp, ...(taskDetails || {}) } as Task;
@@ -110,8 +116,14 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
       (base as any).documents = media.documents;
       if (media.technicalVisitData) (base as any).technicalVisitData = media.technicalVisitData;
     }
+    if (productPhotos && base.checklist?.length) {
+      base.checklist = base.checklist.map((item) =>
+        productPhotos[item.id] ? { ...item, photos: productPhotos[item.id] } : item,
+      );
+    }
     return base;
-  }, [taskProp, taskDetails, media]);
+  }, [taskProp, taskDetails, media, productPhotos]);
+
 
   const salesStatus = currentTask ? mapSalesStatus(currentTask) : 'prospect';
 
@@ -865,13 +877,16 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                                     {itemPhotos.length > 0 && (
                                       <div className="flex flex-wrap gap-1.5">
                                         {itemPhotos.map((ph, pi) => (
-                                          <img
+                                          <MediaImage
                                             key={pi}
-                                            src={ph}
+                                            value={ph}
+                                            bucket={PRODUCT_PHOTOS_BUCKET}
                                             alt={`${item.name} — foto ${pi + 1}`}
                                             className="w-14 h-14 object-cover rounded border"
+                                            fallbackClassName="w-14 h-14 rounded border bg-muted flex items-center justify-center text-[9px] text-muted-foreground text-center px-1"
                                             loading="lazy"
                                           />
+
                                         ))}
                                       </div>
                                     )}

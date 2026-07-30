@@ -10,6 +10,8 @@ import { MapPin, Mail, Phone, FileText, Printer, Download, Building2, User, Cale
 import { formatSalesValue } from '@/lib/securityUtils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { MediaImage } from '@/components/MediaImage';
+import { TASK_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 
 interface OpportunityReportSidebarProps {
   task: Task | null;
@@ -333,12 +335,14 @@ export const OpportunityReportSidebar: React.FC<OpportunityReportSidebarProps> =
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {task.photos.map((photo, index) => (
                     <div key={index} className="aspect-square border rounded-lg overflow-hidden">
-                      <img 
-                        src={photo} 
+                      <MediaImage
+                        value={photo}
+                        bucket={TASK_PHOTOS_BUCKET}
                         alt={`Foto ${index + 1}`}
-                        className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => window.open(photo, '_blank')}
+                        loading="lazy"
+                        className="w-full h-full object-cover hover:opacity-80 transition-opacity"
                       />
+
                     </div>
                   ))}
                 </div>
