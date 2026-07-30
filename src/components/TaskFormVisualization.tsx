@@ -67,8 +67,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
     { includeMedia: false, includeProductPhotos: false },
   );
 
-  // Extra fields (technical visit, contact, nextAction) via edit-data hook
-  const { data: editData, loading: loadingEdit } = useTaskEditData(activeTaskId);
+  // Campos extras (contato, próxima ação, visita técnica) já vêm do useTaskDetails.
+  // useTaskEditData permanece exclusivo do modo de edição.
 
   // === MÍDIA LAZY ===
   // Só busca get_secure_task_media quando a seção da galeria entra na viewport.
