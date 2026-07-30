@@ -526,7 +526,7 @@ export const generateWorkshopChecklistPDF = async (
       const batch = report.generalPhotos.slice(i, i + perRow);
       ensureSpace(photoH + 4);
       for (let j = 0; j < batch.length; j++) {
-        const base64 = await loadImageAsBase64(batch[j]);
+        const base64 = await loadImageAsBase64(batch[j], TASK_PHOTOS_BUCKET);
         const x = marginLeft + j * (photoW + gap);
         if (base64) {
           try {
