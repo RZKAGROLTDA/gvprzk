@@ -11,15 +11,18 @@ import {
   LEGACY_MACHINE_MESSAGE,
   PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
-import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
+import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
 
 
 
-const loadImageAsBase64 = async (value: string): Promise<string | null> => {
+const loadImageAsBase64 = async (
+  value: string,
+  bucket: MediaBucket = PRODUCT_PHOTOS_BUCKET,
+): Promise<string | null> => {
   try {
     if (value.startsWith('data:image')) return value;
     // Paths do Storage precisam de signed URL na hora da geração do PDF.
-    const url = await resolveMediaUrl(value, PRODUCT_PHOTOS_BUCKET);
+    const url = await resolveMediaUrl(value, bucket);
     if (!url) return null;
     const response = await fetch(url);
     if (!response.ok) return null;
