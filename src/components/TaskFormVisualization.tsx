@@ -111,23 +111,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
       (base as any).documents = media.documents;
       if (media.technicalVisitData) (base as any).technicalVisitData = media.technicalVisitData;
     }
-    if (editData) {
-      (base as any).contactName = base.contactName ?? editData.contactName;
-      (base as any).contactFunction = base.contactFunction ?? editData.contactFunction;
-      (base as any).nextAction = base.nextAction ?? (editData as any).next_action;
-      (base as any).nextActionDate = base.nextActionDate ?? (editData as any).next_action_date;
-      (base as any).technicalCategory = base.technicalCategory ?? editData.technical_category ?? undefined;
-      (base as any).technicalFunnelStage = base.technicalFunnelStage ?? editData.technical_funnel_stage ?? undefined;
-      (base as any).opportunityInterest = base.opportunityInterest ?? (editData.opportunity_interest as any);
-      (base as any).opportunityUrgency = base.opportunityUrgency ?? (editData.opportunity_urgency as any);
-      (base as any).opportunityImpact = base.opportunityImpact ?? (editData.opportunity_impact as any);
-      (base as any).opportunityClosing = base.opportunityClosing ?? (editData.opportunity_closing as any);
-      (base as any).salesEstimate = base.salesEstimate ?? (editData as any).sales_estimate;
-      (base as any).prospectNotesJustification =
-        (base as any).prospectNotesJustification ?? (editData as any).prospectNotesJustification ?? (editData as any).prospect_notes_justification;
-    }
     return base;
-  }, [taskProp, taskDetails, editData, media]);
+  }, [taskProp, taskDetails, media]);
 
   const salesStatus = currentTask ? mapSalesStatus(currentTask) : 'prospect';
 
