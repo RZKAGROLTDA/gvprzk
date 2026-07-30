@@ -22,7 +22,7 @@ import { useTaskDetails } from '@/hooks/useTasksOptimized';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { Info } from 'lucide-react';
 import { MediaImage } from '@/components/MediaImage';
-import { PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
+import { PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
 
 interface Props {
   task: Task;
@@ -84,7 +84,8 @@ const SummaryCard: React.FC<{ label: string; value: string; tone: 'primary' | 's
 export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais, isOpen, onClose }) => {
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+  // Lightbox guarda o valor bruto + bucket de origem (fotos da tarefa vs. dos itens).
+  const [lightboxPhoto, setLightboxPhoto] = useState<{ value: string; bucket: MediaBucket } | null>(null);
 
   // Hidratação obrigatória: garante que a tarefa exibida no relatório é sempre
   // a versão completa (checklistMachine, responseStatus/Notes por item, fotos
@@ -372,13 +373,15 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                                     <button
                                       key={pi}
                                       type="button"
-                                      onClick={() => setLightboxPhoto(ph)}
+                                      onClick={() => setLightboxPhoto({ value: ph, bucket: PRODUCT_PHOTOS_BUCKET })}
                                       className="focus:outline-none focus:ring-2 focus:ring-primary rounded"
                                     >
-                                      <img
-                                        src={ph}
+                                      <MediaImage
+                                        value={ph}
+                                        bucket={PRODUCT_PHOTOS_BUCKET}
                                         alt={`${it.name} — foto ${pi + 1}`}
                                         className="w-16 h-16 object-cover rounded border hover:opacity-80 transition-opacity"
+                                        fallbackClassName="w-16 h-16 rounded border bg-muted flex items-center justify-center text-[9px] text-muted-foreground text-center px-1"
                                         loading="lazy"
                                       />
                                     </button>
@@ -498,10 +501,10 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                       <button
                         key={i}
                         type="button"
-                        onClick={() => setLightboxPhoto(photo)}
+                        onClick={() => setLightboxPhoto({ value: photo, bucket: TASK_PHOTOS_BUCKET })}
                         className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                       >
-                        <MediaImage value={photo} bucket={PRODUCT_PHOTOS_BUCKET} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <MediaImage value={photo} bucket={TASK_PHOTOS_BUCKET} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                       </button>
                     ))}
                   </div>
@@ -546,7 +549,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
               >
                 <X className="w-5 h-5" />
               </button>
-              <MediaImage value={lightboxPhoto} bucket={PRODUCT_PHOTOS_BUCKET} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
+              <MediaImage value={lightboxPhoto.value} bucket={lightboxPhoto.bucket} alt="Foto ampliada" className="w-full max-h-[85vh] object-contain rounded" />
             </div>
           </DialogContent>
         </Dialog>

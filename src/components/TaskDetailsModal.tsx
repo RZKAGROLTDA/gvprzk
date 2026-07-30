@@ -444,34 +444,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                             {product.photos.map((photo, photoIndex) => (
                               <div key={photoIndex} className="aspect-square border rounded overflow-hidden bg-muted">
-                                <img 
-                                  src={photo} 
-                                  alt={`Foto ${photoIndex + 1} do produto ${product.name}`} 
-                                  className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" 
-                                  onClick={() => window.open(photo, '_blank')} 
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.removeChild(target);
-                                      const errorDiv = document.createElement('div');
-                                      errorDiv.className = 'w-full h-full flex flex-col items-center justify-center text-muted-foreground';
-                                      
-                                      const iconDiv = document.createElement('div');
-                                      iconDiv.textContent = '📷'; // Secure: use textContent instead of innerHTML
-                                      iconDiv.className = 'text-lg mb-1';
-                                      
-                                      const textSpan = document.createElement('span');
-                                      textSpan.textContent = 'Imagem não disponível';
-                                      textSpan.className = 'text-xs text-center';
-                                      
-                                      errorDiv.appendChild(iconDiv);
-                                      errorDiv.appendChild(textSpan);
-                                      parent.appendChild(errorDiv);
-                                    }
-                                  }} 
+                                <MediaImage
+                                  value={photo}
+                                  bucket={PRODUCT_PHOTOS_BUCKET}
+                                  alt={`Foto ${photoIndex + 1} do produto ${product.name}`}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover hover:scale-105 transition-transform"
                                 />
+
                               </div>
                             ))}
                           </div>

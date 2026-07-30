@@ -38,6 +38,8 @@ import { getTaskTypeLabel } from './TaskFormCore';
 import { generateTaskPDF } from './TaskPDFGenerator';
 import { resolveFilialName } from '@/lib/taskStandardization';
 import { generateStandardReport } from '@/lib/reportFieldMapping';
+import { MediaImage } from '@/components/MediaImage';
+import { PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET } from '@/lib/mediaStorage';
 
 interface OpportunityReportProps {
   task: Task;
@@ -640,12 +642,16 @@ ${task.responsible}`;
                         {item.photos && item.photos.length > 0 && (
                           <div className="mt-2 flex gap-2">
                             {item.photos.map((photo, photoIndex) => (
-                              <img 
+                              <MediaImage
                                 key={photoIndex}
-                                src={photo} 
+                                value={photo}
+                                bucket={PRODUCT_PHOTOS_BUCKET}
                                 alt={`${item.name} - ${photoIndex + 1}`}
+                                loading="lazy"
                                 className="w-16 h-16 object-cover rounded border"
+                                fallbackClassName="w-16 h-16 rounded border bg-muted flex items-center justify-center text-[9px] text-muted-foreground text-center px-1"
                               />
+
                             ))}
                           </div>
                         )}
@@ -706,12 +712,16 @@ ${task.responsible}`;
                         {item.photos && item.photos.length > 0 && (
                           <div className="mt-2 flex gap-2">
                             {item.photos.map((photo, photoIndex) => (
-                              <img 
+                              <MediaImage
                                 key={photoIndex}
-                                src={photo} 
+                                value={photo}
+                                bucket={PRODUCT_PHOTOS_BUCKET}
                                 alt={`${item.name} - ${photoIndex + 1}`}
+                                loading="lazy"
                                 className="w-16 h-16 object-cover rounded border"
+                                fallbackClassName="w-16 h-16 rounded border bg-muted flex items-center justify-center text-[9px] text-muted-foreground text-center px-1"
                               />
+
                             ))}
                           </div>
                         )}
@@ -763,11 +773,15 @@ ${task.responsible}`;
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {task.photos.map((photo, index) => (
                     <div key={index} className="relative">
-                      <img 
-                        src={photo} 
+                      <MediaImage
+                        value={photo}
+                        bucket={TASK_PHOTOS_BUCKET}
                         alt={`Foto ${index + 1}`}
+                        loading="lazy"
                         className="w-full h-32 object-cover rounded-lg border"
+                        fallbackClassName="w-full h-32 rounded-lg border bg-muted flex items-center justify-center text-[10px] text-muted-foreground"
                       />
+
                     </div>
                   ))}
                 </div>

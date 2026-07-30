@@ -10,7 +10,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { compressToDataUrl, deletePhoto, isStoragePath, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
-import { useResolvedPhotos } from '@/hooks/useResolvedPhotos';
+import { MediaImage } from '@/components/MediaImage';
 import { toast } from 'sonner';
 
 interface PhotoUploadProps {
@@ -32,9 +32,9 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Lista mista (Base64 histórico + paths do Storage): a resolução é feita
+  // exclusivamente pelo MediaImage — sem lógica paralela de URL aqui.
 
-  // Lista mista: Base64 histórico + paths do Storage (resolvidos em signed URL)
-  const { resolved } = useResolvedPhotos(photos, bucket);
 
   // If hidePhotoUpload is true, don't render anything
   if (hidePhotoUpload) {
@@ -140,33 +140,26 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
         {/* Grid de Fotos */}
         {photos.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {photos.map((photo, index) => {
-              const src = resolved[index] ?? null;
-              return (
+            {photos.map((photo, index) => (
               <div key={`${photo.slice(0, 32)}-${index}`} className="relative group">
-                {src ? (
-                  <img 
-                    src={src} 
-                    alt={`Foto ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-md border"
-                  />
-                ) : (
-                  <div className="w-full h-24 rounded-md border bg-muted flex items-center justify-center text-[10px] text-muted-foreground text-center px-2">
-                    Foto indisponível
-                  </div>
-                )}
+                <MediaImage
+                  value={photo}
+                  bucket={bucket}
+                  alt={`Foto ${index + 1}`}
+                  loading="lazy"
+                  className="w-full h-24 object-cover rounded-md border"
+                  fallbackClassName="w-full h-24 rounded-md border bg-muted flex items-center justify-center text-[10px] text-muted-foreground text-center px-2"
+                />
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center gap-1">
-                  {src && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setPreviewPhoto(src)}
-                      className="h-8 w-8 p-0 text-primary-foreground hover:bg-white/20"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPreviewPhoto(photo)}
+                    className="h-8 w-8 p-0 text-primary-foreground hover:bg-white/20"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -178,8 +171,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
                   </Button>
                 </div>
               </div>
-              );
-            })}
+            ))}
           </div>
         )}
 
@@ -187,10 +179,11 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
         {previewPhoto && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="relative max-w-4xl max-h-[90vh]">
-              <img 
-                src={previewPhoto} 
-                alt="Preview" 
-                className="max-w-full max-h-full object-contain"
+              <MediaImage
+                value={previewPhoto}
+                bucket={bucket}
+                alt="Preview"
+                className="max-w-full max-h-[85vh] object-contain"
               />
               <Button
                 variant="ghost"
@@ -203,6 +196,7 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
             </div>
           </div>
         )}
+
       </CardContent>
     </Card>
   );
