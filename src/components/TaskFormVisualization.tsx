@@ -602,38 +602,56 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
                   </SectionCard>
                 )}
 
-                {photoCount > 0 ? (
-                  <SectionCard
-                    icon={ImageIcon}
-                    title="Registro Fotográfico"
-                    tone="warning"
-                    description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
-                  >
-                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3">
-                      {currentTask.photos!.map((photo, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setLightboxIndex(i)}
-                          className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                        >
-                          <MediaImage value={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            {i + 1}/{photoCount}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </SectionCard>
-                ) : (
-                  <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
-                    <div className="text-center py-6 text-sm text-muted-foreground italic">
-                      <ImageIcon className="w-8 h-8 mx-auto opacity-30 mb-2" />
-                      Nenhuma foto registrada
-                    </div>
-                  </SectionCard>
-                )}
+                {/* Galeria lazy: só busca a mídia quando a seção entra na viewport */}
+                <div ref={gallerySentinel}>
+                  {!mediaLoaded ? (
+                    <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
+                      {mediaError ? (
+                        <div className="text-center py-6 text-sm text-muted-foreground">
+                          <AlertTriangle className="w-8 h-8 mx-auto opacity-40 mb-2 text-warning" />
+                          Não foi possível carregar as fotos desta visita.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {[0, 1, 2].map((i) => (
+                            <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
+                          ))}
+                        </div>
+                      )}
+                    </SectionCard>
+                  ) : photoCount > 0 ? (
+                    <SectionCard
+                      icon={ImageIcon}
+                      title="Registro Fotográfico"
+                      tone="warning"
+                      description={`${photoCount} foto${photoCount > 1 ? 's' : ''} capturada${photoCount > 1 ? 's' : ''} durante a visita`}
+                    >
+                      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-3">
+                        {currentTask.photos!.map((photo, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setLightboxIndex(i)}
+                            className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                          >
+                            <MediaImage value={photo} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <span className="absolute bottom-1 right-1.5 text-[10px] font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                              {i + 1}/{photoCount}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </SectionCard>
+                  ) : (
+                    <SectionCard icon={ImageIcon} title="Registro Fotográfico" tone="muted">
+                      <div className="text-center py-6 text-sm text-muted-foreground italic">
+                        <ImageIcon className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                        Nenhuma foto registrada
+                      </div>
+                    </SectionCard>
+                  )}
+                </div>
               </div>
 
 
