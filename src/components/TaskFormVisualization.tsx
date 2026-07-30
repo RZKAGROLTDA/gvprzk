@@ -56,19 +56,60 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const { data: filiais = [] } = useFiliais();
 
-  // Fresh full task (photos, checkInLocation, equipmentList, products)
-  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
-    isOpen && taskProp ? taskProp.id : null,
+  // Checklist da Oficina tem fluxo próprio (WorkshopChecklistView faz seu próprio fetch).
+  const isChecklistTask = taskProp?.taskType === 'checklist';
+  const activeTaskId = isOpen && taskProp && !isChecklistTask ? taskProp.id : null;
+
+  // Dados complementares (produtos, lembretes, equipamentos) — SEM mídia pesada
+  // e SEM products.photos: o modal abre imediatamente com o taskProp.
+  const { data: taskDetails, isLoading: loadingDetails, isError: detailsError } = useTaskDetails(
+    activeTaskId,
+    { includeMedia: false, includeProductPhotos: false },
   );
 
   // Extra fields (technical visit, contact, nextAction) via edit-data hook
-  const { data: editData, loading: loadingEdit } = useTaskEditData(
-    isOpen ? taskProp?.id || null : null,
+  const { data: editData, loading: loadingEdit } = useTaskEditData(activeTaskId);
+
+  // === MÍDIA LAZY ===
+  // Só busca get_secure_task_media quando a seção da galeria entra na viewport.
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const gallerySentinel = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) setGalleryVisible(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || galleryVisible) return;
+    const el = gallerySentinel.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setGalleryVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isOpen, galleryVisible, taskDetails]);
+
+  const { data: media, isLoading: loadingMedia, isError: mediaError } = useTaskMedia(
+    activeTaskId,
+    { enabled: galleryVisible },
   );
+  const mediaLoaded = !!media;
 
   const currentTask = useMemo<Task | null>(() => {
     if (!taskProp) return null;
     const base: Task = { ...taskProp, ...(taskDetails || {}) } as Task;
+    if (media) {
+      base.photos = media.photos;
+      (base as any).documents = media.documents;
+      if (media.technicalVisitData) (base as any).technicalVisitData = media.technicalVisitData;
+    }
     if (editData) {
       (base as any).contactName = base.contactName ?? editData.contactName;
       (base as any).contactFunction = base.contactFunction ?? editData.contactFunction;
@@ -82,10 +123,10 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
       (base as any).opportunityClosing = base.opportunityClosing ?? (editData.opportunity_closing as any);
       (base as any).salesEstimate = base.salesEstimate ?? (editData as any).sales_estimate;
       (base as any).prospectNotesJustification =
-        (base as any).prospectNotesJustification ?? (editData as any).prospect_notes_justification;
+        (base as any).prospectNotesJustification ?? (editData as any).prospectNotesJustification ?? (editData as any).prospect_notes_justification;
     }
     return base;
-  }, [taskProp, taskDetails, editData]);
+  }, [taskProp, taskDetails, editData, media]);
 
   const salesStatus = currentTask ? mapSalesStatus(currentTask) : 'prospect';
 
@@ -110,19 +151,8 @@ export const TaskFormVisualization: React.FC<Props> = ({ task: taskProp, isOpen,
   if (!isOpen) return null;
   if (!taskProp) return null;
 
-  const isWaiting = (loadingDetails && !taskDetails) || (loadingEdit && !editData);
-  if (isWaiting) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl">
-          <div className="flex flex-col items-center justify-center py-14 space-y-3">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Carregando relatório da visita…</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  // Renderização progressiva: o modal abre imediatamente com o taskProp.
+  const loadingComplements = (loadingDetails && !taskDetails) || (loadingEdit && !editData);
   if (!currentTask) return null;
 
   // ⚙️ Checklist da Oficina — relatório técnico com fluxo isolado.
