@@ -20,6 +20,7 @@ import { Task } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 import { useFiliais, useTaskDetails } from '@/hooks/useTasksOptimized';
 import { useTaskEditData } from '@/hooks/useTaskEditData';
+import { useTaskMedia } from '@/hooks/useTaskMedia';
 import { mapSalesStatus, getStatusLabel, getStatusColor, getFilialNameRobust } from '@/lib/taskStandardization';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { generateReportPDF } from '@/lib/generateReportPDF';
