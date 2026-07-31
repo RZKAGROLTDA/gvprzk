@@ -268,7 +268,16 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                 tone="primary"
                 description={report.machine.modelo || report.machine.tipo || undefined}
               >
-                {report.machineState === 'filled' ? (
+                {!textualReady ? (
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-20 rounded-xl bg-muted" />
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-10 rounded-lg bg-muted" />
+                      ))}
+                    </div>
+                  </div>
+                ) : report.machineState === 'filled' ? (
                   <>
                     <div className="mb-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
                       <p className="text-[10px] uppercase tracking-wider font-bold text-primary mb-1">Chassi / Nº de Série</p>
