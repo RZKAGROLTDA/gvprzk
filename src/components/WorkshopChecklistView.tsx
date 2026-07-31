@@ -377,6 +377,9 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                 </SectionCard>
               )}
 
+              {/* Sentinela de mídia: dispara a carga lazy de fotos (gerais e por item) */}
+              <div ref={gallerySentinel} aria-hidden className="h-px w-full" />
+
               {/* SERVIÇOS VERIFICADOS */}
               <SectionCard
                 icon={ClipboardCheck}
