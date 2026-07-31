@@ -545,25 +545,37 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
 
 
               {/* REGISTRO FOTOGRÁFICO GERAL — apenas se houver */}
-              {report.generalPhotos.length > 0 && (
+              {(!media || report.generalPhotos.length > 0) && (
                 <SectionCard
                   icon={ImageIcon}
                   title="Registro Fotográfico Geral"
                   tone="warning"
-                  description={`${report.generalPhotos.length} foto(s) da atividade`}
+                  description={media ? `${report.generalPhotos.length} foto(s) da atividade` : undefined}
                 >
-                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {report.generalPhotos.map((photo, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setLightboxPhoto({ value: photo, bucket: TASK_PHOTOS_BUCKET })}
-                        className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                      >
-                        <MediaImage value={photo} bucket={TASK_PHOTOS_BUCKET} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      </button>
-                    ))}
-                  </div>
+                  {mediaError ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                      <AlertTriangle className="w-4 h-4" /> Não foi possível carregar as fotos desta atividade.
+                    </div>
+                  ) : !media ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {report.generalPhotos.map((photo, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setLightboxPhoto({ value: photo, bucket: TASK_PHOTOS_BUCKET })}
+                          className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          <MediaImage value={photo} bucket={TASK_PHOTOS_BUCKET} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </SectionCard>
               )}
 
