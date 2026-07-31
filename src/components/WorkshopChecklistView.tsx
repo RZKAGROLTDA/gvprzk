@@ -87,31 +87,75 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
   // Lightbox guarda o valor bruto + bucket de origem (fotos da tarefa vs. dos itens).
   const [lightboxPhoto, setLightboxPhoto] = useState<{ value: string; bucket: MediaBucket } | null>(null);
 
-  // Hidratação obrigatória: garante que a tarefa exibida no relatório é sempre
-  // a versão completa (checklistMachine, responseStatus/Notes por item, fotos
-  // por item, mídia, checkInLocation), independentemente de a `taskProp` ter
-  // vindo de listagem, card ou funil.
-  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
-    isOpen && taskProp?.id ? taskProp.id : null,
-  );
+  const activeTaskId = isOpen && taskProp?.id ? taskProp.id : null;
+
+  // Dados complementares LEVES (checklist_machine, itens, check-in, campos extras)
+  // — SEM mídia pesada e SEM products.photos: o modal abre imediatamente.
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(activeTaskId, {
+    includeMedia: false,
+    includeProductPhotos: false,
+  });
+
+  // === MÍDIA LAZY ===
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const gallerySentinel = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) setGalleryVisible(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || galleryVisible) return;
+    const el = gallerySentinel.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setGalleryVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isOpen, galleryVisible, taskDetails]);
+
+  const { data: media, isLoading: loadingMedia, isError: mediaError } = useTaskMedia(activeTaskId, {
+    enabled: galleryVisible,
+  });
+  const { data: productPhotos, isLoading: loadingProductPhotos, isError: productPhotosError } =
+    useProductPhotos(activeTaskId, { enabled: galleryVisible });
+
   const task = useMemo<Task>(() => {
     if (!taskProp) return taskProp as any;
-    return taskDetails ? { ...taskProp, ...taskDetails } as Task : taskProp;
-  }, [taskProp, taskDetails]);
+    const base: Task = { ...taskProp, ...(taskDetails || {}) } as Task;
+    if (media) {
+      base.photos = media.photos;
+      (base as any).documents = media.documents;
+    } else {
+      base.photos = [];
+    }
+    if (productPhotos && base.checklist?.length) {
+      base.checklist = base.checklist.map((item: any) =>
+        productPhotos[item.id] ? { ...item, photos: productPhotos[item.id] } : item,
+      );
+    }
+    return base;
+  }, [taskProp, taskDetails, media, productPhotos]);
 
-  // Só constrói o relatório quando a task detalhada já veio (evita render
-  // inicial classificando erradamente como "persistence_error" ou "legacy"
-  // por falta de checklist_machine na task parcial).
-  const report = useMemo(
-    () => (taskDetails ? buildWorkshopChecklistReport(task) : null),
-    [task, taskDetails],
-  );
+  // Relatório textual é construído imediatamente. Enquanto `taskDetails` não
+  // chega, as seções que dependem dos dados hidratados exibem skeleton — o
+  // relatório NUNCA fica bloqueado por mídia.
+  const textualReady = !!taskDetails;
+  const report = useMemo(() => (task ? buildWorkshopChecklistReport(task) : null), [task]);
 
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
       // Passa o taskId — o dispatcher re-hidrata via fetchTaskForReport e chama
-      // generateWorkshopChecklistPDF garantindo dados completos e uniformes.
+      // generateWorkshopChecklistPDF garantindo dados completos e uniformes
+      // (inclusive TODAS as fotos, independentemente da carga lazy do modal).
       await generateReportPDF(task.id, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel, filiais });
       toast({ title: 'PDF gerado com sucesso!', description: 'O arquivo foi baixado automaticamente.' });
     } catch (e) {
@@ -125,6 +169,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
   const handlePrint = () => window.print();
 
   const handleEmail = () => {
+    if (!report) return;
     const subject = `Relatório de Checklist da Oficina - ${task.client || 'Cliente'}`;
     const body = [
       `Cliente: ${task.client || '—'}`,
@@ -140,20 +185,9 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
     window.open(`mailto:${task.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
-  // Loading state — evita renderizar o relatório antes da hidratação completa.
-  if (isOpen && (loadingDetails || !report)) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl">
-          <div className="flex flex-col items-center justify-center py-14 space-y-3">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Carregando checklist da oficina…</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  if (!isOpen) return null;
   if (!report) return null;
+
 
   const conclusionTone =
     report.counts.naoConforme > 0 ? 'destructive'
