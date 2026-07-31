@@ -19,6 +19,8 @@ import { getFilialNameRobust } from '@/lib/taskStandardization';
 import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus, LEGACY_MACHINE_MESSAGE, PERSISTENCE_ERROR_MESSAGE } from '@/lib/workshopChecklistReport';
 import { generateReportPDF } from '@/lib/generateReportPDF';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
+import { useTaskMedia } from '@/hooks/useTaskMedia';
+import { useProductPhotos } from '@/hooks/useProductPhotos';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { Info } from 'lucide-react';
 import { MediaImage } from '@/components/MediaImage';
