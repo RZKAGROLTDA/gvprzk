@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -19,6 +19,8 @@ import { getFilialNameRobust } from '@/lib/taskStandardization';
 import { buildWorkshopChecklistReport, STATUS_META, ChecklistStatus, LEGACY_MACHINE_MESSAGE, PERSISTENCE_ERROR_MESSAGE } from '@/lib/workshopChecklistReport';
 import { generateReportPDF } from '@/lib/generateReportPDF';
 import { useTaskDetails } from '@/hooks/useTasksOptimized';
+import { useTaskMedia } from '@/hooks/useTaskMedia';
+import { useProductPhotos } from '@/hooks/useProductPhotos';
 import { getTaskTypeLabel, calculateTaskTotalValue } from './TaskFormCore';
 import { Info } from 'lucide-react';
 import { MediaImage } from '@/components/MediaImage';
@@ -87,31 +89,75 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
   // Lightbox guarda o valor bruto + bucket de origem (fotos da tarefa vs. dos itens).
   const [lightboxPhoto, setLightboxPhoto] = useState<{ value: string; bucket: MediaBucket } | null>(null);
 
-  // Hidratação obrigatória: garante que a tarefa exibida no relatório é sempre
-  // a versão completa (checklistMachine, responseStatus/Notes por item, fotos
-  // por item, mídia, checkInLocation), independentemente de a `taskProp` ter
-  // vindo de listagem, card ou funil.
-  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(
-    isOpen && taskProp?.id ? taskProp.id : null,
-  );
+  const activeTaskId = isOpen && taskProp?.id ? taskProp.id : null;
+
+  // Dados complementares LEVES (checklist_machine, itens, check-in, campos extras)
+  // — SEM mídia pesada e SEM products.photos: o modal abre imediatamente.
+  const { data: taskDetails, isLoading: loadingDetails } = useTaskDetails(activeTaskId, {
+    includeMedia: false,
+    includeProductPhotos: false,
+  });
+
+  // === MÍDIA LAZY ===
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const gallerySentinel = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) setGalleryVisible(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || galleryVisible) return;
+    const el = gallerySentinel.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setGalleryVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isOpen, galleryVisible, taskDetails]);
+
+  const { data: media, isLoading: loadingMedia, isError: mediaError } = useTaskMedia(activeTaskId, {
+    enabled: galleryVisible,
+  });
+  const { data: productPhotos, isLoading: loadingProductPhotos, isError: productPhotosError } =
+    useProductPhotos(activeTaskId, { enabled: galleryVisible });
+
   const task = useMemo<Task>(() => {
     if (!taskProp) return taskProp as any;
-    return taskDetails ? { ...taskProp, ...taskDetails } as Task : taskProp;
-  }, [taskProp, taskDetails]);
+    const base: Task = { ...taskProp, ...(taskDetails || {}) } as Task;
+    if (media) {
+      base.photos = media.photos;
+      (base as any).documents = media.documents;
+    } else {
+      base.photos = [];
+    }
+    if (productPhotos && base.checklist?.length) {
+      base.checklist = base.checklist.map((item: any) =>
+        productPhotos[item.id] ? { ...item, photos: productPhotos[item.id] } : item,
+      );
+    }
+    return base;
+  }, [taskProp, taskDetails, media, productPhotos]);
 
-  // Só constrói o relatório quando a task detalhada já veio (evita render
-  // inicial classificando erradamente como "persistence_error" ou "legacy"
-  // por falta de checklist_machine na task parcial).
-  const report = useMemo(
-    () => (taskDetails ? buildWorkshopChecklistReport(task) : null),
-    [task, taskDetails],
-  );
+  // Relatório textual é construído imediatamente. Enquanto `taskDetails` não
+  // chega, as seções que dependem dos dados hidratados exibem skeleton — o
+  // relatório NUNCA fica bloqueado por mídia.
+  const textualReady = !!taskDetails;
+  const report = useMemo(() => (task ? buildWorkshopChecklistReport(task) : null), [task]);
 
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
       // Passa o taskId — o dispatcher re-hidrata via fetchTaskForReport e chama
-      // generateWorkshopChecklistPDF garantindo dados completos e uniformes.
+      // generateWorkshopChecklistPDF garantindo dados completos e uniformes
+      // (inclusive TODAS as fotos, independentemente da carga lazy do modal).
       await generateReportPDF(task.id, { calculateTotalValue: calculateTaskTotalValue, getTaskTypeLabel, filiais });
       toast({ title: 'PDF gerado com sucesso!', description: 'O arquivo foi baixado automaticamente.' });
     } catch (e) {
@@ -125,6 +171,7 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
   const handlePrint = () => window.print();
 
   const handleEmail = () => {
+    if (!report) return;
     const subject = `Relatório de Checklist da Oficina - ${task.client || 'Cliente'}`;
     const body = [
       `Cliente: ${task.client || '—'}`,
@@ -140,20 +187,9 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
     window.open(`mailto:${task.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
-  // Loading state — evita renderizar o relatório antes da hidratação completa.
-  if (isOpen && (loadingDetails || !report)) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-5xl">
-          <div className="flex flex-col items-center justify-center py-14 space-y-3">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Carregando checklist da oficina…</p>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  if (!isOpen) return null;
   if (!report) return null;
+
 
   const conclusionTone =
     report.counts.naoConforme > 0 ? 'destructive'
@@ -232,7 +268,16 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                 tone="primary"
                 description={report.machine.modelo || report.machine.tipo || undefined}
               >
-                {report.machineState === 'filled' ? (
+                {!textualReady ? (
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-20 rounded-xl bg-muted" />
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="h-10 rounded-lg bg-muted" />
+                      ))}
+                    </div>
+                  </div>
+                ) : report.machineState === 'filled' ? (
                   <>
                     <div className="mb-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
                       <p className="text-[10px] uppercase tracking-wider font-bold text-primary mb-1">Chassi / Nº de Série</p>
@@ -332,6 +377,9 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                 </SectionCard>
               )}
 
+              {/* Sentinela de mídia: dispara a carga lazy de fotos (gerais e por item) */}
+              <div ref={gallerySentinel} aria-hidden className="h-px w-full" />
+
               {/* SERVIÇOS VERIFICADOS */}
               <SectionCard
                 icon={ClipboardCheck}
@@ -366,6 +414,14 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                                 <p className="text-foreground whitespace-pre-wrap mb-2">{it.notes}</p>
                               ) : (
                                 <p className="text-muted-foreground italic mb-2">Sem observação</p>
+                              )}
+                              {!productPhotos && galleryVisible && loadingProductPhotos && (
+                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                  <Loader2 className="w-3 h-3 animate-spin" /> Carregando fotos…
+                                </div>
+                              )}
+                              {productPhotosError && (
+                                <p className="text-[10px] text-destructive">Erro ao carregar fotos deste item.</p>
                               )}
                               {it.photos.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5">
@@ -489,25 +545,37 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
 
 
               {/* REGISTRO FOTOGRÁFICO GERAL — apenas se houver */}
-              {report.generalPhotos.length > 0 && (
+              {(!media || report.generalPhotos.length > 0) && (
                 <SectionCard
                   icon={ImageIcon}
                   title="Registro Fotográfico Geral"
                   tone="warning"
-                  description={`${report.generalPhotos.length} foto(s) da atividade`}
+                  description={media ? `${report.generalPhotos.length} foto(s) da atividade` : undefined}
                 >
-                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {report.generalPhotos.map((photo, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setLightboxPhoto({ value: photo, bucket: TASK_PHOTOS_BUCKET })}
-                        className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
-                      >
-                        <MediaImage value={photo} bucket={TASK_PHOTOS_BUCKET} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      </button>
-                    ))}
-                  </div>
+                  {mediaError ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                      <AlertTriangle className="w-4 h-4" /> Não foi possível carregar as fotos desta atividade.
+                    </div>
+                  ) : !media ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {report.generalPhotos.map((photo, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setLightboxPhoto({ value: photo, bucket: TASK_PHOTOS_BUCKET })}
+                          className="group relative aspect-square border rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          <MediaImage value={photo} bucket={TASK_PHOTOS_BUCKET} alt={`Foto ${i + 1}`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </SectionCard>
               )}
 
