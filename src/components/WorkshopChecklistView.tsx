@@ -415,6 +415,14 @@ export const WorkshopChecklistView: React.FC<Props> = ({ task: taskProp, filiais
                               ) : (
                                 <p className="text-muted-foreground italic mb-2">Sem observação</p>
                               )}
+                              {!productPhotos && galleryVisible && loadingProductPhotos && (
+                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                  <Loader2 className="w-3 h-3 animate-spin" /> Carregando fotos…
+                                </div>
+                              )}
+                              {productPhotosError && (
+                                <p className="text-[10px] text-destructive">Erro ao carregar fotos deste item.</p>
+                              )}
                               {it.photos.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5">
                                   {it.photos.map((ph, pi) => (
