@@ -27,33 +27,6 @@ export const useAuthProvider = () => {
   const [loading, setLoading] = useState(true);
   const initRef = useRef(false);
 
-  // Função para verificar se perfil já existe (não cria automaticamente)
-  // O perfil deve ser criado pelos formulários de registro com filial obrigatória
-  const checkUserProfile = async (authUser: User) => {
-    try {
-      console.log('🔄 Verificando perfil do usuário...');
-      
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('profiles')
-        .select('id, approval_status')
-        .eq('user_id', authUser.id)
-        .maybeSingle();
-
-      if (checkError && !checkError.message.includes('No rows')) {
-        console.error('❌ Erro ao verificar perfil:', checkError);
-        return;
-      }
-
-      if (existingProfile) {
-        console.log('✅ Perfil existe com status:', existingProfile.approval_status);
-      } else {
-        console.log('⚠️ Usuário sem perfil - deve se cadastrar pelo formulário de registro');
-      }
-    } catch (error) {
-      console.error('❌ Erro crítico na verificação do perfil:', error);
-    }
-  };
-
   useEffect(() => {
     // Evitar inicialização dupla
     if (initRef.current) return;
@@ -69,12 +42,6 @@ export const useAuthProvider = () => {
           setUser(session?.user ?? null);
           setLoading(false);
 
-          // Verificar perfil quando usuário faz login
-          if (session?.user && event === 'SIGNED_IN') {
-            setTimeout(() => {
-              checkUserProfile(session.user);
-            }, 0);
-          }
         }
       }
     );
