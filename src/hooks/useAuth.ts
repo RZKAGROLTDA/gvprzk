@@ -109,14 +109,6 @@ export const useAuthProvider = () => {
   const signIn = async (email: string, password: string) => {
     try {
       const result = await supabase.auth.signInWithPassword({ email, password });
-      
-      // Se login bem-sucedido, forçar renovação da sessão
-      if (!result.error && result.data.session) {
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
-      }
-      
       return result;
     } catch (error) {
       return { error };

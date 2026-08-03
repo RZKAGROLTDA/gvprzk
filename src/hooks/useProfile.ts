@@ -13,6 +13,11 @@ interface Profile {
   approval_status: 'pending' | 'approved' | 'rejected';
 }
 
+const PROFILE_TIMEOUT_MS = 5000;
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Não foi possível carregar os dados do usuário.';
+
 export const useProfile = () => {
   // Verificação robusta do contexto de autenticação
   let user = null;
@@ -28,11 +33,13 @@ export const useProfile = () => {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const loadingRef = useRef(false);
 
   useEffect(() => {
     if (!contextAvailable) {
       setProfile(null);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -65,46 +72,46 @@ export const useProfile = () => {
     try {
       loadingRef.current = true;
       setLoading(true);
+      setError(null);
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), PROFILE_TIMEOUT_MS);
       
       console.log('🔄 Carregando perfil do usuário...');
 
-      // Consulta simples para profile sem JOIN para evitar recursão RLS
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // As duas leituras independentes começam juntas; a filial é associada em memória.
+      const [profileResult, filiaisResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, user_id, name, email, role, filial_id, approval_status')
+          .eq('user_id', user.id)
+          .maybeSingle()
+          .abortSignal(controller.signal),
+        supabase
+          .from('filiais')
+          .select('id, nome')
+          .abortSignal(controller.signal),
+      ]);
+
+      window.clearTimeout(timeoutId);
+      const { data: profileData, error: profileError } = profileResult;
 
       if (profileError) {
         console.warn('⚠️ Erro ao carregar perfil:', profileError);
         setProfile(null);
+        setError(profileError.message || 'Não foi possível carregar o perfil.');
         return;
       }
 
       if (profileData) {
-        // Consulta separada para filial se existir
-        let filialNome = null;
-        if (profileData.filial_id) {
-          try {
-            console.log('🔍 Carregando filial para ID:', profileData.filial_id);
-            const { data: filial, error: filialError } = await supabase
-              .from('filiais')
-              .select('nome')
-              .eq('id', profileData.filial_id)
-              .maybeSingle();
-            
-            if (!filialError && filial) {
-              filialNome = filial.nome;
-              console.log('✅ Filial carregada:', filialNome);
-            } else {
-              console.warn('⚠️ Filial não encontrada para ID:', profileData.filial_id);
-            }
-          } catch (error) {
-            console.warn('⚠️ Erro ao carregar filial:', error);
-          }
-        } else {
-          console.warn('⚠️ Profile sem filial_id');
+        if (filiaisResult.error) {
+          setProfile(null);
+          setError(filiaisResult.error.message || 'Não foi possível carregar a filial.');
+          return;
         }
+
+        const filialNome = profileData.filial_id
+          ? filiaisResult.data?.find((filial) => filial.id === profileData.filial_id)?.nome ?? null
+          : null;
 
         // Combinar os dados sem JOIN complexo
         const completeProfile = {
@@ -120,6 +127,11 @@ export const useProfile = () => {
     } catch (error) {
       console.warn('⚠️ Erro no perfil:', error);
       setProfile(null);
+      setError(
+        error instanceof DOMException && error.name === 'AbortError'
+          ? 'O carregamento do perfil excedeu 5 segundos.'
+          : getErrorMessage(error),
+      );
     } finally {
       setLoading(false);
       loadingRef.current = false;
@@ -131,6 +143,7 @@ export const useProfile = () => {
   return {
     profile,
     loading,
+    error,
     isAdmin,
     loadProfile
   };

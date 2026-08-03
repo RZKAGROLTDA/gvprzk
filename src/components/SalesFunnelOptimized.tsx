@@ -15,6 +15,8 @@ import { mapSalesStatus, resolveFilialName } from '@/lib/taskStandardization';
 import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { Task } from '@/types/task';
 import { parseLocalDate } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 interface SalesFunnelData {
   name: string;
@@ -41,7 +43,7 @@ interface ClientDetails {
 }
 
 export const SalesFunnelOptimized: React.FC = () => {
-  const { tasks, loading, refetch, forceRefresh } = useTasksOptimized();
+  const { tasks, loading, error, refetch, forceRefresh } = useTasksOptimized();
   const { consultants, isLoading: consultantsLoading } = useFilteredConsultants();
   const { data: filiais = [], isLoading: filiaisLoading } = useFiliais();
   
@@ -273,6 +275,15 @@ export const SalesFunnelOptimized: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Não foi possível carregar as tarefas</AlertTitle>
+          <AlertDescription>
+            A consulta de tarefas está temporariamente indisponível. Tente novamente mais tarde.
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Header */}
       <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getVersionInfo, hasVersionChanged } from '@/config/version';
-import { toast } from '@/components/ui/use-toast';
+import { getVersionInfo } from '@/config/version';
 
 /**
  * Hook to check for version changes and suggest updates
@@ -10,43 +9,33 @@ export const useVersionCheck = () => {
   const [versionInfo, setVersionInfo] = useState(getVersionInfo());
 
   useEffect(() => {
-    // Check if version has changed since last login
-    const versionChanged = hasVersionChanged();
-    
-    if (versionChanged) {
+    const handleUpdate = () => {
       setShouldUpdate(true);
-      
-      // Force service worker update if available
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(registration => {
-          if (registration.waiting) {
-            // Tell the waiting service worker to skip waiting
-            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-          }
-          return registration.update();
-        }).catch(console.warn);
-      }
-      
-      toast({
-        title: "Nova versão disponível",
-        description: "Uma nova versão do sistema foi detectada. A página será atualizada automaticamente.",
-        duration: 10000,
-      });
-    }
+    };
+    window.addEventListener('app-version-update', handleUpdate);
+    return () => window.removeEventListener('app-version-update', handleUpdate);
   }, []);
 
-  const refreshPage = () => {
-    window.location.reload();
-  };
-
-  const dismissUpdate = () => {
-    setShouldUpdate(false);
+  const refreshPage = async () => {
+    const authKey = 'sb-wuvbrkbhunifudaewhng-auth-token';
+    const authToken = localStorage.getItem(authKey);
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
+    }
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName).catch(() => false)));
+    }
+    if (authToken) localStorage.setItem(authKey, authToken);
+    const url = new URL(window.location.href);
+    url.searchParams.set('_v', Date.now().toString());
+    window.location.replace(url.toString());
   };
 
   return {
     shouldUpdate,
     versionInfo,
     refreshPage,
-    dismissUpdate,
   };
 };
