@@ -6,7 +6,7 @@ import { getVersionInfo } from '@/config/version';
  */
 export const useVersionCheck = () => {
   const [shouldUpdate, setShouldUpdate] = useState(false);
-  const [versionInfo, setVersionInfo] = useState(getVersionInfo());
+  const [versionInfo] = useState(getVersionInfo());
 
   useEffect(() => {
     const handleUpdate = () => {
