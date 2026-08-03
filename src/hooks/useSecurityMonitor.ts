@@ -29,34 +29,8 @@ export const useSecurityMonitor = () => {
     }
   }, []);
 
-  const logSecurityEvent = useCallback(async (event: SecurityEvent) => {
-    try {
-      // Get basic request info (without exposing sensitive data)
-      const userAgent = navigator.userAgent;
-      const timestamp = new Date().toISOString();
-      
-      // Use the new secure logging function with proper parameter names
-      const { error } = await supabase.rpc('secure_log_security_event', {
-        event_type_param: event.type,
-        user_id_param: user?.id,
-        metadata_param: {
-          ...event.metadata,
-          user_agent: userAgent,
-          timestamp,
-          screen_resolution: `${screen.width}x${screen.height}`,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        },
-        risk_score_param: event.riskLevel || 1
-      });
-
-      if (error) {
-        console.error('Security logging error:', error);
-      }
-    } catch (error) {
-      // Silently fail - don't break functionality for logging
-      console.error('Security logging failed:', error);
-    }
-  }, [user?.id]);
+  // Eventos de segurança não são enviados diretamente pelo navegador.
+  const logSecurityEvent = useCallback((_event: SecurityEvent) => undefined, []);
 
   const monitorLoginAttempt = useCallback(async (email: string, success: boolean, ipAddress?: string) => {
     // Check for suspicious login patterns

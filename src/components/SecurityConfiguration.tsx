@@ -96,17 +96,6 @@ export const SecurityConfiguration: React.FC<SecurityConfigurationProps> = ({
     });
 
     try {
-      // Log the performance optimization attempt
-      await supabase.rpc('secure_log_security_event', {
-        event_type_param: 'performance_optimization_executed',
-        user_id_param: (await supabase.auth.getUser()).data.user?.id,
-        metadata_param: {
-          optimization_type: 'security_queries',
-          timestamp: new Date().toISOString()
-        },
-        risk_score_param: 1
-      });
-
       toast({
         title: "Performance otimizada",
         description: "Consultas de segurança foram otimizadas.",

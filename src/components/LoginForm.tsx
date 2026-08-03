@@ -45,7 +45,7 @@ export const LoginForm: React.FC = () => {
   const versionInfo = getVersionInfo();
 
   const { validateField, getFieldErrors, hasErrors, validationRules } = useInputValidation();
-  const { monitorLoginAttempt, monitorPasswordReset, checkRateLimit } = useSecurityMonitor();
+  const { monitorPasswordReset, checkRateLimit } = useSecurityMonitor();
 
   // Load filiais on component mount - with dedup protection
   useEffect(() => {
@@ -216,7 +216,11 @@ export const LoginForm: React.FC = () => {
     }
     
     // Check rate limiting before attempting login
-    const isAllowed = await checkRateLimit(formData.email.trim().toLowerCase());
+    // A indisponibilidade da função de rate limit nunca pode bloquear o login.
+    const isAllowed = await Promise.race([
+      checkRateLimit(formData.email.trim().toLowerCase()),
+      new Promise<boolean>((resolve) => window.setTimeout(() => resolve(true), 1500)),
+    ]);
     if (!isAllowed) {
       setIsBlocked(true);
       setBlockTimeLeft(900); // 15 minutes
@@ -260,9 +264,6 @@ export const LoginForm: React.FC = () => {
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
       
-      // Monitor failed login attempt
-      monitorLoginAttempt(formData.email, false);
-      
       let errorMessage = "Erro no login";
       
       // Mensagens mais amigáveis para erros comuns
@@ -293,7 +294,6 @@ export const LoginForm: React.FC = () => {
     } else {
       setLoginAttempts(0); // Reset contador em caso de sucesso
       setConnectionError(false);
-      monitorLoginAttempt(formData.email, true);
       storeCurrentVersion(); // Store version after successful login
       toast({
         title: "Login realizado com sucesso!",

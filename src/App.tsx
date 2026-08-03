@@ -43,6 +43,9 @@ import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
 import { VersionUpdateNotification } from "@/components/VersionUpdateNotification";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, LogOut, RefreshCw } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -131,10 +134,20 @@ const AppContent: React.FC = () => {
 
 // Component that safely uses auth hooks inside AuthProvider
 const AuthAwareWrapper: React.FC = () => {
-  const { user, loading } = useAuth();
-  const { profile, loading: profileLoading } = useProfile();
+  const { user, loading, signOut } = useAuth();
+  const { profile, loading: profileLoading, error: profileError, loadProfile } = useProfile();
   const { isUnhealthy, isChecking, retryWithBackoff, errorMessage, retryCount } = useSupabaseHealth();
   const [showProfileCreator, setShowProfileCreator] = React.useState(false);
+  const [startupTimedOut, setStartupTimedOut] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!loading && !profileLoading) {
+      setStartupTimedOut(false);
+      return;
+    }
+    const timeoutId = window.setTimeout(() => setStartupTimedOut(true), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [loading, profileLoading]);
 
   React.useEffect(() => {
     const currentUserId = user?.id ?? null;
@@ -165,11 +178,41 @@ const AuthAwareWrapper: React.FC = () => {
   }
 
   // OTIMIZAÇÃO: Não bloquear a app durante health check - apenas mostrar loading para auth
-  if (loading || profileLoading) {
+  if ((loading || profileLoading) && !startupTimedOut && !profileError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
       </div>
+    );
+  }
+
+  if (startupTimedOut || profileError) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Alert variant="destructive" className="max-w-lg">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Não foi possível carregar seu acesso</AlertTitle>
+          <AlertDescription className="mt-2 space-y-4">
+            <p>{profileError || 'A verificação inicial excedeu 5 segundos. Verifique sua conexão e tente novamente.'}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => {
+                  setStartupTimedOut(false);
+                  if (user) void loadProfile();
+                  else window.location.reload();
+                }}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Tentar novamente
+              </Button>
+              <Button variant="outline" onClick={() => void signOut()}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </main>
     );
   }
 

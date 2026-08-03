@@ -227,13 +227,8 @@ export const useTasksOptimized = (includeDetails = false) => {
     staleTime: 3 * 60 * 1000, // 3 minutos - OTIMIZAÇÃO: reduzir Disk IO
     refetchOnWindowFocus: false, // OTIMIZAÇÃO: desabilitado para reduzir queries
     refetchOnMount: false, // OTIMIZAÇÃO: usar cache existente
-    retry: (failureCount, error) => {
-      // Retry mais inteligente
-      if (error?.message?.includes('JWT') || error?.message?.includes('unauthorized')) {
-        return false; // Não retry em erros de auth
-      }
-      return failureCount < 3; // Até 3 tentativas para outros erros
-    },
+    // RPC temporariamente incompatível: uma falha deve gerar uma única chamada controlada.
+    retry: false,
     refetchInterval: false,
     meta: {
       errorMessage: 'Erro ao carregar tarefas'
