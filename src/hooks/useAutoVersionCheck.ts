@@ -5,8 +5,6 @@ import { useEffect, useRef } from 'react';
  */
 const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 min
 const VERSION_URL = '/version.json';
-const AUTH_KEY = 'sb-wuvbrkbhunifudaewhng-auth-token';
-
 const currentVersion = (import.meta.env.VITE_APP_VERSION as string) || 'dev';
 const currentBuildTime = (import.meta.env.VITE_BUILD_TIME as string) || '';
 const currentBuildHash = (import.meta.env.VITE_BUILD_HASH as string) || 'dev';

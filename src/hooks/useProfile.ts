@@ -84,8 +84,8 @@ export const useProfile = () => {
           .from('profiles')
           .select('id, user_id, name, email, role, filial_id, approval_status')
           .eq('user_id', user.id)
-          .maybeSingle()
-          .abortSignal(controller.signal),
+          .abortSignal(controller.signal)
+          .maybeSingle(),
         supabase
           .from('filiais')
           .select('id, nome')
