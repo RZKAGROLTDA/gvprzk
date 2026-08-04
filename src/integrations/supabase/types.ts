@@ -2115,6 +2115,16 @@ export type Database = {
         }
         Returns: Json
       }
+      get_equipment_validation_summary: {
+        Args: never
+        Returns: {
+          by_filial: Json
+          distinct_validated_clients: number
+          non_priority_validated: number
+          priority_validated: number
+          total_validated: number
+        }[]
+      }
       get_equipment_validators: {
         Args: never
         Returns: {
