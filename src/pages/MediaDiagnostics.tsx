@@ -84,22 +84,38 @@ function formatNumber(value: number | null | undefined): string {
   return new Intl.NumberFormat('pt-BR').format(Number(value || 0));
 }
 
-const Metric: React.FC<{ label: string; value: string; hint?: string; tone?: 'default' | 'warn' | 'ok' }> = ({
-  label,
-  value,
-  hint,
-  tone = 'default',
-}) => (
+const Metric: React.FC<{
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'default' | 'warn' | 'ok';
+  estimate?: boolean;
+  note?: string;
+}> = ({ label, value, hint, tone = 'default', estimate = false, note }) => (
   <div className="rounded-lg border bg-card p-4">
-    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+    <div className="flex items-start gap-1.5">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      {note && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" aria-label={`Detalhes sobre ${label}`} className="mt-0.5 shrink-0 text-muted-foreground">
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs text-xs leading-relaxed">{note}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
     <p
       className={`mt-1 text-2xl font-semibold ${
         tone === 'warn' ? 'text-destructive' : tone === 'ok' ? 'text-primary' : 'text-foreground'
       }`}
     >
       {value}
+      {estimate && <span className="ml-1.5 align-middle text-xs font-normal text-muted-foreground">(Estimativa)</span>}
     </p>
     {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+
   </div>
 );
 
