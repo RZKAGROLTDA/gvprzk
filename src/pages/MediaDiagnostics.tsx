@@ -356,49 +356,77 @@ const MediaDiagnostics: React.FC = () => {
             <>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Metric
-                  label="Base64 (Tasks)"
+                  label={
+                    report?.tasks.base64_count_is_record_estimate
+                      ? 'Registros com fotos no banco (estimativa) — Tasks'
+                      : 'Base64 (Tasks)'
+                  }
                   value={formatNumber(report?.tasks.base64_count)}
                   hint={`${formatBytes(report?.tasks.base64_bytes)} no banco`}
                   tone={(report?.tasks.base64_count || 0) > 0 ? 'warn' : 'ok'}
+                  note={report?.tasks.base64_count_note}
                 />
                 <Metric
                   label="Storage (Tasks)"
                   value={formatNumber(report?.tasks.storage_count)}
-                  hint={`${formatNumber(report?.tasks.records_with_photos)} tarefas com fotos`}
+                  hint={`${formatNumber(report?.tasks.records_with_photos)} tarefas com fotos${
+                    report?.tasks.records_with_photos_estimated ? ' (estimativa)' : ''
+                  }`}
                   tone="ok"
+                  note={report?.tasks.records_with_photos_note}
                 />
                 <Metric
-                  label="Base64 (Products)"
+                  label={
+                    report?.products.base64_count_is_record_estimate
+                      ? 'Registros com fotos no banco (estimativa) — Products'
+                      : 'Base64 (Products)'
+                  }
                   value={formatNumber(report?.products.base64_count)}
                   hint={`${formatBytes(report?.products.base64_bytes)} no banco`}
                   tone={(report?.products.base64_count || 0) > 0 ? 'warn' : 'ok'}
+                  note={report?.products.base64_count_note}
                 />
                 <Metric
                   label="Storage (Products)"
                   value={formatNumber(report?.products.storage_count)}
-                  hint={`${formatNumber(report?.products.records_with_photos)} produtos com fotos`}
+                  hint={`${formatNumber(report?.products.records_with_photos)} produtos com fotos${
+                    report?.products.records_with_photos_estimated ? ' (estimativa)' : ''
+                  }`}
                   tone="ok"
+                  note={report?.products.records_with_photos_note}
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Metric
                   label="Registros mistos"
-                  value={formatNumber(totals.mixed)}
+                  value={mixedUnavailable ? 'Não disponível' : formatNumber(totals.mixed)}
                   hint="Registros com Base64 e Storage ao mesmo tempo"
-                  tone={totals.mixed > 0 ? 'warn' : 'ok'}
+                  tone={!mixedUnavailable && totals.mixed > 0 ? 'warn' : 'ok'}
+                  note={
+                    mixedUnavailable
+                      ? report?.tasks.mixed_records_note || report?.products.mixed_records_note
+                      : undefined
+                  }
                 />
                 <Metric
                   label="Espaço ocupado por Base64"
                   value={formatBytes(totals.base64Bytes)}
-                  hint={`${formatNumber(totals.base64)} fotos ainda no banco`}
+                  hint={`${formatNumber(totals.base64)} registros ainda no banco`}
                   tone={totals.base64Bytes > 0 ? 'warn' : 'ok'}
+                  estimate={bytesEstimated}
+                  note={report?.tasks.bytes_note || report?.products.bytes_note}
                 />
                 <Metric
                   label="Espaço nos buckets"
                   value={formatBytes(totals.bucketBytes)}
-                  hint={`${formatNumber(totals.storage)} referências no banco`}
+                  hint={`${formatNumber(totals.storage)} arquivos no Storage`}
                 />
               </div>
+              <p className="pt-1 text-xs text-muted-foreground">
+                Os indicadores marcados como estimativa são calculados sem leitura do conteúdo das fotos,
+                evitando consultas pesadas e timeout.
+              </p>
+
             </>
           )}
         </CardContent>
