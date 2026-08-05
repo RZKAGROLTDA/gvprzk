@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, RefreshCw, ShieldAlert, HardDrive, Image as ImageIcon, CheckCircle2, XCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, RefreshCw, ShieldAlert, HardDrive, Image as ImageIcon, CheckCircle2, XCircle, Info } from 'lucide-react';
 import {
   TASK_PHOTOS_BUCKET,
   PRODUCT_PHOTOS_BUCKET,
@@ -21,6 +22,16 @@ interface SectionReport {
   base64_bytes: number;
   mixed_records: number;
   records_with_photos: number;
+  /** Metadados de transparência retornados pela RPC (somente leitura). */
+  base64_count_is_record_estimate?: boolean;
+  base64_count_note?: string;
+  records_with_photos_estimated?: boolean;
+  records_with_photos_note?: string;
+  bytes_estimated?: boolean;
+  bytes_note?: string;
+  bytes_source?: string;
+  mixed_records_available?: boolean;
+  mixed_records_note?: string;
 }
 
 interface BucketReport {
@@ -34,6 +45,7 @@ interface MigrationReport {
   products: SectionReport;
   buckets: BucketReport[];
   generated_at: string;
+  metrics_disclaimer?: string;
 }
 
 interface StorageFile {
@@ -59,6 +71,7 @@ const EMPTY_SECTION: SectionReport = {
   records_with_photos: 0,
 };
 
+
 function formatBytes(bytes: number | null | undefined): string {
   const value = Number(bytes || 0);
   if (value <= 0) return '0 B';
@@ -71,22 +84,38 @@ function formatNumber(value: number | null | undefined): string {
   return new Intl.NumberFormat('pt-BR').format(Number(value || 0));
 }
 
-const Metric: React.FC<{ label: string; value: string; hint?: string; tone?: 'default' | 'warn' | 'ok' }> = ({
-  label,
-  value,
-  hint,
-  tone = 'default',
-}) => (
+const Metric: React.FC<{
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'default' | 'warn' | 'ok';
+  estimate?: boolean;
+  note?: string;
+}> = ({ label, value, hint, tone = 'default', estimate = false, note }) => (
   <div className="rounded-lg border bg-card p-4">
-    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+    <div className="flex items-start gap-1.5">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      {note && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" aria-label={`Detalhes sobre ${label}`} className="mt-0.5 shrink-0 text-muted-foreground">
+              <Info className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs text-xs leading-relaxed">{note}</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
     <p
       className={`mt-1 text-2xl font-semibold ${
         tone === 'warn' ? 'text-destructive' : tone === 'ok' ? 'text-primary' : 'text-foreground'
       }`}
     >
       {value}
+      {estimate && <span className="ml-1.5 align-middle text-xs font-normal text-muted-foreground">(Estimativa)</span>}
     </p>
     {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+
   </div>
 );
 
@@ -177,6 +206,12 @@ const MediaDiagnostics: React.FC = () => {
       bucketBytes: (report?.buckets || []).reduce((acc, b) => acc + Number(b.bytes || 0), 0),
     };
   }, [report]);
+
+  const mixedUnavailable =
+    report?.tasks.mixed_records_available === false || report?.products.mixed_records_available === false;
+  const bytesEstimated = !!(report?.tasks.bytes_estimated || report?.products.bytes_estimated);
+
+
 
   const runTests = async (file: StorageFile) => {
     setRunning(true);
@@ -327,49 +362,77 @@ const MediaDiagnostics: React.FC = () => {
             <>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Metric
-                  label="Base64 (Tasks)"
+                  label={
+                    report?.tasks.base64_count_is_record_estimate
+                      ? 'Registros com fotos no banco (estimativa) — Tasks'
+                      : 'Base64 (Tasks)'
+                  }
                   value={formatNumber(report?.tasks.base64_count)}
                   hint={`${formatBytes(report?.tasks.base64_bytes)} no banco`}
                   tone={(report?.tasks.base64_count || 0) > 0 ? 'warn' : 'ok'}
+                  note={report?.tasks.base64_count_note}
                 />
                 <Metric
                   label="Storage (Tasks)"
                   value={formatNumber(report?.tasks.storage_count)}
-                  hint={`${formatNumber(report?.tasks.records_with_photos)} tarefas com fotos`}
+                  hint={`${formatNumber(report?.tasks.records_with_photos)} tarefas com fotos${
+                    report?.tasks.records_with_photos_estimated ? ' (estimativa)' : ''
+                  }`}
                   tone="ok"
+                  note={report?.tasks.records_with_photos_note}
                 />
                 <Metric
-                  label="Base64 (Products)"
+                  label={
+                    report?.products.base64_count_is_record_estimate
+                      ? 'Registros com fotos no banco (estimativa) — Products'
+                      : 'Base64 (Products)'
+                  }
                   value={formatNumber(report?.products.base64_count)}
                   hint={`${formatBytes(report?.products.base64_bytes)} no banco`}
                   tone={(report?.products.base64_count || 0) > 0 ? 'warn' : 'ok'}
+                  note={report?.products.base64_count_note}
                 />
                 <Metric
                   label="Storage (Products)"
                   value={formatNumber(report?.products.storage_count)}
-                  hint={`${formatNumber(report?.products.records_with_photos)} produtos com fotos`}
+                  hint={`${formatNumber(report?.products.records_with_photos)} produtos com fotos${
+                    report?.products.records_with_photos_estimated ? ' (estimativa)' : ''
+                  }`}
                   tone="ok"
+                  note={report?.products.records_with_photos_note}
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Metric
                   label="Registros mistos"
-                  value={formatNumber(totals.mixed)}
+                  value={mixedUnavailable ? 'Não disponível' : formatNumber(totals.mixed)}
                   hint="Registros com Base64 e Storage ao mesmo tempo"
-                  tone={totals.mixed > 0 ? 'warn' : 'ok'}
+                  tone={!mixedUnavailable && totals.mixed > 0 ? 'warn' : 'ok'}
+                  note={
+                    mixedUnavailable
+                      ? report?.tasks.mixed_records_note || report?.products.mixed_records_note
+                      : undefined
+                  }
                 />
                 <Metric
                   label="Espaço ocupado por Base64"
                   value={formatBytes(totals.base64Bytes)}
-                  hint={`${formatNumber(totals.base64)} fotos ainda no banco`}
+                  hint={`${formatNumber(totals.base64)} registros ainda no banco`}
                   tone={totals.base64Bytes > 0 ? 'warn' : 'ok'}
+                  estimate={bytesEstimated}
+                  note={report?.tasks.bytes_note || report?.products.bytes_note}
                 />
                 <Metric
                   label="Espaço nos buckets"
                   value={formatBytes(totals.bucketBytes)}
-                  hint={`${formatNumber(totals.storage)} referências no banco`}
+                  hint={`${formatNumber(totals.storage)} arquivos no Storage`}
                 />
               </div>
+              <p className="pt-1 text-xs text-muted-foreground">
+                Os indicadores marcados como estimativa são calculados sem leitura do conteúdo das fotos,
+                evitando consultas pesadas e timeout.
+              </p>
+
             </>
           )}
         </CardContent>
