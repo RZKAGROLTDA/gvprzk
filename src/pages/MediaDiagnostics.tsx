@@ -207,6 +207,12 @@ const MediaDiagnostics: React.FC = () => {
     };
   }, [report]);
 
+  const mixedUnavailable =
+    report?.tasks.mixed_records_available === false || report?.products.mixed_records_available === false;
+  const bytesEstimated = !!(report?.tasks.bytes_estimated || report?.products.bytes_estimated);
+
+
+
   const runTests = async (file: StorageFile) => {
     setRunning(true);
     setSelected(file);
