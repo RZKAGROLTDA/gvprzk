@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, RefreshCw, ShieldAlert, HardDrive, Image as ImageIcon, CheckCircle2, XCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, RefreshCw, ShieldAlert, HardDrive, Image as ImageIcon, CheckCircle2, XCircle, Info } from 'lucide-react';
 import {
   TASK_PHOTOS_BUCKET,
   PRODUCT_PHOTOS_BUCKET,
@@ -21,6 +22,16 @@ interface SectionReport {
   base64_bytes: number;
   mixed_records: number;
   records_with_photos: number;
+  /** Metadados de transparência retornados pela RPC (somente leitura). */
+  base64_count_is_record_estimate?: boolean;
+  base64_count_note?: string;
+  records_with_photos_estimated?: boolean;
+  records_with_photos_note?: string;
+  bytes_estimated?: boolean;
+  bytes_note?: string;
+  bytes_source?: string;
+  mixed_records_available?: boolean;
+  mixed_records_note?: string;
 }
 
 interface BucketReport {
@@ -34,6 +45,7 @@ interface MigrationReport {
   products: SectionReport;
   buckets: BucketReport[];
   generated_at: string;
+  metrics_disclaimer?: string;
 }
 
 interface StorageFile {
@@ -58,6 +70,7 @@ const EMPTY_SECTION: SectionReport = {
   mixed_records: 0,
   records_with_photos: 0,
 };
+
 
 function formatBytes(bytes: number | null | undefined): string {
   const value = Number(bytes || 0);
