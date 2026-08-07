@@ -12,6 +12,8 @@
 export const CURRENT_VERSION = (import.meta.env.VITE_APP_VERSION as string) || 'dev';
 export const CURRENT_BUILD_TIME = (import.meta.env.VITE_BUILD_TIME as string) || '';
 export const CURRENT_BUILD_HASH = (import.meta.env.VITE_BUILD_HASH as string) || 'dev';
+export const LOCAL_MIN_BUILD_TIME = (import.meta.env.VITE_MIN_BUILD_TIME as string) || '';
+export const LOCAL_MIN_BUILD_HASH = (import.meta.env.VITE_MIN_BUILD_HASH as string) || '';
 
 const KEY_ATTEMPTED = 'app-update:attempted-hash';
 const KEY_APPLIED = 'app-update:applied-hash';
@@ -23,7 +25,11 @@ export interface RemoteVersion {
   version?: string;
   buildHash?: string;
   buildTime?: string;
+  minBuildTime?: string;
+  minBuildHash?: string;
+  minBuildReason?: string;
 }
+
 
 const read = (key: string): string | null => {
   try {
