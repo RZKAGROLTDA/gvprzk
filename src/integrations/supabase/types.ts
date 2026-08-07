@@ -1612,6 +1612,48 @@ export type Database = {
           },
         ]
       }
+      user_app_versions: {
+        Row: {
+          app_version: string | null
+          build_hash: string
+          build_time: string | null
+          created_at: string
+          device_id: string
+          id: string
+          last_seen_at: string
+          platform: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          build_hash: string
+          build_time?: string | null
+          created_at?: string
+          device_id: string
+          id?: string
+          last_seen_at?: string
+          platform?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          build_hash?: string
+          build_time?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_directory_cache: {
         Row: {
           approval_status: string
