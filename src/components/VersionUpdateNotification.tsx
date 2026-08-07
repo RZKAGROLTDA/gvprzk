@@ -3,40 +3,32 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RefreshCw } from 'lucide-react';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
-import { formatVersion } from '@/config/version';
 
 /**
- * Component to show version update notification
+ * Só aparece quando a atualização automática NÃO conseguiu ser aplicada.
+ * No fluxo normal a nova versão entra sozinha, sem card.
  */
 export const VersionUpdateNotification: React.FC = () => {
-  const { shouldUpdate, versionInfo, refreshPage } = useVersionCheck();
+  const { updateFailed, refreshPage } = useVersionCheck();
 
-  if (!shouldUpdate) {
+  if (!updateFailed) {
     return null;
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm">
-      <Card className="border-primary bg-primary/5">
+    <div className="fixed bottom-4 right-4 z-50 max-w-sm">
+      <Card className="border-destructive/40 bg-card shadow-lg">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Nova Versão</CardTitle>
-          </div>
+          <CardTitle className="text-sm">Atualização pendente</CardTitle>
           <CardDescription className="text-xs">
-            {formatVersion(versionInfo)} está disponível
+            Não foi possível aplicar a nova versão automaticamente. Seus dados e rascunhos estão preservados.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={refreshPage}
-              className="flex items-center gap-1 text-xs"
-            >
-              <RefreshCw className="h-3 w-3" />
-              Atualizar
-            </Button>
-          </div>
+          <Button size="sm" onClick={() => void refreshPage()} className="flex items-center gap-1 text-xs">
+            <RefreshCw className="h-3 w-3" />
+            Forçar atualização
+          </Button>
         </CardContent>
       </Card>
     </div>
