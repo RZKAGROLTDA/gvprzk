@@ -113,6 +113,9 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   const canSeeManagement = !!profile;
   const canSeeVacations = hasAdminRole || isManager || isSupervisor || rawRoles.includes('rac' as any);
   const vacationItem = { path: '/vacations', icon: PlaneTakeoff, label: 'Agenda de Férias' };
+  const canSeeUserVersions = hasAdminRole || isManager;
+  const versionsItem = { path: '/versoes-usuarios', icon: MonitorSmartphone, label: 'Versões dos Usuários' };
+
   
   // Memoize active path check to prevent recalculation on every render
   const isActive = useMemo(() => (path: string) => location.pathname === path, [location.pathname]);
