@@ -218,8 +218,26 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                         className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
                       />
                     ))}
+                    {canSeeUserVersions && (
+                      <NavLink
+                        key={versionsItem.path}
+                        item={versionsItem}
+                        isActive={isActive(versionsItem.path)}
+                        className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
+                      />
+                    )}
                   </>
                 )}
+
+                {!isAdmin && canSeeUserVersions && (
+                  <NavLink
+                    key={versionsItem.path}
+                    item={versionsItem}
+                    isActive={isActive(versionsItem.path)}
+                    className="flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all"
+                  />
+                )}
+
               </nav>
             </Card>
           </aside>
