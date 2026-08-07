@@ -273,6 +273,17 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                   />
                 ))}
 
+                {canSeeUserVersions && (
+                  <NavLink
+                    key={versionsItem.path}
+                    item={versionsItem}
+                    isActive={isActive(versionsItem.path)}
+                    className="flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap min-w-fit"
+                  />
+                )}
+
+
+
                 {canSeeVacations && (
                   <NavLink
                     key={vacationItem.path}
