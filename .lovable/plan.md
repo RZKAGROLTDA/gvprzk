@@ -1,116 +1,92 @@
-## Fase 3 — Migração analítica para o padrão `_v2`
+# Controle de versão por usuário
 
-Objetivo: garantir que Dashboard › Funil, Clientes, Tarefas e Reports usem `task_followups` como fonte oficial de operação, mantendo `tasks`/`opportunities` apenas para valores e status comerciais. Manter compatibilidade dos hooks/RPCs antigos (deprecated) até validação.
+Objetivo: registrar automaticamente qual build cada usuário está usando e exibir isso em uma tela administrativa, sem criar novo mecanismo de atualização.
 
----
+## 1. Migration (nova tabela)
 
-### 1. Novas RPCs no banco (Supabase)
+```sql
+CREATE TABLE public.user_app_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE,
+  build_hash text NOT NULL,
+  build_time timestamptz,
+  app_version text,
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-Para evitar misturar conceitos (operacional × comercial) e respeitar o contrato único `(p_start_date, p_end_date, p_filial_id, p_responsible_user_id)`:
+CREATE INDEX idx_user_app_versions_build_hash ON public.user_app_versions(build_hash);
+CREATE INDEX idx_user_app_versions_last_seen ON public.user_app_versions(last_seen_at DESC);
 
-- **`get_funnel_metrics_v2`** — agrega `task_followups` (visitas, ligações, checklists, prospects) + `opportunities` ligadas via `task_id` para etapas comerciais (abertas, ganhas, parciais, perdidas) e seus valores. Sem corte de 90 dias.
-- **`get_clients_overview_v2`** — lista de clientes únicos baseada em `task_followups`, agrupados por `COALESCE(NULLIF(client_code,''), LOWER(TRIM(client_name)))`, com:
-  - `last_activity_date` (de `task_followups`)
-  - `last_visit_date` (followups tipo visita)
-  - `last_opportunity_date` (de `opportunities` via `task_id`)
-  - `filial_id`, `responsible_user_id`
-- **`get_tasks_metrics_v2`** — métricas de tarefas baseadas em `task_followups.activity_date` (não `tasks.created_at`): contagens por tipo, por status comercial (lookup em `tasks`/`opportunities`).
-- **`get_reports_dataset_v2`** — dataset de linhas para Reports (paginação server-side), pivotando `task_followups` + dados financeiros de `tasks`/`opportunities`. Colunas explícitas: `activity_date`, `created_at`, `sale_date`, `filial`, `filial_atendida`.
+GRANT SELECT, INSERT, UPDATE ON public.user_app_versions TO authenticated;
+GRANT ALL ON public.user_app_versions TO service_role;
 
-Todas as RPCs:
-- `SECURITY DEFINER`, respeitam roles (manager/admin/supervisor/seller) usando `has_role` + `get_supervisor_filial_id`.
-- Aceitam `NULL` em qualquer parâmetro = sem filtro.
-- Sem `SELECT *`; colunas explícitas; `LIMIT` em datasets.
+ALTER TABLE public.user_app_versions ENABLE ROW LEVEL SECURITY;
+```
 
----
+Trigger de `updated_at` reutilizando a função existente do projeto.
+`user_id` é `UNIQUE` — garante 1 registro por usuário e habilita `upsert` por conflito.
+Nenhuma tabela existente é alterada.
 
-### 2. Hooks (frontend)
+## 2. RLS (apenas políticas novas nesta tabela)
 
-Criar novos hooks consumindo o contrato único, mantendo os antigos com `@deprecated`:
+- Inserir: `auth.uid() = user_id` (somente o próprio registro).
+- Atualizar: `auth.uid() = user_id`.
+- Ler o próprio registro: `auth.uid() = user_id`.
+- Ler todos: `has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'manager')`.
+- Excluir: nenhuma política (bloqueado).
 
-- `src/hooks/useFunnelMetricsV2.ts` (novo) — substitui uso direto de tasks/opportunities em `SalesFunnel.tsx`.
-- `src/hooks/useClientsOverviewV2.ts` (novo) — substitui agregação manual em `FunnelClientsOptimized.tsx`.
-- `src/hooks/useTasksMetricsV2.ts` (novo) — substitui contagens de `FunnelTasksOptimized.tsx`.
-- `src/hooks/useReportsDatasetV2.ts` (novo) — fonte para `Reports.tsx`.
+Vendedor/consultor/supervisor não conseguem ver registros de terceiros.
+Nenhuma política existente de outra tabela é tocada.
 
-Padrão dos hooks:
-- React Query `staleTime: 10*60*1000`, `refetchOnWindowFocus: false`.
-- `resolveFilialIdForFilter()` para converter nome→uuid.
-- `consultantId === 'all'` → `null`.
-- Período `'all'` → `p_start_date=null`, `p_end_date=null` (sem fallback de 90 dias).
+## 3. Fluxo de upsert (frontend)
 
----
+Novo hook `useVersionHeartbeat`, chamado depois de auth + profile liberados (dentro do app autenticado):
 
-### 3. Migração das telas
+```text
+usuário autenticado + profile pronto
+        |
+        v
+já enviou nesta sessão para este buildHash?  -- sim --> não faz nada
+        |
+        nao
+        v
+upsert user_app_versions (onConflict: user_id)
+  user_id, build_hash = VITE_BUILD_HASH,
+  build_time = VITE_BUILD_TIME, app_version = VITE_APP_VERSION,
+  last_seen_at = now()
+        |
+        v
+marca sessionStorage: version-reported:<buildHash>
+```
 
-**Dashboard › Funil** (`SalesFunnel.tsx` / `SalesFunnelOptimized.tsx` / `FunnelTasksOptimized.tsx` / `FunnelClientsOptimized.tsx`)
-- Substituir leituras diretas por hooks `_v2`.
-- Manter pipeline visual de oportunidades como camada complementar (apenas valores/status comerciais).
-- Remover hardcoded 90 dias.
+Gatilhos: login, abertura do app, e reentrada após atualização automática (o reload gera novo boot com novo hash, logo novo envio). Guarda extra de intervalo mínimo (6h) em `localStorage` para evitar carga. Sem execução offline; falha é silenciosa (não bloqueia acesso).
 
-**Clientes** (`FunnelClientsOptimized.tsx`)
-- Eliminar agregação client-side de `tasks`+`opportunities`.
-- Consumir `useClientsOverviewV2`. Chave única: `COALESCE(NULLIF(client_code,''), LOWER(TRIM(client_name)))`.
+## 4. Tela administrativa
 
-**Tarefas** (`FunnelTasksOptimized.tsx`)
-- Trocar `created_at` por `activity_date` via `useTasksMetricsV2`.
+Rota `/versoes-usuarios`, item "Versões dos Usuários" em Administração (visível a admin/manager).
 
-**Reports** (`Reports.tsx`)
-- Migrar dataset principal para `useReportsDatasetV2`.
-- Colunas explícitas: Data Atividade, Data Criação, Data Venda, Filial Operacional, Filial Atendida.
+Cards do topo:
 
----
+```text
+[ Última versão publicada ]  [ Build atual ]  [ Build mínimo obrigatório ]
+[ Usuários ativos ] [ Atualizados ] [ Desatualizados ] [ Sem informação ]
+```
 
-### 4. Clareza visual
+"Última versão publicada" vem do `version.json` remoto (mecanismo existente). "Build mínimo obrigatório" vem de `VITE_MIN_BUILD_TIME` / `version.json`. Os dois ficam em cards separados e rotulados, deixando claro que compatível ≠ mais recente.
 
-Em todas as telas migradas, renomear cabeçalhos e tooltips para deixar explícito:
-- "Data da atividade" (operacional, `activity_date`)
-- "Data de criação" (`tasks.created_at`)
-- "Data da venda/oportunidade" (`opportunities.data_fechamento`)
-- "Filial operacional" (`task_followups.filial_id`)
-- "Filial atendida" (`tasks.filial_atendida`)
+Tabela: Usuário · Filial · Perfil · Build em uso · Versão · Último acesso · Status.
 
----
+Status calculado no frontend:
+- Atualizado: `build_hash` = build publicado atual
+- Compatível: `build_time >= minBuildTime`, mas hash diferente do atual
+- Desatualizado: `build_time < minBuildTime`
+- Sem informação: usuário sem registro
 
-### 5. Deprecação controlada
+Fonte dos usuários: diretório já existente (`profiles` ativos + filial + role), com `left join` em memória contra `user_app_versions`.
 
-- Adicionar comentário JSDoc `@deprecated — usar X_v2` em:
-  - `useAllSalesData` (legado)
-  - `get_consolidated_sales_counts` (RPC) → manter no banco, sinalizar no doc.
-  - hooks antigos referenciados acima.
-- **Não remover** nada nesta fase.
+Filtros: status, filial, perfil, busca por nome/e-mail.
 
----
+## 5. Fora de escopo
 
-### 6. Validação pós-migração
-
-Após o deploy, executar via `supabase--read_query` consultas comparativas para o **mesmo período + filial + vendedor**:
-
-| Métrica | Origem A | Origem B | Esperado |
-|---|---|---|---|
-| Atividades totais | `get_activity_metrics_v2` | CRM Agenda (`get_weekly_followups_agenda`) | igual |
-| Visitas/Ligações/Checklists | Funil v2 | Dashboard (`useConsolidatedSalesMetrics`) | igual |
-| Vendas ganhas/parciais/perdidas | Reports v2 | Performance Filial/Vendedor | igual |
-| Clientes únicos | Clientes v2 | CRM Gerencial | igual |
-
-Documentar resultados em `docs/VALIDACAO_FASE3.md`.
-
----
-
-### Detalhes técnicos
-
-- Migração SQL em um único arquivo (4 RPCs + grants).
-- `types.ts` será regenerado após a migração.
-- Sem alterar RLS de `task_followups`/`tasks`/`opportunities`.
-- Sem mudar telas não listadas (CRM Agenda, Performance por Filial/Vendedor já estão no padrão v2).
-
----
-
-### Ordem de execução
-
-1. Migração SQL (4 RPCs).
-2. Novos hooks v2.
-3. Refatoração de telas (Funil → Clientes → Tarefas → Reports).
-4. Validação comparativa + documento.
-
-Confirma para eu seguir?
+Sem mudanças em auth, RLS existentes, tarefas, checklist, máquinas, mídia, fila offline, nem novo mecanismo de atualização.
