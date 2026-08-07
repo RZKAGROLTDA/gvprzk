@@ -221,3 +221,113 @@ export const checkForUpdate = async (): Promise<CheckOutcome> => {
 };
 
 export const hasUpdateFailure = (): boolean => !!read(KEY_FAILED);
+
+/* ==========================================================================
+ * Versão mínima obrigatória
+ * ========================================================================== */
+
+export const MANDATORY_UPDATE_EVENT = 'app-mandatory-update';
+
+const isValidDate = (value?: string | null): boolean =>
+  !!value && !Number.isNaN(Date.parse(value));
+
+/**
+ * Busca o version.json com nova tentativa curta (falha temporária de rede
+ * não pode gerar bloqueio). Retorna null quando não houve resposta válida.
+ */
+export const fetchRemoteVersionWithRetry = async (
+  attempts = 3,
+  delayMs = 1200,
+): Promise<RemoteVersion | null> => {
+  for (let i = 0; i < attempts; i += 1) {
+    const remote = await fetchRemoteVersion();
+    if (remote) return remote;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+    if (i < attempts - 1) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  return null;
+};
+
+export type MinimumCheck =
+  | { status: 'ok' }
+  | { status: 'misconfigured'; reason: string }
+  | { status: 'below-minimum'; minBuildTime: string; minBuildHash?: string };
+
+/**
+ * Compara o build carregado com o mínimo obrigatório.
+ * Regras de segurança:
+ * - minBuildTime ausente/inválido → NÃO bloqueia (apenas registra configuração inválida);
+ * - CURRENT_BUILD_TIME ausente/inválido (dev) → NÃO bloqueia;
+ * - minBuildHash igual ao build atual → é exatamente o mínimo, NÃO bloqueia.
+ */
+export const evaluateMinimum = (remote: RemoteVersion | null): MinimumCheck => {
+  const minTime = isValidDate(remote?.minBuildTime)
+    ? (remote!.minBuildTime as string)
+    : isValidDate(LOCAL_MIN_BUILD_TIME)
+      ? LOCAL_MIN_BUILD_TIME
+      : '';
+
+  if (!minTime) {
+    return { status: 'misconfigured', reason: 'minBuildTime ausente ou inválido' };
+  }
+  if (!isValidDate(CURRENT_BUILD_TIME)) {
+    return { status: 'misconfigured', reason: 'buildTime local ausente ou inválido' };
+  }
+
+  const minHash = remote?.minBuildHash || LOCAL_MIN_BUILD_HASH;
+  if (minHash && minHash === CURRENT_BUILD_HASH) return { status: 'ok' };
+
+  if (Date.parse(CURRENT_BUILD_TIME) < Date.parse(minTime)) {
+    return { status: 'below-minimum', minBuildTime: minTime, minBuildHash: minHash || undefined };
+  }
+  return { status: 'ok' };
+};
+
+export type MandatoryOutcome =
+  | { status: 'ok' }
+  | { status: 'unknown' }
+  | { status: 'deferred' }
+  | { status: 'updating' }
+  | { status: 'blocked' };
+
+/**
+ * Verificação do mínimo obrigatório. Só bloqueia/atualiza com resposta válida
+ * do version.json confirmando CURRENT_BUILD_TIME < minBuildTime.
+ */
+export const checkMandatoryUpdate = async (): Promise<MandatoryOutcome> => {
+  const remote = await fetchRemoteVersionWithRetry();
+  if (!remote) return { status: 'unknown' }; // offline / falha temporária → não bloqueia
+
+  const result = evaluateMinimum(remote);
+
+  if (result.status === 'misconfigured') {
+    console.error('[app-update] configuração de versão mínima inválida:', result.reason);
+    return { status: 'ok' };
+  }
+  if (result.status === 'ok') return { status: 'ok' };
+
+  const remoteHash = remote.buildHash || remote.version || 'unknown';
+  const attempted = read(KEY_ATTEMPTED);
+
+  // Já tentamos automaticamente para este build remoto e continuamos abaixo do mínimo.
+  if (attempted === remoteHash || read(KEY_FAILED) === remoteHash) {
+    write(KEY_FAILED, remoteHash);
+    console.warn('[app-update] build abaixo do mínimo obrigatório após tentativa automática', {
+      current: CURRENT_BUILD_HASH,
+      minBuildTime: result.minBuildTime,
+    });
+    return { status: 'blocked' };
+  }
+
+  if (isAppBusy()) return { status: 'deferred' };
+
+  write(KEY_ATTEMPTED, remoteHash);
+  console.log('[app-update] build abaixo do mínimo obrigatório, atualizando', {
+    current: CURRENT_BUILD_HASH,
+    minBuildTime: result.minBuildTime,
+  });
+  void reloadForUpdate();
+  return { status: 'updating' };
+};
