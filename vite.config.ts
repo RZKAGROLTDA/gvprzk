@@ -11,6 +11,24 @@ export default defineConfig(({ mode }) => {
   const buildTime = new Date().toISOString();
   const buildHash = process.env.COMMIT_HASH || Math.random().toString(36).substring(2, 10);
 
+  // Versão mínima obrigatória (configurável sem tocar em regra de negócio).
+  // Arquivo malformado/ausente NUNCA quebra o build nem bloqueia o app.
+  let minBuildTime = '';
+  let minBuildHash = '';
+  let minBuildReason = '';
+  try {
+    const min = require('./minimum-build.json');
+    if (min && typeof min.minBuildTime === 'string' && !Number.isNaN(Date.parse(min.minBuildTime))) {
+      minBuildTime = min.minBuildTime;
+      minBuildHash = typeof min.minBuildHash === 'string' ? min.minBuildHash : '';
+      minBuildReason = typeof min.reason === 'string' ? min.reason : '';
+    } else {
+      console.warn('[minimum-build] minBuildTime ausente ou inválido — gate obrigatório desativado');
+    }
+  } catch {
+    console.warn('[minimum-build] minimum-build.json não encontrado — gate obrigatório desativado');
+  }
+
   return {
   server: {
     host: "::",
@@ -31,10 +49,14 @@ export default defineConfig(({ mode }) => {
             version: packageJson.version,
             buildTime,
             buildHash,
+            minBuildTime,
+            minBuildHash,
+            minBuildReason,
           }),
         });
       },
     }))(),
+
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt'],
@@ -103,7 +125,10 @@ export default defineConfig(({ mode }) => {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
     'import.meta.env.VITE_BUILD_TIME': JSON.stringify(buildTime),
     'import.meta.env.VITE_BUILD_HASH': JSON.stringify(buildHash),
+    'import.meta.env.VITE_MIN_BUILD_TIME': JSON.stringify(minBuildTime),
+    'import.meta.env.VITE_MIN_BUILD_HASH': JSON.stringify(minBuildHash),
   },
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
