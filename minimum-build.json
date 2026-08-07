@@ -1,0 +1,5 @@
+{
+  "minBuildTime": "2026-08-07T16:05:59.000Z",
+  "minBuildHash": "o8koi43l",
+  "reason": "correcao de acesso pos-login (useAuth/useProfile sem watchdog)"
+}
