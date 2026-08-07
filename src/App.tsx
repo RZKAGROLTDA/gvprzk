@@ -43,6 +43,8 @@ import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
 import { VersionUpdateNotification } from "@/components/VersionUpdateNotification";
+import { MandatoryUpdateGate } from "@/components/MandatoryUpdateGate";
+
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, LogOut, RefreshCw } from "lucide-react";
@@ -204,10 +206,13 @@ const App = () => {
         <Sonner />
         <HotToaster />
         <VersionUpdateNotification />
-        <AppContent />
+        <MandatoryUpdateGate>
+          <AppContent />
+        </MandatoryUpdateGate>
       </TooltipProvider>
     </QueryClientProvider>
   );
+
 };
 
 export default App;
