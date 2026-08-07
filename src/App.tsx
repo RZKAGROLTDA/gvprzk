@@ -39,9 +39,11 @@ import ResetPassword from "./pages/ResetPassword";
 import CRM from "./pages/CRM";
 import Vacations from "./pages/Vacations";
 import MediaDiagnostics from "./pages/MediaDiagnostics";
+import UserVersions from "./pages/UserVersions";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
+import { useVersionHeartbeat } from "@/hooks/useVersionHeartbeat";
 import { VersionUpdateNotification } from "@/components/VersionUpdateNotification";
 import { MandatoryUpdateGate } from "@/components/MandatoryUpdateGate";
 
@@ -100,6 +102,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
       <Route path="/equipamentos" element={<Layout><Equipamentos /></Layout>} />
       <Route path="/diagnostico-midia" element={<Layout><MediaDiagnostics /></Layout>} />
+      <Route path="/versoes-usuarios" element={<Layout><UserVersions /></Layout>} />
       <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -139,6 +142,9 @@ const AuthAwareWrapper: React.FC = () => {
   const { user, loading, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError, loadProfile } = useProfile();
   const { isUnhealthy, retryWithBackoff, errorMessage, retryCount } = useSupabaseHealth();
+
+  // Monitoramento de versão por usuário/dispositivo (nunca bloqueia acesso)
+  useVersionHeartbeat(user?.id ?? null, !!user && !!profile);
 
   React.useEffect(() => {
     const currentUserId = user?.id ?? null;
