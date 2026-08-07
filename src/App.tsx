@@ -136,18 +136,7 @@ const AppContent: React.FC = () => {
 const AuthAwareWrapper: React.FC = () => {
   const { user, loading, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError, loadProfile } = useProfile();
-  const { isUnhealthy, isChecking, retryWithBackoff, errorMessage, retryCount } = useSupabaseHealth();
-  const [showProfileCreator, setShowProfileCreator] = React.useState(false);
-  const [startupTimedOut, setStartupTimedOut] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!loading && !profileLoading) {
-      setStartupTimedOut(false);
-      return;
-    }
-    const timeoutId = window.setTimeout(() => setStartupTimedOut(true), 5000);
-    return () => window.clearTimeout(timeoutId);
-  }, [loading, profileLoading]);
+  const { isUnhealthy, retryWithBackoff, errorMessage, retryCount } = useSupabaseHealth();
 
   React.useEffect(() => {
     const currentUserId = user?.id ?? null;
@@ -157,19 +146,10 @@ const AuthAwareWrapper: React.FC = () => {
     }
   }, [user?.id]);
 
-  // Show profile creator if user exists but no profile
-  React.useEffect(() => {
-    if (!loading && !profileLoading && user && !profile) {
-      setShowProfileCreator(true);
-    } else {
-      setShowProfileCreator(false);
-    }
-  }, [user, profile, loading, profileLoading]);
-
   // Show service unavailable screen if Supabase is unhealthy and not loading user
   if (isUnhealthy && !loading && !user) {
     return (
-      <ServiceUnavailable 
+      <ServiceUnavailable
         onRetry={retryWithBackoff}
         errorMessage={errorMessage || undefined}
         retryCount={retryCount}
@@ -177,8 +157,8 @@ const AuthAwareWrapper: React.FC = () => {
     );
   }
 
-  // OTIMIZAÇÃO: Não bloquear a app durante health check - apenas mostrar loading para auth
-  if ((loading || profileLoading) && !startupTimedOut && !profileError) {
+  // Gate: apenas estado de autenticação + profile mínimo. Sem watchdog.
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -186,22 +166,17 @@ const AuthAwareWrapper: React.FC = () => {
     );
   }
 
-  if (startupTimedOut || profileError) {
+  // Erro real (não timeout artificial) ao buscar o perfil
+  if (user && profileError) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-background p-4">
         <Alert variant="destructive" className="max-w-lg">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Não foi possível carregar seu acesso</AlertTitle>
           <AlertDescription className="mt-2 space-y-4">
-            <p>{profileError || 'A verificação inicial excedeu 5 segundos. Verifique sua conexão e tente novamente.'}</p>
+            <p>{profileError}</p>
             <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={() => {
-                  setStartupTimedOut(false);
-                  if (user) void loadProfile();
-                  else window.location.reload();
-                }}
-              >
+              <Button onClick={() => void loadProfile()}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Tentar novamente
               </Button>
@@ -213,17 +188,6 @@ const AuthAwareWrapper: React.FC = () => {
           </AlertDescription>
         </Alert>
       </main>
-    );
-  }
-
-  if (showProfileCreator) {
-    return (
-      <ProfileAutoCreator 
-        onProfileCreated={() => {
-          setShowProfileCreator(false);
-          window.location.reload();
-        }} 
-      />
     );
   }
 
