@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { beginCriticalTask, endCriticalTask } from '@/lib/appUpdate';
 
 /**
  * Idempotência de criação de tarefas.
