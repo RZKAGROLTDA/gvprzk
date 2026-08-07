@@ -1,41 +1,25 @@
 import { useEffect, useState } from 'react';
 import { getVersionInfo } from '@/config/version';
+import { APP_UPDATE_FAILED_EVENT, forceUpdateNow, hasUpdateFailure } from '@/lib/appUpdate';
 
 /**
- * Hook to check for version changes and suggest updates
+ * Expõe apenas o estado de FALHA da atualização automática.
+ * No fluxo normal a atualização é aplicada sozinha, sem card obrigatório.
  */
 export const useVersionCheck = () => {
-  const [shouldUpdate, setShouldUpdate] = useState(false);
+  const [updateFailed, setUpdateFailed] = useState(hasUpdateFailure());
   const [versionInfo] = useState(getVersionInfo());
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setShouldUpdate(true);
-    };
-    window.addEventListener('app-version-update', handleUpdate);
-    return () => window.removeEventListener('app-version-update', handleUpdate);
+    const handleFailure = () => setUpdateFailed(true);
+    window.addEventListener(APP_UPDATE_FAILED_EVENT, handleFailure);
+    return () => window.removeEventListener(APP_UPDATE_FAILED_EVENT, handleFailure);
   }, []);
 
-  const refreshPage = async () => {
-    const authKey = 'sb-wuvbrkbhunifudaewhng-auth-token';
-    const authToken = localStorage.getItem(authKey);
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
-    }
-    if ('caches' in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName).catch(() => false)));
-    }
-    if (authToken) localStorage.setItem(authKey, authToken);
-    const url = new URL(window.location.href);
-    url.searchParams.set('_v', Date.now().toString());
-    window.location.replace(url.toString());
-  };
-
   return {
-    shouldUpdate,
+    updateFailed,
+    shouldUpdate: updateFailed,
     versionInfo,
-    refreshPage,
+    refreshPage: forceUpdateNow,
   };
 };

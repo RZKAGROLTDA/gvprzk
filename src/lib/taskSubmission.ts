@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { beginCriticalTask, endCriticalTask } from '@/lib/appUpdate';
 
 /**
  * Idempotência de criação de tarefas.
@@ -54,29 +55,35 @@ export async function insertTaskIdempotent(
   payload: Record<string, any>,
   submissionId?: string | null,
 ): Promise<{ task: any; reused: boolean }> {
-  if (submissionId) {
-    const existing = await findTaskBySubmissionId(submissionId);
-    if (existing) {
-      console.log('♻️ Tarefa já existente para submission_id, continuando pipeline:', existing.id);
-      return { task: existing, reused: true };
-    }
-  }
-
-  const { data, error } = await (supabase.from('tasks') as any)
-    .insert({ ...payload, ...(submissionId ? { submission_id: submissionId } : {}) })
-    .select()
-    .single();
-
-  if (error) {
-    if (submissionId && isUniqueViolation(error)) {
+  // Impede reload automático de atualização durante o salvamento
+  beginCriticalTask();
+  try {
+    if (submissionId) {
       const existing = await findTaskBySubmissionId(submissionId);
       if (existing) {
-        console.log('♻️ Duplicate key tratado — reutilizando tarefa:', existing.id);
+        console.log('♻️ Tarefa já existente para submission_id, continuando pipeline:', existing.id);
         return { task: existing, reused: true };
       }
     }
-    throw error;
-  }
 
-  return { task: data, reused: false };
+    const { data, error } = await (supabase.from('tasks') as any)
+      .insert({ ...payload, ...(submissionId ? { submission_id: submissionId } : {}) })
+      .select()
+      .single();
+
+    if (error) {
+      if (submissionId && isUniqueViolation(error)) {
+        const existing = await findTaskBySubmissionId(submissionId);
+        if (existing) {
+          console.log('♻️ Duplicate key tratado — reutilizando tarefa:', existing.id);
+          return { task: existing, reused: true };
+        }
+      }
+      throw error;
+    }
+
+    return { task: data, reused: false };
+  } finally {
+    endCriticalTask();
+  }
 }

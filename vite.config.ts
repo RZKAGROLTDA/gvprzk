@@ -40,10 +40,13 @@ export default defineConfig(({ mode }) => {
       includeAssets: ['favicon.ico', 'robots.txt'],
       manifest: false, // Usamos manifest.webmanifest manual
       workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/],
+        navigateFallbackDenylist: [/^\/api/, /^\/~oauth/, /version\.json$/],
         runtimeCaching: [
           // ⚠️ Removido cache NetworkFirst do Supabase API:
           // ele segurava requisições antigas por até 24h (inclusive bundles antigos
