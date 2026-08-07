@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useRef } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -25,58 +25,47 @@ export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const initRef = useRef(false);
 
   useEffect(() => {
-    // Evitar inicialização dupla
-    if (initRef.current) return;
-    initRef.current = true;
-    
-    let mounted = true;
+    // Sempre registra um novo listener a cada mount (nenhum guard global).
+    let active = true;
 
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (mounted) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          setLoading(false);
-
-        }
-      }
-    );
-
-    // THEN check for existing session usando cache
-    const getInitialSession = async () => {
-      try {
-        const { data: { session: cachedSession } } = await supabase.auth.getSession();
-        
-        if (mounted) {
-          setSession(cachedSession);
-          setUser(cachedSession?.user ?? null);
-          setLoading(false);
-        }
-      } catch (error) {
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          setLoading(false);
-        }
-      }
+    const applySession = (nextSession: Session | null) => {
+      if (!active) return;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
     };
 
-    getInitialSession();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      applySession(nextSession);
+      // Determinístico: qualquer evento de auth libera o gate.
+      if (active) setLoading(false);
+    });
+
+    // Leitura da sessão já disponível no storage. O refresh (quando necessário)
+    // acontece em background pelo fluxo padrão do supabase-js e chega via listener.
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        applySession(data.session ?? null);
+      } catch (error) {
+        console.warn('useAuthProvider: falha ao ler sessão local', error);
+        applySession(null);
+      } finally {
+        // Liberação garantida, mesmo em erro/timeout de rede.
+        if (active) setLoading(false);
+      }
+    })();
 
     return () => {
-      mounted = false;
+      active = false;
       subscription?.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const result = await supabase.auth.signInWithPassword({ email, password });
-      return result;
+      return await supabase.auth.signInWithPassword({ email, password });
     } catch (error) {
       return { error };
     }
@@ -84,7 +73,7 @@ export const useAuthProvider = () => {
 
   const signUp = async (email: string, password: string, userData?: any) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     return await supabase.auth.signUp({
       email,
       password,
@@ -98,7 +87,6 @@ export const useAuthProvider = () => {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      // Limpar cache local e recarregar
       localStorage.clear();
       setTimeout(() => {
         window.location.href = '/';
