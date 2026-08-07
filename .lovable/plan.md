@@ -66,14 +66,18 @@ Gatilhos: login, abertura do app, e reentrada após atualização automática (o
 
 Rota `/versoes-usuarios`, item "Versões dos Usuários" em Administração (visível a admin/manager).
 
-Cards do topo:
+Cards do topo (labels e disposição exatos):
 
 ```text
-[ Última versão publicada ]  [ Build atual ]  [ Build mínimo obrigatório ]
-[ Usuários ativos ] [ Atualizados ] [ Desatualizados ] [ Sem informação ]
+Versão publicada        Build atual        Build mínimo
+v2026.08.07.1305        o8koi43l           o8koi43l
+─────────────────────────────────────────────────────────
+Usuários online   Atualizados   Desatualizados   Sem informação
+      18               84              3                2
 ```
 
-"Última versão publicada" vem do `version.json` remoto (mecanismo existente). "Build mínimo obrigatório" vem de `VITE_MIN_BUILD_TIME` / `version.json`. Os dois ficam em cards separados e rotulados, deixando claro que compatível ≠ mais recente.
+Primeira linha = informação de versão (publicada / atual / mínima), separada por divisor da segunda linha = contagens de usuários. "Versão publicada" e "Build atual" vêm do `version.json` remoto e do bundle; "Build mínimo" vem de `VITE_MIN_BUILD_TIME` / `version.json`. Ficam em cards distintos e rotulados, deixando claro que compatível ≠ mais recente.
+
 
 Tabela: Usuário · Filial · Perfil · Build em uso · Versão · Último acesso · Status.
 
