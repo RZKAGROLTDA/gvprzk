@@ -1,10 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceId, getPlatform, getUserAgent } from '@/lib/deviceInfo';
-import {
-  CURRENT_APP_VERSION_HEARTBEAT_SAFE as _unused,
-} from '@/lib/appUpdate.heartbeat';
 import { CURRENT_BUILD_HASH, CURRENT_BUILD_TIME, CURRENT_VERSION } from '@/lib/appUpdate';
+
 
 const HEARTBEAT_INTERVAL_MS = 30 * 60 * 1000; // 30 min
 
