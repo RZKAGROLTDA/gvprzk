@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
@@ -17,9 +16,10 @@ import {
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from '@/components/equipment/equipmentConstants';
 import {
-  useEquipmentSearch, useEquipmentValidators,
+  useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators,
   type ClientEquipment, type EquipmentValidator,
 } from '@/hooks/useClientEquipment';
+
 
 const ALL = 'all';
 const PAGE_SIZE = 50;
