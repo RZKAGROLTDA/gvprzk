@@ -295,9 +295,10 @@ export async function loadPdfImage(
 
   if (isBase64Image(value)) {
     const r = await loadInlineBase64(value, diag);
-    if (!r.ok && diag) diag.collector.fail(diag.rec, mapStage(r.stage), r.detail);
+    if (r.ok === false && diag) diag.collector.fail(diag.rec, mapStage(r.stage), r.detail);
     return r;
   }
+
 
   const isRemotePath = !isAbsoluteUrl(value);
   let result = await attemptFromStorage(value, bucket, false, diag);
