@@ -75,7 +75,23 @@ export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, locked
     }
   };
 
+  // Limites de segurança para evitar datas absurdas (ex.: ano com 5 dígitos)
+  const MIN_DATE = '2020-01-01';
+  const MAX_DATE = '2100-12-31';
+  const isValidDate = (v: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= MIN_DATE && v <= MAX_DATE && !Number.isNaN(new Date(v + 'T00:00:00').getTime());
+
+  const dateError =
+    (startDate && !isValidDate(startDate)) || (endDate && !isValidDate(endDate))
+      ? 'Informe datas válidas entre 2020 e 2100.'
+      : endDate && startDate && endDate < startDate
+        ? 'A data de fim deve ser igual ou posterior à data de início.'
+        : null;
+
   const canSubmit =
+    !dateError &&
+    isValidDate(startDate) &&
+    isValidDate(endDate) &&
     filialId &&
     employeeName.trim().length > 1 &&
     startDate &&
@@ -168,13 +184,15 @@ export const VacationFormDialog: React.FC<Props> = ({ open, onOpenChange, locked
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="start">Início</Label>
-              <Input id="start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <Input id="start" type="date" min={MIN_DATE} max={MAX_DATE} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="end">Fim</Label>
-              <Input id="end" type="date" value={endDate} min={startDate || undefined} onChange={(e) => setEndDate(e.target.value)} />
+              <Input id="end" type="date" min={startDate || MIN_DATE} max={MAX_DATE} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
+
+          {dateError && <p className="text-sm text-destructive">{dateError}</p>}
 
           {totalDays > 0 && (
             <p className="text-sm text-muted-foreground">

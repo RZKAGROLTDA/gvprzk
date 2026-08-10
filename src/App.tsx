@@ -38,6 +38,7 @@ import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import CRM from "./pages/CRM";
 import Vacations from "./pages/Vacations";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MediaDiagnostics from "./pages/MediaDiagnostics";
 import UserVersions from "./pages/UserVersions";
 import { useProfile } from "@/hooks/useProfile";
@@ -94,7 +95,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/create-technical-visit" element={<Layout><CreateTechnicalVisit /></Layout>} />
       <Route path="/management" element={<Layout><Management /></Layout>} />
       <Route path="/crm" element={<Layout><CRM /></Layout>} />
-      <Route path="/vacations" element={<Layout><Vacations /></Layout>} />
+      <Route path="/vacations" element={<Layout><ErrorBoundary title="Não foi possível exibir a Agenda de Férias"><Vacations /></ErrorBoundary></Layout>} />
       <Route path="/campaigns" element={<Layout><Campaigns /></Layout>} />
       <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
