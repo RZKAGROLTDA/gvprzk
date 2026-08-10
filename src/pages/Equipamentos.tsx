@@ -439,7 +439,7 @@ const Equipamentos: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Execução das Validações — resumo por usuário */}
+      {/* Execução das Validações — resumo por filial do validador */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -459,37 +459,17 @@ const Equipamentos: React.FC = () => {
                   <tr className="text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Total Validadas</th>
-                    <th className="px-3 py-2 font-medium text-right">Prioridades</th>
-                    <th className="px-3 py-2 font-medium text-right">Não Prioridades</th>
-                    <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filialRanked.map((f) => {
-                    const priority = priorityValidatedByFilial.get(f.filial_nome) ?? 0;
-                    const nonPriority = Math.max(0, f.validated_count - priority);
-                    const distinctClients = distinctClientsByFilial[f.filial_nome] ?? 0;
-                    return (
-                      <tr
-                        key={f.filial_nome}
-                        className="border-t border-border/40"
-                      >
-                        <td className="px-3 py-1.5 font-medium">{f.filial_nome}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {f.validated_count.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {priority.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {nonPriority.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
-                          {distinctClients.toLocaleString('pt-BR')}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filialRanked.map((f) => (
+                    <tr key={f.filial_nome} className="border-t border-border/40">
+                      <td className="px-3 py-1.5 font-medium">{f.filial_nome}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                        {f.validated_count.toLocaleString('pt-BR')}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -497,6 +477,7 @@ const Equipamentos: React.FC = () => {
 
         </CardContent>
       </Card>
+
 
       {/* Filtros */}
       <Card>
