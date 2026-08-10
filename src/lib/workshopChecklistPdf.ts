@@ -16,96 +16,83 @@ import { PdfMediaDiagnostics, maskUrl, type PhotoDiagRecord } from '@/lib/pdfMed
 
 
 
-const loadImageAsBase64 = async (
-  value: string,
-  bucket: MediaBucket = PRODUCT_PHOTOS_BUCKET,
-  diag?: { collector: PdfMediaDiagnostics; rec: PhotoDiagRecord },
-): Promise<string | null> => {
-  const rec = diag?.rec;
-  try {
-    if (value.startsWith('data:image')) {
-      if (rec) {
-        rec.signedUrlGerada = undefined;
-        rec.conversaoOk = true;
-        rec.dataUrlBytesAprox = value.length;
-      }
-      return value;
-    }
-    // Paths do Storage precisam de signed URL na hora da geração do PDF.
-    const t0 = performance.now();
-    const url = await resolveMediaUrl(value, bucket);
-    if (rec) {
-      rec.signedUrlMs = Math.round(performance.now() - t0);
-      rec.signedUrlGerada = !!url;
-      if (url) rec.signedUrlMasked = maskUrl(url);
-    }
-    if (!url) {
-      if (rec && diag) {
-        rec.signedUrlErro = 'createSignedUrl retornou null/erro (detalhe logado por [mediaStorage])';
-        diag.collector.fail(rec, 'signed_url', rec.signedUrlErro);
-      }
-      return null;
-    }
-    const tFetch = performance.now();
-    const response = await fetch(url);
-    if (rec) {
-      rec.fetchMs = Math.round(performance.now() - tFetch);
-      rec.fetchStatus = response.status;
-      rec.fetchOk = response.ok;
-      rec.contentType = response.headers.get('content-type') || undefined;
-      rec.fromCacheOuSW =
-        response.type === 'opaque' || response.status === 0
-          ? 'sim'
-          : response.headers.get('age') || response.headers.get('x-sw-cache')
-            ? 'sim'
-            : 'indeterminado';
-    }
-    if (!response.ok) {
-      if (rec && diag) diag.collector.fail(rec, 'fetch', `HTTP ${response.status}`);
-      return null;
-    }
-    const blob = await response.blob();
-    if (rec) rec.blobBytes = blob.size;
-    const tConv = performance.now();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        if (rec) {
-          rec.conversaoMs = Math.round(performance.now() - tConv);
-          rec.conversaoOk = !!result;
-          rec.dataUrlBytesAprox = result ? result.length : 0;
-          if (!result && diag) diag.collector.fail(rec, 'conversao', 'FileReader retornou vazio');
-        }
-        resolve(result);
-      };
-      reader.onerror = () => {
-        if (rec) {
-          rec.conversaoMs = Math.round(performance.now() - tConv);
-          rec.conversaoOk = false;
-        }
-        if (rec && diag) diag.collector.fail(rec, 'conversao', 'FileReader onerror');
-        resolve(null);
-      };
-      reader.readAsDataURL(blob);
-    });
-  } catch (e: any) {
-    if (rec && diag) {
-      diag.collector.fail(rec, rec.signedUrlGerada ? 'fetch' : 'signed_url', String(e?.message || e));
-    }
-    return null;
-  }
+import { loadPdfImage } from '@/lib/pdfImageLoader';
+
+/**
+ * Conta quantas imagens já foram efetivamente registradas no documento jsPDF.
+ * Usado para PROVAR que `addImage` incorporou o objeto ao PDF — não basta a
+ * ausência de exceção.
+ */
+const embeddedImageCount = (pdf: jsPDF): number => {
+  const store = (pdf as any)?.internal?.collections?.['addImage_images'];
+  return store ? Object.keys(store).length : 0;
 };
 
+/**
+ * Desenha uma foto validando TODAS as etapas do pipeline.
+ * Só retorna `true` quando: download OK (HTTP 200), blob válido, magic bytes
+ * de formato suportado, Base64 não vazio, imagem decodificada e objeto de
+ * imagem realmente incorporado ao PDF.
+ * O contorno (retângulo) é mantido idêntico ao layout atual.
+ */
+const drawValidatedPhoto = async (
+  pdf: jsPDF,
+  value: string,
+  bucket: MediaBucket,
+  box: { x: number; y: number; w: number; h: number },
+  border: [number, number, number],
+  diag: { collector: PdfMediaDiagnostics; rec: PhotoDiagRecord },
+  embeddedCache: Set<string>,
+): Promise<boolean> => {
+  const { collector, rec } = diag;
+  const result = await loadPdfImage(value, bucket, diag);
 
+  pdf.setDrawColor(...border);
+  pdf.setLineWidth(0.2);
+  pdf.rect(box.x, box.y, box.w, box.h);
 
-const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> =>
-  new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.width, height: img.height });
-    img.onerror = () => resolve({ width: 100, height: 100 });
-    img.src = base64;
-  });
+  if (!result.ok) {
+    rec.addImageExecutado = false;
+    rec.addImageOk = false;
+    return false;
+  }
+
+  const ratio = result.width / result.height;
+  let w = box.w;
+  let h = box.h;
+  if (ratio > w / h) h = w / ratio; else w = h * ratio;
+  const ox = box.x + (box.w - w) / 2;
+  const oy = box.y + (box.h - h) / 2;
+
+  rec.dimensoes = { origem: { w: result.width, h: result.height }, destino: { w, h } };
+  rec.addImageFormato = result.format;
+  rec.addImageExecutado = true;
+
+  const before = embeddedImageCount(pdf);
+  const alreadyEmbedded = embeddedCache.has(result.dataUrl);
+  try {
+    pdf.addImage(result.dataUrl, result.format, ox, oy, w, h, undefined, 'FAST');
+  } catch (e: any) {
+    rec.addImageOk = false;
+    collector.fail(rec, 'addimage', `addImage lançou: ${String(e?.message || e)}`);
+    return false;
+  }
+
+  const after = embeddedImageCount(pdf);
+  const embedded = after > before || alreadyEmbedded;
+  rec.addImageOk = embedded;
+  if (!embedded) {
+    collector.fail(
+      rec,
+      'addimage',
+      'addImage não lançou exceção, mas nenhuma imagem foi incorporada ao documento',
+    );
+    return false;
+  }
+  embeddedCache.add(result.dataUrl);
+  return true;
+};
+
 
 const statusMeta = (s: ChecklistStatus) => (s === null ? STATUS_META.none : STATUS_META[s]);
 
