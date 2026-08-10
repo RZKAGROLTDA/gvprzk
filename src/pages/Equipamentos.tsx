@@ -231,132 +231,8 @@ const Equipamentos: React.FC = () => {
     [validators],
   );
 
-  // Distintos: buscar validated_by + client_code/client_name em client_equipment
-  // (apenas registros com last_validation_at). Paginação segura, teto 20k linhas.
-  const { data: validatedClientsRaw = [] } = useQuery({
-    queryKey: ['client-equipment', 'validated-clients-index'],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const PAGE = 1000;
-      const MAX = 20000;
-      const rows: { validated_by: string | null; client_code: string | null; client_name: string | null }[] = [];
-      let p = 0;
-      while (rows.length < MAX) {
-        const { data, error } = await supabase
-          .from('client_equipment' as any)
-          .select('validated_by, client_code, client_name')
-          .not('last_validation_at', 'is', null)
-          .range(p * PAGE, p * PAGE + PAGE - 1);
-        if (error) throw error;
-        const batch = (data as unknown as typeof rows) ?? [];
-        rows.push(...batch);
-        if (batch.length < PAGE) break;
-        p += 1;
-      }
-      return rows;
-    },
-  });
-
-  const clientKey = (r: { client_code: string | null; client_name: string | null }) => {
-    const code = (r.client_code ?? '').trim().toLowerCase();
-    if (code) return `c:${code}`;
-    const name = (r.client_name ?? '').trim().toLowerCase();
-    return name ? `n:${name}` : '';
-  };
-
-  // Mapa filial_id → filial_nome (derivado dos validadores)
-  const filialIdToName = useMemo(() => {
-    const m = new Map<string, string>();
-    validators.forEach((v) => {
-      if (v.filial_id && v.filial_nome) m.set(v.filial_id, v.filial_nome);
-    });
-    return m;
-  }, [validators]);
-
-  // Distinct clients per validator's filial (usando validatorMap para mapear
-  // validated_by → filial_nome, mesma regra usada em filialRanked)
-  const distinctClientsByFilial = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    validatedClientsRaw.forEach((r) => {
-      if (!r.validated_by) return;
-      const v = validatorMap.get(r.validated_by);
-      const filial = v?.filial_nome || '—';
-      const k = clientKey(r);
-      if (!k) return;
-      if (!map.has(filial)) map.set(filial, new Set());
-      map.get(filial)!.add(k);
-    });
-    const out: Record<string, number> = {};
-    map.forEach((set, filial) => { out[filial] = set.size; });
-    return out;
-  }, [validatedClientsRaw, validatorMap]);
-
-  // Total distinct clients com pelo menos uma máquina validada (KPI do topo)
-  const distinctValidatedClientsTotal = useMemo(() => {
-    const set = new Set<string>();
-    validatedClientsRaw.forEach((r) => {
-      const k = clientKey(r);
-      if (k) set.add(k);
-    });
-    return set.size;
-  }, [validatedClientsRaw]);
-
-  // Máquinas prioritárias JÁ VALIDADAS — base para a tabela por filial
-  const { data: priorityRaw = [] } = useQuery({
-    queryKey: ['client-equipment', 'priority-validated-index'],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const PAGE = 1000;
-      const MAX = 20000;
-      const rows: {
-        filial_id: string | null;
-        validated_by: string | null;
-        client_code: string | null;
-        client_name: string | null;
-      }[] = [];
-      let p = 0;
-      while (rows.length < MAX) {
-        const { data, error } = await supabase
-          .from('client_equipment' as any)
-          .select('filial_id, validated_by, client_code, client_name')
-          .eq('validation_priority', true)
-          .not('last_validation_at', 'is', null)
-          .range(p * PAGE, p * PAGE + PAGE - 1);
-        if (error) throw error;
-        const batch = (data as unknown as typeof rows) ?? [];
-        rows.push(...batch);
-        if (batch.length < PAGE) break;
-        p += 1;
-      }
-      return rows;
-    },
-  });
-
-  const priorityValidatedByFilial = useMemo(() => {
-    const totals = new Map<string, number>();
-    const resolveFilialName = (r: { filial_id: string | null; validated_by: string | null }) => {
-      if (r.validated_by) {
-        const v = validatorMap.get(r.validated_by);
-        if (v?.filial_nome) return v.filial_nome;
-      }
-      if (r.filial_id) return filialIdToName.get(r.filial_id) || '—';
-      return '—';
-    };
-    priorityRaw.forEach((r) => {
-      const filial = resolveFilialName(r);
-      totals.set(filial, (totals.get(filial) ?? 0) + 1);
-    });
-    return totals;
-  }, [priorityRaw, validatorMap, filialIdToName]);
-
-  const priorityValidatedTotal = priorityRaw.length;
-  const nonPriorityValidatedTotal = Math.max(
-    0,
-    (parkSummary?.validadas ?? 0) - priorityValidatedTotal,
-  );
-
+  // Resumo por filial do validador (dados agregados no servidor pela RPC
+  // get_equipment_validators — sem varreduras de client_equipment no cliente)
   const filialRanked = useMemo(() => {
     const map = new Map<string, { filial_nome: string; validated_count: number }>();
     validators.forEach((v) => {
@@ -365,11 +241,9 @@ const Equipamentos: React.FC = () => {
       if (cur) cur.validated_count += v.validated_count;
       else map.set(key, { filial_nome: key, validated_count: v.validated_count });
     });
-    priorityValidatedByFilial.forEach((_, filial) => {
-      if (!map.has(filial)) map.set(filial, { filial_nome: filial, validated_count: 0 });
-    });
     return [...map.values()].sort((a, b) => b.validated_count - a.validated_count);
-  }, [validators, priorityValidatedByFilial]);
+  }, [validators]);
+
 
 
   return (
