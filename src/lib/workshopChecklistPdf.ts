@@ -12,6 +12,7 @@ import {
   PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
 import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
+import { PdfMediaDiagnostics, maskUrl, type PhotoDiagRecord } from '@/lib/pdfMediaDiagnostics';
 
 
 
