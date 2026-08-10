@@ -15,7 +15,7 @@ import {
 import { CalendarDays, Plus, Download, Ban, Trash2, Building2, Users, PlaneTakeoff, Lock, MapPin } from 'lucide-react';
 import {
   format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths,
-  startOfWeek, addDays, isToday, differenceInCalendarDays, isBefore, isAfter,
+  startOfWeek, addDays, isToday, differenceInCalendarDays, isBefore, isAfter, isValid,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -43,7 +43,19 @@ const roleLabels: Record<string, string> = {
   admin: 'Administrador',
 };
 const displayRole = (r?: string | null) => (r ? roleLabels[r] || r : '—');
-const fmt = (iso: string) => format(parseISO(iso), 'dd/MM/yyyy');
+// Parsing defensivo: datas inconsistentes (ex.: ano com 5 dígitos) não podem derrubar a tela
+const safeParse = (iso?: string | null): Date | null => {
+  if (!iso) return null;
+  const d = parseISO(iso);
+  if (!isValid(d)) return null;
+  const y = d.getFullYear();
+  if (y < 1900 || y > 2200) return null;
+  return d;
+};
+const fmt = (iso?: string | null) => {
+  const d = safeParse(iso);
+  return d ? format(d, 'dd/MM/yyyy') : 'Data inválida';
+};
 
 const VacationsPage: React.FC = () => {
   const { profile } = useProfile();
@@ -100,8 +112,9 @@ const VacationsPage: React.FC = () => {
     const filiaisSet = new Set<string>();
     filtered.forEach((v) => {
       if (v.status === 'cancelled') return;
-      const s = parseISO(v.start_date);
-      const e = parseISO(v.end_date);
+      const s = safeParse(v.start_date);
+      const e = safeParse(v.end_date);
+      if (!s || !e) return;
       if (isWithinInterval(today, { start: s, end: e })) todayCount++;
       if (s >= today && s <= in7) next7++;
       if (!(isAfter(s, mEnd) || isBefore(e, mStart))) {
@@ -127,8 +140,8 @@ const VacationsPage: React.FC = () => {
       prev.total += 1;
       if (v.status === 'in_progress') prev.active += 1;
       if (v.status === 'scheduled') prev.scheduled += 1;
-      const s = parseISO(v.start_date);
-      if (s >= today && (!prev.nextStart || s < prev.nextStart)) prev.nextStart = s;
+      const s = safeParse(v.start_date);
+      if (s && s >= today && (!prev.nextStart || s < prev.nextStart)) prev.nextStart = s;
       map.set(key, prev);
     });
     return Array.from(map.values()).sort((a, b) => b.active - a.active || b.total - a.total);
@@ -142,7 +155,12 @@ const VacationsPage: React.FC = () => {
     for (let i = 0; i < 42; i++) {
       const d = addDays(gridStart, i);
       const items = filtered.filter(
-        (v) => v.status !== 'cancelled' && isWithinInterval(d, { start: parseISO(v.start_date), end: parseISO(v.end_date) })
+        (v) => {
+          if (v.status === 'cancelled') return false;
+          const s = safeParse(v.start_date);
+          const e = safeParse(v.end_date);
+          return !!s && !!e && isWithinInterval(d, { start: s, end: e });
+        }
       );
       days.push({ date: d, inMonth: d >= mStart && d <= mEnd, items });
     }
@@ -154,8 +172,12 @@ const VacationsPage: React.FC = () => {
     const wStart = startOfWeek(monthCursor, { weekStartsOn: 0 });
     const wEnd = addDays(wStart, 6);
     const inWeek = filtered.filter(
-      (v) => v.status !== 'cancelled' &&
-        !(isAfter(parseISO(v.start_date), wEnd) || isBefore(parseISO(v.end_date), wStart))
+      (v) => {
+        if (v.status === 'cancelled') return false;
+        const s = safeParse(v.start_date);
+        const e = safeParse(v.end_date);
+        return !!s && !!e && !(isAfter(s, wEnd) || isBefore(e, wStart));
+      }
     );
     const groups = new Map<string, { name: string; items: VacationRow[] }>();
     inWeek.forEach((v) => {
