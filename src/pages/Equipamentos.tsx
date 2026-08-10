@@ -402,42 +402,43 @@ const Equipamentos: React.FC = () => {
           <SummaryCell
             icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
             label="Total"
-            value={parkSummary?.total}
+            value={kpis?.total}
           />
           <SummaryCell
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             label="Total Validadas"
-            value={parkSummary?.validadas}
+            value={kpis?.total_validadas}
           />
           <SummaryCell
             icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
             label="Prioridades"
-            value={priorityValidatedTotal}
+            value={kpis?.prioridades}
             highlight={priorityOnly}
             onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
           />
           <SummaryCell
             icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
             label="Não Prioridades"
-            value={nonPriorityValidatedTotal}
+            value={kpis?.nao_prioridades}
           />
           <SummaryCell
             icon={<UserCheck className="h-4 w-4 text-primary" />}
-            label="Clientes Validados"
-            value={distinctValidatedClientsTotal}
+            label="Clientes"
+            value={kpis?.clientes}
           />
           <SummaryCell
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
             label="Pendentes"
-            value={parkSummary?.pendentes}
+            value={kpis?.pendentes}
           />
           <SummaryCell
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             label="Validações 7 dias"
-            value={parkSummary?.seteDias}
+            value={kpis?.validacoes_7d}
           />
         </CardContent>
       </Card>
+
 
       {/* Execução das Validações — resumo por filial do validador */}
       <Card>
