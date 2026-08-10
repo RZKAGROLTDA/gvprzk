@@ -17,10 +17,23 @@ import { loadPdfImage } from '@/lib/pdfImageLoader';
 
 
 /**
- * Conta quantas imagens já foram efetivamente registradas no documento jsPDF.
- * Usado para PROVAR que `addImage` incorporou o objeto ao PDF — não basta a
- * ausência de exceção.
+ * Conta quantas invocações de XObject (`/I<n> Do`) existem na página atual.
+ * É a prova real de que `addImage` incorporou E desenhou a imagem — imune à
+ * deduplicação do jsPDF (imagens de dados idênticos reaproveitam o objeto).
  */
+const drawnImageOps = (pdf: jsPDF): number => {
+  const internal: any = (pdf as any).internal;
+  const page = internal?.pages?.[internal.getCurrentPageInfo?.().pageNumber ?? internal.getNumberOfPages?.()];
+  if (!Array.isArray(page)) return -1;
+  let n = 0;
+  for (const chunk of page) {
+    if (typeof chunk !== 'string') continue;
+    n += (chunk.match(/\/I\d+\s+Do/g) || []).length;
+  }
+  return n;
+};
+
+/** Quantidade de objetos de imagem registrados no documento. */
 const embeddedImageCount = (pdf: jsPDF): number => {
   const store = (pdf as any)?.internal?.collections?.['addImage_images'];
   return store ? Object.keys(store).length : 0;
@@ -29,8 +42,8 @@ const embeddedImageCount = (pdf: jsPDF): number => {
 /**
  * Desenha uma foto validando TODAS as etapas do pipeline.
  * Só retorna `true` quando: download OK (HTTP 200), blob válido, magic bytes
- * de formato suportado, Base64 não vazio, imagem decodificada e objeto de
- * imagem realmente incorporado ao PDF.
+ * de formato suportado, Base64 não vazio, imagem decodificada e imagem
+ * realmente incorporada/desenhada no PDF.
  * O contorno (retângulo) é mantido idêntico ao layout atual.
  */
 const drawValidatedPhoto = async (
@@ -66,8 +79,8 @@ const drawValidatedPhoto = async (
   rec.addImageFormato = result.format;
   rec.addImageExecutado = true;
 
-  const before = embeddedImageCount(pdf);
-  const alreadyEmbedded = embeddedCache.has(result.dataUrl);
+  const opsBefore = drawnImageOps(pdf);
+  const objsBefore = embeddedImageCount(pdf);
   try {
     pdf.addImage(result.dataUrl, result.format, ox, oy, w, h, undefined, 'FAST');
   } catch (e: any) {
@@ -76,20 +89,27 @@ const drawValidatedPhoto = async (
     return false;
   }
 
-  const after = embeddedImageCount(pdf);
-  const embedded = after > before || alreadyEmbedded;
+  const opsAfter = drawnImageOps(pdf);
+  const objsAfter = embeddedImageCount(pdf);
+  // Desenho confirmado no stream da página OU (fallback) novo objeto de imagem
+  // registrado / reaproveitamento de imagem idêntica já confirmada.
+  const embedded =
+    (opsBefore >= 0 && opsAfter > opsBefore) ||
+    objsAfter > objsBefore ||
+    embeddedCache.has(result.dataUrl);
   rec.addImageOk = embedded;
   if (!embedded) {
     collector.fail(
       rec,
       'addimage',
-      'addImage não lançou exceção, mas nenhuma imagem foi incorporada ao documento',
+      'addImage não lançou exceção, mas a imagem não foi incorporada/desenhada no documento',
     );
     return false;
   }
   embeddedCache.add(result.dataUrl);
   return true;
 };
+
 
 
 const statusMeta = (s: ChecklistStatus) => (s === null ? STATUS_META.none : STATUS_META[s]);
