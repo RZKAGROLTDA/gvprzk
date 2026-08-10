@@ -444,68 +444,128 @@ export const useTasksOptimized = (includeDetails = false) => {
         return (count ?? 0) > 0;
       };
 
-      // Criar products e reminders com tratamento de erro adequado
-      if (taskData.checklist?.length && !(await alreadyHasChild('products'))) {
-        console.log('🔄 Preparando para salvar produtos:', taskData.checklist.length);
-        
-        // Categorias válidas permitidas pela constraint do banco
-        const validCategories = ['tires', 'lubricants', 'oils', 'greases', 'batteries', 'other'];
-        
-        // Upload das fotos dos itens do checklist (bucket product-photos,
-        // mantendo o UUID da tarefa como primeiro nível do path).
-        const checklistWithStoredPhotos = await Promise.all(
-          taskData.checklist.map(async (product: any) => {
-            if (!product.photos?.length) return product;
-            const { photos } = await uploadPendingPhotos(
-              PRODUCT_PHOTOS_BUCKET,
-              task.id,
-              product.photos,
-              { prefix: 'item' },
-            );
-            return { ...product, photos: photos.filter((v: string) => !v.startsWith('data:')) };
-          }),
-        );
+      // Categorias válidas permitidas pela constraint do banco
+      const validCategories = ['tires', 'lubricants', 'oils', 'greases', 'batteries', 'other'];
+      const normalizeCategory = (category?: string) =>
+        validCategories.includes(category || '') ? (category as string) : 'other';
 
-        const products = checklistWithStoredPhotos.map(product => {
-          // Validar e corrigir categoria se necessário
-          const category = validCategories.includes(product.category) 
-            ? product.category 
-            : 'other';
-          
-          if (product.category && !validCategories.includes(product.category)) {
-            console.warn(`⚠️ Categoria inválida "${product.category}" convertida para "other"`);
+      // Sobe as fotos pendentes do item para o Storage (nunca Base64 no banco)
+      const withStoredPhotos = async (product: any) => {
+        if (!product.photos?.length) return product;
+        const { photos } = await uploadPendingPhotos(
+          PRODUCT_PHOTOS_BUCKET,
+          task.id,
+          product.photos,
+          { prefix: 'item' },
+        );
+        return { ...product, photos: photos.filter((v: string) => !v.startsWith('data:')) };
+      };
+
+      const toProductRow = (product: any) => ({
+        task_id: task.id,
+        name: product.name,
+        category: normalizeCategory(product.category),
+        selected: product.selected ?? false,
+        quantity: product.quantity || 0,
+        price: product.price || 0,
+        observations: product.observations || '',
+        photos: product.photos || [],
+        response_status: (product as any).responseStatus ?? null,
+        response_notes: (product as any).responseNotes ?? '',
+      });
+
+      const isWorkshopChecklist = standardizedTaskData.taskType === 'checklist';
+
+      if (isWorkshopChecklist) {
+        // ---- Checklist da Oficina: os itens canônicos SEMPRE existem no banco ----
+        const norm = (v: string) => (v || '').trim().toLowerCase();
+        const incoming: any[] = taskData.checklist || [];
+
+        const { data: existing, error: existingError } = await supabase
+          .from('products')
+          .select('id, name, response_status, response_notes, photos')
+          .eq('task_id', task.id);
+
+        if (existingError) {
+          throw new Error(`Falha ao consultar itens do checklist: ${existingError.message}`);
+        }
+
+        const existingByName = new Map((existing || []).map(p => [norm(p.name), p]));
+
+        for (const item of incoming) {
+          const current = existingByName.get(norm(item.name));
+          const prepared = await withStoredPhotos(item);
+          const row = toProductRow(prepared);
+
+          if (!current) {
+            const { error: insertError } = await supabase.from('products').insert(row);
+            if (insertError) {
+              throw new Error(`Falha ao salvar item "${item.name}": ${insertError.message}`);
+            }
+          } else {
+            // Retomada: completa/atualiza o item existente sem duplicar
+            const { error: updateError } = await supabase
+              .from('products')
+              .update({
+                category: row.category,
+                selected: row.selected,
+                quantity: row.quantity,
+                price: row.price,
+                observations: row.observations,
+                photos: row.photos?.length ? row.photos : (current as any).photos || [],
+                response_status: row.response_status ?? (current as any).response_status ?? null,
+                response_notes: row.response_notes || (current as any).response_notes || '',
+              })
+              .eq('id', (current as any).id);
+            if (updateError) {
+              throw new Error(`Falha ao atualizar item "${item.name}": ${updateError.message}`);
+            }
           }
-          
-          return {
-            task_id: task.id,
-            name: product.name,
-            category: category,
-            selected: product.selected,
-            quantity: product.quantity || 0,
-            price: product.price || 0,
-            observations: product.observations || '',
-            photos: product.photos || [],
-            response_status: (product as any).responseStatus ?? null,
-            response_notes: (product as any).responseNotes ?? '',
-          };
-        });
-        
-        console.log('📤 Enviando produtos para Supabase:', products);
+        }
+
+        // ---- Validação pós-gravação: os itens canônicos devem estar completos ----
+        const { data: saved, error: savedError } = await supabase
+          .from('products')
+          .select('id, name, response_status, response_notes, photos')
+          .eq('task_id', task.id);
+
+        if (savedError) {
+          throw new Error(`Falha ao validar itens do checklist: ${savedError.message}`);
+        }
+
+        const savedNames = new Set((saved || []).map(p => norm(p.name)));
+        const missing = incoming.filter(item => !savedNames.has(norm(item.name)));
+
+        if (missing.length > 0 || (saved || []).length < incoming.length) {
+          throw new Error(
+            `Gravação parcial do checklist: ${(saved || []).length}/${incoming.length} itens salvos. Clique em Salvar novamente para continuar a mesma tarefa.`,
+          );
+        }
+
+        console.log('✅ Checklist da Oficina validado:', (saved || []).length, 'itens no banco');
+      } else if (taskData.checklist?.length && !(await alreadyHasChild('products'))) {
+        console.log('🔄 Preparando para salvar produtos:', taskData.checklist.length);
+
+        const checklistWithStoredPhotos = await Promise.all(
+          taskData.checklist.map(withStoredPhotos),
+        );
+        const products = checklistWithStoredPhotos.map(toProductRow);
+
+        console.log('📤 Enviando produtos para Supabase:', products.length);
         const { data: insertedProducts, error: productsError } = await supabase
           .from('products')
           .insert(products)
           .select();
-        
+
         if (productsError) {
           console.error('❌ Erro ao salvar produtos:', productsError);
-          console.error('❌ Detalhes completos do erro:', JSON.stringify(productsError, null, 2));
           throw new Error(`Falha ao salvar produtos: ${productsError.message}`);
         }
         console.log('✅ Produtos salvos com sucesso:', insertedProducts?.length || products.length);
-        console.log('✅ Dados dos produtos salvos:', insertedProducts);
       } else {
         console.log('⚠️ Nenhum produto na checklist para salvar');
       }
+
 
       if (taskData.reminders?.length && !(await alreadyHasChild('reminders'))) {
         const reminders = taskData.reminders.map(reminder => ({

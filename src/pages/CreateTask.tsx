@@ -887,7 +887,21 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         field: checklistMachine.chassi_serie?.trim(),
         name: 'Chassi / Nº de Série da máquina'
       });
+
+      // Bloqueio de checklist vazio: nada é criado, enviado ou navegado
+      const answeredItems = checklist.filter(item => item.responseStatus).length;
+      if (answeredItems === 0) {
+        submissionLockRef.current = false;
+        setIsSubmitting(false);
+        toast({
+          title: "Checklist incompleto",
+          description: "Preencha pelo menos um item do checklist antes de salvar.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
+
 
     // Verificar se algum campo obrigatório está vazio
     const missingField = requiredFields.find(({
@@ -948,8 +962,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       endTime: currentTime,
       // Horário atual exato
       checklist: taskCategory === 'workshop-checklist'
-        ? checklist.filter(item => item.responseStatus)
+        // Checklist da Oficina: os 8 itens canônicos são sempre persistidos,
+        // inclusive os não respondidos (response_status = NULL).
+        ? checklist
         : checklist.filter(item => item.selected),
+
       reminders,
       equipmentList,
       ...(taskCategory === 'workshop-checklist' ? {
