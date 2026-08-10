@@ -469,38 +469,19 @@ export const generateWorkshopChecklistPDF = async (
             { taskId: task.id, item: it.name, bucket: PRODUCT_PHOTOS_BUCKET, index: photoSeq++ },
             url,
           );
-          const base64 = await loadImageAsBase64(url, PRODUCT_PHOTOS_BUCKET, { collector: mediaDiag, rec });
           const x = marginLeft + j * (photoW + gap);
-          if (base64) {
-            try {
-              const dim = await getImageDimensions(base64);
-              const ratio = dim.width / dim.height;
-              let w = photoW, h = photoH;
-              if (ratio > w / h) h = w / ratio; else w = h * ratio;
-              const ox = x + (photoW - w) / 2;
-              const oy = yPos + (photoH - h) / 2;
-              pdf.setDrawColor(...BORDER);
-              pdf.setLineWidth(0.2);
-              pdf.rect(x, yPos, photoW, photoH);
-              rec.dimensoes = { origem: { w: dim.width, h: dim.height }, destino: { w, h } };
-              rec.addImageFormato = 'JPEG';
-              rec.addImageExecutado = true;
-              pdf.addImage(base64, 'JPEG', ox, oy, w, h, undefined, 'FAST');
-              rec.addImageOk = true;
-            } catch (e: any) {
-              rec.addImageOk = false;
-              mediaDiag.fail(rec, 'addimage', String(e?.message || e));
-              pdf.setDrawColor(...BORDER);
-              pdf.rect(x, yPos, photoW, photoH);
-            }
-          } else {
-            rec.addImageExecutado = false;
-            rec.addImageOk = false;
-            pdf.setDrawColor(...BORDER);
-            pdf.rect(x, yPos, photoW, photoH);
-          }
+          await drawValidatedPhoto(
+            pdf,
+            url,
+            PRODUCT_PHOTOS_BUCKET,
+            { x, y: yPos, w: photoW, h: photoH },
+            BORDER,
+            { collector: mediaDiag, rec },
+            embeddedImages,
+          );
           mediaDiag.logPhoto(rec);
         }
+
 
         yPos += photoH + 3;
       }
