@@ -18,25 +18,84 @@ import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaB
 const loadImageAsBase64 = async (
   value: string,
   bucket: MediaBucket = PRODUCT_PHOTOS_BUCKET,
+  diag?: { collector: PdfMediaDiagnostics; rec: PhotoDiagRecord },
 ): Promise<string | null> => {
+  const rec = diag?.rec;
   try {
-    if (value.startsWith('data:image')) return value;
+    if (value.startsWith('data:image')) {
+      if (rec) {
+        rec.signedUrlGerada = undefined;
+        rec.conversaoOk = true;
+        rec.dataUrlBytesAprox = value.length;
+      }
+      return value;
+    }
     // Paths do Storage precisam de signed URL na hora da geração do PDF.
+    const t0 = performance.now();
     const url = await resolveMediaUrl(value, bucket);
-    if (!url) return null;
+    if (rec) {
+      rec.signedUrlMs = Math.round(performance.now() - t0);
+      rec.signedUrlGerada = !!url;
+      if (url) rec.signedUrlMasked = maskUrl(url);
+    }
+    if (!url) {
+      if (rec && diag) {
+        rec.signedUrlErro = 'createSignedUrl retornou null/erro (detalhe logado por [mediaStorage])';
+        diag.collector.fail(rec, 'signed_url', rec.signedUrlErro);
+      }
+      return null;
+    }
+    const tFetch = performance.now();
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (rec) {
+      rec.fetchMs = Math.round(performance.now() - tFetch);
+      rec.fetchStatus = response.status;
+      rec.fetchOk = response.ok;
+      rec.contentType = response.headers.get('content-type') || undefined;
+      rec.fromCacheOuSW =
+        response.type === 'opaque' || response.status === 0
+          ? 'sim'
+          : response.headers.get('age') || response.headers.get('x-sw-cache')
+            ? 'sim'
+            : 'indeterminado';
+    }
+    if (!response.ok) {
+      if (rec && diag) diag.collector.fail(rec, 'fetch', `HTTP ${response.status}`);
+      return null;
+    }
     const blob = await response.blob();
+    if (rec) rec.blobBytes = blob.size;
+    const tConv = performance.now();
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        if (rec) {
+          rec.conversaoMs = Math.round(performance.now() - tConv);
+          rec.conversaoOk = !!result;
+          rec.dataUrlBytesAprox = result ? result.length : 0;
+          if (!result && diag) diag.collector.fail(rec, 'conversao', 'FileReader retornou vazio');
+        }
+        resolve(result);
+      };
+      reader.onerror = () => {
+        if (rec) {
+          rec.conversaoMs = Math.round(performance.now() - tConv);
+          rec.conversaoOk = false;
+        }
+        if (rec && diag) diag.collector.fail(rec, 'conversao', 'FileReader onerror');
+        resolve(null);
+      };
       reader.readAsDataURL(blob);
     });
-  } catch {
+  } catch (e: any) {
+    if (rec && diag) {
+      diag.collector.fail(rec, rec.signedUrlGerada ? 'fetch' : 'signed_url', String(e?.message || e));
+    }
     return null;
   }
 };
+
 
 
 const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> =>
