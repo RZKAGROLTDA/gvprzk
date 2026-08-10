@@ -82,47 +82,20 @@ const Equipamentos: React.FC = () => {
     [search, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn],
   );
 
-  const { data, isLoading, isFetching } = useEquipmentSearch(filters, page, PAGE_SIZE);
+  const { data, isLoading, isFetching, isError, error, refetch } = useEquipmentPark(
+    filters,
+    page,
+    PAGE_SIZE,
+  );
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
 
-  // Resumo global do parque (ignora filtros)
-  const { data: parkSummary } = useQuery({
-    queryKey: ['client-equipment', 'park-summary-v3'],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const now = Date.now();
-      const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const since7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const todayIso = startOfToday.toISOString();
-      const tbl = 'client_equipment' as any;
-      const [totalRes, validadasRes, prioridadeRes, transferidasRes, hojeRes, seteDiasRes] = await Promise.all([
-        supabase.from(tbl).select('id', { count: 'exact', head: true }),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .not('last_validation_at', 'is', null),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .eq('validation_priority', true),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('transferred_at', since30),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('last_validation_at', todayIso),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('last_validation_at', since7),
-      ]);
-      const total = totalRes.count ?? 0;
-      const validadas = validadasRes.count ?? 0;
-      const pendentes = Math.max(0, total - validadas);
-      const prioridade = prioridadeRes.count ?? 0;
-      const transferidas = transferidasRes.count ?? 0;
-      const hoje = hojeRes.count ?? 0;
-      const seteDias = seteDiasRes.count ?? 0;
-      const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
-      return { total, validadas, pendentes, prioridade, transferidas, hoje, seteDias, pct };
-    },
+  // KPIs do parque — uma única chamada server-side
+  const { data: kpis } = useEquipmentParkKpis({
+    search: search || null,
+    machineStatus: machineStatus === ALL ? null : machineStatus,
   });
+
 
   const resetPage = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(0); };
 
