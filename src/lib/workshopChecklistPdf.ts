@@ -603,7 +603,11 @@ export const generateWorkshopChecklistPDF = async (
       const batch = report.generalPhotos.slice(i, i + perRow);
       ensureSpace(photoH + 4);
       for (let j = 0; j < batch.length; j++) {
-        const base64 = await loadImageAsBase64(batch[j], TASK_PHOTOS_BUCKET);
+        const rec = mediaDiag.start(
+          { taskId: task.id, item: 'registro_fotografico_geral', bucket: TASK_PHOTOS_BUCKET, index: photoSeq++ },
+          batch[j],
+        );
+        const base64 = await loadImageAsBase64(batch[j], TASK_PHOTOS_BUCKET, { collector: mediaDiag, rec });
         const x = marginLeft + j * (photoW + gap);
         if (base64) {
           try {
@@ -615,14 +619,25 @@ export const generateWorkshopChecklistPDF = async (
             const oy = yPos + (photoH - h) / 2;
             pdf.setDrawColor(...BORDER);
             pdf.rect(x, yPos, photoW, photoH);
+            rec.dimensoes = { origem: { w: dim.width, h: dim.height }, destino: { w, h } };
+            rec.addImageFormato = 'JPEG';
+            rec.addImageExecutado = true;
             pdf.addImage(base64, 'JPEG', ox, oy, w, h, undefined, 'FAST');
-          } catch {
+            rec.addImageOk = true;
+          } catch (e: any) {
+            rec.addImageOk = false;
+            mediaDiag.fail(rec, 'addimage', String(e?.message || e));
             pdf.setDrawColor(...BORDER);
             pdf.rect(x, yPos, photoW, photoH);
           }
         } else {
+          rec.addImageExecutado = false;
+          rec.addImageOk = false;
           pdf.setDrawColor(...BORDER);
           pdf.rect(x, yPos, photoW, photoH);
+        }
+        mediaDiag.logPhoto(rec);
+
         }
       }
       yPos += photoH + 4;
