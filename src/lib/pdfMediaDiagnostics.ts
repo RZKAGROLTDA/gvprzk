@@ -131,33 +131,40 @@ export class PdfMediaDiagnostics {
   /** Resumo final — chamado uma única vez ao terminar o PDF. */
   summary() {
     const r = this.records;
-    const falhas = r.filter(x => !!x.falha || x.addImageOk !== true);
+    const falhas = r.filter(x => x.addImageOk !== true);
+    const inseridas = r.filter(x => x.addImageOk === true).length;
     const resumo = {
-      'Fotos esperadas': r.length,
+      'Fotos esperadas (banco)': r.length,
       'Base64 legado': r.filter(x => x.kind === 'base64').length,
       'Storage paths': r.filter(x => x.kind === 'storage_path').length,
       'Signed URLs resolvidas': r.filter(x => x.signedUrlGerada === true).length,
-      'Downloads OK': r.filter(x => x.fetchOk === true).length,
-      'Conversões OK': r.filter(x => x.conversaoOk === true).length,
-      'Inseridas no PDF': r.filter(x => x.addImageOk === true).length,
+      'Downloads HTTP 200': r.filter(x => x.fetchOk === true).length,
+      'Base64 válido + decodificado': r.filter(x => x.conversaoOk === true).length,
+      'Inseridas no PDF': inseridas,
       Falhas: falhas.length,
+      'Integridade (banco = PDF)': r.length === inseridas ? 'OK' : 'DIVERGENTE',
     };
     // eslint-disable-next-line no-console
     console.log(`[pdf-media] RESUMO — ${this.label}`, resumo);
-    if (falhas.length > 0) {
-      // eslint-disable-next-line no-console
-      console.table(
-        falhas.map(f => ({
-          etapa: f.falha?.etapa ?? (f.addImageExecutado ? 'addimage' : 'desconhecida'),
-          bucket: f.bucket,
-          path: f.path,
-          status_erro:
-            f.falha?.detalhe ??
-            (f.fetchStatus ? `HTTP ${f.fetchStatus}` : 'sem detalhe'),
-          item: f.item,
-        })),
-      );
-    }
+    // Evidência objetiva foto a foto (✓/✗ por etapa).
+    // eslint-disable-next-line no-console
+    console.table(
+      r.map(x => ({
+        foto: `#${x.index}`,
+        item: x.item,
+        tipo: x.kind,
+        path: x.path,
+        signed_url: x.kind === 'base64' ? '—' : x.signedUrlGerada ? '✓' : '✗',
+        download: x.kind === 'base64' ? '—' : x.fetchOk ? `✓ ${x.fetchStatus}` : `✗ ${x.fetchStatus ?? '-'}`,
+        bytes: x.blobBytes ?? x.dataUrlBytesAprox ?? 0,
+        base64: x.conversaoOk ? '✓' : '✗',
+        decodificada: x.dimensoes?.origem ? `✓ ${x.dimensoes.origem.w}x${x.dimensoes.origem.h}` : '✗',
+        add_image: x.addImageOk ? `✓ ${x.addImageFormato}` : '✗',
+        etapa_da_falha: x.falha?.etapa ?? '',
+        detalhe: x.falha?.detalhe ?? '',
+      })),
+    );
     return resumo;
   }
 }
+

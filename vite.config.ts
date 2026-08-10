@@ -75,7 +75,9 @@ export default defineConfig(({ mode }) => {
           // já invalidados que continuavam fazendo upsert direto em tabelas).
           // Chamadas REST/RPC do Supabase devem ir SEMPRE direto à rede.
           {
-            // Cache para imagens do Storage
+            // Cache para imagens do Storage — SOMENTE respostas HTTP 200.
+            // Status 0 (resposta opaca) foi removido: respostas opacas ou com
+            // corpo vazio quebravam a geração do PDF (blob.size = 0).
             urlPattern: /^https:\/\/wuvbrkbhunifudaewhng\.supabase\.co\/storage/,
             handler: 'CacheFirst',
             options: {
@@ -85,10 +87,11 @@ export default defineConfig(({ mode }) => {
                 maxAgeSeconds: 60 * 60 * 24 * 7, // 7 dias
               },
               cacheableResponse: {
-                statuses: [0, 200],
+                statuses: [200],
               },
             },
           },
+
           {
             // Cache para fontes do Google
             urlPattern: /^https:\/\/fonts\.googleapis\.com/,

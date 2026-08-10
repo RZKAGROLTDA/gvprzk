@@ -11,101 +11,106 @@ import {
   LEGACY_MACHINE_MESSAGE,
   PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
-import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
-import { PdfMediaDiagnostics, maskUrl, type PhotoDiagRecord } from '@/lib/pdfMediaDiagnostics';
+import { PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
+import { PdfMediaDiagnostics, type PhotoDiagRecord } from '@/lib/pdfMediaDiagnostics';
+import { loadPdfImage } from '@/lib/pdfImageLoader';
 
 
-
-const loadImageAsBase64 = async (
-  value: string,
-  bucket: MediaBucket = PRODUCT_PHOTOS_BUCKET,
-  diag?: { collector: PdfMediaDiagnostics; rec: PhotoDiagRecord },
-): Promise<string | null> => {
-  const rec = diag?.rec;
-  try {
-    if (value.startsWith('data:image')) {
-      if (rec) {
-        rec.signedUrlGerada = undefined;
-        rec.conversaoOk = true;
-        rec.dataUrlBytesAprox = value.length;
-      }
-      return value;
-    }
-    // Paths do Storage precisam de signed URL na hora da geração do PDF.
-    const t0 = performance.now();
-    const url = await resolveMediaUrl(value, bucket);
-    if (rec) {
-      rec.signedUrlMs = Math.round(performance.now() - t0);
-      rec.signedUrlGerada = !!url;
-      if (url) rec.signedUrlMasked = maskUrl(url);
-    }
-    if (!url) {
-      if (rec && diag) {
-        rec.signedUrlErro = 'createSignedUrl retornou null/erro (detalhe logado por [mediaStorage])';
-        diag.collector.fail(rec, 'signed_url', rec.signedUrlErro);
-      }
-      return null;
-    }
-    const tFetch = performance.now();
-    const response = await fetch(url);
-    if (rec) {
-      rec.fetchMs = Math.round(performance.now() - tFetch);
-      rec.fetchStatus = response.status;
-      rec.fetchOk = response.ok;
-      rec.contentType = response.headers.get('content-type') || undefined;
-      rec.fromCacheOuSW =
-        response.type === 'opaque' || response.status === 0
-          ? 'sim'
-          : response.headers.get('age') || response.headers.get('x-sw-cache')
-            ? 'sim'
-            : 'indeterminado';
-    }
-    if (!response.ok) {
-      if (rec && diag) diag.collector.fail(rec, 'fetch', `HTTP ${response.status}`);
-      return null;
-    }
-    const blob = await response.blob();
-    if (rec) rec.blobBytes = blob.size;
-    const tConv = performance.now();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        if (rec) {
-          rec.conversaoMs = Math.round(performance.now() - tConv);
-          rec.conversaoOk = !!result;
-          rec.dataUrlBytesAprox = result ? result.length : 0;
-          if (!result && diag) diag.collector.fail(rec, 'conversao', 'FileReader retornou vazio');
-        }
-        resolve(result);
-      };
-      reader.onerror = () => {
-        if (rec) {
-          rec.conversaoMs = Math.round(performance.now() - tConv);
-          rec.conversaoOk = false;
-        }
-        if (rec && diag) diag.collector.fail(rec, 'conversao', 'FileReader onerror');
-        resolve(null);
-      };
-      reader.readAsDataURL(blob);
-    });
-  } catch (e: any) {
-    if (rec && diag) {
-      diag.collector.fail(rec, rec.signedUrlGerada ? 'fetch' : 'signed_url', String(e?.message || e));
-    }
-    return null;
+/**
+ * Conta quantas invocações de XObject (`/I<n> Do`) existem na página atual.
+ * É a prova real de que `addImage` incorporou E desenhou a imagem — imune à
+ * deduplicação do jsPDF (imagens de dados idênticos reaproveitam o objeto).
+ */
+const drawnImageOps = (pdf: jsPDF): number => {
+  const internal: any = (pdf as any).internal;
+  const page = internal?.pages?.[internal.getCurrentPageInfo?.().pageNumber ?? internal.getNumberOfPages?.()];
+  if (!Array.isArray(page)) return -1;
+  let n = 0;
+  for (const chunk of page) {
+    if (typeof chunk !== 'string') continue;
+    n += (chunk.match(/\/I\d+\s+Do/g) || []).length;
   }
+  return n;
+};
+
+/** Quantidade de objetos de imagem registrados no documento. */
+const embeddedImageCount = (pdf: jsPDF): number => {
+  const store = (pdf as any)?.internal?.collections?.['addImage_images'];
+  return store ? Object.keys(store).length : 0;
+};
+
+/**
+ * Desenha uma foto validando TODAS as etapas do pipeline.
+ * Só retorna `true` quando: download OK (HTTP 200), blob válido, magic bytes
+ * de formato suportado, Base64 não vazio, imagem decodificada e imagem
+ * realmente incorporada/desenhada no PDF.
+ * O contorno (retângulo) é mantido idêntico ao layout atual.
+ */
+const drawValidatedPhoto = async (
+  pdf: jsPDF,
+  value: string,
+  bucket: MediaBucket,
+  box: { x: number; y: number; w: number; h: number },
+  border: [number, number, number],
+  diag: { collector: PdfMediaDiagnostics; rec: PhotoDiagRecord },
+  embeddedCache: Set<string>,
+): Promise<boolean> => {
+  const { collector, rec } = diag;
+  const result = await loadPdfImage(value, bucket, diag);
+
+  pdf.setDrawColor(...border);
+  pdf.setLineWidth(0.2);
+  pdf.rect(box.x, box.y, box.w, box.h);
+
+  if (!result.ok) {
+    rec.addImageExecutado = false;
+    rec.addImageOk = false;
+    return false;
+  }
+
+  const ratio = result.width / result.height;
+  let w = box.w;
+  let h = box.h;
+  if (ratio > w / h) h = w / ratio; else w = h * ratio;
+  const ox = box.x + (box.w - w) / 2;
+  const oy = box.y + (box.h - h) / 2;
+
+  rec.dimensoes = { origem: { w: result.width, h: result.height }, destino: { w, h } };
+  rec.addImageFormato = result.format;
+  rec.addImageExecutado = true;
+
+  const opsBefore = drawnImageOps(pdf);
+  const objsBefore = embeddedImageCount(pdf);
+  try {
+    pdf.addImage(result.dataUrl, result.format, ox, oy, w, h, undefined, 'FAST');
+  } catch (e: any) {
+    rec.addImageOk = false;
+    collector.fail(rec, 'addimage', `addImage lançou: ${String(e?.message || e)}`);
+    return false;
+  }
+
+  const opsAfter = drawnImageOps(pdf);
+  const objsAfter = embeddedImageCount(pdf);
+  // Desenho confirmado no stream da página OU (fallback) novo objeto de imagem
+  // registrado / reaproveitamento de imagem idêntica já confirmada.
+  const embedded =
+    (opsBefore >= 0 && opsAfter > opsBefore) ||
+    objsAfter > objsBefore ||
+    embeddedCache.has(result.dataUrl);
+  rec.addImageOk = embedded;
+  if (!embedded) {
+    collector.fail(
+      rec,
+      'addimage',
+      'addImage não lançou exceção, mas a imagem não foi incorporada/desenhada no documento',
+    );
+    return false;
+  }
+  embeddedCache.add(result.dataUrl);
+  return true;
 };
 
 
-
-const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> =>
-  new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.width, height: img.height });
-    img.onerror = () => resolve({ width: 100, height: 100 });
-    img.src = base64;
-  });
 
 const statusMeta = (s: ChecklistStatus) => (s === null ? STATUS_META.none : STATUS_META[s]);
 
@@ -127,7 +132,10 @@ export const generateWorkshopChecklistPDF = async (
   const report = buildWorkshopChecklistReport(task);
   // Instrumentação de diagnóstico (somente observabilidade).
   const mediaDiag = new PdfMediaDiagnostics('checklist-oficina', task.id);
+  // Fotos já incorporadas ao documento (jsPDF deduplica dados idênticos).
+  const embeddedImages = new Set<string>();
   let photoSeq = 1;
+
 
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.width;
@@ -482,38 +490,19 @@ export const generateWorkshopChecklistPDF = async (
             { taskId: task.id, item: it.name, bucket: PRODUCT_PHOTOS_BUCKET, index: photoSeq++ },
             url,
           );
-          const base64 = await loadImageAsBase64(url, PRODUCT_PHOTOS_BUCKET, { collector: mediaDiag, rec });
           const x = marginLeft + j * (photoW + gap);
-          if (base64) {
-            try {
-              const dim = await getImageDimensions(base64);
-              const ratio = dim.width / dim.height;
-              let w = photoW, h = photoH;
-              if (ratio > w / h) h = w / ratio; else w = h * ratio;
-              const ox = x + (photoW - w) / 2;
-              const oy = yPos + (photoH - h) / 2;
-              pdf.setDrawColor(...BORDER);
-              pdf.setLineWidth(0.2);
-              pdf.rect(x, yPos, photoW, photoH);
-              rec.dimensoes = { origem: { w: dim.width, h: dim.height }, destino: { w, h } };
-              rec.addImageFormato = 'JPEG';
-              rec.addImageExecutado = true;
-              pdf.addImage(base64, 'JPEG', ox, oy, w, h, undefined, 'FAST');
-              rec.addImageOk = true;
-            } catch (e: any) {
-              rec.addImageOk = false;
-              mediaDiag.fail(rec, 'addimage', String(e?.message || e));
-              pdf.setDrawColor(...BORDER);
-              pdf.rect(x, yPos, photoW, photoH);
-            }
-          } else {
-            rec.addImageExecutado = false;
-            rec.addImageOk = false;
-            pdf.setDrawColor(...BORDER);
-            pdf.rect(x, yPos, photoW, photoH);
-          }
+          await drawValidatedPhoto(
+            pdf,
+            url,
+            PRODUCT_PHOTOS_BUCKET,
+            { x, y: yPos, w: photoW, h: photoH },
+            BORDER,
+            { collector: mediaDiag, rec },
+            embeddedImages,
+          );
           mediaDiag.logPhoto(rec);
         }
+
 
         yPos += photoH + 3;
       }
@@ -607,37 +596,19 @@ export const generateWorkshopChecklistPDF = async (
           { taskId: task.id, item: 'registro_fotografico_geral', bucket: TASK_PHOTOS_BUCKET, index: photoSeq++ },
           batch[j],
         );
-        const base64 = await loadImageAsBase64(batch[j], TASK_PHOTOS_BUCKET, { collector: mediaDiag, rec });
         const x = marginLeft + j * (photoW + gap);
-        if (base64) {
-          try {
-            const dim = await getImageDimensions(base64);
-            const ratio = dim.width / dim.height;
-            let w = photoW, h = photoH;
-            if (ratio > w / h) h = w / ratio; else w = h * ratio;
-            const ox = x + (photoW - w) / 2;
-            const oy = yPos + (photoH - h) / 2;
-            pdf.setDrawColor(...BORDER);
-            pdf.rect(x, yPos, photoW, photoH);
-            rec.dimensoes = { origem: { w: dim.width, h: dim.height }, destino: { w, h } };
-            rec.addImageFormato = 'JPEG';
-            rec.addImageExecutado = true;
-            pdf.addImage(base64, 'JPEG', ox, oy, w, h, undefined, 'FAST');
-            rec.addImageOk = true;
-          } catch (e: any) {
-            rec.addImageOk = false;
-            mediaDiag.fail(rec, 'addimage', String(e?.message || e));
-            pdf.setDrawColor(...BORDER);
-            pdf.rect(x, yPos, photoW, photoH);
-          }
-        } else {
-          rec.addImageExecutado = false;
-          rec.addImageOk = false;
-          pdf.setDrawColor(...BORDER);
-          pdf.rect(x, yPos, photoW, photoH);
-        }
+        await drawValidatedPhoto(
+          pdf,
+          batch[j],
+          TASK_PHOTOS_BUCKET,
+          { x, y: yPos, w: photoW, h: photoH },
+          BORDER,
+          { collector: mediaDiag, rec },
+          embeddedImages,
+        );
         mediaDiag.logPhoto(rec);
       }
+
 
       yPos += photoH + 4;
     }
