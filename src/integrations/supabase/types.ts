@@ -1888,6 +1888,7 @@ export type Database = {
         Returns: boolean
       }
       can_perform_admin_action: { Args: never; Returns: boolean }
+      can_view_equipment_park: { Args: never; Returns: boolean }
       can_view_opportunity: {
         Args: { p_opportunity_id: string }
         Returns: boolean
@@ -2156,6 +2157,65 @@ export type Database = {
           p_start_date?: string
         }
         Returns: Json
+      }
+      get_equipment_park_kpis: {
+        Args: {
+          p_filial_id?: string
+          p_machine_status?: string
+          p_puk_status?: string
+          p_search?: string
+          p_validation_priority?: boolean
+        }
+        Returns: {
+          clientes: number
+          nao_prioridades: number
+          pendentes: number
+          prioridades: number
+          total: number
+          total_validadas: number
+          validacoes_7d: number
+        }[]
+      }
+      get_equipment_park_paginated: {
+        Args: {
+          p_filial_id?: string
+          p_limit?: number
+          p_machine_status?: string
+          p_offset?: number
+          p_puk_status?: string
+          p_search?: string
+          p_validation_priority?: boolean
+        }
+        Returns: {
+          client_code: string
+          client_name: string
+          created_at: string
+          filial_id: string
+          filial_nome: string
+          hours: number
+          id: string
+          last_validation_at: string
+          machine_status: string
+          machine_type: string
+          model: string
+          observation: string
+          previous_client_code: string
+          previous_client_name: string
+          product_raw: string
+          puk_status: string
+          serial_chassis: string
+          total_count: number
+          transfer_observation: string
+          transferred_at: string
+          transferred_by: string
+          updated_at: string
+          validated_by: string
+          validation_priority: boolean
+          validation_priority_reason: string
+          validation_priority_updated_at: string
+          validation_source: string
+          year: number
+        }[]
       }
       get_equipment_validation_summary: {
         Args: never
