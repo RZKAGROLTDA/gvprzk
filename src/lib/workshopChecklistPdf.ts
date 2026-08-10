@@ -697,5 +697,8 @@ export const generateWorkshopChecklistPDF = async (
 
   const safeClient = (task.client || 'cliente').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
   const dateStr = task.startDate ? format(new Date(task.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+  // Resumo final de diagnóstico de mídia (uma única vez, ao final).
+  mediaDiag.summary();
   pdf.save(`checklist-oficina_${safeClient}_${dateStr}.pdf`);
 };
+
