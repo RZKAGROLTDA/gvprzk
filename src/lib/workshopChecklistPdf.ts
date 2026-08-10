@@ -11,12 +11,10 @@ import {
   LEGACY_MACHINE_MESSAGE,
   PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
-import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
-import { PdfMediaDiagnostics, maskUrl, type PhotoDiagRecord } from '@/lib/pdfMediaDiagnostics';
-
-
-
+import { PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
+import { PdfMediaDiagnostics, type PhotoDiagRecord } from '@/lib/pdfMediaDiagnostics';
 import { loadPdfImage } from '@/lib/pdfImageLoader';
+
 
 /**
  * Conta quantas imagens já foram efetivamente registradas no documento jsPDF.
