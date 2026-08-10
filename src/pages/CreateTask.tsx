@@ -887,7 +887,21 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         field: checklistMachine.chassi_serie?.trim(),
         name: 'Chassi / Nº de Série da máquina'
       });
+
+      // Bloqueio de checklist vazio: nada é criado, enviado ou navegado
+      const answeredItems = checklist.filter(item => item.responseStatus).length;
+      if (answeredItems === 0) {
+        submissionLockRef.current = false;
+        setIsSubmitting(false);
+        toast({
+          title: "Checklist incompleto",
+          description: "Preencha pelo menos um item do checklist antes de salvar.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
+
 
     // Verificar se algum campo obrigatório está vazio
     const missingField = requiredFields.find(({
