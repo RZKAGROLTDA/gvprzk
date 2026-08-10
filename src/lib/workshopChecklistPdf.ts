@@ -475,7 +475,11 @@ export const generateWorkshopChecklistPDF = async (
         ensureSpace(photoH + 4);
         for (let j = 0; j < batch.length; j++) {
           const url = batch[j];
-          const base64 = await loadImageAsBase64(url);
+          const rec = mediaDiag.start(
+            { taskId: task.id, item: it.name, bucket: PRODUCT_PHOTOS_BUCKET, index: photoSeq++ },
+            url,
+          );
+          const base64 = await loadImageAsBase64(url, PRODUCT_PHOTOS_BUCKET, { collector: mediaDiag, rec });
           const x = marginLeft + j * (photoW + gap);
           if (base64) {
             try {
@@ -488,16 +492,26 @@ export const generateWorkshopChecklistPDF = async (
               pdf.setDrawColor(...BORDER);
               pdf.setLineWidth(0.2);
               pdf.rect(x, yPos, photoW, photoH);
+              rec.dimensoes = { origem: { w: dim.width, h: dim.height }, destino: { w, h } };
+              rec.addImageFormato = 'JPEG';
+              rec.addImageExecutado = true;
               pdf.addImage(base64, 'JPEG', ox, oy, w, h, undefined, 'FAST');
-            } catch {
+              rec.addImageOk = true;
+            } catch (e: any) {
+              rec.addImageOk = false;
+              mediaDiag.fail(rec, 'addimage', String(e?.message || e));
               pdf.setDrawColor(...BORDER);
               pdf.rect(x, yPos, photoW, photoH);
             }
           } else {
+            rec.addImageExecutado = false;
+            rec.addImageOk = false;
             pdf.setDrawColor(...BORDER);
             pdf.rect(x, yPos, photoW, photoH);
           }
+          mediaDiag.logPhoto(rec);
         }
+
         yPos += photoH + 3;
       }
     }
