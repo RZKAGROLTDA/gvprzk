@@ -12,31 +12,91 @@ import {
   PERSISTENCE_ERROR_MESSAGE,
 } from '@/lib/workshopChecklistReport';
 import { resolveMediaUrl, PRODUCT_PHOTOS_BUCKET, TASK_PHOTOS_BUCKET, type MediaBucket } from '@/lib/mediaStorage';
+import { PdfMediaDiagnostics, maskUrl, type PhotoDiagRecord } from '@/lib/pdfMediaDiagnostics';
 
 
 
 const loadImageAsBase64 = async (
   value: string,
   bucket: MediaBucket = PRODUCT_PHOTOS_BUCKET,
+  diag?: { collector: PdfMediaDiagnostics; rec: PhotoDiagRecord },
 ): Promise<string | null> => {
+  const rec = diag?.rec;
   try {
-    if (value.startsWith('data:image')) return value;
+    if (value.startsWith('data:image')) {
+      if (rec) {
+        rec.signedUrlGerada = undefined;
+        rec.conversaoOk = true;
+        rec.dataUrlBytesAprox = value.length;
+      }
+      return value;
+    }
     // Paths do Storage precisam de signed URL na hora da geração do PDF.
+    const t0 = performance.now();
     const url = await resolveMediaUrl(value, bucket);
-    if (!url) return null;
+    if (rec) {
+      rec.signedUrlMs = Math.round(performance.now() - t0);
+      rec.signedUrlGerada = !!url;
+      if (url) rec.signedUrlMasked = maskUrl(url);
+    }
+    if (!url) {
+      if (rec && diag) {
+        rec.signedUrlErro = 'createSignedUrl retornou null/erro (detalhe logado por [mediaStorage])';
+        diag.collector.fail(rec, 'signed_url', rec.signedUrlErro);
+      }
+      return null;
+    }
+    const tFetch = performance.now();
     const response = await fetch(url);
-    if (!response.ok) return null;
+    if (rec) {
+      rec.fetchMs = Math.round(performance.now() - tFetch);
+      rec.fetchStatus = response.status;
+      rec.fetchOk = response.ok;
+      rec.contentType = response.headers.get('content-type') || undefined;
+      rec.fromCacheOuSW =
+        response.type === 'opaque' || response.status === 0
+          ? 'sim'
+          : response.headers.get('age') || response.headers.get('x-sw-cache')
+            ? 'sim'
+            : 'indeterminado';
+    }
+    if (!response.ok) {
+      if (rec && diag) diag.collector.fail(rec, 'fetch', `HTTP ${response.status}`);
+      return null;
+    }
     const blob = await response.blob();
+    if (rec) rec.blobBytes = blob.size;
+    const tConv = performance.now();
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        if (rec) {
+          rec.conversaoMs = Math.round(performance.now() - tConv);
+          rec.conversaoOk = !!result;
+          rec.dataUrlBytesAprox = result ? result.length : 0;
+          if (!result && diag) diag.collector.fail(rec, 'conversao', 'FileReader retornou vazio');
+        }
+        resolve(result);
+      };
+      reader.onerror = () => {
+        if (rec) {
+          rec.conversaoMs = Math.round(performance.now() - tConv);
+          rec.conversaoOk = false;
+        }
+        if (rec && diag) diag.collector.fail(rec, 'conversao', 'FileReader onerror');
+        resolve(null);
+      };
       reader.readAsDataURL(blob);
     });
-  } catch {
+  } catch (e: any) {
+    if (rec && diag) {
+      diag.collector.fail(rec, rec.signedUrlGerada ? 'fetch' : 'signed_url', String(e?.message || e));
+    }
     return null;
   }
 };
+
 
 
 const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> =>
@@ -65,6 +125,9 @@ export const generateWorkshopChecklistPDF = async (
   filiais: any[] = [],
 ) => {
   const report = buildWorkshopChecklistReport(task);
+  // Instrumentação de diagnóstico (somente observabilidade).
+  const mediaDiag = new PdfMediaDiagnostics('checklist-oficina', task.id);
+  let photoSeq = 1;
 
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.width;
@@ -415,7 +478,11 @@ export const generateWorkshopChecklistPDF = async (
         ensureSpace(photoH + 4);
         for (let j = 0; j < batch.length; j++) {
           const url = batch[j];
-          const base64 = await loadImageAsBase64(url);
+          const rec = mediaDiag.start(
+            { taskId: task.id, item: it.name, bucket: PRODUCT_PHOTOS_BUCKET, index: photoSeq++ },
+            url,
+          );
+          const base64 = await loadImageAsBase64(url, PRODUCT_PHOTOS_BUCKET, { collector: mediaDiag, rec });
           const x = marginLeft + j * (photoW + gap);
           if (base64) {
             try {
@@ -428,16 +495,26 @@ export const generateWorkshopChecklistPDF = async (
               pdf.setDrawColor(...BORDER);
               pdf.setLineWidth(0.2);
               pdf.rect(x, yPos, photoW, photoH);
+              rec.dimensoes = { origem: { w: dim.width, h: dim.height }, destino: { w, h } };
+              rec.addImageFormato = 'JPEG';
+              rec.addImageExecutado = true;
               pdf.addImage(base64, 'JPEG', ox, oy, w, h, undefined, 'FAST');
-            } catch {
+              rec.addImageOk = true;
+            } catch (e: any) {
+              rec.addImageOk = false;
+              mediaDiag.fail(rec, 'addimage', String(e?.message || e));
               pdf.setDrawColor(...BORDER);
               pdf.rect(x, yPos, photoW, photoH);
             }
           } else {
+            rec.addImageExecutado = false;
+            rec.addImageOk = false;
             pdf.setDrawColor(...BORDER);
             pdf.rect(x, yPos, photoW, photoH);
           }
+          mediaDiag.logPhoto(rec);
         }
+
         yPos += photoH + 3;
       }
     }
@@ -526,7 +603,11 @@ export const generateWorkshopChecklistPDF = async (
       const batch = report.generalPhotos.slice(i, i + perRow);
       ensureSpace(photoH + 4);
       for (let j = 0; j < batch.length; j++) {
-        const base64 = await loadImageAsBase64(batch[j], TASK_PHOTOS_BUCKET);
+        const rec = mediaDiag.start(
+          { taskId: task.id, item: 'registro_fotografico_geral', bucket: TASK_PHOTOS_BUCKET, index: photoSeq++ },
+          batch[j],
+        );
+        const base64 = await loadImageAsBase64(batch[j], TASK_PHOTOS_BUCKET, { collector: mediaDiag, rec });
         const x = marginLeft + j * (photoW + gap);
         if (base64) {
           try {
@@ -538,16 +619,26 @@ export const generateWorkshopChecklistPDF = async (
             const oy = yPos + (photoH - h) / 2;
             pdf.setDrawColor(...BORDER);
             pdf.rect(x, yPos, photoW, photoH);
+            rec.dimensoes = { origem: { w: dim.width, h: dim.height }, destino: { w, h } };
+            rec.addImageFormato = 'JPEG';
+            rec.addImageExecutado = true;
             pdf.addImage(base64, 'JPEG', ox, oy, w, h, undefined, 'FAST');
-          } catch {
+            rec.addImageOk = true;
+          } catch (e: any) {
+            rec.addImageOk = false;
+            mediaDiag.fail(rec, 'addimage', String(e?.message || e));
             pdf.setDrawColor(...BORDER);
             pdf.rect(x, yPos, photoW, photoH);
           }
         } else {
+          rec.addImageExecutado = false;
+          rec.addImageOk = false;
           pdf.setDrawColor(...BORDER);
           pdf.rect(x, yPos, photoW, photoH);
         }
+        mediaDiag.logPhoto(rec);
       }
+
       yPos += photoH + 4;
     }
   }
@@ -606,5 +697,8 @@ export const generateWorkshopChecklistPDF = async (
 
   const safeClient = (task.client || 'cliente').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
   const dateStr = task.startDate ? format(new Date(task.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+  // Resumo final de diagnóstico de mídia (uma única vez, ao final).
+  mediaDiag.summary();
   pdf.save(`checklist-oficina_${safeClient}_${dateStr}.pdf`);
 };
+
