@@ -114,7 +114,10 @@ export const generateWorkshopChecklistPDF = async (
   const report = buildWorkshopChecklistReport(task);
   // Instrumentação de diagnóstico (somente observabilidade).
   const mediaDiag = new PdfMediaDiagnostics('checklist-oficina', task.id);
+  // Fotos já incorporadas ao documento (jsPDF deduplica dados idênticos).
+  const embeddedImages = new Set<string>();
   let photoSeq = 1;
+
 
   const pdf = new jsPDF();
   const pageWidth = pdf.internal.pageSize.width;
