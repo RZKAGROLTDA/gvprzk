@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
@@ -17,9 +16,10 @@ import {
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from '@/components/equipment/equipmentConstants';
 import {
-  useEquipmentSearch, useEquipmentValidators,
+  useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators,
   type ClientEquipment, type EquipmentValidator,
 } from '@/hooks/useClientEquipment';
+
 
 const ALL = 'all';
 const PAGE_SIZE = 50;
@@ -82,47 +82,20 @@ const Equipamentos: React.FC = () => {
     [search, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn],
   );
 
-  const { data, isLoading, isFetching } = useEquipmentSearch(filters, page, PAGE_SIZE);
+  const { data, isLoading, isFetching, isError, error, refetch } = useEquipmentPark(
+    filters,
+    page,
+    PAGE_SIZE,
+  );
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
 
-  // Resumo global do parque (ignora filtros)
-  const { data: parkSummary } = useQuery({
-    queryKey: ['client-equipment', 'park-summary-v3'],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const now = Date.now();
-      const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const since7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const todayIso = startOfToday.toISOString();
-      const tbl = 'client_equipment' as any;
-      const [totalRes, validadasRes, prioridadeRes, transferidasRes, hojeRes, seteDiasRes] = await Promise.all([
-        supabase.from(tbl).select('id', { count: 'exact', head: true }),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .not('last_validation_at', 'is', null),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .eq('validation_priority', true),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('transferred_at', since30),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('last_validation_at', todayIso),
-        supabase.from(tbl).select('id', { count: 'exact', head: true })
-          .gte('last_validation_at', since7),
-      ]);
-      const total = totalRes.count ?? 0;
-      const validadas = validadasRes.count ?? 0;
-      const pendentes = Math.max(0, total - validadas);
-      const prioridade = prioridadeRes.count ?? 0;
-      const transferidas = transferidasRes.count ?? 0;
-      const hoje = hojeRes.count ?? 0;
-      const seteDias = seteDiasRes.count ?? 0;
-      const pct = total > 0 ? Math.round((validadas / total) * 100) : 0;
-      return { total, validadas, pendentes, prioridade, transferidas, hoje, seteDias, pct };
-    },
+  // KPIs do parque — uma única chamada server-side
+  const { data: kpis } = useEquipmentParkKpis({
+    search: search || null,
+    machineStatus: machineStatus === ALL ? null : machineStatus,
   });
+
 
   const resetPage = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(0); };
 
@@ -231,132 +204,8 @@ const Equipamentos: React.FC = () => {
     [validators],
   );
 
-  // Distintos: buscar validated_by + client_code/client_name em client_equipment
-  // (apenas registros com last_validation_at). Paginação segura, teto 20k linhas.
-  const { data: validatedClientsRaw = [] } = useQuery({
-    queryKey: ['client-equipment', 'validated-clients-index'],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const PAGE = 1000;
-      const MAX = 20000;
-      const rows: { validated_by: string | null; client_code: string | null; client_name: string | null }[] = [];
-      let p = 0;
-      while (rows.length < MAX) {
-        const { data, error } = await supabase
-          .from('client_equipment' as any)
-          .select('validated_by, client_code, client_name')
-          .not('last_validation_at', 'is', null)
-          .range(p * PAGE, p * PAGE + PAGE - 1);
-        if (error) throw error;
-        const batch = (data as unknown as typeof rows) ?? [];
-        rows.push(...batch);
-        if (batch.length < PAGE) break;
-        p += 1;
-      }
-      return rows;
-    },
-  });
-
-  const clientKey = (r: { client_code: string | null; client_name: string | null }) => {
-    const code = (r.client_code ?? '').trim().toLowerCase();
-    if (code) return `c:${code}`;
-    const name = (r.client_name ?? '').trim().toLowerCase();
-    return name ? `n:${name}` : '';
-  };
-
-  // Mapa filial_id → filial_nome (derivado dos validadores)
-  const filialIdToName = useMemo(() => {
-    const m = new Map<string, string>();
-    validators.forEach((v) => {
-      if (v.filial_id && v.filial_nome) m.set(v.filial_id, v.filial_nome);
-    });
-    return m;
-  }, [validators]);
-
-  // Distinct clients per validator's filial (usando validatorMap para mapear
-  // validated_by → filial_nome, mesma regra usada em filialRanked)
-  const distinctClientsByFilial = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    validatedClientsRaw.forEach((r) => {
-      if (!r.validated_by) return;
-      const v = validatorMap.get(r.validated_by);
-      const filial = v?.filial_nome || '—';
-      const k = clientKey(r);
-      if (!k) return;
-      if (!map.has(filial)) map.set(filial, new Set());
-      map.get(filial)!.add(k);
-    });
-    const out: Record<string, number> = {};
-    map.forEach((set, filial) => { out[filial] = set.size; });
-    return out;
-  }, [validatedClientsRaw, validatorMap]);
-
-  // Total distinct clients com pelo menos uma máquina validada (KPI do topo)
-  const distinctValidatedClientsTotal = useMemo(() => {
-    const set = new Set<string>();
-    validatedClientsRaw.forEach((r) => {
-      const k = clientKey(r);
-      if (k) set.add(k);
-    });
-    return set.size;
-  }, [validatedClientsRaw]);
-
-  // Máquinas prioritárias JÁ VALIDADAS — base para a tabela por filial
-  const { data: priorityRaw = [] } = useQuery({
-    queryKey: ['client-equipment', 'priority-validated-index'],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const PAGE = 1000;
-      const MAX = 20000;
-      const rows: {
-        filial_id: string | null;
-        validated_by: string | null;
-        client_code: string | null;
-        client_name: string | null;
-      }[] = [];
-      let p = 0;
-      while (rows.length < MAX) {
-        const { data, error } = await supabase
-          .from('client_equipment' as any)
-          .select('filial_id, validated_by, client_code, client_name')
-          .eq('validation_priority', true)
-          .not('last_validation_at', 'is', null)
-          .range(p * PAGE, p * PAGE + PAGE - 1);
-        if (error) throw error;
-        const batch = (data as unknown as typeof rows) ?? [];
-        rows.push(...batch);
-        if (batch.length < PAGE) break;
-        p += 1;
-      }
-      return rows;
-    },
-  });
-
-  const priorityValidatedByFilial = useMemo(() => {
-    const totals = new Map<string, number>();
-    const resolveFilialName = (r: { filial_id: string | null; validated_by: string | null }) => {
-      if (r.validated_by) {
-        const v = validatorMap.get(r.validated_by);
-        if (v?.filial_nome) return v.filial_nome;
-      }
-      if (r.filial_id) return filialIdToName.get(r.filial_id) || '—';
-      return '—';
-    };
-    priorityRaw.forEach((r) => {
-      const filial = resolveFilialName(r);
-      totals.set(filial, (totals.get(filial) ?? 0) + 1);
-    });
-    return totals;
-  }, [priorityRaw, validatorMap, filialIdToName]);
-
-  const priorityValidatedTotal = priorityRaw.length;
-  const nonPriorityValidatedTotal = Math.max(
-    0,
-    (parkSummary?.validadas ?? 0) - priorityValidatedTotal,
-  );
-
+  // Resumo por filial do validador (dados agregados no servidor pela RPC
+  // get_equipment_validators — sem varreduras de client_equipment no cliente)
   const filialRanked = useMemo(() => {
     const map = new Map<string, { filial_nome: string; validated_count: number }>();
     validators.forEach((v) => {
@@ -365,11 +214,9 @@ const Equipamentos: React.FC = () => {
       if (cur) cur.validated_count += v.validated_count;
       else map.set(key, { filial_nome: key, validated_count: v.validated_count });
     });
-    priorityValidatedByFilial.forEach((_, filial) => {
-      if (!map.has(filial)) map.set(filial, { filial_nome: filial, validated_count: 0 });
-    });
     return [...map.values()].sort((a, b) => b.validated_count - a.validated_count);
-  }, [validators, priorityValidatedByFilial]);
+  }, [validators]);
+
 
 
   return (
@@ -402,44 +249,45 @@ const Equipamentos: React.FC = () => {
           <SummaryCell
             icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
             label="Total"
-            value={parkSummary?.total}
+            value={kpis?.total}
           />
           <SummaryCell
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             label="Total Validadas"
-            value={parkSummary?.validadas}
+            value={kpis?.total_validadas}
           />
           <SummaryCell
             icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
             label="Prioridades"
-            value={priorityValidatedTotal}
+            value={kpis?.prioridades}
             highlight={priorityOnly}
             onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
           />
           <SummaryCell
             icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
             label="Não Prioridades"
-            value={nonPriorityValidatedTotal}
+            value={kpis?.nao_prioridades}
           />
           <SummaryCell
             icon={<UserCheck className="h-4 w-4 text-primary" />}
-            label="Clientes Validados"
-            value={distinctValidatedClientsTotal}
+            label="Clientes"
+            value={kpis?.clientes}
           />
           <SummaryCell
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
             label="Pendentes"
-            value={parkSummary?.pendentes}
+            value={kpis?.pendentes}
           />
           <SummaryCell
             icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
             label="Validações 7 dias"
-            value={parkSummary?.seteDias}
+            value={kpis?.validacoes_7d}
           />
         </CardContent>
       </Card>
 
-      {/* Execução das Validações — resumo por usuário */}
+
+      {/* Execução das Validações — resumo por filial do validador */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -459,37 +307,17 @@ const Equipamentos: React.FC = () => {
                   <tr className="text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Total Validadas</th>
-                    <th className="px-3 py-2 font-medium text-right">Prioridades</th>
-                    <th className="px-3 py-2 font-medium text-right">Não Prioridades</th>
-                    <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filialRanked.map((f) => {
-                    const priority = priorityValidatedByFilial.get(f.filial_nome) ?? 0;
-                    const nonPriority = Math.max(0, f.validated_count - priority);
-                    const distinctClients = distinctClientsByFilial[f.filial_nome] ?? 0;
-                    return (
-                      <tr
-                        key={f.filial_nome}
-                        className="border-t border-border/40"
-                      >
-                        <td className="px-3 py-1.5 font-medium">{f.filial_nome}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {f.validated_count.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {priority.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums font-medium">
-                          {nonPriority.toLocaleString('pt-BR')}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
-                          {distinctClients.toLocaleString('pt-BR')}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filialRanked.map((f) => (
+                    <tr key={f.filial_nome} className="border-t border-border/40">
+                      <td className="px-3 py-1.5 font-medium">{f.filial_nome}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                        {f.validated_count.toLocaleString('pt-BR')}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -497,6 +325,7 @@ const Equipamentos: React.FC = () => {
 
         </CardContent>
       </Card>
+
 
       {/* Filtros */}
       <Card>
@@ -577,7 +406,22 @@ const Equipamentos: React.FC = () => {
       </Card>
 
       {/* Lista */}
-      {isLoading ? (
+      {isError ? (
+        <Card className="border-destructive/40">
+          <CardContent className="p-6 flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
+            <div>
+              <p className="text-sm font-medium">Não foi possível carregar o parque de máquinas.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(error as any)?.message ?? 'Erro inesperado ao consultar o servidor.'}
+              </p>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="h-3.5 w-3.5 mr-2" /> Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-10">
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando equipamentos...
         </div>

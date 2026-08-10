@@ -181,6 +181,191 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
 };
 
 // -----------------------------------------------------------------------------
+// Parque de Máquinas (tela /equipamentos) — via RPC server-side
+// -----------------------------------------------------------------------------
+// get_equipment_park_paginated / get_equipment_park_kpis são SECURITY DEFINER,
+// autorizadas por can_view_equipment_park() (approved + active) e devolvem o
+// universo completo do parque com total_count agregado no servidor.
+// Filtros que a RPC ainda não suporta (machine_type, validated_by e combinação
+// de múltiplos termos de texto) caem no caminho direto legado — apenas nesses
+// casos, que são recortes seletivos.
+// -----------------------------------------------------------------------------
+
+export interface EquipmentParkRow extends Omit<ClientEquipment, 'import_batch_id' | 'transfer_history'> {
+  filial_nome: string | null;
+  import_batch_id: string | null;
+  transfer_history: EquipmentTransferHistoryEntry[] | null;
+}
+
+export interface EquipmentParkResult {
+  rows: ClientEquipment[];
+  totalCount: number | null;
+  source: 'rpc' | 'direct';
+}
+
+const buildParkParams = (filters: EquipmentFilters) => {
+  const terms = [norm(filters.search), norm(filters.clientCode), norm(filters.clientName)].filter(
+    Boolean,
+  ) as string[];
+  const machineType = norm(filters.machineType);
+  const validatedByIn = (filters.validatedByIn ?? null)?.filter(Boolean) ?? null;
+  const needsDirect =
+    !!machineType || (validatedByIn?.length ?? 0) > 0 || terms.length > 1;
+  return {
+    search: terms[0] ?? null,
+    machineStatus: norm(filters.machineStatus),
+    validationPriority: filters.validationPriority ?? null,
+    machineType,
+    validatedByIn,
+    needsDirect,
+  };
+};
+
+export const useEquipmentPark = (filters: EquipmentFilters, page = 0, pageSize = 50) => {
+  const p = buildParkParams(filters);
+  const validatedByKey =
+    p.validatedByIn && p.validatedByIn.length > 0 ? [...p.validatedByIn].sort().join(',') : null;
+
+  return useQuery<EquipmentParkResult>({
+    queryKey: [
+      'client-equipment',
+      'park-list',
+      {
+        search: p.search,
+        machineStatus: p.machineStatus,
+        validationPriority: p.validationPriority,
+        machineType: p.machineType,
+        validatedByKey,
+        directTerms: p.needsDirect
+          ? [norm(filters.search), norm(filters.clientCode), norm(filters.clientName)]
+          : null,
+        page,
+        pageSize,
+      },
+    ],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<EquipmentParkResult> => {
+      if (!p.needsDirect) {
+        const { data, error } = await (supabase as any).rpc('get_equipment_park_paginated', {
+          p_search: p.search,
+          p_filial_id: null,
+          p_machine_status: p.machineStatus,
+          p_puk_status: null,
+          p_validation_priority: p.validationPriority,
+          p_limit: pageSize,
+          p_offset: page * pageSize,
+        });
+        if (error) throw error;
+        const raw = ((data as unknown) as (EquipmentParkRow & { total_count: number })[]) ?? [];
+        return {
+          rows: raw.map(({ total_count, filial_nome, ...rest }) => ({
+            ...(rest as unknown as ClientEquipment),
+            import_batch_id: rest.import_batch_id ?? null,
+            transfer_history: rest.transfer_history ?? null,
+          })),
+          totalCount: raw.length > 0 ? Number(raw[0].total_count) : 0,
+          source: 'rpc',
+        };
+      }
+
+      // Caminho legado apenas para filtros ainda não cobertos pela RPC
+      const isFirstPage = page === 0;
+      let q = supabase
+        .from('client_equipment' as any)
+        .select(EQUIPMENT_COLUMNS, isFirstPage ? { count: 'exact' } : undefined)
+        .order('validation_priority', { ascending: false, nullsFirst: false })
+        .order('updated_at', { ascending: false })
+        .range(page * pageSize, page * pageSize + pageSize - 1);
+
+      const clientCode = norm(filters.clientCode);
+      const clientName = norm(filters.clientName);
+      const search = norm(filters.search);
+      if (clientCode) q = q.eq('client_code', clientCode);
+      if (clientName) q = q.ilike('client_name', `%${clientName}%`);
+      if (p.machineType) q = q.eq('machine_type', p.machineType);
+      if (p.machineStatus) q = q.eq('machine_status', p.machineStatus);
+      if (p.validationPriority === true) q = q.eq('validation_priority', true);
+      if (p.validatedByIn && p.validatedByIn.length > 0) q = q.in('validated_by', p.validatedByIn);
+      if (search) {
+        const s = search.replace(/[%,]/g, '');
+        q = q.or(
+          `model.ilike.%${s}%,serial_chassis.ilike.%${s}%,client_name.ilike.%${s}%,client_code.ilike.%${s}%`,
+        );
+      }
+
+      const { data, error, count } = await q;
+      if (error) throw error;
+      return {
+        rows: (data as unknown as ClientEquipment[]) ?? [],
+        totalCount: count ?? null,
+        source: 'direct',
+      };
+    },
+  });
+};
+
+export interface EquipmentParkKpis {
+  total: number;
+  total_validadas: number;
+  prioridades: number;
+  nao_prioridades: number;
+  clientes: number;
+  pendentes: number;
+  validacoes_7d: number;
+}
+
+export const useEquipmentParkKpis = (filters?: {
+  search?: string | null;
+  filialId?: string | null;
+  machineStatus?: string | null;
+  pukStatus?: string | null;
+  validationPriority?: boolean | null;
+}) => {
+  const search = norm(filters?.search);
+  const filialId = norm(filters?.filialId);
+  const machineStatus = norm(filters?.machineStatus);
+  const pukStatus = norm(filters?.pukStatus);
+  const validationPriority = filters?.validationPriority ?? null;
+
+  return useQuery<EquipmentParkKpis | null>({
+    queryKey: [
+      'client-equipment',
+      'park-kpis',
+      { search, filialId, machineStatus, pukStatus, validationPriority },
+    ],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    queryFn: async (): Promise<EquipmentParkKpis | null> => {
+      const { data, error } = await (supabase as any).rpc('get_equipment_park_kpis', {
+        p_search: search,
+        p_filial_id: filialId,
+        p_machine_status: machineStatus,
+        p_puk_status: pukStatus,
+        p_validation_priority: validationPriority,
+      });
+      if (error) throw error;
+      const row = (((data as unknown) as any[]) ?? [])[0];
+      if (!row) return null;
+      return {
+        total: Number(row.total ?? 0),
+        total_validadas: Number(row.total_validadas ?? 0),
+        prioridades: Number(row.prioridades ?? 0),
+        nao_prioridades: Number(row.nao_prioridades ?? 0),
+        clientes: Number(row.clientes ?? 0),
+        pendentes: Number(row.pendentes ?? 0),
+        validacoes_7d: Number(row.validacoes_7d ?? 0),
+      };
+    },
+  });
+};
+
+// -----------------------------------------------------------------------------
 // Diretório de validadores (para o painel Parque de Máquinas)
 // -----------------------------------------------------------------------------
 export interface EquipmentValidator {
