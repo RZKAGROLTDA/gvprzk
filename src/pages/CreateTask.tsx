@@ -962,8 +962,11 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       endTime: currentTime,
       // Horário atual exato
       checklist: taskCategory === 'workshop-checklist'
-        ? checklist.filter(item => item.responseStatus)
+        // Checklist da Oficina: os 8 itens canônicos são sempre persistidos,
+        // inclusive os não respondidos (response_status = NULL).
+        ? checklist
         : checklist.filter(item => item.selected),
+
       reminders,
       equipmentList,
       ...(taskCategory === 'workshop-checklist' ? {
