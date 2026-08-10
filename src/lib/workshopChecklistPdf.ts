@@ -637,9 +637,8 @@ export const generateWorkshopChecklistPDF = async (
           pdf.rect(x, yPos, photoW, photoH);
         }
         mediaDiag.logPhoto(rec);
-
-        }
       }
+
       yPos += photoH + 4;
     }
   }
