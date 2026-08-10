@@ -577,7 +577,22 @@ const Equipamentos: React.FC = () => {
       </Card>
 
       {/* Lista */}
-      {isLoading ? (
+      {isError ? (
+        <Card className="border-destructive/40">
+          <CardContent className="p-6 flex flex-col items-center gap-3 text-center">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
+            <div>
+              <p className="text-sm font-medium">Não foi possível carregar o parque de máquinas.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(error as any)?.message ?? 'Erro inesperado ao consultar o servidor.'}
+              </p>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="h-3.5 w-3.5 mr-2" /> Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-10">
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando equipamentos...
         </div>
