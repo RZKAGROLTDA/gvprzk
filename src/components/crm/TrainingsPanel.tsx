@@ -28,6 +28,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Target,
   Timer,
   Trash2,
   TrendingUp,
