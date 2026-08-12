@@ -1,128 +1,91 @@
-# Controle de versão por usuário e dispositivo
+# Aba Treinamentos no CRM do Vendedor
 
-Objetivo: saber qual build cada usuário/dispositivo está usando e identificar usuários com algum dispositivo ativo ainda em versão antiga. Módulo apenas de monitoramento do mecanismo de atualização já existente.
+Nova aba independente de tasks: um treinamento existe uma única vez e possui N participantes vinculados. Nada do CRM atual, tarefas, follow-ups, máquinas, checklist, auth ou RLS existentes é alterado.
 
-## 1. Migration completa
+## 1. Estrutura das tabelas
 
-```sql
-CREATE TABLE public.user_app_versions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  device_id text NOT NULL,
-  platform text,
-  user_agent text,
-  build_hash text NOT NULL,
-  build_time timestamptz,
-  app_version text,
-  last_seen_at timestamptz NOT NULL DEFAULT now(),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT user_app_versions_user_device_unique UNIQUE (user_id, device_id)
-);
+### `public.trainings`
+| Campo | Tipo | Nota |
+|---|---|---|
+| id | uuid PK | |
+| name | text NOT NULL | nome do treinamento |
+| category | text NOT NULL | PUK, Educate, Comercial, Produtos, Processos, Outros |
+| training_date | date NOT NULL | |
+| start_time | text NOT NULL | HH:MM |
+| end_time | text NOT NULL | |
+| workload_hours | numeric NOT NULL | carga horária programada |
+| modality | text NOT NULL | presencial \| online |
+| location | text | local físico ou link |
+| instructor | text | |
+| filial_id | uuid → filiais | filial organizadora (opcional) |
+| status | text NOT NULL default 'programado' | programado \| realizado \| cancelado |
+| observation | text | |
+| created_by | uuid | |
+| created_at / updated_at | timestamptz | trigger de updated_at |
 
-CREATE INDEX idx_uav_user ON public.user_app_versions(user_id);
-CREATE INDEX idx_uav_build_hash ON public.user_app_versions(build_hash);
-CREATE INDEX idx_uav_last_seen ON public.user_app_versions(last_seen_at DESC);
+### `public.training_participants`
+| Campo | Tipo | Nota |
+|---|---|---|
+| id | uuid PK | |
+| training_id | uuid → trainings ON DELETE CASCADE | |
+| user_id | uuid | referencia `profiles.user_id` (nunca auth.users) |
+| participant_name | text NOT NULL | snapshot histórico |
+| participant_role | text | snapshot do perfil |
+| filial_id | uuid → filiais | snapshot |
+| status | text NOT NULL default 'programado' | programado \| confirmado \| realizado \| nao_participou \| reagendado |
+| attended | boolean NOT NULL default false | presença |
+| hours_completed | numeric NOT NULL default 0 | horas realizadas |
+| completed_at | timestamptz | data de conclusão |
+| observation | text | |
+| created_by, created_at, updated_at | | |
+| UNIQUE (training_id, user_id) | | evita duplicidade |
 
-GRANT SELECT, INSERT, UPDATE ON public.user_app_versions TO authenticated;
-GRANT ALL ON public.user_app_versions TO service_role;
+Snapshots de nome/cargo/filial garantem que o histórico sobreviva a desativação de usuário (mesmo padrão de `historical_users`).
 
-ALTER TABLE public.user_app_versions ENABLE ROW LEVEL SECURITY;
-```
+Índices: `trainings(training_date)`, `trainings(filial_id)`, `training_participants(user_id)`, `training_participants(training_id)`.
 
-Trigger de `updated_at` reutilizando a função existente do projeto.
-Sem UNIQUE em `user_id` isolado: a chave é `(user_id, device_id)`, então celular, computador e PWA ficam em linhas separadas, cada um com seu próprio build.
-Nenhuma tabela existente é alterada.
+## 2. RLS proposta (apenas nas duas tabelas novas)
 
-## 2. Policies
+GRANTs: `SELECT, INSERT, UPDATE, DELETE` para `authenticated`; `ALL` para `service_role`. Sem acesso `anon`.
 
-```sql
-CREATE POLICY "own device version insert" ON public.user_app_versions
-  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+`trainings`
+- SELECT: admin/manager (tudo); supervisor (filial própria via `get_supervisor_filial_id()`); demais usuários somente treinamentos em que constam como participante.
+- INSERT/UPDATE/DELETE: admin/manager livre; supervisor restrito à própria filial.
 
-CREATE POLICY "own device version update" ON public.user_app_versions
-  FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+`training_participants`
+- SELECT: admin/manager; supervisor na própria filial; o próprio usuário (`user_id = auth.uid()`).
+- INSERT/DELETE: admin/manager e supervisor (na filial dele).
+- UPDATE: admin/manager e supervisor; o próprio participante pode atualizar apenas presença/horas/conclusão/observação do próprio registro.
 
-CREATE POLICY "own device version select" ON public.user_app_versions
-  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+Todas as checagens usam `has_role()` — nunca `profiles.role`.
 
-CREATE POLICY "admins and managers view all versions" ON public.user_app_versions
-  FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'manager'));
-```
+## 3. Fluxo de criação
+1. Botão `+ Novo Treinamento` abre diálogo em duas etapas.
+2. Etapa 1: dados do treinamento (nome, categoria, data, horários, carga horária, modalidade, local/link, instrutor, observação). Carga horária é pré-calculada a partir de início/fim e pode ser ajustada manualmente.
+3. Etapa 2: seleção de participantes.
+4. Ao salvar: insere 1 linha em `trainings` e N linhas em `training_participants` (status `programado`, horas 0), com snapshot de nome/cargo/filial.
 
-Sem política de DELETE — usuários comuns não excluem registros. Consultor/vendedor/supervisor não veem registros de terceiros. Nenhuma política existente de outra tabela é tocada.
+## 4. Fluxo de seleção de participantes
+- Lista vem de `useFilteredConsultants` (já respeita o escopo de supervisor) enriquecida com cargo via `profiles`/`user_roles`.
+- Filtros: Filial, Cargo/perfil, busca por nome.
+- Ações em massa: "selecionar todos da filial", "selecionar todos do perfil", limpar seleção, e seleção individual por checkbox.
+- Contador fixo no rodapé: `Participantes selecionados: X`.
 
-## 3. Geração do device_id
+## 5. Desenho da aba
+- Nova `TabsTrigger` "Treinamentos" em `src/pages/CRM.tsx` (grid passa a 6/5 colunas conforme permissão).
+- Topo: 6 cards de KPI — Treinamentos programados, Realizados, Pendentes, Horas programadas, Horas realizadas, Participantes programados.
+- Barra de filtros no mesmo padrão do Gerencial: Período (de/até + atalhos), Filial, Categoria, Status, Participante, Instrutor.
+- Sub-visões por Tabs internas:
+  - **Calendário** — mesmo padrão visual da Programação (`MonthlyAgendaGrid`), com nome, horário, modalidade, nº de participantes e status no dia.
+  - **Lista** — tabela com Data, Treinamento, Categoria, Instrutor, Modalidade, Participantes, Realizados, Pendentes, Carga horária, Status; linha expansível mostrando todos os participantes com status, presença, horas e ação de atualização.
+- Painel **Por colaborador**: histórico por pessoa (programados, realizados, pendentes, horas programadas, horas realizadas).
 
-- Gerado uma única vez por instalação: `crypto.randomUUID()`.
-- Guardado em `localStorage` com a chave `app-device-id` e reutilizado em todos os boots (PWA instalada tem storage próprio, logo device_id próprio).
-- Sem qualquer dado pessoal na composição do ID (aleatório puro, sem e-mail, nome, IP ou fingerprint).
-- `platform`: derivado de forma grosseira (`ios` / `android` / `desktop` + flag `pwa` quando em display-mode standalone).
-- `user_agent`: string do navegador, apenas para suporte técnico.
+Arquivos novos: `src/components/crm/TrainingsPanel.tsx`, `TrainingFormDialog.tsx`, `TrainingParticipantsPicker.tsx`, `TrainingParticipantHistory.tsx`, `src/hooks/useTrainings.ts`.
 
-## 4. Frequência do heartbeat
-
-```text
-boot do app (auth + profile liberados)
-        |
-        v
-upsert imediato  (onConflict: user_id,device_id)
-  build_hash / build_time / app_version / platform / user_agent / last_seen_at = now()
-        |
-        v
-enquanto o app está aberto e visível:
-  a cada 30 min -> update leve de last_seen_at (e do build, se mudou)
-        |
-        v
-após atualização automática (novo bundle carregado):
-  novo boot -> upsert imediato com o novo build
-```
-
-- Registro imediato na abertura/login; depois apenas 1 update a cada 30 minutos.
-- Nada é enviado offline; falhas são silenciosas e não bloqueiam o acesso.
-
-## 5. Regra de classificação
-
-Dispositivo é considerado **ativo** se `last_seen_at >= now() - JANELA`, com `JANELA` configurável e inicialmente **30 dias**. Dispositivos fora da janela são ignorados na classificação (um celular parado há meses não deixa o usuário eternamente desatualizado).
-
-Status do dispositivo ativo:
-- Atualizado: `build_hash` = build publicado atual
-- Compatível: `build_time >= minBuildTime`, mas hash diferente do atual
-- Desatualizado: `build_time < minBuildTime`
-
-Status do usuário (agregado dos dispositivos ativos):
-- Sem informação: nenhum heartbeat / nenhum dispositivo ativo
-- Desatualizado: pelo menos um dispositivo ativo abaixo do build mínimo
-- Compatível: nenhum abaixo do mínimo, mas existe dispositivo em build anterior ao atual
-- Atualizado: todos os dispositivos ativos no build atual
-
-## 6. Tela administrativa
-
-Rota `/versoes-usuarios`, item "Versões dos Usuários" em Administração (admin/manager).
-
-Cards do topo:
-
-```text
-Build publicado atual        Build mínimo obrigatório
-o8koi43l (v2026.08.07.1305)  o8koi43l
-──────────────────────────────────────────────────────────────
-Usuários ativos   100% atualizados   Com dispositivo desatualizado
-Dispositivos atualizados   Dispositivos desatualizados   Sem informação
-```
-
-Build publicado atual e build mínimo ficam em cards separados e rotulados: compatível não significa estar na última versão.
-
-Tabela principal — uma linha por usuário:
-
-Usuário · Filial · Perfil · Último acesso · Build mais recente · Status
-
-Linha expansível mostrando os dispositivos do usuário:
-
-Dispositivo (id curto) · Plataforma · Build · Última atividade · Status
-
-Filtros: status, filial, perfil, busca por nome/e-mail. Janela de atividade ajustável (padrão 30 dias).
-
-## 7. Fora de escopo
-
-Nenhum mecanismo novo de atualização. Sem mudanças em auth, RLS existentes, tarefas, checklist, máquinas, mídia, fila offline ou regras de negócio.
+## 6. Carga horária e execução
+- Carga horária programada = `workload_hours` do treinamento (sugerida por `end_time - start_time`).
+- Horas programadas (agregado) = Σ `workload_hours` × nº de participantes programados.
+- Horas realizadas = Σ `hours_completed` dos participantes.
+- Participante pendente = status em (`programado`, `confirmado`, `reagendado`).
+- Treinamento realizado = todos os participantes com status `realizado` ou `nao_participou`; pendente caso contrário — por isso um treinamento pode estar realizado para parte do grupo e pendente para outros.
+- % execução = participantes realizados / participantes programados. As mesmas agregações ficam disponíveis por filial, perfil e categoria, prontas para os indicadores da aba Gerencial — que **não** será alterada nesta etapa.
