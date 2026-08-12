@@ -366,7 +366,57 @@ export const useEquipmentParkKpis = (filters?: {
 };
 
 // -----------------------------------------------------------------------------
-// Diretório de validadores (para o painel Parque de Máquinas)
+// Resumo de validações por filial (tabela "Execução das Validações")
+// -----------------------------------------------------------------------------
+export interface EquipmentValidationSummaryRow {
+  filial_nome: string;
+  validated_count: number;
+  priority_count: number;
+  non_priority_count: number;
+  client_count: number;
+}
+
+export interface EquipmentValidationSummary {
+  total_validated: number;
+  priority_validated: number;
+  non_priority_validated: number;
+  distinct_validated_clients: number;
+  by_filial: EquipmentValidationSummaryRow[];
+}
+
+export const useEquipmentValidationSummary = () => {
+  return useQuery<EquipmentValidationSummary | null>({
+    queryKey: ['client-equipment', 'validation-summary'],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+    queryFn: async (): Promise<EquipmentValidationSummary | null> => {
+      const { data, error } = await (supabase as any).rpc('get_equipment_validation_summary');
+      if (error) throw error;
+      const row = (((data as unknown) as any[]) ?? [])[0];
+      if (!row) return null;
+      const byFilialRaw = Array.isArray(row.by_filial) ? row.by_filial : [];
+      const by_filial: EquipmentValidationSummaryRow[] = byFilialRaw.map((f: any) => ({
+        filial_nome: String(f.filial_nome ?? '—'),
+        validated_count: Number(f.validated_count ?? 0),
+        priority_count: Number(f.priority_count ?? 0),
+        non_priority_count: Number(f.non_priority_count ?? 0),
+        client_count: Number(f.client_count ?? 0),
+      }));
+      return {
+        total_validated: Number(row.total_validated ?? 0),
+        priority_validated: Number(row.priority_validated ?? 0),
+        non_priority_validated: Number(row.non_priority_validated ?? 0),
+        distinct_validated_clients: Number(row.distinct_validated_clients ?? 0),
+        by_filial,
+      };
+    },
+  });
+};
+
+// -----------------------------------------------------------------------------
+// Diretório de validadores (para filtros e export do Parque de Máquinas)
 // -----------------------------------------------------------------------------
 export interface EquipmentValidator {
   user_id: string;
