@@ -10,6 +10,7 @@ export interface TrainingRow {
   training_time: string;
   hours: number;
   status: TrainingStatus;
+  training_catalog_id: string | null;
   user_id: string;
   user_name: string;
   filial_id: string | null;
@@ -25,7 +26,9 @@ export interface TrainingInput {
   hours: number;
   user_id: string;
   status?: TrainingStatus;
+  training_catalog_id?: string | null;
 }
+
 
 export interface TrainingFilters {
   startDate?: string | null;
@@ -51,7 +54,7 @@ const TRAININGS_KEY = 'trainings';
 const TRAINING_STATS_KEY = 'trainings-stats';
 
 const TRAINING_COLUMNS =
-  'id, name, training_date, training_time, hours, status, user_id, user_name, filial_id, created_by, created_at, updated_at';
+  'id, name, training_date, training_time, hours, status, training_catalog_id, user_id, user_name, filial_id, created_by, created_at, updated_at';
 
 export const useTrainings = (filters: TrainingFilters = {}, enabled = true) => {
   const { startDate, endDate, userId, filialId, status } = filters;
@@ -117,6 +120,7 @@ export const useCreateTraining = () => {
         training_time: input.training_time,
         hours: input.hours,
         user_id: input.user_id,
+        training_catalog_id: input.training_catalog_id ?? null,
       } as any);
       if (error) throw error;
     },
@@ -138,6 +142,7 @@ export const useUpdateTraining = () => {
       if (patch.hours !== undefined) payload.hours = patch.hours;
       if (patch.user_id !== undefined) payload.user_id = patch.user_id;
       if (patch.status !== undefined) payload.status = patch.status;
+      if (patch.training_catalog_id !== undefined) payload.training_catalog_id = patch.training_catalog_id;
 
       const { error } = await supabase.from('trainings').update(payload as any).eq('id', id);
       if (error) throw error;
@@ -212,3 +217,53 @@ export const fetchTrainingCreatorNames = async (userIds: string[]): Promise<Reco
   (data ?? []).forEach((p) => { map[p.user_id] = p.name; });
   return map;
 };
+
+export interface TrainingCatalogItem {
+  id: string;
+  name: string;
+  default_hours: number;
+}
+
+/** Catálogo oficial de treinamentos disponíveis para agendamento. */
+export const useTrainingCatalog = (enabled = true) =>
+  useQuery({
+    queryKey: ['training-catalog'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('training_catalog')
+        .select('id, name, default_hours')
+        .eq('active', true)
+        .order('name', { ascending: true })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as TrainingCatalogItem[];
+    },
+    enabled,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+export interface TrainingGoal {
+  total_hours: number;
+  realized_hours: number;
+  pending_hours: number;
+  execution_percent: number;
+  deadline: string;
+}
+
+/** Meta global de horas (independente dos filtros de tela). */
+export const useTrainingGoal = (enabled = true) =>
+  useQuery({
+    queryKey: ['training-goal'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_training_goal');
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return (row ?? null) as unknown as TrainingGoal | null;
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });

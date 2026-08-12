@@ -14,6 +14,7 @@ import {
   TrainingRow,
   TrainingStatus,
   useCreateTraining,
+  useTrainingCatalog,
   useUpdateTraining,
 } from '@/hooks/useTrainings';
 
@@ -58,6 +59,11 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
   const [hours, setHours] = useState('');
   const [status, setStatus] = useState<TrainingStatus>('pendente');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [catalogId, setCatalogId] = useState<string>('');
+  const [catalogOpen, setCatalogOpen] = useState(false);
+
+  const { data: catalog = [], isLoading: catalogLoading } = useTrainingCatalog(open);
+  const fromCatalog = !!catalogId;
 
   useEffect(() => {
     if (!open) return;
@@ -68,6 +74,8 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
     setHours(training ? String(training.hours) : '');
     setStatus(training?.status ?? 'pendente');
     setPickerOpen(false);
+    setCatalogId(training?.training_catalog_id ?? '');
+    setCatalogOpen(false);
   }, [open, training, canSelectEmployee, selfUserId]);
 
   const selectedLabel = useMemo(() => {
@@ -79,6 +87,12 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
     }
     return training?.user_name ?? '';
   }, [canSelectEmployee, employees, userId, filialNames, selfName, training]);
+
+  const catalogLabel = useMemo(() => {
+    const found = catalog.find((c) => c.id === catalogId);
+    if (!found) return '';
+    return `${found.name} — ${Number(found.default_hours).toLocaleString('pt-BR')}h`;
+  }, [catalog, catalogId]);
 
   const handleSubmit = async () => {
     const parsedHours = Number(String(hours).replace(',', '.'));
@@ -97,6 +111,7 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
       training_time: time.length === 5 ? `${time}:00` : time,
       hours: parsedHours,
       user_id: userId,
+      training_catalog_id: catalogId || null,
     };
 
     try {
@@ -180,12 +195,68 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
           </div>
 
           <div className="space-y-2">
+            <Label>Treinamento do catálogo</Label>
+            <Popover open={catalogOpen} onOpenChange={setCatalogOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                  <span className={cn('truncate', !catalogId && 'text-muted-foreground')}>
+                    {catalogLabel || 'Selecione do catálogo (opcional)'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar treinamento..." />
+                  <CommandList>
+                    <CommandEmpty>
+                      {catalogLoading ? 'Carregando...' : 'Nenhum treinamento encontrado.'}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="Treinamento personalizado"
+                        onSelect={() => {
+                          setCatalogId('');
+                          setCatalogOpen(false);
+                        }}
+                      >
+                        <Check className={cn('mr-2 h-4 w-4', !catalogId ? 'opacity-100' : 'opacity-0')} />
+                        Treinamento personalizado
+                      </CommandItem>
+                      {catalog.map((item) => {
+                        const label = `${item.name} — ${Number(item.default_hours).toLocaleString('pt-BR')}h`;
+                        return (
+                          <CommandItem
+                            key={item.id}
+                            value={label}
+                            onSelect={() => {
+                              setCatalogId(item.id);
+                              setName(item.name);
+                              setHours(String(item.default_hours));
+                              setCatalogOpen(false);
+                            }}
+                          >
+                            <Check className={cn('mr-2 h-4 w-4', catalogId === item.id ? 'opacity-100' : 'opacity-0')} />
+                            <span className="truncate">{label}</span>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="training-name">Nome do treinamento</Label>
             <Input
               id="training-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Treinamento de Colheitadeiras"
+              readOnly={fromCatalog}
+              disabled={fromCatalog}
             />
           </div>
 
@@ -210,7 +281,14 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
               value={hours}
               onChange={(e) => setHours(e.target.value)}
               placeholder="Ex: 4"
+              readOnly={fromCatalog}
+              disabled={fromCatalog}
             />
+            {fromCatalog && (
+              <p className="text-xs text-muted-foreground">
+                Nome e horas definidos pelo catálogo oficial.
+              </p>
+            )}
           </div>
 
           {isEdit && (
