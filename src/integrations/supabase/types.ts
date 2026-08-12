@@ -1656,6 +1656,57 @@ export type Database = {
           },
         ]
       }
+      training_catalog: {
+        Row: {
+          active: boolean
+          counts_for_goal: boolean
+          created_at: string
+          default_hours: number
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          counts_for_goal?: boolean
+          created_at?: string
+          default_hours: number
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          counts_for_goal?: boolean
+          created_at?: string
+          default_hours?: number
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      training_goal_settings: {
+        Row: {
+          created_at: string
+          goal_deadline: string
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          goal_deadline: string
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          goal_deadline?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       trainings: {
         Row: {
           created_at: string
@@ -1665,6 +1716,7 @@ export type Database = {
           id: string
           name: string
           status: string
+          training_catalog_id: string | null
           training_date: string
           training_time: string
           updated_at: string
@@ -1679,6 +1731,7 @@ export type Database = {
           id?: string
           name: string
           status?: string
+          training_catalog_id?: string | null
           training_date: string
           training_time: string
           updated_at?: string
@@ -1693,13 +1746,22 @@ export type Database = {
           id?: string
           name?: string
           status?: string
+          training_catalog_id?: string | null
           training_date?: string
           training_time?: string
           updated_at?: string
           user_id?: string
           user_name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trainings_training_catalog_id_fkey"
+            columns: ["training_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "training_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_app_versions: {
         Row: {
@@ -3121,6 +3183,16 @@ export type Database = {
           start_date: string
           status: string
           task_type: string
+        }[]
+      }
+      get_training_goal: {
+        Args: never
+        Returns: {
+          deadline: string
+          execution_percent: number
+          pending_hours: number
+          realized_hours: number
+          total_hours: number
         }[]
       }
       get_trainings_stats: {
