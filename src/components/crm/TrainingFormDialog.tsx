@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   TrainingEmployeeOption,
   TrainingRow,
+  TrainingStatus,
   useCreateTraining,
   useUpdateTraining,
 } from '@/hooks/useTrainings';
@@ -26,6 +28,12 @@ interface TrainingFormDialogProps {
   selfUserId: string | null;
   selfName: string;
 }
+
+const STATUS_LABELS: Record<TrainingStatus, string> = {
+  pendente: 'Pendente',
+  realizado: 'Realizado',
+  nao_realizado: 'Não realizado',
+};
 
 export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
   open,
@@ -48,6 +56,7 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [hours, setHours] = useState('');
+  const [status, setStatus] = useState<TrainingStatus>('pendente');
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
@@ -57,6 +66,7 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
     setDate(training?.training_date ?? '');
     setTime((training?.training_time ?? '').slice(0, 5));
     setHours(training ? String(training.hours) : '');
+    setStatus(training?.status ?? 'pendente');
     setPickerOpen(false);
   }, [open, training, canSelectEmployee, selfUserId]);
 
@@ -91,7 +101,7 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
 
     try {
       if (isEdit && training) {
-        await updateMutation.mutateAsync({ id: training.id, ...payload });
+        await updateMutation.mutateAsync({ id: training.id, ...payload, status });
         toast.success('Treinamento atualizado.');
       } else {
         await createMutation.mutateAsync(payload);
@@ -99,7 +109,6 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
       }
       onOpenChange(false);
     } catch (error: any) {
-      // Nunca engolir erro do Supabase: manter o formulário aberto.
       const message = error?.message || error?.details || 'Falha ao salvar o treinamento.';
       console.error('❌ Treinamento: erro ao salvar', error);
       toast.error(message);
@@ -203,6 +212,22 @@ export const TrainingFormDialog: React.FC<TrainingFormDialogProps> = ({
               placeholder="Ex: 4"
             />
           </div>
+
+          {isEdit && (
+            <div className="space-y-2">
+              <Label htmlFor="training-status">Status</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as TrainingStatus)}>
+                <SelectTrigger id="training-status">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="realizado">Realizado</SelectItem>
+                  <SelectItem value="nao_realizado">Não realizado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
