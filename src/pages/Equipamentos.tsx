@@ -16,8 +16,8 @@ import {
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from '@/components/equipment/equipmentConstants';
 import {
-  useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators,
-  type ClientEquipment, type EquipmentValidator,
+  useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators, useEquipmentValidationSummary,
+  type ClientEquipment, type EquipmentValidator, type EquipmentValidationSummaryRow,
 } from '@/hooks/useClientEquipment';
 
 
@@ -198,24 +198,19 @@ const Equipamentos: React.FC = () => {
 
   const totalPages = total != null ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : null;
 
-  // Resumo por usuário (ordenado desc por validações)
+  // Resumo por usuário (ordenado desc por validações) — usado nos filtros/export
   const validatorsRanked = useMemo(
     () => [...validators].sort((a, b) => b.validated_count - a.validated_count),
     [validators],
   );
 
-  // Resumo por filial do validador (dados agregados no servidor pela RPC
-  // get_equipment_validators — sem varreduras de client_equipment no cliente)
-  const filialRanked = useMemo(() => {
-    const map = new Map<string, { filial_nome: string; validated_count: number }>();
-    validators.forEach((v) => {
-      const key = v.filial_nome || '—';
-      const cur = map.get(key);
-      if (cur) cur.validated_count += v.validated_count;
-      else map.set(key, { filial_nome: key, validated_count: v.validated_count });
-    });
-    return [...map.values()].sort((a, b) => b.validated_count - a.validated_count);
-  }, [validators]);
+  // Resumo por filial — fonte correta: get_equipment_validation_summary().by_filial
+  const { data: validationSummary } = useEquipmentValidationSummary();
+
+  const filialRanked = useMemo<EquipmentValidationSummaryRow[]>(() => {
+    const rows = validationSummary?.by_filial ?? [];
+    return [...rows].sort((a, b) => b.validated_count - a.validated_count);
+  }, [validationSummary]);
 
 
 
@@ -287,7 +282,7 @@ const Equipamentos: React.FC = () => {
       </Card>
 
 
-      {/* Execução das Validações — resumo por filial do validador */}
+      {/* Execução das Validações — resumo por filial (fonte: get_equipment_validation_summary) */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -307,6 +302,9 @@ const Equipamentos: React.FC = () => {
                   <tr className="text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Total Validadas</th>
+                    <th className="px-3 py-2 font-medium text-right">Prioridades</th>
+                    <th className="px-3 py-2 font-medium text-right">Não Prioridades</th>
+                    <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -316,13 +314,21 @@ const Equipamentos: React.FC = () => {
                       <td className="px-3 py-1.5 text-right tabular-nums font-medium">
                         {f.validated_count.toLocaleString('pt-BR')}
                       </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {f.priority_count.toLocaleString('pt-BR')}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {f.non_priority_count.toLocaleString('pt-BR')}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                        {f.client_count.toLocaleString('pt-BR')}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-
         </CardContent>
       </Card>
 
