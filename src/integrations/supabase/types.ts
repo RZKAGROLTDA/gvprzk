@@ -445,6 +445,50 @@ export type Database = {
         }
         Relationships: []
       }
+      historical_users: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          email: string | null
+          filial_id: string | null
+          name: string
+          role: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
+          filial_id?: string | null
+          name: string
+          role?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string | null
+          filial_id?: string | null
+          name?: string
+          role?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_users_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           cliente_nome: string
