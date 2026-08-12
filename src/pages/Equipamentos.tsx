@@ -282,7 +282,7 @@ const Equipamentos: React.FC = () => {
       </Card>
 
 
-      {/* Execução das Validações — resumo por filial do validador */}
+      {/* Execução das Validações — resumo por filial (fonte: get_equipment_validation_summary) */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -302,6 +302,9 @@ const Equipamentos: React.FC = () => {
                   <tr className="text-left text-muted-foreground">
                     <th className="px-3 py-2 font-medium">Filial</th>
                     <th className="px-3 py-2 font-medium text-right">Total Validadas</th>
+                    <th className="px-3 py-2 font-medium text-right">Prioridades</th>
+                    <th className="px-3 py-2 font-medium text-right">Não Prioridades</th>
+                    <th className="px-3 py-2 font-medium text-right">Clientes Validados</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -311,13 +314,21 @@ const Equipamentos: React.FC = () => {
                       <td className="px-3 py-1.5 text-right tabular-nums font-medium">
                         {f.validated_count.toLocaleString('pt-BR')}
                       </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {f.priority_count.toLocaleString('pt-BR')}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">
+                        {f.non_priority_count.toLocaleString('pt-BR')}
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-medium">
+                        {f.client_count.toLocaleString('pt-BR')}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-
         </CardContent>
       </Card>
 
