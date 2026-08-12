@@ -1656,6 +1656,48 @@ export type Database = {
           },
         ]
       }
+      trainings: {
+        Row: {
+          created_at: string
+          created_by: string
+          filial_id: string | null
+          hours: number
+          id: string
+          name: string
+          training_date: string
+          training_time: string
+          updated_at: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          filial_id?: string | null
+          hours: number
+          id?: string
+          name: string
+          training_date: string
+          training_time: string
+          updated_at?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          filial_id?: string | null
+          hours?: number
+          id?: string
+          name?: string
+          training_date?: string
+          training_time?: string
+          updated_at?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
       user_app_versions: {
         Row: {
           app_version: string | null
