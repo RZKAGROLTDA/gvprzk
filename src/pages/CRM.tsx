@@ -1,12 +1,13 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, Users, RotateCcw, BarChart3, CalendarPlus } from 'lucide-react';
+import { CalendarDays, Users, RotateCcw, BarChart3, CalendarPlus, GraduationCap } from 'lucide-react';
 import { WeeklyAgenda } from '@/components/crm/WeeklyAgenda';
 import { ClientPortfolio } from '@/components/crm/ClientPortfolio';
 import { Returns } from '@/components/crm/Returns';
 import { CRMManagement } from '@/components/crm/CRMManagement';
 import { VisitSchedulePanel } from '@/components/crm/VisitSchedulePanel';
+import { TrainingsPanel } from '@/components/crm/TrainingsPanel';
 import { useUserRole } from '@/hooks/useUserRole';
 
 const CRM: React.FC = () => {
@@ -24,7 +25,7 @@ const CRM: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="agenda" className="w-full">
-            <TabsList className={`grid w-full ${canManage ? 'grid-cols-5 max-w-3xl' : 'grid-cols-4 max-w-2xl'}`}>
+            <TabsList className={`grid w-full ${canManage ? 'grid-cols-6 max-w-4xl' : 'grid-cols-5 max-w-3xl'}`}>
               <TabsTrigger value="agenda" className="gap-2">
                 <CalendarDays className="h-4 w-4" /> Agenda Semanal
               </TabsTrigger>
@@ -36,6 +37,9 @@ const CRM: React.FC = () => {
               </TabsTrigger>
               <TabsTrigger value="retornos" className="gap-2">
                 <RotateCcw className="h-4 w-4" /> Retornos
+              </TabsTrigger>
+              <TabsTrigger value="treinamentos" className="gap-2">
+                <GraduationCap className="h-4 w-4" /> Treinamentos
               </TabsTrigger>
               {canManage && (
                 <TabsTrigger value="gerencial" className="gap-2">
@@ -54,6 +58,9 @@ const CRM: React.FC = () => {
             </TabsContent>
             <TabsContent value="retornos" className="mt-4">
               <Returns />
+            </TabsContent>
+            <TabsContent value="treinamentos" className="mt-4">
+              <TrainingsPanel />
             </TabsContent>
             {canManage && (
               <TabsContent value="gerencial" className="mt-4">
