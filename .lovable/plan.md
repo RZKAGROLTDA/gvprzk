@@ -1,54 +1,103 @@
-# Aba Treinamentos (versão simples) — CRM do Vendedor
+# Aba Treinamentos — CRM do Vendedor (versão mínima)
 
-Controle simples de agendamento: cada registro = 1 treinamento + 1 colaborador. Sem tasks, sem estrutura de participantes, sem presença/status. Nada do CRM atual, follow-ups, auth ou RLS existentes é alterado.
+Cada registro em `public.trainings` representa 1 treinamento agendado para 1 colaborador. Sem tasks, sem participantes, sem presença/status, sem alterações no CRM atual, follow-ups, auth ou RLS existentes.
 
-## 1. Tabela necessária
+## 1. CREATE TABLE final
 
-### `public.trainings`
-| Campo | Tipo | Nota |
-|---|---|---|
-| id | uuid PK | |
-| name | text NOT NULL | nome do treinamento |
-| training_date | date NOT NULL | data |
-| training_time | text NOT NULL | horário HH:MM |
-| hours | numeric NOT NULL | quantidade de horas |
-| user_id | uuid NOT NULL | colaborador (referencia `profiles.user_id`, nunca auth.users) |
-| user_name | text NOT NULL | snapshot do nome (preserva histórico) |
-| filial_id | uuid → filiais | snapshot da filial do colaborador |
-| created_by | uuid NOT NULL | quem agendou |
-| created_at / updated_at | timestamptz NOT NULL default now() | trigger de updated_at |
+```sql
+CREATE TABLE public.trainings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  training_date date NOT NULL,
+  training_time text NOT NULL,
+  hours numeric NOT NULL,
+  user_id uuid NOT NULL,
+  user_name text NOT NULL,
+  filial_id uuid,
+  created_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
 
-Índices: `trainings(training_date)`, `trainings(user_id)`, `trainings(filial_id)`.
+CREATE INDEX idx_trainings_training_date ON public.trainings(training_date);
+CREATE INDEX idx_trainings_user_id ON public.trainings(user_id);
+CREATE INDEX idx_trainings_filial_id ON public.trainings(filial_id);
+```
 
-## 2. RLS (somente nesta tabela nova)
+## 2. RLS proposta
 
-GRANTs: `SELECT, INSERT, UPDATE, DELETE` para `authenticated`; `ALL` para `service_role`. Nenhum acesso `anon`.
+GRANTs no mesmo migration, logo após CREATE TABLE:
 
-- **SELECT**: admin/manager veem tudo; supervisor vê registros da própria filial (`filial_id = get_supervisor_filial_id()`); demais usuários veem apenas onde `user_id = auth.uid()`.
-- **INSERT**: admin/manager para qualquer colaborador; supervisor apenas para colaboradores da própria filial; demais usuários apenas para si (`user_id = auth.uid()`).
-- **UPDATE / DELETE**: admin/manager; supervisor na própria filial; o próprio usuário nos seus registros.
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.trainings TO authenticated;
+GRANT ALL ON public.trainings TO service_role;
 
-Checagens de papel sempre via `has_role()`.
+ALTER TABLE public.trainings ENABLE ROW LEVEL SECURITY;
+```
 
-## 3. Formulário — `+ Agendar Treinamento`
+Políticas:
 
-Diálogo único com 5 campos:
+- **SELECT**
+  - admin/manager: todos os registros.
+  - supervisor: registros onde `filial_id` é a filial do supervisor (`get_supervisor_filial_id()`).
+  - demais usuários: registros onde `user_id = auth.uid()`.
+
+- **INSERT**
+  - admin/manager: qualquer colaborador.
+  - supervisor: apenas colaboradores da própria filial.
+  - vendedor/RAC/consultor: apenas `user_id = auth.uid()`.
+
+- **UPDATE / DELETE**
+  - admin/manager: todos.
+  - supervisor: registros da própria filial.
+  - o próprio usuário: seus próprios registros (`user_id = auth.uid()`).
+
+Todas as verificações de papel usam a função `public.has_role()`.
+
+## 3. Regra de preenchimento do colaborador
+
+No formulário de agendamento:
+
+- **Se o usuário logado for vendedor, RAC ou consultor:**
+  - `user_id` = `auth.uid()`
+  - `user_name` = nome do próprio usuário
+  - campo Colaborador fica oculto ou em modo somente leitura
+  - não é possível selecionar outro colaborador
+
+- **Se o usuário logado for supervisor, manager ou admin:**
+  - exibe campo de seleção de colaborador
+  - pesquisa por nome
+  - exibe `Nome — Filial` na lista
+  - preenche `user_id`, `user_name` e `filial_id` do colaborador selecionado
+
+## 4. Desenho do formulário
+
+Diálogo acionado pelo botão `+ Agendar Treinamento`.
+
+Campos, na ordem:
+
 1. **Colaborador**
-   - Vendedor / RAC / Consultor: preenchido automaticamente com o usuário logado, campo somente leitura.
-   - Gestor / Supervisor / Manager / Admin: combobox com busca por nome, exibindo `Nome — Filial`. Lista vem de `useFilteredConsultants` (já respeita o escopo do supervisor).
-2. **Nome do treinamento** (texto)
-3. **Data** (date picker, padrão de datas do projeto)
-4. **Horário** (input time)
-5. **Quantidade de horas** (numérico)
+   - Vendedor/RAC/Consultor: oculto/pré-preenchido com o próprio usuário.
+   - Supervisor/Manager/Admin: combobox pesquisável com nome + filial.
 
-Salvar insere uma única linha em `trainings` com snapshot de nome e filial do colaborador.
+2. **Nome do treinamento**
+   - input de texto
 
-## 4. Tela da aba Treinamentos
+3. **Data**
+   - date picker (padrão do projeto)
 
-- Nova `TabsTrigger` "Treinamentos" em `src/pages/CRM.tsx`, ao lado das abas atuais (grid ajusta para 6/5 colunas conforme permissão).
-- Cabeçalho do painel: título + botão `+ Agendar Treinamento` à direita.
-- Barra de filtros no mesmo padrão visual do CRM: **Período** (de/até), **Colaborador**, **Filial** (Filial e Colaborador só aparecem para supervisor/manager/admin).
-- Tabela com colunas: **Data**, **Horário**, **Colaborador**, **Treinamento**, **Horas** — ordenada por data. Ações de editar/excluir na linha, conforme permissão.
-- Estado vazio simples quando não houver agendamentos no período.
+4. **Horário**
+   - input time (texto HH:MM)
 
-Arquivos novos: `src/components/crm/TrainingsPanel.tsx`, `src/components/crm/TrainingFormDialog.tsx`, `src/hooks/useTrainings.ts`. Único arquivo existente alterado: `src/pages/CRM.tsx` (adição da aba).
+5. **Quantidade de horas**
+   - input numérico
+
+Botão salvar insere uma única linha em `public.trainings`.
+
+## 5. Aba Treinamentos (resumo)
+
+- Nova aba ao lado das abas atuais do CRM.
+- Botão `+ Agendar Treinamento` no topo.
+- Filtros: Período, Colaborador, Filial.
+- Tabela: Data, Horário, Colaborador, Filial, Treinamento, Horas.
+- Ações de editar/excluir conforme permissão.
