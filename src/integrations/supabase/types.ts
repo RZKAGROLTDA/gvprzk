@@ -1664,6 +1664,7 @@ export type Database = {
           hours: number
           id: string
           name: string
+          status: string
           training_date: string
           training_time: string
           updated_at: string
@@ -1677,6 +1678,7 @@ export type Database = {
           hours: number
           id?: string
           name: string
+          status?: string
           training_date: string
           training_time: string
           updated_at?: string
@@ -1690,6 +1692,7 @@ export type Database = {
           hours?: number
           id?: string
           name?: string
+          status?: string
           training_date?: string
           training_time?: string
           updated_at?: string
@@ -3119,6 +3122,16 @@ export type Database = {
           status: string
           task_type: string
         }[]
+      }
+      get_trainings_stats: {
+        Args: {
+          p_end_date?: string
+          p_filial_id?: string
+          p_start_date?: string
+          p_status?: string
+          p_user_id?: string
+        }
+        Returns: Json
       }
       get_user_directory_with_fallback: {
         Args: never
