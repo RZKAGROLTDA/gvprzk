@@ -29,7 +29,7 @@ import {
   Pencil,
   Plus,
   Target,
-  Target,
+
   Timer,
   Trash2,
   TrendingUp,
