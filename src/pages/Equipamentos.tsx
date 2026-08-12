@@ -16,8 +16,8 @@ import {
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
 } from '@/components/equipment/equipmentConstants';
 import {
-  useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators,
-  type ClientEquipment, type EquipmentValidator,
+  useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators, useEquipmentValidationSummary,
+  type ClientEquipment, type EquipmentValidator, type EquipmentValidationSummaryRow,
 } from '@/hooks/useClientEquipment';
 
 
