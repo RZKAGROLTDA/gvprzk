@@ -46,12 +46,16 @@ import {
   fetchTrainingCreatorNames,
   useDeleteTraining,
   useTrainingEmployees,
+  useTrainingGoal,
   useTrainingStats,
   useTrainings,
 } from '@/hooks/useTrainings';
 import { TrainingFormDialog } from '@/components/crm/TrainingFormDialog';
 
 const ALL = 'all';
+
+const formatHours = (value: number) =>
+  Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 const STATUS_LABELS: Record<TrainingStatus, string> = {
   pendente: 'Pendente',
@@ -121,6 +125,7 @@ export const TrainingsPanel: React.FC = () => {
 
   const { data: trainings = [], isLoading, error } = useTrainings(filters);
   const { data: stats } = useTrainingStats(filters);
+  const { data: goal } = useTrainingGoal();
 
   const rows = useMemo(
     () =>
@@ -158,6 +163,7 @@ export const TrainingsPanel: React.FC = () => {
         Colaborador: r.user_name,
         Filial: r.filial_id ? filialNames[r.filial_id] ?? '—' : '—',
         Treinamento: r.name,
+        Origem: r.training_catalog_id ? 'Catálogo' : 'Personalizado',
         Horas: Number(r.hours),
         Status: STATUS_LABELS[r.status],
         'Criado por': names[r.created_by] ?? r.created_by,
@@ -176,6 +182,34 @@ export const TrainingsPanel: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {goal && (
+        <Card className="border-primary/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Target className="h-4 w-4 text-primary" />
+              Meta até {formatDateDisplay(goal.deadline)}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Carga horária oficial do catálogo de treinamentos (independente dos filtros).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <GoalStat label="Meta Total" value={`${formatHours(goal.total_hours)} h`} />
+              <GoalStat label="Realizadas" value={`${formatHours(goal.realized_hours)} h`} tone="success" />
+              <GoalStat label="Pendentes" value={`${formatHours(goal.pending_hours)} h`} tone="warning" />
+              <GoalStat label="% Execução" value={`${formatHours(goal.execution_percent)}%`} tone="primary" />
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${Math.min(100, Math.max(0, Number(goal.execution_percent) || 0))}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <div>
@@ -404,5 +438,25 @@ const Kpi: React.FC<{
         <div className="mt-1 text-2xl font-semibold">{value.toLocaleString('pt-BR')}</div>
       </CardContent>
     </Card>
+  );
+};
+
+const GoalStat: React.FC<{
+  label: string;
+  value: string;
+  tone?: 'primary' | 'success' | 'warning';
+}> = ({ label, value, tone }) => {
+  const cls = tone
+    ? {
+        primary: 'text-primary',
+        success: 'text-emerald-600 dark:text-emerald-400',
+        warning: 'text-amber-600 dark:text-amber-400',
+      }[tone]
+    : 'text-muted-foreground';
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div className={cn('text-xs font-medium', cls)}>{label}</div>
+      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    </div>
   );
 };
