@@ -25,7 +25,9 @@ export interface TrainingInput {
   hours: number;
   user_id: string;
   status?: TrainingStatus;
+  training_catalog_id?: string | null;
 }
+
 
 export interface TrainingFilters {
   startDate?: string | null;
