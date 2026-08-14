@@ -803,8 +803,21 @@ export const useTransferEquipment = () => {
         .eq('id', p.id)
         .select(EQUIPMENT_COLUMNS)
         .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error('Não foi possível transferir o equipamento.');
+      if (error) throw classifyEquipmentError(error);
+      if (!data) {
+        const { data: canEdit } = await (supabase as any).rpc('can_edit_client_equipment', {
+          p_equipment_id: p.id,
+        });
+        throw canEdit === true
+          ? new EquipmentMutationError(
+              'conflict',
+              'O registro foi alterado por outro usuário. Recarregue a lista e tente novamente.',
+            )
+          : new EquipmentMutationError(
+              'forbidden',
+              'Esta máquina pertence a outra filial e é somente leitura para o seu perfil.',
+            );
+      }
       return data as unknown as ClientEquipment;
     },
     onSuccess: () => {
