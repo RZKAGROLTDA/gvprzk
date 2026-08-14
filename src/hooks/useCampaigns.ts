@@ -12,9 +12,12 @@ export interface CampaignRule {
   gained_june: number;
   commitment_value: number;
   active: boolean;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   updated_at: string;
 }
+
 
 export interface CampaignClient {
   id: string;
