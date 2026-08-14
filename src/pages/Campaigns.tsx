@@ -1756,6 +1756,10 @@ const RuleRow: React.FC<{
   const [may, setMay] = useState(String(rule.gained_may ?? ''));
   const [commitment, setCommitment] = useState(String(rule.commitment_value ?? ''));
   const [active, setActive] = useState(rule.active);
+  const [startDate, setStartDate] = useState(rule.start_date || '');
+  const [endDate, setEndDate] = useState(rule.end_date || '');
+
+  const periodInvalid = !!startDate && !!endDate && endDate < startDate;
 
   const resetFromRule = () => {
     setName(rule.campaign_name);
@@ -1764,10 +1768,12 @@ const RuleRow: React.FC<{
     setMay(String(rule.gained_may ?? ''));
     setCommitment(String(rule.commitment_value ?? ''));
     setActive(rule.active);
+    setStartDate(rule.start_date || '');
+    setEndDate(rule.end_date || '');
   };
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || periodInvalid) return;
     await update.mutateAsync({
       id: rule.id,
       patch: {
@@ -1779,10 +1785,13 @@ const RuleRow: React.FC<{
         gained_may: parseFloat(may) || 0,
         commitment_value: parseFloat(commitment) || 0,
         active,
+        start_date: startDate || null,
+        end_date: endDate || null,
       },
     });
     setEditing(false);
   };
+
 
   const handleCancel = () => {
     resetFromRule();
