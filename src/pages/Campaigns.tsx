@@ -228,6 +228,44 @@ const EntriesTab: React.FC = () => {
   const [filterSeller, setFilterSeller] = useState<string>('all');
   const [filterClient, setFilterClient] = useState<string>('');
 
+  // --- Filtro de campanhas (multisseleção por campaign_rules.id) ---
+  const campaignOptions = useMemo(() => {
+    return (rules || [])
+      .map((r) => ({
+        id: r.id,
+        label: getCampaignRuleLabel(r),
+        status: getCampaignStatus(r),
+        period: formatPeriod(r),
+      }))
+      .sort(
+        (a, b) =>
+          a.label.localeCompare(b.label),
+      );
+  }, [rules]);
+
+  const currentIds = useMemo(
+    () => campaignOptions.filter((o) => o.status === 'vigente').map((o) => o.id),
+    [campaignOptions],
+  );
+
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[] | null>(null);
+  const initialized = useRef(false);
+
+  // Padrão ao abrir: todas as campanhas vigentes. Se nenhuma vigente existir
+  // (ex.: histórico sem período definido), mantém tudo visível.
+  useEffect(() => {
+    if (initialized.current || campaignOptions.length === 0) return;
+    initialized.current = true;
+    setSelectedCampaignIds(currentIds.length > 0 ? currentIds : null);
+  }, [campaignOptions.length, currentIds]);
+
+  const toggleCampaign = (id: string) => {
+    setSelectedCampaignIds((prev) => {
+      const base = prev ?? campaignOptions.map((o) => o.id);
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
+  };
+
   const allEntries = entries || [];
 
   const sellerOptions = useMemo(() => {
@@ -239,7 +277,9 @@ const EntriesTab: React.FC = () => {
 
   const list = useMemo(() => {
     const term = filterClient.trim().toLowerCase();
+    const campaignFilter = selectedCampaignIds;
     return allEntries.filter((e) => {
+      if (campaignFilter && !campaignFilter.includes(e.campaign_rule_id || '')) return false;
       if (filterFilial !== 'all' && (e.filial_id || '') !== filterFilial) return false;
       if (filterSeller !== 'all' && e.seller_id !== filterSeller) return false;
       if (term) {
@@ -248,7 +288,8 @@ const EntriesTab: React.FC = () => {
       }
       return true;
     });
-  }, [allEntries, filterFilial, filterSeller, filterClient]);
+  }, [allEntries, filterFilial, filterSeller, filterClient, selectedCampaignIds]);
+
 
   const totals = useMemo(() => {
     const count = list.length;
