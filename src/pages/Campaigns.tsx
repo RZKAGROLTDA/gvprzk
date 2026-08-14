@@ -1909,7 +1909,7 @@ const RuleRow: React.FC<{
               size="icon"
               className="h-8 w-8"
               onClick={handleSave}
-              disabled={!name.trim() || update.isPending}
+              disabled={!name.trim() || periodInvalid || update.isPending}
               aria-label="Salvar"
             >
               <Check className="h-4 w-4" />
