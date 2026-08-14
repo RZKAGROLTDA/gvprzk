@@ -13,11 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import {
   CheckCircle2, PauseCircle, ShoppingCart, Trash2, Save, Loader2,
-  ArrowRightLeft, X,
+  ArrowRightLeft, X, Lock,
 } from 'lucide-react';
 import { MACHINE_STATUSES } from './equipmentConstants';
 import {
-  useUpdateEquipment, useTransferEquipment, type ClientEquipment,
+  useUpdateEquipment, useTransferEquipment, useCanEditEquipment,
+  classifyEquipmentError, equipmentErrorTitle, type ClientEquipment,
 } from '@/hooks/useClientEquipment';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -35,6 +36,10 @@ interface ClientSearchResult {
 export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenChange }) => {
   const { mutateAsync, isPending } = useUpdateEquipment();
   const { mutateAsync: transferAsync, isPending: isTransferring } = useTransferEquipment();
+  const { data: canEdit, isLoading: checkingPermission } = useCanEditEquipment(
+    open ? equipment?.id : undefined,
+  );
+  const readOnly = open && canEdit === false;
 
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
@@ -126,11 +131,12 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
       });
       toast({ title: '✅ ' + successMsg });
       onOpenChange(false);
-    } catch (err: any) {
-      console.error(err);
+    } catch (rawErr: any) {
+      const err = classifyEquipmentError(rawErr);
+      console.error('[EquipmentEdit] falha ao salvar:', err.kind, rawErr);
       toast({
-        title: 'Erro ao salvar',
-        description: err?.message ?? 'Tente novamente.',
+        title: equipmentErrorTitle(err),
+        description: err.message,
         variant: 'destructive',
       });
     }
@@ -160,17 +166,18 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
       });
       toast({ title: '✅ Máquina transferida' });
       onOpenChange(false);
-    } catch (err: any) {
-      console.error(err);
+    } catch (rawErr: any) {
+      const err = classifyEquipmentError(rawErr);
+      console.error('[EquipmentTransfer] falha:', err.kind, rawErr);
       toast({
-        title: 'Erro ao transferir',
-        description: err?.message ?? 'Tente novamente.',
+        title: equipmentErrorTitle(err),
+        description: err.message,
         variant: 'destructive',
       });
     }
   };
 
-  const busy = isPending || isTransferring;
+  const busy = isPending || isTransferring || readOnly || checkingPermission;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -189,8 +196,28 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
                 Transferida
               </Badge>
             )}
+            {readOnly && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <Lock className="h-3 w-3" /> Somente leitura
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
+
+        {readOnly && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs flex gap-2">
+            <Lock className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+            <div>
+              <p className="font-medium text-foreground">
+                Esta máquina é somente leitura para o seu perfil
+              </p>
+              <p className="text-muted-foreground">
+                Ela pertence a outra filial. Você pode consultar os dados, mas a edição,
+                validação e transferência ficam com a equipe responsável pela filial.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Ações rápidas de status (apenas alteram o campo, NÃO salvam) */}
         <div className="space-y-2">
@@ -238,7 +265,10 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
         </div>
 
         {/* Campos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+        <fieldset
+          disabled={readOnly}
+          className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 disabled:opacity-70"
+        >
           <div className="space-y-1">
             <Label>Modelo</Label>
             <Input value={model} onChange={(e) => setModel(e.target.value)} maxLength={120} />
@@ -295,7 +325,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
               maxLength={500}
             />
           </div>
-        </div>
+        </fieldset>
 
         {/* Histórico de transferência */}
         {equipment.previous_client_name && (
@@ -470,7 +500,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancelar
           </Button>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className={`flex flex-col sm:flex-row gap-2 ${readOnly ? 'hidden' : ''}`}>
             <Button type="button" variant="outline" onClick={saveOnly} disabled={busy}>
               {isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
               Salvar

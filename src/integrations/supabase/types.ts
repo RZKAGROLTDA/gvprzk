@@ -2033,6 +2033,10 @@ export type Database = {
         Args: { p_task_id: string }
         Returns: boolean
       }
+      can_edit_client_equipment: {
+        Args: { p_equipment_id: string }
+        Returns: boolean
+      }
       can_insert_vacation: { Args: { p_filial_id: string }; Returns: boolean }
       can_modify_user_role: {
         Args: { new_role: string; target_user_id: string }
