@@ -759,8 +759,14 @@ export const useTransferEquipment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: EquipmentTransferPayload) => {
-      const { data: auth } = await supabase.auth.getUser();
-      const userId = auth?.user?.id ?? null;
+      const session = await ensureFreshSession();
+      if (!session) {
+        throw new EquipmentMutationError(
+          'session',
+          'Sua sessão expirou. Faça login novamente para transferir a máquina.',
+        );
+      }
+      const userId = session.user.id;
       const at = p.transferDate;
       const observation = p.note?.trim() || null;
 
