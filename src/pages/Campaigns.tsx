@@ -325,8 +325,20 @@ const EntriesTab: React.FC = () => {
       {/* Filtros */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Campanhas</Label>
+              <CampaignMultiSelect
+                options={campaignOptions}
+                selected={selectedCampaignIds}
+                onToggle={toggleCampaign}
+                onSelectCurrent={() => setSelectedCampaignIds(currentIds)}
+                onSelectAll={() => setSelectedCampaignIds(null)}
+                onClear={() => setSelectedCampaignIds([])}
+              />
+            </div>
+            <div className="space-y-1.5">
+
               <Label className="text-xs text-muted-foreground">Filial</Label>
               <Select value={filterFilial} onValueChange={setFilterFilial}>
                 <SelectTrigger className="h-9">
