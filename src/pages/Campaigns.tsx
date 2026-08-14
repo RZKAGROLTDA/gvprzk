@@ -1923,13 +1923,20 @@ const RuleRow: React.FC<{
   return (
     <TableRow>
       <TableCell className="font-medium align-top">
-        <div>{rule.campaign_name}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span>{rule.campaign_name}</span>
+          <Badge variant={CAMPAIGN_STATUS_VARIANT[getCampaignStatus(rule)]}>
+            {CAMPAIGN_STATUS_LABEL[getCampaignStatus(rule)]}
+          </Badge>
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">{formatPeriod(rule)}</div>
         {usageCount > 0 && (
           <div className="text-xs text-muted-foreground">
             {usageCount} lançamento{usageCount > 1 ? 's' : ''} vinculado{usageCount > 1 ? 's' : ''}
           </div>
         )}
       </TableCell>
+
       <TableCell className="align-top">
         <div className="text-base font-semibold leading-tight">
           {formatCurrency(Number(rule.trigger_min))}
