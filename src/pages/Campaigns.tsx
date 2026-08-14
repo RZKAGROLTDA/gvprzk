@@ -174,6 +174,94 @@ const Campaigns: React.FC = () => {
 };
 
 // ============================================================
+// Filtro de campanhas — multisseleção por campaign_rules.id
+// `selected === null` significa "todas as campanhas" (histórico completo).
+// ============================================================
+interface CampaignOption {
+  id: string;
+  label: string;
+  status: CampaignStatus;
+  period: string;
+}
+
+const CampaignMultiSelect: React.FC<{
+  options: CampaignOption[];
+  selected: string[] | null;
+  onToggle: (id: string) => void;
+  onSelectCurrent: () => void;
+  onSelectAll: () => void;
+  onClear: () => void;
+}> = ({ options, selected, onToggle, onSelectCurrent, onSelectAll, onClear }) => {
+  const isChecked = (id: string) => (selected ? selected.includes(id) : true);
+  const count = selected ? selected.length : options.length;
+
+  const summary =
+    selected === null
+      ? 'Todas as campanhas'
+      : count === 0
+        ? 'Nenhuma campanha'
+        : count === 1
+          ? options.find((o) => o.id === selected[0])?.label || '1 campanha'
+          : `${count} campanhas selecionadas`;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="h-9 w-full justify-between font-normal">
+          <span className="truncate">{summary}</span>
+          <Megaphone className="h-4 w-4 ml-2 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[340px] p-0" align="start">
+        <div className="flex flex-wrap gap-1 p-2 border-b">
+          <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={onSelectCurrent}>
+            Selecionar todas as vigentes
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onSelectAll}>
+            Todas
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onClear}>
+            Limpar
+          </Button>
+        </div>
+        <ScrollArea className="max-h-72">
+          <div className="p-1">
+            {options.length === 0 && (
+              <p className="text-xs text-muted-foreground p-3">Nenhuma campanha cadastrada.</p>
+            )}
+            {options.map((o) => (
+              <label
+                key={o.id}
+                className="flex items-start gap-2 rounded-md p-2 hover:bg-accent cursor-pointer"
+              >
+                <Checkbox
+                  checked={isChecked(o.id)}
+                  onCheckedChange={() => onToggle(o.id)}
+                  className="mt-0.5"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm leading-tight">{o.label}</span>
+                  <span className="flex items-center gap-1.5 mt-1">
+                    <Badge
+                      variant={CAMPAIGN_STATUS_VARIANT[o.status]}
+                      className="text-[10px] py-0"
+                    >
+                      {CAMPAIGN_STATUS_LABEL[o.status]}
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground">{o.period}</span>
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+
+// ============================================================
 // LANÇAMENTOS — visão de operação comercial
 // ============================================================
 const EntriesTab: React.FC = () => {
