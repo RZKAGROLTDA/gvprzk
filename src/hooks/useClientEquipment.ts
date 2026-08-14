@@ -455,16 +455,135 @@ export interface EquipmentUpdatePayload {
   markValidated?: boolean;
 }
 
+/**
+ * Verifica no servidor se o usuário atual pode EDITAR uma máquina específica.
+ * A visualização do Parque é ampla (RPC SECURITY DEFINER), mas o UPDATE segue
+ * a RLS de client_equipment. Esta RPC espelha exatamente o critério da policy,
+ * sem ampliar permissão nenhuma.
+ */
+export const useCanEditEquipment = (equipmentId?: string | null) => {
+  return useQuery({
+    queryKey: ['client-equipment', 'can-edit', equipmentId ?? null],
+    enabled: !!equipmentId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async (): Promise<boolean> => {
+      const { data, error } = await (supabase as any).rpc('can_edit_client_equipment', {
+        p_equipment_id: equipmentId,
+      });
+      if (error) throw error;
+      return data === true;
+    },
+  });
+};
+
+export type EquipmentErrorKind =
+  | 'forbidden'
+  | 'session'
+  | 'timeout'
+  | 'conflict'
+  | 'validation'
+  | 'unexpected';
+
+export class EquipmentMutationError extends Error {
+  kind: EquipmentErrorKind;
+  constructor(kind: EquipmentErrorKind, message: string) {
+    super(message);
+    this.name = 'EquipmentMutationError';
+    this.kind = kind;
+  }
+}
+
+const EQUIPMENT_ERROR_TITLES: Record<EquipmentErrorKind, string> = {
+  forbidden: 'Sem permissão para editar esta máquina',
+  session: 'Sessão expirada',
+  timeout: 'Tempo de resposta excedido',
+  conflict: 'Conflito de dados',
+  validation: 'Dados inválidos',
+  unexpected: 'Erro inesperado',
+};
+
+export const equipmentErrorTitle = (err: unknown) =>
+  EQUIPMENT_ERROR_TITLES[
+    (err as EquipmentMutationError)?.kind ?? 'unexpected'
+  ] ?? EQUIPMENT_ERROR_TITLES.unexpected;
+
+/** Traduz erros do PostgREST/Postgres em causas específicas e acionáveis. */
+export const classifyEquipmentError = (err: any): EquipmentMutationError => {
+  if (err instanceof EquipmentMutationError) return err;
+  const code = String(err?.code ?? '');
+  const status = Number(err?.status ?? 0);
+  const msg = String(err?.message ?? '');
+
+  if (code === '42501' || status === 403) {
+    return new EquipmentMutationError(
+      'forbidden',
+      'Esta máquina pertence a outra filial e é somente leitura para o seu perfil.',
+    );
+  }
+  if (code === 'PGRST301' || status === 401 || /jwt|token/i.test(msg)) {
+    return new EquipmentMutationError(
+      'session',
+      'Sua sessão expirou. Faça login novamente para salvar as alterações.',
+    );
+  }
+  if (code === '57014' || /timeout|statement canceled/i.test(msg)) {
+    return new EquipmentMutationError(
+      'timeout',
+      'O banco levou muito tempo para responder. Tente novamente em alguns segundos.',
+    );
+  }
+  if (code === '23505' || code === '23P01' || status === 409) {
+    return new EquipmentMutationError(
+      'conflict',
+      'Já existe um registro com estes dados (ex.: chassi/série duplicado).',
+    );
+  }
+  if (code.startsWith('23') || code === '22P02' || code === '22003') {
+    return new EquipmentMutationError(
+      'validation',
+      msg || 'Verifique os campos preenchidos (ano, horas, status).',
+    );
+  }
+  return new EquipmentMutationError(
+    'unexpected',
+    msg || 'Não foi possível concluir a operação. Tente novamente.',
+  );
+};
+
+/** Renova a sessão quando o token está expirado/ausente. */
+const ensureFreshSession = async () => {
+  const { data } = await supabase.auth.getSession();
+  const session = data.session;
+  if (!session) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    return refreshed.session ?? null;
+  }
+  const expiresAt = (session.expires_at ?? 0) * 1000;
+  if (expiresAt && expiresAt - Date.now() < 60_000) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    return refreshed.session ?? session;
+  }
+  return session;
+};
+
 export const useUpdateEquipment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: EquipmentUpdatePayload }) => {
+      const session = await ensureFreshSession();
+      if (!session) {
+        throw new EquipmentMutationError(
+          'session',
+          'Sua sessão expirou. Faça login novamente para salvar as alterações.',
+        );
+      }
+
       const { markValidated, ...rest } = patch;
       const update: Record<string, any> = { ...rest, updated_at: new Date().toISOString() };
       if (markValidated) {
         update.last_validation_at = new Date().toISOString();
-        const { data: auth } = await supabase.auth.getUser();
-        update.validated_by = auth?.user?.id ?? null;
+        update.validated_by = session.user.id;
       }
       const { data, error } = await supabase
         .from('client_equipment' as any)
@@ -472,10 +591,21 @@ export const useUpdateEquipment = () => {
         .eq('id', id)
         .select(EQUIPMENT_COLUMNS)
         .maybeSingle();
-      if (error) throw error;
+      if (error) throw classifyEquipmentError(error);
       if (!data) {
-        throw new Error(
-          'Não foi possível atualizar o equipamento. Verifique se você tem permissão ou recarregue a página.',
+        // 0 linhas: RLS de UPDATE barrou (outra filial) ou o registro sumiu.
+        const { data: canEdit } = await (supabase as any).rpc('can_edit_client_equipment', {
+          p_equipment_id: id,
+        });
+        if (canEdit === true) {
+          throw new EquipmentMutationError(
+            'conflict',
+            'O registro foi alterado ou removido por outro usuário. Recarregue a lista e tente novamente.',
+          );
+        }
+        throw new EquipmentMutationError(
+          'forbidden',
+          'Esta máquina pertence a outra filial e é somente leitura para o seu perfil.',
         );
       }
       return data as unknown as ClientEquipment;
@@ -485,6 +615,7 @@ export const useUpdateEquipment = () => {
     },
   });
 };
+
 
 // -----------------------------------------------------------------------------
 // Vínculo de equipamentos com uma task (task_equipment)
