@@ -177,10 +177,12 @@ export type Database = {
           commitment_value: number
           created_at: string
           created_by: string | null
+          end_date: string | null
           gained_april: number
           gained_june: number
           gained_may: number
           id: string
+          start_date: string | null
           trigger_max: number | null
           trigger_min: number
           updated_at: string
@@ -191,10 +193,12 @@ export type Database = {
           commitment_value?: number
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           gained_april?: number
           gained_june?: number
           gained_may?: number
           id?: string
+          start_date?: string | null
           trigger_max?: number | null
           trigger_min?: number
           updated_at?: string
@@ -205,10 +209,12 @@ export type Database = {
           commitment_value?: number
           created_at?: string
           created_by?: string | null
+          end_date?: string | null
           gained_april?: number
           gained_june?: number
           gained_may?: number
           id?: string
+          start_date?: string | null
           trigger_max?: number | null
           trigger_min?: number
           updated_at?: string

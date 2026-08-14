@@ -35,6 +35,18 @@ import {
   Download,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  getCampaignStatus,
+  getCampaignRuleLabel,
+  formatPeriod,
+  CAMPAIGN_STATUS_LABEL,
+  CAMPAIGN_STATUS_VARIANT,
+  type CampaignStatus,
+} from '@/lib/campaignPeriod';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -162,6 +174,94 @@ const Campaigns: React.FC = () => {
 };
 
 // ============================================================
+// Filtro de campanhas — multisseleção por campaign_rules.id
+// `selected === null` significa "todas as campanhas" (histórico completo).
+// ============================================================
+interface CampaignOption {
+  id: string;
+  label: string;
+  status: CampaignStatus;
+  period: string;
+}
+
+const CampaignMultiSelect: React.FC<{
+  options: CampaignOption[];
+  selected: string[] | null;
+  onToggle: (id: string) => void;
+  onSelectCurrent: () => void;
+  onSelectAll: () => void;
+  onClear: () => void;
+}> = ({ options, selected, onToggle, onSelectCurrent, onSelectAll, onClear }) => {
+  const isChecked = (id: string) => (selected ? selected.includes(id) : true);
+  const count = selected ? selected.length : options.length;
+
+  const summary =
+    selected === null
+      ? 'Todas as campanhas'
+      : count === 0
+        ? 'Nenhuma campanha'
+        : count === 1
+          ? options.find((o) => o.id === selected[0])?.label || '1 campanha'
+          : `${count} campanhas selecionadas`;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="h-9 w-full justify-between font-normal">
+          <span className="truncate">{summary}</span>
+          <Megaphone className="h-4 w-4 ml-2 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[340px] p-0" align="start">
+        <div className="flex flex-wrap gap-1 p-2 border-b">
+          <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={onSelectCurrent}>
+            Selecionar todas as vigentes
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onSelectAll}>
+            Todas
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onClear}>
+            Limpar
+          </Button>
+        </div>
+        <ScrollArea className="max-h-72">
+          <div className="p-1">
+            {options.length === 0 && (
+              <p className="text-xs text-muted-foreground p-3">Nenhuma campanha cadastrada.</p>
+            )}
+            {options.map((o) => (
+              <label
+                key={o.id}
+                className="flex items-start gap-2 rounded-md p-2 hover:bg-accent cursor-pointer"
+              >
+                <Checkbox
+                  checked={isChecked(o.id)}
+                  onCheckedChange={() => onToggle(o.id)}
+                  className="mt-0.5"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm leading-tight">{o.label}</span>
+                  <span className="flex items-center gap-1.5 mt-1">
+                    <Badge
+                      variant={CAMPAIGN_STATUS_VARIANT[o.status]}
+                      className="text-[10px] py-0"
+                    >
+                      {CAMPAIGN_STATUS_LABEL[o.status]}
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground">{o.period}</span>
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+
+// ============================================================
 // LANÇAMENTOS — visão de operação comercial
 // ============================================================
 const EntriesTab: React.FC = () => {
@@ -216,6 +316,44 @@ const EntriesTab: React.FC = () => {
   const [filterSeller, setFilterSeller] = useState<string>('all');
   const [filterClient, setFilterClient] = useState<string>('');
 
+  // --- Filtro de campanhas (multisseleção por campaign_rules.id) ---
+  const campaignOptions = useMemo(() => {
+    return (rules || [])
+      .map((r) => ({
+        id: r.id,
+        label: getCampaignRuleLabel(r),
+        status: getCampaignStatus(r),
+        period: formatPeriod(r),
+      }))
+      .sort(
+        (a, b) =>
+          a.label.localeCompare(b.label),
+      );
+  }, [rules]);
+
+  const currentIds = useMemo(
+    () => campaignOptions.filter((o) => o.status === 'vigente').map((o) => o.id),
+    [campaignOptions],
+  );
+
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[] | null>(null);
+  const initialized = useRef(false);
+
+  // Padrão ao abrir: todas as campanhas vigentes. Se nenhuma vigente existir
+  // (ex.: histórico sem período definido), mantém tudo visível.
+  useEffect(() => {
+    if (initialized.current || campaignOptions.length === 0) return;
+    initialized.current = true;
+    setSelectedCampaignIds(currentIds.length > 0 ? currentIds : null);
+  }, [campaignOptions.length, currentIds]);
+
+  const toggleCampaign = (id: string) => {
+    setSelectedCampaignIds((prev) => {
+      const base = prev ?? campaignOptions.map((o) => o.id);
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
+  };
+
   const allEntries = entries || [];
 
   const sellerOptions = useMemo(() => {
@@ -227,7 +365,9 @@ const EntriesTab: React.FC = () => {
 
   const list = useMemo(() => {
     const term = filterClient.trim().toLowerCase();
+    const campaignFilter = selectedCampaignIds;
     return allEntries.filter((e) => {
+      if (campaignFilter && !campaignFilter.includes(e.campaign_rule_id || '')) return false;
       if (filterFilial !== 'all' && (e.filial_id || '') !== filterFilial) return false;
       if (filterSeller !== 'all' && e.seller_id !== filterSeller) return false;
       if (term) {
@@ -236,7 +376,8 @@ const EntriesTab: React.FC = () => {
       }
       return true;
     });
-  }, [allEntries, filterFilial, filterSeller, filterClient]);
+  }, [allEntries, filterFilial, filterSeller, filterClient, selectedCampaignIds]);
+
 
   const totals = useMemo(() => {
     const count = list.length;
@@ -272,8 +413,20 @@ const EntriesTab: React.FC = () => {
       {/* Filtros */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Campanhas</Label>
+              <CampaignMultiSelect
+                options={campaignOptions}
+                selected={selectedCampaignIds}
+                onToggle={toggleCampaign}
+                onSelectCurrent={() => setSelectedCampaignIds(currentIds)}
+                onSelectAll={() => setSelectedCampaignIds(null)}
+                onClear={() => setSelectedCampaignIds([])}
+              />
+            </div>
+            <div className="space-y-1.5">
+
               <Label className="text-xs text-muted-foreground">Filial</Label>
               <Select value={filterFilial} onValueChange={setFilterFilial}>
                 <SelectTrigger className="h-9">
@@ -1756,6 +1909,10 @@ const RuleRow: React.FC<{
   const [may, setMay] = useState(String(rule.gained_may ?? ''));
   const [commitment, setCommitment] = useState(String(rule.commitment_value ?? ''));
   const [active, setActive] = useState(rule.active);
+  const [startDate, setStartDate] = useState(rule.start_date || '');
+  const [endDate, setEndDate] = useState(rule.end_date || '');
+
+  const periodInvalid = !!startDate && !!endDate && endDate < startDate;
 
   const resetFromRule = () => {
     setName(rule.campaign_name);
@@ -1764,10 +1921,12 @@ const RuleRow: React.FC<{
     setMay(String(rule.gained_may ?? ''));
     setCommitment(String(rule.commitment_value ?? ''));
     setActive(rule.active);
+    setStartDate(rule.start_date || '');
+    setEndDate(rule.end_date || '');
   };
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || periodInvalid) return;
     await update.mutateAsync({
       id: rule.id,
       patch: {
@@ -1779,10 +1938,13 @@ const RuleRow: React.FC<{
         gained_may: parseFloat(may) || 0,
         commitment_value: parseFloat(commitment) || 0,
         active,
+        start_date: startDate || null,
+        end_date: endDate || null,
       },
     });
     setEditing(false);
   };
+
 
   const handleCancel = () => {
     resetFromRule();
@@ -1853,7 +2015,33 @@ const RuleRow: React.FC<{
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Início</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-8"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Fim</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-8"
+              />
+            </div>
+          </div>
+          {periodInvalid && (
+            <p className="text-[11px] text-destructive mt-1">
+              A data de fim deve ser igual ou posterior à data de início.
+            </p>
+          )}
         </TableCell>
+
         <TableCell className="py-2">
           <Switch checked={active} onCheckedChange={setActive} />
         </TableCell>
@@ -1874,7 +2062,7 @@ const RuleRow: React.FC<{
               size="icon"
               className="h-8 w-8"
               onClick={handleSave}
-              disabled={!name.trim() || update.isPending}
+              disabled={!name.trim() || periodInvalid || update.isPending}
               aria-label="Salvar"
             >
               <Check className="h-4 w-4" />
@@ -1888,13 +2076,20 @@ const RuleRow: React.FC<{
   return (
     <TableRow>
       <TableCell className="font-medium align-top">
-        <div>{rule.campaign_name}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span>{rule.campaign_name}</span>
+          <Badge variant={CAMPAIGN_STATUS_VARIANT[getCampaignStatus(rule)]}>
+            {CAMPAIGN_STATUS_LABEL[getCampaignStatus(rule)]}
+          </Badge>
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">{formatPeriod(rule)}</div>
         {usageCount > 0 && (
           <div className="text-xs text-muted-foreground">
             {usageCount} lançamento{usageCount > 1 ? 's' : ''} vinculado{usageCount > 1 ? 's' : ''}
           </div>
         )}
       </TableCell>
+
       <TableCell className="align-top">
         <div className="text-base font-semibold leading-tight">
           {formatCurrency(Number(rule.trigger_min))}
@@ -1995,9 +2190,13 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [may, setMay] = useState('');
   const [commitment, setCommitment] = useState('');
   const [active, setActive] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const periodInvalid = !!startDate && !!endDate && endDate < startDate;
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || periodInvalid) return;
     await create.mutateAsync({
       campaign_name: name.trim(),
       trigger_min: parseFloat(tMin) || 0,
@@ -2008,6 +2207,8 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       gained_june: 0,
       commitment_value: parseFloat(commitment) || 0,
       active,
+      start_date: startDate || null,
+      end_date: endDate || null,
     });
     onClose();
   };
@@ -2031,6 +2232,22 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <Label>Gatilho (R$)</Label>
           <Input type="number" step="0.01" value={tMin} onChange={(e) => setTMin(e.target.value)} />
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Data de início</Label>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div>
+            <Label>Data de fim</Label>
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+        </div>
+        {periodInvalid && (
+          <p className="text-xs text-destructive">
+            A data de fim deve ser igual ou posterior à data de início.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -2058,7 +2275,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <Button variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} disabled={!name.trim() || create.isPending}>
+        <Button onClick={handleSubmit} disabled={!name.trim() || periodInvalid || create.isPending}>
           {create.isPending ? 'Salvando...' : 'Criar Regra'}
         </Button>
       </DialogFooter>
@@ -2067,3 +2284,4 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 };
 
 export default Campaigns;
+
