@@ -35,6 +35,18 @@ import {
   Download,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  getCampaignStatus,
+  getCampaignRuleLabel,
+  formatPeriod,
+  CAMPAIGN_STATUS_LABEL,
+  CAMPAIGN_STATUS_VARIANT,
+  type CampaignStatus,
+} from '@/lib/campaignPeriod';
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
