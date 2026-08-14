@@ -1862,7 +1862,33 @@ const RuleRow: React.FC<{
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Início</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-8"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Fim</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-8"
+              />
+            </div>
+          </div>
+          {periodInvalid && (
+            <p className="text-[11px] text-destructive mt-1">
+              A data de fim deve ser igual ou posterior à data de início.
+            </p>
+          )}
         </TableCell>
+
         <TableCell className="py-2">
           <Switch checked={active} onCheckedChange={setActive} />
         </TableCell>
