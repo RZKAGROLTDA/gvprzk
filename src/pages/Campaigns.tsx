@@ -1995,9 +1995,13 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [may, setMay] = useState('');
   const [commitment, setCommitment] = useState('');
   const [active, setActive] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const periodInvalid = !!startDate && !!endDate && endDate < startDate;
 
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || periodInvalid) return;
     await create.mutateAsync({
       campaign_name: name.trim(),
       trigger_min: parseFloat(tMin) || 0,
@@ -2008,6 +2012,8 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       gained_june: 0,
       commitment_value: parseFloat(commitment) || 0,
       active,
+      start_date: startDate || null,
+      end_date: endDate || null,
     });
     onClose();
   };
@@ -2031,6 +2037,22 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <Label>Gatilho (R$)</Label>
           <Input type="number" step="0.01" value={tMin} onChange={(e) => setTMin(e.target.value)} />
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Data de início</Label>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div>
+            <Label>Data de fim</Label>
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+        </div>
+        {periodInvalid && (
+          <p className="text-xs text-destructive">
+            A data de fim deve ser igual ou posterior à data de início.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -2058,7 +2080,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <Button variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} disabled={!name.trim() || create.isPending}>
+        <Button onClick={handleSubmit} disabled={!name.trim() || periodInvalid || create.isPending}>
           {create.isPending ? 'Salvando...' : 'Criar Regra'}
         </Button>
       </DialogFooter>
@@ -2067,3 +2089,4 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 };
 
 export default Campaigns;
+
