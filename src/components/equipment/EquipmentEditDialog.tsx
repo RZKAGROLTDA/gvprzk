@@ -265,7 +265,10 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
         </div>
 
         {/* Campos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+        <fieldset
+          disabled={readOnly}
+          className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 disabled:opacity-70"
+        >
           <div className="space-y-1">
             <Label>Modelo</Label>
             <Input value={model} onChange={(e) => setModel(e.target.value)} maxLength={120} />
@@ -322,7 +325,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
               maxLength={500}
             />
           </div>
-        </div>
+        </fieldset>
 
         {/* Histórico de transferência */}
         {equipment.previous_client_name && (
@@ -497,7 +500,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancelar
           </Button>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className={`flex flex-col sm:flex-row gap-2 ${readOnly ? 'hidden' : ''}`}>
             <Button type="button" variant="outline" onClick={saveOnly} disabled={busy}>
               {isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
               Salvar
