@@ -1,83 +1,120 @@
-# Períodos de desconto configuráveis nas Regras de Campanha
+# Regras de Campanha: períodos de desconto configuráveis
 
-## 1. Estrutura atual (auditoria)
+Escopo exclusivo: `campaign_rules`, `campaign_clients` e a tela Campanhas. Nada de outros módulos.
 
-**`public.campaign_rules`** (7 regras hoje)
-- `campaign_name`, `trigger_min`, `trigger_max`, `commitment_value`, `active`, `start_date`, `end_date`
-- Percentuais fixos: `gained_april`, `gained_may`, `gained_june` (`gained_june` = 0 em 100% das regras)
+## 1. Estrutura nova
 
-**`public.campaign_clients`** (289 lançamentos)
-- Cada lançamento **já grava sua própria cópia** de `gained_april`, `gained_may`, `gained_june`, `campaign_trigger_value` e `commitment_value` no momento do lançamento — ou seja, o snapshot histórico já existe fisicamente na linha.
-- 289/289 lançamentos possuem valores de abril e maio preenchidos.
+Uma tabela filha guarda os períodos, substituindo os campos fixos de mês:
 
-**Como o frontend usa hoje** (`src/pages/Campaigns.tsx`)
-- Ao criar/editar um lançamento, copia `gained_april`/`gained_may` da regra selecionada para a linha (linhas ~861 e ~1275) — isto é, hoje o snapshot é **sobrescrito** ao reeditar o lançamento, e a listagem prefere o valor atual da regra (`displayApril`/`displayMay`, linhas 1259-1260) em vez do valor gravado.
-- Exportação Excel usa as colunas "Ganhou Abril (%)" / "Ganhou Maio (%)".
-- Aba Regras exibe e edita "Abr %" / "Mai %".
+```text
+campaign_rules (1) ──< campaign_rule_periods (N)
+   campaign_name            label            ("Agosto")
+   trigger_min              start_date       (01/08/2026)
+   trigger_max              end_date         (31/08/2026)
+   commitment_value         discount_percent (8)
+   active                   sort_order
+   start_date / end_date
+   gained_april/may/june  <- mantidos como legado, somente leitura
+```
 
-**Nenhuma função/trigger/RPC do banco referencia `gained_*`** — o impacto é apenas frontend + tabelas.
-
-Consequência importante: os percentuais **não entram em nenhum cálculo agregado** (KPIs somam gatilho e compromisso apenas). São informativos/exibidos.
+`gained_april/may/june` continuam existindo nesta etapa (nada é removido, nada é recalculado).
 
 ## 2. Migration proposta
 
 ```sql
 CREATE TABLE public.campaign_rule_periods (
-  id uuid PK default gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   campaign_rule_id uuid NOT NULL REFERENCES public.campaign_rules(id) ON DELETE CASCADE,
   label text NOT NULL,
   start_date date NOT NULL,
   end_date date NOT NULL,
   discount_percent numeric NOT NULL DEFAULT 0,
   sort_order integer NOT NULL DEFAULT 0,
-  created_at / updated_at timestamptz
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX ON public.campaign_rule_periods (campaign_rule_id, sort_order);
 ```
-- GRANTs: `SELECT` para `anon`+`authenticated`, `INSERT/UPDATE/DELETE` para `authenticated`, `ALL` para `service_role`.
-- RLS espelhando exatamente as políticas atuais de `campaign_rules` (nada de novas permissões).
-- Índice em `(campaign_rule_id, sort_order)`.
-- Trigger de validação (não CHECK, para permitir comparação entre tabelas):
+
+- **GRANTs** iguais aos de `campaign_rules`: leitura/escrita para `authenticated`, `ALL` para `service_role`.
+- **RLS**: habilitada, com políticas espelhando exatamente as políticas atuais de `campaign_rules` (mesmos cargos, mesma lógica). Nenhuma permissão nova, nenhuma política existente alterada.
+- **Trigger de validação** (trigger em vez de CHECK, pois precisa consultar a regra-mãe e os irmãos):
   - `end_date >= start_date`
   - `discount_percent >= 0`
-  - período contido na vigência da regra (quando a regra tem `start_date`/`end_date`)
-  - proibição de sobreposição com outro período da mesma regra (`daterange && daterange`)
-- Trigger `updated_at`.
+  - período contido em `campaign_rules.start_date/end_date` quando a regra tiver vigência definida
+  - nenhuma sobreposição com outro período da mesma regra (`daterange(start,end,'[]') && ...`)
+  - quantidade de períodos livre (sem limite)
+- **Trigger** de `updated_at`.
 
-**Snapshot de histórico nos lançamentos** — nova coluna:
+## 3. Estratégia de migração dos campos atuais
+
+Data migration idempotente, executada uma única vez após a criação da tabela. Para cada uma das 7 regras, um `INSERT ... WHERE NOT EXISTS`:
+
+| Campo origem | label | sort_order | condição |
+|---|---|---|---|
+| `gained_april` | `Abril` | 1 | `gained_april > 0` |
+| `gained_may` | `Maio` | 2 | `gained_may > 0` |
+| `gained_june` | `Junho` | 3 | `gained_june > 0` |
+
+`discount_percent` recebe o valor exato da coluna de origem.
+
+Datas dos períodos migrados:
+- regra **com vigência** (as 3 regras LUB, 01/08/2026–31/08/2026): usa-se a interseção do mês do label com a vigência da regra, de modo que o período migrado nunca viole a validação;
+- regra **sem vigência** (as 4 regras AGRISHOW/AGRINORTE, `start_date`/`end_date` nulos): usa-se o mês cheio referente ao ano de `created_at` da regra.
+
+Nada é apagado: os `gained_*` permanecem na tabela como fonte de conferência e possibilidade de rollback.
+
+## 4. Snapshot dos novos lançamentos
+
+Recomendação: **JSONB em `campaign_clients`**, não tabela filha.
+
 ```sql
 ALTER TABLE public.campaign_clients
   ADD COLUMN discount_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb;
 ```
-Guarda `[{label, start_date, end_date, discount_percent}]` congelado no momento do lançamento. As colunas `gained_april`/`gained_may`/`gained_june` **permanecem intactas** (nada é dropado nesta etapa) para garantir reversibilidade.
 
-## 3. Estratégia de migração dos campos Abr/Mai
+Conteúdo gravado na criação do lançamento:
 
-Data migration idempotente, sem alterar nenhum valor existente:
-1. Para cada regra com `gained_april > 0`, criar período `label='Abril'`, `discount_percent = gained_april`, `sort_order=1`; mesmo para `gained_may` (`'Maio'`, ordem 2) e `gained_june` (`'Junho'`, ordem 3).
-2. Datas dos períodos migrados: se a regra tem vigência, usa-se a interseção com o mês correspondente; se não tem (as 4 regras AGRISHOW/AGRINORTE estão "Sem período"), usa-se o mês cheio do ano do `created_at` da regra. Isso mantém as regras antigas legíveis sem inventar vigência.
-3. Backfill de `campaign_clients.discount_snapshot` a partir dos `gained_*` já gravados em cada linha — assim os 289 lançamentos passam a carregar seu próprio histórico independente da regra.
+```json
+[{"label":"Agosto","start_date":"2026-08-01","end_date":"2026-08-31","discount_percent":8}]
+```
 
-## 4. Impacto no frontend
+Por que JSONB e não tabela filha:
+- o snapshot é um dado **imutável e sempre lido junto** com a linha do lançamento — não há consulta que precise filtrar por período isolado;
+- evita 289+ linhas extras e um segundo round-trip na listagem, que hoje já é a tela mais sensível a Disk IO;
+- desacopla totalmente o histórico da regra: excluir ou editar um período nunca toca o lançamento (não há FK).
+
+Backfill dos 289 lançamentos existentes: `discount_snapshot` montado a partir dos `gained_april`/`gained_may`/`gained_june` **já gravados na própria linha** — ou seja, os percentuais históricos são exatamente os mesmos, apenas em novo formato. As colunas antigas continuam intactas nos lançamentos.
+
+## 5. Correção para impedir sobrescrita do histórico ao editar
+
+Problema confirmado na auditoria de `src/pages/Campaigns.tsx`:
+- linhas 1259-1266: a linha em edição exibe `currentRule.gained_april/gained_may/commitment_value/trigger_min`, ou seja, o valor **atual da regra**, ignorando o que está gravado no lançamento;
+- linhas 1270-1282 (`handleSave` de `EntryRow`): o update copia de volta `campaign_trigger_value`, `gained_april`, `gained_may`, `gained_june` e `commitment_value` da regra — qualquer reedição (mesmo só para trocar a nota fiscal) reescreve o snapshot histórico com os valores vigentes;
+- linhas 861-863 fazem o mesmo no diálogo de criação — correto ali, pois é o momento da criação.
+
+Correções:
+1. `handleSave` da edição passa a atualizar **apenas** os campos operacionais: `filial_id`, `invoice_number`, `sold_trigger`, `client_code`/`client_name`. `campaign_trigger_value`, `commitment_value`, `gained_*` e `discount_snapshot` saem do patch.
+2. Exibição da linha deixa de ler a regra: passa a usar `entry.campaign_trigger_value`, `entry.commitment_value` e `entry.discount_snapshot` (com fallback para `gained_april/may` em linhas sem snapshot).
+3. Troca de regra em um lançamento já criado: a regra fica **somente leitura** por padrão; se o usuário realmente precisar reclassificar, uma ação explícita "Reaplicar regra atual" reescreve o snapshot com confirmação — nunca de forma implícita ao salvar.
+4. Tipagem: `useUpdateCampaignClient` (`src/hooks/useCampaigns.ts`) restringe o `patch` aos campos operacionais, tornando a sobrescrita impossível a partir do código de edição.
+
+Resultado: alteração de regra ou de período afeta **apenas novos lançamentos**.
+
+## 6. Impacto no frontend
 
 `src/hooks/useCampaigns.ts`
-- Novo tipo `CampaignRulePeriod`; hook `useCampaignRulePeriods` (busca por regra ou em lote) e mutações de criar/editar/excluir período (upsert em lote no salvamento da regra).
-- Tipos de `CampaignRule` mantêm `gained_*` (legado, não mais editável).
-- `useCreateCampaignClient` passa a gravar `discount_snapshot` com os períodos vigentes da regra escolhida.
+- tipo `CampaignRulePeriod` e hook `useCampaignRulePeriods` (busca em lote por `campaign_rule_id`);
+- mutações de criar/atualizar/excluir período (upsert em lote ao salvar a regra);
+- `useCreateCampaignClient` grava `discount_snapshot` a partir dos períodos da regra escolhida;
+- `useUpdateCampaignClient` com patch restrito (item 5.4).
 
 `src/pages/Campaigns.tsx`
-- **Aba Regras**: remover inputs "Abr %"/"Mai %" da criação e da edição inline; adicionar seção "Períodos de desconto" com linhas editáveis (Nome, Data início, Data fim, %, excluir) e botão "+ Adicionar período". Validação client-side espelhando as regras do trigger (dentro da vigência, fim >= início, % >= 0, sem sobreposição) com mensagens inline.
+- **Aba Regras**: removidos os inputs "Abr %" / "Mai %" da criação (`NewRuleDialog`) e da edição inline (`RuleRow`); em seu lugar a seção **Períodos de desconto**, com linhas `Nome | Início | Fim | % | excluir` e botão `+ Adicionar período`. Validação client-side espelhando o trigger (fim >= início, dentro da vigência, % >= 0, sem sobreposição), com mensagem inline e bloqueio do salvar.
 - Resumo da regra passa a listar os períodos (`Agosto 8% · Setembro 7% · Outubro 6%`) em vez de "Abr/Mai".
-- **Aba Lançamentos**: a coluna de percentuais passa a ler o `discount_snapshot` do lançamento (fallback para `gained_april`/`gained_may` em linhas antigas), eliminando o comportamento atual em que alterar a regra muda o percentual exibido de lançamentos passados.
-- Exportação Excel: colunas dinâmicas por período do snapshot (com fallback para as colunas Abril/Maio quando o lançamento é legado).
-- Exclusão de período: bloqueada quando existe lançamento vinculado à regra cujo snapshot referencia aquele label/período — nesse caso o período é apenas removido da regra vigente, e o lançamento continua exibindo o valor do snapshot.
+- **Aba Lançamentos**: colunas de percentual passam a vir do snapshot do lançamento; percentuais somente leitura.
+- Exportação Excel: colunas de percentual derivadas do snapshot, com fallback às colunas Abril/Maio nos lançamentos legados.
+- Exclusão de período: permitida na regra (o histórico vive no snapshot do lançamento, então não há perda); a UI avisa que períodos já utilizados continuam preservados nos lançamentos.
 
-Nada muda em clientes, vendedores, condição especial, KPIs, RLS ou outros módulos.
-
-## 5. Preservação do histórico
-
-- Nenhuma coluna é removida e nenhum valor existente é alterado.
-- `campaign_clients` deixa de depender da regra para exibir percentuais: passa a usar snapshot próprio, então editar uma regra no futuro **não altera** lançamentos já realizados.
-- Backfill garante que os 289 lançamentos atuais tenham snapshot com exatamente os percentuais que já estão gravados neles.
-- Exclusão de período nunca apaga dado de lançamento (FK só em `campaign_rules`, com snapshot desacoplado em jsonb).
-
-Aguardando aprovação para aplicar a migration e implementar o frontend.
+Sem mudanças em KPIs de gatilho/compromisso, condição especial, clientes, vendedores, RLS ou outras abas.
