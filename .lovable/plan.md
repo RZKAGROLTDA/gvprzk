@@ -1,103 +1,83 @@
-# Aba Treinamentos — CRM do Vendedor (versão mínima)
+# Períodos de desconto configuráveis nas Regras de Campanha
 
-Cada registro em `public.trainings` representa 1 treinamento agendado para 1 colaborador. Sem tasks, sem participantes, sem presença/status, sem alterações no CRM atual, follow-ups, auth ou RLS existentes.
+## 1. Estrutura atual (auditoria)
 
-## 1. CREATE TABLE final
+**`public.campaign_rules`** (7 regras hoje)
+- `campaign_name`, `trigger_min`, `trigger_max`, `commitment_value`, `active`, `start_date`, `end_date`
+- Percentuais fixos: `gained_april`, `gained_may`, `gained_june` (`gained_june` = 0 em 100% das regras)
+
+**`public.campaign_clients`** (289 lançamentos)
+- Cada lançamento **já grava sua própria cópia** de `gained_april`, `gained_may`, `gained_june`, `campaign_trigger_value` e `commitment_value` no momento do lançamento — ou seja, o snapshot histórico já existe fisicamente na linha.
+- 289/289 lançamentos possuem valores de abril e maio preenchidos.
+
+**Como o frontend usa hoje** (`src/pages/Campaigns.tsx`)
+- Ao criar/editar um lançamento, copia `gained_april`/`gained_may` da regra selecionada para a linha (linhas ~861 e ~1275) — isto é, hoje o snapshot é **sobrescrito** ao reeditar o lançamento, e a listagem prefere o valor atual da regra (`displayApril`/`displayMay`, linhas 1259-1260) em vez do valor gravado.
+- Exportação Excel usa as colunas "Ganhou Abril (%)" / "Ganhou Maio (%)".
+- Aba Regras exibe e edita "Abr %" / "Mai %".
+
+**Nenhuma função/trigger/RPC do banco referencia `gained_*`** — o impacto é apenas frontend + tabelas.
+
+Consequência importante: os percentuais **não entram em nenhum cálculo agregado** (KPIs somam gatilho e compromisso apenas). São informativos/exibidos.
+
+## 2. Migration proposta
 
 ```sql
-CREATE TABLE public.trainings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  training_date date NOT NULL,
-  training_time text NOT NULL,
-  hours numeric NOT NULL,
-  user_id uuid NOT NULL,
-  user_name text NOT NULL,
-  filial_id uuid,
-  created_by uuid NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now()
+CREATE TABLE public.campaign_rule_periods (
+  id uuid PK default gen_random_uuid(),
+  campaign_rule_id uuid NOT NULL REFERENCES public.campaign_rules(id) ON DELETE CASCADE,
+  label text NOT NULL,
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  discount_percent numeric NOT NULL DEFAULT 0,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at / updated_at timestamptz
 );
-
-CREATE INDEX idx_trainings_training_date ON public.trainings(training_date);
-CREATE INDEX idx_trainings_user_id ON public.trainings(user_id);
-CREATE INDEX idx_trainings_filial_id ON public.trainings(filial_id);
 ```
+- GRANTs: `SELECT` para `anon`+`authenticated`, `INSERT/UPDATE/DELETE` para `authenticated`, `ALL` para `service_role`.
+- RLS espelhando exatamente as políticas atuais de `campaign_rules` (nada de novas permissões).
+- Índice em `(campaign_rule_id, sort_order)`.
+- Trigger de validação (não CHECK, para permitir comparação entre tabelas):
+  - `end_date >= start_date`
+  - `discount_percent >= 0`
+  - período contido na vigência da regra (quando a regra tem `start_date`/`end_date`)
+  - proibição de sobreposição com outro período da mesma regra (`daterange && daterange`)
+- Trigger `updated_at`.
 
-## 2. RLS proposta
-
-GRANTs no mesmo migration, logo após CREATE TABLE:
-
+**Snapshot de histórico nos lançamentos** — nova coluna:
 ```sql
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.trainings TO authenticated;
-GRANT ALL ON public.trainings TO service_role;
-
-ALTER TABLE public.trainings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.campaign_clients
+  ADD COLUMN discount_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb;
 ```
+Guarda `[{label, start_date, end_date, discount_percent}]` congelado no momento do lançamento. As colunas `gained_april`/`gained_may`/`gained_june` **permanecem intactas** (nada é dropado nesta etapa) para garantir reversibilidade.
 
-Políticas:
+## 3. Estratégia de migração dos campos Abr/Mai
 
-- **SELECT**
-  - admin/manager: todos os registros.
-  - supervisor: registros onde `filial_id` é a filial do supervisor (`get_supervisor_filial_id()`).
-  - demais usuários: registros onde `user_id = auth.uid()`.
+Data migration idempotente, sem alterar nenhum valor existente:
+1. Para cada regra com `gained_april > 0`, criar período `label='Abril'`, `discount_percent = gained_april`, `sort_order=1`; mesmo para `gained_may` (`'Maio'`, ordem 2) e `gained_june` (`'Junho'`, ordem 3).
+2. Datas dos períodos migrados: se a regra tem vigência, usa-se a interseção com o mês correspondente; se não tem (as 4 regras AGRISHOW/AGRINORTE estão "Sem período"), usa-se o mês cheio do ano do `created_at` da regra. Isso mantém as regras antigas legíveis sem inventar vigência.
+3. Backfill de `campaign_clients.discount_snapshot` a partir dos `gained_*` já gravados em cada linha — assim os 289 lançamentos passam a carregar seu próprio histórico independente da regra.
 
-- **INSERT**
-  - admin/manager: qualquer colaborador.
-  - supervisor: apenas colaboradores da própria filial.
-  - vendedor/RAC/consultor: apenas `user_id = auth.uid()`.
+## 4. Impacto no frontend
 
-- **UPDATE / DELETE**
-  - admin/manager: todos.
-  - supervisor: registros da própria filial.
-  - o próprio usuário: seus próprios registros (`user_id = auth.uid()`).
+`src/hooks/useCampaigns.ts`
+- Novo tipo `CampaignRulePeriod`; hook `useCampaignRulePeriods` (busca por regra ou em lote) e mutações de criar/editar/excluir período (upsert em lote no salvamento da regra).
+- Tipos de `CampaignRule` mantêm `gained_*` (legado, não mais editável).
+- `useCreateCampaignClient` passa a gravar `discount_snapshot` com os períodos vigentes da regra escolhida.
 
-Todas as verificações de papel usam a função `public.has_role()`.
+`src/pages/Campaigns.tsx`
+- **Aba Regras**: remover inputs "Abr %"/"Mai %" da criação e da edição inline; adicionar seção "Períodos de desconto" com linhas editáveis (Nome, Data início, Data fim, %, excluir) e botão "+ Adicionar período". Validação client-side espelhando as regras do trigger (dentro da vigência, fim >= início, % >= 0, sem sobreposição) com mensagens inline.
+- Resumo da regra passa a listar os períodos (`Agosto 8% · Setembro 7% · Outubro 6%`) em vez de "Abr/Mai".
+- **Aba Lançamentos**: a coluna de percentuais passa a ler o `discount_snapshot` do lançamento (fallback para `gained_april`/`gained_may` em linhas antigas), eliminando o comportamento atual em que alterar a regra muda o percentual exibido de lançamentos passados.
+- Exportação Excel: colunas dinâmicas por período do snapshot (com fallback para as colunas Abril/Maio quando o lançamento é legado).
+- Exclusão de período: bloqueada quando existe lançamento vinculado à regra cujo snapshot referencia aquele label/período — nesse caso o período é apenas removido da regra vigente, e o lançamento continua exibindo o valor do snapshot.
 
-## 3. Regra de preenchimento do colaborador
+Nada muda em clientes, vendedores, condição especial, KPIs, RLS ou outros módulos.
 
-No formulário de agendamento:
+## 5. Preservação do histórico
 
-- **Se o usuário logado for vendedor, RAC ou consultor:**
-  - `user_id` = `auth.uid()`
-  - `user_name` = nome do próprio usuário
-  - campo Colaborador fica oculto ou em modo somente leitura
-  - não é possível selecionar outro colaborador
+- Nenhuma coluna é removida e nenhum valor existente é alterado.
+- `campaign_clients` deixa de depender da regra para exibir percentuais: passa a usar snapshot próprio, então editar uma regra no futuro **não altera** lançamentos já realizados.
+- Backfill garante que os 289 lançamentos atuais tenham snapshot com exatamente os percentuais que já estão gravados neles.
+- Exclusão de período nunca apaga dado de lançamento (FK só em `campaign_rules`, com snapshot desacoplado em jsonb).
 
-- **Se o usuário logado for supervisor, manager ou admin:**
-  - exibe campo de seleção de colaborador
-  - pesquisa por nome
-  - exibe `Nome — Filial` na lista
-  - preenche `user_id`, `user_name` e `filial_id` do colaborador selecionado
-
-## 4. Desenho do formulário
-
-Diálogo acionado pelo botão `+ Agendar Treinamento`.
-
-Campos, na ordem:
-
-1. **Colaborador**
-   - Vendedor/RAC/Consultor: oculto/pré-preenchido com o próprio usuário.
-   - Supervisor/Manager/Admin: combobox pesquisável com nome + filial.
-
-2. **Nome do treinamento**
-   - input de texto
-
-3. **Data**
-   - date picker (padrão do projeto)
-
-4. **Horário**
-   - input time (texto HH:MM)
-
-5. **Quantidade de horas**
-   - input numérico
-
-Botão salvar insere uma única linha em `public.trainings`.
-
-## 5. Aba Treinamentos (resumo)
-
-- Nova aba ao lado das abas atuais do CRM.
-- Botão `+ Agendar Treinamento` no topo.
-- Filtros: Período, Colaborador, Filial.
-- Tabela: Data, Horário, Colaborador, Filial, Treinamento, Horas.
-- Ações de editar/excluir conforme permissão.
+Aguardando aprovação para aplicar a migration e implementar o frontend.
