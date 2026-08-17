@@ -1,27 +1,11 @@
 # Regras de Campanha: períodos de desconto configuráveis
 
-Escopo exclusivo: `campaign_rules`, `campaign_clients` e a tela Campanhas. Nada de outros módulos.
+Escopo exclusivo: `campaign_rules`, `campaign_clients` e a tela Campanhas. Nenhum outro módulo.
 
-## 1. Estrutura nova
-
-Uma tabela filha guarda os períodos, substituindo os campos fixos de mês:
-
-```text
-campaign_rules (1) ──< campaign_rule_periods (N)
-   campaign_name            label            ("Agosto")
-   trigger_min              start_date       (01/08/2026)
-   trigger_max              end_date         (31/08/2026)
-   commitment_value         discount_percent (8)
-   active                   sort_order
-   start_date / end_date
-   gained_april/may/june  <- mantidos como legado, somente leitura
-```
-
-`gained_april/may/june` continuam existindo nesta etapa (nada é removido, nada é recalculado).
-
-## 2. Migration proposta
+## 1. Migration completa proposta
 
 ```sql
+-- 1) Tabela de períodos
 CREATE TABLE public.campaign_rule_periods (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   campaign_rule_id uuid NOT NULL REFERENCES public.campaign_rules(id) ON DELETE CASCADE,
@@ -34,87 +18,117 @@ CREATE TABLE public.campaign_rule_periods (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ON public.campaign_rule_periods (campaign_rule_id, sort_order);
-```
+CREATE INDEX idx_campaign_rule_periods_rule
+  ON public.campaign_rule_periods (campaign_rule_id, sort_order);
 
-- **GRANTs** iguais aos de `campaign_rules`: leitura/escrita para `authenticated`, `ALL` para `service_role`.
-- **RLS**: habilitada, com políticas espelhando exatamente as políticas atuais de `campaign_rules` (mesmos cargos, mesma lógica). Nenhuma permissão nova, nenhuma política existente alterada.
-- **Trigger de validação** (trigger em vez de CHECK, pois precisa consultar a regra-mãe e os irmãos):
-  - `end_date >= start_date`
-  - `discount_percent >= 0`
-  - período contido em `campaign_rules.start_date/end_date` quando a regra tiver vigência definida
-  - nenhuma sobreposição com outro período da mesma regra (`daterange(start,end,'[]') && ...`)
-  - quantidade de períodos livre (sem limite)
-- **Trigger** de `updated_at`.
+-- 2) GRANTs (obrigatórios para o Data API alcançar a tabela)
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.campaign_rule_periods TO authenticated;
+GRANT ALL ON public.campaign_rule_periods TO service_role;
 
-## 3. Estratégia de migração dos campos atuais
+-- 3) RLS espelhando exatamente as políticas atuais de campaign_rules
+ALTER TABLE public.campaign_rule_periods ENABLE ROW LEVEL SECURITY;
+-- leitura: mesmos usuários que já leem campaign_rules
+-- escrita: mesmos cargos que já gerenciam campaign_rules (manager/admin/supervisor)
 
-Data migration idempotente, executada uma única vez após a criação da tabela. Para cada uma das 7 regras, um `INSERT ... WHERE NOT EXISTS`:
+-- 4) Validação por trigger (não CHECK: precisa consultar a regra-mãe e os irmãos)
+--    - end_date >= start_date
+--    - discount_percent >= 0
+--    - período contido na vigência da regra, quando a regra tiver start/end
+--    - sem sobreposição com outro período da mesma regra:
+--      daterange(NEW.start_date, NEW.end_date, '[]') && daterange(p.start_date, p.end_date, '[]')
+--    - sem limite de quantidade de períodos
 
-| Campo origem | label | sort_order | condição |
-|---|---|---|---|
-| `gained_april` | `Abril` | 1 | `gained_april > 0` |
-| `gained_may` | `Maio` | 2 | `gained_may > 0` |
-| `gained_june` | `Junho` | 3 | `gained_june > 0` |
+-- 5) Trigger de updated_at (reutiliza public.update_updated_at_column)
 
-`discount_percent` recebe o valor exato da coluna de origem.
-
-Datas dos períodos migrados:
-- regra **com vigência** (as 3 regras LUB, 01/08/2026–31/08/2026): usa-se a interseção do mês do label com a vigência da regra, de modo que o período migrado nunca viole a validação;
-- regra **sem vigência** (as 4 regras AGRISHOW/AGRINORTE, `start_date`/`end_date` nulos): usa-se o mês cheio referente ao ano de `created_at` da regra.
-
-Nada é apagado: os `gained_*` permanecem na tabela como fonte de conferência e possibilidade de rollback.
-
-## 4. Snapshot dos novos lançamentos
-
-Recomendação: **JSONB em `campaign_clients`**, não tabela filha.
-
-```sql
+-- 6) Snapshot por lançamento
 ALTER TABLE public.campaign_clients
-  ADD COLUMN discount_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb;
+  ADD COLUMN discount_periods_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb;
 ```
 
-Conteúdo gravado na criação do lançamento:
+Nada é removido: `gained_april`, `gained_may`, `gained_june` permanecem em `campaign_rules` e em `campaign_clients`. Nenhuma política existente é alterada. Nenhum dos 289 lançamentos é tocado (a nova coluna nasce com `[]`).
 
-```json
-[{"label":"Agosto","start_date":"2026-08-01","end_date":"2026-08-31","discount_percent":8}]
-```
+## 2. Estratégia de snapshot
 
-Por que JSONB e não tabela filha:
-- o snapshot é um dado **imutável e sempre lido junto** com a linha do lançamento — não há consulta que precise filtrar por período isolado;
-- evita 289+ linhas extras e um segundo round-trip na listagem, que hoje já é a tela mais sensível a Disk IO;
-- desacopla totalmente o histórico da regra: excluir ou editar um período nunca toca o lançamento (não há FK).
+- Estrutura: **JSONB `campaign_clients.discount_periods_snapshot`**, array ordenado por `sort_order`, cada item com `label`, `start_date`, `end_date`, `discount_percent`.
+- Gravado **uma única vez**, no momento da criação do lançamento, a partir dos períodos então vigentes da regra escolhida.
+- Nenhum caminho de update escreve nessa coluna. Alterar/excluir períodos da regra depois disso não altera lançamento algum (não existe FK do snapshot para os períodos).
+- Por que JSONB e não tabela filha: o snapshot é imutável e sempre lido junto com a linha do lançamento; nenhuma consulta precisa filtrar por período isolado; evita centenas de linhas extras e um segundo round-trip na aba mais sensível a Disk IO.
 
-Backfill dos 289 lançamentos existentes: `discount_snapshot` montado a partir dos `gained_april`/`gained_may`/`gained_june` **já gravados na própria linha** — ou seja, os percentuais históricos são exatamente os mesmos, apenas em novo formato. As colunas antigas continuam intactas nos lançamentos.
+## 3. Estratégia de migração das regras existentes
 
-## 5. Correção para impedir sobrescrita do histórico ao editar
+Regra de ouro: **não inventar datas**. Só migra quem tem informação suficiente.
 
-Problema confirmado na auditoria de `src/pages/Campaigns.tsx`:
-- linhas 1259-1266: a linha em edição exibe `currentRule.gained_april/gained_may/commitment_value/trigger_min`, ou seja, o valor **atual da regra**, ignorando o que está gravado no lançamento;
-- linhas 1270-1282 (`handleSave` de `EntryRow`): o update copia de volta `campaign_trigger_value`, `gained_april`, `gained_may`, `gained_june` e `commitment_value` da regra — qualquer reedição (mesmo só para trocar a nota fiscal) reescreve o snapshot histórico com os valores vigentes;
-- linhas 861-863 fazem o mesmo no diálogo de criação — correto ali, pois é o momento da criação.
+| Campanha | Gatilho | Vigência | % legados | Ação |
+|---|---|---|---|---|
+| LUB | R$ 4.000 | 01/08/2026–31/08/2026 | Abr 2% | migra: `Agosto` 01/08–31/08, 2% |
+| LUB | R$ 7.000 | 01/08/2026–31/08/2026 | Abr 4% | migra: `Agosto` 01/08–31/08, 4% |
+| LUB | R$ 40.000 | 01/08/2026–31/08/2026 | Abr 6% | migra: `Agosto` 01/08–31/08, 6% |
+| AGRINORTE | R$ 5.000 | sem período | Abr 8% / Mai 7% | **ajuste manual** |
+| AGRISHOW | R$ 5.000 | sem período | Abr 7% / Mai 6% | **ajuste manual** |
+| AGRISHOW | R$ 8.000 | sem período | Abr 8% / Mai 7% | **ajuste manual** |
+| AGRISHOW | R$ 10.000 | sem período | Abr 9% / Mai 8% | **ajuste manual** |
 
-Correções:
-1. `handleSave` da edição passa a atualizar **apenas** os campos operacionais: `filial_id`, `invoice_number`, `sold_trigger`, `client_code`/`client_name`. `campaign_trigger_value`, `commitment_value`, `gained_*` e `discount_snapshot` saem do patch.
-2. Exibição da linha deixa de ler a regra: passa a usar `entry.campaign_trigger_value`, `entry.commitment_value` e `entry.discount_snapshot` (com fallback para `gained_april/may` em linhas sem snapshot).
-3. Troca de regra em um lançamento já criado: a regra fica **somente leitura** por padrão; se o usuário realmente precisar reclassificar, uma ação explícita "Reaplicar regra atual" reescreve o snapshot com confirmação — nunca de forma implícita ao salvar.
-4. Tipagem: `useUpdateCampaignClient` (`src/hooks/useCampaigns.ts`) restringe o `patch` aos campos operacionais, tornando a sobrescrita impossível a partir do código de edição.
+Detalhes:
+- as 3 regras LUB têm exatamente **um** percentual não nulo e vigência bem definida de um único mês (agosto/2026), então o período migrado recebe o label do mês da vigência e as datas da própria vigência — sem suposição de ano;
+- as 4 regras AGRISHOW/AGRINORTE não têm `start_date`/`end_date`; migrar "Abril/Maio" exigiria adivinhar o ano, o que fica de fora. Elas aparecem na aba Regras com o aviso **"Períodos pendentes de definição"** e continuam exibindo os percentuais legados até que o gerente cadastre os períodos manualmente;
+- `gained_june` = 0 em todas as 7 regras: nada a migrar;
+- o `INSERT` é idempotente (`WHERE NOT EXISTS`), podendo ser reexecutado sem duplicar.
 
-Resultado: alteração de regra ou de período afeta **apenas novos lançamentos**.
-
-## 6. Impacto no frontend
+## 4. Alterações exatas no frontend
 
 `src/hooks/useCampaigns.ts`
-- tipo `CampaignRulePeriod` e hook `useCampaignRulePeriods` (busca em lote por `campaign_rule_id`);
-- mutações de criar/atualizar/excluir período (upsert em lote ao salvar a regra);
-- `useCreateCampaignClient` grava `discount_snapshot` a partir dos períodos da regra escolhida;
-- `useUpdateCampaignClient` com patch restrito (item 5.4).
+- novo tipo `CampaignRulePeriod` e campo `discount_periods_snapshot` em `CampaignClient`;
+- `useCampaignRulePeriods()` — busca em lote todos os períodos, agrupados por `campaign_rule_id`;
+- `useSaveCampaignRulePeriods()` — upsert em lote + delete dos removidos, ao salvar a regra;
+- `useCreateCampaignClient` passa a gravar `discount_periods_snapshot` com os períodos da regra escolhida;
+- `useUpdateCampaignClient`: o tipo do `patch` é reduzido a `filial_id`, `invoice_number`, `sold_trigger`, `client_code`, `client_name` — remove `campaign_trigger_value`, `commitment_value`, `gained_april`, `gained_may`, `gained_june`, `campaign_rule_id`. A sobrescrita passa a ser impossível pelo tipo.
 
-`src/pages/Campaigns.tsx`
-- **Aba Regras**: removidos os inputs "Abr %" / "Mai %" da criação (`NewRuleDialog`) e da edição inline (`RuleRow`); em seu lugar a seção **Períodos de desconto**, com linhas `Nome | Início | Fim | % | excluir` e botão `+ Adicionar período`. Validação client-side espelhando o trigger (fim >= início, dentro da vigência, % >= 0, sem sobreposição), com mensagem inline e bloqueio do salvar.
-- Resumo da regra passa a listar os períodos (`Agosto 8% · Setembro 7% · Outubro 6%`) em vez de "Abr/Mai".
-- **Aba Lançamentos**: colunas de percentual passam a vir do snapshot do lançamento; percentuais somente leitura.
-- Exportação Excel: colunas de percentual derivadas do snapshot, com fallback às colunas Abril/Maio nos lançamentos legados.
-- Exclusão de período: permitida na regra (o histórico vive no snapshot do lançamento, então não há perda); a UI avisa que períodos já utilizados continuam preservados nos lançamentos.
+`src/pages/Campaigns.tsx` — aba **Regras**
+- `NewRuleDialog`: removidos os inputs `Abr %` / `Mai %`; adicionada a seção **Períodos de desconto** (linhas `Nome | Início | Fim | % | excluir` + botão `+ Adicionar período`, N períodos);
+- `RuleRow`: mesma seção na edição inline; o resumo da regra passa de `Abr 8% · Mai 7%` para a lista de períodos (`Agosto 8% · Setembro 7% · Outubro 6%`), ou o aviso "Períodos pendentes de definição";
+- validação client-side espelhando o trigger, com mensagem inline e botão salvar bloqueado.
 
-Sem mudanças em KPIs de gatilho/compromisso, condição especial, clientes, vendedores, RLS ou outras abas.
+`src/pages/Campaigns.tsx` — aba **Lançamentos**
+- as duas colunas fixas de percentual (linhas 928-929 / 1259-1260) são substituídas por **uma** coluna "Descontos", compacta: primeiro período + `+N` , com popover mostrando todos (`Agosto 8% / Setembro 7% / Outubro 6%`);
+- fonte do dado: `entry.discount_periods_snapshot` quando não vazio; caso contrário, fallback para os `gained_april/gained_may/gained_june` da própria linha (lançamentos legados) — **nunca** os valores atuais da regra;
+- gatilho e compromisso da linha passam a ler `entry.campaign_trigger_value` e `entry.commitment_value`;
+- `handleSave` da linha (hoje linhas 1268-1285) deixa de enviar regra, gatilho, compromisso e `gained_*`; salva apenas os campos operacionais;
+- a troca de regra em lançamento já criado fica somente leitura; reclassificação exige ação explícita "Reaplicar regra atual" com confirmação, que é o único caminho capaz de reescrever o snapshot.
+
+**Exportação Excel**
+- nova coluna `Períodos de Desconto` com o texto `Agosto: 8% | Setembro: 7% | Outubro: 6%`, derivada do snapshot;
+- para lançamentos legados (snapshot vazio), essa coluna é preenchida a partir dos percentuais legados da própria linha, no mesmo formato (`Abril: 8% | Maio: 7%`), e as colunas `Ganhou Abril (%)`/`Ganhou Maio (%)` permanecem por ora para conferência.
+
+## 5. Preservação do histórico antigo
+
+- Nenhuma coluna removida, nenhum dado dos 289 lançamentos alterado, nenhuma conversão em massa nesta etapa.
+- Lançamentos legados continuam exibindo e exportando os percentuais que já estão gravados **na própria linha**.
+- A listagem para de preferir os valores atuais da regra, o que corrige o efeito atual de "percentual do passado mudou porque a regra mudou".
+- O update de lançamento não pode mais tocar percentual, gatilho, compromisso nem snapshot — garantido no tipo do hook e no patch enviado.
+- Consequência: alterar uma regra ou seus períodos afeta **apenas novos lançamentos**.
+
+## 6. Exemplo de campanha com 3 períodos
+
+`campaign_rules`
+```
+AGRINORTE 2026 | gatilho R$ 5.000 | compromisso R$ 30.000
+vigência 01/08/2026 → 31/10/2026 | ativa
+```
+
+`campaign_rule_periods`
+```
+Agosto    | 2026-08-01 | 2026-08-31 | 8% | 1
+Setembro  | 2026-09-01 | 2026-09-30 | 7% | 2
+Outubro   | 2026-10-01 | 2026-10-31 | 6% | 3
+```
+
+Lançamento criado em 12/08/2026 grava:
+```json
+[{"label":"Agosto","start_date":"2026-08-01","end_date":"2026-08-31","discount_percent":8},
+ {"label":"Setembro","start_date":"2026-09-01","end_date":"2026-09-30","discount_percent":7},
+ {"label":"Outubro","start_date":"2026-10-01","end_date":"2026-10-31","discount_percent":6}]
+```
+
+Se em setembro o gerente mudar outubro de 6% para 5%, esse lançamento continua mostrando 6%; somente lançamentos criados depois da alteração mostram 5%.
+
+Aguardando aprovação para aplicar a migration e implementar o frontend.
