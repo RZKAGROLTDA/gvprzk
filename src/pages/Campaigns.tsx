@@ -2159,9 +2159,9 @@ const RuleRow: React.FC<{
           {formatCurrency(Number(rule.trigger_min))}
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          Abr {formatPct(Number(rule.gained_april))} ·{' '}
-          Mai {formatPct(Number(rule.gained_may))} ·{' '}
-          Compromisso {formatCurrency(Number(rule.commitment_value))}
+          {formatPeriodsSummary(rule.discount_periods) ||
+            `Abr ${formatPct(Number(rule.gained_april))} · Mai ${formatPct(Number(rule.gained_may))}`}
+          {' · '}Compromisso {formatCurrency(Number(rule.commitment_value))}
         </div>
       </TableCell>
       <TableCell>
