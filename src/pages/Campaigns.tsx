@@ -2250,29 +2250,30 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const create = useCreateCampaignRule();
   const [name, setName] = useState('');
   const [tMin, setTMin] = useState('');
-  const [april, setApril] = useState('');
-  const [may, setMay] = useState('');
+  const [periods, setPeriods] = useState<DiscountPeriod[]>([]);
   const [commitment, setCommitment] = useState('');
   const [active, setActive] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   const periodInvalid = !!startDate && !!endDate && endDate < startDate;
+  const periodsInvalid = periods.some((p) => !p.label.trim());
 
   const handleSubmit = async () => {
-    if (!name.trim() || periodInvalid) return;
+    if (!name.trim() || periodInvalid || periodsInvalid) return;
     await create.mutateAsync({
       campaign_name: name.trim(),
       trigger_min: parseFloat(tMin) || 0,
       // trigger_max foi descontinuado da UI — sempre null
       trigger_max: null,
-      gained_april: parseFloat(april) || 0,
-      gained_may: parseFloat(may) || 0,
+      gained_april: 0,
+      gained_may: 0,
       gained_june: 0,
       commitment_value: parseFloat(commitment) || 0,
       active,
       start_date: startDate || null,
       end_date: endDate || null,
+      discount_periods: periods,
     });
     onClose();
   };
