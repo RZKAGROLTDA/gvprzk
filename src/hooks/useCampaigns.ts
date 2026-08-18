@@ -108,9 +108,7 @@ export const useCampaignRules = () => {
       if (error) throw error;
       return (data || []).map((r) => ({
         ...r,
-        discount_periods: Array.isArray(r.discount_periods)
-          ? (r.discount_periods as DiscountPeriod[])
-          : [],
+        discount_periods: normalizeDiscountPeriods(r.discount_periods),
       })) as CampaignRule[];
     },
   });
