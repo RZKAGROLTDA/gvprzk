@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export interface DiscountPeriod {
+  label: string;
+  percent: number;
+}
+
 export interface CampaignRule {
   id: string;
   campaign_name: string;
@@ -10,6 +15,7 @@ export interface CampaignRule {
   gained_april: number;
   gained_may: number;
   gained_june: number;
+  discount_periods: DiscountPeriod[];
   commitment_value: number;
   active: boolean;
   start_date: string | null;
