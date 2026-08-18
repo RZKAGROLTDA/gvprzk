@@ -70,7 +70,12 @@ export const useCampaignRules = () => {
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as CampaignRule[];
+      return (data || []).map((r) => ({
+        ...r,
+        discount_periods: Array.isArray(r.discount_periods)
+          ? (r.discount_periods as DiscountPeriod[])
+          : [],
+      })) as CampaignRule[];
     },
   });
 };
