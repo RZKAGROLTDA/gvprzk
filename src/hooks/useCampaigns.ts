@@ -171,11 +171,11 @@ export const useUpdateCampaignRule = () => {
       patch,
     }: {
       id: string;
-      patch: Partial<Omit<CampaignRule, 'id' | 'created_at' | 'updated_at'>>;
+      patch: CampaignRuleUpdate;
     }) => {
       const { data, error } = await supabase
         .from('campaign_rules')
-        .update(patch)
+        .update(patch as any)
         .eq('id', id)
         .select()
         .single();
