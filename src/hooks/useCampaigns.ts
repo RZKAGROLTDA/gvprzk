@@ -146,10 +146,10 @@ export const useSearchCampaignClients = (query: string) => {
 export const useCreateCampaignRule = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (rule: Omit<CampaignRule, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (rule: CampaignRuleInsert) => {
       const { data, error } = await supabase
         .from('campaign_rules')
-        .insert(rule)
+        .insert(rule as any)
         .select()
         .single();
       if (error) throw error;
