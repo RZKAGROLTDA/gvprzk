@@ -2314,15 +2314,8 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Ganho Abril (%)</Label>
-            <Input type="number" step="0.01" value={april} onChange={(e) => setApril(e.target.value)} />
-          </div>
-          <div>
-            <Label>Ganho Maio (%)</Label>
-            <Input type="number" step="0.01" value={may} onChange={(e) => setMay(e.target.value)} />
-          </div>
+        <div>
+          <DiscountPeriodsEditor periods={periods} onChange={setPeriods} />
         </div>
 
         <div>
