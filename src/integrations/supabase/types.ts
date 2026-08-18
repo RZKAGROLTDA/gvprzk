@@ -177,6 +177,7 @@ export type Database = {
           commitment_value: number
           created_at: string
           created_by: string | null
+          discount_periods: Json
           end_date: string | null
           gained_april: number
           gained_june: number
@@ -193,6 +194,7 @@ export type Database = {
           commitment_value?: number
           created_at?: string
           created_by?: string | null
+          discount_periods?: Json
           end_date?: string | null
           gained_april?: number
           gained_june?: number
@@ -209,6 +211,7 @@ export type Database = {
           commitment_value?: number
           created_at?: string
           created_by?: string | null
+          discount_periods?: Json
           end_date?: string | null
           gained_april?: number
           gained_june?: number
