@@ -2333,7 +2333,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <Button variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} disabled={!name.trim() || periodInvalid || create.isPending}>
+        <Button onClick={handleSubmit} disabled={!name.trim() || periodInvalid || periodsInvalid || create.isPending}>
           {create.isPending ? 'Salvando...' : 'Criar Regra'}
         </Button>
       </DialogFooter>
