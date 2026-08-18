@@ -60,8 +60,11 @@ import {
   useUpdateCampaignClient,
   useDeleteCampaignClient,
   useEnsureClientMaster,
+  normalizeDiscountPeriods,
   type CampaignRule,
   type CampaignClient,
+  type DiscountPeriod,
+  type CampaignRuleInsert,
   SOLD_TRIGGER_OPTIONS,
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
@@ -73,6 +76,86 @@ const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
 const formatPct = (v: number) => `${(v ?? 0).toFixed(2)}%`;
+
+const formatPeriodsSummary = (periods: DiscountPeriod[] | null | undefined) => {
+  if (!periods || periods.length === 0) return null;
+  return periods.map((p) => `${p.label} ${formatPct(Number(p.percent))}`).join(' · ');
+};
+
+const DiscountPeriodsEditor: React.FC<{
+  periods: DiscountPeriod[];
+  onChange: (periods: DiscountPeriod[]) => void;
+  disabled?: boolean;
+}> = ({ periods, onChange, disabled }) => {
+  const updatePeriod = (idx: number, field: keyof DiscountPeriod, value: string | number) => {
+    const next = [...periods];
+    if (field === 'label') {
+      next[idx] = { ...next[idx], label: String(value) };
+    } else {
+      next[idx] = { ...next[idx], percent: Number(value) || 0 };
+    }
+    onChange(next);
+  };
+
+  const addPeriod = () => onChange([...periods, { label: '', percent: 0 }]);
+  const removePeriod = (idx: number) => {
+    const next = [...periods];
+    next.splice(idx, 1);
+    onChange(next);
+  };
+
+  const hasInvalid = periods.some((p) => !p.label.trim());
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-[10px] uppercase text-muted-foreground">Períodos de desconto</Label>
+      {periods.map((p, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <Input
+            value={p.label}
+            onChange={(e) => updatePeriod(idx, 'label', e.target.value)}
+            placeholder="Mês/Período"
+            className="h-8"
+            disabled={disabled}
+          />
+          <Input
+            type="number"
+            step="0.01"
+            value={p.percent}
+            onChange={(e) => updatePeriod(idx, 'percent', e.target.value)}
+            placeholder="%"
+            className="h-8 w-24 text-right"
+            disabled={disabled}
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 shrink-0"
+            onClick={() => removePeriod(idx)}
+            disabled={disabled}
+            aria-label="Remover período"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      {hasInvalid && (
+        <p className="text-[11px] text-destructive">Preencha o nome de todos os períodos.</p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-8"
+        onClick={addPeriod}
+        disabled={disabled}
+      >
+        <Plus className="h-4 w-4 mr-1" /> Adicionar período
+      </Button>
+    </div>
+  );
+};
 
 // Exporta uma matriz de objetos para .xlsx aplicando formatos a colunas conhecidas.
 const exportRowsToExcel = (
@@ -1905,20 +1988,19 @@ const RuleRow: React.FC<{
 
   const [name, setName] = useState(rule.campaign_name);
   const [tMin, setTMin] = useState(String(rule.trigger_min ?? ''));
-  const [april, setApril] = useState(String(rule.gained_april ?? ''));
-  const [may, setMay] = useState(String(rule.gained_may ?? ''));
+  const [periods, setPeriods] = useState<DiscountPeriod[]>(normalizeDiscountPeriods(rule.discount_periods));
   const [commitment, setCommitment] = useState(String(rule.commitment_value ?? ''));
   const [active, setActive] = useState(rule.active);
   const [startDate, setStartDate] = useState(rule.start_date || '');
   const [endDate, setEndDate] = useState(rule.end_date || '');
 
   const periodInvalid = !!startDate && !!endDate && endDate < startDate;
+  const periodsInvalid = periods.some((p) => !p.label.trim());
 
   const resetFromRule = () => {
     setName(rule.campaign_name);
     setTMin(String(rule.trigger_min ?? ''));
-    setApril(String(rule.gained_april ?? ''));
-    setMay(String(rule.gained_may ?? ''));
+    setPeriods(normalizeDiscountPeriods(rule.discount_periods));
     setCommitment(String(rule.commitment_value ?? ''));
     setActive(rule.active);
     setStartDate(rule.start_date || '');
@@ -1926,7 +2008,7 @@ const RuleRow: React.FC<{
   };
 
   const handleSave = async () => {
-    if (!name.trim() || periodInvalid) return;
+    if (!name.trim() || periodInvalid || periodsInvalid) return;
     await update.mutateAsync({
       id: rule.id,
       patch: {
@@ -1934,8 +2016,7 @@ const RuleRow: React.FC<{
         trigger_min: parseFloat(tMin) || 0,
         // trigger_max foi descontinuado da UI — sempre null
         trigger_max: null,
-        gained_april: parseFloat(april) || 0,
-        gained_may: parseFloat(may) || 0,
+        discount_periods: periods,
         commitment_value: parseFloat(commitment) || 0,
         active,
         start_date: startDate || null,
@@ -1973,7 +2054,7 @@ const RuleRow: React.FC<{
           />
         </TableCell>
         <TableCell className="py-2">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-[10px] uppercase text-muted-foreground">Gatilho R$</Label>
               <Input
@@ -1981,26 +2062,6 @@ const RuleRow: React.FC<{
                 step="0.01"
                 value={tMin}
                 onChange={(e) => setTMin(e.target.value)}
-                className="h-8 text-right"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase text-muted-foreground">Abr %</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={april}
-                onChange={(e) => setApril(e.target.value)}
-                className="h-8 text-right"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase text-muted-foreground">Mai %</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={may}
-                onChange={(e) => setMay(e.target.value)}
                 className="h-8 text-right"
               />
             </div>
@@ -2014,6 +2075,9 @@ const RuleRow: React.FC<{
                 className="h-8 text-right"
               />
             </div>
+          </div>
+          <div className="mt-2">
+            <DiscountPeriodsEditor periods={periods} onChange={setPeriods} />
           </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div className="space-y-1">
@@ -2062,7 +2126,7 @@ const RuleRow: React.FC<{
               size="icon"
               className="h-8 w-8"
               onClick={handleSave}
-              disabled={!name.trim() || periodInvalid || update.isPending}
+              disabled={!name.trim() || periodInvalid || periodsInvalid || update.isPending}
               aria-label="Salvar"
             >
               <Check className="h-4 w-4" />
@@ -2095,9 +2159,9 @@ const RuleRow: React.FC<{
           {formatCurrency(Number(rule.trigger_min))}
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          Abr {formatPct(Number(rule.gained_april))} ·{' '}
-          Mai {formatPct(Number(rule.gained_may))} ·{' '}
-          Compromisso {formatCurrency(Number(rule.commitment_value))}
+          {formatPeriodsSummary(rule.discount_periods) ||
+            `Abr ${formatPct(Number(rule.gained_april))} · Mai ${formatPct(Number(rule.gained_may))}`}
+          {' · '}Compromisso {formatCurrency(Number(rule.commitment_value))}
         </div>
       </TableCell>
       <TableCell>
@@ -2186,29 +2250,30 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const create = useCreateCampaignRule();
   const [name, setName] = useState('');
   const [tMin, setTMin] = useState('');
-  const [april, setApril] = useState('');
-  const [may, setMay] = useState('');
+  const [periods, setPeriods] = useState<DiscountPeriod[]>([]);
   const [commitment, setCommitment] = useState('');
   const [active, setActive] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   const periodInvalid = !!startDate && !!endDate && endDate < startDate;
+  const periodsInvalid = periods.some((p) => !p.label.trim());
 
   const handleSubmit = async () => {
-    if (!name.trim() || periodInvalid) return;
+    if (!name.trim() || periodInvalid || periodsInvalid) return;
     await create.mutateAsync({
       campaign_name: name.trim(),
       trigger_min: parseFloat(tMin) || 0,
       // trigger_max foi descontinuado da UI — sempre null
       trigger_max: null,
-      gained_april: parseFloat(april) || 0,
-      gained_may: parseFloat(may) || 0,
+      gained_april: 0,
+      gained_may: 0,
       gained_june: 0,
       commitment_value: parseFloat(commitment) || 0,
       active,
       start_date: startDate || null,
       end_date: endDate || null,
+      discount_periods: periods,
     });
     onClose();
   };
@@ -2249,15 +2314,8 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label>Ganho Abril (%)</Label>
-            <Input type="number" step="0.01" value={april} onChange={(e) => setApril(e.target.value)} />
-          </div>
-          <div>
-            <Label>Ganho Maio (%)</Label>
-            <Input type="number" step="0.01" value={may} onChange={(e) => setMay(e.target.value)} />
-          </div>
+        <div>
+          <DiscountPeriodsEditor periods={periods} onChange={setPeriods} />
         </div>
 
         <div>
@@ -2275,7 +2333,7 @@ const NewRuleDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <Button variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} disabled={!name.trim() || periodInvalid || create.isPending}>
+        <Button onClick={handleSubmit} disabled={!name.trim() || periodInvalid || periodsInvalid || create.isPending}>
           {create.isPending ? 'Salvando...' : 'Criar Regra'}
         </Button>
       </DialogFooter>

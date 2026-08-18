@@ -2,6 +2,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export interface DiscountPeriod {
+  label: string;
+  percent: number;
+}
+
+export const normalizeDiscountPeriods = (value: any): DiscountPeriod[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((p: any) => ({
+    label: String(p.label ?? ''),
+    percent: Number(p.percent ?? 0),
+  }));
+};
+
 export interface CampaignRule {
   id: string;
   campaign_name: string;
@@ -10,12 +23,41 @@ export interface CampaignRule {
   gained_april: number;
   gained_may: number;
   gained_june: number;
+  discount_periods: DiscountPeriod[];
   commitment_value: number;
   active: boolean;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface CampaignRuleInsert {
+  campaign_name: string;
+  trigger_min: number;
+  trigger_max?: number | null;
+  gained_april?: number;
+  gained_may?: number;
+  gained_june?: number;
+  discount_periods?: DiscountPeriod[];
+  commitment_value: number;
+  active: boolean;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+export interface CampaignRuleUpdate {
+  campaign_name?: string;
+  trigger_min?: number;
+  trigger_max?: number | null;
+  gained_april?: number;
+  gained_may?: number;
+  gained_june?: number;
+  discount_periods?: DiscountPeriod[];
+  commitment_value?: number;
+  active?: boolean;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 
@@ -64,7 +106,10 @@ export const useCampaignRules = () => {
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as CampaignRule[];
+      return (data || []).map((r) => ({
+        ...r,
+        discount_periods: normalizeDiscountPeriods(r.discount_periods),
+      })) as CampaignRule[];
     },
   });
 };
@@ -101,10 +146,10 @@ export const useSearchCampaignClients = (query: string) => {
 export const useCreateCampaignRule = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (rule: Omit<CampaignRule, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (rule: CampaignRuleInsert) => {
       const { data, error } = await supabase
         .from('campaign_rules')
-        .insert(rule)
+        .insert(rule as any)
         .select()
         .single();
       if (error) throw error;
@@ -126,11 +171,11 @@ export const useUpdateCampaignRule = () => {
       patch,
     }: {
       id: string;
-      patch: Partial<Omit<CampaignRule, 'id' | 'created_at' | 'updated_at'>>;
+      patch: CampaignRuleUpdate;
     }) => {
       const { data, error } = await supabase
         .from('campaign_rules')
-        .update(patch)
+        .update(patch as any)
         .eq('id', id)
         .select()
         .single();
