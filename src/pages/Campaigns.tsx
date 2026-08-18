@@ -77,6 +77,86 @@ const formatCurrency = (v: number) =>
 
 const formatPct = (v: number) => `${(v ?? 0).toFixed(2)}%`;
 
+const formatPeriodsSummary = (periods: DiscountPeriod[] | null | undefined) => {
+  if (!periods || periods.length === 0) return null;
+  return periods.map((p) => `${p.label} ${formatPct(Number(p.percent))}`).join(' · ');
+};
+
+const DiscountPeriodsEditor: React.FC<{
+  periods: DiscountPeriod[];
+  onChange: (periods: DiscountPeriod[]) => void;
+  disabled?: boolean;
+}> = ({ periods, onChange, disabled }) => {
+  const updatePeriod = (idx: number, field: keyof DiscountPeriod, value: string | number) => {
+    const next = [...periods];
+    if (field === 'label') {
+      next[idx] = { ...next[idx], label: String(value) };
+    } else {
+      next[idx] = { ...next[idx], percent: Number(value) || 0 };
+    }
+    onChange(next);
+  };
+
+  const addPeriod = () => onChange([...periods, { label: '', percent: 0 }]);
+  const removePeriod = (idx: number) => {
+    const next = [...periods];
+    next.splice(idx, 1);
+    onChange(next);
+  };
+
+  const hasInvalid = periods.some((p) => !p.label.trim());
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-[10px] uppercase text-muted-foreground">Períodos de desconto</Label>
+      {periods.map((p, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <Input
+            value={p.label}
+            onChange={(e) => updatePeriod(idx, 'label', e.target.value)}
+            placeholder="Mês/Período"
+            className="h-8"
+            disabled={disabled}
+          />
+          <Input
+            type="number"
+            step="0.01"
+            value={p.percent}
+            onChange={(e) => updatePeriod(idx, 'percent', e.target.value)}
+            placeholder="%"
+            className="h-8 w-24 text-right"
+            disabled={disabled}
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 shrink-0"
+            onClick={() => removePeriod(idx)}
+            disabled={disabled}
+            aria-label="Remover período"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      {hasInvalid && (
+        <p className="text-[11px] text-destructive">Preencha o nome de todos os períodos.</p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-8"
+        onClick={addPeriod}
+        disabled={disabled}
+      >
+        <Plus className="h-4 w-4 mr-1" /> Adicionar período
+      </Button>
+    </div>
+  );
+};
+
 // Exporta uma matriz de objetos para .xlsx aplicando formatos a colunas conhecidas.
 const exportRowsToExcel = (
   rows: Record<string, any>[],
