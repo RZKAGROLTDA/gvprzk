@@ -7,8 +7,33 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-const NON_CLIENT =
-  /\b(BOLETO|BOL|VISA|ELO|AMEX|MASTER|MASTERCARD|MAESTRO|HIPERCARD|HIPER|DINERS|CHEQUE|PIX|CARTAO|DEBITO|CREDITO|DUPLICATA|TED|DOC|DINHEIRO|CLIENTE PADRAO)\b/;
+// Lista EXPLÍCITA de pseudo-clientes (formas de pagamento) identificados na auditoria.
+// Correspondência é por nome normalizado EXATO — nunca por palavra contida no nome,
+// para não excluir empresas legítimas (ex.: AGRO MASTER MAQUINAS, COOPERATIVA DE CREDITO...).
+const NON_CLIENT_NAMES = new Set([
+  'AMEX CREDITO',
+  'AMEX CREDITO PARCELADO 03 PARC',
+  'AMEX CREDITO PARCELADO 04 PARC',
+  'AMEX CREDITO PARCELADO 05 PARC',
+  'AMEX CREDITO PARCELADO 06 PARC',
+  'AMEX DEBITO',
+  'BANCO DO BRASIL CARTAO VISA',
+  'CLIENTE PADRAO',
+  'CREDITO PARCELADO 05 PARC',
+  'ELO CREDITO A VISTA',
+  'ELO CREDITO PARCELADO 03 PARC',
+  'ELO CREDITO PARCELADO 06 PARC',
+  'ELO CREDITO PARCELADO 2 PARC',
+  'ELO CREDITO PARCELADO 4 PARC',
+  'MASTER CARD',
+  'MASTER CREDITO 02 PARCELAS',
+  'VISA CREDITO 02 PARCELAS',
+  'VISA CREDITO 03 PARCELAS',
+  'VISA CREDITO 04 PARCELAS',
+  'VISA CREDITO 05 PARCELAS',
+  'VISA CREDITO 06 PARCELAS',
+  'VISA CREDITO A VISTA',
+]);
 
 function normName(s: string) {
   return (s ?? '')
@@ -67,14 +92,16 @@ Deno.serve(async (req) => {
       const norm = code.replace(/^0+/, '') || '0';
       if (!/^\d+$/.test(code) || !name) { skipped++; continue; }
       const nn = normName(name);
-      if (NON_CLIENT.test(nn)) { skipped++; continue; }
+      if (NON_CLIENT_NAMES.has(nn)) { skipped++; continue; }
       payload.push({
         client_code: code,
         client_code_norm: norm,
         client_name: name,
         client_name_norm: nn,
-        client_code_root: norm.length > 4 ? norm.slice(0, -4) : null,
-        establishment_code: norm.length > 4 ? norm.slice(-4) : null,
+        // Identidade é somente client_code_norm. Os 4 últimos dígitos NÃO representam
+        // estabelecimento neste arquivo, portanto não são derivados automaticamente.
+        client_code_root: null,
+        establishment_code: null,
         name_variants: Array.isArray(r?.name_variants) ? r.name_variants : [name],
         name_conflict: Boolean(r?.name_conflict),
         source: 'erp_import',
