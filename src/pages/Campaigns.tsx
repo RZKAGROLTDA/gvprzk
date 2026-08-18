@@ -2054,7 +2054,7 @@ const RuleRow: React.FC<{
           />
         </TableCell>
         <TableCell className="py-2">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-[10px] uppercase text-muted-foreground">Gatilho R$</Label>
               <Input
@@ -2062,26 +2062,6 @@ const RuleRow: React.FC<{
                 step="0.01"
                 value={tMin}
                 onChange={(e) => setTMin(e.target.value)}
-                className="h-8 text-right"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase text-muted-foreground">Abr %</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={april}
-                onChange={(e) => setApril(e.target.value)}
-                className="h-8 text-right"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[10px] uppercase text-muted-foreground">Mai %</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={may}
-                onChange={(e) => setMay(e.target.value)}
                 className="h-8 text-right"
               />
             </div>
@@ -2095,6 +2075,9 @@ const RuleRow: React.FC<{
                 className="h-8 text-right"
               />
             </div>
+          </div>
+          <div className="mt-2">
+            <DiscountPeriodsEditor periods={periods} onChange={setPeriods} />
           </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div className="space-y-1">
