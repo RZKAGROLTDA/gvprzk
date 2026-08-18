@@ -60,8 +60,11 @@ import {
   useUpdateCampaignClient,
   useDeleteCampaignClient,
   useEnsureClientMaster,
+  normalizeDiscountPeriods,
   type CampaignRule,
   type CampaignClient,
+  type DiscountPeriod,
+  type CampaignRuleInsert,
   SOLD_TRIGGER_OPTIONS,
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
