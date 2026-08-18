@@ -1988,20 +1988,19 @@ const RuleRow: React.FC<{
 
   const [name, setName] = useState(rule.campaign_name);
   const [tMin, setTMin] = useState(String(rule.trigger_min ?? ''));
-  const [april, setApril] = useState(String(rule.gained_april ?? ''));
-  const [may, setMay] = useState(String(rule.gained_may ?? ''));
+  const [periods, setPeriods] = useState<DiscountPeriod[]>(normalizeDiscountPeriods(rule.discount_periods));
   const [commitment, setCommitment] = useState(String(rule.commitment_value ?? ''));
   const [active, setActive] = useState(rule.active);
   const [startDate, setStartDate] = useState(rule.start_date || '');
   const [endDate, setEndDate] = useState(rule.end_date || '');
 
   const periodInvalid = !!startDate && !!endDate && endDate < startDate;
+  const periodsInvalid = periods.some((p) => !p.label.trim());
 
   const resetFromRule = () => {
     setName(rule.campaign_name);
     setTMin(String(rule.trigger_min ?? ''));
-    setApril(String(rule.gained_april ?? ''));
-    setMay(String(rule.gained_may ?? ''));
+    setPeriods(normalizeDiscountPeriods(rule.discount_periods));
     setCommitment(String(rule.commitment_value ?? ''));
     setActive(rule.active);
     setStartDate(rule.start_date || '');
@@ -2009,7 +2008,7 @@ const RuleRow: React.FC<{
   };
 
   const handleSave = async () => {
-    if (!name.trim() || periodInvalid) return;
+    if (!name.trim() || periodInvalid || periodsInvalid) return;
     await update.mutateAsync({
       id: rule.id,
       patch: {
@@ -2017,8 +2016,7 @@ const RuleRow: React.FC<{
         trigger_min: parseFloat(tMin) || 0,
         // trigger_max foi descontinuado da UI — sempre null
         trigger_max: null,
-        gained_april: parseFloat(april) || 0,
-        gained_may: parseFloat(may) || 0,
+        discount_periods: periods,
         commitment_value: parseFloat(commitment) || 0,
         active,
         start_date: startDate || null,
