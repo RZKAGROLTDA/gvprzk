@@ -7,6 +7,14 @@ export interface DiscountPeriod {
   percent: number;
 }
 
+export const normalizeDiscountPeriods = (value: any): DiscountPeriod[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((p: any) => ({
+    label: String(p.label ?? ''),
+    percent: Number(p.percent ?? 0),
+  }));
+};
+
 export interface CampaignRule {
   id: string;
   campaign_name: string;
@@ -22,6 +30,34 @@ export interface CampaignRule {
   end_date: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface CampaignRuleInsert {
+  campaign_name: string;
+  trigger_min: number;
+  trigger_max?: number | null;
+  gained_april?: number;
+  gained_may?: number;
+  gained_june?: number;
+  discount_periods?: DiscountPeriod[];
+  commitment_value: number;
+  active: boolean;
+  start_date?: string | null;
+  end_date?: string | null;
+}
+
+export interface CampaignRuleUpdate {
+  campaign_name?: string;
+  trigger_min?: number;
+  trigger_max?: number | null;
+  gained_april?: number;
+  gained_may?: number;
+  gained_june?: number;
+  discount_periods?: DiscountPeriod[];
+  commitment_value?: number;
+  active?: boolean;
+  start_date?: string | null;
+  end_date?: string | null;
 }
 
 
