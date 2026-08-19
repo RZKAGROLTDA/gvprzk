@@ -3483,6 +3483,31 @@ export type Database = {
       monitor_session_security: { Args: never; Returns: undefined }
       monitor_tasks_new_unauthorized_access: { Args: never; Returns: undefined }
       monitor_unauthorized_customer_access: { Args: never; Returns: undefined }
+      resolve_client_name_conflict: {
+        Args: { p_id: string; p_new_name: string; p_resolution_type?: string }
+        Returns: {
+          active: boolean
+          client_code: string
+          client_code_norm: string
+          client_code_root: string | null
+          client_name: string
+          client_name_norm: string
+          created_at: string
+          establishment_code: string | null
+          id: string
+          import_batch_id: string | null
+          name_conflict: boolean
+          name_variants: Json
+          source: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "clients_master"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       search_client_equipment: {
         Args: {
           p_client_code?: string
