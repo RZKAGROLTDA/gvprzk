@@ -41,6 +41,7 @@ import Vacations from "./pages/Vacations";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MediaDiagnostics from "./pages/MediaDiagnostics";
 import UserVersions from "./pages/UserVersions";
+import ClientMasterReview from "./pages/ClientMasterReview";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
