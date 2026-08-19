@@ -3641,6 +3641,8 @@ export type Database = {
         | "sales_consultant"
         | "technical_consultant"
         | "admin"
+        | "cpa"
+        | "csa"
       client_temperature: "frio" | "morno" | "quente"
       employment_status: "active" | "inactive"
       followup_activity_type:
@@ -3787,6 +3789,8 @@ export const Constants = {
         "sales_consultant",
         "technical_consultant",
         "admin",
+        "cpa",
+        "csa",
       ],
       client_temperature: ["frio", "morno", "quente"],
       employment_status: ["active", "inactive"],
