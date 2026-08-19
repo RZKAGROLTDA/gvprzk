@@ -3543,6 +3543,10 @@ export type Database = {
         Args: { profile_id_param: string; updates: Json }
         Returns: Json
       }
+      seed_clients_master_legacy: {
+        Args: { p_batch_id?: string }
+        Returns: number
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       simple_is_admin: { Args: never; Returns: boolean }
