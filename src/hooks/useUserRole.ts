@@ -79,6 +79,7 @@ export const useUserRole = () => {
     isAdmin: userRole?.isAdmin ?? false,
     isSupervisor: userRole?.isSupervisor ?? false,
     isManager: userRole?.isManager ?? false,
+    isRacEquivalent: userRole?.isRacEquivalent ?? false,
     role: userRole?.role || 'none',
     rawRoles: userRole?.rawRoles ?? [],
     isLoading
