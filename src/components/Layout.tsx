@@ -10,7 +10,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useSessionSecurity } from '@/hooks/useSessionSecurity';
 import { getVersionInfo, formatVersion } from '@/config/version';
 import { ForceUpdateButton } from '@/components/ForceUpdateButton';
-import { getRoleLabel } from '@/lib/roles';
+import { getRoleLabel, isRacEquivalentRole } from '@/lib/roles';
 
 interface LayoutProps {
   children: React.ReactNode;
