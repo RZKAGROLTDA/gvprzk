@@ -109,7 +109,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   const { navItems, managementItems, adminItems } = useNavigationItems();
   // All roles can access Management - simplified view for consultants/RAC
   const canSeeManagement = !!profile;
-  const canSeeVacations = hasAdminRole || isManager || isSupervisor || rawRoles.includes('rac' as any);
+  const canSeeVacations = hasAdminRole || isManager || isSupervisor || rawRoles.some(r => isRacEquivalentRole(r as string));
   const vacationItem = { path: '/vacations', icon: PlaneTakeoff, label: 'Agenda de Férias' };
   const canSeeUserVersions = hasAdminRole || isManager;
   const versionsItem = { path: '/versoes-usuarios', icon: MonitorSmartphone, label: 'Versões dos Usuários' };
