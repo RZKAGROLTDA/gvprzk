@@ -77,15 +77,7 @@ const useNavigationItems = () => {
   }), []);
 };
 
-// Mapeamento de roles para português
-const roleLabels: Record<string, string> = {
-  'manager': 'Gerente',
-  'supervisor': 'Supervisor',
-  'rac': 'RAC',
-  'consultant': 'Consultor',
-  'sales_consultant': 'Consultor de Vendas',
-  'technical_consultant': 'Consultor Técnico'
-};
+// Rótulos centralizados em src/lib/roles.ts
 
 // Memoize navigation link component to prevent unnecessary re-renders
 const NavLink = memo(({ item, isActive, className }: { 
