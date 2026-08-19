@@ -38,19 +38,27 @@ export const useUserRole = () => {
       const isManager = roles?.some(r => r.role === 'admin' || r.role === 'manager') ?? false;
 
       // Determine primary role for display
+      // CPA/CSA são reconhecidos EXPLICITAMENTE (nunca caem em consultant)
       let primaryRole = 'none';
       if (roles && roles.length > 0) {
-        // Priority: admin > supervisor > rac > consultant
+        // Priority: admin > supervisor > rac > cpa > csa > demais comerciais
         if (roles.some(r => r.role === 'admin')) primaryRole = 'admin';
         else if (roles.some(r => r.role === 'supervisor')) primaryRole = 'supervisor';
         else if (roles.some(r => r.role === 'rac')) primaryRole = 'rac';
+        else if (roles.some(r => r.role === 'cpa')) primaryRole = 'cpa';
+        else if (roles.some(r => r.role === 'csa')) primaryRole = 'csa';
+        else if (roles.some(r => r.role === 'sales_consultant')) primaryRole = 'sales_consultant';
+        else if (roles.some(r => r.role === 'technical_consultant')) primaryRole = 'technical_consultant';
         else primaryRole = 'consultant';
       }
+
+      const isRacEquivalent = roles?.some(r => isRacEquivalentRole(r.role as string)) ?? false;
 
       const result = {
         isAdmin,
         isSupervisor,
         isManager,
+        isRacEquivalent,
         role: primaryRole,
         rawRoles: roles?.map((entry) => entry.role) ?? []
       };
