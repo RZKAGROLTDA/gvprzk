@@ -67,6 +67,11 @@ const useNavigationItems = () => {
         path: '/diagnostico-midia',
         icon: HardDrive,
         label: 'Diagnóstico de Mídia'
+      },
+      {
+        path: '/revisao-clientes',
+        icon: BookUser,
+        label: 'Revisão de Clientes'
       }
     ]
   }), []);
