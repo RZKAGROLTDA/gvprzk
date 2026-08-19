@@ -148,7 +148,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                 <div className="hidden sm:flex flex-col text-right">
                   <span className="text-sm font-medium text-foreground">{profile?.name || userDisplayName}</span>
                   <div className="flex flex-col text-xs text-muted-foreground">
-                    <span>{roleLabels[profile?.role] || 'Usuário'}</span>
+                    <span>{profile?.role ? getRoleLabel(profile.role) : 'Usuário'}</span>
                     {profile?.filial_nome && <span>{profile.filial_nome}</span>}
                   </div>
                 </div>
