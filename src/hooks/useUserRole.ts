@@ -28,8 +28,9 @@ export const useUserRole = () => {
           isAdmin: false,
           isSupervisor: false,
           isManager: false,
+          isRacEquivalent: false,
           role: 'none',
-          rawRoles: []
+          rawRoles: [] as string[]
         };
       }
 
