@@ -41,6 +41,7 @@ import Vacations from "./pages/Vacations";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MediaDiagnostics from "./pages/MediaDiagnostics";
 import UserVersions from "./pages/UserVersions";
+import ClientMasterReview from "./pages/ClientMasterReview";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
@@ -104,6 +105,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/equipamentos" element={<Layout><Equipamentos /></Layout>} />
       <Route path="/diagnostico-midia" element={<Layout><MediaDiagnostics /></Layout>} />
       <Route path="/versoes-usuarios" element={<Layout><UserVersions /></Layout>} />
+      <Route path="/revisao-clientes" element={<Layout><ClientMasterReview /></Layout>} />
       <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
