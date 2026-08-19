@@ -48,6 +48,7 @@ import {
 } from '@/lib/campaignPeriod';
 
 import { supabase } from '@/integrations/supabase/client';
+import { isRacEquivalentRole } from '@/lib/roles';
 import { toast } from 'sonner';
 import {
   useCampaignRules,
@@ -1558,7 +1559,7 @@ const isTelevendasFilial = (nome?: string | null) =>
   !!nome && /televendas/i.test(nome);
 
 const isRacRole = (role?: string | null) =>
-  !!role && /rac/i.test(role);
+  isRacEquivalentRole(role);
 
 interface SellerInfo {
   name: string;
