@@ -101,13 +101,13 @@ export const ClientMasterReview: React.FC = () => {
 
   const resolveMutation = useMutation({
     mutationFn: async ({ id, newName, type }: { id: string; newName: string; type: 'choose' | 'manual' }) => {
-      const { data, error } = await supabase.rpc('resolve_client_name_conflict', {
+      const { data, error } = await (supabase.rpc as any)('resolve_client_name_conflict', {
         p_id: id,
         p_new_name: newName,
         p_resolution_type: type,
       });
       if (error) throw new Error(error.message);
-      return data;
+      return data as ConflictRow;
     },
     onSuccess: () => {
       toast.success('Conflito resolvido com sucesso');
