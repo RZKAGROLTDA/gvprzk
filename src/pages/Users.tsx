@@ -187,6 +187,8 @@ export const Users: React.FC = () => {
       case 'supervisor':
         return 'secondary';
       case 'rac':
+      case 'cpa':
+      case 'csa':
         return 'secondary';
       case 'consultant':
         return 'outline';
@@ -207,6 +209,10 @@ export const Users: React.FC = () => {
         return 'Supervisor';
       case 'rac':
         return 'RAC';
+      case 'cpa':
+        return 'CPA';
+      case 'csa':
+        return 'CSA';
       case 'consultant':
         return 'Consultor';
       case 'sales_consultant':
@@ -473,6 +479,8 @@ export const Users: React.FC = () => {
                               <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                               <SelectItem value="consultant">Consultor</SelectItem>
                               <SelectItem value="rac">RAC</SelectItem>
+                              <SelectItem value="cpa">CPA</SelectItem>
+                              <SelectItem value="csa">CSA</SelectItem>
                               <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
                             </SelectContent>
                          </Select>

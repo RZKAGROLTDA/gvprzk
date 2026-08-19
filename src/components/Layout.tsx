@@ -10,6 +10,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useSessionSecurity } from '@/hooks/useSessionSecurity';
 import { getVersionInfo, formatVersion } from '@/config/version';
 import { ForceUpdateButton } from '@/components/ForceUpdateButton';
+import { getRoleLabel, isRacEquivalentRole } from '@/lib/roles';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -77,15 +78,7 @@ const useNavigationItems = () => {
   }), []);
 };
 
-// Mapeamento de roles para português
-const roleLabels: Record<string, string> = {
-  'manager': 'Gerente',
-  'supervisor': 'Supervisor',
-  'rac': 'RAC',
-  'consultant': 'Consultor',
-  'sales_consultant': 'Consultor de Vendas',
-  'technical_consultant': 'Consultor Técnico'
-};
+// Rótulos centralizados em src/lib/roles.ts
 
 // Memoize navigation link component to prevent unnecessary re-renders
 const NavLink = memo(({ item, isActive, className }: { 
@@ -116,7 +109,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   const { navItems, managementItems, adminItems } = useNavigationItems();
   // All roles can access Management - simplified view for consultants/RAC
   const canSeeManagement = !!profile;
-  const canSeeVacations = hasAdminRole || isManager || isSupervisor || rawRoles.includes('rac' as any);
+  const canSeeVacations = hasAdminRole || isManager || isSupervisor || rawRoles.some(r => isRacEquivalentRole(r as string));
   const vacationItem = { path: '/vacations', icon: PlaneTakeoff, label: 'Agenda de Férias' };
   const canSeeUserVersions = hasAdminRole || isManager;
   const versionsItem = { path: '/versoes-usuarios', icon: MonitorSmartphone, label: 'Versões dos Usuários' };
@@ -155,7 +148,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                 <div className="hidden sm:flex flex-col text-right">
                   <span className="text-sm font-medium text-foreground">{profile?.name || userDisplayName}</span>
                   <div className="flex flex-col text-xs text-muted-foreground">
-                    <span>{roleLabels[profile?.role] || 'Usuário'}</span>
+                    <span>{profile?.role ? getRoleLabel(profile.role) : 'Usuário'}</span>
                     {profile?.filial_nome && <span>{profile.filial_nome}</span>}
                   </div>
                 </div>

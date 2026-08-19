@@ -24,6 +24,7 @@ import {
 } from '@/hooks/useVacations';
 import { useProfile } from '@/hooks/useProfile';
 import { useUserRole } from '@/hooks/useUserRole';
+import { isRacEquivalentRole } from '@/lib/roles';
 import { VacationFormDialog } from '@/components/vacations/VacationFormDialog';
 
 const statusMeta: Record<VacationStatus, { label: string; className: string }> = {
@@ -37,6 +38,8 @@ const roleLabels: Record<string, string> = {
   manager: 'Gerente',
   supervisor: 'Supervisor',
   rac: 'RAC',
+  cpa: 'CPA',
+  csa: 'CSA',
   sales_consultant: 'Consultor de Vendas',
   technical_consultant: 'Consultor Técnico',
   consultant: 'Consultor',
@@ -60,7 +63,7 @@ const fmt = (iso?: string | null) => {
 const VacationsPage: React.FC = () => {
   const { profile } = useProfile();
   const { isAdmin, isManager, isSupervisor, rawRoles, isLoading: rolesLoading } = useUserRole();
-  const isRac = rawRoles.includes('rac' as any);
+  const isRac = rawRoles.some((r) => isRacEquivalentRole(r as string));
   const canView = isAdmin || isManager;
   const canInsert = canView || isSupervisor || isRac;
   const canManage = isAdmin || isManager;
