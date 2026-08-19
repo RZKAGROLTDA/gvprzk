@@ -782,6 +782,8 @@ export const LoginForm: React.FC = () => {
                       <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                       <SelectItem value="technical_consultant">Consultor Técnico</SelectItem>
                       <SelectItem value="rac">RAC</SelectItem>
+                    <SelectItem value="cpa">CPA</SelectItem>
+                    <SelectItem value="csa">CSA</SelectItem>
                       <SelectItem value="supervisor">Supervisor</SelectItem>
                     </SelectContent>
                   </Select>

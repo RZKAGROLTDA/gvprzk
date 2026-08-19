@@ -1544,6 +1544,8 @@ const ROLE_LABELS: Record<string, string> = {
   sales_consultant: 'Consultor',
   consultant: 'Consultor',
   rac: 'RAC',
+  cpa: 'CPA',
+  csa: 'CSA',
   user: 'Usuário',
 };
 

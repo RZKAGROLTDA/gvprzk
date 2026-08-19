@@ -73,6 +73,8 @@ const roleLabels: Record<string, string> = {
   manager: 'Gerente',
   supervisor: 'Supervisor',
   rac: 'RAC',
+  cpa: 'CPA',
+  csa: 'CSA',
   consultant: 'Consultor',
   sales_consultant: 'Consultor de Vendas',
   technical_consultant: 'Consultor Técnico',

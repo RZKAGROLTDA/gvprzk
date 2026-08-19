@@ -27,6 +27,8 @@ const roleLabel = (role: string) => {
     sales_consultant: 'Consultor de Vendas',
     technical_consultant: 'Consultor Técnico',
     rac: 'RAC',
+    cpa: 'CPA',
+    csa: 'CSA',
     supervisor: 'Supervisor',
     manager: 'Gerente',
     admin: 'Gerente',
@@ -36,7 +38,7 @@ const roleLabel = (role: string) => {
 
 const roleBadgeVariant = (role: string) => {
   const r = role?.toLowerCase();
-  if (r === 'rac') return 'warning';
+  if (r === 'rac' || r === 'cpa' || r === 'csa') return 'warning';
   if (r === 'consultant' || r === 'sales_consultant' || r === 'technical_consultant') return 'default';
   if (r === 'supervisor') return 'secondary';
   if (r === 'manager' || r === 'admin') return 'outline';
@@ -698,6 +700,8 @@ const Management: React.FC = () => {
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="sales_consultant">Consultor de Vendas</SelectItem>
                     <SelectItem value="rac">RAC</SelectItem>
+                    <SelectItem value="cpa">CPA</SelectItem>
+                    <SelectItem value="csa">CSA</SelectItem>
                     <SelectItem value="supervisor">Supervisor</SelectItem>
                   </SelectContent>
                 </Select>
