@@ -1480,9 +1480,7 @@ const EntryRow: React.FC<{
             <SelectContent>
               {activeRules.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {formatCurrency(Number(r.trigger_min))} — Abr {formatPct(Number(r.gained_april))} / Mai{' '}
-                  {formatPct(Number(r.gained_may))} / Comp.{' '}
-                  {formatCurrency(Number(r.commitment_value))}
+                  {ruleTriggerLabel(r)}
                 </SelectItem>
               ))}
             </SelectContent>
