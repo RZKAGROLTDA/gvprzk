@@ -62,6 +62,8 @@ export interface EquipmentFilters {
   clientCode?: string | null;
   clientName?: string | null;
   validationPriority?: boolean | null;
+  pukStatus?: string | null;
+  filialId?: string | null;
   /** Lista de user_ids de validadores a filtrar (aplica .in em validated_by). */
   validatedByIn?: string[] | null;
 }
@@ -126,59 +128,12 @@ export const useEquipmentByClient = (
 };
 
 // -----------------------------------------------------------------------------
-// Busca genérica para a tela /equipamentos
+// (removido) useEquipmentSearch — era o único caminho SELECT direto com
+// count:'exact' sobre client_equipment e estava sem consumidores. A tela
+// /equipamentos usa exclusivamente `useEquipmentPark` (RPC paginada).
 // -----------------------------------------------------------------------------
-export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize = 50) => {
-  const search = norm(filters.search);
-  const machineType = norm(filters.machineType);
-  const machineStatus = norm(filters.machineStatus);
-  const clientCode = norm(filters.clientCode);
-  const clientName = norm(filters.clientName);
-  const validationPriority = filters.validationPriority ?? null;
-  const validatedByIn = (filters.validatedByIn ?? null)?.filter(Boolean) ?? null;
-  const validatedByKey = validatedByIn && validatedByIn.length > 0 ? [...validatedByIn].sort().join(',') : null;
-  const isFirstPage = page === 0;
 
-  return useQuery({
-    queryKey: [
-      'client-equipment',
-      'search',
-      { search, machineType, machineStatus, clientCode, clientName, validationPriority, validatedByKey, page, pageSize },
-    ],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      let q = supabase
-        .from('client_equipment' as any)
-        .select(EQUIPMENT_COLUMNS, isFirstPage ? { count: 'exact' } : undefined)
-        .order('validation_priority', { ascending: false, nullsFirst: false })
-        .order('updated_at', { ascending: false })
-        .range(page * pageSize, page * pageSize + pageSize - 1);
 
-      if (clientCode) q = q.eq('client_code', clientCode);
-      if (clientName) q = q.ilike('client_name', `%${clientName}%`);
-      if (machineType) q = q.eq('machine_type', machineType);
-      if (machineStatus) q = q.eq('machine_status', machineStatus);
-      if (validationPriority === true) q = q.eq('validation_priority', true);
-      if (validatedByIn && validatedByIn.length > 0) q = q.in('validated_by', validatedByIn);
-
-      if (search) {
-        // Busca livre: modelo, chassi, nome cliente, código cliente
-        const s = search.replace(/[%,]/g, '');
-        q = q.or(
-          `model.ilike.%${s}%,serial_chassis.ilike.%${s}%,client_name.ilike.%${s}%,client_code.ilike.%${s}%`,
-        );
-      }
-
-      const { data, error, count } = await q;
-      if (error) throw error;
-      return {
-        rows: (data as unknown as ClientEquipment[]) ?? [],
-        totalCount: count ?? null,
-      };
-    },
-  });
-};
 
 // -----------------------------------------------------------------------------
 // Parque de Máquinas (tela /equipamentos) — via RPC server-side
@@ -186,9 +141,9 @@ export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize
 // get_equipment_park_paginated / get_equipment_park_kpis são SECURITY DEFINER,
 // autorizadas por can_view_equipment_park() (approved + active) e devolvem o
 // universo completo do parque com total_count agregado no servidor.
-// Filtros que a RPC ainda não suporta (machine_type, validated_by e combinação
-// de múltiplos termos de texto) caem no caminho direto legado — apenas nesses
-// casos, que são recortes seletivos.
+// A RPC paginada cobre TODOS os filtros da tela (busca livre, código e nome do
+// cliente, tipo, status, PUK, prioridade, filial e validadores), portanto não
+// existe mais fallback para SELECT direto + count exact.
 // -----------------------------------------------------------------------------
 
 export interface EquipmentParkRow extends Omit<ClientEquipment, 'import_batch_id' | 'transfer_history'> {
@@ -204,27 +159,23 @@ export interface EquipmentParkResult {
 }
 
 const buildParkParams = (filters: EquipmentFilters) => {
-  const terms = [norm(filters.search), norm(filters.clientCode), norm(filters.clientName)].filter(
-    Boolean,
-  ) as string[];
-  const machineType = norm(filters.machineType);
   const validatedByIn = (filters.validatedByIn ?? null)?.filter(Boolean) ?? null;
-  const needsDirect =
-    !!machineType || (validatedByIn?.length ?? 0) > 0 || terms.length > 1;
   return {
-    search: terms[0] ?? null,
+    search: norm(filters.search),
+    clientCode: norm(filters.clientCode),
+    clientName: norm(filters.clientName),
     machineStatus: norm(filters.machineStatus),
+    machineType: norm(filters.machineType),
+    pukStatus: norm(filters.pukStatus),
+    filialId: norm(filters.filialId),
     validationPriority: filters.validationPriority ?? null,
-    machineType,
-    validatedByIn,
-    needsDirect,
+    validatedByIn: validatedByIn && validatedByIn.length > 0 ? validatedByIn : null,
   };
 };
 
 export const useEquipmentPark = (filters: EquipmentFilters, page = 0, pageSize = 50) => {
   const p = buildParkParams(filters);
-  const validatedByKey =
-    p.validatedByIn && p.validatedByIn.length > 0 ? [...p.validatedByIn].sort().join(',') : null;
+  const validatedByKey = p.validatedByIn ? [...p.validatedByIn].sort().join(',') : null;
 
   return useQuery<EquipmentParkResult>({
     queryKey: [
@@ -232,13 +183,14 @@ export const useEquipmentPark = (filters: EquipmentFilters, page = 0, pageSize =
       'park-list',
       {
         search: p.search,
+        clientCode: p.clientCode,
+        clientName: p.clientName,
         machineStatus: p.machineStatus,
-        validationPriority: p.validationPriority,
         machineType: p.machineType,
+        pukStatus: p.pukStatus,
+        filialId: p.filialId,
+        validationPriority: p.validationPriority,
         validatedByKey,
-        directTerms: p.needsDirect
-          ? [norm(filters.search), norm(filters.clientCode), norm(filters.clientName)]
-          : null,
         page,
         pageSize,
       },
@@ -249,64 +201,35 @@ export const useEquipmentPark = (filters: EquipmentFilters, page = 0, pageSize =
     retry: 1,
     placeholderData: (prev) => prev,
     queryFn: async (): Promise<EquipmentParkResult> => {
-      if (!p.needsDirect) {
-        const { data, error } = await (supabase as any).rpc('get_equipment_park_paginated', {
-          p_search: p.search,
-          p_filial_id: null,
-          p_machine_status: p.machineStatus,
-          p_puk_status: null,
-          p_validation_priority: p.validationPriority,
-          p_limit: pageSize,
-          p_offset: page * pageSize,
-        });
-        if (error) throw error;
-        const raw = ((data as unknown) as (EquipmentParkRow & { total_count: number })[]) ?? [];
-        return {
-          rows: raw.map(({ total_count, filial_nome, ...rest }) => ({
-            ...(rest as unknown as ClientEquipment),
-            import_batch_id: rest.import_batch_id ?? null,
-            transfer_history: rest.transfer_history ?? null,
-          })),
-          totalCount: raw.length > 0 ? Number(raw[0].total_count) : 0,
-          source: 'rpc',
-        };
-      }
-
-      // Caminho legado apenas para filtros ainda não cobertos pela RPC
-      const isFirstPage = page === 0;
-      let q = supabase
-        .from('client_equipment' as any)
-        .select(EQUIPMENT_COLUMNS, isFirstPage ? { count: 'exact' } : undefined)
-        .order('validation_priority', { ascending: false, nullsFirst: false })
-        .order('updated_at', { ascending: false })
-        .range(page * pageSize, page * pageSize + pageSize - 1);
-
-      const clientCode = norm(filters.clientCode);
-      const clientName = norm(filters.clientName);
-      const search = norm(filters.search);
-      if (clientCode) q = q.eq('client_code', clientCode);
-      if (clientName) q = q.ilike('client_name', `%${clientName}%`);
-      if (p.machineType) q = q.eq('machine_type', p.machineType);
-      if (p.machineStatus) q = q.eq('machine_status', p.machineStatus);
-      if (p.validationPriority === true) q = q.eq('validation_priority', true);
-      if (p.validatedByIn && p.validatedByIn.length > 0) q = q.in('validated_by', p.validatedByIn);
-      if (search) {
-        const s = search.replace(/[%,]/g, '');
-        q = q.or(
-          `model.ilike.%${s}%,serial_chassis.ilike.%${s}%,client_name.ilike.%${s}%,client_code.ilike.%${s}%`,
-        );
-      }
-
-      const { data, error, count } = await q;
+      const { data, error } = await (supabase as any).rpc('get_equipment_park_paginated', {
+        p_search: p.search,
+        p_filial_id: p.filialId,
+        p_machine_status: p.machineStatus,
+        p_puk_status: p.pukStatus,
+        p_validation_priority: p.validationPriority,
+        p_machine_type: p.machineType,
+        p_validated_by: p.validatedByIn,
+        p_client_code: p.clientCode,
+        p_client_name: p.clientName,
+        p_limit: pageSize,
+        p_offset: page * pageSize,
+      });
       if (error) throw error;
+      const raw = ((data as unknown) as (EquipmentParkRow & { total_count: number })[]) ?? [];
       return {
-        rows: (data as unknown as ClientEquipment[]) ?? [],
-        totalCount: count ?? null,
-        source: 'direct',
+        rows: raw.map(({ total_count, filial_nome, ...rest }) => ({
+          ...(rest as unknown as ClientEquipment),
+          import_batch_id: rest.import_batch_id ?? null,
+          transfer_history: rest.transfer_history ?? null,
+        })),
+        totalCount: raw.length > 0 ? Number(raw[0].total_count) : 0,
+        source: 'rpc',
       };
     },
   });
 };
+
+
 
 export interface EquipmentParkKpis {
   total: number;

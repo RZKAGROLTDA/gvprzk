@@ -91,10 +91,12 @@ const Equipamentos: React.FC = () => {
   const total = data?.totalCount;
 
   // KPIs do parque — uma única chamada server-side
-  const { data: kpis } = useEquipmentParkKpis({
+  const { data: kpis, refetch: refetchKpis } = useEquipmentParkKpis({
     search: search || null,
     machineStatus: machineStatus === ALL ? null : machineStatus,
   });
+
+
 
 
   const resetPage = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(0); };
@@ -205,7 +207,14 @@ const Equipamentos: React.FC = () => {
   );
 
   // Resumo por filial — fonte correta: get_equipment_validation_summary().by_filial
-  const { data: validationSummary } = useEquipmentValidationSummary();
+  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary();
+
+  /** Força a revalidação de listagem + KPIs + resumo (botão de atualizar). */
+  const refetchAll = () => {
+    refetch();
+    refetchKpis();
+    refetchSummary();
+  };
 
   const filialRanked = useMemo<EquipmentValidationSummaryRow[]>(() => {
     const rows = validationSummary?.by_filial ?? [];
@@ -422,7 +431,7 @@ const Equipamentos: React.FC = () => {
                 {(error as any)?.message ?? 'Erro inesperado ao consultar o servidor.'}
               </p>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => refetch()}>
+            <Button type="button" size="sm" variant="outline" onClick={refetchAll}>
               <RefreshCw className="h-3.5 w-3.5 mr-2" /> Tentar novamente
             </Button>
           </CardContent>
