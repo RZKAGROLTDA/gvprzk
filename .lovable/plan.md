@@ -1,95 +1,66 @@
-# Auditoria de Performance e Acesso — Diagnóstico (nada aplicado)
+# Campanhas — meses dinâmicos (auditoria + proposta)
 
-## Resumo em uma frase
-A lentidão não vem da autenticação: vem de (1) RLS avaliada linha-a-linha em tabelas grandes e (2) um segundo QueryClient sem configuração dentro do App, que anula todo o cache do projeto.
+## 1. Causa encontrada
 
----
+Existem **duas fontes de verdade** para os percentuais de desconto:
 
-## 1. Achado CRÍTICO nº1 — dois QueryClient aninhados
+| Fonte | Onde é usada | Comportamento |
+|---|---|---|
+| `campaign_rules.discount_periods` (jsonb: `[{label, percent}]`) | apenas aba **Regras** | dinâmico e correto (mostra "Agosto 2,00%") |
+| colunas legadas `gained_april` / `gained_may` / `gained_june` | aba **Lançamentos**, seletor "Gatilho / Comprou", exportação Excel | rótulos fixos "Abr %" / "Mai %" no código |
 
-`src/main.tsx` envolve o app em `QueryProvider` (staleTime 5min, `refetchOnWindowFocus: false`, `refetchOnMount: false`, backoff). Mas `src/App.tsx` cria **outro** client: `const queryClient = new QueryClient()` — sem opções — e o provider interno é o que vale para 100% dos hooks.
+Quando os períodos configuráveis foram introduzidos, a aba Regras passou a ler `discount_periods`, mas Lançamentos continuou lendo as três colunas mensais legadas — e como o formulário de Regras hoje grava só o array (deixando `gained_april/may/june` em 0), o seletor mostra "Abr 2,00% / Mai 0,00%" com número vindo do backfill antigo ou zero.
 
-Consequência para todo hook que não define opções próprias:
-- `staleTime: 0` → refetch a cada montagem de componente;
-- `refetchOnWindowFocus: true` (default) → refetch ao voltar para a aba;
-- `retry: 3` com backoff → um erro vira 4 requests;
-- `refetchOnMount: true` → trocar de aba/tela recarrega tudo.
+## 2. Arquivos e funções envolvidos
 
-Somado a `queryClient.clear()` no `useEffect` de mudança de usuário, o cache é jogado fora no primeiro render após o login.
+Tudo em **`src/pages/Campaigns.tsx`** e **`src/hooks/useCampaigns.ts`** (nenhuma RPC calcula mês; o banco só armazena):
 
-## 2. Achado CRÍTICO nº2 — RLS avaliada por linha
+- `useCampaigns.ts`: `DiscountPeriod`, `normalizeDiscountPeriods`, tipos `CampaignRule`/`CampaignClient` (ambos ainda com os três campos legados).
+- `Campaigns.tsx`:
+  - linhas 649-650 — cabeçalhos fixos `Abr %` / `Mai %` da tabela de Lançamentos;
+  - 1003-1005 e 1402-1404 — texto do seletor "Gatilho / Comprou" (nova linha e edição inline);
+  - 1012-1013 — células auto-preenchidas da linha de inserção;
+  - 1343-1344 e 1425-1435 — células de exibição do `EntryRow`;
+  - 618-630 — exportação Excel ("Ganhou Abril (%)", "Ganhou Maio (%)");
+  - 945-947 / 1359-1361 — gravação de `gained_april/may/june` no lançamento;
+  - 2165-2166 — resumo da regra na lista (já usa `discount_periods` com fallback legado);
+  - `SellerSummaryTab` (1537+) — **não** exibe meses, só gatilho/compromisso: nada a mudar.
+- Banco: `campaign_rules.discount_periods` já existe; `campaign_clients` guarda cópia em `gained_april/may/june`.
 
-Medição direta na mesma consulta do Parque de Máquinas:
+## 3. Como funciona hoje
 
-| Caminho | Tempo |
-|---|---|
-| SQL direto (sem RLS) | **12 ms** |
-| Mesma query via PostgREST (RLS ativa) | **2.792 ms médio / 7.777 ms pico** (457 chamadas) |
+Regras → lê array `discount_periods` → rótulo livre ("Agosto"). Lançamentos → assume três slots fixos abril/maio/junho, copia da regra para o lançamento e rotula no código.
 
-A policy `client_equipment_select` é:
-`has_role(...) OR has_role(...) OR created_by = auth.uid() OR validated_by = auth.uid() OR filial_id IS NULL OR filial_id = get_user_filial_id() OR filial_id = get_supervisor_filial_id(auth.uid())`
+## 4. Proposta de correção (somente apresentação)
 
-As funções são STABLE mas **não estão encapsuladas em subquery** (`(select has_role(...))`), então o Postgres as reavalia por linha durante o Seq Scan de 19.7k linhas — 3 funções SECURITY DEFINER que consultam `profiles`/`user_roles` por linha. Mesmo padrão em `tasks`, `task_followups` e `clients_master` (essa última com `EXISTS (SELECT 1 FROM profiles …)` inline).
+Fonte única de verdade: **`campaign_rules.discount_periods`**, com resolução por lançamento via `campaign_rule_id`.
 
-## 3. Fluxo de login — requests bloqueantes
+1. Novo helper `src/lib/campaignPeriods.ts`:
+   - `getRulePeriods(rule)` → `discount_periods` normalizado; se vazio, deriva do legado (`Abril/Maio/Junho` com percentual > 0). Garante que regra antiga continue mostrando Abril/Maio.
+   - `getEntryPeriods(entry, rule)` → períodos da regra vinculada; sem regra vinculada, deriva do legado do próprio lançamento.
+   - `buildPeriodColumns(periods[][])` → união ordenada dos rótulos (primeira aparição), usada para montar as colunas dinâmicas.
+   - `shortLabel(label)` → abreviação de 3 letras para cabeçalho ("Agosto" → "Ago %"), mantendo rótulo completo no tooltip e no Excel.
+   - `formatPeriodsInline(periods)` → "Ago 2,00% · Set 1,50%" para o seletor.
+2. Tabela de Lançamentos: substituir as duas colunas fixas por **N colunas geradas** a partir da união dos períodos das regras presentes na lista filtrada (mínimo 1 coluna placeholder "%" quando não houver período). Cada célula busca o percentual do rótulo naquele lançamento; rótulo ausente na regra → "—".
+3. Seletor "Gatilho / Comprou" (inserção e edição): texto passa a `R$ 4.000,00 — Ago 2,00% / Comp. R$ 20.000,00`, montado com `formatPeriodsInline`.
+4. Exportação Excel: colunas de percentual geradas dinamicamente com o rótulo completo (`Ganhou Agosto (%)`), demais colunas intactas.
+5. Gravação: **inalterada**. Continua preenchendo `gained_april/may/june` exatamente como hoje (compatibilidade), sem novas colunas nem migration.
 
-Sequência real até a primeira tela:
-1. `auth.getSession()` (local, rápido) + listener `onAuthStateChange`;
-2. `profiles` (colunas explícitas, `maybeSingle`) — **bloqueia o gate**;
-3. `filiais` por id — não bloqueia (correto);
-4. `user_roles` (`useUserRole`) — bloqueia a UI do Layout/SalesFunnel;
-5. `filiais?select=id&limit=1` do health check;
-6. `useSessionSecurity` → `getSession()` extra + monitor de segurança;
-7. `useVersionHeartbeat` → upsert em `user_app_versions`;
-8. `useAutoVersionCheck` → fetch de versão.
+Sem alteração de banco, RPC, permissões, cálculos de gatilho/compromisso ou layout geral (mesma tabela, apenas colunas de percentual dinâmicas).
 
-Total observado: **7–9 requests nos primeiros segundos**, dos quais 2 bloqueiam de fato (profiles, user_roles). O caminho de auth em si está correto — sem loop, sem redirect repetido, sem watchdog. O que trava é o passo seguinte: a primeira tela (`SalesFunnel`) dispara métricas + lista + consultores em paralelo, e a métrica consolidada está com `staleTime: 0` + `refetchOnMount: 'always'`.
+## 5. Impacto nos dados históricos
 
-## 4. Tabela de diagnóstico
+Nenhuma escrita. Lançamentos antigos vinculados a regras de Abril/Maio continuam exibindo "Abr %/Mai %" (via `discount_periods` do backfill ou via fallback legado). Lançamentos sem regra vinculada caem no fallback com os próprios valores gravados. Campanhas de Agosto/Setembro/futuras aparecem automaticamente.
 
-| PROBLEMA | LOCAL | IMPACTO | TEMPO/QTD | CAUSA PROVÁVEL | PRIOR. | CORREÇÃO RECOMENDADA |
-|---|---|---|---|---|---|---|
-| QueryClient sem config sobrepondo o QueryProvider | `src/App.tsx:56` | Refetch geral, cache inútil, 4x requests em erro | todas as queries | provider aninhado | CRÍTICO | Remover o client interno e usar só o do `QueryProvider` |
-| RLS reavaliada por linha | policies de `client_equipment`, `tasks`, `task_followups`, `clients_master` | Queries 200x mais lentas, Disk IO | 12ms → 2.792ms | `has_role()`/`get_user_filial_id()` fora de subquery | CRÍTICO | Envolver cada função em `(select …)` nas policies (sem mudar a regra) |
-| Parque de Máquinas em caminho direto (não RPC) | `useEquipmentSearch` / fallback `useEquipmentPark` | pior query do banco | 457 calls, 1.276 s totais | filtros não cobertos pela RPC caem no PostgREST | CRÍTICO | Estender a RPC paginada p/ machine_type + validated_by e eliminar o fallback |
-| `get_equipment_validation_summary()` sem cache | tela /equipamentos | 2º maior consumo | 530 calls, 1.429ms médio | agregação full-table a cada abertura | ALTO | Materializar/agendar agregado ou cachear mais |
-| Autocomplete de cliente busca na `tasks` (5.9 GB) | `useVisitSchedules.ts:159`, `clientAutofill.ts` | lentidão em CRM/agenda | 753 calls, 1.044ms médio | ILIKE em tabela gigante sem trigram | ALTO | Migrar essas buscas para `clients_master` (já indexada com trigram) |
-| `count: 'exact'` em `client_equipment` | `useClientEquipment` | +4.4s por página | 61 calls, 4.796ms médio | contagem full-scan sob RLS | ALTO | Usar `total_count` da RPC; nunca `count exact` no caminho direto |
-| Métricas com `staleTime: 0` + `refetchOnMount:'always'` | `useConsolidatedSalesMetrics`, `useManagementData` (4 queries) | recarrega a cada navegação | por tela | configuração deliberada anterior | ALTO | staleTime 2–5 min, `refetchOnMount: false` |
-| `task_followups` sem paginação/filtro no servidor | listagens de follow-up | 179 calls, 693ms médio | ORDER BY sem índice em `activity_date` | MÉDIO | Índice `(activity_date desc)` + `(responsible_user_id, activity_date)` |
-| `tasks` 5.9 GB / `products` 2.7 GB | banco | Disk IO budget | 14.9k linhas | Base64 legado ainda nas colunas | MÉDIO | Concluir migração p/ Storage e limpar colunas |
-| Backups ocupando 276 MB | `tasks_backup*`, `products_backup*` (0 linhas úteis) | espaço/vacuum | 276 MB | tabelas de backup antigas | BAIXO | Avaliar drop após validação |
-| `useSessionSecurity` faz `getSession()` extra + monitor | `Layout` | requests a mais no login | 1–2 req | health check redundante | BAIXO | Reaproveitar sessão do contexto |
-| Logs `console.log` em hooks de render | `useUserRole`, `useConsolidatedSalesMetrics`, `useClientEquipment` | ruído/custo em mobile | — | diagnóstico temporário | BAIXO | Remover ou condicionar a DEV |
+## 6. Múltiplas campanhas selecionadas
 
-## 5. Respostas diretas às suas perguntas
+As colunas são a **união** dos períodos das regras visíveis, na ordem de primeira aparição (ex.: Abril, Maio, Agosto = 3 colunas). Cada linha preenche apenas os meses da sua própria regra; os demais ficam "—", sem misturar percentuais entre campanhas. A exportação segue a mesma união.
 
-- **Requests no login:** 3 bloqueantes na prática (`getSession`, `profiles`, `user_roles`) + 4–6 secundários. Sem duplicidade grave, sem loop de auth.
-- **Requests no carregamento inicial:** 7–9; sobem para 12+ na primeira tela por causa do refetch causado pelo item nº1.
-- **clients_master (31.553 linhas):** confirmado que **nenhuma tela carrega a tabela inteira**. O único acesso amplo é a tela administrativa de Revisão de Clientes (paginada) e a RPC de busca; existem índices btree + trigram. Aqui está OK.
-- **Diferença entre cargos:** admin/manager passam pelos `has_role` primeiro (curto-circuito rápido); **supervisor é o pior caso** — cai em `get_supervisor_filial_id()` + `EXISTS` com JOIN `profiles/filiais` por linha. RAC/CPA/CSA/sales_consultant têm custo intermediário e idêntico entre si (paridade confirmada). Isso explica o "comportamento diferente entre usuários".
-- **Erros:** o padrão é **timeout de statement (8s)** — vários `max_ms` batendo ~7.9s, o que aparece no cliente como "tela carregando para sempre"/`failed to fetch`. É lentidão, **não** falha de autenticação.
-- **Gargalos:** banco = RLS por linha + `client_equipment`; frontend = QueryClient duplicado; auth = nenhum relevante.
+## 7. Riscos
 
-## 6. Plano de correção sugerido (por ganho/risco)
+- Baixo: mudança visual/renderização apenas; nenhuma mutação, cálculo ou policy alterada.
+- Tabela pode ficar mais larga com muitos meses distintos — mitigado pelo `overflow-x-auto` já existente e pelo rótulo abreviado.
+- `colSpan` das linhas de estado vazio/carregando precisa passar a ser calculado — ajustado no mesmo commit.
+- Rótulos livres digitados pelo usuário ("ago/26", "AGOSTO") aparecem como digitados; sem normalização forçada para não inventar regra de negócio.
 
-**Etapa 1 — risco baixíssimo, ganho imediato**
-1. Remover o `QueryClient` interno do `App.tsx`.
-2. Ajustar `staleTime`/`refetchOnMount` das métricas e do Management.
-3. Remover logs de diagnóstico em hooks de render.
-
-**Etapa 2 — banco, sem mudar regra de acesso**
-4. Reescrever as policies de `client_equipment`, `tasks`, `task_followups`, `clients_master` com `(select …)` nas chamadas de função (mesma lógica, avaliação uma única vez).
-5. Índices: `task_followups(activity_date desc)`, `(responsible_user_id, activity_date desc)`.
-
-**Etapa 3 — eliminar as piores queries**
-6. Estender `get_equipment_park_paginated` para machine_type/validated_by e remover o fallback direto + `count exact`.
-7. Cachear/materializar `get_equipment_validation_summary`.
-
-**Etapa 4 — busca de clientes**
-8. Trocar autocompletes que leem `tasks` por `clients_master`.
-
-**Etapa 5 — armazenamento**
-9. Finalizar migração Base64 → Storage e avaliar drop dos backups.
-
-Nada foi alterado. Confirme por qual etapa devo começar.
+Aprovar para implementar apenas a camada de apresentação descrita.
