@@ -1496,8 +1496,7 @@ const EntryRow: React.FC<{
           </div>
         )}
       </TableCell>
-      <AutoCell value={formatPct(displayApril)} />
-      <AutoCell value={formatPct(displayMay)} />
+      <PeriodCells periodLabels={periodLabels} periods={displayPeriods} />
       <AutoCell value={formatCurrency(displayCommitment)} />
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
