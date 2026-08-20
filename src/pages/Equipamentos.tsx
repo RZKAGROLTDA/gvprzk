@@ -207,7 +207,14 @@ const Equipamentos: React.FC = () => {
   );
 
   // Resumo por filial — fonte correta: get_equipment_validation_summary().by_filial
-  const { data: validationSummary } = useEquipmentValidationSummary();
+  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary();
+
+  /** Força a revalidação de listagem + KPIs + resumo (botão de atualizar). */
+  const refetchAll = () => {
+    refetch();
+    refetchKpis();
+    refetchSummary();
+  };
 
   const filialRanked = useMemo<EquipmentValidationSummaryRow[]>(() => {
     const rows = validationSummary?.by_filial ?? [];
