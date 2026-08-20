@@ -150,7 +150,11 @@ export const percentForLabel = (
   return found ? Number(found.percent) || 0 : null;
 };
 
-const pct = (v: number) => `${(Number(v) || 0).toFixed(2)}%`;
+const pct = (v: number) =>
+  `${(Number(v) || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}%`;
 
 /** "Agosto 2,00% / Setembro 3,00%" para seletores e resumos. */
 export const formatPeriodsInline = (
