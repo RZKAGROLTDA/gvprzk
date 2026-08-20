@@ -1421,8 +1421,8 @@ const EntryRow: React.FC<{
     invoiceNumber !== (entry.invoice_number || '') ||
     soldTrigger !== (entry.sold_trigger || '');
 
-  const displayApril = currentRule ? Number(currentRule.gained_april) : Number(entry.gained_april);
-  const displayMay = currentRule ? Number(currentRule.gained_may) : Number(entry.gained_may);
+  // Fonte única: períodos da regra vinculada; lançamento histórico usa fallback legado.
+  const displayPeriods = getEntryDiscountPeriods(entry, currentRule);
   const displayCommitment = currentRule
     ? Number(currentRule.commitment_value)
     : Number(entry.commitment_value);
