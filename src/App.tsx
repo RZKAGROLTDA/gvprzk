@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster as HotToaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { AuthProvider } from '@/components/AuthProvider';
@@ -53,9 +53,13 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, LogOut, RefreshCw } from "lucide-react";
 
-const queryClient = new QueryClient();
+// O QueryClient é ÚNICO e vive em src/components/QueryProvider.tsx (main.tsx).
+// Nunca criar outro client/provider aqui: o provider interno sobrescreveria
+// staleTime, refetchOnMount, refetchOnWindowFocus e o backoff globais.
 
-let lastQueryClientUserId: string | null = null;
+// Guarda o último usuário cujo cache está em memória. `undefined` = primeiro
+// render (nada a limpar); string/null = usuário já observado nesta sessão.
+let lastQueryClientUserId: string | null | undefined = undefined;
 
 interface ProtectedRoutesProps {
   user: any;
