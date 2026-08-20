@@ -72,6 +72,14 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { SpecialConditionsTab } from '@/components/campaigns/SpecialConditionsTab';
+import {
+  getRuleDiscountPeriods,
+  getEntryDiscountPeriods,
+  getSelectedCampaignPeriodLabels,
+  shortPeriodLabel,
+  percentForLabel,
+  formatPeriodsInline,
+} from '@/lib/campaignPeriods';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
