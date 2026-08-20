@@ -669,7 +669,7 @@ const EntriesTab: React.FC = () => {
                 });
                 exportRowsToExcel(rows, 'campanhas_lancamentos', 'Lançamentos', {
                   currencyCols: ['Compromisso (R$)'],
-                  percentCols: ['Ganhou Abril (%)', 'Ganhou Maio (%)'],
+                  percentCols: periodLabels.map((l) => `Ganhou ${l} (%)`),
                 });
               }}
             >
