@@ -91,10 +91,12 @@ const Equipamentos: React.FC = () => {
   const total = data?.totalCount;
 
   // KPIs do parque — uma única chamada server-side
-  const { data: kpis } = useEquipmentParkKpis({
+  const { data: kpis, refetch: refetchKpis } = useEquipmentParkKpis({
     search: search || null,
     machineStatus: machineStatus === ALL ? null : machineStatus,
   });
+
+
 
 
   const resetPage = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(0); };
