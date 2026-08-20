@@ -11,9 +11,24 @@
  * Nada aqui escreve no banco nem altera cálculos de gatilho/compromisso.
  */
 
-import { normalizeDiscountPeriods, type DiscountPeriod } from '@/hooks/useCampaigns';
+export interface DiscountPeriod {
+  label: string;
+  percent: number;
+}
 
-export type { DiscountPeriod };
+/** Normaliza o jsonb `discount_periods` para um array tipado e seguro. */
+export const normalizeDiscountPeriods = (value: unknown): DiscountPeriod[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((raw) => {
+      const p = (raw ?? {}) as { label?: unknown; percent?: unknown };
+      return {
+        label: String(p.label ?? '').trim(),
+        percent: Number(p.percent ?? 0) || 0,
+      };
+    })
+    .filter((p) => p.label.length > 0);
+};
 
 interface LegacyPercents {
   gained_april?: number | string | null;
