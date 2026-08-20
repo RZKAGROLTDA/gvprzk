@@ -925,13 +925,42 @@ export const ClientAutocomplete: React.FC<{
   );
 };
 
+/** Rótulo do seletor "Gatilho / Comprou" montado a partir dos discount_periods. */
+const ruleTriggerLabel = (r: CampaignRule): string => {
+  const periods = formatPeriodsInline(getRuleDiscountPeriods(r));
+  return [
+    formatCurrency(Number(r.trigger_min)),
+    periods ? `— ${periods}` : null,
+    `/ Comp. ${formatCurrency(Number(r.commitment_value))}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+/** Células de percentual alinhadas às colunas dinâmicas da tabela. */
+const PeriodCells: React.FC<{
+  periodLabels: string[];
+  periods: ReturnType<typeof getRuleDiscountPeriods>;
+}> = ({ periodLabels, periods }) => {
+  if (periodLabels.length === 0) return <AutoCell value="—" />;
+  return (
+    <>
+      {periodLabels.map((label) => {
+        const pct = percentForLabel(periods, label);
+        return <AutoCell key={label} value={pct === null ? '—' : formatPct(pct)} />;
+      })}
+    </>
+  );
+};
+
 // --- Linha de entrada rápida ---
 const NewEntryRow: React.FC<{
   rules: CampaignRule[];
   filiais: { id: string; nome: string }[];
   defaultFilialId: string;
   sellerName: string;
-}> = ({ rules, filiais, defaultFilialId, sellerName }) => {
+  periodLabels: string[];
+}> = ({ rules, filiais, defaultFilialId, sellerName, periodLabels }) => {
   const create = useCreateCampaignClient();
   const ensureMaster = useEnsureClientMaster();
 
