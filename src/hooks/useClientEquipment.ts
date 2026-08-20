@@ -128,59 +128,12 @@ export const useEquipmentByClient = (
 };
 
 // -----------------------------------------------------------------------------
-// Busca genérica para a tela /equipamentos
+// (removido) useEquipmentSearch — era o único caminho SELECT direto com
+// count:'exact' sobre client_equipment e estava sem consumidores. A tela
+// /equipamentos usa exclusivamente `useEquipmentPark` (RPC paginada).
 // -----------------------------------------------------------------------------
-export const useEquipmentSearch = (filters: EquipmentFilters, page = 0, pageSize = 50) => {
-  const search = norm(filters.search);
-  const machineType = norm(filters.machineType);
-  const machineStatus = norm(filters.machineStatus);
-  const clientCode = norm(filters.clientCode);
-  const clientName = norm(filters.clientName);
-  const validationPriority = filters.validationPriority ?? null;
-  const validatedByIn = (filters.validatedByIn ?? null)?.filter(Boolean) ?? null;
-  const validatedByKey = validatedByIn && validatedByIn.length > 0 ? [...validatedByIn].sort().join(',') : null;
-  const isFirstPage = page === 0;
 
-  return useQuery({
-    queryKey: [
-      'client-equipment',
-      'search',
-      { search, machineType, machineStatus, clientCode, clientName, validationPriority, validatedByKey, page, pageSize },
-    ],
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      let q = supabase
-        .from('client_equipment' as any)
-        .select(EQUIPMENT_COLUMNS, isFirstPage ? { count: 'exact' } : undefined)
-        .order('validation_priority', { ascending: false, nullsFirst: false })
-        .order('updated_at', { ascending: false })
-        .range(page * pageSize, page * pageSize + pageSize - 1);
 
-      if (clientCode) q = q.eq('client_code', clientCode);
-      if (clientName) q = q.ilike('client_name', `%${clientName}%`);
-      if (machineType) q = q.eq('machine_type', machineType);
-      if (machineStatus) q = q.eq('machine_status', machineStatus);
-      if (validationPriority === true) q = q.eq('validation_priority', true);
-      if (validatedByIn && validatedByIn.length > 0) q = q.in('validated_by', validatedByIn);
-
-      if (search) {
-        // Busca livre: modelo, chassi, nome cliente, código cliente
-        const s = search.replace(/[%,]/g, '');
-        q = q.or(
-          `model.ilike.%${s}%,serial_chassis.ilike.%${s}%,client_name.ilike.%${s}%,client_code.ilike.%${s}%`,
-        );
-      }
-
-      const { data, error, count } = await q;
-      if (error) throw error;
-      return {
-        rows: (data as unknown as ClientEquipment[]) ?? [],
-        totalCount: count ?? null,
-      };
-    },
-  });
-};
 
 // -----------------------------------------------------------------------------
 // Parque de Máquinas (tela /equipamentos) — via RPC server-side
