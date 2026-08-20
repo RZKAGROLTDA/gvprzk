@@ -2393,12 +2393,16 @@ export type Database = {
       }
       get_equipment_park_paginated: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_filial_id?: string
           p_limit?: number
           p_machine_status?: string
+          p_machine_type?: string
           p_offset?: number
           p_puk_status?: string
           p_search?: string
+          p_validated_by?: string[]
           p_validation_priority?: boolean
         }
         Returns: {
