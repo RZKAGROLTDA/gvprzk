@@ -431,7 +431,7 @@ const Equipamentos: React.FC = () => {
                 {(error as any)?.message ?? 'Erro inesperado ao consultar o servidor.'}
               </p>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => refetch()}>
+            <Button type="button" size="sm" variant="outline" onClick={refetchAll}>
               <RefreshCw className="h-3.5 w-3.5 mr-2" /> Tentar novamente
             </Button>
           </CardContent>
