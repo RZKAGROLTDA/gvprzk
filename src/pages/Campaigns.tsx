@@ -72,6 +72,14 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { SpecialConditionsTab } from '@/components/campaigns/SpecialConditionsTab';
+import {
+  getRuleDiscountPeriods,
+  getEntryDiscountPeriods,
+  getSelectedCampaignPeriodLabels,
+  shortPeriodLabel,
+  percentForLabel,
+  formatPeriodsInline,
+} from '@/lib/campaignPeriods';
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -462,6 +470,41 @@ const EntriesTab: React.FC = () => {
     });
   }, [allEntries, filterFilial, filterSeller, filterClient, selectedCampaignIds]);
 
+  // --- Colunas de percentual dinâmicas (fonte: discount_periods) ---------------
+  // Universo = regras das campanhas selecionadas + regras ativas (para a linha de
+  // inserção) + fallback legado dos lançamentos visíveis sem regra vinculada.
+  const periodLabels = useMemo(() => {
+    const groups = [] as ReturnType<typeof getRuleDiscountPeriods>[];
+    const visibleRuleIds = new Set<string>();
+    (rules || []).forEach((r) => {
+      const isSelected = !selectedCampaignIds || selectedCampaignIds.includes(r.id);
+      if (isSelected || r.active) {
+        visibleRuleIds.add(r.id);
+        groups.push(getRuleDiscountPeriods(r));
+      }
+    });
+    list.forEach((e) => {
+      const rule = e.campaign_rule_id ? ruleMap.get(e.campaign_rule_id) : undefined;
+      if (!rule || !visibleRuleIds.has(rule.id)) {
+        groups.push(getEntryDiscountPeriods(e, rule));
+      }
+    });
+    return getSelectedCampaignPeriodLabels(groups);
+  }, [rules, selectedCampaignIds, list, ruleMap]);
+
+  const columnCount = 9 + Math.max(periodLabels.length, 1);
+
+  const periodPercentColumns = (
+    entry: CampaignClient,
+    rule?: CampaignRule | null,
+  ): Record<string, number> => {
+    const periods = getEntryDiscountPeriods(entry, rule);
+    const cols: Record<string, number> = {};
+    periodLabels.forEach((label) => {
+      cols[`Ganhou ${label} (%)`] = percentForLabel(periods, label) ?? 0;
+    });
+    return cols;
+  };
 
   const totals = useMemo(() => {
     const count = list.length;
@@ -615,8 +658,7 @@ const EntriesTab: React.FC = () => {
                     'Filial': e.filial_id ? filialMap.get(e.filial_id) || '' : '',
                     'Vendedor': sellers.get(e.seller_id) || '',
                     'Gatilho / Comprou': gatilhoLabel,
-                    'Ganhou Abril (%)': Number(e.gained_april || 0),
-                    'Ganhou Maio (%)': Number(e.gained_may || 0),
+                    ...periodPercentColumns(e, rule),
                     'Compromisso (R$)': Number(e.commitment_value || 0),
                     'Nº Nota Fiscal': e.invoice_number || '',
                     'Gatilho Vendido': e.sold_trigger || '',
@@ -627,7 +669,7 @@ const EntriesTab: React.FC = () => {
                 });
                 exportRowsToExcel(rows, 'campanhas_lancamentos', 'Lançamentos', {
                   currencyCols: ['Compromisso (R$)'],
-                  percentCols: ['Ganhou Abril (%)', 'Ganhou Maio (%)'],
+                  percentCols: periodLabels.map((l) => `Ganhou ${l} (%)`),
                 });
               }}
             >
@@ -646,8 +688,15 @@ const EntriesTab: React.FC = () => {
                   <TableHead className="min-w-[220px]">Cliente</TableHead>
                   <TableHead className="min-w-[160px]">Vendedor</TableHead>
                   <TableHead className="min-w-[240px]">Gatilho / Comprou</TableHead>
-                  <TableHead className="text-right">Abr %</TableHead>
-                  <TableHead className="text-right">Mai %</TableHead>
+                  {periodLabels.length === 0 ? (
+                    <TableHead className="text-right">%</TableHead>
+                  ) : (
+                    periodLabels.map((label) => (
+                      <TableHead key={label} className="text-right" title={label}>
+                        {shortPeriodLabel(label)} %
+                      </TableHead>
+                    ))
+                  )}
                   <TableHead className="text-right">Compromisso</TableHead>
                   <TableHead className="min-w-[140px]">Filial</TableHead>
                   <TableHead className="min-w-[140px]">Nº Nota Fiscal</TableHead>
@@ -662,17 +711,18 @@ const EntriesTab: React.FC = () => {
                   filiais={filiais}
                   defaultFilialId={profile?.filial_id || ''}
                   sellerName={currentSellerName}
+                  periodLabels={periodLabels}
                 />
 
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={columnCount} className="text-center text-sm text-muted-foreground py-6">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : list.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={columnCount} className="text-center text-sm text-muted-foreground py-6">
                       Nenhum lançamento encontrado.
                     </TableCell>
                   </TableRow>
@@ -687,6 +737,7 @@ const EntriesTab: React.FC = () => {
                       filialMap={filialMap}
                       sellerName={sellers.get(e.seller_id) || '—'}
                       onDelete={() => del.mutate(e.id)}
+                      periodLabels={periodLabels}
                     />
                   ))
                 )}
@@ -874,13 +925,42 @@ export const ClientAutocomplete: React.FC<{
   );
 };
 
+/** Rótulo do seletor "Gatilho / Comprou" montado a partir dos discount_periods. */
+const ruleTriggerLabel = (r: CampaignRule): string => {
+  const periods = formatPeriodsInline(getRuleDiscountPeriods(r));
+  return [
+    formatCurrency(Number(r.trigger_min)),
+    periods ? `— ${periods}` : null,
+    `/ Comp. ${formatCurrency(Number(r.commitment_value))}`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+/** Células de percentual alinhadas às colunas dinâmicas da tabela. */
+const PeriodCells: React.FC<{
+  periodLabels: string[];
+  periods: ReturnType<typeof getRuleDiscountPeriods>;
+}> = ({ periodLabels, periods }) => {
+  if (periodLabels.length === 0) return <AutoCell value="—" />;
+  return (
+    <>
+      {periodLabels.map((label) => {
+        const pct = percentForLabel(periods, label);
+        return <AutoCell key={label} value={pct === null ? '—' : formatPct(pct)} />;
+      })}
+    </>
+  );
+};
+
 // --- Linha de entrada rápida ---
 const NewEntryRow: React.FC<{
   rules: CampaignRule[];
   filiais: { id: string; nome: string }[];
   defaultFilialId: string;
   sellerName: string;
-}> = ({ rules, filiais, defaultFilialId, sellerName }) => {
+  periodLabels: string[];
+}> = ({ rules, filiais, defaultFilialId, sellerName, periodLabels }) => {
   const create = useCreateCampaignClient();
   const ensureMaster = useEnsureClientMaster();
 
@@ -1000,17 +1080,17 @@ const NewEntryRow: React.FC<{
             ) : (
               activeRules.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {formatCurrency(Number(r.trigger_min))} — Abr {formatPct(Number(r.gained_april))} / Mai{' '}
-                  {formatPct(Number(r.gained_may))} / Comp.{' '}
-                  {formatCurrency(Number(r.commitment_value))}
+                  {ruleTriggerLabel(r)}
                 </SelectItem>
               ))
             )}
           </SelectContent>
         </Select>
       </TableCell>
-      <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_april)) : '—'} />
-      <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_may)) : '—'} />
+      <PeriodCells
+        periodLabels={periodLabels}
+        periods={selectedRule ? getRuleDiscountPeriods(selectedRule) : []}
+      />
       <AutoCell value={selectedRule ? formatCurrency(Number(selectedRule.commitment_value)) : '—'} />
       <TableCell className="py-2">
         <Select key={`filial-${resetKey}`} value={filialId || undefined} onValueChange={setFilialId}>
@@ -1317,7 +1397,8 @@ const EntryRow: React.FC<{
   filialMap: Map<string, string>;
   sellerName: string;
   onDelete: () => void;
-}> = ({ entry, rules, ruleMap, filiais, filialMap, sellerName, onDelete }) => {
+  periodLabels: string[];
+}> = ({ entry, rules, ruleMap, filiais, filialMap, sellerName, onDelete, periodLabels }) => {
   const update = useUpdateCampaignClient();
   const [editing, setEditing] = useState(false);
   const [ruleId, setRuleId] = useState(entry.campaign_rule_id || '');
@@ -1340,8 +1421,8 @@ const EntryRow: React.FC<{
     invoiceNumber !== (entry.invoice_number || '') ||
     soldTrigger !== (entry.sold_trigger || '');
 
-  const displayApril = currentRule ? Number(currentRule.gained_april) : Number(entry.gained_april);
-  const displayMay = currentRule ? Number(currentRule.gained_may) : Number(entry.gained_may);
+  // Fonte única: períodos da regra vinculada; lançamento histórico usa fallback legado.
+  const displayPeriods = getEntryDiscountPeriods(entry, currentRule);
   const displayCommitment = currentRule
     ? Number(currentRule.commitment_value)
     : Number(entry.commitment_value);
@@ -1399,9 +1480,7 @@ const EntryRow: React.FC<{
             <SelectContent>
               {activeRules.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {formatCurrency(Number(r.trigger_min))} — Abr {formatPct(Number(r.gained_april))} / Mai{' '}
-                  {formatPct(Number(r.gained_may))} / Comp.{' '}
-                  {formatCurrency(Number(r.commitment_value))}
+                  {ruleTriggerLabel(r)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1417,8 +1496,7 @@ const EntryRow: React.FC<{
           </div>
         )}
       </TableCell>
-      <AutoCell value={formatPct(displayApril)} />
-      <AutoCell value={formatPct(displayMay)} />
+      <PeriodCells periodLabels={periodLabels} periods={displayPeriods} />
       <AutoCell value={formatCurrency(displayCommitment)} />
       <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
         {editing ? (
