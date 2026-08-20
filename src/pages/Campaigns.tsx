@@ -688,8 +688,15 @@ const EntriesTab: React.FC = () => {
                   <TableHead className="min-w-[220px]">Cliente</TableHead>
                   <TableHead className="min-w-[160px]">Vendedor</TableHead>
                   <TableHead className="min-w-[240px]">Gatilho / Comprou</TableHead>
-                  <TableHead className="text-right">Abr %</TableHead>
-                  <TableHead className="text-right">Mai %</TableHead>
+                  {periodLabels.length === 0 ? (
+                    <TableHead className="text-right">%</TableHead>
+                  ) : (
+                    periodLabels.map((label) => (
+                      <TableHead key={label} className="text-right" title={label}>
+                        {shortPeriodLabel(label)} %
+                      </TableHead>
+                    ))
+                  )}
                   <TableHead className="text-right">Compromisso</TableHead>
                   <TableHead className="min-w-[140px]">Filial</TableHead>
                   <TableHead className="min-w-[140px]">Nº Nota Fiscal</TableHead>
@@ -704,17 +711,18 @@ const EntriesTab: React.FC = () => {
                   filiais={filiais}
                   defaultFilialId={profile?.filial_id || ''}
                   sellerName={currentSellerName}
+                  periodLabels={periodLabels}
                 />
 
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={columnCount} className="text-center text-sm text-muted-foreground py-6">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : list.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-sm text-muted-foreground py-6">
+                    <TableCell colSpan={columnCount} className="text-center text-sm text-muted-foreground py-6">
                       Nenhum lançamento encontrado.
                     </TableCell>
                   </TableRow>
@@ -729,6 +737,7 @@ const EntriesTab: React.FC = () => {
                       filialMap={filialMap}
                       sellerName={sellers.get(e.seller_id) || '—'}
                       onDelete={() => del.mutate(e.id)}
+                      periodLabels={periodLabels}
                     />
                   ))
                 )}
