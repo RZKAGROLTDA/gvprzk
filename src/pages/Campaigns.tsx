@@ -1080,17 +1080,17 @@ const NewEntryRow: React.FC<{
             ) : (
               activeRules.map((r) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {formatCurrency(Number(r.trigger_min))} — Abr {formatPct(Number(r.gained_april))} / Mai{' '}
-                  {formatPct(Number(r.gained_may))} / Comp.{' '}
-                  {formatCurrency(Number(r.commitment_value))}
+                  {ruleTriggerLabel(r)}
                 </SelectItem>
               ))
             )}
           </SelectContent>
         </Select>
       </TableCell>
-      <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_april)) : '—'} />
-      <AutoCell value={selectedRule ? formatPct(Number(selectedRule.gained_may)) : '—'} />
+      <PeriodCells
+        periodLabels={periodLabels}
+        periods={selectedRule ? getRuleDiscountPeriods(selectedRule) : []}
+      />
       <AutoCell value={selectedRule ? formatCurrency(Number(selectedRule.commitment_value)) : '—'} />
       <TableCell className="py-2">
         <Select key={`filial-${resetKey}`} value={filialId || undefined} onValueChange={setFilialId}>
