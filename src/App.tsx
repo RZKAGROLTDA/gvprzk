@@ -149,17 +149,29 @@ const AuthAwareWrapper: React.FC = () => {
   const { user, loading, signOut } = useAuth();
   const { profile, loading: profileLoading, error: profileError, loadProfile } = useProfile();
   const { isUnhealthy, retryWithBackoff, errorMessage, retryCount } = useSupabaseHealth();
+  const queryClient = useQueryClient();
 
   // Monitoramento de versão por usuário/dispositivo (nunca bloqueia acesso)
   useVersionHeartbeat(user?.id ?? null, !!user && !!profile);
 
   React.useEffect(() => {
     const currentUserId = user?.id ?? null;
+
+    // Primeiro render da sessão: apenas registra o usuário observado.
+    // NUNCA limpar o cache aqui — era isso que descartava profile/roles
+    // recém-buscados logo após o login.
+    if (lastQueryClientUserId === undefined) {
+      lastQueryClientUserId = currentUserId;
+      return;
+    }
+
+    // Limpeza só quando o user_id REALMENTE muda (troca de conta ou logout),
+    // impedindo vazamento de cache entre usuários.
     if (lastQueryClientUserId !== currentUserId) {
       queryClient.clear();
       lastQueryClientUserId = currentUserId;
     }
-  }, [user?.id]);
+  }, [user?.id, queryClient]);
 
   // Show service unavailable screen if Supabase is unhealthy and not loading user
   if (isUnhealthy && !loading && !user) {
@@ -212,18 +224,16 @@ const AuthAwareWrapper: React.FC = () => {
 const App = () => {
   useAutoVersionCheck();
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SecurityHeaders />
-        <Toaster />
-        <Sonner />
-        <HotToaster />
-        <VersionUpdateNotification />
-        <MandatoryUpdateGate>
-          <AppContent />
-        </MandatoryUpdateGate>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <TooltipProvider>
+      <SecurityHeaders />
+      <Toaster />
+      <Sonner />
+      <HotToaster />
+      <VersionUpdateNotification />
+      <MandatoryUpdateGate>
+        <AppContent />
+      </MandatoryUpdateGate>
+    </TooltipProvider>
   );
 
 };
