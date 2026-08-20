@@ -1397,7 +1397,8 @@ const EntryRow: React.FC<{
   filialMap: Map<string, string>;
   sellerName: string;
   onDelete: () => void;
-}> = ({ entry, rules, ruleMap, filiais, filialMap, sellerName, onDelete }) => {
+  periodLabels: string[];
+}> = ({ entry, rules, ruleMap, filiais, filialMap, sellerName, onDelete, periodLabels }) => {
   const update = useUpdateCampaignClient();
   const [editing, setEditing] = useState(false);
   const [ruleId, setRuleId] = useState(entry.campaign_rule_id || '');
