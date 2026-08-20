@@ -470,6 +470,41 @@ const EntriesTab: React.FC = () => {
     });
   }, [allEntries, filterFilial, filterSeller, filterClient, selectedCampaignIds]);
 
+  // --- Colunas de percentual dinâmicas (fonte: discount_periods) ---------------
+  // Universo = regras das campanhas selecionadas + regras ativas (para a linha de
+  // inserção) + fallback legado dos lançamentos visíveis sem regra vinculada.
+  const periodLabels = useMemo(() => {
+    const groups = [] as ReturnType<typeof getRuleDiscountPeriods>[];
+    const visibleRuleIds = new Set<string>();
+    (rules || []).forEach((r) => {
+      const isSelected = !selectedCampaignIds || selectedCampaignIds.includes(r.id);
+      if (isSelected || r.active) {
+        visibleRuleIds.add(r.id);
+        groups.push(getRuleDiscountPeriods(r));
+      }
+    });
+    list.forEach((e) => {
+      const rule = e.campaign_rule_id ? ruleMap.get(e.campaign_rule_id) : undefined;
+      if (!rule || !visibleRuleIds.has(rule.id)) {
+        groups.push(getEntryDiscountPeriods(e, rule));
+      }
+    });
+    return getSelectedCampaignPeriodLabels(groups);
+  }, [rules, selectedCampaignIds, list, ruleMap]);
+
+  const columnCount = 9 + Math.max(periodLabels.length, 1);
+
+  const periodPercentColumns = (
+    entry: CampaignClient,
+    rule?: CampaignRule | null,
+  ): Record<string, number> => {
+    const periods = getEntryDiscountPeriods(entry, rule);
+    const cols: Record<string, number> = {};
+    periodLabels.forEach((label) => {
+      cols[`Ganhou ${label} (%)`] = percentForLabel(periods, label) ?? 0;
+    });
+    return cols;
+  };
 
   const totals = useMemo(() => {
     const count = list.length;
