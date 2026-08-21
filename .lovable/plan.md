@@ -1,66 +1,207 @@
-# Campanhas — meses dinâmicos (auditoria + proposta)
+# Oportunidades de Serviços — Auditoria + Proposta (nada aplicado)
 
-## 1. Causa encontrada
+## 0. Auditoria da estrutura atual (dados reais, hoje)
 
-Existem **duas fontes de verdade** para os percentuais de desconto:
+Não existe modelo normalizado de checklist. Um checklist aplicado é:
 
-| Fonte | Onde é usada | Comportamento |
-|---|---|---|
-| `campaign_rules.discount_periods` (jsonb: `[{label, percent}]`) | apenas aba **Regras** | dinâmico e correto (mostra "Agosto 2,00%") |
-| colunas legadas `gained_april` / `gained_may` / `gained_june` | aba **Lançamentos**, seletor "Gatilho / Comprou", exportação Excel | rótulos fixos "Abr %" / "Mai %" no código |
+```text
+tasks (task_type='checklist')
+ ├─ client / clientcode / property     → cliente (texto, sem FK)
+ ├─ filial / filial_atendida (texto)   → comparar sempre com LOWER(TRIM())
+ ├─ created_by (uuid) / responsible (texto)
+ ├─ start_date                         → data do checklist
+ └─ checklist_machine (jsonb)          → tipo, modelo, chassi_serie, ano, horimetro, status
+products (1 linha por item do checklist)
+ ├─ name            → nome do item
+ ├─ response_status → conforme | atencao | nao_conforme | na | NULL
+ ├─ response_notes  → observação
+ └─ photos          → NUNCA carregar no drill-down
+```
 
-Quando os períodos configuráveis foram introduzidos, a aba Regras passou a ler `discount_periods`, mas Lançamentos continuou lendo as três colunas mensais legadas — e como o formulário de Regras hoje grava só o array (deixando `gained_april/may/june` em 0), o seletor mostra "Abr 2,00% / Mai 0,00%" com número vindo do backfill antigo ou zero.
+Volumes atuais:
 
-## 2. Arquivos e funções envolvidos
+| Métrica | Valor |
+|---|---|
+| Checklists totais | 282 |
+| Itens de checklist | 1.190 |
+| Itens não avaliados (NULL) | 220 |
+| Itens de oportunidade (atenção + não conforme) | 115 |
+| Checklists com ≥1 oportunidade | 74 |
+| Taxa de oportunidade | 26,2% (74/282) |
+| Clientes únicos com oportunidade | 38 |
+| Máquinas únicas com oportunidade | 73 |
+| Itens sem chassi/série | 1 |
+| Período com dados | 2026-07-20 a 2026-08-21 |
 
-Tudo em **`src/pages/Campaigns.tsx`** e **`src/hooks/useCampaigns.ts`** (nenhuma RPC calcula mês; o banco só armazena):
+## 1. Arquitetura proposta
 
-- `useCampaigns.ts`: `DiscountPeriod`, `normalizeDiscountPeriods`, tipos `CampaignRule`/`CampaignClient` (ambos ainda com os três campos legados).
-- `Campaigns.tsx`:
-  - linhas 649-650 — cabeçalhos fixos `Abr %` / `Mai %` da tabela de Lançamentos;
-  - 1003-1005 e 1402-1404 — texto do seletor "Gatilho / Comprou" (nova linha e edição inline);
-  - 1012-1013 — células auto-preenchidas da linha de inserção;
-  - 1343-1344 e 1425-1435 — células de exibição do `EntryRow`;
-  - 618-630 — exportação Excel ("Ganhou Abril (%)", "Ganhou Maio (%)");
-  - 945-947 / 1359-1361 — gravação de `gained_april/may/june` no lançamento;
-  - 2165-2166 — resumo da regra na lista (já usa `discount_periods` com fallback legado);
-  - `SellerSummaryTab` (1537+) — **não** exibe meses, só gatilho/compromisso: nada a mudar.
-- Banco: `campaign_rules.discount_periods` já existe; `campaign_clients` guarda cópia em `gained_april/may/june`.
+Todo cálculo no banco; frontend só renderiza. Duas RPCs `STABLE SECURITY DEFINER` + uma função determinística de mapeamento. Nenhuma tabela nova, nenhuma coluna nova, nenhum trigger.
 
-## 3. Como funciona hoje
+```text
+Management.tsx (nova aba)
+  └─ useServiceOpportunities.ts
+       ├─ rpc get_service_opportunities_summary(...)  → KPIs + ranking + filial + vendedor + mês
+       └─ rpc get_service_opportunities_details(...)  → drill-down paginado
+             └─ map_checklist_item_to_service(text)   → IMMUTABLE
+```
 
-Regras → lê array `discount_periods` → rótulo livre ("Agosto"). Lançamentos → assume três slots fixos abril/maio/junho, copia da regra para o lançamento e rotula no código.
+## 2. RPCs a criar
 
-## 4. Proposta de correção (somente apresentação)
+**`get_service_opportunities_summary(p_start_date, p_end_date, p_filial_id, p_seller_role, p_seller_id, p_service_type, p_severity, p_machine_type, p_client)`**
+Retorna um único `jsonb` com quatro blocos, em uma passada sobre o CTE base:
+`kpis`, `by_service` (ranking principal), `by_filial`, `by_seller`, `by_month`.
 
-Fonte única de verdade: **`campaign_rules.discount_periods`**, com resolução por lançamento via `campaign_rule_id`.
+**`get_service_opportunities_details(<mesmos filtros>, p_limit int default 50, p_offset int default 0)`**
+Retorna as linhas do drill-down + `total_count` como coluna window (`COUNT(*) OVER()`), evitando `count exact` em query separada. Nunca seleciona `products.photos`.
 
-1. Novo helper `src/lib/campaignPeriods.ts`:
-   - `getRulePeriods(rule)` → `discount_periods` normalizado; se vazio, deriva do legado (`Abril/Maio/Junho` com percentual > 0). Garante que regra antiga continue mostrando Abril/Maio.
-   - `getEntryPeriods(entry, rule)` → períodos da regra vinculada; sem regra vinculada, deriva do legado do próprio lançamento.
-   - `buildPeriodColumns(periods[][])` → união ordenada dos rótulos (primeira aparição), usada para montar as colunas dinâmicas.
-   - `shortLabel(label)` → abreviação de 3 letras para cabeçalho ("Agosto" → "Ago %"), mantendo rótulo completo no tooltip e no Excel.
-   - `formatPeriodsInline(periods)` → "Ago 2,00% · Set 1,50%" para o seletor.
-2. Tabela de Lançamentos: substituir as duas colunas fixas por **N colunas geradas** a partir da união dos períodos das regras presentes na lista filtrada (mínimo 1 coluna placeholder "%" quando não houver período). Cada célula busca o percentual do rótulo naquele lançamento; rótulo ausente na regra → "—".
-3. Seletor "Gatilho / Comprou" (inserção e edição): texto passa a `R$ 4.000,00 — Ago 2,00% / Comp. R$ 20.000,00`, montado com `formatPeriodsInline`.
-4. Exportação Excel: colunas de percentual geradas dinamicamente com o rótulo completo (`Ganhou Agosto (%)`), demais colunas intactas.
-5. Gravação: **inalterada**. Continua preenchendo `gained_april/may/june` exatamente como hoje (compatibilidade), sem novas colunas nem migration.
+## 3. Função auxiliar
 
-Sem alteração de banco, RPC, permissões, cálculos de gatilho/compromisso ou layout geral (mesma tabela, apenas colunas de percentual dinâmicas).
+`public.map_checklist_item_to_service(p_item text) RETURNS text` — `IMMUTABLE`, `STRICT`-safe, normaliza com `LOWER(TRIM())`:
 
-## 5. Impacto nos dados históricos
+| Item | Tipo de Serviço |
+|---|---|
+| Verificação de Pneus | Pneus |
+| Verificação de Líquidos | Fluidos / Arrefecimento |
+| Verificação de Luzes | Sistema Elétrico |
+| Verificação de Óleo do Motor | Lubrificação / Motor |
+| Nível de Óleo da Transmissão | Transmissão |
+| Teste de Bateria | Baterias |
+| Inspeção de Suspensão | Suspensão |
+| Limpeza Geral | `EXCLUIR` (não é oportunidade comercial) |
+| qualquer outro | Outros Serviços |
 
-Nenhuma escrita. Lançamentos antigos vinculados a regras de Abril/Maio continuam exibindo "Abr %/Mai %" (via `discount_periods` do backfill ou via fallback legado). Lançamentos sem regra vinculada caem no fallback com os próprios valores gravados. Campanhas de Agosto/Setembro/futuras aparecem automaticamente.
+Sem categorias para Ar-condicionado / Hidráulico / Revisão Preventiva (não existem no checklist atual).
 
-## 6. Múltiplas campanhas selecionadas
+## 4. Índices
 
-As colunas são a **união** dos períodos das regras visíveis, na ordem de primeira aparição (ex.: Abril, Maio, Agosto = 3 colunas). Cada linha preenche apenas os meses da sua própria regra; os demais ficam "—", sem misturar percentuais entre campanhas. A exportação segue a mesma união.
+Apenas dois, ambos parciais e pequenos:
 
-## 7. Riscos
+```sql
+CREATE INDEX IF NOT EXISTS idx_products_response_status_open
+  ON public.products (task_id, name)
+  WHERE response_status IN ('atencao','nao_conforme');
 
-- Baixo: mudança visual/renderização apenas; nenhuma mutação, cálculo ou policy alterada.
-- Tabela pode ficar mais larga com muitos meses distintos — mitigado pelo `overflow-x-auto` já existente e pelo rótulo abreviado.
-- `colSpan` das linhas de estado vazio/carregando precisa passar a ser calculado — ajustado no mesmo commit.
-- Rótulos livres digitados pelo usuário ("ago/26", "AGOSTO") aparecem como digitados; sem normalização forçada para não inventar regra de negócio.
+CREATE INDEX IF NOT EXISTS idx_tasks_checklist_start_date
+  ON public.tasks (start_date)
+  WHERE task_type = 'checklist';
+```
 
-Aprovar para implementar apenas a camada de apresentação descrita.
+Nada em `checklist_machine` (volume baixo, GIN desnecessário).
+
+## 5. Frontend
+
+Criados:
+- `src/hooks/useServiceOpportunities.ts` (2 queries, `staleTime` 5 min, `refetchOnWindowFocus: false`)
+- `src/components/management/ServiceOpportunitiesTab.tsx` (KPIs + ranking + visões + drill-down)
+- `src/lib/serviceOpportunities.ts` (labels, cores de severidade, ordem de exibição)
+
+Alterado:
+- `src/pages/Management.tsx` — adicionar `TabsTrigger`/`TabsContent` `oportunidades-servicos`, reaproveitando o objeto `filters` existente. Nenhuma aba existente é tocada.
+
+## 6. Como fica a aba
+
+```text
+[ Filtros existentes: Período | Filial | Cargo | Responsável ]  + [Tipo de Serviço] [Severidade] [Tipo de Máquina] [Cliente 🔍]
+
+┌ Oportunidades ┐┌ Clientes ┐┌ Máquinas ┐┌ Checklists ┐┌ Taxa ┐┌ Não avaliados ┐
+│      115      ││    38    ││    73    ││     74     ││26,2% ││      220      │
+
+RANKING POR TIPO DE SERVIÇO  (clique na linha → drill-down)
+Tipo de Serviço            Oport.  Alta  Média  Clientes  Máquinas  % Total
+Fluidos / Arrefecimento      27     11    16       20        27      24,5%
+Pneus                        23      0    23       15        23      20,9%
+Sistema Elétrico             17      0    17       14        17      15,5%
+Transmissão                  16      2    14       12        15      14,5%
+Lubrificação / Motor         15      0    15       14        15      13,6%
+Baterias                      7      0     7        4         7       6,4%
+Suspensão                     6      0     6        5         6       5,5%
+
+[Por Filial]  [Por Responsável]  [Evolução mensal — 1 gráfico de barras]
+```
+
+Barra de severidade embutida na linha (alta/média), sem gráficos extras. Layout executivo: tabela em `overflow-x-auto`, números alinhados à direita, `whitespace-nowrap`, cards no mobile.
+
+## 7. Regra exata de cada KPI
+
+Base comum (`opp`): `products p JOIN tasks t ON t.id = p.task_id AND t.task_type='checklist'`, `p.response_status IN ('atencao','nao_conforme')`, item ≠ "Limpeza Geral", + filtros + escopo de permissão.
+
+| KPI | Cálculo |
+|---|---|
+| Oportunidades Potenciais | `COUNT(*)` de itens em `opp` |
+| Clientes com Oportunidade | `COUNT(DISTINCT client_key)` em `opp` |
+| Máquinas com Oportunidade | `COUNT(DISTINCT machine_key)` em `opp` |
+| Checklists com Oportunidade | `COUNT(DISTINCT p.task_id)` em `opp` |
+| Taxa de Oportunidade | `checklists_com_opp / checklists_no_periodo * 100` (denominador = checklists que passam pelos filtros de período/filial/cargo/responsável e escopo, **sem** os filtros de serviço/severidade) |
+| Itens Não Avaliados | `COUNT(*)` de itens com `response_status IS NULL` no mesmo universo de checklists do denominador |
+
+Severidade: `nao_conforme` = ALTA, `atencao` = MÉDIA. `conforme`, `na`, `NULL` nunca entram.
+
+## 8. Cliente único
+
+`client_key = LOWER(TRIM(COALESCE(NULLIF(t.clientcode,''), t.client)))` — prioriza código, cai para nome normalizado. Mesma convenção já usada em `get_management_seller_summary`.
+
+## 9. Máquina única
+
+```sql
+machine_key = UPPER(COALESCE(
+  NULLIF(TRIM(t.checklist_machine->>'chassi_serie'), ''),   -- principal
+  NULLIF(TRIM(t.checklist_machine->>'modelo'), '') || '|' || client_key,  -- fallback 1
+  'task:' || t.id::text                                     -- fallback 2 (nunca colapsa registros distintos)
+))
+```
+
+Hoje só 1 item de oportunidade está sem chassi, então o fallback é residual.
+
+**DISTINCT por categoria:** no ranking, `clientes` e `maquinas` são `COUNT(DISTINCT ...)` calculados **dentro do `GROUP BY` do tipo de serviço**. Um cliente presente em Pneus e Baterias conta 1 em cada linha e a soma das linhas propositalmente não fecha com o KPI global (o KPI é DISTINCT global).
+
+## 10. Drill-down
+
+Clique na linha do ranking (ou no número) → painel/tabela paginada server-side (50 por página) chamando `get_service_opportunities_details` com o `service_type` da linha aplicado sobre os filtros vigentes. Colunas: Cliente, Código, Máquina (tipo), Modelo, Série/Chassi, Filial, Responsável, Data, Item, Tipo de Serviço, Severidade, Observação. **`products.photos` não entra no SELECT.**
+
+## 11. Reaproveitamento de filtros
+
+A aba consome o mesmo `filters: ManagementFilters` já montado em `Management.tsx` (período, filial UUID, cargo, vendedor UUID), com a mesma normalização `'all'/'todos' → NULL` de `useManagementData.ts`. Os quatro filtros novos (tipo de serviço, severidade, tipo de máquina, cliente) são locais da aba e enviados como parâmetros extras — não afetam as outras abas.
+
+## 12. Permissões preservadas
+
+As RPCs replicam **literalmente** o bloco de escopo já usado em `get_management_seller_summary`:
+
+```sql
+v_is_admin OR v_is_manager
+OR (v_is_supervisor AND <filial> = get_supervisor_filial_id(v_user_id))
+OR t.created_by = v_user_id
+```
+
+Reutiliza `has_role()` e `get_supervisor_filial_id()`. Admin/Manager = global; Supervisor = filial; RAC/CPA/CSA e demais = próprios registros — paridade RAC = CPA = CSA intacta (o `primary_role` já trata cpa/csa com o mesmo peso de rac). Nenhuma policy, grant ou role novo.
+
+## 13. Performance esperada
+
+- 115 itens de oportunidade / 1.190 itens totais → agregação trivial, esperado < 50 ms com os índices parciais.
+- Uma requisição para todo o topo da tela (summary em `jsonb`), uma para o drill-down sob demanda.
+- `COUNT(*) OVER()` em vez de `count exact`; sem `SELECT *`; sem `photos`.
+- Índices parciais não afetam escrita relevante nem as telas existentes (Parque de Máquinas, CRM, Reports permanecem intocados).
+
+## 14. Riscos identificados
+
+| Risco | Mitigação |
+|---|---|
+| Filial em `tasks` é texto livre, mas o filtro da Análise Gerencial é UUID | resolver via `profiles.filial_id` do `created_by` (como o bloco `comm` da RPC atual já faz), não por string |
+| `tipo` de máquina inconsistente ("Trator" vs "TRATOR", "6110j") | normalizar com `INITCAP(LOWER(TRIM()))` só na exibição/filtro; dado nunca alterado |
+| Soma de clientes/máquinas por categoria ≠ KPI global | documentado na UI com nota "DISTINCT por categoria" |
+| 220 itens NULL podem sugerir subnotificação | exposto como KPI "Itens Não Avaliados" em vez de inferido |
+| Base pequena (74 checklists com oportunidade) | ranking pode oscilar; exibir também % do total, não só valor absoluto |
+
+## 15. Números reais que apareceriam hoje (sem filtro)
+
+KPIs: 115 oportunidades · 38 clientes · 73 máquinas · 74 checklists · 26,2% taxa · 220 itens não avaliados.
+Ranking: conforme tabela do item 6. Por filial: Canarana 60, Caiapônia 32, Porto Alegre do Norte 15, Alto Taquari 4, Querência 4. Por mês: 2026-07 → 36, 2026-08 → 79. Tipo de máquina: Trator 65, Colheitadeira 38, Pulverizador 11.
+
+## Confirmações explícitas
+
+- Nenhum dado histórico será alterado.
+- Nenhum checklist existente será alterado.
+- Nenhuma resposta de checklist será alterada.
+- Nenhuma permissão será modificada.
+- Nenhuma RLS será modificada.
+- Nenhuma funcionalidade existente será removida.
+- Nada foi aplicado nesta etapa: somente leituras (`SELECT`) e esta proposta.
