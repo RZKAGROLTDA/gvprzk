@@ -1119,7 +1119,18 @@ const Management: React.FC = () => {
             </Card>
           </TabsContent>
         )}
+
+        {/* ===== TAB: Oportunidades de Serviços ===== */}
+        <TabsContent value="servicos" className="space-y-4">
+          <ServiceOpportunitiesTab
+            filters={filters}
+            clientFilter={clientFilter}
+            showManagerBreakdowns={!isSeller}
+            pageSize={pageSize}
+          />
+        </TabsContent>
       </Tabs>
+
       </>
       )}
     </div>
