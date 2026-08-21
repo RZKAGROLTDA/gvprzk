@@ -744,7 +744,7 @@ const Management: React.FC = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedSellerForClients(null); }}>
         {isSeller ? (
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="vendedores" className="text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Meu Resumo
@@ -753,7 +753,12 @@ const Management: React.FC = () => {
               <UserCheck className="h-4 w-4 mr-1.5" />
               Meus Clientes
             </TabsTrigger>
+            <TabsTrigger value="servicos" className="text-xs sm:text-sm">
+              <Wrench className="h-4 w-4 mr-1.5" />
+              Oport. de Serviços
+            </TabsTrigger>
           </TabsList>
+
         ) : (
           /* Full tabs for managers — horizontal scroll on mobile, grid no desktop */
           <div className="w-full overflow-x-auto -mx-1 px-1">
