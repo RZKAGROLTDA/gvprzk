@@ -3155,6 +3155,56 @@ export type Database = {
           total_events: number
         }[]
       }
+      get_service_opportunities_details: {
+        Args: {
+          p_client?: string
+          p_end_date?: string
+          p_filial_id?: string
+          p_limit?: number
+          p_machine_type?: string
+          p_offset?: number
+          p_seller_id?: string
+          p_seller_role?: string
+          p_service_type?: string
+          p_severity?: string
+          p_start_date?: string
+        }
+        Returns: {
+          checklist_date: string
+          client_code: string
+          client_name: string
+          filial_nome: string
+          item_name: string
+          machine_hours: string
+          machine_model: string
+          machine_serial: string
+          machine_type: string
+          machine_year: string
+          observation: string
+          response_status: string
+          seller_id: string
+          seller_name: string
+          seller_role: string
+          service_type: string
+          severity: string
+          task_id: string
+          total_count: number
+        }[]
+      }
+      get_service_opportunities_summary: {
+        Args: {
+          p_client?: string
+          p_end_date?: string
+          p_filial_id?: string
+          p_machine_type?: string
+          p_seller_id?: string
+          p_seller_role?: string
+          p_service_type?: string
+          p_severity?: string
+          p_start_date?: string
+        }
+        Returns: Json
+      }
       get_supervisor_filial_id: { Args: { p_user_id: string }; Returns: string }
       get_supervisor_filial_tasks: {
         Args: never
@@ -3410,6 +3460,10 @@ export type Database = {
           resource_type: string
         }
         Returns: undefined
+      }
+      map_checklist_item_to_service: {
+        Args: { p_item: string }
+        Returns: string
       }
       map_task_status_to_followup_status: {
         Args: { p_status: string }
