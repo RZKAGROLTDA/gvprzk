@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search, RefreshCw } from 'lucide-react';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search, RefreshCw, Wrench } from 'lucide-react';
+import ServiceOpportunitiesTab from '@/components/management/ServiceOpportunitiesTab';
+
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -744,7 +746,7 @@ const Management: React.FC = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedSellerForClients(null); }}>
         {isSeller ? (
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="vendedores" className="text-xs sm:text-sm">
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Meu Resumo
@@ -753,11 +755,16 @@ const Management: React.FC = () => {
               <UserCheck className="h-4 w-4 mr-1.5" />
               Meus Clientes
             </TabsTrigger>
+            <TabsTrigger value="servicos" className="text-xs sm:text-sm">
+              <Wrench className="h-4 w-4 mr-1.5" />
+              Oport. de Serviços
+            </TabsTrigger>
           </TabsList>
+
         ) : (
           /* Full tabs for managers — horizontal scroll on mobile, grid no desktop */
           <div className="w-full overflow-x-auto -mx-1 px-1">
-            <TabsList className="inline-flex h-auto w-auto min-w-full sm:grid sm:grid-cols-5 gap-1 p-1">
+            <TabsList className="inline-flex h-auto w-auto min-w-full sm:grid sm:grid-cols-6 gap-1 p-1">
               <TabsTrigger value="vendedores" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
                 <Users className="h-4 w-4 mr-1.5 shrink-0" />
                 Vendedores
@@ -778,7 +785,12 @@ const Management: React.FC = () => {
                 <BarChart3 className="h-4 w-4 mr-1.5 shrink-0" />
                 RAC
               </TabsTrigger>
+              <TabsTrigger value="servicos" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <Wrench className="h-4 w-4 mr-1.5 shrink-0" />
+                Oportunidades de Serviços
+              </TabsTrigger>
             </TabsList>
+
           </div>
         )}
 
@@ -1107,7 +1119,18 @@ const Management: React.FC = () => {
             </Card>
           </TabsContent>
         )}
+
+        {/* ===== TAB: Oportunidades de Serviços ===== */}
+        <TabsContent value="servicos" className="space-y-4">
+          <ServiceOpportunitiesTab
+            filters={filters}
+            clientFilter={clientFilter}
+            showManagerBreakdowns={!isSeller}
+            pageSize={pageSize}
+          />
+        </TabsContent>
       </Tabs>
+
       </>
       )}
     </div>
