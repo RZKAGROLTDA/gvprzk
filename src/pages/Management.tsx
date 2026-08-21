@@ -785,7 +785,12 @@ const Management: React.FC = () => {
                 <BarChart3 className="h-4 w-4 mr-1.5 shrink-0" />
                 RAC
               </TabsTrigger>
+              <TabsTrigger value="servicos" className="whitespace-nowrap text-xs sm:text-sm px-3 py-2">
+                <Wrench className="h-4 w-4 mr-1.5 shrink-0" />
+                Oportunidades de Serviços
+              </TabsTrigger>
             </TabsList>
+
           </div>
         )}
 
