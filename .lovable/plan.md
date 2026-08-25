@@ -1,95 +1,97 @@
-# Auditoria — Controle de acesso do Parque de Máquinas
+# Meu Dia — Auditoria e Proposta (nada implementado ainda)
 
-Nada foi alterado. Somente diagnóstico.
+## 1. Auditoria das fontes atuais
 
-## 1. Causa exata
+| Domínio | Tabela | RPC/Hook atual | Campo de data | Campo de usuário | Status | Concluído x Pendente |
+|---|---|---|---|---|---|---|
+| Visitas realizadas | `tasks` (`task_type='visita'`, `technical_visit`) + espelho em `task_followups` (`activity_type='visita'`) | `get_task_type_counts`, `get_activity_metrics_v2`, `useTasksOptimized`, `useFollowups` | `tasks.start_date` / `task_followups.activity_date` | `tasks.created_by` / `task_followups.responsible_user_id` | `tasks.status` só tem `pending` e `closed` | Realizado = existe registro da atividade na data (tarefa criada). `tasks.status` **não** é confiável como "conclusão" (11.023 ligações "pending") |
+| Ligações / prospecções | `tasks` (`task_type='ligacao'` 13.074, `prospection` 1.827) + `task_followups.activity_type='ligacao'` | `get_activity_metrics_v2`, `useTasks` | `tasks.start_date`, `created_at` | `tasks.created_by` | idem | Realizado = registro criado no dia |
+| Programação de visitas | `visit_schedules` | `useVisitSchedules` (SELECT direto, limit 2000) | `planned_date`, `realized_at` | `seller_id` | `planejado / realizado / nao_realizado / reagendado` | Pendente = `status='planejado'`; concluída = `realizado` com `realized_task_id`; atrasada = `planejado` e `planned_date < hoje` |
+| Retornos de clientes | `task_followups` | `useFollowupsProspectsOnly` (`src/components/crm/Returns.tsx`) | `next_return_date` (fallback `activity_date`) | `responsible_user_id` | `pendente / concluido / cancelado / reagendado` | Retorno em aberto = `followup_status='pendente'` **e** `next_return_date` preenchida |
+| Treinamentos | `trainings` | `useTrainings`, `get_trainings_stats`, `get_training_goal` | `training_date` + `training_time` | `user_id` | `pendente / realizado / nao_realizado` | Pendente = `status='pendente'` |
+| Atividades abertas | `tasks` | `get_secure_tasks_paginated` / `useTasksOptimized` | `start_date`, `end_date`, `next_action_date` | `created_by` | `pending / closed` | Aberta = `status='pending'`; vencida = `pending` e `end_date < hoje` |
 
-O modal fica "somente leitura" porque a permissão de edição é decidida por **uma única fonte**: a função de banco `public.can_edit_client_equipment(p_equipment_id)`, que exige um dos vínculos abaixo:
+Achados importantes:
+- Não existe hoje **nenhuma** regra de meta de visitas/ligações no banco ou no frontend. A única meta existente é de treinamentos (`training_goal_settings`).
+- `tasks.status` não é usado operacionalmente como conclusão; por isso a definição de "realizado" abaixo usa a existência do registro.
+- `visit_schedules` já tem ciclo completo de conclusão — o Meu Dia apenas lê, não cria controle paralelo.
 
-```sql
-has_role(admin) OR has_role(manager)
-OR ce.created_by  = auth.uid()
-OR ce.validated_by = auth.uid()
-OR ce.filial_id IS NULL
-OR ce.filial_id = get_user_filial_id()
-OR ce.filial_id = get_supervisor_filial_id(auth.uid())
+### CPA e CSA — auditoria da meta (precisa da sua confirmação)
+- No banco, `cpa` e `csa` têm **paridade de permissões com `rac`**, mas isso é permissão, não meta.
+- Volume atual de atividades por cargo indica perfis operacionais equivalentes a RAC (atendimento de balcão/pós-venda), não a consultor de campo.
+- Por isso **não vou assumir meta**. Preciso que você confirme uma das opções:
+  - (A) CPA/CSA = mesma meta de RAC (3 visitas/dia, seg–sex);
+  - (B) CPA/CSA = meta de Consultor (3 visitas/semana + 3 ligações/dia);
+  - (C) CPA/CSA sem meta nesta etapa (painel mostra pendências, sem barra de meta).
+- Igualmente, **RAC não possui hoje nenhuma meta de ligações** no sistema. Não criarei meta de ligações para RAC sem sua confirmação; no painel do RAC o bloco de ligações apareceria apenas como contador informativo (sem "faltam X").
+
+## 2. Regras exatas de cálculo das metas
+
+- **Consultor de vendas** (`sales_consultant`, `consultant`, `technical_consultant`):
+  - Visitas: meta 3 por **semana** (segunda 00:00 a domingo 23:59, hora local do usuário/UTC-3). `faltam = max(0, 3 - realizadas_semana)`.
+  - Ligações/prospecções: meta 3 por **dia**. `faltam = max(0, 3 - realizadas_hoje)`.
+- **RAC** (e CPA/CSA conforme sua confirmação): visitas meta 3 por **dia**, contada apenas seg–sex. Sábado/domingo → meta 0, painel mostra "sem meta hoje". Ligações: contador informativo, sem meta.
+- Metas ficam em constantes no banco (função imutável `get_personal_goals(role)`), não hardcoded no frontend, para permitir ajuste futuro sem deploy.
+
+## 3. Definição de "realizado"
+- **Visita realizada** = registro em `tasks` com `task_type IN ('visita','technical_visit')`, `created_by = usuário`, `start_date` dentro do período.
+- **Ligação/prospecção realizada** = registro em `tasks` com `task_type IN ('ligacao','prospection')`, `created_by = usuário`, `start_date = hoje`.
+- Sem alteração de nenhum status; a contagem é derivada, não gravada.
+
+## 4. Visita programada — pendente x concluída
+- Pendente: `visit_schedules.status='planejado'` e `planned_date = hoje`.
+- Atrasada: `status='planejado'` e `planned_date < hoje`.
+- Próximas: `status='planejado'` e `planned_date > hoje` (janela de 7 dias).
+- Concluída: `status IN ('realizado','nao_realizado','reagendado')` → sai automaticamente do Meu Dia, pois o filtro é sempre `planejado`.
+
+## 5. Retorno vencido / hoje / próximo
+Base: `task_followups` com `responsible_user_id = usuário`, `followup_status='pendente'`, `next_return_date NOT NULL`.
+- Vencido: `next_return_date < hoje`; Hoje: `= hoje`; Próximo: `> hoje` (7 dias).
+
+## 6. Treinamento pendente
+`trainings` com `user_id = usuário` e `status='pendente'`: hoje (`training_date = hoje`), atrasado (`< hoje`), próximos (30 dias). Exibe data, horário, nome e horas. Somente leitura.
+
+## 7. Atividade aberta
+`tasks` com `created_by = usuário` e `status='pending'`: vencida (`end_date < hoje`), hoje (`hoje` entre `start_date` e `end_date`), próximas (`start_date` nos próximos 7 dias).
+
+## 8. Proposta visual
+
+```text
+MEU DIA · terça, 25 de agosto            [Atualizar]
+┌──────────┬──────────┬──────────┬──────────┬──────────┐
+│ Visitas  │ Ligações │ Retornos │ Treinam. │ Ativid.  │
+│ 2 / 3 🟡 │ 1 / 3 🟡 │   4 🔴   │   1 🟡   │  6 🔴    │
+└──────────┴──────────┴──────────┴──────────┴──────────┘
+🔴 ATRASADO   4 retornos · 2 visitas programadas · 3 atividades
+🟡 HOJE       1 visita programada · faltam 2 ligações · 1 treinamento 14:00
+🟢 PRÓXIMOS   3 visitas · 2 retornos · 1 treinamento
 ```
+- Três faixas (Atrasado / Hoje / Próximos), cada uma com no máximo 5 linhas e link "Ver todos".
+- Mobile: KPIs em grade 2 colunas com scroll horizontal; faixas empilhadas em accordion, "Atrasado" aberto por padrão.
+- Cores via tokens semânticos existentes (destructive / warning / success), sem cores hardcoded.
 
-Para um consultor (RAC/CPA/CSA/vendas), uma máquina de **outra filial** que ele não criou nem validou retorna `false` → o frontend entra em modo leitura.
+## 9. RPCs necessárias
+- `get_my_day_summary()` — **uma única** RPC `SECURITY DEFINER STABLE`, sem parâmetros, retorna `jsonb` com: cargo detectado, metas aplicáveis, realizados (visitas dia/semana, ligações dia), contagens de pendências por bucket e um preview de até 5 itens por bloco.
+- `get_my_day_details(p_block text, p_bucket text, p_limit int, p_offset int)` — drill-down sob demanda quando o usuário expande um bloco.
+- Nenhuma RPC existente é alterada. Nenhuma tabela nova. Nenhum dado alterado.
 
-## 2. Frontend responsável
+## 10. Arquivos frontend envolvidos
+- Novo: `src/pages/MyDay.tsx`, `src/hooks/useMyDay.ts`, `src/components/myday/*` (KPIs, faixa de prioridade, lista de bloco).
+- Alterados: `src/App.tsx` (rota `/meu-dia`), `src/components/Layout.tsx` (item de menu "Meu Dia").
+- Reuso de navegação: Retornos → `/crm?tab=retornos`; Treinamentos → `/crm?tab=treinamentos`; Programação → `/crm?tab=visitas`; Atividades → `/dashboard` (aba Tarefas).
 
-`src/components/equipment/EquipmentEditDialog.tsx`
+## 11. Impacto de performance
+- Abertura do painel: **1 query** (a RPC de resumo), `staleTime` 5 min, `refetchOnWindowFocus: false` — alinhado ao padrão do projeto.
+- Todas as agregações usam índices já existentes por usuário/data; onde faltar, valido com `EXPLAIN ANALYZE` antes de criar índice. Meta: < 300 ms.
+- Detalhes só carregam ao expandir bloco.
 
-```tsx
-const { data: canEdit, isLoading: checkingPermission } = useCanEditEquipment(...)
-const readOnly = open && canEdit === false;          // linha 42
-const busy = isPending || isTransferring || readOnly || checkingPermission;  // linha 180
-```
+## 12. Riscos
+- "Realizado" derivado da criação da tarefa pode divergir de conclusão real, já que `tasks.status` não é operacional hoje. Se você quiser conclusão explícita, isso exigiria mudança de fluxo (fora desta etapa).
+- Metas de CPA/CSA e ligações de RAC pendentes de sua definição (bloqueia parte do painel).
+- Semana seg–dom e fuso UTC-3 precisam ser confirmados.
 
-Consequências no modal:
-- linhas 207-216: banner "Esta máquina é somente leitura para o seu perfil…";
-- campos desabilitados via `readOnly` / `busy`;
-- botões de **status** (linha 222+) e **Salvar** desabilitados;
-- bloco de ações incluindo **Transferir Máquina** (linha 503) recebe `hidden`;
-- **validação** da máquina compartilha o mesmo `busy`.
+## 13. Localização recomendada
+Recomendo: **manter `/` como está** e adicionar "Meu Dia" como **primeiro item do menu lateral**, com redirecionamento automático para `/meu-dia` **apenas** para perfis operacionais (consultor, RAC, CPA, CSA) no primeiro acesso da sessão. Motivos: não altera o login de gerentes/admins, custa 1 query no boot para quem usa, e no celular vira a tela de entrada natural sem travar o carregamento inicial.
 
-Hook: `src/hooks/useClientEquipment.ts`
-- `useCanEditEquipment` (linhas 387-401) → RPC `can_edit_client_equipment`;
-- mensagens de erro "pertence a outra filial" nas linhas 444, 531 e 747 (editar/validar e transferir).
-
-Não existe comparação de filial escrita no frontend — ele apenas reflete a resposta do banco.
-
-## 3. Banco responsável
-
-| Objeto | Papel | Restringe por filial? |
-|---|---|---|
-| `can_view_equipment_park()` | libera leitura para qualquer perfil aprovado + ativo | Não |
-| `get_equipment_park_paginated` / `_kpis` / `_validation_summary` (SECURITY DEFINER) | listagem/KPIs do parque inteiro | Não |
-| `can_edit_client_equipment(uuid)` | gate do modal (editar/validar/status/transferir) | **Sim** |
-| RLS `client_equipment_select` | leitura direta na tabela | **Sim** (mesma expressão) |
-| RLS `client_equipment_update` (USING + WITH CHECK) | edição, validação, status e transferência (todas são `UPDATE` direto na tabela) | **Sim** |
-| RLS `client_equipment_insert` | `created_by = auth.uid()` | Não |
-| RLS `client_equipment_delete` | apenas admin/manager | n/a |
-
-## 4. Visualizar × Editar × Validar × Transferir
-
-- **Visualizar:** global hoje — a tela lê pela RPC `SECURITY DEFINER`, que ignora a RLS de SELECT.
-- **Editar / Validar / Alterar status / Transferir:** todas são `UPDATE` na mesma tabela e passam pela **mesma** política `client_equipment_update` + o mesmo gate `can_edit_client_equipment`. Ou seja, **não há diferença entre elas**: quem pode editar pode validar, mudar status e transferir; quem não pode, não faz nenhuma.
-
-## 5. Matriz atual de permissões
-
-| Cargo | Ver (todas as filiais) | Editar/Validar/Status/Transferir | Excluir |
-|---|---|---|---|
-| Admin | Sim | Todas as filiais | Sim |
-| Manager (gerente) | Sim | Todas as filiais | Sim |
-| Supervisor | Sim | Só a própria filial (+ criadas/validadas por ele) | Não |
-| RAC / CPA / CSA / Consultores | Sim | Só a própria filial (+ criadas/validadas por ele, + máquinas sem filial) | Não |
-
-## 6. A otimização recente causou isso?
-
-Não. A restrição **já existia**: `can_edit_client_equipment` foi criada junto com o ajuste de RLS granular do parque, e a otimização de performance apenas reescreveu as políticas no padrão `InitPlan` (`(SELECT auth.uid())`), preservando a expressão lógica idêntica. O que mudou a **percepção** foi a centralização da listagem na RPC paginada: a visualização passou a ser global, então o usuário agora abre máquinas de outras filiais e encontra o bloqueio de escrita que antes ficava invisível (a máquina simplesmente não aparecia).
-
-## 7. Proposta (para aprovação) — parque sem restrição por filial
-
-Objetivo: qualquer usuário **aprovado e ativo** com acesso ao Parque pode ver, editar, validar, alterar status e transferir qualquer máquina.
-
-Uma migration, apenas funções e políticas:
-
-1. `CREATE OR REPLACE FUNCTION public.can_edit_client_equipment(p_equipment_id uuid)` → retorna `public.can_view_equipment_park()` (aprovado + ativo) desde que a máquina exista. Mesma assinatura e retorno → nenhum consumidor quebra.
-2. `client_equipment_select` → `USING (public.can_view_equipment_park())`.
-3. `client_equipment_update` → `USING`/`WITH CHECK` = `public.can_view_equipment_park()`.
-4. `client_equipment_insert` → mantido (`created_by = auth.uid()`), somando `can_view_equipment_park()`.
-5. `client_equipment_delete` → **mantido como está** (só admin/manager), pois exclusão não estava no pedido.
-
-Frontend: nenhuma alteração necessária. Como `can_edit_client_equipment` passa a retornar `true`, o modal deixa de entrar em modo leitura, os botões de status/validação/transferência reaparecem e as mensagens de "outra filial" se tornam inalcançáveis. Opcionalmente, depois, ajustamos o texto de erro genérico de `42501` (hoje diz "outra filial").
-
-## 8. Impacto de segurança
-
-- Aumenta a superfície de escrita: qualquer colaborador aprovado e ativo passa a poder alterar, validar e transferir máquinas de qualquer filial — é exatamente a regra pedida, mas remove o isolamento por filial como barreira contra erro operacional.
-- Continuam ativos: exigência de sessão autenticada, perfil **aprovado** e **ativo** (usuário desativado perde tudo imediatamente), exclusão restrita a admin/manager, histórico de transferência (`transfer_history`) e rastreabilidade de `validated_by`/`transferred_by`.
-- Recomendação (opcional, só se você quiser): manter DELETE restrito, como proposto, e considerar registrar as edições no `audit_log`.
-
-## 9. Garantia sobre dados
-
-A alteração proposta é **apenas de regras de permissão** (uma função e três políticas). Nenhum `INSERT`, `UPDATE`, `DELETE` ou `ALTER TABLE`: nenhuma máquina, histórico, validação, prioridade ou vínculo com tarefas é alterado ou perdido. Também é totalmente reversível — basta restaurar a expressão anterior.
+## 14. Confirmação
+Nenhuma funcionalidade atual é substituída ou duplicada: Retornos, Treinamentos, Programação de Visitas e Tarefas continuam sendo os únicos pontos de criação/edição. O Meu Dia é somente leitura e navegação.
