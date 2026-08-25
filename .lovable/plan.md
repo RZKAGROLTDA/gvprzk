@@ -1,20 +1,27 @@
-# Etapa 1 — Estrutura configurável de metas (SQL para aprovação)
+# Etapa 1 — Estrutura configurável de metas (SQL final para aprovação)
 
-Escopo: apenas enums, tabela `public.activity_goal_settings`, triggers, RLS, índices e registros iniciais.
+Escopo: apenas enums, tabela `public.activity_goal_settings`, triggers, RLS, GRANTs, REVOKEs e registros iniciais.
 Não cria `get_my_day_summary()`. Não cria frontend. Nenhum dado existente é alterado.
 
-## SQL — estrutura (migration)
+## SQL final completo
 
 ```sql
 -- 1) ENUMS
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-                 WHERE n.nspname = 'public' AND t.typname = 'goal_period_type') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = 'goal_period_type'
+  ) THEN
     CREATE TYPE public.goal_period_type AS ENUM ('daily', 'weekly');
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-                 WHERE n.nspname = 'public' AND t.typname = 'goal_activity_type') THEN
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public' AND t.typname = 'goal_activity_type'
+  ) THEN
     CREATE TYPE public.goal_activity_type AS ENUM ('visita', 'ligacao');
   END IF;
 END $$;
@@ -41,64 +48,66 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.activity_goal_settings TO authent
 GRANT ALL ON public.activity_goal_settings TO service_role;
 -- nenhum GRANT para anon
 
--- 4) RLS
+-- 4) REVOKE explícito de anon/PUBLIC
+REVOKE ALL ON public.activity_goal_settings FROM anon;
+REVOKE ALL ON public.activity_goal_settings FROM PUBLIC;
+
+-- 5) RLS
 ALTER TABLE public.activity_goal_settings ENABLE ROW LEVEL SECURITY;
 
 -- Leitura: usuário autenticado, aprovado e ativo
+DROP POLICY IF EXISTS activity_goal_settings_select ON public.activity_goal_settings;
 CREATE POLICY activity_goal_settings_select
 ON public.activity_goal_settings
 FOR SELECT TO authenticated
 USING (
   EXISTS (
     SELECT 1 FROM public.profiles p
-    WHERE p.user_id = (SELECT auth.uid())
+    WHERE p.user_id = auth.uid()
       AND p.approval_status = 'approved'
       AND p.employment_status = 'active'
   )
 );
 
 -- Criação: admin/manager
+DROP POLICY IF EXISTS activity_goal_settings_insert ON public.activity_goal_settings;
 CREATE POLICY activity_goal_settings_insert
 ON public.activity_goal_settings
 FOR INSERT TO authenticated
 WITH CHECK (
-  public.has_role((SELECT auth.uid()), 'admin'::app_role)
-  OR public.has_role((SELECT auth.uid()), 'manager'::app_role)
+  public.has_role(auth.uid(), 'admin'::app_role)
+  OR public.has_role(auth.uid(), 'manager'::app_role)
 );
 
 -- Edição: admin/manager
+DROP POLICY IF EXISTS activity_goal_settings_update ON public.activity_goal_settings;
 CREATE POLICY activity_goal_settings_update
 ON public.activity_goal_settings
 FOR UPDATE TO authenticated
 USING (
-  public.has_role((SELECT auth.uid()), 'admin'::app_role)
-  OR public.has_role((SELECT auth.uid()), 'manager'::app_role)
+  public.has_role(auth.uid(), 'admin'::app_role)
+  OR public.has_role(auth.uid(), 'manager'::app_role)
 )
 WITH CHECK (
-  public.has_role((SELECT auth.uid()), 'admin'::app_role)
-  OR public.has_role((SELECT auth.uid()), 'manager'::app_role)
+  public.has_role(auth.uid(), 'admin'::app_role)
+  OR public.has_role(auth.uid(), 'manager'::app_role)
 );
 
 -- Exclusão: apenas admin
+DROP POLICY IF EXISTS activity_goal_settings_delete ON public.activity_goal_settings;
 CREATE POLICY activity_goal_settings_delete
 ON public.activity_goal_settings
 FOR DELETE TO authenticated
-USING (public.has_role((SELECT auth.uid()), 'admin'::app_role));
+USING (public.has_role(auth.uid(), 'admin'::app_role));
 
--- 5) TRIGGERS
--- 5.1 updated_at (função já existente no projeto)
-DROP TRIGGER IF EXISTS trg_activity_goal_settings_updated_at ON public.activity_goal_settings;
-CREATE TRIGGER trg_activity_goal_settings_updated_at
-BEFORE UPDATE ON public.activity_goal_settings
-FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
--- 5.2 Validação de regras de negócio (sem CHECK constraint, conforme padrão do projeto)
+-- 6) FUNÇÃO DE VALIDAÇÃO (trigger, sem CHECK constraint)
 CREATE OR REPLACE FUNCTION public.validate_activity_goal_settings()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = public
 AS $$
 BEGIN
+  -- Validação de target_value
   IF NEW.target_value < 0 THEN
     RAISE EXCEPTION 'target_value não pode ser negativo (recebido: %)', NEW.target_value;
   END IF;
@@ -107,7 +116,7 @@ BEGIN
     RAISE EXCEPTION 'target_value acima do limite razoável (recebido: %)', NEW.target_value;
   END IF;
 
-  -- weekdays_only só faz sentido em meta diária
+  -- Validação de weekdays_only
   IF NEW.period_type = 'weekly' AND NEW.weekdays_only THEN
     RAISE EXCEPTION 'weekdays_only só é aplicável quando period_type = daily';
   END IF;
@@ -121,22 +130,27 @@ BEGIN
 END;
 $$;
 
+-- 7) TRIGGERS
+-- 7.1 updated_at (função pública já existente no projeto)
+DROP TRIGGER IF EXISTS trg_activity_goal_settings_updated_at ON public.activity_goal_settings;
+CREATE TRIGGER trg_activity_goal_settings_updated_at
+BEFORE UPDATE ON public.activity_goal_settings
+FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- 7.2 validação de regras de negócio
 DROP TRIGGER IF EXISTS trg_activity_goal_settings_validate ON public.activity_goal_settings;
 CREATE TRIGGER trg_activity_goal_settings_validate
 BEFORE INSERT OR UPDATE ON public.activity_goal_settings
 FOR EACH ROW EXECUTE FUNCTION public.validate_activity_goal_settings();
 
--- 6) ÍNDICES
--- A UNIQUE (role, activity_type) já cobre a busca do Meu Dia (por cargo, opcionalmente por atividade).
--- Índice parcial adicional apenas para leitura das metas vigentes:
+-- 8) ÍNDICES
+-- A UNIQUE (role, activity_type) já cobre a busca do Meu Dia.
+-- Índice parcial adicional para leitura das metas vigentes:
 CREATE INDEX IF NOT EXISTS idx_activity_goal_settings_active
   ON public.activity_goal_settings (role, activity_type)
   WHERE active;
-```
 
-## SQL — registros iniciais (executados como dados, após a estrutura)
-
-```sql
+-- 9) REGISTROS INICIAIS
 INSERT INTO public.activity_goal_settings
   (role, activity_type, target_value, period_type, weekdays_only, active, notes)
 VALUES
@@ -152,28 +166,33 @@ VALUES
 ON CONFLICT (role, activity_type) DO NOTHING;
 ```
 
-Nenhum registro de `ligacao` para `rac`, `cpa`, `csa` — nesses cargos o Meu Dia mostrará o realizado de ligações apenas como informação, sem meta nem faltante.
+## Regras confirmadas
 
-## Garantia de configurabilidade (item 4)
+| Cargo | Visita | Ligação | Período |
+|---|---|---|---|
+| sales_consultant | 3 | 3 | semanal / diário |
+| consultant | 3 | 3 | semanal / diário |
+| technical_consultant | 3 | 3 | semanal / diário |
+| rac | 3 | — | diário, seg a sex |
+| cpa | 3 | — | diário, seg a sex |
+| csa | 3 | — | diário, seg a sex |
 
-- Nenhuma meta é escrita em código: a futura `get_my_day_summary()` fará `SELECT target_value, period_type, weekdays_only FROM public.activity_goal_settings WHERE role = <cargo> AND active`.
-- Mudar 3 → 4 visitas será:
-  `UPDATE public.activity_goal_settings SET target_value = 4 WHERE role = 'rac' AND activity_type = 'visita';`
-  Sem migration de função e sem deploy de frontend.
-- Cargo sem registro (ou `active = false`) = sem meta: o painel exibe apenas o realizado.
-- Semana confirmada: segunda a domingo, `America/Sao_Paulo` (será aplicada dentro da RPC na Etapa 2, não nesta migration).
+- `activity_goal_settings` será a única fonte das metas.
+- Nenhuma meta será hardcoded em RPC ou frontend.
+- Semana de referência: segunda a domingo, `America/Sao_Paulo` (aplicada na RPC da Etapa 2).
 
-## Confirmações
+## Confirmações de segurança e escopo
 
-- Nenhuma tabela existente é alterada; nenhuma policy, função ou permissão atual é modificada.
+- Nenhuma tabela, policy, função ou permissão existente é alterada.
 - Nenhuma tarefa, visita, retorno ou treinamento é copiado, movido ou alterado.
-- Treinamentos continuam em `trainings` / `training_goal_settings`.
-- `anon` não recebe nenhum acesso.
+- `anon` e `PUBLIC` não possuem nenhum privilégio sobre a tabela.
+- `service_role` recebe `ALL` para manutenção/edge functions.
+- `authenticated` recebe `SELECT, INSERT, UPDATE, DELETE`, mas RLS restringe conforme o perfil.
 
 ## Validações após aplicar
 
 1. Listar as 9 linhas inseridas.
 2. Confirmar RLS: leitura OK para usuário aprovado/ativo; bloqueada para pendente/inativo.
 3. Confirmar que `UPDATE` falha para consultor e passa para admin/manager.
-4. Testar as validações do trigger: `target_value = -1` e `period_type = 'weekly'` com `weekdays_only = true` devem falhar.
+4. Testar validações do trigger: `target_value = -1` e `period_type = 'weekly'` com `weekdays_only = true` devem falhar.
 5. Simular alteração de meta (3 → 4 e volta a 3) para provar configurabilidade sem migration.
