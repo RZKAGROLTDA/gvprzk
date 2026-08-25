@@ -2626,6 +2626,16 @@ export type Database = {
         }[]
       }
       get_media_migration_report: { Args: never; Returns: Json }
+      get_my_day_details: {
+        Args: {
+          p_block: string
+          p_bucket: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      get_my_day_summary: { Args: never; Returns: Json }
       get_performance_by_filial: {
         Args: { p_date_from?: string; p_date_to?: string }
         Returns: {
@@ -3586,6 +3596,17 @@ export type Database = {
       monitor_session_security: { Args: never; Returns: undefined }
       monitor_tasks_new_unauthorized_access: { Args: never; Returns: undefined }
       monitor_unauthorized_customer_access: { Args: never; Returns: undefined }
+      my_day_context: {
+        Args: never
+        Returns: {
+          is_weekend: boolean
+          role: string
+          today: string
+          user_id: string
+          week_end: string
+          week_start: string
+        }[]
+      }
       resolve_client_name_conflict: {
         Args: { p_id: string; p_new_name: string; p_resolution_type?: string }
         Returns: {
