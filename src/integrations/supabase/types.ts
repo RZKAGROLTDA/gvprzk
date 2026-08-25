@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_goal_settings: {
+        Row: {
+          active: boolean
+          activity_type: Database["public"]["Enums"]["goal_activity_type"]
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          period_type: Database["public"]["Enums"]["goal_period_type"]
+          role: Database["public"]["Enums"]["app_role"]
+          target_value: number
+          updated_at: string
+          updated_by: string | null
+          weekdays_only: boolean
+        }
+        Insert: {
+          active?: boolean
+          activity_type: Database["public"]["Enums"]["goal_activity_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          period_type: Database["public"]["Enums"]["goal_period_type"]
+          role: Database["public"]["Enums"]["app_role"]
+          target_value?: number
+          updated_at?: string
+          updated_by?: string | null
+          weekdays_only?: boolean
+        }
+        Update: {
+          active?: boolean
+          activity_type?: Database["public"]["Enums"]["goal_activity_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          period_type?: Database["public"]["Enums"]["goal_period_type"]
+          role?: Database["public"]["Enums"]["app_role"]
+          target_value?: number
+          updated_at?: string
+          updated_by?: string | null
+          weekdays_only?: boolean
+        }
+        Relationships: []
+      }
       admin_users: {
         Row: {
           created_at: string
@@ -3712,6 +3757,8 @@ export type Database = {
         | "visita_tecnica"
       followup_priority: "baixa" | "media" | "alta"
       followup_status: "pendente" | "concluido" | "cancelado" | "reagendado"
+      goal_activity_type: "visita" | "ligacao"
+      goal_period_type: "daily" | "weekly"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3862,6 +3909,8 @@ export const Constants = {
       ],
       followup_priority: ["baixa", "media", "alta"],
       followup_status: ["pendente", "concluido", "cancelado", "reagendado"],
+      goal_activity_type: ["visita", "ligacao"],
+      goal_period_type: ["daily", "weekly"],
     },
   },
 } as const
