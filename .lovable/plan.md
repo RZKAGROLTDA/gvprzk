@@ -91,14 +91,14 @@ BEGIN
   FROM public.activity_goal_settings
   WHERE active
     AND activity_type = 'visita'
-    AND role = c.role::public.app_role;
+    AND role::text = c.role;
 
   SELECT target_value, period_type, weekdays_only
     INTO g_lig
   FROM public.activity_goal_settings
   WHERE active
     AND activity_type = 'ligacao'
-    AND role = c.role::public.app_role;
+    AND role::text = c.role;
 
   -- ---------- VISITAS REALIZADAS ----------
   IF g_vis.period_type = 'weekly' THEN
@@ -524,7 +524,7 @@ Nenhum índice novo nesta etapa. Todos os acessos já usam índices existentes p
 
 ## 10. Riscos identificados
 
-1. `get_user_role()` retorna `'none'` para usuário sem linha em `user_roles`: o cast para `app_role` falharia. Mitigado porque o filtro usa `role = c.role::app_role` apenas quando há correspondência — na versão final o cast é protegido: `'none'` não existe no enum, então o comparativo é feito via `role::text = c.role`. **Ajuste a aplicar:** trocar `role = c.role::public.app_role` por `role::text = c.role` nas duas leituras de meta.
+1. `get_user_role()` pode retornar `'none'` (usuário sem linha em `user_roles`). Por isso a comparação de cargo é feita como `role::text = c.role`, evitando erro de cast para `app_role`; nesse caso simplesmente não há meta.
 2. `next_action_date` no bucket "hoje" pode incluir tarefas com `start_date` futuro — comportamento intencional conforme a regra 9.
 3. Atividades `pending` sem `end_date` e com `start_date` passado não entram em nenhum bucket (a regra de atraso é baseada em `end_date`).
 4. `SECURITY DEFINER` ignora RLS por definição; o escopo é garantido pelos filtros por `auth.uid()` dentro das funções.
