@@ -546,6 +546,11 @@ BEGIN
       AND p.employment_status = 'active'
       AND (v_filial IS NULL OR p.filial_id = v_filial)
       AND (p_user_id IS NULL OR p.user_id = p_user_id)
+      -- Supervisor nunca aparece na própria equipe
+      AND p.user_id <> s.user_id
+      -- Visão de equipe = supervisores + cargos operacionais; manager/admin nunca entram na tabela
+      AND public.my_day_role_of(p.user_id) IN ('supervisor', 'sales_consultant', 'consultant',
+                                               'technical_consultant', 'rac', 'cpa', 'csa')
   ), filtrados AS (
     SELECT * FROM membros WHERE v_role IS NULL OR role = v_role
   ), metas AS (
