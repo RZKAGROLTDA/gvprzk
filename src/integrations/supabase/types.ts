@@ -778,6 +778,243 @@ export type Database = {
         }
         Relationships: []
       }
+      pops_client_assignments: {
+        Row: {
+          assigned_by: string | null
+          client_name: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          pops_client_code: string
+          pops_client_code_norm: string
+          program_id: string
+          rac_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pops_client_code: string
+          pops_client_code_norm: string
+          program_id: string
+          rac_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          client_name?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pops_client_code?: string
+          pops_client_code_norm?: string
+          program_id?: string
+          rac_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pops_client_assignments_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "pops_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pops_import_batches: {
+        Row: {
+          column_map: Json
+          confirmed_at: string | null
+          confirmed_by: string | null
+          counts: Json
+          created_at: string
+          created_by: string | null
+          file_name: string
+          id: string
+          notes: string | null
+          program_id: string
+          status: Database["public"]["Enums"]["pops_import_status"]
+          total_rows: number
+          updated_at: string
+        }
+        Insert: {
+          column_map?: Json
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          counts?: Json
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          id?: string
+          notes?: string | null
+          program_id: string
+          status?: Database["public"]["Enums"]["pops_import_status"]
+          total_rows?: number
+          updated_at?: string
+        }
+        Update: {
+          column_map?: Json
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          counts?: Json
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          id?: string
+          notes?: string | null
+          program_id?: string
+          status?: Database["public"]["Enums"]["pops_import_status"]
+          total_rows?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pops_import_batches_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "pops_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pops_import_rows: {
+        Row: {
+          batch_id: string
+          candidates: Json
+          client_code_divergence: boolean
+          client_name: string | null
+          confirmed_machine_id: string | null
+          created_at: string
+          dealer_location: string | null
+          id: string
+          manufacture_year: string | null
+          match_reason: string | null
+          match_score: number | null
+          match_status: Database["public"]["Enums"]["pops_match_status"]
+          matched_equipment_id: string | null
+          model: string | null
+          park_client_code: string | null
+          park_client_name: string | null
+          park_filial_id: string | null
+          park_model: string | null
+          park_serial: string | null
+          platform: string | null
+          pops_client_code: string | null
+          pops_client_code_norm: string | null
+          product_series: string | null
+          raw: Json
+          resolution: Database["public"]["Enums"]["pops_row_resolution"]
+          resolved_at: string | null
+          resolved_by: string | null
+          review_notes: string | null
+          row_number: number
+          serial_norm: string | null
+          serial_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          candidates?: Json
+          client_code_divergence?: boolean
+          client_name?: string | null
+          confirmed_machine_id?: string | null
+          created_at?: string
+          dealer_location?: string | null
+          id?: string
+          manufacture_year?: string | null
+          match_reason?: string | null
+          match_score?: number | null
+          match_status?: Database["public"]["Enums"]["pops_match_status"]
+          matched_equipment_id?: string | null
+          model?: string | null
+          park_client_code?: string | null
+          park_client_name?: string | null
+          park_filial_id?: string | null
+          park_model?: string | null
+          park_serial?: string | null
+          platform?: string | null
+          pops_client_code?: string | null
+          pops_client_code_norm?: string | null
+          product_series?: string | null
+          raw?: Json
+          resolution?: Database["public"]["Enums"]["pops_row_resolution"]
+          resolved_at?: string | null
+          resolved_by?: string | null
+          review_notes?: string | null
+          row_number: number
+          serial_norm?: string | null
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          candidates?: Json
+          client_code_divergence?: boolean
+          client_name?: string | null
+          confirmed_machine_id?: string | null
+          created_at?: string
+          dealer_location?: string | null
+          id?: string
+          manufacture_year?: string | null
+          match_reason?: string | null
+          match_score?: number | null
+          match_status?: Database["public"]["Enums"]["pops_match_status"]
+          matched_equipment_id?: string | null
+          model?: string | null
+          park_client_code?: string | null
+          park_client_name?: string | null
+          park_filial_id?: string | null
+          park_model?: string | null
+          park_serial?: string | null
+          platform?: string | null
+          pops_client_code?: string | null
+          pops_client_code_norm?: string | null
+          product_series?: string | null
+          raw?: Json
+          resolution?: Database["public"]["Enums"]["pops_row_resolution"]
+          resolved_at?: string | null
+          resolved_by?: string | null
+          review_notes?: string | null
+          row_number?: number
+          serial_norm?: string | null
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pops_import_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "pops_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pops_import_rows_confirmed_machine_id_fkey"
+            columns: ["confirmed_machine_id"]
+            isOneToOne: false
+            referencedRelation: "pops_machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pops_import_rows_matched_equipment_id_fkey"
+            columns: ["matched_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "client_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pops_import_rows_park_filial_id_fkey"
+            columns: ["park_filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pops_machines: {
         Row: {
           active: boolean
@@ -3805,6 +4042,23 @@ export type Database = {
         Args: { p_role: string; p_user_id: string }
         Returns: Json
       }
+      pops_assign_rac_by_client: {
+        Args: {
+          p_notes?: string
+          p_pops_client_code: string
+          p_program_id: string
+          p_rac_user_id: string
+        }
+        Returns: Json
+      }
+      pops_assign_rac_machines: {
+        Args: {
+          p_force?: boolean
+          p_machine_ids: string[]
+          p_rac_user_id: string
+        }
+        Returns: Json
+      }
       pops_can_read_machine: {
         Args: { p_pops_machine_id: string }
         Returns: boolean
@@ -3813,7 +4067,57 @@ export type Database = {
         Args: { p_pops_machine_id: string }
         Returns: boolean
       }
+      pops_confirm_import_batch: { Args: { p_batch_id: string }; Returns: Json }
+      pops_create_import_batch: {
+        Args: {
+          p_column_map: Json
+          p_file_name: string
+          p_program_id: string
+          p_rows: Json
+        }
+        Returns: string
+      }
+      pops_import_distribution: { Args: { p_batch_id: string }; Returns: Json }
+      pops_import_rows_list: {
+        Args: {
+          p_batch_id: string
+          p_limit?: number
+          p_offset?: number
+          p_resolution?: string
+          p_search?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      pops_import_summary: { Args: { p_batch_id: string }; Returns: Json }
       pops_is_manager: { Args: never; Returns: boolean }
+      pops_match_import_batch: { Args: { p_batch_id: string }; Returns: Json }
+      pops_norm_code: { Args: { p_text: string }; Returns: string }
+      pops_norm_serial: { Args: { p_text: string }; Returns: string }
+      pops_portfolio_client_machines: {
+        Args: { p_pops_client_code: string; p_program_id: string }
+        Returns: Json
+      }
+      pops_portfolio_clients: {
+        Args: {
+          p_filial_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_program_id: string
+          p_rac_user_id?: string
+          p_search?: string
+        }
+        Returns: Json
+      }
+      pops_resolve_import_row: {
+        Args: {
+          p_action: string
+          p_equipment_id?: string
+          p_notes?: string
+          p_row_id: string
+        }
+        Returns: Json
+      }
       pops_scope: { Args: never; Returns: Json }
       pops_user_enabled: { Args: never; Returns: boolean }
       resolve_client_name_conflict: {
@@ -3989,7 +4293,20 @@ export type Database = {
       followup_status: "pendente" | "concluido" | "cancelado" | "reagendado"
       goal_activity_type: "visita" | "ligacao"
       goal_period_type: "daily" | "weekly"
+      pops_import_status: "rascunho" | "processado" | "confirmado" | "cancelado"
       pops_machine_status: "foco" | "em_andamento" | "servicada"
+      pops_match_status:
+        | "PENDENTE"
+        | "MATCH_EXATO"
+        | "REVISAR"
+        | "NAO_ENCONTRADA"
+        | "DUPLICADA_NA_BASE"
+        | "JA_NO_POPS"
+      pops_row_resolution:
+        | "pendente"
+        | "confirmado"
+        | "vinculado_manual"
+        | "ignorado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4142,7 +4459,22 @@ export const Constants = {
       followup_status: ["pendente", "concluido", "cancelado", "reagendado"],
       goal_activity_type: ["visita", "ligacao"],
       goal_period_type: ["daily", "weekly"],
+      pops_import_status: ["rascunho", "processado", "confirmado", "cancelado"],
       pops_machine_status: ["foco", "em_andamento", "servicada"],
+      pops_match_status: [
+        "PENDENTE",
+        "MATCH_EXATO",
+        "REVISAR",
+        "NAO_ENCONTRADA",
+        "DUPLICADA_NA_BASE",
+        "JA_NO_POPS",
+      ],
+      pops_row_resolution: [
+        "pendente",
+        "confirmado",
+        "vinculado_manual",
+        "ignorado",
+      ],
     },
   },
 } as const
