@@ -778,6 +778,156 @@ export type Database = {
         }
         Relationships: []
       }
+      pops_machines: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          deactivated_at: string | null
+          deactivated_by: string | null
+          deactivation_reason: string | null
+          equipment_id: string
+          id: string
+          import_batch_id: string | null
+          last_activity_at: string | null
+          notes: string | null
+          program_id: string
+          responsible_user_id: string | null
+          source: string
+          status: Database["public"]["Enums"]["pops_machine_status"]
+          transfer_divergence: boolean
+          transfer_divergence_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
+          equipment_id: string
+          id?: string
+          import_batch_id?: string | null
+          last_activity_at?: string | null
+          notes?: string | null
+          program_id: string
+          responsible_user_id?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["pops_machine_status"]
+          transfer_divergence?: boolean
+          transfer_divergence_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          deactivation_reason?: string | null
+          equipment_id?: string
+          id?: string
+          import_batch_id?: string | null
+          last_activity_at?: string | null
+          notes?: string | null
+          program_id?: string
+          responsible_user_id?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["pops_machine_status"]
+          transfer_divergence?: boolean
+          transfer_divergence_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pops_machines_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "client_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pops_machines_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "pops_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pops_programs: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          end_date: string
+          goal_machines: number
+          id: string
+          name: string
+          notes: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          goal_machines?: number
+          id?: string
+          name: string
+          notes?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          goal_machines?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pops_services: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           category: string
@@ -3655,6 +3805,17 @@ export type Database = {
         Args: { p_role: string; p_user_id: string }
         Returns: Json
       }
+      pops_can_read_machine: {
+        Args: { p_pops_machine_id: string }
+        Returns: boolean
+      }
+      pops_can_write_machine: {
+        Args: { p_pops_machine_id: string }
+        Returns: boolean
+      }
+      pops_is_manager: { Args: never; Returns: boolean }
+      pops_scope: { Args: never; Returns: Json }
+      pops_user_enabled: { Args: never; Returns: boolean }
       resolve_client_name_conflict: {
         Args: { p_id: string; p_new_name: string; p_resolution_type?: string }
         Returns: {
@@ -3828,6 +3989,7 @@ export type Database = {
       followup_status: "pendente" | "concluido" | "cancelado" | "reagendado"
       goal_activity_type: "visita" | "ligacao"
       goal_period_type: "daily" | "weekly"
+      pops_machine_status: "foco" | "em_andamento" | "servicada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3980,6 +4142,7 @@ export const Constants = {
       followup_status: ["pendente", "concluido", "cancelado", "reagendado"],
       goal_activity_type: ["visita", "ligacao"],
       goal_period_type: ["daily", "weekly"],
+      pops_machine_status: ["foco", "em_andamento", "servicada"],
     },
   },
 } as const
