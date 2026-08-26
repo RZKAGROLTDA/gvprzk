@@ -83,7 +83,14 @@ export const SalesFunnel: React.FC = () => {
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
   const [itemsPerPage, setItemsPerPage] = useState<string>('50');
   const [displayPage, setDisplayPage] = useState<number>(1);
-  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'migration'>('overview');
+  // Deep-link opcional (?view=details) usado pelo Meu Dia — sem alterar o padrão atual.
+  const initialView = ((): 'overview' | 'funnel' | 'coverage' | 'details' | 'migration' => {
+    const requested = new URLSearchParams(window.location.search).get('view');
+    return requested === 'funnel' || requested === 'coverage' || requested === 'details'
+      ? requested
+      : 'overview';
+  })();
+  const [activeView, setActiveView] = useState<'overview' | 'funnel' | 'coverage' | 'details' | 'migration'>(initialView);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizationModalOpen, setIsVisualizationModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

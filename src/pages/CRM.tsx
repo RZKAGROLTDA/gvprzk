@@ -41,7 +41,7 @@ const CRM: React.FC = () => {
           </p>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="agenda" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className={`grid w-full ${canManage ? 'grid-cols-6 max-w-4xl' : 'grid-cols-5 max-w-3xl'}`}>
               <TabsTrigger value="agenda" className="gap-2">
                 <CalendarDays className="h-4 w-4" /> Agenda Semanal
