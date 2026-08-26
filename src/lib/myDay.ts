@@ -203,8 +203,15 @@ export const destinationFor = (item: MyDayItem): string => {
   }
 };
 
-/** Cargos operacionais que iniciam a sessão no Meu Dia. */
-export const MY_DAY_LANDING_ROLES = [
+/** Cargos que enxergam a aba "Minha equipe" (validado também no banco). */
+export const TEAM_VIEW_ROLES = ['admin', 'manager', 'supervisor'];
+
+export const canSeeTeam = (roles: (string | null | undefined)[] = []): boolean =>
+  roles.some((r) => TEAM_VIEW_ROLES.includes(String(r ?? '').toLowerCase()));
+
+/** Cargos que podem aparecer como colaboradores na visão de equipe. */
+export const TEAM_MEMBER_ROLES = [
+  'supervisor',
   'sales_consultant',
   'consultant',
   'technical_consultant',
@@ -213,5 +220,48 @@ export const MY_DAY_LANDING_ROLES = [
   'csa',
 ];
 
-export const shouldLandOnMyDay = (roles: string[]): boolean =>
-  roles.some((r) => MY_DAY_LANDING_ROLES.includes(String(r).toLowerCase()));
+export type MyDayScope = 'self' | 'filial' | 'global';
+
+export interface MyDayTeamRow {
+  user_id: string;
+  name: string;
+  role: string;
+  filial_id: string | null;
+  filial_nome: string | null;
+  visitas_realizado: number;
+  visitas_meta: number | null;
+  ligacoes_realizado: number;
+  ligacoes_meta: number | null;
+  visitas_atrasadas: number;
+  retornos_atrasados: number;
+  treinamentos_pendentes: number;
+  acoes_atrasadas: number;
+  total_pendencias: number;
+  meta_atingida: boolean | null;
+}
+
+export interface MyDayTeamSummary {
+  scope: MyDayScope;
+  viewer: { user_id: string; role: string; filial_id: string | null };
+  today: string;
+  week_start: string;
+  is_weekend: boolean;
+  filters: { filial_id: string | null; role: string | null; user_id: string | null };
+  kpis: {
+    colaboradores: number;
+    com_pendencias: number;
+    meta_nao_atingida: number;
+    visitas_atrasadas: number;
+    retornos_atrasados: number;
+    treinamentos_pendentes: number;
+    acoes_atrasadas: number;
+  };
+  rows: MyDayTeamRow[];
+}
+
+export interface MyDayTeamFilters {
+  filialId: string | null;
+  role: string | null;
+  userId: string | null;
+}
+
