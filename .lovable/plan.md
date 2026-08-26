@@ -928,7 +928,7 @@ REVOKE ALL ON FUNCTION public.pops_portfolio_client_machines(uuid,text) FROM PUB
 GRANT EXECUTE ON FUNCTION public.pops_portfolio_client_machines(uuid,text) TO authenticated;
 ```
 
-Observação técnica: na versão final aplicada removo a linha `CREATE TEMP TABLE IF NOT EXISTS _tmp_noop()` de `pops_portfolio_clients` (resíduo desnecessário) e mantenho a função como `STABLE` puro.
+Observação técnica: o SQL acima é exatamente o que será aplicado — sem resíduos técnicos (`CREATE TEMP TABLE ... _tmp_noop` removido) e sem alterações silenciosas no momento da aplicação.
 
 ---
 
