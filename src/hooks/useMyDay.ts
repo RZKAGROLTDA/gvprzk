@@ -21,6 +21,10 @@ export const useMyDaySummary = () => {
     staleTime: STALE_TIME,
     gcTime: GC_TIME,
     refetchOnWindowFocus: false,
+    // Ao voltar de outra tela (visita/retorno/treinamento concluído), o resumo
+    // é revalidado sem reload da página. Continua sendo 1 única chamada.
+    refetchOnMount: 'always',
+
   });
 
   return query;
