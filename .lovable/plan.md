@@ -686,7 +686,7 @@ export const MyDayLanding: React.FC = () => <Navigate to="/meu-dia" replace />;
 | `src/hooks/useMyDay.ts` | `useMyDayTeamSummary(filters)` (1 chamada) e `useMyDayUserSummary(userId, enabled)` / `useMyDayUserDetails(...)` sob demanda |
 | `src/pages/MyDay.tsx` | abas "Minha visão" / "Minha equipe" (aba de equipe só para supervisor/manager/admin) |
 | `src/components/myday/TeamOverview.tsx` (novo) | 6 KPIs no topo + tabela por colaborador (cards no mobile), linha clicável |
-| `src/components/myday/TeamFilters.tsx` (novo) | filtros filial/cargo/colaborador; supervisor sem seletor de filial; "Todos" → `NULL` |
+| `src/components/myday/TeamFilters.tsx` (novo) | filtros filial/cargo/colaborador; supervisor sem seletor de filial; "Todos" → `NULL`; opções de cargo limitadas a supervisor + cargos operacionais (manager/admin não são selecionáveis) |
 | `src/components/myday/UserDayDialog.tsx` (novo) | Meu Dia do colaborador em modo somente leitura (reutiliza `ExecutionCards` e `PendingBlock`, sem navegação de edição) |
 
 Nenhuma alteração em RLS, dados, ou nas regras do Meu Dia pessoal.
