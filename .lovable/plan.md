@@ -173,9 +173,13 @@ CREATE POLICY "pops_client_assignments_select_scope" ON public.pops_client_assig
       WHEN 'global' THEN true
       WHEN 'self'   THEN rac_user_id = (SELECT auth.uid())
       WHEN 'filial' THEN EXISTS (
-        SELECT 1 FROM public.profiles p
-        WHERE p.user_id = pops_client_assignments.rac_user_id
-          AND p.filial_id = ((public.pops_scope() ->> 'filial_id'))::uuid
+        SELECT 1
+          FROM public.pops_machines m
+          JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
+          JOIN public.client_equipment e ON e.id = m.equipment_id
+         WHERE m.program_id = pops_client_assignments.program_id
+           AND r.pops_client_code_norm = pops_client_assignments.pops_client_code_norm
+           AND e.filial_id = ((public.pops_scope() ->> 'filial_id'))::uuid
       )
       ELSE false
     END
@@ -739,7 +743,11 @@ CREATE OR REPLACE FUNCTION public.pops_assign_rac_machines(
   p_force       boolean DEFAULT false
 ) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_conflitos jsonb; v_afetadas integer := 0; v_propagadas integer := 0;
+DECLARE
+  v_conflitos   jsonb;
+  v_afetadas    integer := 0;
+  v_criadas     integer := 0;
+  v_propagadas  integer := 0;
 BEGIN
   IF NOT public.pops_is_manager() THEN
     RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501';
@@ -752,56 +760,81 @@ BEGIN
     RAISE EXCEPTION 'Usuário alvo não é um RAC aprovado e ativo';
   END IF;
 
-  SELECT COALESCE(jsonb_agg(jsonb_build_object(
-           'machine_id', m.id, 'pops_client_code_norm', r.pops_client_code_norm,
-           'rac_padrao', ca.rac_user_id)), '[]'::jsonb)
-    INTO v_conflitos
+  -- clientes POPS envolvidos na seleção (1 cliente = 1 RAC)
+  CREATE TEMP TABLE _pops_alvos ON COMMIT DROP AS
+  SELECT DISTINCT m.program_id, r.pops_client_code_norm, min(r.pops_client_code) AS pops_client_code
     FROM public.pops_machines m
     JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
+   WHERE m.id = ANY(p_machine_ids)
+   GROUP BY m.program_id, r.pops_client_code_norm;
+
+  -- conflito: cliente já possui RAC padrão DIFERENTE do informado
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+           'program_id', a.program_id,
+           'pops_client_code_norm', a.pops_client_code_norm,
+           'rac_padrao', ca.rac_user_id)), '[]'::jsonb)
+    INTO v_conflitos
+    FROM _pops_alvos a
     JOIN public.pops_client_assignments ca
-      ON ca.program_id = m.program_id AND ca.pops_client_code_norm = r.pops_client_code_norm
-   WHERE m.id = ANY(p_machine_ids) AND ca.rac_user_id <> p_rac_user_id;
+      ON ca.program_id = a.program_id
+     AND ca.pops_client_code_norm = a.pops_client_code_norm
+   WHERE ca.rac_user_id <> p_rac_user_id;
 
   IF jsonb_array_length(v_conflitos) > 0 AND NOT p_force THEN
     RAISE EXCEPTION 'Divergência com o RAC padrão do cliente. Use p_force=true para ação explícita da gestão. Conflitos: %', v_conflitos;
   END IF;
 
+  -- B) PRIMEIRA ATRIBUIÇÃO: cria o padrão do cliente quando ainda não existe
+  WITH ins AS (
+    INSERT INTO public.pops_client_assignments (program_id, pops_client_code, pops_client_code_norm,
+                                                client_name, rac_user_id, assigned_by)
+    SELECT a.program_id, a.pops_client_code, a.pops_client_code_norm,
+           (SELECT min(r.client_name) FROM public.pops_import_rows r
+             WHERE r.pops_client_code_norm = a.pops_client_code_norm),
+           p_rac_user_id, (SELECT auth.uid())
+      FROM _pops_alvos a
+    ON CONFLICT (program_id, pops_client_code_norm) DO NOTHING
+    RETURNING 1
+  )
+  SELECT count(*)::integer INTO v_criadas FROM ins;
+
+  -- A) com p_force: o padrão existente passa a ser o novo RAC
+  IF p_force THEN
+    UPDATE public.pops_client_assignments ca
+       SET rac_user_id = p_rac_user_id, assigned_by = (SELECT auth.uid())
+      FROM _pops_alvos a
+     WHERE ca.program_id = a.program_id
+       AND ca.pops_client_code_norm = a.pops_client_code_norm
+       AND ca.rac_user_id <> p_rac_user_id;
+  END IF;
+
+  -- máquinas explicitamente selecionadas
   UPDATE public.pops_machines
      SET responsible_user_id = p_rac_user_id
    WHERE id = ANY(p_machine_ids) AND active;
   GET DIAGNOSTICS v_afetadas = ROW_COUNT;
 
-  -- ação explícita: o padrão do cliente passa a ser o novo RAC
-  -- e o novo RAC é propagado para TODAS as máquinas ativas do cliente no programa
-  IF p_force AND jsonb_array_length(v_conflitos) > 0 THEN
-    WITH alvos AS (
-      SELECT DISTINCT m.program_id, r.pops_client_code_norm
-        FROM public.pops_machines m
-        JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
-       WHERE m.id = ANY(p_machine_ids)
-    ), upd_ca AS (
-      UPDATE public.pops_client_assignments ca
-         SET rac_user_id = p_rac_user_id, assigned_by = (SELECT auth.uid())
-       WHERE (ca.program_id, ca.pops_client_code_norm) IN (SELECT program_id, pops_client_code_norm FROM alvos)
-         AND ca.rac_user_id <> p_rac_user_id
-      RETURNING 1
-    )
-    UPDATE public.pops_machines m2
-       SET responsible_user_id = p_rac_user_id
-      FROM public.pops_import_rows r2, alvos a
-     WHERE r2.confirmed_machine_id = m2.id
-       AND m2.program_id = a.program_id
-       AND r2.pops_client_code_norm = a.pops_client_code_norm
-       AND m2.active
-       AND m2.responsible_user_id IS DISTINCT FROM p_rac_user_id;
-    GET DIAGNOSTICS v_propagadas = ROW_COUNT;
-  END IF;
+  -- propagação obrigatória: TODAS as máquinas ativas dos clientes envolvidos,
+  -- no mesmo programa, passam a ter o RAC do cliente
+  UPDATE public.pops_machines m2
+     SET responsible_user_id = p_rac_user_id
+    FROM public.pops_import_rows r2, _pops_alvos a
+   WHERE r2.confirmed_machine_id = m2.id
+     AND m2.program_id = a.program_id
+     AND r2.pops_client_code_norm = a.pops_client_code_norm
+     AND m2.active
+     AND m2.responsible_user_id IS DISTINCT FROM p_rac_user_id;
+  GET DIAGNOSTICS v_propagadas = ROW_COUNT;
+
+  DROP TABLE _pops_alvos;
 
   RETURN jsonb_build_object(
     'maquinas_atualizadas', v_afetadas,
+    'clientes_padrao_criados', v_criadas,
     'maquinas_propagadas_cliente', v_propagadas,
     'conflitos', v_conflitos,
     'forcado', p_force);
+
 
 END;
 $$;
@@ -853,10 +886,7 @@ BEGIN
        AND CASE (v_scope->>'scope')
              WHEN 'global' THEN true
              WHEN 'self'   THEN m.responsible_user_id = (v_scope->>'user_id')::uuid
-             WHEN 'filial' THEN EXISTS (
-               SELECT 1 FROM public.profiles p
-                WHERE p.user_id = m.responsible_user_id
-                  AND p.filial_id = (v_scope->>'filial_id')::uuid)
+             WHEN 'filial' THEN e.filial_id = (v_scope->>'filial_id')::uuid
              ELSE false
            END
      GROUP BY r.pops_client_code_norm, m.responsible_user_id
@@ -914,10 +944,7 @@ BEGIN
        AND CASE (v_scope->>'scope')
              WHEN 'global' THEN true
              WHEN 'self'   THEN m.responsible_user_id = (v_scope->>'user_id')::uuid
-             WHEN 'filial' THEN EXISTS (
-               SELECT 1 FROM public.profiles p
-                WHERE p.user_id = m.responsible_user_id
-                  AND p.filial_id = (v_scope->>'filial_id')::uuid)
+             WHEN 'filial' THEN e.filial_id = (v_scope->>'filial_id')::uuid
              ELSE false
            END
   ), '[]'::jsonb);
