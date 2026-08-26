@@ -657,6 +657,21 @@ Observação de segurança: os builders (`my_day_summary_build`, `my_day_details
 
 ---
 
+## 10) Rota "/" → "/meu-dia" (não há SQL envolvido)
+
+O roteamento é 100% frontend (React Router); nenhuma função de banco participa. O gate de autenticado/aprovado/ativo já existe no `AuthProvider`/`Layout` e continua igual. A mudança é substituir todo o corpo de `MyDayLanding` por um redirecionamento incondicional:
+
+```tsx
+// src/components/myday/MyDayLanding.tsx
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+
+/** Rota "/" — todos os cargos vão para /meu-dia. Sem regra de primeiro acesso. */
+export const MyDayLanding: React.FC = () => <Navigate to="/meu-dia" replace />;
+```
+
+`shouldLandOnMyDay` deixa de ser usado e é removido de `src/lib/myDay.ts`. Navegação manual para qualquer outra rota continua normal (nenhum redirect global).
+
 ## Frontend a alterar
 
 | Arquivo | Mudança |
