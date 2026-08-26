@@ -1,124 +1,135 @@
-# M2 — Importação da Base e Carteira POPS (proposta, nada aplicado)
+# M2 — Importação da Base e Carteira POPS (proposta corrigida, nada aplicado)
 
-## 1. Auditoria
+## 1. Entendimento corrigido da origem das máquinas
 
-### 1.1 Base POPS (planilha)
-O arquivo da base POPS **não está disponível** no ambiente. Os únicos uploads existentes são imagens e um `TAKERATE.xlsx` (outro contexto). Portanto:
-- não há como auditar linhas, seriais únicos, duplicidades, clientes, filiais, modelos e campos vazios da base POPS agora;
-- os nomes reais das colunas ("Serial Number", "Dealer Account Number", etc.) serão auditados **no envio do arquivo**, antes de fixar o parser;
-- a estrutura proposta abaixo é agnóstica ao cabeçalho: a linha crua é guardada em `jsonb` e um mapeamento de colunas é gravado no lote.
+Dois conceitos distintos e independentes:
 
-### 1.2 Parque de Máquinas (`public.client_equipment`) — fonte oficial
-| Métrica | Valor |
+| Conceito | O que é | Papel |
+|---|---|---|
+| **BASE DE ORIGEM POPS** | A nova relação/planilha que você forneceu (Serial Number, Dealer Account Number, Dealer Location, Product Series, Manufacture Year, Model, Nome Cliente, Plataforma) | Define **QUEM entra** no programa. É o universo inicial de máquinas candidatas. |
+| **FONTE MESTRE DA MÁQUINA** | `public.client_equipment` | Define **A QUAL máquina do Parque** cada linha está vinculada e permanece a fonte oficial dos dados da máquina após o vínculo. |
+
+Consequências assumidas:
+- `client_equipment` **não define** a base POPS. Ele é usado apenas para (1) localizar a máquina correspondente, (2) obter o `equipment_id`, (3) confirmar cliente/filial/modelo/chassi e (4) servir como fonte oficial dos dados depois do vínculo.
+- A carga inicial da carteira POPS é formada **exclusivamente** a partir da nova base enviada. Nenhuma máquina do Parque é selecionada automaticamente, em lote, por amostragem ou por qualquer critério próprio.
+- Fica descartada qualquer leitura de que "pops_machines = seleção das 19.917 máquinas do Parque". O correto é: **N linhas da nova base POPS → matching com `client_equipment` → confirmação → `pops_machines`**.
+- Adicionar máquinas manualmente a partir do Parque fica como possibilidade **futura**, fora da M2.
+
+### 1.1 Status do arquivo
+A planilha foi fornecida fora do ambiente do Lovable e **não está acessível** aqui (os uploads presentes são imagens e um `TAKERATE.xlsx` de outro contexto). Portanto a auditoria da base POPS (linhas, seriais únicos, duplicidades, clientes, filiais, modelos, campos vazios, qualidade do serial) será executada **no momento do envio do arquivo**, antes de fixar o parser. A estrutura proposta é agnóstica ao cabeçalho: a linha crua vai íntegra em `jsonb` e o mapeamento de colunas fica gravado no lote.
+
+### 1.2 Auditoria do Parque (apenas como alvo do matching)
+Números levantados para dimensionar risco de vínculo — não para compor a base POPS:
+
+| Métrica de `client_equipment` | Valor |
 |---|---|
-| Máquinas | 19.917 |
+| Máquinas cadastradas | 19.917 |
 | Seriais/chassis distintos (normalizados) | 19.438 |
-| Sem serial | 23 |
 | Grupos de serial repetido | 451 |
-| Serial repetido com o mesmo `client_code` | 5 |
+| Sem serial | 23 |
 | Sem `client_code` | 4.328 (21,7%) |
 | Sem `model` | 9.103 (45,7%) |
 | Sem `year` | 7.095 |
 | Clientes distintos | 3.448 |
 | Filiais | 14 |
-| RACs/CPA/CSA aprovados e ativos | 12 |
-| `pops_machines` hoje | 0 registros |
+| RAC/CPA/CSA aprovados e ativos | 12 |
+| `pops_machines` hoje | 0 |
 
-Comprimento de serial: 17 caracteres (18.399), 13 (1.399), demais residuais.
+Comprimento do serial: 17 caracteres (18.399), 13 (1.399), restante residual.
 
-### 1.3 Riscos para o matching
-1. **451 grupos de serial duplicado** no Parque → sem `client_code` na planilha essas linhas caem em `REVISAR`, nunca em match automático.
-2. **46% sem modelo** → modelo só serve como reforço, nunca como critério isolado.
-3. **21,7% sem código do cliente** → confirmação por código não pode ser obrigatória.
-4. Serial com formatos mistos (13 vs 17) → normalização obrigatória (upper, remover não alfanuméricos) e comparação também por **sufixo** quando um lado tem 13 e o outro 17.
-5. Nome de cliente e filial **não** entram como critério de decisão, apenas como informação de conferência.
+Riscos para o matching:
+1. 451 grupos de serial duplicado no Parque → sem código de cliente, essas linhas vão para `REVISAR`, nunca a match automático.
+2. 46% sem modelo → `Model` só reforça, nunca decide sozinho.
+3. 21,7% sem código de cliente → confirmação por `Dealer Account Number` não pode ser obrigatória.
+4. Formatos mistos de serial (13 vs 17) → normalização + comparação por sufixo.
+5. `Nome Cliente` e `Dealer Location` são apoio/conferência, jamais critério de match automático.
 
-## 2. Modelagem (novas tabelas, todas com prefixo `pops_`)
+## 2. Fluxo atualizado da importação
 
-### `pops_import_batches`
-Lote de importação. Campos: `id`, `program_id` (FK `pops_programs`), `file_name`, `column_map jsonb`, `status pops_import_status` (`rascunho|processado|confirmado|cancelado`), `total_rows`, `counts jsonb` (resumo materializado), `created_by`, `confirmed_by`, `confirmed_at`, `created_at`, `updated_at`.
+```text
+NOVA BASE POPS (planilha)
+  → upload + mapeamento de colunas
+  → validação de linhas (serial presente/plausível)
+  → matching contra client_equipment (serial > código cliente > modelo > local/cliente como apoio)
+      ├─ MATCH_EXATO         (1 máquina do Parque localizada com segurança)
+      ├─ REVISAR             (>1 candidato ou evidência insuficiente)
+      ├─ NAO_ENCONTRADA     (nenhuma máquina segura no Parque)
+      ├─ DUPLICADA_NA_BASE  (mesma máquina repetida no arquivo)
+      └─ JA_NO_POPS         (equipment_id já vinculado ao POPS 2026)
+  → revisão gerencial (planilha × Parque lado a lado)
+  → resolução das divergências (vincular manualmente / ignorar / manter pendente)
+  → CONFIRMAÇÃO explícita
+  → INSERT em pops_machines (somente linhas da base com equipment_id resolvido)
+  → atribuição das máquinas aos RACs
+```
 
-### `pops_import_rows`
-Uma linha da planilha + resultado do matching (dado temporário/auditoria, não duplica o Parque de forma permanente).
-Campos: `id`, `batch_id` (FK, `ON DELETE CASCADE`), `row_number int`, `raw jsonb` (linha original íntegra),
-extraídos: `serial_raw`, `serial_norm`, `client_code_raw`, `client_code_norm`, `client_name_raw`, `filial_raw`, `model_raw`, `year_raw`, `platform_raw`;
-resultado: `match_status pops_match_status`, `match_score int`, `match_reason text`, `matched_equipment_id uuid` (FK `client_equipment`, `ON DELETE SET NULL`), `candidates jsonb` (até 5 candidatos com id/serial/cliente/modelo/filial), `resolution pops_row_resolution` (`pendente|confirmado|vinculado_manual|ignorado`), `resolved_by`, `resolved_at`, `confirmed_machine_id uuid` (FK `pops_machines`), `created_at`, `updated_at`.
+Nenhuma linha entra em `pops_machines` automaticamente, e nenhuma máquina que não esteja na nova base entra no programa.
 
-### `pops_client_assignments`
-Carteira padrão por cliente (garante "mesmo cliente = mesmo RAC").
-Campos: `id`, `program_id`, `client_code_norm text`, `client_name text`, `rac_user_id uuid`, `assigned_by`, `notes`, timestamps. `UNIQUE (program_id, client_code_norm)`.
+## 3. Alterações necessárias na proposta da M2
 
-### Alteração mínima em `pops_machines`
-Nenhuma coluna nova é necessária: `responsible_user_id`, `import_batch_id`, `source` e `notes` já existem. A atribuição individual continua em `pops_machines.responsible_user_id`.
+1. **`pops_import_rows` passa a ser o registro canônico da base de origem POPS** (não um artefato descartável): mantém a linha crua e os campos extraídos, com vida útil longa, para conciliação e para acompanhar pendências que ainda não têm vínculo no Parque.
+2. Campos extraídos alinhados exatamente ao cabeçalho informado: `serial_number`, `dealer_account_number`, `dealer_location`, `product_series`, `manufacture_year`, `model`, `client_name`, `platform` (+ versões normalizadas `serial_norm`, `client_code_norm`).
+3. `matched_equipment_id` é **nullable** e permanece nulo indefinidamente para pendências — a linha continua fazendo parte da base POPS mesmo sem vínculo.
+4. Nenhuma rotina de "seleção de máquinas do Parque" existe na M2: não há RPC, filtro ou job que popule `pops_machines` a partir de `client_equipment`.
+5. `pops_machines.source` passa a ser `'importacao'` para toda a carga inicial; entrada manual pelo Parque fica reservada para etapa futura.
+6. Contagem da meta continua garantida por `UNIQUE (program_id, equipment_id)` em `pops_machines`.
+7. A auditoria da base POPS deixa de constar como concluída e passa a ser um passo formal na aplicação da M2, quando o arquivo for enviado.
 
-### Enums novos
-`pops_import_status`, `pops_match_status` (`MATCH_EXATO|REVISAR|NAO_ENCONTRADA|DUPLICADA_NA_BASE|JA_NO_POPS`), `pops_row_resolution`.
+### Objetos (inalterados no essencial, ajustados nos campos)
+- **`pops_import_batches`**: `id`, `program_id` (FK `pops_programs`), `file_name`, `column_map jsonb`, `status pops_import_status` (`rascunho|processado|confirmado|cancelado`), `total_rows`, `counts jsonb`, `created_by`, `confirmed_by`, `confirmed_at`, timestamps.
+- **`pops_import_rows`**: `id`, `batch_id` (FK, cascade), `row_number`, `raw jsonb`, campos extraídos acima, `match_status pops_match_status`, `match_score`, `match_reason`, `matched_equipment_id` (FK `client_equipment`, `ON DELETE SET NULL`), `candidates jsonb`, `resolution pops_row_resolution` (`pendente|confirmado|vinculado_manual|ignorado`), `resolved_by`, `resolved_at`, `confirmed_machine_id` (FK `pops_machines`), timestamps. `UNIQUE (batch_id, row_number)`.
+- **`pops_client_assignments`**: `id`, `program_id`, `client_code_norm`, `client_name`, `rac_user_id`, `assigned_by`, `notes`, timestamps. `UNIQUE (program_id, client_code_norm)`.
+- **`pops_machines`**: sem colunas novas (`responsible_user_id`, `import_batch_id`, `source`, `notes` já existem).
+- Enums novos: `pops_import_status`, `pops_match_status`, `pops_row_resolution`.
 
-### PK/FK/UNIQUE
-- PK `uuid` em todas.
-- `pops_import_rows`: `UNIQUE (batch_id, row_number)`.
-- `pops_client_assignments`: `UNIQUE (program_id, client_code_norm)`.
-- `pops_machines`: mantém `UNIQUE (program_id, equipment_id)` (já existente) — garante 1 máquina = 1 unidade da meta.
+### Matching (`pops_match_import_batch`)
+Normalização: `pops_norm_serial()` = upper + remoção de não alfanuméricos; `pops_norm_code()` = dígitos sem zeros à esquerda.
+1. Serial ausente/curto (<6) → `NAO_ENCONTRADA`.
+2. Serial repetido no arquivo → `DUPLICADA_NA_BASE` (a primeira ocorrência segue o fluxo).
+3. Candidatos por serial igual ou sufixo compatível (13↔17):
+   - 1 candidato → `MATCH_EXATO` (100 se o código do cliente confere; 90 se a planilha não trouxe código; 70 → `REVISAR` se o código conflita);
+   - >1 → desempate por código do cliente; sobrando 1 → `MATCH_EXATO` (95); senão `REVISAR` com `candidates`;
+   - 0 → `NAO_ENCONTRADA`.
+4. `matched_equipment_id` já no programa → `JA_NO_POPS`.
+`Model`/`Product Series` reforçam o score; `Nome Cliente`/`Dealer Location` apenas informam a conferência.
 
-## 3. Estratégia de matching (`pops_match_import_batch`)
-Normalização: `pops_norm_serial(text)` = upper + remoção de tudo que não é `[A-Z0-9]`; `pops_norm_code(text)` = dígitos com zeros à esquerda removidos.
-
-Ordem de decisão por linha:
-1. Serial vazio/curto (<6) → `NAO_ENCONTRADA` (motivo: serial inválido).
-2. Serial repetido no próprio arquivo → `DUPLICADA_NA_BASE` (a primeira ocorrência segue o fluxo normal).
-3. Candidatos = `client_equipment` com `serial_norm` igual **ou** sufixo compatível (13↔17).
-   - 1 candidato → `MATCH_EXATO` (score 100 se `client_code` também confere; 90 se a planilha não trouxe código; 70 → `REVISAR` se o código conflita).
-   - >1 candidato → desempate por `client_code_norm`; se sobrar exatamente 1 → `MATCH_EXATO` (score 95); senão `REVISAR` com `candidates` preenchido.
-   - 0 candidatos → `NAO_ENCONTRADA`.
-4. Se `matched_equipment_id` já existe em `pops_machines` do programa → `JA_NO_POPS`.
-Cliente/filial/modelo **nunca** decidem sozinhos; entram apenas em `match_reason` e no comparativo da revisão.
-
-## 4. Divergências
-- `NAO_ENCONTRADA`: nunca cria `client_equipment`. A linha fica disponível para `vincular_manual` (informando um `equipment_id` real), `ignorado`, ou permanece `pendente`.
-- `REVISAR`: gestor escolhe um candidato (vinculação manual) ou ignora.
+### Divergências e não encontradas
+- `NAO_ENCONTRADA`: nunca cria `client_equipment`; a linha fica pendente na base POPS e pode ser vinculada manualmente depois, ignorada, ou permanecer pendente.
+- `REVISAR`: gestor escolhe um candidato ou ignora.
 - `DUPLICADA_NA_BASE` / `JA_NO_POPS`: informativas, não confirmáveis.
 
-## 5. Fluxo de confirmação
-`criar lote → carregar linhas → processar matching → resumo/revisão → resolver divergências → confirmar` .
-A confirmação (`pops_confirm_import_batch`) insere em `pops_machines` **apenas** linhas com `matched_equipment_id` e `match_status = MATCH_EXATO` ou `resolution = vinculado_manual`, com `source='importacao'`, `import_batch_id`, `status='foco'`, `active=true`, `ON CONFLICT (program_id, equipment_id) DO NOTHING`. Idempotente: reexecutar não duplica.
+### Confirmação
+`pops_confirm_import_batch` insere em `pops_machines` apenas linhas com `matched_equipment_id` e (`MATCH_EXATO` ou `resolution='vinculado_manual'`), com `source='importacao'`, `import_batch_id`, `status='foco'`, `active=true`, `ON CONFLICT (program_id, equipment_id) DO NOTHING`. Idempotente.
 
-## 6. Atribuição ao RAC
-- `pops_assign_rac_by_client(program_id, client_code, rac_user_id)`: grava/atualiza `pops_client_assignments` e propaga para **todas** as máquinas POPS ativas daquele cliente.
-- `pops_assign_rac_machines(machine_ids[], rac_user_id, p_force)`: individual/lote. Se a máquina pertencer a cliente com RAC padrão diferente, falha com aviso a menos que `p_force = true` (ação explícita da gestão) — que então atualiza o padrão do cliente.
-- `pops_assign_rac_by_filial(program_id, filial_id, rac_user_id)`: aplica por cliente dentro da filial.
-- Uma máquina tem um único `responsible_user_id`. Histórico de troca fica para a M3 (`pops_events`).
-- Alvo válido: usuário aprovado, ativo e com papel `rac`.
+### Atribuição ao RAC
+- `pops_assign_rac_by_client(program_id, client_code, rac_user_id)` grava o padrão do cliente e propaga a todas as máquinas POPS ativas dele.
+- `pops_assign_rac_machines(machine_ids[], rac_user_id, p_force)`: individual/lote; divergir do padrão do cliente exige `p_force=true` (ação explícita da gestão, que atualiza o padrão).
+- `pops_assign_rac_by_filial(program_id, filial_id, rac_user_id)`: por cliente dentro da filial.
+- Uma máquina tem um único `responsible_user_id`; histórico de troca fica para a M3. Alvo válido: usuário `rac` aprovado e ativo.
 
-## 7. RLS
-- Todas as tabelas novas: RLS habilitada, `REVOKE ALL ... FROM anon`, `GRANT` só a `authenticated` (+ `service_role`), sem `DELETE` para `authenticated` (exceto cascade do lote via função de gestor).
-- `pops_import_batches` / `pops_import_rows`: SELECT/INSERT/UPDATE apenas para `manager`/`admin` (via `has_role`).
-- `pops_client_assignments`: leitura conforme `pops_scope()` (RAC vê o próprio, Supervisor a filial, Manager/Admin global); escrita só Manager/Admin.
-- Nenhuma política fora do prefixo `pops_` é tocada.
+### Carteira
+`pops_portfolio_clients(...)` agrupa por cliente (máquinas POPS / serviçadas / pendentes) e `pops_portfolio_client_machines(...)` detalha modelo, serial, ano, filial e demais dados **lidos de `client_equipment`**. Sem execução e sem OS nesta M2.
 
-## 8. RPCs (todas `SECURITY DEFINER`, `search_path=public`, sem N+1)
-| RPC | Papel |
-|---|---|
-| `pops_create_import_batch(program_id, file_name, column_map, rows jsonb)` | cria lote + insere todas as linhas em uma única instrução |
-| `pops_match_import_batch(batch_id)` | matching em lote (set-based, sem loop por linha) |
-| `pops_import_summary(batch_id)` | contadores por status/resolução em um único jsonb |
-| `pops_import_rows_list(batch_id, status, resolution, search, limit, offset)` | divergências lado a lado (planilha × Parque) com total |
-| `pops_resolve_import_row(row_id, action, equipment_id)` | confirmar / vincular manual / ignorar |
-| `pops_confirm_import_batch(batch_id)` | insere confirmados em `pops_machines` |
-| `pops_assign_rac_by_client` / `pops_assign_rac_machines` / `pops_assign_rac_by_filial` | atribuição |
-| `pops_portfolio_clients(program_id, rac_user_id, filial_id, search, limit, offset)` | carteira agrupada por cliente (máquinas / serviçadas / pendentes) |
-| `pops_portfolio_client_machines(program_id, client_code, ...)` | máquinas do cliente com dados do Parque |
+### RLS e segurança
+- RLS habilitada nas 3 tabelas novas; `REVOKE ALL ... FROM anon`; `GRANT` a `authenticated` (sem `DELETE`) e `ALL` a `service_role`.
+- `pops_import_batches` / `pops_import_rows`: leitura e escrita só `manager`/`admin` via `has_role`.
+- `pops_client_assignments`: leitura por `pops_scope()` (RAC próprio, Supervisor filial, Manager/Admin global); escrita só Manager/Admin.
+- CPA/CSA não participam automaticamente. Nenhuma política fora do prefixo `pops_` é tocada.
 
-## 9. Índices
-- `pops_import_rows (batch_id, match_status)`, `(batch_id, resolution)`, `(serial_norm)`, `(matched_equipment_id)`.
-- `pops_client_assignments (program_id, rac_user_id)`.
-- `client_equipment`: índice funcional `pops_ce_serial_norm_idx` em `upper(regexp_replace(serial_chassis,'[^A-Za-z0-9]','','g'))` — necessário para o matching; será criado só se o `EXPLAIN` confirmar ganho.
-- `pops_machines (program_id, responsible_user_id, active)` para a carteira.
+### Índices
+`pops_import_rows (batch_id, match_status)`, `(batch_id, resolution)`, `(serial_norm)`, `(matched_equipment_id)`; `pops_client_assignments (program_id, rac_user_id)`; `pops_machines (program_id, responsible_user_id, active)`; índice funcional em `upper(regexp_replace(serial_chassis,'[^A-Za-z0-9]','','g'))` sobre `client_equipment` apenas se o `EXPLAIN` confirmar ganho.
 
-## 10. SQL completo da M2
-Arquivo de apoio: o script será enviado na íntegra na mensagem de aprovação/aplicação, na ordem obrigatória por tabela: `CREATE TABLE` → `GRANT` → `ENABLE RLS` → `CREATE POLICY`, seguido de funções, RPCs, triggers de `updated_at` e índices. Nenhuma linha de dado da planilha faz parte da migration.
+### RPCs
+`pops_create_import_batch`, `pops_match_import_batch`, `pops_import_summary`, `pops_import_rows_list`, `pops_resolve_import_row`, `pops_confirm_import_batch`, `pops_assign_rac_by_client|_machines|_by_filial`, `pops_portfolio_clients`, `pops_portfolio_client_machines` — todas `SECURITY DEFINER`, `search_path=public`, set-based (sem N+1).
 
-## 11. Garantias
-- Nenhum dado será importado até sua aprovação: a migration apenas cria estrutura vazia.
+## 4. Confirmação: `client_equipment` não define a base POPS
+Confirmado. `client_equipment` é apenas a fonte mestre consultada para localizar a máquina e fornecer `equipment_id` e dados oficiais. Nenhuma RPC, trigger, filtro ou script da M2 popula `pops_machines` a partir de `client_equipment`.
+
+## 5. Confirmação: nada fora da nova relação entra no programa
+Confirmado. Toda linha de `pops_machines` na carga inicial terá origem rastreável em uma linha de `pops_import_rows` do lote importado (`source='importacao'`, `import_batch_id` preenchido). Não há seleção aleatória, automática ou em massa de máquinas do Parque. Inclusão manual pelo Parque fica para etapa futura, sob nova aprovação.
+
+## 6. Garantias
+- A migration da M2 cria apenas estrutura vazia; **nenhum dado será importado até sua aprovação** e até o envio da planilha.
 - `client_equipment` não é alterada (somente leitura + possível índice funcional).
-- Nada de execução, amostra, oportunidade, OS, dashboard, integração com Tarefas/Meu Dia ou frontend final nesta etapa.
-- A auditoria da base POPS será feita quando você enviar a planilha.
+- Não haverá execução, amostra, oportunidade, OS, status operacional de execução, dashboard, integração com Tarefas/Meu Dia ou frontend final nesta etapa.
+- SQL completo da M2 será apresentado na íntegra na aprovação, na ordem obrigatória: `CREATE TABLE` → `GRANT` → `ENABLE RLS` → `CREATE POLICY` → funções/RPCs/triggers → índices.
