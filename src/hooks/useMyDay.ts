@@ -1,7 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { MyDayBlock, MyDayBucket, MyDayDetails, MyDaySummary } from '@/lib/myDay';
+import type {
+  MyDayBlock,
+  MyDayBucket,
+  MyDayDetails,
+  MyDaySummary,
+  MyDayTeamFilters,
+  MyDayTeamSummary,
+} from '@/lib/myDay';
+
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutos
 const GC_TIME = 10 * 60 * 1000;
