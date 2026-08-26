@@ -546,6 +546,11 @@ BEGIN
       AND p.employment_status = 'active'
       AND (v_filial IS NULL OR p.filial_id = v_filial)
       AND (p_user_id IS NULL OR p.user_id = p_user_id)
+      -- Supervisor nunca aparece na própria equipe
+      AND p.user_id <> s.user_id
+      -- Visão de equipe = supervisores + cargos operacionais; manager/admin nunca entram na tabela
+      AND public.my_day_role_of(p.user_id) IN ('supervisor', 'sales_consultant', 'consultant',
+                                               'technical_consultant', 'rac', 'cpa', 'csa')
   ), filtrados AS (
     SELECT * FROM membros WHERE v_role IS NULL OR role = v_role
   ), metas AS (
@@ -681,7 +686,7 @@ export const MyDayLanding: React.FC = () => <Navigate to="/meu-dia" replace />;
 | `src/hooks/useMyDay.ts` | `useMyDayTeamSummary(filters)` (1 chamada) e `useMyDayUserSummary(userId, enabled)` / `useMyDayUserDetails(...)` sob demanda |
 | `src/pages/MyDay.tsx` | abas "Minha visão" / "Minha equipe" (aba de equipe só para supervisor/manager/admin) |
 | `src/components/myday/TeamOverview.tsx` (novo) | 6 KPIs no topo + tabela por colaborador (cards no mobile), linha clicável |
-| `src/components/myday/TeamFilters.tsx` (novo) | filtros filial/cargo/colaborador; supervisor sem seletor de filial; "Todos" → `NULL` |
+| `src/components/myday/TeamFilters.tsx` (novo) | filtros filial/cargo/colaborador; supervisor sem seletor de filial; "Todos" → `NULL`; opções de cargo limitadas a supervisor + cargos operacionais (manager/admin não são selecionáveis) |
 | `src/components/myday/UserDayDialog.tsx` (novo) | Meu Dia do colaborador em modo somente leitura (reutiliza `ExecutionCards` e `PendingBlock`, sem navegação de edição) |
 
 Nenhuma alteração em RLS, dados, ou nas regras do Meu Dia pessoal.
