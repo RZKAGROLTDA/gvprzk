@@ -744,6 +744,7 @@ CREATE OR REPLACE FUNCTION public.pops_assign_rac_machines(
 ) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
+  v_alvos       jsonb;
   v_conflitos   jsonb;
   v_afetadas    integer := 0;
   v_criadas     integer := 0;
@@ -760,13 +761,23 @@ BEGIN
     RAISE EXCEPTION 'Usuário alvo não é um RAC aprovado e ativo';
   END IF;
 
-  -- clientes POPS envolvidos na seleção (1 cliente = 1 RAC)
-  CREATE TEMP TABLE _pops_alvos ON COMMIT DROP AS
-  SELECT DISTINCT m.program_id, r.pops_client_code_norm, min(r.pops_client_code) AS pops_client_code
-    FROM public.pops_machines m
-    JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
-   WHERE m.id = ANY(p_machine_ids)
-   GROUP BY m.program_id, r.pops_client_code_norm;
+  -- clientes POPS envolvidos na seleção (1 cliente = 1 RAC), sem objetos temporários
+  SELECT COALESCE(jsonb_agg(jsonb_build_object(
+           'program_id', t.program_id,
+           'pops_client_code', t.pops_client_code,
+           'pops_client_code_norm', t.pops_client_code_norm)), '[]'::jsonb)
+    INTO v_alvos
+    FROM (
+      SELECT m.program_id, r.pops_client_code_norm, min(r.pops_client_code) AS pops_client_code
+        FROM public.pops_machines m
+        JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
+       WHERE m.id = ANY(p_machine_ids)
+       GROUP BY m.program_id, r.pops_client_code_norm
+    ) t;
+
+  IF jsonb_array_length(v_alvos) = 0 THEN
+    RAISE EXCEPTION 'Nenhuma máquina POPS válida na seleção';
+  END IF;
 
   -- conflito: cliente já possui RAC padrão DIFERENTE do informado
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
@@ -774,7 +785,7 @@ BEGIN
            'pops_client_code_norm', a.pops_client_code_norm,
            'rac_padrao', ca.rac_user_id)), '[]'::jsonb)
     INTO v_conflitos
-    FROM _pops_alvos a
+    FROM jsonb_to_recordset(v_alvos) AS a(program_id uuid, pops_client_code text, pops_client_code_norm text)
     JOIN public.pops_client_assignments ca
       ON ca.program_id = a.program_id
      AND ca.pops_client_code_norm = a.pops_client_code_norm
@@ -785,14 +796,17 @@ BEGIN
   END IF;
 
   -- B) PRIMEIRA ATRIBUIÇÃO: cria o padrão do cliente quando ainda não existe
-  WITH ins AS (
+  WITH alvos AS (
+    SELECT * FROM jsonb_to_recordset(v_alvos)
+      AS a(program_id uuid, pops_client_code text, pops_client_code_norm text)
+  ), ins AS (
     INSERT INTO public.pops_client_assignments (program_id, pops_client_code, pops_client_code_norm,
                                                 client_name, rac_user_id, assigned_by)
     SELECT a.program_id, a.pops_client_code, a.pops_client_code_norm,
            (SELECT min(r.client_name) FROM public.pops_import_rows r
              WHERE r.pops_client_code_norm = a.pops_client_code_norm),
            p_rac_user_id, (SELECT auth.uid())
-      FROM _pops_alvos a
+      FROM alvos a
     ON CONFLICT (program_id, pops_client_code_norm) DO NOTHING
     RETURNING 1
   )
@@ -802,7 +816,7 @@ BEGIN
   IF p_force THEN
     UPDATE public.pops_client_assignments ca
        SET rac_user_id = p_rac_user_id, assigned_by = (SELECT auth.uid())
-      FROM _pops_alvos a
+      FROM jsonb_to_recordset(v_alvos) AS a(program_id uuid, pops_client_code text, pops_client_code_norm text)
      WHERE ca.program_id = a.program_id
        AND ca.pops_client_code_norm = a.pops_client_code_norm
        AND ca.rac_user_id <> p_rac_user_id;
@@ -815,10 +829,11 @@ BEGIN
   GET DIAGNOSTICS v_afetadas = ROW_COUNT;
 
   -- propagação obrigatória: TODAS as máquinas ativas dos clientes envolvidos,
-  -- no mesmo programa, passam a ter o RAC do cliente
+  -- no mesmo programa, passam a ter o RAC padrão do cliente
   UPDATE public.pops_machines m2
      SET responsible_user_id = p_rac_user_id
-    FROM public.pops_import_rows r2, _pops_alvos a
+    FROM public.pops_import_rows r2,
+         jsonb_to_recordset(v_alvos) AS a(program_id uuid, pops_client_code text, pops_client_code_norm text)
    WHERE r2.confirmed_machine_id = m2.id
      AND m2.program_id = a.program_id
      AND r2.pops_client_code_norm = a.pops_client_code_norm
@@ -826,7 +841,6 @@ BEGIN
      AND m2.responsible_user_id IS DISTINCT FROM p_rac_user_id;
   GET DIAGNOSTICS v_propagadas = ROW_COUNT;
 
-  DROP TABLE _pops_alvos;
 
   RETURN jsonb_build_object(
     'maquinas_atualizadas', v_afetadas,
