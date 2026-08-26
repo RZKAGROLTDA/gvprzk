@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalendarDays, Users, RotateCcw, BarChart3, CalendarPlus, GraduationCap } from 'lucide-react';
@@ -13,6 +14,22 @@ import { useUserRole } from '@/hooks/useUserRole';
 const CRM: React.FC = () => {
   const { isManager, isSupervisor } = useUserRole();
   const canManage = isManager || isSupervisor;
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep-link de abas: /crm?tab=programacao | retornos | treinamentos | ...
+  const VALID_TABS = React.useMemo(
+    () => ['agenda', 'programacao', 'carteira', 'retornos', 'treinamentos', ...(canManage ? ['gerencial'] : [])],
+    [canManage],
+  );
+  const requestedTab = searchParams.get('tab');
+  const activeTab = requestedTab && VALID_TABS.includes(requestedTab) ? requestedTab : 'agenda';
+
+  const handleTabChange = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', value);
+    setSearchParams(next, { replace: true });
+  };
+
 
   return (
     <div className="space-y-4">
@@ -24,7 +41,7 @@ const CRM: React.FC = () => {
           </p>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="agenda" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className={`grid w-full ${canManage ? 'grid-cols-6 max-w-4xl' : 'grid-cols-5 max-w-3xl'}`}>
               <TabsTrigger value="agenda" className="gap-2">
                 <CalendarDays className="h-4 w-4" /> Agenda Semanal
