@@ -1,419 +1,124 @@
-# POPS — M1 (Fundação) — SQL FINAL
+# M2 — Importação da Base e Carteira POPS (proposta, nada aplicado)
 
-**Nada aplicado ainda.** Ajuste incorporado: `pops_event_type` removido desta migration; será criado na M3 junto com `pops_machine_events`.
+## 1. Auditoria
 
-Programa: **POPS 2026** (27/08/2026 → 20/10/2026, meta global 1.000). Serviços iniciais: Análise de Óleo, Análise de Arrefecimento, Higienização de Ar.
+### 1.1 Base POPS (planilha)
+O arquivo da base POPS **não está disponível** no ambiente. Os únicos uploads existentes são imagens e um `TAKERATE.xlsx` (outro contexto). Portanto:
+- não há como auditar linhas, seriais únicos, duplicidades, clientes, filiais, modelos e campos vazios da base POPS agora;
+- os nomes reais das colunas ("Serial Number", "Dealer Account Number", etc.) serão auditados **no envio do arquivo**, antes de fixar o parser;
+- a estrutura proposta abaixo é agnóstica ao cabeçalho: a linha crua é guardada em `jsonb` e um mapeamento de colunas é gravado no lote.
 
----
+### 1.2 Parque de Máquinas (`public.client_equipment`) — fonte oficial
+| Métrica | Valor |
+|---|---|
+| Máquinas | 19.917 |
+| Seriais/chassis distintos (normalizados) | 19.438 |
+| Sem serial | 23 |
+| Grupos de serial repetido | 451 |
+| Serial repetido com o mesmo `client_code` | 5 |
+| Sem `client_code` | 4.328 (21,7%) |
+| Sem `model` | 9.103 (45,7%) |
+| Sem `year` | 7.095 |
+| Clientes distintos | 3.448 |
+| Filiais | 14 |
+| RACs/CPA/CSA aprovados e ativos | 12 |
+| `pops_machines` hoje | 0 registros |
 
-## SQL completo da M1
+Comprimento de serial: 17 caracteres (18.399), 13 (1.399), demais residuais.
 
-```sql
--- =========================================================================
--- POPS — M1: FUNDAÇÃO
--- Cria enums, pops_programs, pops_services, pops_machines, funções de
--- escopo/permissão, RLS, GRANTs e índices básicos.
--- Não altera nenhuma estrutura ou dado existente.
--- =========================================================================
+### 1.3 Riscos para o matching
+1. **451 grupos de serial duplicado** no Parque → sem `client_code` na planilha essas linhas caem em `REVISAR`, nunca em match automático.
+2. **46% sem modelo** → modelo só serve como reforço, nunca como critério isolado.
+3. **21,7% sem código do cliente** → confirmação por código não pode ser obrigatória.
+4. Serial com formatos mistos (13 vs 17) → normalização obrigatória (upper, remover não alfanuméricos) e comparação também por **sufixo** quando um lado tem 13 e o outro 17.
+5. Nome de cliente e filial **não** entram como critério de decisão, apenas como informação de conferência.
 
--- ------------------------------------------------------------------ ENUMS
-CREATE TYPE public.pops_machine_status AS ENUM ('foco','em_andamento','servicada');
+## 2. Modelagem (novas tabelas, todas com prefixo `pops_`)
 
--- Enums de execução, oportunidade, OS e histórico ficam para M3/M4.
+### `pops_import_batches`
+Lote de importação. Campos: `id`, `program_id` (FK `pops_programs`), `file_name`, `column_map jsonb`, `status pops_import_status` (`rascunho|processado|confirmado|cancelado`), `total_rows`, `counts jsonb` (resumo materializado), `created_by`, `confirmed_by`, `confirmed_at`, `created_at`, `updated_at`.
 
--- --------------------------------------------------- FUNÇÃO DE updated_at
-CREATE OR REPLACE FUNCTION public.pops_set_updated_at()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path = public
-AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$;
+### `pops_import_rows`
+Uma linha da planilha + resultado do matching (dado temporário/auditoria, não duplica o Parque de forma permanente).
+Campos: `id`, `batch_id` (FK, `ON DELETE CASCADE`), `row_number int`, `raw jsonb` (linha original íntegra),
+extraídos: `serial_raw`, `serial_norm`, `client_code_raw`, `client_code_norm`, `client_name_raw`, `filial_raw`, `model_raw`, `year_raw`, `platform_raw`;
+resultado: `match_status pops_match_status`, `match_score int`, `match_reason text`, `matched_equipment_id uuid` (FK `client_equipment`, `ON DELETE SET NULL`), `candidates jsonb` (até 5 candidatos com id/serial/cliente/modelo/filial), `resolution pops_row_resolution` (`pendente|confirmado|vinculado_manual|ignorado`), `resolved_by`, `resolved_at`, `confirmed_machine_id uuid` (FK `pops_machines`), `created_at`, `updated_at`.
 
--- ============================================================ 1) PROGRAMS
-CREATE TABLE public.pops_programs (
-  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name           text NOT NULL,
-  goal_machines  integer NOT NULL DEFAULT 1000,
-  start_date     date NOT NULL,
-  end_date       date NOT NULL,
-  active         boolean NOT NULL DEFAULT true,
-  notes          text,
-  created_by     uuid,
-  created_at     timestamptz NOT NULL DEFAULT now(),
-  updated_at     timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT pops_programs_name_key UNIQUE (name)
-);
+### `pops_client_assignments`
+Carteira padrão por cliente (garante "mesmo cliente = mesmo RAC").
+Campos: `id`, `program_id`, `client_code_norm text`, `client_name text`, `rac_user_id uuid`, `assigned_by`, `notes`, timestamps. `UNIQUE (program_id, client_code_norm)`.
 
-GRANT SELECT ON public.pops_programs TO authenticated;
-GRANT ALL    ON public.pops_programs TO service_role;
-ALTER TABLE public.pops_programs ENABLE ROW LEVEL SECURITY;
+### Alteração mínima em `pops_machines`
+Nenhuma coluna nova é necessária: `responsible_user_id`, `import_batch_id`, `source` e `notes` já existem. A atribuição individual continua em `pops_machines.responsible_user_id`.
 
--- validações por trigger (evita CHECK imutável com datas)
-CREATE OR REPLACE FUNCTION public.pops_programs_validate()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path = public
-AS $$
-BEGIN
-  IF NEW.goal_machines <= 0 THEN
-    RAISE EXCEPTION 'goal_machines deve ser maior que zero';
-  END IF;
-  IF NEW.end_date < NEW.start_date THEN
-    RAISE EXCEPTION 'end_date não pode ser anterior a start_date';
-  END IF;
-  RETURN NEW;
-END;
-$$;
+### Enums novos
+`pops_import_status`, `pops_match_status` (`MATCH_EXATO|REVISAR|NAO_ENCONTRADA|DUPLICADA_NA_BASE|JA_NO_POPS`), `pops_row_resolution`.
 
-CREATE TRIGGER trg_pops_programs_validate
-  BEFORE INSERT OR UPDATE ON public.pops_programs
-  FOR EACH ROW EXECUTE FUNCTION public.pops_programs_validate();
+### PK/FK/UNIQUE
+- PK `uuid` em todas.
+- `pops_import_rows`: `UNIQUE (batch_id, row_number)`.
+- `pops_client_assignments`: `UNIQUE (program_id, client_code_norm)`.
+- `pops_machines`: mantém `UNIQUE (program_id, equipment_id)` (já existente) — garante 1 máquina = 1 unidade da meta.
 
-CREATE TRIGGER trg_pops_programs_updated_at
-  BEFORE UPDATE ON public.pops_programs
-  FOR EACH ROW EXECUTE FUNCTION public.pops_set_updated_at();
+## 3. Estratégia de matching (`pops_match_import_batch`)
+Normalização: `pops_norm_serial(text)` = upper + remoção de tudo que não é `[A-Z0-9]`; `pops_norm_code(text)` = dígitos com zeros à esquerda removidos.
 
--- somente um programa ativo por vez
-CREATE UNIQUE INDEX pops_programs_single_active
-  ON public.pops_programs (active) WHERE active;
+Ordem de decisão por linha:
+1. Serial vazio/curto (<6) → `NAO_ENCONTRADA` (motivo: serial inválido).
+2. Serial repetido no próprio arquivo → `DUPLICADA_NA_BASE` (a primeira ocorrência segue o fluxo normal).
+3. Candidatos = `client_equipment` com `serial_norm` igual **ou** sufixo compatível (13↔17).
+   - 1 candidato → `MATCH_EXATO` (score 100 se `client_code` também confere; 90 se a planilha não trouxe código; 70 → `REVISAR` se o código conflita).
+   - >1 candidato → desempate por `client_code_norm`; se sobrar exatamente 1 → `MATCH_EXATO` (score 95); senão `REVISAR` com `candidates` preenchido.
+   - 0 candidatos → `NAO_ENCONTRADA`.
+4. Se `matched_equipment_id` já existe em `pops_machines` do programa → `JA_NO_POPS`.
+Cliente/filial/modelo **nunca** decidem sozinhos; entram apenas em `match_reason` e no comparativo da revisão.
 
--- ============================================================ 2) SERVICES
-CREATE TABLE public.pops_services (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  code        text NOT NULL,
-  name        text NOT NULL,
-  sort_order  integer NOT NULL DEFAULT 0,
-  active      boolean NOT NULL DEFAULT true,
-  created_by  uuid,
-  created_at  timestamptz NOT NULL DEFAULT now(),
-  updated_at  timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT pops_services_code_key UNIQUE (code),
-  CONSTRAINT pops_services_name_key UNIQUE (name)
-);
+## 4. Divergências
+- `NAO_ENCONTRADA`: nunca cria `client_equipment`. A linha fica disponível para `vincular_manual` (informando um `equipment_id` real), `ignorado`, ou permanece `pendente`.
+- `REVISAR`: gestor escolhe um candidato (vinculação manual) ou ignora.
+- `DUPLICADA_NA_BASE` / `JA_NO_POPS`: informativas, não confirmáveis.
 
-GRANT SELECT ON public.pops_services TO authenticated;
-GRANT ALL    ON public.pops_services TO service_role;
-ALTER TABLE public.pops_services ENABLE ROW LEVEL SECURITY;
+## 5. Fluxo de confirmação
+`criar lote → carregar linhas → processar matching → resumo/revisão → resolver divergências → confirmar` .
+A confirmação (`pops_confirm_import_batch`) insere em `pops_machines` **apenas** linhas com `matched_equipment_id` e `match_status = MATCH_EXATO` ou `resolution = vinculado_manual`, com `source='importacao'`, `import_batch_id`, `status='foco'`, `active=true`, `ON CONFLICT (program_id, equipment_id) DO NOTHING`. Idempotente: reexecutar não duplica.
 
-CREATE TRIGGER trg_pops_services_updated_at
-  BEFORE UPDATE ON public.pops_services
-  FOR EACH ROW EXECUTE FUNCTION public.pops_set_updated_at();
+## 6. Atribuição ao RAC
+- `pops_assign_rac_by_client(program_id, client_code, rac_user_id)`: grava/atualiza `pops_client_assignments` e propaga para **todas** as máquinas POPS ativas daquele cliente.
+- `pops_assign_rac_machines(machine_ids[], rac_user_id, p_force)`: individual/lote. Se a máquina pertencer a cliente com RAC padrão diferente, falha com aviso a menos que `p_force = true` (ação explícita da gestão) — que então atualiza o padrão do cliente.
+- `pops_assign_rac_by_filial(program_id, filial_id, rac_user_id)`: aplica por cliente dentro da filial.
+- Uma máquina tem um único `responsible_user_id`. Histórico de troca fica para a M3 (`pops_events`).
+- Alvo válido: usuário aprovado, ativo e com papel `rac`.
 
-CREATE INDEX pops_services_active_order_idx
-  ON public.pops_services (active, sort_order);
+## 7. RLS
+- Todas as tabelas novas: RLS habilitada, `REVOKE ALL ... FROM anon`, `GRANT` só a `authenticated` (+ `service_role`), sem `DELETE` para `authenticated` (exceto cascade do lote via função de gestor).
+- `pops_import_batches` / `pops_import_rows`: SELECT/INSERT/UPDATE apenas para `manager`/`admin` (via `has_role`).
+- `pops_client_assignments`: leitura conforme `pops_scope()` (RAC vê o próprio, Supervisor a filial, Manager/Admin global); escrita só Manager/Admin.
+- Nenhuma política fora do prefixo `pops_` é tocada.
 
--- ================================================== 3) FUNÇÕES DE ESCOPO
-CREATE OR REPLACE FUNCTION public.pops_user_enabled()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profiles p
-    WHERE p.user_id = (SELECT auth.uid())
-      AND p.approval_status = 'approved'
-      AND p.employment_status = 'active'
-  );
-$$;
+## 8. RPCs (todas `SECURITY DEFINER`, `search_path=public`, sem N+1)
+| RPC | Papel |
+|---|---|
+| `pops_create_import_batch(program_id, file_name, column_map, rows jsonb)` | cria lote + insere todas as linhas em uma única instrução |
+| `pops_match_import_batch(batch_id)` | matching em lote (set-based, sem loop por linha) |
+| `pops_import_summary(batch_id)` | contadores por status/resolução em um único jsonb |
+| `pops_import_rows_list(batch_id, status, resolution, search, limit, offset)` | divergências lado a lado (planilha × Parque) com total |
+| `pops_resolve_import_row(row_id, action, equipment_id)` | confirmar / vincular manual / ignorar |
+| `pops_confirm_import_batch(batch_id)` | insere confirmados em `pops_machines` |
+| `pops_assign_rac_by_client` / `pops_assign_rac_machines` / `pops_assign_rac_by_filial` | atribuição |
+| `pops_portfolio_clients(program_id, rac_user_id, filial_id, search, limit, offset)` | carteira agrupada por cliente (máquinas / serviçadas / pendentes) |
+| `pops_portfolio_client_machines(program_id, client_code, ...)` | máquinas do cliente com dados do Parque |
 
-CREATE OR REPLACE FUNCTION public.pops_scope()
-RETURNS jsonb
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_uid       uuid := (SELECT auth.uid());
-  v_enabled   boolean;
-  v_filial    uuid;
-  v_scope     text := 'none';
-BEGIN
-  IF v_uid IS NULL THEN
-    RETURN jsonb_build_object('scope','none','filial_id',NULL,'user_id',NULL);
-  END IF;
+## 9. Índices
+- `pops_import_rows (batch_id, match_status)`, `(batch_id, resolution)`, `(serial_norm)`, `(matched_equipment_id)`.
+- `pops_client_assignments (program_id, rac_user_id)`.
+- `client_equipment`: índice funcional `pops_ce_serial_norm_idx` em `upper(regexp_replace(serial_chassis,'[^A-Za-z0-9]','','g'))` — necessário para o matching; será criado só se o `EXPLAIN` confirmar ganho.
+- `pops_machines (program_id, responsible_user_id, active)` para a carteira.
 
-  SELECT (p.approval_status = 'approved' AND p.employment_status = 'active'),
-         p.filial_id
-    INTO v_enabled, v_filial
-    FROM public.profiles p
-   WHERE p.user_id = v_uid;
+## 10. SQL completo da M2
+Arquivo de apoio: o script será enviado na íntegra na mensagem de aprovação/aplicação, na ordem obrigatória por tabela: `CREATE TABLE` → `GRANT` → `ENABLE RLS` → `CREATE POLICY`, seguido de funções, RPCs, triggers de `updated_at` e índices. Nenhuma linha de dado da planilha faz parte da migration.
 
-  IF COALESCE(v_enabled, false) = false THEN
-    RETURN jsonb_build_object('scope','none','filial_id',NULL,'user_id',v_uid);
-  END IF;
-
-  IF public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager') THEN
-    v_scope := 'global';
-  ELSIF public.has_role(v_uid,'supervisor') THEN
-    v_scope := 'filial';
-  ELSIF public.has_role(v_uid,'rac') THEN
-    v_scope := 'self';
-  END IF;
-
-  RETURN jsonb_build_object('scope', v_scope, 'filial_id', v_filial, 'user_id', v_uid);
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.pops_is_manager()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT public.pops_user_enabled()
-     AND (public.has_role((SELECT auth.uid()),'admin')
-       OR public.has_role((SELECT auth.uid()),'manager'));
-$$;
-
--- Leitura de uma máquina POPS: global, filial do supervisor (via
--- client_equipment.filial_id) ou máquina atribuída ao próprio RAC.
-CREATE OR REPLACE FUNCTION public.pops_can_read_machine(p_pops_machine_id uuid)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_scope  jsonb := public.pops_scope();
-  v_ok     boolean := false;
-BEGIN
-  IF v_scope->>'scope' = 'none' THEN RETURN false; END IF;
-  IF v_scope->>'scope' = 'global' THEN RETURN true; END IF;
-
-  IF v_scope->>'scope' = 'filial' THEN
-    SELECT EXISTS (
-      SELECT 1
-        FROM public.pops_machines m
-        JOIN public.client_equipment e ON e.id = m.equipment_id
-       WHERE m.id = p_pops_machine_id
-         AND e.filial_id = (v_scope->>'filial_id')::uuid
-    ) INTO v_ok;
-    RETURN v_ok;
-  END IF;
-
-  SELECT EXISTS (
-    SELECT 1 FROM public.pops_machines m
-     WHERE m.id = p_pops_machine_id
-       AND m.responsible_user_id = (v_scope->>'user_id')::uuid
-  ) INTO v_ok;
-  RETURN v_ok;
-END;
-$$;
-
--- Escrita operacional (execução/OS em M3/M4): apenas o RAC responsável.
--- Supervisor NÃO registra no lugar do RAC. Gestão atua por RPCs próprias.
-CREATE OR REPLACE FUNCTION public.pops_can_write_machine(p_pops_machine_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT public.pops_user_enabled()
-     AND EXISTS (
-       SELECT 1
-         FROM public.pops_machines m
-         JOIN public.pops_programs pr ON pr.id = m.program_id
-        WHERE m.id = p_pops_machine_id
-          AND m.active
-          AND pr.active
-          AND m.responsible_user_id = (SELECT auth.uid())
-     );
-$$;
-
--- ============================================================ 4) MACHINES
-CREATE TABLE public.pops_machines (
-  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  program_id              uuid NOT NULL
-                            REFERENCES public.pops_programs(id) ON DELETE RESTRICT,
-  equipment_id            uuid NOT NULL
-                            REFERENCES public.client_equipment(id) ON DELETE RESTRICT,
-  responsible_user_id     uuid,                       -- RAC; NULL = não atribuída
-  status                  public.pops_machine_status NOT NULL DEFAULT 'foco',
-  active                  boolean NOT NULL DEFAULT true,   -- remoção LÓGICA
-  deactivated_at          timestamptz,
-  deactivated_by          uuid,
-  deactivation_reason     text,
-  transfer_divergence     boolean NOT NULL DEFAULT false,
-  transfer_divergence_at  timestamptz,
-  last_activity_at        timestamptz,
-  source                  text NOT NULL DEFAULT 'manual',  -- 'manual' | 'import'
-  import_batch_id         uuid,
-  notes                   text,
-  created_by              uuid,
-  created_at              timestamptz NOT NULL DEFAULT now(),
-  updated_at              timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT pops_machines_program_equipment_key UNIQUE (program_id, equipment_id)
-);
-
-GRANT SELECT, INSERT, UPDATE ON public.pops_machines TO authenticated;
-GRANT ALL                    ON public.pops_machines TO service_role;
-ALTER TABLE public.pops_machines ENABLE ROW LEVEL SECURITY;
-
-CREATE TRIGGER trg_pops_machines_updated_at
-  BEFORE UPDATE ON public.pops_machines
-  FOR EACH ROW EXECUTE FUNCTION public.pops_set_updated_at();
-
--- Coerência da inativação lógica
-CREATE OR REPLACE FUNCTION public.pops_machines_validate()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path = public
-AS $$
-BEGIN
-  IF NEW.source NOT IN ('manual','import') THEN
-    RAISE EXCEPTION 'source inválido: %', NEW.source;
-  END IF;
-
-  IF NEW.active = false THEN
-    IF NEW.deactivated_at IS NULL THEN NEW.deactivated_at := now(); END IF;
-    IF NEW.deactivated_by IS NULL THEN NEW.deactivated_by := (SELECT auth.uid()); END IF;
-    IF NEW.deactivation_reason IS NULL OR btrim(NEW.deactivation_reason) = '' THEN
-      RAISE EXCEPTION 'deactivation_reason é obrigatório ao inativar a máquina no POPS';
-    END IF;
-  ELSE
-    NEW.deactivated_at := NULL;
-    NEW.deactivated_by := NULL;
-    NEW.deactivation_reason := NULL;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_pops_machines_validate
-  BEFORE INSERT OR UPDATE ON public.pops_machines
-  FOR EACH ROW EXECUTE FUNCTION public.pops_machines_validate();
-
--- Índices básicos
-CREATE INDEX pops_machines_program_rac_status_idx
-  ON public.pops_machines (program_id, responsible_user_id, status) WHERE active;
-CREATE INDEX pops_machines_program_status_idx
-  ON public.pops_machines (program_id, status) WHERE active;
-CREATE INDEX pops_machines_equipment_idx
-  ON public.pops_machines (equipment_id);
-CREATE INDEX pops_machines_divergence_idx
-  ON public.pops_machines (program_id) WHERE transfer_divergence;
-
--- ================================================================== 5) RLS
--- pops_programs
-CREATE POLICY "pops_programs_select_enabled"
-  ON public.pops_programs FOR SELECT TO authenticated
-  USING (public.pops_user_enabled());
-
-CREATE POLICY "pops_programs_insert_manager"
-  ON public.pops_programs FOR INSERT TO authenticated
-  WITH CHECK (public.pops_is_manager());
-
-CREATE POLICY "pops_programs_update_manager"
-  ON public.pops_programs FOR UPDATE TO authenticated
-  USING (public.pops_is_manager())
-  WITH CHECK (public.pops_is_manager());
--- sem policy de DELETE: exclusão física bloqueada
-
--- pops_services
-CREATE POLICY "pops_services_select_enabled"
-  ON public.pops_services FOR SELECT TO authenticated
-  USING (public.pops_user_enabled());
-
-CREATE POLICY "pops_services_insert_manager"
-  ON public.pops_services FOR INSERT TO authenticated
-  WITH CHECK (public.pops_is_manager());
-
-CREATE POLICY "pops_services_update_manager"
-  ON public.pops_services FOR UPDATE TO authenticated
-  USING (public.pops_is_manager())
-  WITH CHECK (public.pops_is_manager());
--- sem DELETE: serviço sai de operação por active = false
-
--- pops_machines
-CREATE POLICY "pops_machines_select_scope"
-  ON public.pops_machines FOR SELECT TO authenticated
-  USING (
-    CASE (public.pops_scope()->>'scope')
-      WHEN 'global' THEN true
-      WHEN 'filial' THEN EXISTS (
-        SELECT 1 FROM public.client_equipment e
-         WHERE e.id = pops_machines.equipment_id
-           AND e.filial_id = (public.pops_scope()->>'filial_id')::uuid
-      )
-      WHEN 'self'   THEN responsible_user_id = (SELECT auth.uid())
-      ELSE false
-    END
-  );
-
-CREATE POLICY "pops_machines_insert_manager"
-  ON public.pops_machines FOR INSERT TO authenticated
-  WITH CHECK (public.pops_is_manager() AND created_by = (SELECT auth.uid()));
-
-CREATE POLICY "pops_machines_update_manager"
-  ON public.pops_machines FOR UPDATE TO authenticated
-  USING (public.pops_is_manager())
-  WITH CHECK (public.pops_is_manager());
--- sem policy de DELETE: remoção é lógica (active = false)
-
--- ============================================== 6) PERMISSÕES DE EXECUÇÃO
-REVOKE EXECUTE ON FUNCTION public.pops_user_enabled()          FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.pops_scope()                 FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.pops_is_manager()            FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.pops_can_read_machine(uuid)  FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.pops_can_write_machine(uuid) FROM PUBLIC, anon;
-
-GRANT EXECUTE ON FUNCTION public.pops_user_enabled()          TO authenticated;
-GRANT EXECUTE ON FUNCTION public.pops_scope()                 TO authenticated;
-GRANT EXECUTE ON FUNCTION public.pops_is_manager()            TO authenticated;
-GRANT EXECUTE ON FUNCTION public.pops_can_read_machine(uuid)  TO authenticated;
-GRANT EXECUTE ON FUNCTION public.pops_can_write_machine(uuid) TO authenticated;
-
--- ============================================== 7) DADOS INICIAIS
-INSERT INTO public.pops_programs (name, goal_machines, start_date, end_date, active)
-VALUES ('POPS 2026', 1000, '2026-08-27', '2026-10-20', true);
-
-INSERT INTO public.pops_services (code, name, sort_order, active) VALUES
-  ('analise_oleo',          'Análise de Óleo',          1, true),
-  ('analise_arrefecimento', 'Análise de Arrefecimento', 2, true),
-  ('higienizacao_ar',       'Higienização de Ar',       3, true);
-```
-
----
-
-## Resumo do que M1 cria
-
-- **Enum**: `pops_machine_status`.
-- **Tabelas**: `pops_programs`, `pops_services`, `pops_machines`.
-- **Funções**: `pops_set_updated_at`, `pops_programs_validate`, `pops_machines_validate`, `pops_user_enabled`, `pops_scope`, `pops_is_manager`, `pops_can_read_machine`, `pops_can_write_machine`.
-- **Triggers**: validação + `updated_at` em programas e máquinas.
-- **Índices**: único parcial de programa ativo, serviços ativos/ordem, 4 índices em `pops_machines`, UNIQUE `(program_id, equipment_id)`.
-- **RLS**: 9 policies, sem `DELETE` em nenhuma tabela.
-- **Dados**: programa POPS 2026 e 3 serviços iniciais.
-
-## O que M1 NÃO faz (e será feito em M2–M6)
-
-- `pops_event_type` e `pops_machine_events` → **M3**.
-- `pops_import_pendencies`, importação de base e atribuição de RACs → **M2**.
-- `pops_executions`, `pops_opportunities` e regras de execução → **M3**.
-- `pops_work_orders` e regras de OS/cancelamento → **M4**.
-- Recálculo automático de `pops_machines.status` → **M3/M4**.
-- RPCs de leitura e dashboard → **M6**.
-- Edge Function de importação e frontend → etapas seguintes.
-
-## Confirmações
-
-- `pops_machines` referencia exclusivamente `client_equipment.id`; nenhum dado da máquina é duplicado.
-- `UNIQUE (program_id, equipment_id)` impede a mesma máquina no mesmo programa.
-- Remoção lógica: `active = false` + campos de auditoria. Trilha em `pops_machine_events` só na M3.
-- Nenhuma estrutura existente é alterada.
-- CPA/CSA não participam nesta etapa (nenhuma policy os inclui).
-
----
-
-SQL final da M1 aprovado? Assim que confirmar, aplico via migration.
+## 11. Garantias
+- Nenhum dado será importado até sua aprovação: a migration apenas cria estrutura vazia.
+- `client_equipment` não é alterada (somente leitura + possível índice funcional).
+- Nada de execução, amostra, oportunidade, OS, dashboard, integração com Tarefas/Meu Dia ou frontend final nesta etapa.
+- A auditoria da base POPS será feita quando você enviar a planilha.
