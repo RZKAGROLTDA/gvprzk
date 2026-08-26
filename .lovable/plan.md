@@ -1,123 +1,222 @@
-# Meu Dia — Etapa 3 (Frontend): auditoria + desenho
+# Meu Dia — Escopo por Cargo (Pessoal + Equipe)
 
-Banco não será alterado. Usa apenas `get_my_day_summary()` e `get_my_day_details(p_block, p_bucket, p_limit, p_offset)` já validadas.
+Objetivo: manter o Meu Dia pessoal como hoje e adicionar, para supervisor/manager/admin, uma visão de equipe agregada, com escopo validado no banco. Nenhuma RLS existente é alterada.
 
-## 1. Auditoria do frontend atual
+## 1. Regra de escopo (fonte única no banco)
 
-| Item | Situação hoje |
-| --- | --- |
-| Rota inicial (`/`) | Renderiza `SalesFunnel` (igual a `/dashboard`) para todos os cargos |
-| `src/pages/Home.tsx` | Existe mas **não está roteada** (código morto: 3 atalhos de criação de tarefa) |
-| Menu lateral | `src/components/Layout.tsx`, primeiro item = "Nova Tarefa" (`/create-task`), depois Dashboard, Campanhas, CRM, Parque de Máquinas |
-| Programa de Visitas / Retornos / Treinamentos | Abas dentro de `src/pages/CRM.tsx` (`programacao`, `retornos`, `treinamentos`), **sem sincronização por URL** — não é possível hoje abrir uma aba específica por link |
-| Próximas ações (tasks) | Registro aberto via Funil de Vendas (`SalesFunnel` → `TaskFormVisualization`) |
-| React Query | Cliente único global (já corrigido), padrão staleTime 5–10 min, `refetchOnWindowFocus` desligado |
+Nova função `public.my_day_scope()` retorna `user_id, role, filial_id, scope`:
 
-Consequência: a navegação por clique exige adicionar suporte a `?tab=` no CRM (mudança de UI, sem regra de negócio).
+| Cargo | scope | O que pode ver |
+| --- | --- | --- |
+| sales_consultant, consultant, technical_consultant, rac, cpa, csa | `self` | apenas o próprio Meu Dia |
+| supervisor | `filial` | o próprio + colaboradores aprovados/ativos da própria filial |
+| manager | `global` | o próprio + todos aprovados/ativos, todas as filiais |
+| admin | `global` | igual manager |
 
-## 2. Arquivos criados/alterados
+Regras aplicadas dentro das RPCs (nunca no frontend):
+- `scope = self` → visão de equipe levanta exceção `42501`.
+- `scope = filial` → `p_filial_id` recebido é **ignorado** e forçado para a filial do supervisor; consulta de colaborador de outra filial levanta `42501`.
+- `scope = global` → filtros de filial/cargo/colaborador livres.
+- Em todos os casos o alvo precisa estar `approval_status = 'approved'` e `employment_status = 'active'`.
 
-Criados:
-- `src/hooks/useMyDay.ts` — `useMyDaySummary()` (1 chamada) e `useMyDayDetails(block, bucket)` (lazy, `enabled` só quando o modal abre).
-- `src/pages/MyDay.tsx` — página.
-- `src/components/myday/ExecutionCards.tsx` — cards Visitas e Ligações/Prospecções.
-- `src/components/myday/PendingBlock.tsx` — bloco Atrasado/Hoje/Próximos (accordion no mobile).
-- `src/components/myday/PendingItemRow.tsx` — linha de item (cliente, data, tipo, descrição, horário).
-- `src/components/myday/SeeAllDialog.tsx` — "Ver todos" com paginação via `get_my_day_details`.
-- `src/lib/myDayNavigation.ts` — mapeia item → destino.
+## 2. Novas RPCs (SQL)
 
-Alterados:
-- `src/App.tsx` — nova rota `/meu-dia`.
-- `src/components/Layout.tsx` — "Meu Dia" como **primeiro item do menu**.
-- `src/pages/CRM.tsx` — ler/escrever `?tab=` (`useSearchParams`) para permitir deep-link nas abas.
+Para não duplicar a lógica já validada, o corpo atual de `get_my_day_summary()` e `get_my_day_details()` é movido para builders internos que recebem o usuário-alvo. As assinaturas públicas existentes continuam idênticas (sem overloading).
 
-Nada de edição de dados: o Meu Dia é somente leitura + navegação.
+```sql
+-- 2.1 Escopo
+CREATE OR REPLACE FUNCTION public.my_day_scope()
+RETURNS TABLE(user_id uuid, role text, filial_id uuid, scope text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE v_uid uuid := auth.uid(); v_role text; v_filial uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Acesso negado: usuário não autenticado' USING ERRCODE='42501';
+  END IF;
+  SELECT p.filial_id INTO v_filial FROM public.profiles p
+   WHERE p.user_id = v_uid AND p.approval_status='approved' AND p.employment_status='active';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Acesso negado: usuário não aprovado ou inativo' USING ERRCODE='42501';
+  END IF;
+  v_role := public.get_user_role();
+  RETURN QUERY SELECT v_uid, v_role, v_filial,
+    CASE WHEN v_role IN ('admin','manager') THEN 'global'
+         WHEN v_role = 'supervisor' THEN 'filial'
+         ELSE 'self' END;
+END; $$;
 
-## 3. Rota proposta
+-- 2.2 Builders internos (corpo atual, parametrizado por usuário-alvo)
+CREATE OR REPLACE FUNCTION public.my_day_summary_build(p_user_id uuid, p_role text, p_today date)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+-- idêntico ao corpo atual de get_my_day_summary(), trocando c.user_id/c.role
+-- por p_user_id/p_role e as datas derivadas de p_today (semana ISO seg-dom).
+$$;
 
-`/meu-dia` (dentro de `Layout`, protegida como as demais).
+CREATE OR REPLACE FUNCTION public.my_day_details_build(p_user_id uuid, p_block text, p_bucket text, p_limit int, p_offset int, p_today date)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+-- idêntico ao corpo atual de get_my_day_details(), parametrizado pelo alvo.
+$$;
 
-## 4. Comportamento após login — recomendação
+-- 2.3 RPCs pessoais (assinatura inalterada, agora delegam ao builder)
+CREATE OR REPLACE FUNCTION public.get_my_day_summary() RETURNS jsonb ... -- my_day_context() + builder
+CREATE OR REPLACE FUNCTION public.get_my_day_details(p_block text, p_bucket text, p_limit int DEFAULT 50, p_offset int DEFAULT 0) RETURNS jsonb ...
 
-**Recomendo a opção A limitada + B (híbrido):**
-- Para cargos operacionais (`sales_consultant`, `consultant`, `technical_consultant`, `rac`, `cpa`, `csa`): ao acessar `/`, redirecionar para `/meu-dia`. Motivo: é a central de execução pessoal deles; o funil não responde "o que eu faço hoje".
-- Para `manager` / `admin` / `supervisor`: `/` continua no Funil/Dashboard (sem mudança nesta etapa), mas o item "Meu Dia" aparece no menu para todos.
-- O redirecionamento é apenas na raiz `/`; `/dashboard` continua acessível e não sofre redirect, então ninguém perde acesso ao funil.
+-- 2.4 Detalhe de colaborador (leitura de outro usuário)
+CREATE OR REPLACE FUNCTION public.get_my_day_user_summary(p_user_id uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE s record; t record; v_today date;
+BEGIN
+  SELECT * INTO s FROM public.my_day_scope();
+  IF p_user_id IS NULL OR p_user_id = s.user_id THEN
+    RETURN public.get_my_day_summary();
+  END IF;
+  IF s.scope = 'self' THEN
+    RAISE EXCEPTION 'Acesso negado: sem permissão para visão de equipe' USING ERRCODE='42501';
+  END IF;
+  SELECT p.user_id, p.filial_id, public.get_user_role(p.user_id) AS role INTO t
+    FROM public.profiles p
+   WHERE p.user_id = p_user_id AND p.approval_status='approved' AND p.employment_status='active';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Acesso negado: colaborador inválido' USING ERRCODE='42501';
+  END IF;
+  IF s.scope='filial' AND (t.filial_id IS NULL OR t.filial_id <> s.filial_id) THEN
+    RAISE EXCEPTION 'Acesso negado: colaborador de outra filial' USING ERRCODE='42501';
+  END IF;
+  v_today := (now() AT TIME ZONE 'America/Sao_Paulo')::date;
+  RETURN public.my_day_summary_build(t.user_id, t.role, v_today);
+END; $$;
 
-## 5. Layout textual
+-- Equivalente para drill-down do colaborador:
+-- public.get_my_day_user_details(p_user_id uuid, p_block text, p_bucket text, p_limit int, p_offset int)
+-- mesma validação de escopo + my_day_details_build.
 
-```text
-Meu Dia                                  [Atualizar]
-Segunda, 25 de agosto
+-- 2.5 Visão de equipe agregada (1 chamada)
+CREATE OR REPLACE FUNCTION public.get_my_day_team_summary(
+  p_filial_id uuid DEFAULT NULL,
+  p_role text DEFAULT NULL,
+  p_user_id uuid DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE s record; v_today date; v_week_start date; v_filial uuid; v_rows jsonb; v_kpi jsonb;
+BEGIN
+  SELECT * INTO s FROM public.my_day_scope();
+  IF s.scope = 'self' THEN
+    RAISE EXCEPTION 'Acesso negado: sem permissão para visão de equipe' USING ERRCODE='42501';
+  END IF;
+  v_filial := CASE WHEN s.scope='filial' THEN s.filial_id ELSE p_filial_id END; -- supervisor: filtro forçado
+  v_today := (now() AT TIME ZONE 'America/Sao_Paulo')::date;
+  v_week_start := (v_today - (EXTRACT(ISODOW FROM v_today)::int - 1))::date;
 
-MINHA EXECUÇÃO
-+------------------------+  +------------------------+
-| VISITAS      Diária    |  | LIGAÇÕES/PROSPECÇÕES   |
-| 2 / 3                  |  | 5 / 3   Meta atingida  |
-| Faltam 1               |  | (sem meta: "5 hoje")   |
-| [====----] 67%         |  | [========] 100%        |
-+------------------------+  +------------------------+
-  (RAC/CPA/CSA sáb/dom -> "Sem meta hoje")
+  WITH membros AS (
+    SELECT p.user_id, p.name, p.filial_id, fi.nome AS filial_nome,
+           COALESCE(ur.role::text, p.role) AS role
+      FROM public.profiles p
+      LEFT JOIN public.filiais fi ON fi.id = p.filial_id
+      LEFT JOIN LATERAL (SELECT r.role FROM public.user_roles r WHERE r.user_id = p.user_id LIMIT 1) ur ON true
+     WHERE p.approval_status='approved' AND p.employment_status='active'
+       AND (v_filial IS NULL OR p.filial_id = v_filial)
+       AND (p_user_id IS NULL OR p.user_id = p_user_id)
+  ), filtrados AS (
+    SELECT * FROM membros WHERE p_role IS NULL OR role = p_role
+  ), metas AS (
+    SELECT f.*,
+      (SELECT g.target_value FROM public.activity_goal_settings g
+        WHERE g.active AND g.activity_type='visita' AND g.role::text=f.role) AS meta_visitas,
+      (SELECT g.period_type FROM public.activity_goal_settings g
+        WHERE g.active AND g.activity_type='visita' AND g.role::text=f.role) AS visitas_period,
+      (SELECT g.target_value FROM public.activity_goal_settings g
+        WHERE g.active AND g.activity_type='ligacao' AND g.role::text=f.role) AS meta_ligacoes
+    FROM filtrados f
+  ), agg AS (
+    SELECT m.*,
+      -- realizado (agregação única por LATERAL, sem N chamadas)
+      (SELECT count(*)::int FROM public.tasks t
+        WHERE t.created_by=m.user_id AND t.task_type IN ('visita','technical_visit')
+          AND t.start_date >= CASE WHEN m.visitas_period='weekly' THEN v_week_start ELSE v_today END
+          AND t.start_date <= v_today) AS visitas_realizado,
+      (SELECT count(*)::int FROM public.tasks t
+        WHERE t.created_by=m.user_id AND t.task_type IN ('ligacao','prospection')
+          AND t.start_date = v_today) AS ligacoes_realizado,
+      (SELECT count(*)::int FROM public.visit_schedules vs
+        WHERE vs.seller_id=m.user_id AND vs.status='planejado' AND vs.planned_date < v_today) AS visitas_atrasadas,
+      (SELECT count(*)::int FROM public.task_followups f
+        WHERE f.responsible_user_id=m.user_id AND f.followup_status='pendente'
+          AND f.next_return_date IS NOT NULL AND f.next_return_date < v_today) AS retornos_atrasados,
+      (SELECT count(*)::int FROM public.trainings tr
+        WHERE tr.user_id=m.user_id AND tr.status='pendente' AND tr.training_date <= v_today) AS treinamentos_pendentes,
+      (SELECT count(*)::int FROM public.tasks t
+        WHERE t.created_by=m.user_id AND t.next_action_date IS NOT NULL
+          AND COALESCE(t.status,'pending') NOT IN ('closed','completed')
+          AND t.next_action_date < v_today) AS acoes_atrasadas
+    FROM metas m
+  )
+  SELECT
+    COALESCE(jsonb_agg(jsonb_build_object(
+      'user_id', user_id, 'name', name, 'role', role,
+      'filial_id', filial_id, 'filial_nome', filial_nome,
+      'visitas_realizado', visitas_realizado, 'visitas_meta', meta_visitas,
+      'ligacoes_realizado', ligacoes_realizado, 'ligacoes_meta', meta_ligacoes,
+      'visitas_atrasadas', visitas_atrasadas, 'retornos_atrasados', retornos_atrasados,
+      'treinamentos_pendentes', treinamentos_pendentes, 'acoes_atrasadas', acoes_atrasadas
+    ) ORDER BY name), '[]'::jsonb),
+    jsonb_build_object(
+      'colaboradores', count(*),
+      'com_pendencias', count(*) FILTER (WHERE visitas_atrasadas+retornos_atrasados+treinamentos_pendentes+acoes_atrasadas > 0),
+      'meta_nao_atingida', count(*) FILTER (WHERE (meta_visitas IS NOT NULL AND visitas_realizado < meta_visitas)
+                                              OR (meta_ligacoes IS NOT NULL AND ligacoes_realizado < meta_ligacoes)),
+      'visitas_atrasadas', COALESCE(sum(visitas_atrasadas),0),
+      'retornos_atrasados', COALESCE(sum(retornos_atrasados),0),
+      'treinamentos_pendentes', COALESCE(sum(treinamentos_pendentes),0),
+      'acoes_atrasadas', COALESCE(sum(acoes_atrasadas),0)
+    )
+  INTO v_rows, v_kpi FROM agg;
 
-PENDÊNCIAS
-[ ATRASADO 24 ]  aberto por padrão
-  * Cliente Alfa    12/08  Visita programada   Revisar proposta   08:30  >
-  * Cliente Beta    18/08  Retorno             Ligar p/ orçamento        >
-  ... até 5 itens                                   [Ver todos (24)]
+  RETURN jsonb_build_object(
+    'scope', s.scope, 'today', v_today, 'week_start', v_week_start,
+    'filters', jsonb_build_object('filial_id', v_filial, 'role', p_role, 'user_id', p_user_id),
+    'kpis', v_kpi, 'rows', v_rows
+  );
+END; $$;
 
-[ HOJE 6 ]
-[ PRÓXIMOS 7 dias  11 ]
+GRANT EXECUTE ON FUNCTION public.get_my_day_team_summary(uuid, text, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_day_user_summary(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_my_day_user_details(uuid, text, text, int, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.my_day_scope() TO authenticated;
 ```
 
-Dentro de cada bloco, itens agrupados por tipo (Visitas programadas, Retornos, Treinamentos, Próximas ações), máximo 5 por bloco, com contador e "Ver todos".
+Nenhum `CREATE TABLE`, nenhum `ALTER POLICY`, nenhum `UPDATE`/`INSERT` de dados.
 
-## 6. Componentes
+## 3. Filtros da interface
 
-- `ExecutionCards` — recebe `summary.goals`; sem chamadas próprias. Mostra "Diária"/"Semanal", "Faltam X", "Meta atingida", "Sem meta hoje".
-- `PendingBlock` — `title`, `tone` (destrutivo/primário/neutro), lista de grupos, `defaultOpen` (Atrasado = true).
-- `PendingItemRow` — cliente (negrito), data formatada com `formatDateDisplay`, badge de tipo, descrição truncada em 1–2 linhas, horário quando existir; linha clicável.
-- `SeeAllDialog` — Dialog/Sheet com lista paginada (limit 20 + "Carregar mais").
-- Skeletons e estados vazios locais.
+- Supervisor: sem seletor de filial (fixa na própria); filtros de cargo e colaborador limitados à filial.
+- Manager/Admin: filtros de filial, cargo e colaborador.
+- Valores "Todos" são convertidos para `NULL` antes da chamada (padrão do projeto).
 
-## 7. Navegação de cada item
+## 4. Frontend alterado
 
-| Tipo | Destino |
+| Arquivo | Mudança |
 | --- | --- |
-| Visita programada | `/crm?tab=programacao` |
-| Retorno | `/crm?tab=retornos` |
-| Treinamento | `/crm?tab=treinamentos` |
-| Próxima ação (task) | `/dashboard?taskId=<id>` (abre o registro no Funil) — se o Funil ainda não aceitar `taskId`, o fallback é abrir `/dashboard` com busca pré-preenchida |
+| `src/components/myday/MyDayLanding.tsx` | `/` redireciona sempre para `/meu-dia` (remove lógica de primeiro acesso da sessão) |
+| `src/pages/MyDay.tsx` | Abas "Minha visão" / "Minha equipe" (só para supervisor/manager/admin) |
+| `src/components/myday/TeamOverview.tsx` (novo) | KPIs da equipe + tabela por colaborador (cards no mobile) |
+| `src/components/myday/TeamFilters.tsx` (novo) | Filtros filial/cargo/colaborador conforme escopo |
+| `src/components/myday/UserDayDialog.tsx` (novo) | Meu Dia do colaborador em modo somente leitura (sem ações de edição) |
+| `src/hooks/useMyDay.ts` | `useMyDayTeamSummary(filters)` e `useMyDayUserSummary(userId)` (`enabled` apenas ao abrir) |
+| `src/lib/myDay.ts` | Tipos `MyDayTeamSummary`, `MyDayTeamRow` e helpers de escopo |
 
-Nenhuma edição no Meu Dia.
+Reaproveita `ExecutionCards`/`PendingBlock` para o detalhe do colaborador, em modo leitura.
 
-## 8. Mobile
+## 5. Performance
 
-- 1 coluna; cards de execução compactos (número grande, meta em texto pequeno).
-- Blocos empilhados em Accordion: "Atrasado" aberto por padrão; "Hoje" e "Próximos" fechados com contador visível.
-- Itens em cartão vertical (sem tabela, sem scroll horizontal); "Ver todos" abre `Sheet` de baixo para cima.
-- Alvos de toque ≥ 44px.
+- Meu Dia pessoal: 1 chamada (`get_my_day_summary`), inalterada (~0,5 ms).
+- Visão de equipe: 1 única chamada agregada; subqueries por colaborador resolvidas no mesmo plano (sem N chamadas do frontend). Índices já existentes em `tasks(created_by)`, `visit_schedules(seller_id)`, `task_followups(responsible_user_id)`, `trainings(user_id)` são reutilizados; se o `EXPLAIN ANALYZE` mostrar custo alto, reporto antes de criar índice novo.
+- Detalhe de colaborador: só ao clicar na linha; `staleTime` 5 min, sem refetch em foco.
 
-## 9. Estados
+## 6. Validação de acesso fora do escopo (após aplicar)
 
-- **Loading**: skeletons dos 2 cards + 3 blocos (nenhum flash de vazio).
-- **Erro**: card único com mensagem e botão "Tentar novamente" (retry do React Query); erro em "Ver todos" fica contido no dialog.
-- **Vazio total**: "Nada pendente. Sua execução está em dia."
-- **Vazio por bloco**: linha discreta "Nenhum item".
-- **Sem meta**: card mostra apenas realizado.
-
-## 10. Performance
-
-- 1 chamada na abertura (`get_my_day_summary`, medida em ~0,5 ms no servidor).
-- `get_my_day_details` só ao abrir "Ver todos", com `enabled` e `keepPreviousData`.
-- React Query: `staleTime` 5 min, `gcTime` 10 min, `refetchOnWindowFocus: false`, `refetchOnMount: false`; atualização apenas pelo botão "Atualizar".
-- Nenhuma chamada por card.
-
-## 11. Riscos
-
-| Risco | Mitigação |
-| --- | --- |
-| CRM não aceita deep-link de aba | Adicionar `?tab=` (somente UI, default atual preservado) |
-| Funil pode não abrir task por `taskId` | Validar na implementação; fallback = abrir a lista sem quebrar o clique |
-| Redirect da raiz confundir usuários | Redirect só para cargos operacionais; `/dashboard` intacto e no menu |
-| Cargos futuros sem meta | Cards já tratam ausência de meta |
-| PWA em cache antigo | Rota nova; sem impacto em service worker além do build normal |
+1. Operacional chamando `get_my_day_team_summary()` → `42501`.
+2. Supervisor enviando `p_filial_id` de outra filial → retorno restrito à própria filial.
+3. Supervisor chamando `get_my_day_user_summary()` de outra filial → `42501`.
+4. Manager/Admin com filtros de filial/cargo/colaborador → resultados coerentes.
+5. Usuário pendente/rejeitado/inativo → bloqueado em todas as RPCs.
+6. Conferência de que colaborador inativo não aparece na lista de equipe.
+7. Meu Dia pessoal com números idênticos ao baseline atual (208 próximas ações).
