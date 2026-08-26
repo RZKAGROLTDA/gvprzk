@@ -772,17 +772,37 @@ BEGIN
   GET DIAGNOSTICS v_afetadas = ROW_COUNT;
 
   -- ação explícita: o padrão do cliente passa a ser o novo RAC
+  -- e o novo RAC é propagado para TODAS as máquinas ativas do cliente no programa
   IF p_force AND jsonb_array_length(v_conflitos) > 0 THEN
-    UPDATE public.pops_client_assignments ca
-       SET rac_user_id = p_rac_user_id, assigned_by = (SELECT auth.uid())
-     WHERE (ca.program_id, ca.pops_client_code_norm) IN (
-       SELECT m.program_id, r.pops_client_code_norm
-         FROM public.pops_machines m
-         JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
-        WHERE m.id = ANY(p_machine_ids));
+    WITH alvos AS (
+      SELECT DISTINCT m.program_id, r.pops_client_code_norm
+        FROM public.pops_machines m
+        JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
+       WHERE m.id = ANY(p_machine_ids)
+    ), upd_ca AS (
+      UPDATE public.pops_client_assignments ca
+         SET rac_user_id = p_rac_user_id, assigned_by = (SELECT auth.uid())
+       WHERE (ca.program_id, ca.pops_client_code_norm) IN (SELECT program_id, pops_client_code_norm FROM alvos)
+         AND ca.rac_user_id <> p_rac_user_id
+      RETURNING 1
+    )
+    UPDATE public.pops_machines m2
+       SET responsible_user_id = p_rac_user_id
+      FROM public.pops_import_rows r2, alvos a
+     WHERE r2.confirmed_machine_id = m2.id
+       AND m2.program_id = a.program_id
+       AND r2.pops_client_code_norm = a.pops_client_code_norm
+       AND m2.active
+       AND m2.responsible_user_id IS DISTINCT FROM p_rac_user_id;
+    GET DIAGNOSTICS v_propagadas = ROW_COUNT;
   END IF;
 
-  RETURN jsonb_build_object('maquinas_atualizadas', v_afetadas, 'conflitos', v_conflitos, 'forcado', p_force);
+  RETURN jsonb_build_object(
+    'maquinas_atualizadas', v_afetadas,
+    'maquinas_propagadas_cliente', v_propagadas,
+    'conflitos', v_conflitos,
+    'forcado', p_force);
+
 END;
 $$;
 
