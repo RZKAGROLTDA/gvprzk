@@ -821,13 +821,16 @@ CREATE OR REPLACE FUNCTION public.pops_portfolio_clients(
   p_offset     integer DEFAULT 0
 ) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_scope jsonb := public.pops_scope(); v_total bigint; v_rows jsonb;
+DECLARE
+  v_scope  jsonb := public.pops_scope();
+  v_total  bigint;
+  v_rows   jsonb;
+  v_limit  integer := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200);
+  v_offset integer := GREATEST(COALESCE(p_offset, 0), 0);
 BEGIN
   IF (v_scope->>'scope') = 'none' THEN
     RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501';
   END IF;
-
-  CREATE TEMP TABLE IF NOT EXISTS _tmp_noop() ON COMMIT DROP;
 
   WITH base AS (
     SELECT r.pops_client_code_norm,
@@ -857,14 +860,20 @@ BEGIN
              ELSE false
            END
      GROUP BY r.pops_client_code_norm, m.responsible_user_id
+  ), total AS (
+    SELECT count(*)::bigint AS n FROM base
+  ), pagina AS (
+    SELECT * FROM base
+     ORDER BY maquinas DESC, pops_client_code_norm
+     LIMIT v_limit OFFSET v_offset
   )
-  SELECT count(*),
-         COALESCE(jsonb_agg(to_jsonb(b) ORDER BY b.maquinas DESC) FILTER (WHERE true), '[]'::jsonb)
-    INTO v_total, v_rows
-    FROM (SELECT * FROM base ORDER BY maquinas DESC
-           LIMIT GREATEST(COALESCE(p_limit,50),1) OFFSET GREATEST(COALESCE(p_offset,0),0)) b;
+  SELECT (SELECT n FROM total),
+         COALESCE((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.maquinas DESC, p.pops_client_code_norm)
+                     FROM pagina p), '[]'::jsonb)
+    INTO v_total, v_rows;
 
-  RETURN jsonb_build_object('rows', v_rows, 'page_count', v_total);
+  RETURN jsonb_build_object('total', v_total, 'rows', v_rows);
+
 END;
 $$;
 
