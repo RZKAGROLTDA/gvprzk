@@ -10,7 +10,7 @@ const json = (body: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  const expected = Deno.env.get('CLIENTS_MASTER_IMPORT_KEY');
+  const expected = Deno.env.get('POPS_IMPORT_KEY');
   if (!expected || req.headers.get('x-import-key') !== expected) {
     return json({ error: 'unauthorized' }, 401);
   }
