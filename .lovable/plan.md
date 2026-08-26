@@ -739,7 +739,7 @@ CREATE OR REPLACE FUNCTION public.pops_assign_rac_machines(
   p_force       boolean DEFAULT false
 ) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_conflitos jsonb; v_afetadas integer;
+DECLARE v_conflitos jsonb; v_afetadas integer := 0; v_propagadas integer := 0;
 BEGIN
   IF NOT public.pops_is_manager() THEN
     RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501';
