@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseHealth } from '@/hooks/useSupabaseHealth';
 import Dashboard from "./pages/Dashboard";
 import { SalesFunnel } from "./components/SalesFunnel";
+import MyDay from "./pages/MyDay";
+import { MyDayLanding } from "@/components/myday/MyDayLanding";
 import CreateTask from "./pages/CreateTask";
 import CreateFieldVisit from "./pages/CreateFieldVisit";
 import CreateCall from "./pages/CreateCall";
@@ -91,7 +93,8 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   // Approved: show main app routes
   return (
     <Routes>
-      <Route path="/" element={<Layout><SalesFunnel /></Layout>} />
+      <Route path="/" element={<Layout><MyDayLanding /></Layout>} />
+      <Route path="/meu-dia" element={<Layout><ErrorBoundary title="Não foi possível exibir o Meu Dia"><MyDay /></ErrorBoundary></Layout>} />
       <Route path="/dashboard" element={<Layout><SalesFunnel /></Layout>} />
       <Route path="/create-task" element={<Layout><CreateTask /></Layout>} />
       <Route path="/create-field-visit" element={<Layout><CreateFieldVisit /></Layout>} />
