@@ -1,169 +1,289 @@
-# POPS — Auditoria e Arquitetura Proposta
+# POPS — Modelagem Final do Banco (para revisão)
 
-Meta do programa: **1.000 máquinas serviçadas**. Regra imutável: **1 máquina = 1 OS = 1 realizado POPS**.
+Decisões incorporadas. **Nada aplicado**: sem migration, sem alteração de banco, dados ou frontend.
 
-Nada foi alterado: sem migration, sem mudança de banco, dados ou frontend.
+Regra imutável: **1 máquina = 1 serviço = 1 OS = 1 realizado POPS**. Meta inicial **global: 1.000 máquinas serviçadas**.
 
-## 0. O que já existe (auditoria)
+---
 
-- `public.client_equipment`: **19.916 máquinas**, 3.448 clientes, 14 filiais, 19.528 ativas. Já traz cliente, código, filial, tipo, modelo, chassi/série, horímetro, status, validação e histórico de transferência. Serve como fonte única da máquina — POPS não duplica esses dados.
-- Parque de Máquinas: leitura sempre via `get_equipment_park_paginated`; edição liberada para qualquer usuário aprovado/ativo (`can_view_equipment_park`). Nada disso será alterado.
-- Cargos: 14 usuários em `rac`/`cpa`/`csa`. `RAC = CPA = CSA` em permissões, mas o POPS será atribuído **explicitamente por usuário**, então CPA/CSA só entram se receberem carteira (sem premissa de participação).
-- Escopo por cargo já resolvido em outros módulos por funções como `my_day_scope()` / `get_supervisor_filial_id()` — o POPS reaproveita o mesmo padrão.
-- Já existe "Oportunidades Potenciais" (checklists) — módulo distinto, não será misturado.
+## D) Enums necessários
 
-## 1. Arquitetura recomendada
+```sql
+-- status da máquina no programa
+create type public.pops_machine_status as enum ('foco','em_andamento','servicada');
 
-Módulo próprio, isolado: rota `/pops`, tabelas `pops_*`, RPCs `pops_*`. Zero acoplamento com Tarefas, Meu Dia, Programa de Visitas, Retornos, Checklists e Funil. Não cria task por máquina.
+-- motivo quando a máquina não é localizada na execução
+create type public.pops_not_found_reason as enum
+  ('nao_localizada','vendida','transferida','fora_da_regiao','outro');
 
-Modelo em 3 camadas:
-1. **Programa + base**: quais máquinas participam e de quem é cada uma.
-2. **Execução**: o que aconteceu na máquina (visita, validação, amostra) + oportunidades comerciais.
-3. **Fechamento**: a OS — única coisa que transforma a máquina em "serviçada".
+-- interesse do cliente na oportunidade
+create type public.pops_interest as enum ('interessado','nao_interessado','sem_resposta');
 
-## 2. Tabelas novas
+-- situação da OS POPS
+create type public.pops_work_order_status as enum ('ativa','cancelada');
 
-| Tabela | Função |
-|---|---|
-| `pops_programs` | O programa (nome, meta = 1000, período, ativo). Permite POPS 2027 no futuro. |
-| `pops_services` | Os 3 serviços configuráveis (nome, código, ordem, ativo). Nomes cadastrados pela gestão — nada hardcoded. |
-| `pops_machines` | A base POPS: `program_id` + `equipment_id` (FK `client_equipment.id`), RAC responsável, status, `last_activity_at`. **UNIQUE (program_id, equipment_id)**. |
-| `pops_executions` | Cada passagem do RAC na máquina: localizada, validada, data execução, horímetro, amostra sim/não, data coleta, observação. Append-only (histórico). |
-| `pops_opportunities` | Oportunidade por máquina + serviço: identificado, ofertado, interesse (interessado / não interessado / sem resposta), observação. |
-| `pops_work_orders` | OS manual: número, data abertura, RAC, máquina POPS, serviço relacionado, observação, `attachments` (preparado para evidência futura). **UNIQUE (program_id, pops_machine_id)** e UNIQUE do número por programa. |
-| `pops_machine_events` | Trilha de auditoria: quem, quando, o que mudou (jsonb), tipo de evento. Nunca sobrescrito. |
-
-Campos comuns: `created_by`, `created_at`, `updated_at` + trigger de `updated_at`. Todas com `GRANT` explícito + RLS.
-
-## 3. Relacionamento com client_equipment
-
-`pops_machines.equipment_id → client_equipment.id` (`ON DELETE RESTRICT`). Nenhum dado de máquina é copiado; cliente/modelo/chassi/horímetro/filial vêm sempre por join na leitura. `client_equipment` não recebe coluna nova, trigger nova nem mudança de RLS — Parque de Máquinas segue idêntico.
-
-Exceção pragmática: gravar `client_code` e `filial_id` desnormalizados em `pops_machines` **apenas como colunas de recorte de performance/RLS**, preenchidas na entrada da máquina e atualizáveis por RPC (não fonte de verdade).
-
-## 4. Como a base POPS é criada (opção C — as duas)
-
-- **A) Seleção no app**: tela "Base POPS" (admin/manager) filtra o Parque (filial, tipo, cliente, status) e adiciona as máquinas selecionadas ao programa.
-- **B) Importação por planilha**: colunas `client_code`, `serial_chassis`, `model` (opcional `filial`, `rac_email`). Matching por chassi normalizado primeiro, depois código do cliente + modelo. Retorna relatório: inseridas / já existentes / não encontradas / ambíguas. Máquinas não encontradas **não** são criadas automaticamente no Parque nesta etapa — vão para uma lista de pendência para decisão.
-- Anti-duplicidade: `UNIQUE (program_id, equipment_id)` + `ON CONFLICT DO NOTHING`, tornando a importação idempotente e reexecutável.
-
-## 5. Atribuição de máquinas aos RACs
-
-Campo `pops_machines.responsible_user_id`. Formas de atribuir:
-- em lote por filtro (filial / cliente / tipo) na tela de gestão;
-- via coluna `rac_email` na planilha;
-- individualmente na linha da máquina.
-Máquina sem RAC fica no bucket "Não atribuídas", visível para gestão. Reatribuição gera evento em `pops_machine_events` (histórico preservado).
-
-## 6. Carteira do RAC
-
-Duas visões da mesma RPC paginada:
-- **Por cliente (padrão)**: cliente → nº de máquinas POPS, pendentes, serviçadas. Expandir mostra as máquinas. É a visão de "onde eu preciso ir".
-- **Por máquina**: tabela plana com cliente, código, filial, tipo, modelo, chassi, horímetro, status POPS, última movimentação.
-
-Busca por cliente, código do cliente, modelo, chassi/série e filial (filial só quando o cargo permite). Filtros rápidos: Pendentes / Trabalhadas / Serviçadas.
-
-## 7. Fluxo operacional (simplificado)
-
-Status persistidos em `pops_machines.status` — apenas **4**:
-
-```text
-FOCO  →  EM ANDAMENTO  →  OS ABERTA  →  SERVICADA
+-- tipos de evento do histórico
+create type public.pops_event_type as enum (
+  'machine_added','machine_removed','rac_assigned','rac_reassigned',
+  'execution_registered','opportunity_registered','opportunity_updated',
+  'work_order_created','work_order_updated','work_order_cancelled',
+  'status_changed','transfer_divergence'
+);
 ```
 
-Visitada, validada, amostra coletada e oportunidade identificada **não são status** — são eventos/campos (`pops_executions`, `pops_opportunities`), exibidos como selos na linha da máquina. Isso evita 7 status e mantém o RAC com decisão binária: registrei execução? registrei OS?
+---
 
-- Primeiro registro de execução → `EM ANDAMENTO`.
-- OS registrada → `OS ABERTA` e, sendo a OS a validação final, imediatamente `SERVICADA` (mantidos como dois status para permitir, no futuro, exigir conferência antes de contar).
+## A/B/C) Tabelas, campos, tipos e constraints
 
-## 8. Serviços configuráveis
+### 1. `public.pops_programs`
 
-`pops_services` alimenta o formulário e os filtros. Cadastro pela gestão (nome, ativo, ordem). Frontend nunca lista nomes fixos; se houver 0 serviços cadastrados o bloco de oportunidades aparece desabilitado com aviso. Alterar nome de serviço não reescreve histórico (referência por `service_id`).
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `name` | text NOT NULL | ex.: "POPS 2026" |
+| `goal_machines` | integer NOT NULL DEFAULT 1000 | meta global; trigger exige `> 0` |
+| `start_date` / `end_date` | date | `end_date >= start_date` (trigger) |
+| `active` | boolean NOT NULL DEFAULT true | apenas 1 ativo (índice único parcial) |
+| `created_by`, `created_at`, `updated_at` | uuid / timestamptz | |
 
-## 9. Regra técnica 1 máquina = 1 realizado
+`UNIQUE (name)`; `CREATE UNIQUE INDEX ... ON pops_programs (active) WHERE active` (garante um único programa ativo).
 
-- `pops_work_orders` com **UNIQUE (program_id, pops_machine_id)** — o banco impede a segunda OS na mesma máquina do mesmo programa.
-- Todos os KPIs de "serviçadas" contam `COUNT(DISTINCT pops_machine_id)` em `pops_work_orders`, nunca linhas de oportunidade ou execução.
-- Oportunidades e execuções são N por máquina, mas não influenciam a meta.
-- Nada de visita/validação/amostra conta como serviçada.
+Sem meta individual por RAC/filial nesta etapa.
 
-## 10. Proteção contra duplicidade
+### 2. `public.pops_services`
 
-Camadas: UNIQUE de máquina no programa; UNIQUE de OS por máquina; UNIQUE de número de OS por programa; matching normalizado do chassi na importação; `ON CONFLICT DO NOTHING`; toda escrita por RPC `SECURITY DEFINER` com validação de escopo (nada de INSERT direto do cliente em tabelas de meta).
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `code` | text NOT NULL | slug estável, imutável após uso |
+| `name` | text NOT NULL | configurável pela gestão |
+| `sort_order` | integer NOT NULL DEFAULT 0 | |
+| `active` | boolean NOT NULL DEFAULT true | |
+| `created_by`, `created_at`, `updated_at` | | |
 
-## 11. Registro manual da OS
+`UNIQUE (code)`, `UNIQUE (name)`. Nenhum nome de serviço no código do app. Renomear não afeta histórico (referência por `id`).
 
-Campos: número da OS (obrigatório), data de abertura (obrigatória, não futura), RAC responsável (default = usuário), máquina POPS, cliente (derivado), serviço relacionado (opcional, de `pops_services`), observação, `attachments jsonb` reservado para evidência futura. Sem integração com o sistema de OS nesta etapa.
+### 3. `public.pops_machines` (a base POPS)
 
-## 12. Histórico e auditoria
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `program_id` | uuid NOT NULL → `pops_programs.id` ON DELETE RESTRICT | |
+| `equipment_id` | uuid NOT NULL → `client_equipment.id` ON DELETE RESTRICT | fonte única da máquina |
+| `responsible_user_id` | uuid NULL | RAC; NULL = "não atribuída" |
+| `status` | `pops_machine_status` NOT NULL DEFAULT `'foco'` | derivado por trigger, nunca pelo cliente |
+| `client_code` | text | snapshot de recorte (performance/RLS), não fonte de verdade |
+| `filial_id` | uuid → `filiais.id` | idem |
+| `transfer_divergence` | boolean NOT NULL DEFAULT false | máquina transferida no Parque após entrar no POPS |
+| `transfer_divergence_at` | timestamptz | |
+| `last_activity_at` | timestamptz | última movimentação POPS |
+| `source` | text | `'manual'` \| `'import'` |
+| `import_batch_id` | uuid | rollback/auditoria da carga |
+| `notes` | text | |
+| `created_by`, `created_at`, `updated_at` | | |
 
-`pops_machine_events` grava: entrada na base, atribuição/reatribuição de RAC, cada execução, cada oportunidade, registro/correção de OS e a transição para SERVICADA — com autor, timestamp e payload jsonb. `pops_executions` é append-only. Correção de OS não apaga a anterior: registra evento de correção com valor antigo e novo.
+**`UNIQUE (program_id, equipment_id)`** — impede a mesma máquina duas vezes no mesmo programa.
 
-## 13. KPIs do RAC
+### 4. `public.pops_executions` (append-only)
 
-Máquinas atribuídas, pendentes, trabalhadas hoje, trabalhadas na semana, amostras coletadas, oportunidades identificadas, OS abertas, máquinas serviçadas, % concluído da carteira. Acima dos KPIs, um bloco "O que fazer hoje": clientes com máquinas pendentes ordenados por volume.
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `pops_machine_id` | uuid NOT NULL → `pops_machines.id` ON DELETE RESTRICT | |
+| `executed_at` | date NOT NULL | não futura (trigger) |
+| `located` | boolean NOT NULL | máquina localizada sim/não |
+| `not_found_reason` | `pops_not_found_reason` NULL | obrigatório quando `located = false`; proibido quando `true` (trigger) |
+| `validated` | boolean NOT NULL DEFAULT false | só permitido quando `located` |
+| `hours` | numeric NULL | horímetro; `>= 0` |
+| `sample_collected` | boolean NOT NULL DEFAULT false | só permitido quando `located` |
+| `sample_date` | date NULL | obrigatória quando `sample_collected`; não futura |
+| `observation` | text | |
+| `created_by` NOT NULL, `created_at`, `updated_at` | | |
 
-## 14. KPIs gerenciais
+Sem UPDATE/DELETE pelo app (RLS): correção se faz por nova execução. Qualquer execução — inclusive "não localizada" — marca a máquina como **TRABALHADA**, mas nunca como serviçada.
 
-Bloco de meta: META 1.000 / SERVIÇADAS X / FALTAM X / ATINGIMENTO X%. Mais: máquinas foco, trabalhadas, amostras, oportunidades, OS abertas, serviçadas. Recortes: Hoje, Semana, Mês, Acumulado; e por RAC, Filial, Cliente e Serviço.
+### 5. `public.pops_opportunities`
 
-## 15. Acompanhamento diário e ritmo
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `pops_machine_id` | uuid NOT NULL → `pops_machines.id` ON DELETE RESTRICT | |
+| `execution_id` | uuid NULL → `pops_executions.id` | execução que originou |
+| `service_id` | uuid NOT NULL → `pops_services.id` ON DELETE RESTRICT | |
+| `identified` | boolean NOT NULL DEFAULT true | |
+| `offered` | boolean NOT NULL DEFAULT false | |
+| `interest` | `pops_interest` NOT NULL DEFAULT `'sem_resposta'` | |
+| `observation` | text | |
+| `created_by`, `created_at`, `updated_at` | | |
 
-Série diária de máquinas serviçadas (data da OS) + linha de ritmo necessário: `(1000 − serviçadas) / dias úteis restantes`, com comparação entre ritmo realizado e ritmo requerido e projeção de chegada. Tabela de produtividade por RAC: atribuídas, pendentes, trabalhadas, amostras, oportunidades, OS, serviçadas, % da carteira, última atividade — com drill-down RAC → Clientes → Máquinas → situação.
+`UNIQUE (pops_machine_id, service_id)` — uma linha por serviço por máquina, atualizável. N oportunidades não somam na meta.
 
-## 16. Permissões
+### 6. `public.pops_work_orders` (a OS — validação final)
 
-| Cargo | Escopo |
-|---|---|
-| RAC (e CPA/CSA que receberem carteira) | Vê e trabalha **apenas** as máquinas POPS atribuídas a si. |
-| Supervisor | Leitura do POPS dos RACs da própria filial. |
-| Manager / Admin | Visão global + gestão da base, atribuições e serviços. |
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `program_id` | uuid NOT NULL → `pops_programs.id` | redundante por design, viabiliza os UNIQUEs |
+| `pops_machine_id` | uuid NOT NULL → `pops_machines.id` ON DELETE RESTRICT | **obrigatório** |
+| `service_id` | uuid NOT NULL → `pops_services.id` ON DELETE RESTRICT | **obrigatório** |
+| `os_number` | text NOT NULL | normalizado (trim/upper) por trigger |
+| `os_date` | date NOT NULL | não futura |
+| `responsible_user_id` | uuid NOT NULL | preenchido pela RPC (RAC da máquina / autor) |
+| `status` | `pops_work_order_status` NOT NULL DEFAULT `'ativa'` | |
+| `observation` | text | |
+| `attachments` | jsonb NOT NULL DEFAULT `'[]'` | reservado para evidência futura |
+| `cancelled_by`, `cancelled_at`, `cancel_reason` | uuid / timestamptz / text | obrigatórios quando `status = 'cancelada'` |
+| `created_by` NOT NULL, `created_at`, `updated_at` | | |
 
-Validação sempre no banco (função `pops_scope()` no mesmo padrão de `my_day_scope()`), não no frontend. RLS apenas nas novas tabelas `pops_*`; **nenhuma policy existente é alterada**.
+Constraints de unicidade (índices únicos parciais, considerando apenas OS ativas):
+```sql
+CREATE UNIQUE INDEX pops_wo_one_active_per_machine
+  ON public.pops_work_orders (program_id, pops_machine_id) WHERE status = 'ativa';
+CREATE UNIQUE INDEX pops_wo_number_unique_per_program
+  ON public.pops_work_orders (program_id, upper(btrim(os_number))) WHERE status = 'ativa';
+```
+A primeira é a garantia técnica de **1 máquina = no máximo 1 realizado**. A segunda impede número de OS duplicado no programa. O escopo `WHERE status='ativa'` permite, após cancelamento, registrar nova OS na mesma máquina sem apagar histórico.
 
-## 17. RPCs necessárias
+### 7. `public.pops_machine_events` (histórico, nunca sobrescrito)
 
-- `pops_get_my_portfolio(p_group_by, p_search, p_status, p_page, p_size)` — carteira paginada (por cliente ou máquina).
-- `pops_get_my_kpis()` — KPIs do RAC.
-- `pops_get_client_machines(p_client_code)` — máquinas POPS do cliente na execução em campo.
-- `pops_register_execution(...)` — execução + eventos + transição de status.
-- `pops_register_opportunities(...)` — oportunidades da máquina.
-- `pops_register_work_order(...)` — OS, unicidade e marcação de SERVICADA.
-- `pops_get_dashboard(p_period, p_filial_id, p_rac_id, p_service_id)` — KPIs gerenciais + série diária + ritmo.
-- `pops_get_rac_productivity(...)` — tabela de produtividade.
-- `pops_get_machine_history(p_pops_machine_id)` — trilha completa.
-- `pops_admin_add_machines(...)` / `pops_admin_assign_rac(...)` — gestão da base.
-- Importação de planilha: Edge Function `pops-import-machines` (lotes, matching, relatório), no padrão de `import-clients-master`.
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `pops_machine_id` | uuid NOT NULL → `pops_machines.id` ON DELETE RESTRICT | |
+| `event_type` | `pops_event_type` NOT NULL | |
+| `actor_user_id` | uuid | `auth.uid()` |
+| `old_values` / `new_values` | jsonb | correções gravam anterior e novo |
+| `description` | text | |
+| `created_at` | timestamptz NOT NULL DEFAULT now() | |
 
-## 18. Frontend
+Somente INSERT (via RPCs/triggers). Sem UPDATE/DELETE pelo app.
 
-- `src/pages/Pops.tsx` — abas: Minha Carteira | Painel | Gestão (por cargo).
-- `src/components/pops/PopsPortfolio.tsx`, `PopsClientGroup.tsx`, `PopsMachineRow.tsx`.
-- `PopsExecutionDialog.tsx` (execução + amostra), `PopsOpportunitiesBlock.tsx`, `PopsWorkOrderDialog.tsx`.
-- `PopsRacKpis.tsx`, `PopsDashboard.tsx` (meta + ritmo + série diária), `PopsProductivityTable.tsx`, `PopsMachineHistory.tsx`.
-- Gestão: `PopsBaseManager.tsx` (seleção do Parque), `PopsImportDialog.tsx`, `PopsServicesSettings.tsx`.
-- Hooks: `src/hooks/usePops.ts`; utilitários e tipos em `src/lib/pops.ts`.
-- Menu lateral: novo item "POPS". Reaproveita `roles.ts`, `parseLocalDate/formatDateDisplay`, React Query com staleTime 5–10 min e `refetchOnWindowFocus: false`.
+### 8. `public.pops_import_pendencies`
 
-## 19. Performance
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | uuid PK | |
+| `program_id` | uuid NOT NULL → `pops_programs.id` | |
+| `import_batch_id` | uuid NOT NULL | |
+| `client_code`, `client_name`, `model`, `serial_chassis`, `filial_raw`, `rac_email` | text | linha crua da planilha |
+| `reason` | text NOT NULL | `'not_found'` \| `'ambiguous'` \| `'already_in_program'` \| `'invalid_row'` |
+| `candidates` | jsonb | ids de `client_equipment` candidatos no caso ambíguo |
+| `resolved` | boolean NOT NULL DEFAULT false | |
+| `resolved_by`, `resolved_at`, `resolution_note` | | |
+| `created_at`, `updated_at` | | |
 
-Nenhuma leitura de base completa no frontend. Tudo por RPC paginada com agregação no banco (padrão já validado no Parque de Máquinas e no Meu Dia). Sem `count: 'exact'` em páginas subsequentes. Índices previstos: `pops_machines(program_id, responsible_user_id, status)`, `pops_machines(program_id, client_code)`, `pops_machines(equipment_id)`, `pops_work_orders(program_id, created_at)`, `pops_executions(pops_machine_id, executed_at)`. Nenhum índice novo em `client_equipment` sem antes validar com `EXPLAIN ANALYZE`.
+Máquina não encontrada **nunca** é criada em `client_equipment`. Fica aqui, com motivo, para revisão da gestão.
 
-## 20. Riscos e decisões pendentes
+---
 
-1. **Nomes dos 3 serviços** — ficam pendentes de cadastro; estrutura já aceita.
-2. **Máquina da planilha sem correspondência no Parque** — criar no Parque automaticamente ou deixar pendente? (proposta: pendente, com aprovação).
-3. **CPA/CSA** — participam do POPS? (proposta: só se receberem carteira).
-4. **Máquina do POPS transferida para outro cliente** no Parque — mantém no programa e no mesmo RAC, ou realoca? (proposta: mantém, registra evento e sinaliza para gestão).
-5. **OS abre = serviçada imediatamente?** (proposta: sim; a separação de status deixa a porta aberta para conferência).
-6. **A meta de 1.000 é global ou distribuída por RAC/filial?** (proposta: global agora, com campo de meta individual previsto).
-7. **Cancelamento/estorno de OS** — quem pode e o que acontece com a contagem? (proposta: apenas manager/admin, com evento e reversão de status).
-8. **Base maior que a meta**: se a base POPS tiver mais de 1.000 máquinas, o atingimento é sobre 1.000 (meta), e a carteira mostra % sobre a própria carteira.
+## E) Regra de status (derivada, nunca escrita pelo cliente)
 
-## Etapas de implementação sugeridas
+```text
+FOCO           nenhuma execução POPS registrada
+EM_ANDAMENTO   >= 1 execução registrada e nenhuma OS ativa
+SERVICADA      existe OS POPS com status = 'ativa'
+```
 
-1. Banco: tabelas, RLS, `pops_scope()`, serviços e programa inicial.
-2. Base POPS: seleção no app + importação por planilha + atribuição de RAC.
-3. Carteira e execução do RAC (mobile-first).
-4. Painel do RAC e painel gerencial com ritmo da meta.
-5. Histórico, produtividade e exportação Excel.
+Sem `OS_ABERTA`: a existência da OS ativa já é a abertura e torna a máquina SERVICADA.
+
+Implementação: função `pops_recalc_machine_status(p_pops_machine_id)` chamada por triggers `AFTER INSERT` em `pops_executions` e `AFTER INSERT/UPDATE` em `pops_work_orders`. Ela reavalia os fatos e grava `status` + `last_activity_at`. Execução com `located = false` gera EM_ANDAMENTO (trabalhada), nunca SERVICADA.
+
+## F) Regra da OS
+
+Criação exige: `pops_machine_id`, `service_id`, `os_number`, `os_date` (não futura). `responsible_user_id` e `created_by` vêm de `auth.uid()`/RAC da máquina, nunca do payload. RPC valida escopo (o RAC só registra OS da própria carteira), rejeita máquina com OS ativa (`23505` traduzido em mensagem clara) e número duplicado no programa. Grava evento `work_order_created` e recalcula status → SERVICADA.
+
+## G) Regra de cancelamento e correção
+
+- **Cancelar**: só `admin`/`manager` (via `has_role`). `UPDATE` para `status='cancelada'` + `cancelled_by/at/reason`. Evento `work_order_cancelled` com `old_values`. Recalculo devolve a máquina a **EM_ANDAMENTO** e todos os KPIs, contando apenas OS ativas, se ajustam automaticamente.
+- **Nunca DELETE**: RLS sem policy de DELETE para ninguém.
+- **Correção** de número/data/serviço: RPC `pops_update_work_order` grava evento `work_order_updated` com `old_values` e `new_values`. RAC pode corrigir a própria OS ativa apenas dentro de uma janela curta (proposta: 48h); depois, só gestão. RAC **nunca** cancela.
+
+## H) RLS proposta (somente nas tabelas `pops_*`; nenhuma policy existente é alterada)
+
+Função central, no padrão de `my_day_scope()`:
+```sql
+public.pops_scope() -> jsonb  -- { scope: 'self'|'filial'|'global', filial_id, is_manager }
+public.pops_can_read_machine(p_pops_machine_id uuid) -> boolean
+public.pops_can_write_machine(p_pops_machine_id uuid) -> boolean
+```
+Ambas `SECURITY DEFINER`, `STABLE`, `SET search_path = public`, exigindo `approval_status='approved'` e `employment_status='active'`.
+
+| Tabela | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `pops_programs` | autenticado aprovado/ativo | admin/manager | admin/manager | — |
+| `pops_services` | autenticado aprovado/ativo | admin/manager | admin/manager | — |
+| `pops_machines` | `pops_can_read_machine` (self / filial / global) | admin/manager | admin/manager (atribuição, notas, divergência) | admin/manager |
+| `pops_executions` | leitura pelo escopo da máquina | `pops_can_write_machine` + `created_by = auth.uid()` | — | — |
+| `pops_opportunities` | escopo da máquina | `pops_can_write_machine` | `pops_can_write_machine` | — |
+| `pops_work_orders` | escopo da máquina | `pops_can_write_machine` + `created_by = auth.uid()` | admin/manager (e autor dentro da janela) | — |
+| `pops_machine_events` | escopo da máquina | somente RPC/trigger (definer) | — | — |
+| `pops_import_pendencies` | admin/manager | admin/manager | admin/manager | admin/manager |
+
+Escopo por cargo: **RAC** = apenas `responsible_user_id = auth.uid()`; **Supervisor** = leitura das máquinas da própria filial; **Manager/Admin** = global + gestão. **CPA/CSA** não entram automaticamente — a estrutura suporta atribuição futura (basta receberem carteira), mas nenhuma policy os inclui como grupo agora.
+
+GRANTs por tabela: `GRANT SELECT, INSERT, UPDATE ON ... TO authenticated` (conforme a linha acima), `GRANT ALL ... TO service_role`, sem `anon`.
+
+## I) RPCs finais
+
+Leitura:
+- `pops_get_my_kpis(p_program_id uuid default null)` → jsonb: atribuídas, pendentes (FOCO), trabalhadas, trabalhadas_hoje, trabalhadas_semana, amostras, oportunidades, os_ativas, serviçadas, `pct_carteira`.
+- `pops_get_portfolio(p_group_by text, p_search text, p_status text, p_client_code text, p_filial_id uuid, p_rac_id uuid, p_page int, p_size int)` → carteira paginada, agrupada por **cliente (padrão)** ou por máquina; respeita escopo automaticamente.
+- `pops_get_client_machines(p_client_code text)` → máquinas POPS do cliente para a execução em campo.
+- `pops_get_machine_detail(p_pops_machine_id uuid)` → máquina + execuções + oportunidades + OS + eventos.
+- `pops_get_dashboard(p_period text, p_filial_id uuid, p_rac_id uuid, p_service_id uuid)` → meta 1.000, serviçadas, faltam, atingimento, foco/trabalhadas/amostras/oportunidades/OS, série diária de serviçadas (por `os_date`) e ritmo necessário.
+- `pops_get_rac_productivity(p_period text, p_filial_id uuid)` → tabela por RAC (atribuídas, pendentes, trabalhadas, amostras, oportunidades, OS, serviçadas, % carteira, última atividade).
+
+Escrita (todas `SECURITY DEFINER` + validação de escopo + evento no histórico):
+- `pops_register_execution(...)` — valida `located`/`not_found_reason`/amostra e recalcula status.
+- `pops_upsert_opportunity(p_pops_machine_id, p_service_id, p_identified, p_offered, p_interest, p_observation)`.
+- `pops_register_work_order(p_pops_machine_id, p_service_id, p_os_number, p_os_date, p_observation)`.
+- `pops_update_work_order(p_work_order_id, ...)` — correção com histórico.
+- `pops_cancel_work_order(p_work_order_id, p_reason)` — admin/manager.
+- `pops_admin_add_machines(p_program_id, p_equipment_ids uuid[], p_rac_id)` — `ON CONFLICT DO NOTHING`.
+- `pops_admin_assign_rac(p_pops_machine_ids uuid[], p_rac_id)`.
+- `pops_admin_resolve_pendency(p_pendency_id, p_equipment_id, p_note)`.
+- `pops_detect_transfer_divergences(p_program_id)` — compara `client_equipment.client_code` com o snapshot, marca `transfer_divergence` e gera evento. Não remove do POPS, não reatribui RAC.
+
+Importação: Edge Function `pops-import-machines` (lotes ≤ 1.000, matching por chassi normalizado → depois código do cliente + modelo), gravando em `pops_machines` ou em `pops_import_pendencies`, com relatório: inseridas / já existentes / não encontradas / ambíguas.
+
+`REVOKE EXECUTE ... FROM PUBLIC, anon` em todas; `GRANT EXECUTE ... TO authenticated`.
+
+## J) Índices
+
+```sql
+pops_machines (program_id, responsible_user_id, status)
+pops_machines (program_id, client_code)
+pops_machines (program_id, filial_id, status)
+pops_machines (equipment_id)
+pops_machines (program_id, transfer_divergence) WHERE transfer_divergence
+pops_executions (pops_machine_id, executed_at DESC)
+pops_executions (created_by, executed_at DESC)
+pops_executions (pops_machine_id) WHERE sample_collected
+pops_opportunities (pops_machine_id)
+pops_opportunities (service_id)
+pops_work_orders (program_id, os_date) WHERE status = 'ativa'
+pops_work_orders (responsible_user_id, os_date) WHERE status = 'ativa'
+pops_work_orders (pops_machine_id)
+pops_machine_events (pops_machine_id, created_at DESC)
+pops_import_pendencies (program_id, resolved)
+```
+Mais os dois índices únicos parciais da seção 6. Nenhum índice novo em `client_equipment` — e, se algum se mostrar necessário, só após `EXPLAIN ANALYZE`.
+
+## K) Sequência das migrations
+
+1. **M1 — Fundação**: enums, `pops_programs`, `pops_services`, GRANTs, RLS, `pops_scope()`. Sem dados de negócio (programa e serviços são cadastrados depois, via run_sql/tela).
+2. **M2 — Base POPS**: `pops_machines`, `pops_import_pendencies`, helpers `pops_can_read_machine` / `pops_can_write_machine`, RLS, índices.
+3. **M3 — Execução**: `pops_executions`, `pops_opportunities`, `pops_machine_events`, triggers de validação e `pops_recalc_machine_status`.
+4. **M4 — OS**: `pops_work_orders`, índices únicos parciais, triggers de recálculo e histórico.
+5. **M5 — RPCs de escrita**: execução, oportunidade, OS (criar/corrigir/cancelar), gestão da base e divergências.
+6. **M6 — RPCs de leitura**: KPIs, carteira, dashboard, produtividade, detalhe/histórico. `EXPLAIN ANALYZE` de cada uma antes de encerrar.
+7. **Fora de migration**: Edge Function `pops-import-machines` e o frontend (`/pops`), em etapas seguintes.
+
+---
+
+## Pontos que ainda dependem de você
+
+1. Nomes e códigos dos **3 serviços** (necessários para o cadastro inicial em `pops_services`).
+2. `start_date` / `end_date` do programa "POPS 2026".
+3. Janela de autocorreção da OS pelo RAC: **48h** é aceitável?
+4. Supervisor: apenas leitura, ou também pode registrar execução/OS na filial? (proposta: somente leitura)
