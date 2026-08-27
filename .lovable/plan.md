@@ -1,238 +1,292 @@
-# POPS — Migration corretiva estrutural (final, não aplicada)
+# POPS — Materialização do universo (5.077) + Carteira (revisão, não aplicada)
 
-Escopo: **somente estrutura**. Não materializa as 5.077 máquinas. RPCs de confirmação e carteira virão em etapa separada para aprovação.
+Lote real: `ce3e1353-…` / programa `3d7708db-…`, 5.077 linhas, status `rascunho`.
 
-## Auditoria final — Nome Cliente (base real, 1 lote)
+Auditoria atual do lote:
 
-| Métrica | Resultado |
+| Métrica | Valor |
 | --- | --- |
-| Total de linhas | 5.077 |
-| Com nome de cliente preenchido | 4.939 (97,3%) |
-| Sem nome de cliente | 138 (2,7%) |
-| Nomes normalizados distintos | 1.681 |
-| Máquinas que ficariam sem `client_key` por nome | 138 |
-| Nomes normalizados presentes em mais de um Dealer Location | 142 |
-| Máquinas envolvidas nesses 142 nomes | 1.220 |
+| Linhas | 5.077 |
+| Sem serial | 0 |
+| `matched_equipment_id` preenchido | 0 (matching ainda não rodou) |
+| Linhas de São Félix do Araguaia | 306 |
 
-Exemplos de mesmo nome em locais diferentes:
+Consequência: se confirmar agora, as 5.077 entram com `link_status = 'sem_vinculo'`. O vínculo com o Parque é opcional e pode ser feito depois (rodar `pops_match_import_batch` antes da confirmação, ou vincular linha a linha; a materialização não depende disso).
 
-| Nome normalizado | Locais | Máquinas |
-| --- | --- | --- |
-| CANISIOFROELICH | Barra do Garças, Porto Alegre do Norte, Querência, São Félix do Araguaia, São José do Xingu | 90 |
-| ROMEUFROELICH | Barra do Garças, Porto Alegre do Norte, Querência, São Félix do Araguaia, São José do Xingu | 82 |
-| BOM FUTURO | Canarana, Querência | 75 |
-| ATVOS | Alto Taquari, Mineiros | 35 |
-| JOSERICARDOREZEK | Água Boa, Barra do Garças, Canarana, Gaúcha do Norte, Querência, São Félix do Araguaia | 29 |
-| BERNARDUSHUBERTUSSCHOLTEN | Alto Taquari, Mineiros, Planalto Verde | 29 |
-| RZK RENTAL | Água Boa, Alto Taquari, Canarana, Gaúcha do Norte, Porto Alegre do Norte, Querência | 22 |
+## 0) Ajuste obrigatório em `pops_scope()`
 
-Conclusão: `client_key = 'N:' || pops_client_name_norm` juntaria indevidamente 1.220 máquinas de 142 nomes que operam em filiais diferentes — a carteira de um RAC mostraria máquinas fora da filial dele dentro do mesmo grupo de cliente.
-
-## Definição final de `client_key`
-
-Chave = localização + nome normalizado, sem consultar `pops_import_rows` e sem lógica dinâmica sobre o código:
-
-```
-client_key = 'L:' || pops_norm_place(pops_dealer_location) || '|N:' || pops_client_name_norm     -- com nome
-client_key = 'S:' || pops_serial_norm                                                            -- sem nome (138 linhas)
-```
-
-- deriva apenas de colunas da própria linha (determinístico, sem subquery);
-- `pops_client_code` / `pops_client_code_norm` ficam só como informação da base, com o índice pedido;
-- as 138 máquinas sem nome viram um grupo próprio por serial, portanto nenhuma máquina fica sem `client_key`;
-- o índice `pops_machines_client_key_idx` é mantido;
-- Dealer Location → filial, pendência de São Félix e unicidade vitalícia permanecem exatamente como aprovado.
-
-Se você preferir estritamente `'N:' || pops_client_name_norm`, é uma troca de uma linha no trigger — mas aceitando a junção dos 142 nomes acima.
-
-
-## SQL final da migration corretiva
+Hoje `pops_scope()` devolve `self` para `rac` e **`none` para `cpa`/`csa`** — com a carteira por filial isso deixaria CPA/CSA sem nenhum dado e o RAC fora da regra aprovada. Correção mínima:
 
 ```sql
--- A) Normalização de nomes de local/cliente
-CREATE OR REPLACE FUNCTION public.pops_norm_place(p text)
-RETURNS text LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public AS $$
-  SELECT nullif(upper(btrim(regexp_replace(
-    translate(p,'áàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ','aaaaeeiooouucAAAAEEIOOOUUC'),
-    '\s+',' ','g'))),'')
-$$;
-
--- B) Mapeamento Dealer Location -> filial operacional (POPS não altera public.filiais)
-CREATE TABLE public.pops_location_mapping (
-  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  dealer_location      text NOT NULL,
-  dealer_location_norm text NOT NULL,
-  filial_id            uuid REFERENCES public.filiais(id),
-  active               boolean NOT NULL DEFAULT true,
-  created_at           timestamptz NOT NULL DEFAULT now(),
-  updated_at           timestamptz NOT NULL DEFAULT now()
-);
-CREATE UNIQUE INDEX pops_location_mapping_norm_uidx
-  ON public.pops_location_mapping (dealer_location_norm);
-
-REVOKE ALL ON public.pops_location_mapping FROM PUBLIC;
-REVOKE ALL ON public.pops_location_mapping FROM anon;
-GRANT SELECT, INSERT, UPDATE ON public.pops_location_mapping TO authenticated;
-GRANT ALL ON public.pops_location_mapping TO service_role;
-ALTER TABLE public.pops_location_mapping ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY pops_location_mapping_select ON public.pops_location_mapping
-  FOR SELECT TO authenticated USING (true);
-
-CREATE POLICY pops_location_mapping_insert ON public.pops_location_mapping
-  FOR INSERT TO authenticated
-  WITH CHECK (public.pops_is_manager());
-
-CREATE POLICY pops_location_mapping_update ON public.pops_location_mapping
-  FOR UPDATE TO authenticated
-  USING (public.pops_is_manager())
-  WITH CHECK (public.pops_is_manager());
-
-CREATE TRIGGER pops_location_mapping_updated_at
-  BEFORE UPDATE ON public.pops_location_mapping
-  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
--- Seed: 12 locais com correspondência exata; SAO FELIX DO ARAGUAIA fica com filial_id NULL
-INSERT INTO public.pops_location_mapping (dealer_location, dealer_location_norm, filial_id)
-SELECT DISTINCT ON (public.pops_norm_place(r.dealer_location))
-       btrim(r.dealer_location),
-       public.pops_norm_place(r.dealer_location),
-       (SELECT f.id FROM public.filiais f
-         WHERE public.pops_norm_place(f.nome) = public.pops_norm_place(r.dealer_location)
-         LIMIT 1)
-  FROM public.pops_import_rows r
- WHERE r.dealer_location IS NOT NULL
- ON CONFLICT (dealer_location_norm) DO NOTHING;
-
--- C) pops_machines: máquina POPS pode existir sem vínculo no Parque + snapshot da base
-ALTER TABLE public.pops_machines
-  ALTER COLUMN equipment_id DROP NOT NULL,
-  ADD COLUMN pops_serial            text,
-  ADD COLUMN pops_serial_norm       text,
-  ADD COLUMN pops_client_code       text,
-  ADD COLUMN pops_client_code_norm  text,
-  ADD COLUMN pops_client_name       text,
-  ADD COLUMN pops_client_name_norm  text,
-  ADD COLUMN client_key             text,
-  ADD COLUMN pops_model             text,
-  ADD COLUMN pops_product_series    text,
-  ADD COLUMN pops_manufacture_year  text,
-  ADD COLUMN pops_platform          text,
-  ADD COLUMN pops_dealer_location   text,
-  ADD COLUMN pops_filial_id         uuid REFERENCES public.filiais(id),
-  ADD COLUMN pops_filial_pendente   boolean NOT NULL DEFAULT false,
-  ADD COLUMN link_status            text NOT NULL DEFAULT 'sem_vinculo',
-  ADD COLUMN import_row_id          uuid REFERENCES public.pops_import_rows(id);
-
--- D) Unicidade vitalícia (independe de active): 1 máquina física = 1 registro POPS
-ALTER TABLE public.pops_machines DROP CONSTRAINT pops_machines_program_equipment_key;
-
-CREATE UNIQUE INDEX pops_machines_program_equipment_uidx
-  ON public.pops_machines (program_id, equipment_id)
-  WHERE equipment_id IS NOT NULL;
-
-CREATE UNIQUE INDEX pops_machines_program_serial_uidx
-  ON public.pops_machines (program_id, pops_serial_norm)
-  WHERE pops_serial_norm IS NOT NULL;
-
-CREATE INDEX pops_machines_filial_idx
-  ON public.pops_machines (program_id, pops_filial_id) WHERE active;
-CREATE INDEX pops_machines_client_code_idx
-  ON public.pops_machines (program_id, pops_client_code_norm) WHERE active;
-CREATE INDEX pops_machines_client_key_idx
-  ON public.pops_machines (program_id, client_key) WHERE active;
-CREATE INDEX pops_machines_cliente_nome_idx
-  ON public.pops_machines (program_id, pops_client_name_norm) WHERE active;
-
--- E) Trigger: identidade, filial e link_status derivados
-CREATE OR REPLACE FUNCTION public.pops_machines_normalize()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+CREATE OR REPLACE FUNCTION public.pops_scope()
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_uid uuid := (SELECT auth.uid()); v_enabled boolean; v_filial uuid; v_scope text := 'none';
 BEGIN
-  NEW.pops_serial_norm      := public.pops_norm_serial(NEW.pops_serial);
-  NEW.pops_client_code_norm := public.pops_norm_code(NEW.pops_client_code);
-  NEW.pops_client_name_norm := public.pops_norm_place(NEW.pops_client_name);
+  IF v_uid IS NULL THEN RETURN jsonb_build_object('scope','none','filial_id',NULL,'user_id',NULL); END IF;
 
-  IF NEW.equipment_id IS NULL AND NEW.pops_serial_norm IS NULL THEN
-    RAISE EXCEPTION 'Maquina POPS exige vinculo no Parque ou serial da base POPS';
+  SELECT (p.approval_status='approved' AND p.employment_status='active'), p.filial_id
+    INTO v_enabled, v_filial FROM public.profiles p WHERE p.user_id = v_uid;
+
+  IF COALESCE(v_enabled,false) = false THEN
+    RETURN jsonb_build_object('scope','none','filial_id',NULL,'user_id',v_uid);
   END IF;
 
-  NEW.link_status := CASE WHEN NEW.equipment_id IS NULL THEN 'sem_vinculo' ELSE 'vinculado' END;
-
-  -- Filial: Parque quando vinculada; senão mapping do Dealer Location
-  IF NEW.equipment_id IS NOT NULL THEN
-    SELECT e.filial_id INTO NEW.pops_filial_id
-      FROM public.client_equipment e WHERE e.id = NEW.equipment_id;
-  ELSE
-    SELECT m.filial_id INTO NEW.pops_filial_id
-      FROM public.pops_location_mapping m
-     WHERE m.active
-       AND m.dealer_location_norm = public.pops_norm_place(NEW.pops_dealer_location);
+  IF public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager') THEN v_scope := 'global';
+  ELSIF public.has_role(v_uid,'supervisor')
+     OR public.has_role(v_uid,'rac')
+     OR public.has_role(v_uid,'cpa')
+     OR public.has_role(v_uid,'csa') THEN v_scope := 'filial';
   END IF;
-  NEW.pops_filial_pendente := (NEW.pops_filial_id IS NULL);
 
-  -- Chave de agrupamento da carteira: localizacao + nome normalizado
-  -- (codigo do cliente e apenas informacao da base; sem consultar pops_import_rows)
-  NEW.client_key := CASE
-    WHEN NEW.pops_client_name_norm IS NOT NULL
-      THEN 'L:'||coalesce(public.pops_norm_place(NEW.pops_dealer_location),'SEM_LOCAL')
-           ||'|N:'||NEW.pops_client_name_norm
-    ELSE 'S:'||coalesce(NEW.pops_serial_norm,NEW.id::text)
-  END;
-
-  RETURN NEW;
+  RETURN jsonb_build_object('scope', v_scope, 'filial_id', v_filial, 'user_id', v_uid);
 END $$;
-
-CREATE TRIGGER pops_machines_normalize_trg
-  BEFORE INSERT OR UPDATE ON public.pops_machines
-  FOR EACH ROW EXECUTE FUNCTION public.pops_machines_normalize();
-
--- F) Recálculo de filial após você definir o mapping (ex.: São Félix do Araguaia)
-CREATE OR REPLACE FUNCTION public.pops_recalc_filiais(p_program_id uuid)
-RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_n integer;
-BEGIN
-  IF NOT public.pops_is_manager() THEN
-    RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501';
-  END IF;
-  UPDATE public.pops_machines SET updated_at = now()
-   WHERE program_id = p_program_id;   -- trigger recalcula filial/pendência
-  GET DIAGNOSTICS v_n = ROW_COUNT;
-  RETURN v_n;
-END $$;
-
--- G) Leitura por filial da máquina POPS (sem responsible_user_id)
-CREATE OR REPLACE FUNCTION public.pops_can_read_machine(p_machine_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT CASE WHEN public.pops_is_manager() THEN true
-              ELSE EXISTS (SELECT 1 FROM public.pops_machines m
-                            WHERE m.id = p_machine_id
-                              AND m.pops_filial_id = public.get_user_filial_id())
-         END
-$$;
-
--- H) Policy de SELECT por filial da máquina
-DROP POLICY pops_machines_select_scope ON public.pops_machines;
-CREATE POLICY pops_machines_select_scope ON public.pops_machines
-FOR SELECT TO authenticated
-USING (
-  CASE public.pops_scope() ->> 'scope'
-    WHEN 'global' THEN true
-    ELSE pops_filial_id IS NOT NULL
-         AND pops_filial_id = ((public.pops_scope() ->> 'filial_id'))::uuid
-  END
-);
 ```
 
-## O que esta migration NÃO faz
+## 1) `pops_confirm_import_batch(p_batch_id uuid)`
 
-- Não materializa nenhuma máquina (0 registros em `pops_machines`).
-- Não confirma o lote real, não resolve divergências, não atribui ninguém.
-- Não altera `public.filiais`, não define a filial de São Félix do Araguaia (306 máquinas ficarão pendentes ao materializar).
-- Não remove `pops_client_assignments`, `pops_assign_rac_by_client`, `pops_assign_rac_machines` nem `responsible_user_id` — ficam sem uso.
+```sql
+CREATE OR REPLACE FUNCTION public.pops_confirm_import_batch(p_batch_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_uid        uuid := (SELECT auth.uid());
+  v_program_id uuid;
+  v_total      integer;
+  v_bloqueadas integer;
+  v_inseridas  integer;
+BEGIN
+  IF NOT public.pops_is_manager() THEN
+    RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501';
+  END IF;
 
-## Próxima etapa (após esta migration, com aprovação separada)
+  SELECT b.program_id INTO v_program_id
+    FROM public.pops_import_batches b WHERE b.id = p_batch_id;
+  IF v_program_id IS NULL THEN
+    RAISE EXCEPTION 'Lote inexistente' USING ERRCODE = '22023';
+  END IF;
 
-1. `pops_confirm_import_batch` — materializa todas as linhas do lote, sem exigir MATCH_EXATO.
-2. `pops_portfolio_clients` — clientes por filial da máquina, com total/serviçadas/pendentes.
-3. `pops_portfolio_client_machines` — máquinas do cliente com status e dados da base + Parque.
-4. Execução: `final_service_id`, `os_number`, `executed_by`, `executed_at` (1 máquina = 1 serviço = 1 OS = 1 realizado).
+  SELECT count(*) INTO v_total FROM public.pops_import_rows r WHERE r.batch_id = p_batch_id;
+
+  -- Único bloqueio real: impossível identificar a máquina
+  SELECT count(*) INTO v_bloqueadas
+    FROM public.pops_import_rows r
+   WHERE r.batch_id = p_batch_id
+     AND public.pops_norm_serial(r.serial_number) IS NULL
+     AND r.matched_equipment_id IS NULL;
+
+  WITH src AS (
+    SELECT r.*, public.pops_norm_serial(r.serial_number) AS serial_norm
+      FROM public.pops_import_rows r
+     WHERE r.batch_id = p_batch_id
+       AND (public.pops_norm_serial(r.serial_number) IS NOT NULL OR r.matched_equipment_id IS NOT NULL)
+  ),
+  dedup AS (  -- defesa extra: 1 linha por serial no lote
+    SELECT DISTINCT ON (coalesce(serial_norm, matched_equipment_id::text)) *
+      FROM src
+     ORDER BY coalesce(serial_norm, matched_equipment_id::text), row_number
+  ),
+  novas AS (
+    SELECT d.* FROM dedup d
+     WHERE NOT EXISTS (
+       SELECT 1 FROM public.pops_machines m
+        WHERE m.program_id = v_program_id
+          AND ( (d.serial_norm IS NOT NULL AND m.pops_serial_norm = d.serial_norm)
+             OR (d.matched_equipment_id IS NOT NULL AND m.equipment_id = d.matched_equipment_id) )
+     )
+  ),
+  ins AS (
+    INSERT INTO public.pops_machines (
+      program_id, equipment_id, import_row_id, import_batch_id,
+      pops_serial, pops_client_code, pops_client_name, pops_model,
+      pops_product_series, pops_manufacture_year, pops_platform, pops_dealer_location,
+      source, status, active, created_by
+    )
+    SELECT v_program_id, n.matched_equipment_id, n.id, p_batch_id,
+           n.serial_number, n.pops_client_code, n.client_name, n.model,
+           n.product_series, n.manufacture_year, n.platform, n.dealer_location,
+           'import', 'foco'::pops_machine_status, true, v_uid
+      FROM novas n
+    RETURNING 1
+  )
+  SELECT count(*) INTO v_inseridas FROM ins;
+
+  UPDATE public.pops_import_batches
+     SET status = 'confirmado'::pops_import_status,
+         confirmed_by = v_uid,
+         confirmed_at = now(),
+         total_rows = v_total
+   WHERE id = p_batch_id;
+
+  RETURN (
+    SELECT jsonb_build_object(
+      'total_linhas',        v_total,
+      'bloqueadas',          v_bloqueadas,
+      'inseridas',           v_inseridas,
+      'ja_existentes',       v_total - v_bloqueadas - v_inseridas,
+      'total_no_programa',   count(*),
+      'com_vinculo_parque',  count(*) FILTER (WHERE m.equipment_id IS NOT NULL),
+      'sem_vinculo_parque',  count(*) FILTER (WHERE m.equipment_id IS NULL),
+      'filial_pendente',     count(*) FILTER (WHERE m.pops_filial_pendente)
+    )
+    FROM public.pops_machines m
+   WHERE m.program_id = v_program_id AND m.active
+  );
+END $$;
+```
+
+Sem exigência de `MATCH_EXATO`, `resolution='confirmado'` ou `matched_equipment_id`. Todas as derivações (`*_norm`, `client_key`, `pops_filial_id`, `pops_filial_pendente`, `link_status`) ficam com o trigger `pops_machines_normalize_trg`.
+
+## 2) `pops_portfolio_clients(...)`
+
+Assinatura muda (sai `p_rac_user_id`), então a versão atual é derrubada antes.
+
+```sql
+DROP FUNCTION IF EXISTS public.pops_portfolio_clients(uuid, uuid, uuid, text, integer, integer);
+
+CREATE OR REPLACE FUNCTION public.pops_portfolio_clients(
+  p_program_id uuid,
+  p_filial_id  uuid DEFAULT NULL,
+  p_search     text DEFAULT NULL,
+  p_limit      integer DEFAULT 50,
+  p_offset     integer DEFAULT 0
+) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_scope  jsonb := public.pops_scope();
+  v_kind   text  := v_scope ->> 'scope';
+  v_filial uuid  := (v_scope ->> 'filial_id')::uuid;
+  v_eff    uuid;
+  v_search text  := nullif(btrim(coalesce(p_search,'')),'');
+  v_total  integer;
+  v_rows   jsonb;
+BEGIN
+  IF v_kind = 'none' THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501'; END IF;
+  v_eff := CASE WHEN v_kind = 'global' THEN p_filial_id ELSE v_filial END;
+  IF v_kind <> 'global' AND v_eff IS NULL THEN
+    RETURN jsonb_build_object('total', 0, 'rows', '[]'::jsonb);
+  END IF;
+
+  WITH base AS (
+    SELECT m.client_key, m.pops_client_name, m.pops_dealer_location,
+           m.pops_filial_id, f.nome AS filial_nome, m.status
+      FROM public.pops_machines m
+      LEFT JOIN public.filiais f ON f.id = m.pops_filial_id
+     WHERE m.program_id = p_program_id
+       AND m.active
+       AND (v_eff IS NULL OR m.pops_filial_id = v_eff)
+       AND (v_search IS NULL OR m.pops_client_name_norm LIKE '%'||public.pops_norm_place(v_search)||'%')
+  ), agg AS (
+    SELECT client_key,
+           min(pops_client_name)      AS pops_client_name,
+           min(pops_dealer_location)  AS pops_dealer_location,
+           min(pops_filial_id)        AS pops_filial_id,
+           min(filial_nome)           AS filial_nome,
+           count(*)                                                          AS total_maquinas,
+           count(*) FILTER (WHERE status = 'servicada')                      AS servicadas,
+           count(*) FILTER (WHERE status = 'em_andamento')                   AS em_andamento,
+           count(*) FILTER (WHERE status NOT IN ('servicada','em_andamento')) AS pendentes
+      FROM base GROUP BY client_key
+  )
+  SELECT count(*) INTO v_total FROM agg;
+
+  SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY t.pops_client_name), '[]'::jsonb) INTO v_rows
+    FROM (
+      SELECT a.* FROM (
+        SELECT m.client_key,
+               min(m.pops_client_name)     AS pops_client_name,
+               min(m.pops_dealer_location) AS pops_dealer_location,
+               min(m.pops_filial_id)       AS pops_filial_id,
+               min(f.nome)                 AS filial_nome,
+               count(*)                                                            AS total_maquinas,
+               count(*) FILTER (WHERE m.status NOT IN ('servicada','em_andamento')) AS pendentes,
+               count(*) FILTER (WHERE m.status = 'em_andamento')                    AS em_andamento,
+               count(*) FILTER (WHERE m.status = 'servicada')                       AS servicadas
+          FROM public.pops_machines m
+          LEFT JOIN public.filiais f ON f.id = m.pops_filial_id
+         WHERE m.program_id = p_program_id AND m.active
+           AND (v_eff IS NULL OR m.pops_filial_id = v_eff)
+           AND (v_search IS NULL OR m.pops_client_name_norm LIKE '%'||public.pops_norm_place(v_search)||'%')
+         GROUP BY m.client_key
+      ) a
+      ORDER BY a.pops_client_name
+      LIMIT greatest(coalesce(p_limit,50),1) OFFSET greatest(coalesce(p_offset,0),0)
+    ) t;
+
+  RETURN jsonb_build_object('total', v_total, 'rows', v_rows);
+END $$;
+```
+
+RAC/CPA/CSA e Supervisor: sempre a própria filial (`p_filial_id` ignorado). Manager/Admin: global, com filtro opcional.
+
+## 3) `pops_portfolio_client_machines(p_program_id, p_client_key)`
+
+```sql
+DROP FUNCTION IF EXISTS public.pops_portfolio_client_machines(uuid, text);
+
+CREATE OR REPLACE FUNCTION public.pops_portfolio_client_machines(
+  p_program_id uuid,
+  p_client_key text
+) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_scope  jsonb := public.pops_scope();
+  v_kind   text  := v_scope ->> 'scope';
+  v_filial uuid  := (v_scope ->> 'filial_id')::uuid;
+BEGIN
+  IF v_kind = 'none' THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501'; END IF;
+
+  RETURN (
+    SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY t.pops_serial), '[]'::jsonb)
+      FROM (
+        SELECT m.id AS pops_machine_id, m.status, m.pops_serial, m.pops_model,
+               m.pops_product_series, m.pops_manufacture_year, m.pops_platform,
+               m.pops_client_name, m.pops_client_code, m.pops_dealer_location,
+               m.pops_filial_id, f.nome AS filial_nome,
+               m.link_status, m.equipment_id,
+               e.serial_chassis AS parque_serial_chassis,
+               e.model          AS parque_model,
+               e.client_name    AS parque_client_name,
+               e.client_code    AS parque_client_code,
+               e.year           AS parque_year,
+               e.hours          AS parque_hours,
+               e.machine_type   AS parque_machine_type
+          FROM public.pops_machines m
+          LEFT JOIN public.filiais f ON f.id = m.pops_filial_id
+          LEFT JOIN public.client_equipment e ON e.id = m.equipment_id
+         WHERE m.program_id = p_program_id
+           AND m.active
+           AND m.client_key = p_client_key
+           AND (v_kind = 'global' OR m.pops_filial_id = v_filial)
+      ) t
+  );
+END $$;
+```
+
+## 4) Idempotência
+
+- Anti-join contra `pops_machines` por `program_id + pops_serial_norm` e por `program_id + equipment_id`, antes do INSERT.
+- `DISTINCT ON` no lote evita duplicidade dentro do próprio arquivo.
+- Rede de segurança final: os índices únicos vitalícios `pops_machines_program_serial_uidx` e `pops_machines_program_equipment_uidx` (valem também para registros inativos).
+- Reexecutar: `inseridas = 0`, `ja_existentes = 5.077`, nenhum registro novo.
+
+## 5) Contagem esperada após materializar
+
+| Campo | Esperado |
+| --- | --- |
+| `total_linhas` | 5.077 |
+| `bloqueadas` | 0 |
+| `inseridas` | 5.077 (1ª execução) |
+| `ja_existentes` | 0 (1ª execução) |
+| `total_no_programa` | 5.077 |
+| `com_vinculo_parque` | 0 hoje (0 linhas com `matched_equipment_id`) |
+| `sem_vinculo_parque` | 5.077 hoje |
+| `filial_pendente` | 306 |
+| Clientes na carteira (`client_key` distintos) | ~1.700 |
+
+Se você quiser vínculo com o Parque já na materialização, é só rodar `pops_match_import_batch` no lote antes de confirmar — os números de vínculo mudam, o total de 5.077 não.
+
+## 6) São Félix do Araguaia (306 máquinas)
+
+Entram normalmente, com `pops_filial_id = NULL` e `pops_filial_pendente = true`. Ficam invisíveis para RAC/CPA/CSA/Supervisor (escopo por filial) e visíveis para Manager/Admin. Ao cadastrar a filial e apontar o mapping, `pops_recalc_filiais(program_id)` reclassifica as 306 sem reimportar.
+
+## 7 e 8) O que esta etapa NÃO faz
+
+- Nenhuma atribuição de RAC: `responsible_user_id` fica NULL, `pops_client_assignments` e `pops_assign_rac_*` não são usados nem alterados.
+- Nenhuma execução: nada de serviço final, OS, `executed_by`/`executed_at`, dashboard final ou frontend. Todas as máquinas nascem `status = 'foco'`.
