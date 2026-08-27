@@ -46,6 +46,21 @@ const Kpi: React.FC<{ label: string; value: number | string; tone?: 'default' | 
 const goalLabel = (realizado: number, meta: number | null): string =>
   meta == null ? `${realizado} / —` : `${realizado} / ${meta}`;
 
+/** "Hoje" compacto: realizado/meta do dia (— quando a meta é semanal ou inexistente). */
+const todayLabel = (row: MyDayTeamRow, kind: 'visitas' | 'ligacoes'): string => {
+  const done = Number(
+    (kind === 'visitas' ? row.visitas_hoje : row.ligacoes_hoje) ?? 0,
+  );
+  const target = kind === 'visitas' ? row.visitas_meta_hoje : row.ligacoes_meta_hoje;
+  return target == null ? `${done} / —` : `${done} / ${target}`;
+};
+
+const PendCell: React.FC<{ value: number | null | undefined }> = ({ value }) => {
+  if (value == null) return <span className="text-muted-foreground">—</span>;
+  if (value === 0) return <span className="text-muted-foreground">0</span>;
+  return <span className="font-semibold text-destructive">{value}</span>;
+};
+
 const GoalBadge: React.FC<{ row: MyDayTeamRow }> = ({ row }) => {
   if (row.meta_atingida == null) return <Badge variant="outline">Sem meta</Badge>;
   return row.meta_atingida ? (
@@ -54,6 +69,7 @@ const GoalBadge: React.FC<{ row: MyDayTeamRow }> = ({ row }) => {
     <Badge variant="destructive">Abaixo da meta</Badge>
   );
 };
+
 
 export const TeamOverview: React.FC<TeamOverviewProps> = ({
   data,
