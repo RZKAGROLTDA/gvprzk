@@ -116,6 +116,8 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Colaboradores" value={k.colaboradores} />
         <Kpi label="Com pendências" value={k.com_pendencias} tone="alert" />
+        <Kpi label="Pend. visitas (semana)" value={k.visitas_pendencia_semana ?? 0} tone="alert" />
+        <Kpi label="Pend. ligações (semana)" value={k.ligacoes_pendencia_semana ?? 0} tone="alert" />
         <Kpi label="Abaixo da meta" value={k.meta_nao_atingida} tone="alert" />
         <Kpi label="Visitas atrasadas" value={k.visitas_atrasadas} tone="alert" />
         <Kpi label="Retornos atrasados" value={k.retornos_atrasados} tone="alert" />
@@ -125,6 +127,7 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
           k.visitas_atrasadas + k.retornos_atrasados + k.treinamentos_pendentes + k.acoes_atrasadas
         } tone="alert" />
       </div>
+
 
       {rows.length === 0 ? (
         <Card>
