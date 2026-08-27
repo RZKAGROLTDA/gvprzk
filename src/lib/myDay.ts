@@ -255,6 +255,16 @@ export interface MyDayTeamRow {
   visitas_meta: number | null;
   ligacoes_realizado: number;
   ligacoes_meta: number | null;
+  visitas_hoje?: number;
+  visitas_meta_hoje?: number | null;
+  ligacoes_hoje?: number;
+  ligacoes_meta_hoje?: number | null;
+  visitas_semana?: number;
+  visitas_meta_semana?: number | null;
+  ligacoes_semana?: number;
+  ligacoes_meta_semana?: number | null;
+  visitas_pendencia_semana?: number | null;
+  ligacoes_pendencia_semana?: number | null;
   visitas_atrasadas: number;
   retornos_atrasados: number;
   treinamentos_pendentes: number;
@@ -268,7 +278,9 @@ export interface MyDayTeamSummary {
   viewer: { user_id: string; role: string; filial_id: string | null };
   today: string;
   week_start: string;
+  week_end?: string;
   is_weekend: boolean;
+  week_window?: MyDayWeekWindow;
   filters: { filial_id: string | null; role: string | null; user_id: string | null };
   kpis: {
     colaboradores: number;
@@ -278,9 +290,12 @@ export interface MyDayTeamSummary {
     retornos_atrasados: number;
     treinamentos_pendentes: number;
     acoes_atrasadas: number;
+    visitas_pendencia_semana?: number;
+    ligacoes_pendencia_semana?: number;
   };
   rows: MyDayTeamRow[];
 }
+
 
 export interface MyDayTeamFilters {
   filialId: string | null;
