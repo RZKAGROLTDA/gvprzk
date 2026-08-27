@@ -207,11 +207,18 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
                       <TableCell className="whitespace-nowrap">{getRoleLabel(row.role)}</TableCell>
                       <TableCell className="whitespace-nowrap">{row.filial_nome ?? '—'}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {goalLabel(row.visitas_realizado, row.visitas_meta)}
+                        {todayLabel(row, 'visitas')}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {goalLabel(row.ligacoes_realizado, row.ligacoes_meta)}
+                        <PendCell value={row.visitas_pendencia_semana} />
                       </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        {todayLabel(row, 'ligacoes')}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <PendCell value={row.ligacoes_pendencia_semana} />
+                      </TableCell>
+
                       <TableCell className="whitespace-nowrap text-right">
                         {row.visitas_atrasadas}
                       </TableCell>
