@@ -155,10 +155,12 @@ DECLARE
   v_filial uuid  := (v_scope ->> 'filial_id')::uuid;
   v_eff    uuid;
   v_search text  := nullif(btrim(coalesce(p_search,'')),'');
+  v_limit  integer;
   v_total  integer;
   v_rows   jsonb;
 BEGIN
   IF v_kind = 'none' THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501'; END IF;
+  v_limit := LEAST(GREATEST(COALESCE(p_limit,50),1),200);
   v_eff := CASE WHEN v_kind = 'global' THEN p_filial_id ELSE v_filial END;
   IF v_kind <> 'global' AND v_eff IS NULL THEN
     RETURN jsonb_build_object('total', 0, 'rows', '[]'::jsonb);
@@ -207,7 +209,7 @@ BEGIN
          GROUP BY m.client_key
       ) a
       ORDER BY a.pops_client_name
-      LIMIT greatest(coalesce(p_limit,50),1) OFFSET greatest(coalesce(p_offset,0),0)
+      LIMIT v_limit OFFSET greatest(coalesce(p_offset,0),0)
     ) t;
 
   RETURN jsonb_build_object('total', v_total, 'rows', v_rows);
@@ -275,12 +277,13 @@ END $$;
 | `inseridas` | 5.077 (1ª execução) |
 | `ja_existentes` | 0 (1ª execução) |
 | `total_no_programa` | 5.077 |
-| `com_vinculo_parque` | 0 hoje (0 linhas com `matched_equipment_id`) |
-| `sem_vinculo_parque` | 5.077 hoje |
+| `com_vinculo_parque` | 4.732 |
+| `sem_vinculo_parque` | 345 |
 | `filial_pendente` | 306 |
 | Clientes na carteira (`client_key` distintos) | ~1.700 |
 
-Se você quiser vínculo com o Parque já na materialização, é só rodar `pops_match_import_batch` no lote antes de confirmar — os números de vínculo mudam, o total de 5.077 não.
+Matching já executado no lote real: 4.732 linhas com `matched_equipment_id` e 345 sem vínculo. Nenhum status bloqueia a materialização.
+
 
 ## 6) São Félix do Araguaia (306 máquinas)
 
