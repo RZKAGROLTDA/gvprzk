@@ -1,83 +1,44 @@
-# Meu Dia — separar "Hoje" de "Pendência acumulada da semana"
+# POPS — Frente 2: indicadores Large x Small + filtros por chassi e modelo
 
-## 1. Como funciona hoje
+Auditoria feita nas RPCs atuais e na tela `/pops`. Nenhuma migration aplicada ainda.
 
-Fonte de dados (nada além disso alimenta a tela):
+## Auditoria (situação atual)
 
-- `get_my_day_summary()` → `my_day_context()` + `my_day_summary_build(user, role)` (Minha visão)
-- `get_my_day_user_summary(user)` → mesmo `my_day_summary_build` (detalhe de colaborador)
-- `get_my_day_team_summary(filial, role, user)` (Minha equipe)
-- `get_my_day_details` / `get_my_day_user_details` (modal "Ver todos")
+- `pops_goal_summary(p_program_id, p_filial_id)`: já resolve escopo por `pops_scope()` (global para Manager/Admin, filial para RAC/CPA/CSA/Supervisor), já filtra `active` e conta `status = 'servicada'`. Não retorna nada por plataforma.
+- `pops_portfolio_clients(p_program_id, p_filial_id, p_search, p_limit, p_offset)`: agrupa por `client_key`, busca só por nome do cliente (`pops_client_name_norm`). Não filtra por serial, modelo ou plataforma.
+- `pops_portfolio_client_machines(p_program_id, p_client_key)`: devolve todas as máquinas ativas do cliente no escopo. Já retorna `pops_serial`, `pops_model`, `pops_platform`.
+- Frontend: `src/pages/Pops.tsx` (busca + lista de clientes + lista de máquinas), `src/components/pops/PopsGoalHeader.tsx` (painel superior), `src/hooks/usePops.ts` (tipos + chamadas).
+- Dados hoje: `pops_platform` só tem dois valores — `Large` (3.788) e `Small` (1.289). Nenhum vazio. Ainda assim o cálculo tratará "outros/vazio" sem quebrar.
 
-Metas vêm de `activity_goal_settings` (por cargo):
+## O que muda
 
-| Cargo | Visitas | Ligações |
-|---|---|---|
-| consultant / sales_consultant / technical_consultant | 3 **semanal** | 3 **diária** |
-| rac / cpa / csa | 3 **diária** (só dias úteis) | sem meta |
+### Banco (2 RPCs, `CREATE OR REPLACE`, sem tabela nova)
 
-Cálculo atual de realizado:
+1. `pops_goal_summary` — acrescenta 6 campos ao JSON, mantendo todos os atuais e todas as regras:
+   - `large_total`, `large_serviced`, `large_percent`
+   - `small_total`, `small_serviced`, `small_percent`
+   - Cálculo: sobre o mesmo `SELECT` já existente, com `count(*) FILTER (WHERE upper(btrim(pops_platform)) = 'LARGE')` e o par com `'SMALL'`; serviçadas = mesmo filtro + `status = 'servicada'`; percentual = `round(serviced / nullif(total,0) * 100, 1)`. Mesmo escopo de filial e mesmo `active = true`.
 
-- Visitas: se meta é `weekly` conta `tasks` (`visita`, `technical_visit`) de `week_start` até hoje; se `daily`, conta só hoje.
-- Ligações: conta `tasks` (`ligacao`, `prospection`) **só de hoje**.
-- Meta exibida: `target_value`, virando 0 no fim de semana quando `weekdays_only`.
+2. `pops_portfolio_clients` — acrescenta 3 parâmetros opcionais no fim da assinatura (sem overload novo: é o mesmo nome com defaults, chamada atual continua válida):
+   - `p_serial text DEFAULT NULL`, `p_model text DEFAULT NULL`, `p_platform text DEFAULT NULL`
+   - Filtros aplicados **na máquina** antes do `GROUP BY client_key`, tanto no `count` quanto na página:
+     - serial: `m.pops_serial ILIKE '%'||p_serial||'%'`
+     - modelo: `m.pops_model ILIKE '%'||p_model||'%'`
+     - plataforma: `upper(btrim(m.pops_platform)) = upper(btrim(p_platform))` quando informado
+   - Combinação AND com a busca de cliente já existente. Assim, ao pesquisar um chassi, aparece o cliente dono daquela máquina; os contadores do card do cliente passam a refletir as máquinas que casam com os filtros.
 
-Consequência: hoje existe **um só par realizado/meta** por atividade — ora do dia, ora da semana. Não há visão de déficit acumulado, e no caso semanal o número "do dia" não existe.
+3. `pops_portfolio_client_machines` — acrescenta os mesmos 3 parâmetros opcionais, usados apenas para **marcar/ordenar**: retorna todas as máquinas do cliente (regra atual preservada) mais um campo `matches_filter boolean`, para o frontend destacar e ordenar primeiro a máquina procurada. Alternativa mais simples, se preferir: não tocar nesta RPC e fazer o destaque só no frontend com os filtros já em memória — nesse caso a alteração de banco fica em 2 RPCs.
 
-As demais pendências (visitas atrasadas, retornos atrasados, treinamentos pendentes, próximas ações atrasadas) já são acumulativas por data (`< hoje`) e não dependem de semana/mês — **nada muda nelas**.
+Nada de `pops_complete_machine`, serviços, OS, permissões, base de máquinas ou Meu Dia é tocado.
 
-## 2. O que precisa mudar
+### Frontend
 
-Passar a expor, para Visitas e Ligações, quatro números em vez de dois:
+- `src/hooks/usePops.ts`: novos campos no tipo `PopsGoalSummary`; `usePopsClients` passa `serial`, `model`, `platform` (entram na queryKey); `usePopsClientMachines` recebe os filtros para destaque.
+- `src/components/pops/PopsGoalHeader.tsx`: dois cards novos (LARGE e SMALL) na grade de mini-cards, no formato `3.788 máquinas / 325 serviçadas · 8,6%`, com números vindos da RPC.
+- `src/pages/Pops.tsx`: ao lado da busca de cliente, campos "Chassi / Série", "Máquina / Modelo" e select "Plataforma: Todas | Large | Small"; em desktop inline, em mobile dentro de um botão "Filtros" (Popover/Sheet) com badge de filtros ativos e botão "Limpar". Na lista de máquinas do cliente, as que casam com os filtros ficam no topo com borda destacada.
 
-- `realizado_hoje` / `meta_hoje`
-- `realizado_semana` / `meta_acumulada_semana` → `pendencia_semana`
+### Resumo da decisão
 
-Nenhuma outra regra, filtro, escopo de cargo/filial ou bloco de pendências é alterada.
+Precisa de banco: sim, mínimo — 2 RPCs (`pops_goal_summary`, `pops_portfolio_clients`), opcionalmente a 3ª só para o destaque. Somente `CREATE OR REPLACE`, sem alteração de dados nem de regras.
 
-## 3. Banco/RPC ou frontend?
-
-Precisa de **RPC** (sem nenhuma mudança estrutural): os dados já existem em `tasks` e `activity_goal_settings`, não há tabela nova, coluna nova nem trigger. A alteração é `CREATE OR REPLACE` em duas funções:
-
-- `my_day_summary_build` → acrescenta os campos novos em `goals.visitas` / `goals.ligacoes` (usada por Minha visão e pelo detalhe do colaborador)
-- `get_my_day_team_summary` → acrescenta 4 colunas por linha da tabela de equipe
-
-Campos atuais (`meta`, `realizado`, `faltam`, `atingida`, `period_type`, ...) são **mantidos** para não quebrar nada; os novos são aditivos.
-
-Frontend (apenas apresentação):
-
-- `src/lib/myDay.ts`: novos campos nos tipos `MyDayGoal` e `MyDayTeamRow`.
-- `src/components/myday/ExecutionCards.tsx`: cada card ganha linha "Hoje: x/y" e linha "Pendência da semana: N", com rótulo explícito de DIA vs ACUMULADO.
-- `src/components/myday/TeamOverview.tsx`: colunas compactas — "Visitas hoje" (`2/3`), "Ligações hoje" (`1/3`), "Pend. semana" com dois valores (V / L) em uma única coluna para não alargar a tabela; demais colunas inalteradas. No mobile continua em cards.
-- `src/components/myday/TeamFilters.tsx` / `UserDayDialog.tsx`: sem mudança de regra.
-
-## 4. Regra de cálculo da pendência semanal
-
-Janela de acumulação:
-
-```text
-inicio_janela = MAIOR(week_start, primeiro_dia_do_mes_de_hoje)
-```
-
-Esse `MAIOR(...)` é exatamente o "zerar na virada do mês": na semana que cruza o mês, o cálculo passa a contar do dia 1º. Nenhum registro é apagado — só a janela do cálculo muda.
-
-Meta acumulada até hoje:
-
-- meta **diária**: `target × nº de dias contados entre inicio_janela e hoje`, onde os dias contados excluem sábado/domingo quando `weekdays_only = true`.
-- meta **semanal** (visitas do consultor): meta cheia da semana, `target`, sem rateio por dia — a semana toda é o período.
-
-Realizado da semana: `count(tasks)` do tipo correspondente com `start_date` entre `inicio_janela` e hoje (mesmos `task_type` já usados hoje).
-
-Pendência:
-
-```text
-pendencia_semana = MAIOR(0, meta_acumulada_semana - realizado_semana)
-```
-
-Assim o que não foi feito num dia continua aparecendo nos dias seguintes da mesma semana, a pendência reinicia na segunda-feira e reinicia também no dia 1º de cada mês. Quem não tem meta configurada (ex.: ligações de RAC/CPA/CSA) segue com `null` e a UI mostra "sem meta".
-
-## 5. Ordem de execução
-
-1. Migration `CREATE OR REPLACE` das duas funções (nada destrutivo, sem DDL de tabela).
-2. Ajuste de tipos e dos 2 componentes de apresentação.
-3. Validação: comparar realizado/meta de hoje antes e depois (devem ser idênticos) e conferir pendência semanal de um consultor e de um RAC.
+Aguardando aprovação para aplicar.
