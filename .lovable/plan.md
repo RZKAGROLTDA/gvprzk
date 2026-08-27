@@ -92,18 +92,19 @@ Tela POPS: topo com meta (`327 / 1000 · faltam 673`, barra de progresso, hoje/s
 - `client_equipment`, tasks, Meu Dia e CRM não são tocados.
 - Única alteração em objeto existente: reescrita de `pops_can_write_machine()` para escopo por filial (deixa de depender de `responsible_user_id`).
 
-## 11. Ajustes aprovados (v2)
+## 11. Decisão final: V1 SIMPLES
 
-- **Estorno auditável**: `voided_at`, `voided_by`, `void_reason` em `pops_machine_executions`. Meta conta somente `voided_at IS NULL`.
-- **Histórico + unicidade**: em vez de `UNIQUE(pops_machine_id)`, índices **parciais únicos** `WHERE voided_at IS NULL` — 1 execução ATIVA por máquina e OS única por programa entre ativas; execuções estornadas permanecem como histórico e liberam a OS.
-- `pops_update_execution(p_machine_id, p_final_service_id, p_os_number, p_notes)` — manager/admin, revalida unicidade da OS, grava `updated_by/updated_at`.
-- `pops_void_execution(p_machine_id, p_reason)` — manager/admin, sem DELETE, motivo obrigatório, devolve a máquina para `em_andamento`.
-- **Início**: novas colunas `started_by`/`started_at` em `pops_machines`; `pops_start_machine` exige permissão por filial, `foco → em_andamento`, retorna quem/quando se já iniciada e bloqueia se `servicada`. `executed_by` continua o indicador oficial de produção.
-- **Ofertados**: `pops_complete_machine` valida existência/atividade, deduplica e exige que o serviço final esteja entre os ofertados. Ofertados nunca contam meta.
-- **Concorrência**: `SELECT ... FOR UPDATE` + tratamento de `unique_violation`, com mensagem informando OS, executor e data da conclusão existente.
-- Regras de visibilidade, supervisor somente acompanhamento e demais restrições permanecem inalteradas.
+A proposta v2 (tabela de execução, offered services, estorno auditável, `started_by/started_at`, `pops_update_execution`, `pops_void_execution`, breakdown avançado) foi **descartada por ora**.
 
-## 12. SQL completo
+V1 aprovada para revisão:
+- Execução direta em `pops_machines`: `final_service_id`, `os_number`, `executed_by`, `executed_at`.
+- `CHECK` de coerência para `status='servicada'` + índice único de OS por programa (`upper(btrim(os_number))`, parcial).
+- Apenas 2 RPCs novas: `pops_complete_machine(p_machine_id, p_service_id, p_os_number)` com `SELECT ... FOR UPDATE`, e `pops_goal_summary(p_program_id, p_filial_id)`.
+- `pops_portfolio_client_machines` ganha 6 campos de leitura; `pops_portfolio_clients` inalterada.
+- Permissões: manager/admin global, RAC/CPA/CSA apenas própria filial, supervisor somente consulta.
+
+## 12. SQL da V1
 
 Disponível para revisão em `docs/POPS_ETAPA_FINAL_SQL.md` (nada aplicado ao banco).
+
 
