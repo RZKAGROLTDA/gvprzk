@@ -160,6 +160,7 @@ DECLARE
   v_rows   jsonb;
 BEGIN
   IF v_kind = 'none' THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501'; END IF;
+  v_limit := LEAST(GREATEST(COALESCE(p_limit,50),1),200);
   v_eff := CASE WHEN v_kind = 'global' THEN p_filial_id ELSE v_filial END;
   IF v_kind <> 'global' AND v_eff IS NULL THEN
     RETURN jsonb_build_object('total', 0, 'rows', '[]'::jsonb);
