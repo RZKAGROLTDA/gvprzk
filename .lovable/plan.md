@@ -1,295 +1,104 @@
-# POPS — Materialização do universo (5.077) + Carteira (revisão, não aplicada)
+# POPS — Etapa Final: Execução, OS e Meta (proposta, nada aplicado)
 
-Lote real: `ce3e1353-…` / programa `3d7708db-…`, 5.077 linhas, status `rascunho`.
+## 1. Auditoria da base atual
 
-Auditoria atual do lote:
+- `pops_machine_status` = `foco | em_andamento | servicada` (já cobre o fluxo pedido; nenhuma alteração de enum necessária).
+- `pops_machines`: 5.077 registros, **100% em `foco`**, `responsible_user_id` NULL. Nenhuma coluna de execução existe hoje (`final_service_id`, `os_number`, `executed_by`, `executed_at` **não existem** — sem conflito de nomes). Já existem `notes`, `last_activity_at`, `status`, `active`, `pops_filial_id`, `pops_filial_pendente`.
+- `pops_services`: 3 serviços ativos (Análise de Óleo, Análise de Arrefecimento, Higienização de Ar) com `code`, `sort_order`, `active`. Frontend consumirá esta tabela — sem hardcode.
+- Triggers em `pops_machines`: `pops_machines_normalize_trg` (normaliza serial/código/nome, define `link_status`, `pops_filial_id`, `client_key`) e `pops_machines_validate` (valida `source` e inativação). Nenhum deles mexe em `status` → **não há conflito** com o fluxo de execução; o novo guard de status será um trigger adicional.
+- Constraints atuais de `pops_machines`: PK, FKs (program, equipment, filial, import_row) + índices únicos vitalícios de serial/equipment. Nada colide com as novas constraints.
+- `updated_at`: padrão do módulo é `pops_set_updated_at()` (BEFORE UPDATE). Será reutilizado.
+- Segurança: padrão já estabelecido por `pops_scope()` (global para admin/manager, filial para supervisor/rac/cpa/csa), `pops_is_manager()`, `pops_user_enabled()` (exige `approval_status='approved'` e `employment_status='active'`), todas `SECURITY DEFINER` + `SET search_path=public`, usando `has_role()`.
+- **Ponto de correção detectado**: `pops_can_write_machine()` hoje exige `responsible_user_id = auth.uid()`. Como não haverá carteira prévia, essa função precisa ser reescrita para escopo por **filial da máquina** (nunca por `responsible_user_id`).
+- RLS de `pops_machines`: SELECT por escopo, INSERT/UPDATE apenas manager. Como a conclusão será feita **exclusivamente por RPC SECURITY DEFINER**, o RAC não precisa de UPDATE direto — mantemos a política restritiva (mais seguro).
 
-| Métrica | Valor |
-| --- | --- |
-| Linhas | 5.077 |
-| Sem serial | 0 |
-| `matched_equipment_id` preenchido | 0 (matching ainda não rodou) |
-| Linhas de São Félix do Araguaia | 306 |
+## 2. Modelagem final
 
-Consequência: se confirmar agora, as 5.077 entram com `link_status = 'sem_vinculo'`. O vínculo com o Parque é opcional e pode ser feito depois (rodar `pops_match_import_batch` antes da confirmação, ou vincular linha a linha; a materialização não depende disso).
+Tabela própria de execução, **não** colunas em `pops_machines`. Justificativa: (a) `UNIQUE(pops_machine_id)` torna "1 máquina = 1 OS = 1 realizado" fisicamente impossível de quebrar, o que colunas nuláveis não garantem; (b) `pops_machines` é snapshot da planilha e não deve ganhar semântica operacional; (c) auditoria/correção de execução fica isolada. O status em `pops_machines` continua sendo o campo de leitura rápida, mantido consistente por trigger.
 
-## 0) Ajuste obrigatório em `pops_scope()`
+### `pops_machine_executions` (nova)
+`id`, `program_id`, `pops_machine_id` (UNIQUE), `final_service_id` → `pops_services`, `os_number`, `os_number_norm` (gerada: `upper(btrim(os_number))`), `executed_by`, `executed_at`, `notes`, `filial_id` (snapshot da filial da máquina, para breakdown rápido), `created_by`, `updated_by`, `created_at`, `updated_at`.
 
-Hoje `pops_scope()` devolve `self` para `rac` e **`none` para `cpa`/`csa`** — com a carteira por filial isso deixaria CPA/CSA sem nenhum dado e o RAC fora da regra aprovada. Correção mínima:
+### `pops_machine_offered_services` (nova)
+`id`, `pops_machine_id`, `service_id`, `created_by`, `created_at` — `UNIQUE (pops_machine_id, service_id)`. Serviços avaliados/ofertados: análise comercial apenas, não contam meta, não geram OS. O serviço final é automaticamente incluído como ofertado.
 
-```sql
-CREATE OR REPLACE FUNCTION public.pops_scope()
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_uid uuid := (SELECT auth.uid()); v_enabled boolean; v_filial uuid; v_scope text := 'none';
-BEGIN
-  IF v_uid IS NULL THEN RETURN jsonb_build_object('scope','none','filial_id',NULL,'user_id',NULL); END IF;
+## 3. Constraints e índices
 
-  SELECT (p.approval_status='approved' AND p.employment_status='active'), p.filial_id
-    INTO v_enabled, v_filial FROM public.profiles p WHERE p.user_id = v_uid;
-
-  IF COALESCE(v_enabled,false) = false THEN
-    RETURN jsonb_build_object('scope','none','filial_id',NULL,'user_id',v_uid);
-  END IF;
-
-  IF public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager') THEN v_scope := 'global';
-  ELSIF public.has_role(v_uid,'supervisor')
-     OR public.has_role(v_uid,'rac')
-     OR public.has_role(v_uid,'cpa')
-     OR public.has_role(v_uid,'csa') THEN v_scope := 'filial';
-  END IF;
-
-  RETURN jsonb_build_object('scope', v_scope, 'filial_id', v_filial, 'user_id', v_uid);
-END $$;
 ```
-
-## 1) `pops_confirm_import_batch(p_batch_id uuid)`
-
-```sql
-CREATE OR REPLACE FUNCTION public.pops_confirm_import_batch(p_batch_id uuid)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_uid        uuid := (SELECT auth.uid());
-  v_program_id uuid;
-  v_total      integer;
-  v_bloqueadas integer;
-  v_inseridas  integer;
-BEGIN
-  IF NOT public.pops_is_manager() THEN
-    RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501';
-  END IF;
-
-  SELECT b.program_id INTO v_program_id
-    FROM public.pops_import_batches b WHERE b.id = p_batch_id;
-  IF v_program_id IS NULL THEN
-    RAISE EXCEPTION 'Lote inexistente' USING ERRCODE = '22023';
-  END IF;
-
-  SELECT count(*) INTO v_total FROM public.pops_import_rows r WHERE r.batch_id = p_batch_id;
-
-  -- Único bloqueio real: impossível identificar a máquina
-  SELECT count(*) INTO v_bloqueadas
-    FROM public.pops_import_rows r
-   WHERE r.batch_id = p_batch_id
-     AND public.pops_norm_serial(r.serial_number) IS NULL
-     AND r.matched_equipment_id IS NULL;
-
-  WITH src AS (
-    SELECT r.*, public.pops_norm_serial(r.serial_number) AS serial_norm
-      FROM public.pops_import_rows r
-     WHERE r.batch_id = p_batch_id
-       AND (public.pops_norm_serial(r.serial_number) IS NOT NULL OR r.matched_equipment_id IS NOT NULL)
-  ),
-  dedup AS (  -- defesa extra: 1 linha por serial no lote
-    SELECT DISTINCT ON (coalesce(serial_norm, matched_equipment_id::text)) *
-      FROM src
-     ORDER BY coalesce(serial_norm, matched_equipment_id::text), row_number
-  ),
-  novas AS (
-    SELECT d.* FROM dedup d
-     WHERE NOT EXISTS (
-       SELECT 1 FROM public.pops_machines m
-        WHERE m.program_id = v_program_id
-          AND ( (d.serial_norm IS NOT NULL AND m.pops_serial_norm = d.serial_norm)
-             OR (d.matched_equipment_id IS NOT NULL AND m.equipment_id = d.matched_equipment_id) )
-     )
-  ),
-  ins AS (
-    INSERT INTO public.pops_machines (
-      program_id, equipment_id, import_row_id, import_batch_id,
-      pops_serial, pops_client_code, pops_client_name, pops_model,
-      pops_product_series, pops_manufacture_year, pops_platform, pops_dealer_location,
-      source, status, active, created_by
-    )
-    SELECT v_program_id, n.matched_equipment_id, n.id, p_batch_id,
-           n.serial_number, n.pops_client_code, n.client_name, n.model,
-           n.product_series, n.manufacture_year, n.platform, n.dealer_location,
-           'import', 'foco'::pops_machine_status, true, v_uid
-      FROM novas n
-    RETURNING 1
-  )
-  SELECT count(*) INTO v_inseridas FROM ins;
-
-  UPDATE public.pops_import_batches
-     SET status = 'confirmado'::pops_import_status,
-         confirmed_by = v_uid,
-         confirmed_at = now(),
-         total_rows = v_total
-   WHERE id = p_batch_id;
-
-  RETURN (
-    SELECT jsonb_build_object(
-      'total_linhas',        v_total,
-      'bloqueadas',          v_bloqueadas,
-      'inseridas',           v_inseridas,
-      'ja_existentes',       v_total - v_bloqueadas - v_inseridas,
-      'total_no_programa',   count(*),
-      'com_vinculo_parque',  count(*) FILTER (WHERE m.equipment_id IS NOT NULL),
-      'sem_vinculo_parque',  count(*) FILTER (WHERE m.equipment_id IS NULL),
-      'filial_pendente',     count(*) FILTER (WHERE m.pops_filial_pendente)
-    )
-    FROM public.pops_machines m
-   WHERE m.program_id = v_program_id AND m.active
-  );
-END $$;
+UNIQUE (pops_machine_id)                       -- 1 máquina = 1 execução
+UNIQUE (program_id, os_number_norm)            -- OS única no programa
+CHECK  (char_length(btrim(os_number)) BETWEEN 1 AND 40)
+CHECK  (os_number ~ '^[A-Za-z0-9/\-\.]+$')     -- letras, números, / - .
+CHECK  (executed_at <= now() + interval '1 minute')
+FK final_service_id -> pops_services (RESTRICT), FK pops_machine_id -> pops_machines (RESTRICT)
+IDX (program_id, executed_at), (executed_by, executed_at), (filial_id, executed_at), (final_service_id)
+IDX pops_machines (program_id, status), (pops_filial_id, status)
 ```
+Auditoria de formato: como não há integração externa, a OS é texto livre restrito ao charset acima (cobre `12345`, `OS-2026/117`, `A1234.5`), com `trim` e comparação case-insensitive para unicidade.
 
-Sem exigência de `MATCH_EXATO`, `resolution='confirmado'` ou `matched_equipment_id`. Todas as derivações (`*_norm`, `client_key`, `pops_filial_id`, `pops_filial_pendente`, `link_status`) ficam com o trigger `pops_machines_normalize_trg`.
+## 4. Fluxo de status
 
-## 2) `pops_portfolio_clients(...)`
+`foco` → `em_andamento` (`pops_start_machine`, reversível) → `servicada` (`pops_complete_machine`).
+Trigger `pops_machines_status_guard` (BEFORE UPDATE): só permite `servicada` se existir execução válida (serviço final, OS não vazia, `executed_by`, `executed_at`); e bloqueia sair de `servicada` enquanto a execução existir. A remoção da execução (só manager/admin) reverte a máquina para `em_andamento`.
 
-Assinatura muda (sai `p_rac_user_id`), então a versão atual é derrubada antes.
+## 5. Segurança por cargo
 
-```sql
-DROP FUNCTION IF EXISTS public.pops_portfolio_clients(uuid, uuid, uuid, text, integer, integer);
+- `pops_can_execute_machine(id)`: `pops_user_enabled()` AND (manager/admin global) OR (rac/cpa/csa **e** `pops_filial_id = get_user_filial_id()` e não nula).
+- Supervisor: **somente acompanhamento** nesta versão (lê tudo da filial, não conclui). Motivo: `executed_by` é indicador de produção do RAC; conclusão por supervisor distorceria o indicador. Manager/Admin podem corrigir/estornar execução (`updated_by` registrado).
+- Máquinas com `pops_filial_id` NULL: visíveis/executáveis somente por manager/admin.
+- RLS nas duas tabelas novas: SELECT por escopo (global / filial da máquina), INSERT/UPDATE/DELETE **negados** ao cliente — toda escrita passa pelas RPCs `SECURITY DEFINER`. GRANTs: `SELECT` para `authenticated`, `ALL` para `service_role`.
 
-CREATE OR REPLACE FUNCTION public.pops_portfolio_clients(
-  p_program_id uuid,
-  p_filial_id  uuid DEFAULT NULL,
-  p_search     text DEFAULT NULL,
-  p_limit      integer DEFAULT 50,
-  p_offset     integer DEFAULT 0
-) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_scope  jsonb := public.pops_scope();
-  v_kind   text  := v_scope ->> 'scope';
-  v_filial uuid  := (v_scope ->> 'filial_id')::uuid;
-  v_eff    uuid;
-  v_search text  := nullif(btrim(coalesce(p_search,'')),'');
-  v_limit  integer;
-  v_total  integer;
-  v_rows   jsonb;
-BEGIN
-  IF v_kind = 'none' THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501'; END IF;
-  v_limit := LEAST(GREATEST(COALESCE(p_limit,50),1),200);
-  v_eff := CASE WHEN v_kind = 'global' THEN p_filial_id ELSE v_filial END;
-  IF v_kind <> 'global' AND v_eff IS NULL THEN
-    RETURN jsonb_build_object('total', 0, 'rows', '[]'::jsonb);
-  END IF;
+## 6. Concorrência
 
-  WITH base AS (
-    SELECT m.client_key, m.pops_client_name, m.pops_dealer_location,
-           m.pops_filial_id, f.nome AS filial_nome, m.status
-      FROM public.pops_machines m
-      LEFT JOIN public.filiais f ON f.id = m.pops_filial_id
-     WHERE m.program_id = p_program_id
-       AND m.active
-       AND (v_eff IS NULL OR m.pops_filial_id = v_eff)
-       AND (v_search IS NULL OR m.pops_client_name_norm LIKE '%'||public.pops_norm_place(v_search)||'%')
-  ), agg AS (
-    SELECT client_key,
-           min(pops_client_name)      AS pops_client_name,
-           min(pops_dealer_location)  AS pops_dealer_location,
-           min(pops_filial_id)        AS pops_filial_id,
-           min(filial_nome)           AS filial_nome,
-           count(*)                                                          AS total_maquinas,
-           count(*) FILTER (WHERE status = 'servicada')                      AS servicadas,
-           count(*) FILTER (WHERE status = 'em_andamento')                   AS em_andamento,
-           count(*) FILTER (WHERE status NOT IN ('servicada','em_andamento')) AS pendentes
-      FROM base GROUP BY client_key
-  )
-  SELECT count(*) INTO v_total FROM agg;
+`pops_complete_machine` faz `SELECT ... FOR UPDATE` na máquina, revalida status e ausência de execução dentro da transação, e captura `unique_violation`:
+- máquina já concluída → `Esta máquina já foi concluída por outro usuário (OS X).`
+- OS repetida → `A OS informada já está registrada em outra máquina deste programa.`
 
-  SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY t.pops_client_name), '[]'::jsonb) INTO v_rows
-    FROM (
-      SELECT a.* FROM (
-        SELECT m.client_key,
-               min(m.pops_client_name)     AS pops_client_name,
-               min(m.pops_dealer_location) AS pops_dealer_location,
-               min(m.pops_filial_id)       AS pops_filial_id,
-               min(f.nome)                 AS filial_nome,
-               count(*)                                                            AS total_maquinas,
-               count(*) FILTER (WHERE m.status NOT IN ('servicada','em_andamento')) AS pendentes,
-               count(*) FILTER (WHERE m.status = 'em_andamento')                    AS em_andamento,
-               count(*) FILTER (WHERE m.status = 'servicada')                       AS servicadas
-          FROM public.pops_machines m
-          LEFT JOIN public.filiais f ON f.id = m.pops_filial_id
-         WHERE m.program_id = p_program_id AND m.active
-           AND (v_eff IS NULL OR m.pops_filial_id = v_eff)
-           AND (v_search IS NULL OR m.pops_client_name_norm LIKE '%'||public.pops_norm_place(v_search)||'%')
-         GROUP BY m.client_key
-      ) a
-      ORDER BY a.pops_client_name
-      LIMIT v_limit OFFSET greatest(coalesce(p_offset,0),0)
-    ) t;
+## 7. RPCs propostas
 
-  RETURN jsonb_build_object('total', v_total, 'rows', v_rows);
-END $$;
+- `pops_start_machine(p_machine_id)` — mantida: sinaliza "assumida", alimenta o indicador `in_progress` e o gerente enxerga trabalho em curso. Não bloqueia outros usuários.
+- `pops_complete_machine(p_machine_id, p_final_service_id, p_os_number, p_offered_service_ids uuid[], p_notes)` — valida permissão, serviço ativo, OS, grava execução + ofertados, seta `servicada`, `last_activity_at`.
+- `pops_machine_execution_detail(p_machine_id)` — JSON com máquina, status, execução (serviço final, OS, executor+nome, data), ofertados e flags `can_execute`/`can_edit`.
+- `pops_goal_summary(p_program_id, p_filial_id)` — goal, total_universe, serviced, remaining, attainment_percent, today, this_week (seg–dom), this_month, in_progress, pending; fuso `America/Sao_Paulo`.
+- `pops_goal_breakdown(p_program_id, p_dimension, p_filial_id, p_date_from, p_date_to)` — dimensões `dia|filial|executor|servico`, com realizadas, participação %, em andamento, hoje/semana/mês e acumulado diário.
+
+## 8. Exemplos de JSON
+
+`pops_goal_summary`:
+```json
+{"program_id":"...","goal":1000,"total_universe":5077,"serviced":327,"remaining":673,
+ "attainment_percent":32.7,"today":6,"this_week":21,"this_month":88,
+ "in_progress":14,"pending":4736,"filial_id":null,"scope":"global"}
 ```
-
-RAC/CPA/CSA e Supervisor: sempre a própria filial (`p_filial_id` ignorado). Manager/Admin: global, com filtro opcional.
-
-## 3) `pops_portfolio_client_machines(p_program_id, p_client_key)`
-
-```sql
-DROP FUNCTION IF EXISTS public.pops_portfolio_client_machines(uuid, text);
-
-CREATE OR REPLACE FUNCTION public.pops_portfolio_client_machines(
-  p_program_id uuid,
-  p_client_key text
-) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_scope  jsonb := public.pops_scope();
-  v_kind   text  := v_scope ->> 'scope';
-  v_filial uuid  := (v_scope ->> 'filial_id')::uuid;
-BEGIN
-  IF v_kind = 'none' THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501'; END IF;
-
-  RETURN (
-    SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY t.pops_serial), '[]'::jsonb)
-      FROM (
-        SELECT m.id AS pops_machine_id, m.status, m.pops_serial, m.pops_model,
-               m.pops_product_series, m.pops_manufacture_year, m.pops_platform,
-               m.pops_client_name, m.pops_client_code, m.pops_dealer_location,
-               m.pops_filial_id, f.nome AS filial_nome,
-               m.link_status, m.equipment_id,
-               e.serial_chassis AS parque_serial_chassis,
-               e.model          AS parque_model,
-               e.client_name    AS parque_client_name,
-               e.client_code    AS parque_client_code,
-               e.year           AS parque_year,
-               e.hours          AS parque_hours,
-               e.machine_type   AS parque_machine_type
-          FROM public.pops_machines m
-          LEFT JOIN public.filiais f ON f.id = m.pops_filial_id
-          LEFT JOIN public.client_equipment e ON e.id = m.equipment_id
-         WHERE m.program_id = p_program_id
-           AND m.active
-           AND m.client_key = p_client_key
-           AND (v_kind = 'global' OR m.pops_filial_id = v_filial)
-      ) t
-  );
-END $$;
+`pops_machine_execution_detail`:
+```json
+{"machine":{"id":"...","serial":"1T0450JXKF...","model":"450J","client_name":"FAZENDA X",
+ "filial":"Barreiras","status":"servicada"},
+ "execution":{"final_service":{"id":"...","name":"Análise de Óleo"},"os_number":"OS-2026/117",
+ "executed_by":{"id":"...","name":"João RAC"},"executed_at":"2026-08-27T14:02:00Z","notes":"..."},
+ "offered_services":[{"id":"...","name":"Análise de Óleo"},{"id":"...","name":"Análise de Arrefecimento"}],
+ "permissions":{"can_execute":false,"can_edit":false}}
 ```
+`pops_goal_breakdown` (dimension=`filial`): `[{"key":"...","label":"Barreiras","serviced":120,"share_percent":36.7,"in_progress":5}]`
 
-## 4) Idempotência
+## 9. Frontend futuro (só desenho)
 
-- Anti-join contra `pops_machines` por `program_id + pops_serial_norm` e por `program_id + equipment_id`, antes do INSERT.
-- `DISTINCT ON` no lote evita duplicidade dentro do próprio arquivo.
-- Rede de segurança final: os índices únicos vitalícios `pops_machines_program_serial_uidx` e `pops_machines_program_equipment_uidx` (valem também para registros inativos).
-- Reexecutar: `inseridas = 0`, `ja_existentes = 5.077`, nenhum registro novo.
+Tela POPS: topo com meta (`327 / 1000 · faltam 673`, barra de progresso, hoje/semana/mês) → lista de clientes da filial (`pops_portfolio_clients`) → máquinas do cliente (`pops_portfolio_client_machines`, badges foco/em andamento/serviçada) → drawer da máquina: checkboxes dos 3 serviços (de `pops_services`), radio do serviço final, campo OS, notas, botão Concluir. Após concluir: badge SERVIÇADA + serviço final, OS, executor e data. Aba gerencial com breakdown por filial/RAC/serviço/dia.
 
-## 5) Contagem esperada após materializar
+## 10. Impacto sobre a base atual
 
-| Campo | Esperado |
-| --- | --- |
-| `total_linhas` | 5.077 |
-| `bloqueadas` | 0 |
-| `inseridas` | 5.077 (1ª execução) |
-| `ja_existentes` | 0 (1ª execução) |
-| `total_no_programa` | 5.077 |
-| `com_vinculo_parque` | 4.732 |
-| `sem_vinculo_parque` | 345 |
-| `filial_pendente` | 306 |
-| Clientes na carteira (`client_key` distintos) | ~1.700 |
+- Nenhuma linha das 5.077 máquinas é alterada pela migration (apenas novos índices e trigger de guard).
+- Nenhuma OS, execução ou atribuição de RAC é criada.
+- `client_equipment`, tasks, Meu Dia e CRM não são tocados.
+- Única alteração em objeto existente: reescrita de `pops_can_write_machine()` para escopo por filial (deixa de depender de `responsible_user_id`).
 
-Matching já executado no lote real: 4.732 linhas com `matched_equipment_id` e 345 sem vínculo. Nenhum status bloqueia a materialização.
+## 11. SQL completo (resumo executável)
 
+1. `CREATE TABLE public.pops_machine_executions (...)` + GRANTs + RLS + policies (SELECT por escopo) + trigger `pops_set_updated_at`.
+2. `CREATE TABLE public.pops_machine_offered_services (...)` + GRANTs + RLS + policy SELECT por escopo.
+3. Índices listados no item 3.
+4. `pops_can_execute_machine()`, reescrita de `pops_can_write_machine()`.
+5. Trigger `pops_machines_status_guard` em `pops_machines`.
+6. RPCs: `pops_start_machine`, `pops_complete_machine`, `pops_machine_execution_detail`, `pops_goal_summary`, `pops_goal_breakdown` — todas `SECURITY DEFINER`, `SET search_path=public`, com `EXECUTE` para `authenticated`.
 
-## 6) São Félix do Araguaia (306 máquinas)
-
-Entram normalmente, com `pops_filial_id = NULL` e `pops_filial_pendente = true`. Ficam invisíveis para RAC/CPA/CSA/Supervisor (escopo por filial) e visíveis para Manager/Admin. Ao cadastrar a filial e apontar o mapping, `pops_recalc_filiais(program_id)` reclassifica as 306 sem reimportar.
-
-## 7 e 8) O que esta etapa NÃO faz
-
-- Nenhuma atribuição de RAC: `responsible_user_id` fica NULL, `pops_client_assignments` e `pops_assign_rac_*` não são usados nem alterados.
-- Nenhuma execução: nada de serviço final, OS, `executed_by`/`executed_at`, dashboard final ou frontend. Todas as máquinas nascem `status = 'foco'`.
+O SQL final será enviado integralmente na ferramenta de migration (para revisão linha a linha) somente após sua aprovação.
