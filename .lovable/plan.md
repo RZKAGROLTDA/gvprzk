@@ -2,18 +2,49 @@
 
 Escopo: **somente estrutura**. Não materializa as 5.077 máquinas. RPCs de confirmação e carteira virão em etapa separada para aprovação.
 
-## Ponto de atenção antes de aplicar (identidade do cliente)
+## Auditoria final — Nome Cliente (base real, 1 lote)
 
-A auditoria da base real mostrou que o **Dealer Account Number é único por Dealer Location**: existem apenas **13 códigos distintos** nas 5.077 linhas (1 por filial), enquanto há **1.698 nomes de cliente distintos**.
+| Métrica | Resultado |
+| --- | --- |
+| Total de linhas | 5.077 |
+| Com nome de cliente preenchido | 4.939 (97,3%) |
+| Sem nome de cliente | 138 (2,7%) |
+| Nomes normalizados distintos | 1.681 |
+| Máquinas que ficariam sem `client_key` por nome | 138 |
+| Nomes normalizados presentes em mais de um Dealer Location | 142 |
+| Máquinas envolvidas nesses 142 nomes | 1.220 |
 
-Consequência prática: agrupar a carteira por `program_id + pops_client_code_norm` produziria **13 "clientes"** (na verdade 13 filiais), não a visão por cliente desejada no item 6 da regra ("CLIENTE A — 12 máquinas...").
+Exemplos de mesmo nome em locais diferentes:
 
-Proposta implementada no SQL abaixo, sem perder o que você pediu:
+| Nome normalizado | Locais | Máquinas |
+| --- | --- | --- |
+| CANISIOFROELICH | Barra do Garças, Porto Alegre do Norte, Querência, São Félix do Araguaia, São José do Xingu | 90 |
+| ROMEUFROELICH | Barra do Garças, Porto Alegre do Norte, Querência, São Félix do Araguaia, São José do Xingu | 82 |
+| BOM FUTURO | Canarana, Querência | 75 |
+| ATVOS | Alto Taquari, Mineiros | 35 |
+| JOSERICARDOREZEK | Água Boa, Barra do Garças, Canarana, Gaúcha do Norte, Querência, São Félix do Araguaia | 29 |
+| BERNARDUSHUBERTUSSCHOLTEN | Alto Taquari, Mineiros, Planalto Verde | 29 |
+| RZK RENTAL | Água Boa, Alto Taquari, Canarana, Gaúcha do Norte, Porto Alegre do Norte, Querência | 22 |
 
-- `pops_client_code_norm` é criado e preenchido pelo trigger, com índice, exatamente como solicitado;
-- a chave de agrupamento da carteira é `client_key`, coluna gerada que usa **prioritariamente** o código do cliente quando ele existir e for específico do cliente, e cai para o nome normalizado quando o código não identificar o cliente. Assim a regra "código primeiro, nome só exibição" é respeitada e a visão por cliente continua correta na base atual.
+Conclusão: `client_key = 'N:' || pops_client_name_norm` juntaria indevidamente 1.220 máquinas de 142 nomes que operam em filiais diferentes — a carteira de um RAC mostraria máquinas fora da filial dele dentro do mesmo grupo de cliente.
 
-Se você preferir agrupar estritamente por `pops_client_code_norm`, basta remover a coluna `client_key` do SQL e usar o código direto nas RPCs — mas a carteira ficará com 13 grupos.
+## Definição final de `client_key`
+
+Chave = localização + nome normalizado, sem consultar `pops_import_rows` e sem lógica dinâmica sobre o código:
+
+```
+client_key = 'L:' || pops_norm_place(pops_dealer_location) || '|N:' || pops_client_name_norm     -- com nome
+client_key = 'S:' || pops_serial_norm                                                            -- sem nome (138 linhas)
+```
+
+- deriva apenas de colunas da própria linha (determinístico, sem subquery);
+- `pops_client_code` / `pops_client_code_norm` ficam só como informação da base, com o índice pedido;
+- as 138 máquinas sem nome viram um grupo próprio por serial, portanto nenhuma máquina fica sem `client_key`;
+- o índice `pops_machines_client_key_idx` é mantido;
+- Dealer Location → filial, pendência de São Félix e unicidade vitalícia permanecem exatamente como aprovado.
+
+Se você preferir estritamente `'N:' || pops_client_name_norm`, é uma troca de uma linha no trigger — mas aceitando a junção dos 142 nomes acima.
+
 
 ## SQL final da migration corretiva
 
@@ -108,7 +139,6 @@ CREATE INDEX pops_machines_cliente_nome_idx
 -- E) Trigger: identidade, filial e link_status derivados
 CREATE OR REPLACE FUNCTION public.pops_machines_normalize()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
-DECLARE v_code_clientes int;
 BEGIN
   NEW.pops_serial_norm      := public.pops_norm_serial(NEW.pops_serial);
   NEW.pops_client_code_norm := public.pops_norm_code(NEW.pops_client_code);
@@ -132,20 +162,13 @@ BEGIN
   END IF;
   NEW.pops_filial_pendente := (NEW.pops_filial_id IS NULL);
 
-  -- Chave de agrupamento da carteira: código do cliente tem prioridade;
-  -- fallback para o nome quando o código não identifica o cliente (código de dealer)
-  SELECT count(DISTINCT r.client_name) INTO v_code_clientes
-    FROM public.pops_import_rows r
-    JOIN public.pops_import_batches b ON b.id = r.batch_id
-   WHERE b.program_id = NEW.program_id
-     AND r.pops_client_code_norm = NEW.pops_client_code_norm;
-
+  -- Chave de agrupamento da carteira: localizacao + nome normalizado
+  -- (codigo do cliente e apenas informacao da base; sem consultar pops_import_rows)
   NEW.client_key := CASE
-    WHEN NEW.pops_client_code_norm IS NOT NULL AND coalesce(v_code_clientes,0) <= 1
-      THEN 'C:'||NEW.pops_client_code_norm
     WHEN NEW.pops_client_name_norm IS NOT NULL
-      THEN 'N:'||NEW.pops_client_name_norm
-    ELSE 'C:'||coalesce(NEW.pops_client_code_norm,'SEM_CLIENTE')
+      THEN 'L:'||coalesce(public.pops_norm_place(NEW.pops_dealer_location),'SEM_LOCAL')
+           ||'|N:'||NEW.pops_client_name_norm
+    ELSE 'S:'||coalesce(NEW.pops_serial_norm,NEW.id::text)
   END;
 
   RETURN NEW;
