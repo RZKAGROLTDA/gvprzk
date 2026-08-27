@@ -163,20 +163,13 @@ BEGIN
   END IF;
   NEW.pops_filial_pendente := (NEW.pops_filial_id IS NULL);
 
-  -- Chave de agrupamento da carteira: código do cliente tem prioridade;
-  -- fallback para o nome quando o código não identifica o cliente (código de dealer)
-  SELECT count(DISTINCT r.client_name) INTO v_code_clientes
-    FROM public.pops_import_rows r
-    JOIN public.pops_import_batches b ON b.id = r.batch_id
-   WHERE b.program_id = NEW.program_id
-     AND r.pops_client_code_norm = NEW.pops_client_code_norm;
-
+  -- Chave de agrupamento da carteira: localizacao + nome normalizado
+  -- (codigo do cliente e apenas informacao da base; sem consultar pops_import_rows)
   NEW.client_key := CASE
-    WHEN NEW.pops_client_code_norm IS NOT NULL AND coalesce(v_code_clientes,0) <= 1
-      THEN 'C:'||NEW.pops_client_code_norm
     WHEN NEW.pops_client_name_norm IS NOT NULL
-      THEN 'N:'||NEW.pops_client_name_norm
-    ELSE 'C:'||coalesce(NEW.pops_client_code_norm,'SEM_CLIENTE')
+      THEN 'L:'||coalesce(public.pops_norm_place(NEW.pops_dealer_location),'SEM_LOCAL')
+           ||'|N:'||NEW.pops_client_name_norm
+    ELSE 'S:'||coalesce(NEW.pops_serial_norm,NEW.id::text)
   END;
 
   RETURN NEW;
