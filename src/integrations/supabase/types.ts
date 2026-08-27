@@ -1063,12 +1063,16 @@ export type Database = {
           deactivated_by: string | null
           deactivation_reason: string | null
           equipment_id: string | null
+          executed_at: string | null
+          executed_by: string | null
+          final_service_id: string | null
           id: string
           import_batch_id: string | null
           import_row_id: string | null
           last_activity_at: string | null
           link_status: string
           notes: string | null
+          os_number: string | null
           pops_client_code: string | null
           pops_client_code_norm: string | null
           pops_client_name: string | null
@@ -1099,12 +1103,16 @@ export type Database = {
           deactivated_by?: string | null
           deactivation_reason?: string | null
           equipment_id?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          final_service_id?: string | null
           id?: string
           import_batch_id?: string | null
           import_row_id?: string | null
           last_activity_at?: string | null
           link_status?: string
           notes?: string | null
+          os_number?: string | null
           pops_client_code?: string | null
           pops_client_code_norm?: string | null
           pops_client_name?: string | null
@@ -1135,12 +1143,16 @@ export type Database = {
           deactivated_by?: string | null
           deactivation_reason?: string | null
           equipment_id?: string | null
+          executed_at?: string | null
+          executed_by?: string | null
+          final_service_id?: string | null
           id?: string
           import_batch_id?: string | null
           import_row_id?: string | null
           last_activity_at?: string | null
           link_status?: string
           notes?: string | null
+          os_number?: string | null
           pops_client_code?: string | null
           pops_client_code_norm?: string | null
           pops_client_name?: string | null
@@ -1168,6 +1180,13 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "client_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pops_machines_final_service_id_fkey"
+            columns: ["final_service_id"]
+            isOneToOne: false
+            referencedRelation: "pops_services"
             referencedColumns: ["id"]
           },
           {
@@ -4167,6 +4186,14 @@ export type Database = {
         Args: { p_pops_machine_id: string }
         Returns: boolean
       }
+      pops_complete_machine: {
+        Args: {
+          p_machine_id: string
+          p_os_number: string
+          p_service_id: string
+        }
+        Returns: Json
+      }
       pops_confirm_import_batch: { Args: { p_batch_id: string }; Returns: Json }
       pops_create_import_batch: {
         Args: {
@@ -4176,6 +4203,10 @@ export type Database = {
           p_rows: Json
         }
         Returns: string
+      }
+      pops_goal_summary: {
+        Args: { p_filial_id?: string; p_program_id: string }
+        Returns: Json
       }
       pops_import_distribution: { Args: { p_batch_id: string }; Returns: Json }
       pops_import_rows_list: {
