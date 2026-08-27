@@ -155,6 +155,7 @@ DECLARE
   v_filial uuid  := (v_scope ->> 'filial_id')::uuid;
   v_eff    uuid;
   v_search text  := nullif(btrim(coalesce(p_search,'')),'');
+  v_limit  integer;
   v_total  integer;
   v_rows   jsonb;
 BEGIN
