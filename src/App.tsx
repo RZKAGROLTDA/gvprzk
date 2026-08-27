@@ -28,6 +28,7 @@ import Management from "./pages/Management";
 import { Users } from "./pages/Users";
 import { Filiais } from "./pages/Filiais";
 import Equipamentos from "./pages/Equipamentos";
+import Pops from "./pages/Pops";
 import PerformanceByFilial from "./pages/PerformanceByFilial";
 import PerformanceBySeller from "./pages/PerformanceBySeller";
 import { Home } from "./pages/Home";
@@ -110,6 +111,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/users" element={<Layout><Users /></Layout>} />
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
       <Route path="/equipamentos" element={<Layout><Equipamentos /></Layout>} />
+      <Route path="/pops" element={<Layout><ErrorBoundary title="Não foi possível exibir o POPS"><Pops /></ErrorBoundary></Layout>} />
       <Route path="/diagnostico-midia" element={<Layout><MediaDiagnostics /></Layout>} />
       <Route path="/versoes-usuarios" element={<Layout><UserVersions /></Layout>} />
       <Route path="/revisao-clientes" element={<Layout><ClientMasterReview /></Layout>} />

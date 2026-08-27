@@ -49,6 +49,11 @@ const useNavigationItems = () => {
         path: '/equipamentos',
         icon: Tractor,
         label: 'Parque de Máquinas'
+      },
+      {
+        path: '/pops',
+        icon: Target,
+        label: 'POPS 2026'
       }
     ],
     managementItems: [
