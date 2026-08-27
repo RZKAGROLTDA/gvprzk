@@ -155,13 +155,16 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
                   <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline">
-                    Visitas {goalLabel(row.visitas_realizado, row.visitas_meta)}
+                  <Badge variant="outline">Visitas hoje {todayLabel(row, 'visitas')}</Badge>
+                  <Badge variant={(row.visitas_pendencia_semana ?? 0) > 0 ? 'destructive' : 'secondary'}>
+                    Pend. visitas {row.visitas_pendencia_semana ?? '—'}
                   </Badge>
-                  <Badge variant="outline">
-                    Ligações {goalLabel(row.ligacoes_realizado, row.ligacoes_meta)}
+                  <Badge variant="outline">Ligações hoje {todayLabel(row, 'ligacoes')}</Badge>
+                  <Badge variant={(row.ligacoes_pendencia_semana ?? 0) > 0 ? 'destructive' : 'secondary'}>
+                    Pend. ligações {row.ligacoes_pendencia_semana ?? '—'}
                   </Badge>
                   <GoalBadge row={row} />
+
                   <Badge variant={row.total_pendencias > 0 ? 'destructive' : 'secondary'}>
                     {row.total_pendencias} pendência(s)
                   </Badge>
