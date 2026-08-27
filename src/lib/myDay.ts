@@ -43,7 +43,18 @@ export interface MyDayGoal {
   period_type: 'daily' | 'weekly' | null;
   weekdays_only: boolean | null;
   sem_meta_hoje: boolean;
+  /** Realizado somente do dia corrente. */
+  realizado_hoje?: number;
+  /** Meta do dia (apenas para metas diárias; null quando a meta é semanal). */
+  meta_hoje?: number | null;
+  /** Realizado na janela semanal (truncada pelo mês corrente). */
+  realizado_semana?: number;
+  /** Meta acumulada até hoje na janela semanal. */
+  meta_acumulada_semana?: number | null;
+  /** Pendência acumulada da semana = meta acumulada - realizado na janela. */
+  pendencia_semana?: number | null;
 }
+
 
 export interface MyDayBlockData {
   overdue_count: number;
