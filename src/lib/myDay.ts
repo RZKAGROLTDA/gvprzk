@@ -65,6 +65,16 @@ export interface MyDayBlockData {
   upcoming_preview: any[];
 }
 
+export interface MyDayWeekWindow {
+  start: string;
+  end: string;
+  elapsed_days: number;
+  elapsed_weekdays: number;
+  total_days: number;
+  total_weekdays: number;
+  month_crossing?: boolean;
+}
+
 export interface MyDaySummary {
   user: {
     user_id: string;
@@ -74,12 +84,14 @@ export interface MyDaySummary {
     week_end: string;
     is_weekend: boolean;
   };
+  week_window?: MyDayWeekWindow;
   goals: { visitas: MyDayGoal; ligacoes: MyDayGoal };
   visit_schedules: MyDayBlockData;
   returns: MyDayBlockData;
   trainings: MyDayBlockData;
   open_tasks: MyDayBlockData;
 }
+
 
 export interface MyDayDetails {
   block: MyDayBlock;
