@@ -1015,19 +1015,73 @@ export type Database = {
           },
         ]
       }
+      pops_location_mapping: {
+        Row: {
+          active: boolean
+          created_at: string
+          dealer_location: string
+          dealer_location_norm: string
+          filial_id: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          dealer_location: string
+          dealer_location_norm: string
+          filial_id?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          dealer_location?: string
+          dealer_location_norm?: string
+          filial_id?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pops_location_mapping_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pops_machines: {
         Row: {
           active: boolean
+          client_key: string | null
           created_at: string
           created_by: string | null
           deactivated_at: string | null
           deactivated_by: string | null
           deactivation_reason: string | null
-          equipment_id: string
+          equipment_id: string | null
           id: string
           import_batch_id: string | null
+          import_row_id: string | null
           last_activity_at: string | null
+          link_status: string
           notes: string | null
+          pops_client_code: string | null
+          pops_client_code_norm: string | null
+          pops_client_name: string | null
+          pops_client_name_norm: string | null
+          pops_dealer_location: string | null
+          pops_filial_id: string | null
+          pops_filial_pendente: boolean
+          pops_manufacture_year: string | null
+          pops_model: string | null
+          pops_platform: string | null
+          pops_product_series: string | null
+          pops_serial: string | null
+          pops_serial_norm: string | null
           program_id: string
           responsible_user_id: string | null
           source: string
@@ -1038,16 +1092,32 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          client_key?: string | null
           created_at?: string
           created_by?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
           deactivation_reason?: string | null
-          equipment_id: string
+          equipment_id?: string | null
           id?: string
           import_batch_id?: string | null
+          import_row_id?: string | null
           last_activity_at?: string | null
+          link_status?: string
           notes?: string | null
+          pops_client_code?: string | null
+          pops_client_code_norm?: string | null
+          pops_client_name?: string | null
+          pops_client_name_norm?: string | null
+          pops_dealer_location?: string | null
+          pops_filial_id?: string | null
+          pops_filial_pendente?: boolean
+          pops_manufacture_year?: string | null
+          pops_model?: string | null
+          pops_platform?: string | null
+          pops_product_series?: string | null
+          pops_serial?: string | null
+          pops_serial_norm?: string | null
           program_id: string
           responsible_user_id?: string | null
           source?: string
@@ -1058,16 +1128,32 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          client_key?: string | null
           created_at?: string
           created_by?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
           deactivation_reason?: string | null
-          equipment_id?: string
+          equipment_id?: string | null
           id?: string
           import_batch_id?: string | null
+          import_row_id?: string | null
           last_activity_at?: string | null
+          link_status?: string
           notes?: string | null
+          pops_client_code?: string | null
+          pops_client_code_norm?: string | null
+          pops_client_name?: string | null
+          pops_client_name_norm?: string | null
+          pops_dealer_location?: string | null
+          pops_filial_id?: string | null
+          pops_filial_pendente?: boolean
+          pops_manufacture_year?: string | null
+          pops_model?: string | null
+          pops_platform?: string | null
+          pops_product_series?: string | null
+          pops_serial?: string | null
+          pops_serial_norm?: string | null
           program_id?: string
           responsible_user_id?: string | null
           source?: string
@@ -1082,6 +1168,20 @@ export type Database = {
             columns: ["equipment_id"]
             isOneToOne: false
             referencedRelation: "client_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pops_machines_import_row_id_fkey"
+            columns: ["import_row_id"]
+            isOneToOne: false
+            referencedRelation: "pops_import_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pops_machines_pops_filial_id_fkey"
+            columns: ["pops_filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
             referencedColumns: ["id"]
           },
           {
@@ -4093,6 +4193,7 @@ export type Database = {
       pops_is_manager: { Args: never; Returns: boolean }
       pops_match_import_batch: { Args: { p_batch_id: string }; Returns: Json }
       pops_norm_code: { Args: { p_text: string }; Returns: string }
+      pops_norm_place: { Args: { p: string }; Returns: string }
       pops_norm_serial: { Args: { p_text: string }; Returns: string }
       pops_portfolio_client_machines: {
         Args: { p_pops_client_code: string; p_program_id: string }
@@ -4109,6 +4210,7 @@ export type Database = {
         }
         Returns: Json
       }
+      pops_recalc_filiais: { Args: { p_program_id: string }; Returns: number }
       pops_resolve_import_row: {
         Args: {
           p_action: string
