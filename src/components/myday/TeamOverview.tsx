@@ -43,8 +43,8 @@ const Kpi: React.FC<{ label: string; value: number | string; tone?: 'default' | 
   </Card>
 );
 
-const goalLabel = (realizado: number, meta: number | null): string =>
-  meta == null ? `${realizado} / —` : `${realizado} / ${meta}`;
+/** "Hoje" compacto: realizado/meta do dia (— quando a meta é semanal ou inexistente). */
+
 
 /** "Hoje" compacto: realizado/meta do dia (— quando a meta é semanal ou inexistente). */
 const todayLabel = (row: MyDayTeamRow, kind: 'visitas' | 'ligacoes'): string => {
