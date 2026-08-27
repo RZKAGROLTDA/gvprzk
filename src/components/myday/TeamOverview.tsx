@@ -43,8 +43,23 @@ const Kpi: React.FC<{ label: string; value: number | string; tone?: 'default' | 
   </Card>
 );
 
-const goalLabel = (realizado: number, meta: number | null): string =>
-  meta == null ? `${realizado} / —` : `${realizado} / ${meta}`;
+/** "Hoje" compacto: realizado/meta do dia (— quando a meta é semanal ou inexistente). */
+
+
+/** "Hoje" compacto: realizado/meta do dia (— quando a meta é semanal ou inexistente). */
+const todayLabel = (row: MyDayTeamRow, kind: 'visitas' | 'ligacoes'): string => {
+  const done = Number(
+    (kind === 'visitas' ? row.visitas_hoje : row.ligacoes_hoje) ?? 0,
+  );
+  const target = kind === 'visitas' ? row.visitas_meta_hoje : row.ligacoes_meta_hoje;
+  return target == null ? `${done} / —` : `${done} / ${target}`;
+};
+
+const PendCell: React.FC<{ value: number | null | undefined }> = ({ value }) => {
+  if (value == null) return <span className="text-muted-foreground">—</span>;
+  if (value === 0) return <span className="text-muted-foreground">0</span>;
+  return <span className="font-semibold text-destructive">{value}</span>;
+};
 
 const GoalBadge: React.FC<{ row: MyDayTeamRow }> = ({ row }) => {
   if (row.meta_atingida == null) return <Badge variant="outline">Sem meta</Badge>;
@@ -54,6 +69,7 @@ const GoalBadge: React.FC<{ row: MyDayTeamRow }> = ({ row }) => {
     <Badge variant="destructive">Abaixo da meta</Badge>
   );
 };
+
 
 export const TeamOverview: React.FC<TeamOverviewProps> = ({
   data,
@@ -100,6 +116,8 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Colaboradores" value={k.colaboradores} />
         <Kpi label="Com pendências" value={k.com_pendencias} tone="alert" />
+        <Kpi label="Pend. visitas (semana)" value={k.visitas_pendencia_semana ?? 0} tone="alert" />
+        <Kpi label="Pend. ligações (semana)" value={k.ligacoes_pendencia_semana ?? 0} tone="alert" />
         <Kpi label="Abaixo da meta" value={k.meta_nao_atingida} tone="alert" />
         <Kpi label="Visitas atrasadas" value={k.visitas_atrasadas} tone="alert" />
         <Kpi label="Retornos atrasados" value={k.retornos_atrasados} tone="alert" />
@@ -109,6 +127,7 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
           k.visitas_atrasadas + k.retornos_atrasados + k.treinamentos_pendentes + k.acoes_atrasadas
         } tone="alert" />
       </div>
+
 
       {rows.length === 0 ? (
         <Card>
@@ -136,13 +155,16 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
                   <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline">
-                    Visitas {goalLabel(row.visitas_realizado, row.visitas_meta)}
+                  <Badge variant="outline">Visitas hoje {todayLabel(row, 'visitas')}</Badge>
+                  <Badge variant={(row.visitas_pendencia_semana ?? 0) > 0 ? 'destructive' : 'secondary'}>
+                    Pend. visitas {row.visitas_pendencia_semana ?? '—'}
                   </Badge>
-                  <Badge variant="outline">
-                    Ligações {goalLabel(row.ligacoes_realizado, row.ligacoes_meta)}
+                  <Badge variant="outline">Ligações hoje {todayLabel(row, 'ligacoes')}</Badge>
+                  <Badge variant={(row.ligacoes_pendencia_semana ?? 0) > 0 ? 'destructive' : 'secondary'}>
+                    Pend. ligações {row.ligacoes_pendencia_semana ?? '—'}
                   </Badge>
                   <GoalBadge row={row} />
+
                   <Badge variant={row.total_pendencias > 0 ? 'destructive' : 'secondary'}>
                     {row.total_pendencias} pendência(s)
                   </Badge>
@@ -161,8 +183,11 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
                     <TableHead className="whitespace-nowrap">Colaborador</TableHead>
                     <TableHead className="whitespace-nowrap">Cargo</TableHead>
                     <TableHead className="whitespace-nowrap">Filial</TableHead>
-                    <TableHead className="whitespace-nowrap text-right">Visitas</TableHead>
-                    <TableHead className="whitespace-nowrap text-right">Ligações</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Vis. hoje</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Pend. vis.</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Lig. hoje</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Pend. lig.</TableHead>
+
                     <TableHead className="whitespace-nowrap text-right">Visitas atras.</TableHead>
                     <TableHead className="whitespace-nowrap text-right">Retornos atras.</TableHead>
                     <TableHead className="whitespace-nowrap text-right">Trein. pend.</TableHead>
@@ -182,11 +207,18 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
                       <TableCell className="whitespace-nowrap">{getRoleLabel(row.role)}</TableCell>
                       <TableCell className="whitespace-nowrap">{row.filial_nome ?? '—'}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {goalLabel(row.visitas_realizado, row.visitas_meta)}
+                        {todayLabel(row, 'visitas')}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        {goalLabel(row.ligacoes_realizado, row.ligacoes_meta)}
+                        <PendCell value={row.visitas_pendencia_semana} />
                       </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        {todayLabel(row, 'ligacoes')}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <PendCell value={row.ligacoes_pendencia_semana} />
+                      </TableCell>
+
                       <TableCell className="whitespace-nowrap text-right">
                         {row.visitas_atrasadas}
                       </TableCell>

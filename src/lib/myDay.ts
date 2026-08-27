@@ -43,7 +43,18 @@ export interface MyDayGoal {
   period_type: 'daily' | 'weekly' | null;
   weekdays_only: boolean | null;
   sem_meta_hoje: boolean;
+  /** Realizado somente do dia corrente. */
+  realizado_hoje?: number;
+  /** Meta do dia (apenas para metas diárias; null quando a meta é semanal). */
+  meta_hoje?: number | null;
+  /** Realizado na janela semanal (truncada pelo mês corrente). */
+  realizado_semana?: number;
+  /** Meta acumulada até hoje na janela semanal. */
+  meta_acumulada_semana?: number | null;
+  /** Pendência acumulada da semana = meta acumulada - realizado na janela. */
+  pendencia_semana?: number | null;
 }
+
 
 export interface MyDayBlockData {
   overdue_count: number;
@@ -52,6 +63,16 @@ export interface MyDayBlockData {
   overdue_preview: any[];
   today_preview: any[];
   upcoming_preview: any[];
+}
+
+export interface MyDayWeekWindow {
+  start: string;
+  end: string;
+  elapsed_days: number;
+  elapsed_weekdays: number;
+  total_days: number;
+  total_weekdays: number;
+  month_crossing?: boolean;
 }
 
 export interface MyDaySummary {
@@ -63,12 +84,14 @@ export interface MyDaySummary {
     week_end: string;
     is_weekend: boolean;
   };
+  week_window?: MyDayWeekWindow;
   goals: { visitas: MyDayGoal; ligacoes: MyDayGoal };
   visit_schedules: MyDayBlockData;
   returns: MyDayBlockData;
   trainings: MyDayBlockData;
   open_tasks: MyDayBlockData;
 }
+
 
 export interface MyDayDetails {
   block: MyDayBlock;
@@ -232,6 +255,16 @@ export interface MyDayTeamRow {
   visitas_meta: number | null;
   ligacoes_realizado: number;
   ligacoes_meta: number | null;
+  visitas_hoje?: number;
+  visitas_meta_hoje?: number | null;
+  ligacoes_hoje?: number;
+  ligacoes_meta_hoje?: number | null;
+  visitas_semana?: number;
+  visitas_meta_semana?: number | null;
+  ligacoes_semana?: number;
+  ligacoes_meta_semana?: number | null;
+  visitas_pendencia_semana?: number | null;
+  ligacoes_pendencia_semana?: number | null;
   visitas_atrasadas: number;
   retornos_atrasados: number;
   treinamentos_pendentes: number;
@@ -245,7 +278,9 @@ export interface MyDayTeamSummary {
   viewer: { user_id: string; role: string; filial_id: string | null };
   today: string;
   week_start: string;
+  week_end?: string;
   is_weekend: boolean;
+  week_window?: MyDayWeekWindow;
   filters: { filial_id: string | null; role: string | null; user_id: string | null };
   kpis: {
     colaboradores: number;
@@ -255,9 +290,12 @@ export interface MyDayTeamSummary {
     retornos_atrasados: number;
     treinamentos_pendentes: number;
     acoes_atrasadas: number;
+    visitas_pendencia_semana?: number;
+    ligacoes_pendencia_semana?: number;
   };
   rows: MyDayTeamRow[];
 }
+
 
 export interface MyDayTeamFilters {
   filialId: string | null;
