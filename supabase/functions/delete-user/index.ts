@@ -74,7 +74,9 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { profileId } = body;
 
+    if (!profileId) {
       return new Response(
+
         JSON.stringify({ error: 'Profile ID is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
