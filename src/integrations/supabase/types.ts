@@ -4196,7 +4196,7 @@ export type Database = {
       pops_norm_place: { Args: { p: string }; Returns: string }
       pops_norm_serial: { Args: { p_text: string }; Returns: string }
       pops_portfolio_client_machines: {
-        Args: { p_pops_client_code: string; p_program_id: string }
+        Args: { p_client_key: string; p_program_id: string }
         Returns: Json
       }
       pops_portfolio_clients: {
@@ -4205,7 +4205,6 @@ export type Database = {
           p_limit?: number
           p_offset?: number
           p_program_id: string
-          p_rac_user_id?: string
           p_search?: string
         }
         Returns: Json
