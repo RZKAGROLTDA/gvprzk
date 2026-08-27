@@ -139,7 +139,7 @@ CREATE INDEX pops_machines_cliente_nome_idx
 -- E) Trigger: identidade, filial e link_status derivados
 CREATE OR REPLACE FUNCTION public.pops_machines_normalize()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
-DECLARE v_code_clientes int;
+BEGIN
 BEGIN
   NEW.pops_serial_norm      := public.pops_norm_serial(NEW.pops_serial);
   NEW.pops_client_code_norm := public.pops_norm_code(NEW.pops_client_code);
