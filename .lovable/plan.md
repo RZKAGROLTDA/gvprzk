@@ -209,7 +209,7 @@ BEGIN
          GROUP BY m.client_key
       ) a
       ORDER BY a.pops_client_name
-      LIMIT greatest(coalesce(p_limit,50),1) OFFSET greatest(coalesce(p_offset,0),0)
+      LIMIT v_limit OFFSET greatest(coalesce(p_offset,0),0)
     ) t;
 
   RETURN jsonb_build_object('total', v_total, 'rows', v_rows);
