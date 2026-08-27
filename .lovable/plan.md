@@ -140,7 +140,6 @@ CREATE INDEX pops_machines_cliente_nome_idx
 CREATE OR REPLACE FUNCTION public.pops_machines_normalize()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
-BEGIN
   NEW.pops_serial_norm      := public.pops_norm_serial(NEW.pops_serial);
   NEW.pops_client_code_norm := public.pops_norm_code(NEW.pops_client_code);
   NEW.pops_client_name_norm := public.pops_norm_place(NEW.pops_client_name);
