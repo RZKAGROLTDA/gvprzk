@@ -277,12 +277,13 @@ END $$;
 | `inseridas` | 5.077 (1ª execução) |
 | `ja_existentes` | 0 (1ª execução) |
 | `total_no_programa` | 5.077 |
-| `com_vinculo_parque` | 0 hoje (0 linhas com `matched_equipment_id`) |
-| `sem_vinculo_parque` | 5.077 hoje |
+| `com_vinculo_parque` | 4.732 |
+| `sem_vinculo_parque` | 345 |
 | `filial_pendente` | 306 |
 | Clientes na carteira (`client_key` distintos) | ~1.700 |
 
-Se você quiser vínculo com o Parque já na materialização, é só rodar `pops_match_import_batch` no lote antes de confirmar — os números de vínculo mudam, o total de 5.077 não.
+Matching já executado no lote real: 4.732 linhas com `matched_equipment_id` e 345 sem vínculo. Nenhum status bloqueia a materialização.
+
 
 ## 6) São Félix do Araguaia (306 máquinas)
 
