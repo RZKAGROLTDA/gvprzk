@@ -183,8 +183,11 @@ export const TeamOverview: React.FC<TeamOverviewProps> = ({
                     <TableHead className="whitespace-nowrap">Colaborador</TableHead>
                     <TableHead className="whitespace-nowrap">Cargo</TableHead>
                     <TableHead className="whitespace-nowrap">Filial</TableHead>
-                    <TableHead className="whitespace-nowrap text-right">Visitas</TableHead>
-                    <TableHead className="whitespace-nowrap text-right">Ligações</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Vis. hoje</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Pend. vis.</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Lig. hoje</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">Pend. lig.</TableHead>
+
                     <TableHead className="whitespace-nowrap text-right">Visitas atras.</TableHead>
                     <TableHead className="whitespace-nowrap text-right">Retornos atras.</TableHead>
                     <TableHead className="whitespace-nowrap text-right">Trein. pend.</TableHead>
