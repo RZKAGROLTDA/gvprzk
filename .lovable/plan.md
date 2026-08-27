@@ -51,7 +51,7 @@ Se você preferir estritamente `'N:' || pops_client_name_norm`, é uma troca de 
 ```sql
 -- A) Normalização de nomes de local/cliente
 CREATE OR REPLACE FUNCTION public.pops_norm_place(p text)
-RETURNS text LANGUAGE sql IMMUTABLE SET search_path = public AS $$
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public AS $$
   SELECT nullif(upper(btrim(regexp_replace(
     translate(p,'áàâãéêíóôõúüçÁÀÂÃÉÊÍÓÔÕÚÜÇ','aaaaeeiooouucAAAAEEIOOOUUC'),
     '\s+',' ','g'))),'')
@@ -70,15 +70,23 @@ CREATE TABLE public.pops_location_mapping (
 CREATE UNIQUE INDEX pops_location_mapping_norm_uidx
   ON public.pops_location_mapping (dealer_location_norm);
 
-GRANT SELECT ON public.pops_location_mapping TO authenticated;
-GRANT ALL    ON public.pops_location_mapping TO service_role;
+REVOKE ALL ON public.pops_location_mapping FROM PUBLIC;
+REVOKE ALL ON public.pops_location_mapping FROM anon;
+GRANT SELECT, INSERT, UPDATE ON public.pops_location_mapping TO authenticated;
+GRANT ALL ON public.pops_location_mapping TO service_role;
 ALTER TABLE public.pops_location_mapping ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY pops_location_mapping_select ON public.pops_location_mapping
   FOR SELECT TO authenticated USING (true);
-CREATE POLICY pops_location_mapping_write ON public.pops_location_mapping
-  FOR ALL TO authenticated
-  USING (public.pops_is_manager()) WITH CHECK (public.pops_is_manager());
+
+CREATE POLICY pops_location_mapping_insert ON public.pops_location_mapping
+  FOR INSERT TO authenticated
+  WITH CHECK (public.pops_is_manager());
+
+CREATE POLICY pops_location_mapping_update ON public.pops_location_mapping
+  FOR UPDATE TO authenticated
+  USING (public.pops_is_manager())
+  WITH CHECK (public.pops_is_manager());
 
 CREATE TRIGGER pops_location_mapping_updated_at
   BEFORE UPDATE ON public.pops_location_mapping
