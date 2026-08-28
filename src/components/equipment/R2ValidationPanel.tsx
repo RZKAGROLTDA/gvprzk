@@ -39,12 +39,14 @@ export const R2ValidationPanel: React.FC = () => {
     const dump: Record<string, unknown> = {};
 
     const num = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? NaN));
+    const errText = (e: { code?: string; message?: string; details?: string; hint?: string } | null) =>
+      e ? `ERRO ${[e.code, e.message, e.details, e.hint].filter(Boolean).join(' | ')}` : '';
     const cmp = (label: string, got: unknown, expected: number) => {
       const g = num(got);
       out.push({
         label,
         expected: String(expected),
-        got: Number.isNaN(g) ? String(got ?? '—') : String(g),
+        got: Number.isNaN(g) ? `campo ausente/inválido no retorno (${String(got)})` : String(g),
         ok: g === expected,
       });
     };
@@ -61,7 +63,7 @@ export const R2ValidationPanel: React.FC = () => {
       dump.kpis = kpis.error ?? kpis.data;
 
       if (kpis.error) {
-        out.push({ label: 'KPIs sem filtros', got: `ERRO ${kpis.error.code ?? ''} ${kpis.error.message}`, ok: false });
+        out.push({ label: 'KPIs sem filtros', got: errText(kpis.error), ok: false });
       } else {
         const k = (kpis.data ?? {}) as Record<string, unknown>;
         cmp('Pendentes', k.total_pending_machines ?? k.total_machines, EXPECTED.pendentes);
@@ -81,7 +83,7 @@ export const R2ValidationPanel: React.FC = () => {
       } as never);
       dump.kpis_sem_filial = kpisNoFilial.error ?? kpisNoFilial.data;
       if (kpisNoFilial.error) {
-        out.push({ label: 'Sem filial', got: `ERRO ${kpisNoFilial.error.message}`, ok: false });
+        out.push({ label: 'Sem filial', got: errText(kpisNoFilial.error), ok: false });
       } else {
         const k = (kpisNoFilial.data ?? {}) as Record<string, unknown>;
         cmp('Sem filial', k.total_pending_machines ?? k.total_machines, EXPECTED.semFilial);
@@ -97,7 +99,7 @@ export const R2ValidationPanel: React.FC = () => {
       } as never);
       dump.kpis_sucata = kpisSucata.error ?? kpisSucata.data;
       if (kpisSucata.error) {
-        out.push({ label: 'Situação = sucata', got: `ERRO ${kpisSucata.error.message}`, ok: false });
+        out.push({ label: 'Situação = sucata', got: errText(kpisSucata.error), ok: false });
       } else {
         const k = (kpisSucata.data ?? {}) as Record<string, unknown>;
         cmp('Situação = sucata', k.total_pending_machines ?? k.total_machines, EXPECTED.sucatas);
@@ -110,14 +112,14 @@ export const R2ValidationPanel: React.FC = () => {
         p_situation: null,
         p_chassis: null,
         p_client: null,
-        p_limit: 20,
-        p_offset: 0,
+        p_page: 1,
+        p_page_size: 20,
       } as never);
       dump.grupos = groups.error ?? groups.data;
 
       let first: Record<string, unknown> | null = null;
       if (groups.error) {
-        out.push({ label: 'Grupos cliente+filial', got: `ERRO ${groups.error.message}`, ok: false });
+        out.push({ label: 'Grupos cliente+filial', got: errText(groups.error), ok: false });
       } else {
         const g = (groups.data ?? {}) as Record<string, unknown>;
         cmp('Grupos cliente+filial', g.total_groups, EXPECTED.grupos);
@@ -132,14 +134,14 @@ export const R2ValidationPanel: React.FC = () => {
         p_situation: null,
         p_chassis: null,
         p_client: 'sao',
-        p_limit: 5,
-        p_offset: 0,
+        p_page: 1,
+        p_page_size: 5,
       } as never);
       dump.busca_sem_acento = accent.error ?? accent.data;
       out.push({
         label: 'Busca sem acento ("sao")',
         got: accent.error
-          ? `ERRO ${accent.error.message}`
+          ? errText(accent.error)
           : `${num((accent.data as Record<string, unknown>)?.total_groups)} grupo(s)`,
         ok: accent.error ? false : null,
       });
@@ -154,14 +156,14 @@ export const R2ValidationPanel: React.FC = () => {
           p_situation: null,
           p_chassis: null,
           p_client: stripped || rawCode,
-          p_limit: 5,
-          p_offset: 0,
+          p_page: 1,
+          p_page_size: 5,
         } as never);
         dump.busca_codigo_sem_zeros = byCode.error ?? byCode.data;
         out.push({
           label: `Código sem zeros ("${stripped || rawCode}" de "${rawCode}")`,
           got: byCode.error
-            ? `ERRO ${byCode.error.message}`
+            ? errText(byCode.error)
             : `${num((byCode.data as Record<string, unknown>)?.total_groups)} grupo(s)`,
           ok: byCode.error ? false : null,
         });
@@ -180,7 +182,7 @@ export const R2ValidationPanel: React.FC = () => {
         dump.maquinas_primeiro_grupo = machines.error ?? machines.data;
 
         if (machines.error) {
-          out.push({ label: 'Abrir grupo cliente+filial', got: `ERRO ${machines.error.message}`, ok: false });
+          out.push({ label: 'Abrir grupo cliente+filial', got: errText(machines.error), ok: false });
         } else {
           const list = (machines.data as Record<string, unknown>[]) ?? [];
           out.push({
