@@ -13,10 +13,22 @@ Ajuste definitivo aprovado: no PDF, o campo antes chamado "Motivo" passa a ser *
 
 ## Etapa R1 — Estrutura de lotes (banco)
 Criar as duas tabelas do fluxo, sem mexer em nada existente:
-- `equipment_regularization_batches`: filial, cidade/UF do cabeçalho, data do documento, nº do PMP, nome/cargo do assinante, destinatário do envio, `status` (`gerado` | `enviado` | `cancelado`), datas de geração e envio, autor.
-- `equipment_regularization_items`: vínculo ao lote e ao equipamento, mais o **snapshot** completo usado no PDF: nº de série, conta responsável, localização do concessionário, nº do PMP, expiração, nome do cliente, cidade, região (UF) e **situação da máquina** (vendida/inativa/sucata).
 
-Regras de acesso: gestores/serviços podem criar e enviar lotes; consultores visualizam os lotes da própria filial. Grants explícitos para `authenticated` e `service_role`.
+`equipment_regularization_batches` — guarda **apenas os dados do documento**, sem `filial_id` (o lote pode ser multi-filial):
+- `header_city`, `header_state` (linha "Cidade, DD de mês de AAAA")
+- `document_date`
+- `pmp_number` (padrão do lote, quando aplicável)
+- `signer_name`, `signer_role` (assinante)
+- `recipient_name`, `recipient_email` (destinatário)
+- `status` (`gerado` | `enviado` | `cancelado`), `generated_at`, `sent_at`, `sent_by`, `created_by`
+
+`equipment_regularization_items` — vínculo ao lote e ao equipamento + **snapshot** completo do PDF, incluindo a filial/localização real da máquina:
+- `equipment_id`, `filial_id` (filial real da máquina), `dealer_location`
+- `serial_chassis`, `responsible_account`, `pmp_number`, `expiration_date`
+- `client_code`, `client_name`, `city`, `state`
+- `machine_situation` (`vendida` | `inativa` | `sucata`)
+
+Regras de acesso: usuários aprovados e ativos visualizam lotes e itens; gestores/admin criam, editam, geram e confirmam envio. Grants explícitos para `authenticated` e `service_role`.
 
 **Validação R1:** tabelas criadas vazias, RLS ativa, inserção de teste bloqueada/permitida conforme cargo.
 
@@ -32,13 +44,14 @@ Regras de acesso: gestores/serviços podem criar e enviar lotes; consultores vis
 
 ---
 
-## Etapa R3 — Seleção e geração do lote
+## Etapa R3 — Seleção, revisão por máquina e geração do lote
 - Seleção múltipla na tabela (com "selecionar todos da página" e limite por lote).
-- Formulário do lote: cidade/data do documento, nº do PMP, assinante, destinatário.
-- Ao gerar: cria o lote em `status = 'gerado'` e grava os itens com o snapshot; máquinas continuam pendentes.
-- Campos de snapshot inexistentes no Parque (conta responsável, localização do concessionário, PMP, expiração) são preenchidos no formulário do lote, com padrão por filial.
+- Formulário do lote (dados do documento): cidade/UF e data do cabeçalho, nº do PMP padrão, assinante, destinatário.
+- **Revisão obrigatória por item antes de gerar**: os campos que não existem no Parque podem ser pré-preenchidos por padrão (do formulário ou por filial), mas cada máquina permite revisar/editar individualmente:
+  Conta Responsável | Localização do concessionário | Nº do PMP | Expiração | Cidade | Região.
+- O **snapshot final só é gravado no momento da geração** do lote (`status = 'gerado'`); máquinas continuam pendentes.
 
-**Validação R3:** gerar um lote de teste com 3 máquinas e conferir os itens gravados.
+**Validação R3:** gerar um lote de teste com 3 máquinas de filiais diferentes, editando campos por item, e conferir os itens gravados.
 
 ---
 
@@ -54,13 +67,13 @@ Dados sempre lidos do snapshot do item (nunca do Parque atual).
 
 ---
 
-## Etapa R5 — Preparação e envio
-- Tela de preparação do lote: revisão dos itens, destinatário e anexo (PDF).
-- Ação "Marcar como enviado": grava data/autor do envio e muda `status` para `enviado`.
+## Etapa R5 — Confirmar envio
+- Tela de preparação do lote: revisão dos itens, destinatário e PDF gerado.
+- Ação **"Confirmar envio"** (não há envio automático nesta fase — nenhum provedor de e-mail integrado): grava `status = 'enviado'`, `sent_at` e `sent_by`.
 - É esse passo — e só ele — que remove as máquinas do painel de pendências.
-- Envio de e-mail automático fica como passo opcional posterior (não há provedor configurado hoje).
+- Envio automático por e-mail fica para etapa posterior.
 
-**Validação R5:** enviar o lote de teste e confirmar que as 3 máquinas saem da pendência (395 → 392).
+**Validação R5:** confirmar envio do lote de teste e conferir que as 3 máquinas saem da pendência (395 → 392).
 
 ---
 
