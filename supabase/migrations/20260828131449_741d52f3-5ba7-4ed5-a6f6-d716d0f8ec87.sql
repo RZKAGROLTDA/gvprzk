@@ -1,0 +1,1 @@
+DROP FUNCTION public.pops_portfolio_clients(uuid, uuid, text, integer, integer);
