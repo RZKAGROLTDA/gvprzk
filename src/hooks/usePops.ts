@@ -154,10 +154,21 @@ export const usePopsGoalSummary = (programId?: string, filialId?: string | null)
 
 export const usePopsClients = (
   programId: string | undefined,
-  opts: { search?: string; filialId?: string | null; limit: number; offset: number },
+  opts: {
+    search?: string;
+    serial?: string;
+    model?: string;
+    platform?: PopsPlatformFilter;
+    filialId?: string | null;
+    limit: number;
+    offset: number;
+  },
 ) =>
   useQuery({
-    queryKey: ['pops', 'clients', programId ?? null, opts.filialId ?? null, opts.search ?? '', opts.limit, opts.offset],
+    queryKey: [
+      'pops', 'clients', programId ?? null, opts.filialId ?? null, opts.search ?? '',
+      opts.serial ?? '', opts.model ?? '', opts.platform ?? 'all', opts.limit, opts.offset,
+    ],
     queryFn: async (): Promise<{ total: number; rows: PopsClientRow[] }> => {
       const { data, error } = await supabase.rpc('pops_portfolio_clients', {
         p_program_id: programId!,
@@ -165,6 +176,9 @@ export const usePopsClients = (
         p_search: opts.search?.trim() ? opts.search.trim() : undefined,
         p_limit: opts.limit,
         p_offset: opts.offset,
+        p_serial: opts.serial?.trim() ? opts.serial.trim() : undefined,
+        p_model: opts.model?.trim() ? opts.model.trim() : undefined,
+        p_platform: opts.platform && opts.platform !== 'all' ? opts.platform : undefined,
       });
       if (error) throw error;
       const payload = (data ?? {}) as { total?: number; rows?: PopsClientRow[] };
@@ -174,6 +188,30 @@ export const usePopsClients = (
     staleTime: STALE,
     refetchOnWindowFocus: false,
   });
+
+/** Resultado por executor (somente máquinas efetivamente concluídas — executed_by). */
+export const usePopsExecutorResults = (
+  programId: string | undefined,
+  opts: { filialId?: string | null; platform?: PopsPlatformFilter; executedBy?: string | null },
+) =>
+  useQuery({
+    queryKey: ['pops', 'executors', programId ?? null, opts.filialId ?? null, opts.platform ?? 'all', opts.executedBy ?? null],
+    queryFn: async (): Promise<{ total_serviced: number; rows: PopsExecutorRow[] }> => {
+      const { data, error } = await supabase.rpc('pops_executor_results', {
+        p_program_id: programId!,
+        p_filial_id: opts.filialId ?? undefined,
+        p_platform: opts.platform && opts.platform !== 'all' ? opts.platform : undefined,
+        p_executed_by: opts.executedBy ?? undefined,
+      });
+      if (error) throw error;
+      const payload = (data ?? {}) as { total_serviced?: number; rows?: PopsExecutorRow[] };
+      return { total_serviced: payload.total_serviced ?? 0, rows: payload.rows ?? [] };
+    },
+    enabled: !!programId,
+    staleTime: STALE,
+    refetchOnWindowFocus: false,
+  });
+
 
 export const usePopsClientMachines = (programId?: string, clientKey?: string | null) =>
   useQuery({
