@@ -529,6 +529,160 @@ export type Database = {
         }
         Relationships: []
       }
+      equipment_regularization_batches: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          document_date: string
+          generated_at: string
+          header_city: string
+          header_state: string
+          id: string
+          notes: string | null
+          pmp_number: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          sent_at: string | null
+          sent_by: string | null
+          signer_name: string
+          signer_role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_date?: string
+          generated_at?: string
+          header_city: string
+          header_state: string
+          id?: string
+          notes?: string | null
+          pmp_number?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          signer_name: string
+          signer_role?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_date?: string
+          generated_at?: string
+          header_city?: string
+          header_state?: string
+          id?: string
+          notes?: string | null
+          pmp_number?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          signer_name?: string
+          signer_role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_regularization_items: {
+        Row: {
+          batch_id: string
+          city: string | null
+          client_code: string | null
+          client_name: string | null
+          created_at: string
+          dealer_location: string | null
+          equipment_id: string
+          expiration_date: string | null
+          filial_id: string | null
+          id: string
+          machine_situation: string
+          model: string | null
+          notes: string | null
+          pmp_number: string | null
+          responsible_account: string | null
+          serial_chassis: string | null
+          state: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          batch_id: string
+          city?: string | null
+          client_code?: string | null
+          client_name?: string | null
+          created_at?: string
+          dealer_location?: string | null
+          equipment_id: string
+          expiration_date?: string | null
+          filial_id?: string | null
+          id?: string
+          machine_situation: string
+          model?: string | null
+          notes?: string | null
+          pmp_number?: string | null
+          responsible_account?: string | null
+          serial_chassis?: string | null
+          state?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          batch_id?: string
+          city?: string | null
+          client_code?: string | null
+          client_name?: string | null
+          created_at?: string
+          dealer_location?: string | null
+          equipment_id?: string
+          expiration_date?: string | null
+          filial_id?: string | null
+          id?: string
+          machine_situation?: string
+          model?: string | null
+          notes?: string | null
+          pmp_number?: string | null
+          responsible_account?: string | null
+          serial_chassis?: string | null
+          state?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_regularization_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_regularization_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_regularization_items_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "client_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_regularization_items_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       filiais: {
         Row: {
           created_at: string
@@ -2649,6 +2803,7 @@ export type Database = {
         Returns: boolean
       }
       can_insert_vacation: { Args: { p_filial_id: string }; Returns: boolean }
+      can_manage_equipment_regularization: { Args: never; Returns: boolean }
       can_modify_user_role: {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
@@ -2828,6 +2983,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      equipment_regularization_batch_status: {
+        Args: { p_batch_id: string }
+        Returns: string
       }
       get_activity_metrics_v2: {
         Args: {
