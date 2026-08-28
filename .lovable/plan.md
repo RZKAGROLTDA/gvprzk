@@ -61,5 +61,7 @@ Leitura por `can_view_equipment_park()` (mesma regra do Parque); criação de lo
 - Cada lote já terá os campos: destinatário(s), assunto, corpo padrão, PDF anexado, data/hora do envio, enviado por, status e máquinas contidas.
 - Quando definidos destinatário e texto padrão: 1 edge function de envio + 1 secret do provedor (ex. Resend), com dialog de revisão antes do envio e registro do lote como ENVIADO somente após confirmação real.
 
-## Próximo passo
-Aguardo: (a) sua aprovação desta arquitetura; (b) o arquivo da nova base de prioridade para a Etapa 1; (c) o DOCX de referência para o layout do PDF (pode ser na Etapa 2).
+## Status
+Arquitetura **aprovada** (com regra de pendência por lote `enviado` e PDF por lote multi-cliente). Etapa 2 aguardando.
+
+**ETAPA 1 em andamento:** aguardando o arquivo da nova base de prioridade. Fluxo: staging → diff (entram / saem / permanecem / não encontradas / duplicidades / total esperado) → **nada é aplicado antes da aprovação do diff**.
