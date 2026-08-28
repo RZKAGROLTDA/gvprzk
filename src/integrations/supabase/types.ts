@@ -4239,30 +4239,19 @@ export type Database = {
         Args: { p_client_key: string; p_program_id: string }
         Returns: Json
       }
-      pops_portfolio_clients:
-        | {
-            Args: {
-              p_filial_id?: string
-              p_limit?: number
-              p_offset?: number
-              p_program_id: string
-              p_search?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_filial_id?: string
-              p_limit?: number
-              p_model?: string
-              p_offset?: number
-              p_platform?: string
-              p_program_id: string
-              p_search?: string
-              p_serial?: string
-            }
-            Returns: Json
-          }
+      pops_portfolio_clients: {
+        Args: {
+          p_filial_id?: string
+          p_limit?: number
+          p_model?: string
+          p_offset?: number
+          p_platform?: string
+          p_program_id: string
+          p_search?: string
+          p_serial?: string
+        }
+        Returns: Json
+      }
       pops_recalc_filiais: { Args: { p_program_id: string }; Returns: number }
       pops_resolve_import_row: {
         Args: {
