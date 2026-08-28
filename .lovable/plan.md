@@ -1,67 +1,82 @@
-# Regularização do Parque — Arquitetura Ajustada (aguardando aprovação)
+# Regularização do Parque — Plano de execução por etapas
 
-Auditoria aprovada como diagnóstico. Proposta ajustada nos 3 pontos solicitados. **Nenhuma implementação ainda.**
+Escopo desta fase: trabalhar **somente** as máquinas já classificadas hoje como `vendida` (255), `inativa` (128) e `sucateada` (12) — total 395 pendências iniciais.
 
-## 1. Ordem das etapas (corrigida)
+Fora de escopo agora (não será tocado):
+- Nenhuma alteração em `validation_priority*` nem em qualquer dado de validação.
+- Nenhuma mudança no funcionamento atual do Parque de Máquinas ou nas validações existentes.
+- Atualização da nova base de prioridade fica adiada.
 
-**ETAPA 1 — Atualização da base de prioridade (primeiro, quando o arquivo for fornecido)**
-- Carregar a nova base em tabela de staging (descartável, sem tocar no Parque).
-- Gerar **diff para conferência** antes de aplicar: entram na prioridade / saem / permanecem / não encontradas no Parque.
-- Após aprovação do diff, aplicar em lote alterando **somente**:
-  - `validation_priority`
-  - `validation_source`
-  - `validation_priority_reason`
-  - `validation_priority_updated_at`
-- **Nunca alterar**: `machine_status`, `last_validation_at`, `validated_by` nem demais campos da máquina. Validations já realizadas ficam 100% intactas.
+Ajuste definitivo aprovado: no PDF, o campo antes chamado "Motivo" passa a ser **"Situação da Máquina"**, com os valores exibidos **Vendida | Inativa | Sucata** (`sucateada` é apresentado como "Sucata").
 
-**ETAPA 2 — Painel de Regularização do Parque** (só depois da Etapa 1).
+---
 
-## 2. Modelo por LOTE (corrigido — PDF não é por cliente)
+## Etapa R1 — Estrutura de lotes (banco)
+Criar as duas tabelas do fluxo, sem mexer em nada existente:
+- `equipment_regularization_batches`: filial, cidade/UF do cabeçalho, data do documento, nº do PMP, nome/cargo do assinante, destinatário do envio, `status` (`gerado` | `enviado` | `cancelado`), datas de geração e envio, autor.
+- `equipment_regularization_items`: vínculo ao lote e ao equipamento, mais o **snapshot** completo usado no PDF: nº de série, conta responsável, localização do concessionário, nº do PMP, expiração, nome do cliente, cidade, região (UF) e **situação da máquina** (vendida/inativa/sucata).
 
-Referência oficial do PDF: **LOCALIZAÇÃO DE EQUIPAMENTOS JD.docx** (declaração ao processo de garantia/PMP John Deere). Layout, cabeçalho, texto padrão e tabela serão replicados com fidelidade a partir desse documento.
+Regras de acesso: gestores/serviços podem criar e enviar lotes; consultores visualizam os lotes da própria filial. Grants explícitos para `authenticated` e `service_role`.
 
-### Conceito
-- O painel de gestão continua **agrupado por cliente** (visualização e indicadores), mas a ação é **selecionar máquinas/clientes pendentes e montar um LOTE DE REGULARIZAÇÃO**.
-- Um lote pode ter: 1 cliente, vários clientes, várias máquinas.
-- Gera **um único PDF** por lote, com todas as máquinas selecionadas.
-- Após o envio, **somente as máquinas daquele lote** passam a ser consideradas comunicadas. Uma nova máquina do mesmo cliente classificada depois como Inativa/Vendida/Sucateada reaparece automaticamente como **nova pendência**.
+**Validação R1:** tabelas criadas vazias, RLS ativa, inserção de teste bloqueada/permitida conforme cargo.
 
-### Tabela mínima do PDF (por linha de máquina)
-Chassi/Nº de Série · Conta/Código do cliente · Localização do concessionário · Nº do PMP · Expiração · Nome do cliente · Cidade · UF/Região · Motivo (Inativa/Vendida/Sucata).
+---
 
-**Lacunas mapeadas** (campos do modelo JD que não existem hoje em `client_equipment`): `pmp_number`, `pmp_expiration`, `city`, `state/region`. Proposta: itens do lote guardam esses valores em snapshot, editáveis antes de gerar o PDF (não criamos campos em `client_equipment` até você decidir a fonte oficial).
+## Etapa R2 — Painel de pendências (leitura)
+- RPC paginada de pendências: máquinas com situação vendida/inativa/sucateada que **não** constam em nenhum item de lote com `status = 'enviado'`.
+- Máquina em lote apenas `gerado` **continua pendente**.
+- Cards de KPI: total pendente, por situação, e total já regularizado (enviado).
+- Filtros: filial, situação, cliente, nº de série.
 
-### Estrutura nova mínima — 2 tabelas (sem tocar em `client_equipment`)
-1. `equipment_regularization_batches` — o lote/envio:
-   - code (identificação do lote), status (`gerado`/`enviado`)
-   - recipients (lista), subject, body (texto padrão editável — definido depois)
-   - pdf_path (bucket privado `regularization-pdfs`)
-   - machines_count, counts por motivo, filiais/clientes envolvidos
-   - sent_at, sent_by, created_by, created_at, updated_at
-2. `equipment_regularization_batch_items` — máquinas do lote:
-   - batch_id, equipment_id
-   - snapshot no momento do envio: modelo, chassi/série, client_code, client_name, filial, motivo (`machine_status`), data e responsável da validação, pmp_number, pmp_expiration, city, state
+**Validação R2:** contagem inicial = 395 e soma por situação = 255/128/12.
 
-**Regra da pendência** (sem flags no cliente nem na máquina): pendente = máquina em `inativa`/`vendida`/`sucateada` que **não consta em nenhum `equipment_regularization_batch_items` vinculado a um lote com `status = 'enviado'`**. Máquina em lote apenas `gerado` **continua pendente** até o envio efetivo. O histórico do que foi comunicado é exatamente o conteúdo dos itens de lotes enviados.
+---
 
-### Leitura: RPCs novas (sem alterar as do Parque)
-- `equipment_regularization_clients(filtros)` — painel agrupado por cliente: cliente, código, filial, total identificadas, qtd por motivo, status Pendente/Enviado, último lote.
-- `equipment_regularization_batch_machines(batch_id)` / máquinas pendentes por cliente para compor o lote (com checkbox de seleção multi-cliente).
-- KPIs do topo: clientes pendentes, máquinas identificadas, inativas, vendidas, sucatas, lotes/envios concluídos.
-- Filtros: filial, cliente, motivo, status.
+## Etapa R3 — Seleção e geração do lote
+- Seleção múltipla na tabela (com "selecionar todos da página" e limite por lote).
+- Formulário do lote: cidade/data do documento, nº do PMP, assinante, destinatário.
+- Ao gerar: cria o lote em `status = 'gerado'` e grava os itens com o snapshot; máquinas continuam pendentes.
+- Campos de snapshot inexistentes no Parque (conta responsável, localização do concessionário, PMP, expiração) são preenchidos no formulário do lote, com padrão por filial.
 
-### Frontend (Etapa 2)
-Nova aba dentro do Parque (`Regularização`): KPIs no topo, tabela por cliente com checkboxes para seleção multi-cliente, painel lateral com máquinas e motivo/data/responsável, botão **Montar lote** → revisão do lote → **Gerar PDF** (reaproveitando o padrão jsPDF/jspdf-autotable de `workshopChecklistPdf.ts`) → **Preparar e-mail**.
+**Validação R3:** gerar um lote de teste com 3 máquinas e conferir os itens gravados.
 
-### RLS
-Leitura por `can_view_equipment_park()` (mesma regra do Parque); criação de lote pelo usuário aprovado; exclusão restrita a gestores. Nenhuma policy existente é alterada.
+---
 
-## 3. E-mail — arquitetura prevista, implementação adiada
-- **Não** buscar e-mail do cliente via `tasks` neste processo — destinatário **não é o cliente**; é o fluxo de garantia/PMP John Deere e será definido depois.
-- Cada lote já terá os campos: destinatário(s), assunto, corpo padrão, PDF anexado, data/hora do envio, enviado por, status e máquinas contidas.
-- Quando definidos destinatário e texto padrão: 1 edge function de envio + 1 secret do provedor (ex. Resend), com dialog de revisão antes do envio e registro do lote como ENVIADO somente após confirmação real.
+## Etapa R4 — PDF do lote (multi-cliente)
+Gerar o PDF replicando o modelo oficial RZK/John Deere:
+cabeçalho com logo, "Cidade, DD de mês de AAAA", título **DECLARAÇÃO DE NÃO LOCALIZAÇÃO**, parágrafo padrão com o nº do PMP, tabela verde, parágrafo de encerramento, bloco de assinatura e rodapé institucional.
 
-## Status
-Arquitetura **aprovada** (com regra de pendência por lote `enviado` e PDF por lote multi-cliente). Etapa 2 aguardando.
+Colunas da tabela: Nº de Série | Conta Responsável | Localização do concessionário | Nº do PMP | Expirações | Nome do cliente | Cidade | Região | **Situação da Máquina**.
 
-**ETAPA 1 em andamento:** aguardando o arquivo da nova base de prioridade. Fluxo: staging → diff (entram / saem / permanecem / não encontradas / duplicidades / total esperado) → **nada é aplicado antes da aprovação do diff**.
+Dados sempre lidos do snapshot do item (nunca do Parque atual).
+
+**Validação R4:** abrir o PDF do lote de teste e comparar com o documento de referência.
+
+---
+
+## Etapa R5 — Preparação e envio
+- Tela de preparação do lote: revisão dos itens, destinatário e anexo (PDF).
+- Ação "Marcar como enviado": grava data/autor do envio e muda `status` para `enviado`.
+- É esse passo — e só ele — que remove as máquinas do painel de pendências.
+- Envio de e-mail automático fica como passo opcional posterior (não há provedor configurado hoje).
+
+**Validação R5:** enviar o lote de teste e confirmar que as 3 máquinas saem da pendência (395 → 392).
+
+---
+
+## Etapa R6 — Histórico e controle
+- Aba de histórico: lista de lotes com filial, data, quantidade de máquinas, situação e status.
+- Detalhe do lote com itens e reimpressão do PDF.
+- Ação de cancelar lote `gerado` (itens voltam ao painel, sem apagar histórico).
+
+**Validação R6:** reimprimir PDF de lote enviado e cancelar um lote gerado conferindo o retorno das pendências.
+
+---
+
+## Detalhes técnicos
+- Consultas de pendência e histórico sempre via RPC paginada (padrão do projeto), sem `SELECT *` e sem `count exact` fora da primeira página.
+- Filtro de filial com `LOWER(TRIM())`.
+- Datas via `parseLocalDate` / `formatDateDisplay` / `formatDateToLocal`.
+- PDF com jsPDF nativo (sem `jspdf-autotable`), seguindo o padrão de `workshopChecklistPdf.ts`.
+- React Query com `staleTime` 5–10 min e sem refetch em foco.
+- Nenhuma coluna de mídia pesada nas listagens.
