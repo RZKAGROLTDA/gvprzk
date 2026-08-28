@@ -132,8 +132,8 @@ export const R2ValidationPanel: React.FC = () => {
         p_situation: null,
         p_chassis: null,
         p_client: 'sao',
-        p_limit: 5,
-        p_offset: 0,
+        p_page: 1,
+        p_page_size: 5,
       } as never);
       dump.busca_sem_acento = accent.error ?? accent.data;
       out.push({
