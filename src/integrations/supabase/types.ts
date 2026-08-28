@@ -3049,6 +3049,43 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      equipment_regularization_pending_clients: {
+        Args: {
+          p_chassis?: string
+          p_client?: string
+          p_filial_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_situation?: string
+          p_without_filial?: boolean
+        }
+        Returns: Json
+      }
+      equipment_regularization_pending_kpis: {
+        Args: {
+          p_chassis?: string
+          p_client?: string
+          p_filial_id?: string
+          p_situation?: string
+          p_without_filial?: boolean
+        }
+        Returns: Json
+      }
+      equipment_regularization_pending_machines: {
+        Args: {
+          p_chassis?: string
+          p_client?: string
+          p_client_key: string
+          p_filial_id?: string
+          p_situation?: string
+          p_without_filial?: boolean
+        }
+        Returns: Json
+      }
+      equipment_regularization_situation_norm: {
+        Args: { p_situation: string }
+        Returns: string
+      }
       get_activity_metrics_v2: {
         Args: {
           p_end_date?: string
