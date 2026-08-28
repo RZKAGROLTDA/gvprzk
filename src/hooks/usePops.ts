@@ -246,6 +246,8 @@ export const useCompletePopsMachine = () => {
       queryClient.invalidateQueries({ queryKey: ['pops', 'goal'] });
       queryClient.invalidateQueries({ queryKey: ['pops', 'clients'] });
       queryClient.invalidateQueries({ queryKey: ['pops', 'machines'] });
+      queryClient.invalidateQueries({ queryKey: ['pops', 'executors'] });
+
     },
   });
 };
