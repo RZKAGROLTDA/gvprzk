@@ -39,12 +39,14 @@ export const R2ValidationPanel: React.FC = () => {
     const dump: Record<string, unknown> = {};
 
     const num = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? NaN));
+    const errText = (e: { code?: string; message?: string; details?: string; hint?: string } | null) =>
+      e ? `ERRO ${[e.code, e.message, e.details, e.hint].filter(Boolean).join(' | ')}` : '';
     const cmp = (label: string, got: unknown, expected: number) => {
       const g = num(got);
       out.push({
         label,
         expected: String(expected),
-        got: Number.isNaN(g) ? String(got ?? '—') : String(g),
+        got: Number.isNaN(g) ? `campo ausente/inválido no retorno (${String(got)})` : String(g),
         ok: g === expected,
       });
     };
