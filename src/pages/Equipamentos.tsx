@@ -247,6 +247,10 @@ const Equipamentos: React.FC = () => {
         </Button>
       </div>
 
+      {/* TEMPORÁRIO: diagnóstico da R2 (remover após validação) */}
+      <R2ValidationPanel />
+
+
       {/* Resumo do parque */}
       <Card>
         <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
