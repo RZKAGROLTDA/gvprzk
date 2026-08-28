@@ -3,10 +3,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Target, CalendarDays, CalendarRange, CalendarCheck, Tractor } from 'lucide-react';
+import {
+  Target, CalendarDays, CalendarRange, CalendarCheck, Tractor, CheckCircle2, Clock, Percent,
+} from 'lucide-react';
 import type { PopsGoalSummary } from '@/hooks/usePops';
 
 const nf = new Intl.NumberFormat('pt-BR');
+const pf = (v: number | null | undefined) =>
+  `${Number(v ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 
 type Props = {
   programName: string;
@@ -22,10 +26,14 @@ const MiniCard = ({
   icon: Icon,
   label,
   value,
+  hint,
+  accent,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
+  hint?: string;
+  accent?: boolean;
 }) => (
   <Card className="border-border/60">
     <CardContent className="p-3 sm:p-4">
@@ -33,7 +41,38 @@ const MiniCard = ({
         <Icon className="h-4 w-4" />
         <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
       </div>
-      <p className="mt-1 text-xl sm:text-2xl font-bold text-foreground">{value}</p>
+      <p className={`mt-1 text-xl sm:text-2xl font-bold ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</p>
+      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+    </CardContent>
+  </Card>
+);
+
+const PlatformCard = ({
+  label,
+  total,
+  serviced,
+  pending,
+  percent,
+}: {
+  label: string;
+  total: number;
+  serviced: number;
+  pending: number;
+  percent: number | null;
+}) => (
+  <Card className="border-border/60">
+    <CardContent className="p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</span>
+        <span className="text-sm font-semibold text-primary">{pf(percent)}</span>
+      </div>
+      <p className="mt-1 text-xl sm:text-2xl font-bold text-foreground">
+        {nf.format(total)} <span className="text-sm font-medium text-muted-foreground">máquinas</span>
+      </p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {nf.format(serviced)} serviçadas · {nf.format(pending)} pendentes
+      </p>
+      <Progress value={Math.min(percent ?? 0, 100)} className="mt-2 h-1.5" />
     </CardContent>
   </Card>
 );
@@ -109,9 +148,7 @@ export const PopsGoalHeader: React.FC<Props> = ({
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Atingimento</p>
-                  <p className="text-xl sm:text-2xl font-semibold text-primary">
-                    {(percent ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
-                  </p>
+                  <p className="text-xl sm:text-2xl font-semibold text-primary">{pf(percent)}</p>
                 </div>
               </div>
               <Progress value={Math.min(percent ?? 0, 100)} className="h-2 sm:h-3" />
@@ -120,11 +157,33 @@ export const PopsGoalHeader: React.FC<Props> = ({
         </CardContent>
       </Card>
 
+      {/* Linha 1 — visão geral */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        <MiniCard icon={Tractor} label="Total POPS" value={nf.format(summary?.total_universe ?? 0)} />
+        <MiniCard icon={CheckCircle2} label="Serviçadas" value={nf.format(summary?.serviced ?? 0)} accent />
+        <MiniCard icon={Clock} label="Pendentes" value={nf.format(summary?.pending ?? 0)} />
+        <MiniCard icon={Percent} label="% conclusão" value={pf(summary?.completion_percent)} hint="sobre o total POPS" />
+      </div>
+
+      {/* Linha 2 — plataformas e ritmo */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+        <PlatformCard
+          label="Large"
+          total={summary?.large_total ?? 0}
+          serviced={summary?.large_serviced ?? 0}
+          pending={summary?.large_pending ?? 0}
+          percent={summary?.large_percent ?? 0}
+        />
+        <PlatformCard
+          label="Small"
+          total={summary?.small_total ?? 0}
+          serviced={summary?.small_serviced ?? 0}
+          pending={summary?.small_pending ?? 0}
+          percent={summary?.small_percent ?? 0}
+        />
         <MiniCard icon={CalendarDays} label="Hoje" value={nf.format(summary?.today ?? 0)} />
         <MiniCard icon={CalendarRange} label="Semana" value={nf.format(summary?.this_week ?? 0)} />
         <MiniCard icon={CalendarCheck} label="Mês" value={nf.format(summary?.this_month ?? 0)} />
-        <MiniCard icon={Tractor} label="Total de máquinas" value={nf.format(summary?.total_universe ?? 0)} />
       </div>
     </div>
   );
