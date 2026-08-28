@@ -29,11 +29,38 @@ export type PopsGoalSummary = {
   serviced: number;
   remaining: number;
   attainment_percent: number | null;
+  completion_percent: number | null;
   today: number;
   this_week: number;
   this_month: number;
   pending: number;
+  large_total: number;
+  large_serviced: number;
+  large_pending: number;
+  large_percent: number | null;
+  small_total: number;
+  small_serviced: number;
+  small_pending: number;
+  small_percent: number | null;
 };
+
+export type PopsExecutorRow = {
+  user_id: string;
+  executor_name: string;
+  executor_role: string | null;
+  filial_id: string | null;
+  filial_nome: string | null;
+  serviced: number;
+  large_serviced: number;
+  small_serviced: number;
+  today: number;
+  this_week: number;
+  this_month: number;
+  share_percent: number | null;
+};
+
+export type PopsPlatformFilter = 'all' | 'Large' | 'Small';
+
 
 export type PopsClientRow = {
   client_key: string;
