@@ -1,58 +1,71 @@
-# POPS Frente 2 — busca inteligente + painel de gestão
+# Regularização do Parque — Auditoria e Proposta Mínima
 
-Auditoria concluída. A migration anterior da Frente 2 **não foi aplicada** (as RPCs seguem com a assinatura original), então tudo entra em uma única migration agora.
+## 1. Arquitetura atual (auditada)
 
-## Auditoria
+### Onde ficam as validações
+Tudo vive na tabela única `client_equipment` (19.932 máquinas). Não existe tabela de histórico de validações.
+- `machine_status` — situação da máquina: `ativa` (19.537), `vendida` (255), `inativa` (128), `sucateada` (12).
+- `last_validation_at` — data/hora da última validação.
+- `validated_by` — usuário que validou.
+- `validation_priority`, `validation_source`, `validation_priority_reason`, `validation_priority_updated_at` — base de prioridade de validação (Etapa 1).
+- `transfer_history` (jsonb) — único histórico existente hoje, e só de transferências de titularidade.
 
-- `pops_norm_place(text)`: IMMUTABLE, faz upper + remove acentos + colapsa espaços. Serve como base, não precisa de outra estrutura.
-- `pops_machines.pops_client_name_norm`: já normalizado por essa função, mas a origem tem espaçamento irregular (ex.: `HELCIODE AVILAMENDONCA`). Por isso `LIKE '%termo%'` falha hoje.
-- `pops_machines.pops_serial_norm`: já preenchido nas 5.077 máquinas — é a coluna certa para o chassi.
-- `pg_trgm` já instalado (útil se precisarmos de índice depois).
-- `pops_scope()` resolve escopo (global para Manager/Admin; filial para RAC/CPA/CSA/Supervisor) — nenhuma regra de permissão muda.
+Conclusão: os 3 motivos pedidos já existem como `inativa` / `vendida` / `sucateada`, e **395 máquinas** já estão nesses status (praticamente todas já com data e responsável de validação — 394 de 395). Ou seja, o painel novo nasce com dados reais e não precisa de nenhum campo novo em `client_equipment`.
 
-## 1. Busca dinâmica de cliente (como será corrigida)
+### Relação máquina → cliente → filial
+`client_equipment.client_code` + `client_name` (texto, sem FK; base mestre é `clients_master`) e `filial_id` → FK `filiais.id`. O agrupamento por cliente do painel deve usar `client_code` normalizado + `filial_id`, mesmo padrão já usado no Parque.
 
-Comparação por **texto "esmagado"**: `regexp_replace(pops_client_name_norm, '[^A-Z0-9]', '', 'g')`. O termo digitado passa por `pops_norm_place()` e é quebrado em palavras; cada palavra é esmagada da mesma forma e precisa aparecer no nome esmagado (AND entre os termos, `LIKE '%termo%'`).
+### Componentes / RPCs do Painel de Parque
+- Página: `src/pages/Equipamentos.tsx`.
+- Hook central: `src/hooks/useClientEquipment.ts` (listagem, KPIs, validadores, update, create, transfer).
+- Componentes: `EquipmentParkBlock`, `EquipmentCard`, `EquipmentEditDialog`, `EquipmentCreateDialog`, `equipmentConstants.ts`.
+- RPCs: `get_equipment_park_paginated`, `get_equipment_park_kpis`, `get_equipment_validation_summary`, `get_equipment_validators`, `search_client_equipment`, `can_view_equipment_park`, `can_edit_client_equipment`.
 
-Efeito: base `JOAOANTONIODASILVA` é encontrada digitando `João Antonio`, `joao`, `antonio`, `silva` ou `antonio silva` — sem depender de espaços, acentos, caixa ou pontuação. Sem nova coluna e sem nova tabela; 5.077 linhas por programa tornam o custo irrelevante.
+### PDF — o que reaproveitar
+`jspdf` + `jspdf-autotable` já instalados. Referências prontas: `src/lib/workshopChecklistPdf.ts` (675 linhas, cabeçalho, seções, tabelas, rodapé) e `src/lib/generateReportPDF.ts`. Reaproveitamos o mesmo estilo/cabeçalho — nada novo de infraestrutura.
 
-No frontend: busca **conforme digita** com debounce de 300 ms (substitui o formulário com botão "Buscar"), reset de página a cada mudança.
+### E-mail — o que existe
+**Nada.** Não há Resend/SMTP, nem edge function de envio, nem secret de e-mail. Edge functions atuais: bulk-import-equipment, cleanup-orphan-auth-user, deactivate-user, delete-user, import-clients-master, pops-import-load. Para envio real será necessária 1 edge function + 1 secret (provedor a definir, ex. Resend).
 
-## 2. Busca por chassi/série
+### Destinatário do cliente
+`clients_master` não tem e-mail. A única fonte é `tasks.email` (2.207 de 16.025 tarefas preenchidas). Então: pré-carregar o e-mail mais recente encontrado por `clientcode` e permitir digitação/edição manual sempre.
 
-Usa `pops_serial_norm`, também esmagada (`[^A-Z0-9]` removido) dos dois lados, com `LIKE '%parcial%'`. Aceita parcial, ignora caixa, espaços e formatação. Combina em AND com os outros filtros.
+## 2. Proposta mínima (sem alterar o Parque atual)
 
-## 3. Modelo e plataforma
+Nenhuma alteração em `client_equipment`, nas RPCs do Parque nem nas telas atuais. Só adicionamos uma camada de leitura + 2 tabelas de envio.
 
-- Modelo: `pops_model` esmagado + parcial (mesma regra do chassi).
-- Plataforma: `Todas | Large | Small`, comparação `upper(btrim(pops_platform))`.
-- Todos os filtros são combináveis (AND), aplicados **na máquina** antes do agrupamento por cliente, então o cliente dono do chassi aparece na lista.
+### Estrutura nova mínima: 2 tabelas
+1. `equipment_regularizations` — um registro por **envio** (não por cliente):
+   client_code, client_name, filial_id, machines_count, counts por motivo, status (`gerado` / `enviado`), pdf_path, recipient_email, subject, body, sent_at, sent_by, created_at.
+2. `equipment_regularization_items` — as máquinas **daquele** envio:
+   regularization_id, equipment_id, snapshot (modelo, chassi, motivo, data e responsável da validação no momento do envio).
 
-## 4/5/6. RPCs alteradas e nova RPC
+Isso resolve o requisito central: nada de `email_sent=true` no cliente. A pendência é sempre calculada como *máquinas em inativa/vendida/sucateada que ainda não aparecem em nenhum item de envio*. Se amanhã uma nova máquina do mesmo cliente virar Inativa, ela reaparece automaticamente como pendência nova, sem apagar o envio anterior.
 
-1. `pops_goal_summary` (CREATE OR REPLACE) — mantém tudo e acrescenta:
-   `large_total`, `large_serviced`, `large_pending`, `large_percent`, `small_total`, `small_serviced`, `small_pending`, `small_percent`.
-   Mesma janela de tempo (America/Sao_Paulo), somente `active = true`, serviçadas = `status = 'servicada'`, mesmo escopo de filial.
+Opcional (fase 2 do PDF): bucket privado `regularization-pdfs` para guardar o PDF exatamente como enviado.
 
-2. `pops_portfolio_clients` (CREATE OR REPLACE) — busca de cliente reescrita conforme item 1 + 3 parâmetros opcionais no fim: `p_serial`, `p_model`, `p_platform`. Assinatura antiga continua válida (defaults). Nenhuma outra regra alterada.
+### Camada de leitura: 2 RPCs
+- `equipment_regularization_clients(filtros, paginação)` — lista agrupada por cliente com: cliente, código, filial, total identificadas, qtd inativa/vendida/sucata, status Pendente/Enviado, último envio.
+- `equipment_regularization_machines(client_code, filial_id)` — máquinas do cliente com modelo, chassi, horas, ano, tipo, motivo, data e responsável da validação, e se já foi enviada antes (e em qual envio).
+- Indicadores do topo saem de uma terceira RPC leve de KPIs (clientes pendentes, máquinas identificadas, inativas, vendidas, sucatas, envios concluídos).
+Filtros: filial, cliente, motivo, status.
 
-3. `pops_portfolio_client_machines` (CREATE OR REPLACE) — só acrescenta os mesmos 3 filtros opcionais para devolver `matches_filter boolean`, permitindo destacar/ordenar primeiro a máquina procurada. Continua retornando todas as máquinas do cliente.
+### Frontend
+Nova aba/rota dentro do Parque (`Regularização`), reaproveitando os padrões atuais: tabela paginada, painel lateral de detalhe do cliente, KPIs no topo, botão Gerar PDF, e depois o dialog de preparação de e-mail com revisão antes do envio.
 
-4. **Nova RPC `pops_executor_results(p_program_id, p_filial_id, p_platform, p_executed_by)`** — necessária para não trazer milhares de linhas ao frontend. Agrega por `executed_by` somente máquinas `status = 'servicada'`:
-   nome (`profiles.name`), filial da máquina, cargo real vindo de `user_roles` (rac / cpa / csa / supervisor / manager / admin — sem virar tudo "RAC"), total serviçadas, large, small, hoje, semana, mês e `share_percent` sobre o total executado no escopo. Ordenada por total desc. Sem meta e sem "total do RAC" — só o realizado.
-   Escopo: Manager/Admin global (ou filial escolhida); RAC/CPA/CSA/Supervisor restritos à própria filial via `pops_scope()`. Filtros gerenciais de plataforma e executor entram como parâmetros opcionais.
+### RLS
+Mesma regra já vigente no Parque: leitura por `can_view_equipment_park()`; criação de envio pelo próprio usuário aprovado; exclusão restrita a gestores. Sem tocar nas policies existentes.
 
-Nada de `pops_complete_machine`, serviços, OS, regras de conclusão, base de máquinas, vínculo com Parque, Meu Dia ou tabelas novas.
+## 3. Etapa 1 — nova base de prioridade, sem perder validações
+A prioridade e a validação são campos independentes na mesma linha. Então a atualização mexe **somente** em `validation_priority*`, nunca em `machine_status`, `last_validation_at` ou `validated_by`.
 
-## 7. Estrutura visual
+Fluxo proposto (só quando você mandar): carregar a nova base em uma tabela de staging → gerar um **diff** para conferência antes de aplicar (entram na prioridade / saem da prioridade / permanecem / não encontradas no Parque) → aplicar em lote apenas o flag de prioridade, com `validation_source` e `validation_priority_updated_at` novos. Máquinas já validadas continuam com histórico intacto; se saírem da nova base, perdem só o flag de prioridade.
 
-- `PopsGoalHeader`: **Linha 1** — Meta POPS (serviçadas/meta), Serviçadas, Pendentes, % conclusão. **Linha 2** — card Large e card Small (total · serviçadas · pendentes · %) + Hoje, Semana, Mês.
-- Novo `PopsExecutorResults`: tabela compacta (Executor · Cargo · Filial · Serviçadas · Large · Small · Hoje · Semana · Mês · % part.), ordenada por serviçadas desc; no mobile vira lista de cards enxutos. Filtros de filial/plataforma/executor visíveis apenas para Manager/Admin (plataforma e executor também úteis no escopo de filial).
-- Novo `PopsPortfolioFilters` logo acima da carteira: Cliente (busca conforme digita), Chassi/Série, Máquina/Modelo, Plataforma. Desktop em linha; mobile em botão "Filtros" com contador de filtros ativos e "Limpar", mantendo Cliente e Chassi sempre visíveis para o RAC em campo.
-- Fluxo Cliente → Máquinas preservado; máquina que casa com o filtro aparece no topo, destacada.
+## 4. Ordem sugerida de implementação
+1. Tabelas + RLS + RPCs de leitura (sem tocar no Parque).
+2. Painel com KPIs, tabela por cliente e detalhe das máquinas.
+3. Gerar PDF por cliente (reaproveitando o estilo do checklist).
+4. Envio de e-mail (edge function + secret do provedor) e registro do envio.
+5. Etapa 1: staging + diff da nova base de prioridade.
 
-## Frontend a alterar
-
-`src/hooks/usePops.ts`, `src/components/pops/PopsGoalHeader.tsx`, `src/pages/Pops.tsx`, mais dois componentes novos (`PopsExecutorResults.tsx`, `PopsPortfolioFilters.tsx`).
-
-Aguardando aprovação para aplicar a migration.
+Nada foi criado ou alterado nesta etapa — aguardo sua aprovação.
