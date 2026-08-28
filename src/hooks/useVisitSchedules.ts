@@ -144,8 +144,8 @@ export const useUpdateVisitScheduleStatus = () => {
 };
 
 /**
- * Busca clientes para autocomplete a partir das tasks históricas
- * (mesma fonte de dados usada hoje na criação de visita).
+ * Busca clientes para autocomplete via clients_master (RPC search_clients).
+ * RACs enxergam a base mestre completa, não apenas seus históricos de tarefas.
  */
 export const useClientSearch = (term: string) => {
   return useQuery({
@@ -154,14 +154,11 @@ export const useClientSearch = (term: string) => {
     staleTime: 60_000,
     queryFn: async () => {
       const s = term.trim().replace(/[%_]/g, '');
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('clientcode, client, property, phone, email, filial')
-        .or(`client.ilike.%${s}%,clientcode.ilike.%${s}%`)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const { data, error } = await supabase.rpc('search_clients', {
+        p_query: s,
+        p_limit: 15,
+      });
       if (error) throw error;
-      // dedupe por clientcode (ou nome se sem código)
       const seen = new Set<string>();
       const out: Array<{
         code: string;
@@ -171,20 +168,13 @@ export const useClientSearch = (term: string) => {
         email?: string;
         filial?: string;
       }> = [];
-      for (const row of data ?? []) {
-        const code = (row as any).clientcode?.trim() || '';
-        const name = (row as any).client?.trim() || '';
+      for (const row of (data ?? []) as any[]) {
+        const code = row.client_code?.trim() || '';
+        const name = row.client_name?.trim() || '';
         const key = code ? `c:${code}` : `n:${name.toLowerCase()}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push({
-          code,
-          name,
-          property: (row as any).property || undefined,
-          phone: (row as any).phone || undefined,
-          email: (row as any).email || undefined,
-          filial: (row as any).filial || undefined,
-        });
+        out.push({ code, name });
         if (out.length >= 15) break;
       }
       return out;
