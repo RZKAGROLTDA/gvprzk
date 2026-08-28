@@ -66,10 +66,11 @@ export const R2ValidationPanel: React.FC = () => {
         out.push({ label: 'KPIs sem filtros', got: errText(kpis.error), ok: false });
       } else {
         const k = (kpis.data ?? {}) as Record<string, unknown>;
-        cmp('Pendentes', k.total_pending_machines ?? k.total_machines, EXPECTED.pendentes);
-        cmp('Vendidas', k.total_vendida ?? k.total_vendidas, EXPECTED.vendidas);
-        cmp('Inativas', k.total_inativa ?? k.total_inativas, EXPECTED.inativas);
-        cmp('Sucatas', k.total_sucata ?? k.total_sucatas, EXPECTED.sucatas);
+        const sit = (k.by_situation ?? {}) as Record<string, unknown>;
+        cmp('Pendentes', k.total_pending, EXPECTED.pendentes);
+        cmp('Vendidas', sit.vendida, EXPECTED.vendidas);
+        cmp('Inativas', sit.inativa, EXPECTED.inativas);
+        cmp('Sucatas', sit.sucata, EXPECTED.sucatas);
         cmp('Regularizadas', k.total_regularized, EXPECTED.regularizadas);
       }
 
@@ -86,7 +87,7 @@ export const R2ValidationPanel: React.FC = () => {
         out.push({ label: 'Sem filial', got: errText(kpisNoFilial.error), ok: false });
       } else {
         const k = (kpisNoFilial.data ?? {}) as Record<string, unknown>;
-        cmp('Sem filial', k.total_pending_machines ?? k.total_machines, EXPECTED.semFilial);
+        cmp('Sem filial', k.total_pending, EXPECTED.semFilial);
       }
 
       // 3) KPIs — situação Sucata
@@ -102,10 +103,10 @@ export const R2ValidationPanel: React.FC = () => {
         out.push({ label: 'Situação = sucata', got: errText(kpisSucata.error), ok: false });
       } else {
         const k = (kpisSucata.data ?? {}) as Record<string, unknown>;
-        cmp('Situação = sucata', k.total_pending_machines ?? k.total_machines, EXPECTED.sucatas);
+        cmp('Situação = sucata', k.total_pending, EXPECTED.sucatas);
       }
 
-      // 4) Grupos cliente + filial
+      // 4) Grupos cliente + filial (página ampla, para escolher os casos reais de teste)
       const groups = await supabase.rpc('equipment_regularization_pending_clients' as never, {
         p_filial_id: null,
         p_without_filial: false,
@@ -113,61 +114,91 @@ export const R2ValidationPanel: React.FC = () => {
         p_chassis: null,
         p_client: null,
         p_page: 1,
-        p_page_size: 20,
+        p_page_size: 200,
       } as never);
       dump.grupos = groups.error ?? groups.data;
 
       let first: Record<string, unknown> | null = null;
+      let allGroups: Record<string, unknown>[] = [];
       if (groups.error) {
         out.push({ label: 'Grupos cliente+filial', got: errText(groups.error), ok: false });
       } else {
         const g = (groups.data ?? {}) as Record<string, unknown>;
         cmp('Grupos cliente+filial', g.total_groups, EXPECTED.grupos);
-        const list = (g.clients as Record<string, unknown>[]) ?? [];
-        first = list[0] ?? null;
+        allGroups = (g.clients as Record<string, unknown>[]) ?? [];
+        first = allGroups[0] ?? null;
       }
 
-      // 5) Busca sem acento
-      const accent = await supabase.rpc('equipment_regularization_pending_clients' as never, {
-        p_filial_id: null,
-        p_without_filial: false,
-        p_situation: null,
-        p_chassis: null,
-        p_client: 'sao',
-        p_page: 1,
-        p_page_size: 5,
-      } as never);
-      dump.busca_sem_acento = accent.error ?? accent.data;
-      out.push({
-        label: 'Busca sem acento ("sao")',
-        got: accent.error
-          ? errText(accent.error)
-          : `${num((accent.data as Record<string, unknown>)?.total_groups)} grupo(s)`,
-        ok: accent.error ? false : null,
+      // 5) Busca sem acento — usa um cliente real com acento entre os grupos pendentes
+      const stripAccents = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const accented = allGroups.find((g) => {
+        const n = String(g.client_name ?? '');
+        return n !== stripAccents(n);
       });
+      if (!accented) {
+        out.push({ label: 'Busca sem acento', got: 'nenhum grupo pendente com nome acentuado', ok: null });
+      } else {
+        const fullName = String(accented.client_name ?? '');
+        const term = stripAccents(
+          fullName
+            .split(/\s+/)
+            .find((w) => w !== stripAccents(w)) ?? fullName,
+        );
+        const accent = await supabase.rpc('equipment_regularization_pending_clients' as never, {
+          p_filial_id: null,
+          p_without_filial: false,
+          p_situation: null,
+          p_chassis: null,
+          p_client: term,
+          p_page: 1,
+          p_page_size: 50,
+        } as never);
+        dump.busca_sem_acento = { termo: term, nome_original: fullName, retorno: accent.error ?? accent.data };
+        if (accent.error) {
+          out.push({ label: `Busca sem acento ("${term}" de "${fullName}")`, got: errText(accent.error), ok: false });
+        } else {
+          const list = ((accent.data as Record<string, unknown>)?.clients as Record<string, unknown>[]) ?? [];
+          const found = list.some((g) => g.client_key === accented.client_key);
+          out.push({
+            label: `Busca sem acento ("${term}" de "${fullName}")`,
+            expected: 'mesmo grupo retornado',
+            got: found ? `encontrado em ${list.length} grupo(s)` : `não encontrado (${list.length} grupo(s))`,
+            ok: found,
+          });
+        }
+      }
 
-      // 6) Código sem zeros à esquerda — usa o código do primeiro grupo
-      const rawCode = String((first?.client_code as string) ?? '').trim();
-      const stripped = rawCode.replace(/^0+/, '');
-      if (rawCode) {
+      // 6) Código sem zeros à esquerda — usa um client_code real com zeros à esquerda
+      const zeroGroup = allGroups.find((g) => /^0+\d/.test(String(g.client_code ?? '')));
+      if (!zeroGroup) {
+        out.push({ label: 'Código sem zeros', got: 'nenhum client_code pendente com zeros à esquerda', ok: null });
+      } else {
+        const rawCode = String(zeroGroup.client_code).trim();
+        const stripped = rawCode.replace(/^0+/, '');
         const byCode = await supabase.rpc('equipment_regularization_pending_clients' as never, {
           p_filial_id: null,
           p_without_filial: false,
           p_situation: null,
           p_chassis: null,
-          p_client: stripped || rawCode,
+          p_client: stripped,
           p_page: 1,
-          p_page_size: 5,
+          p_page_size: 50,
         } as never);
-        dump.busca_codigo_sem_zeros = byCode.error ?? byCode.data;
-        out.push({
-          label: `Código sem zeros ("${stripped || rawCode}" de "${rawCode}")`,
-          got: byCode.error
-            ? errText(byCode.error)
-            : `${num((byCode.data as Record<string, unknown>)?.total_groups)} grupo(s)`,
-          ok: byCode.error ? false : null,
-        });
+        dump.busca_codigo_sem_zeros = { termo: stripped, codigo_original: rawCode, retorno: byCode.error ?? byCode.data };
+        if (byCode.error) {
+          out.push({ label: `Código sem zeros ("${stripped}" de "${rawCode}")`, got: errText(byCode.error), ok: false });
+        } else {
+          const list = ((byCode.data as Record<string, unknown>)?.clients as Record<string, unknown>[]) ?? [];
+          const found = list.some((g) => g.client_key === zeroGroup.client_key);
+          out.push({
+            label: `Código sem zeros ("${stripped}" de "${rawCode}")`,
+            expected: 'mesmo grupo retornado',
+            got: found ? `encontrado em ${list.length} grupo(s)` : `não encontrado (${list.length} grupo(s))`,
+            ok: found,
+          });
+        }
       }
+
 
       // 7) Abertura de um grupo + situações retornadas
       if (first) {
