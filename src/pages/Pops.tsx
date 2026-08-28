@@ -1,21 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import {
-  AlertTriangle, ArrowLeft, Building2, ChevronLeft, ChevronRight, Search, Tractor, Users,
+  AlertTriangle, ArrowLeft, Building2, ChevronLeft, ChevronRight, Tractor, Users,
 } from 'lucide-react';
 import {
   usePopsProgram, usePopsGoalSummary, usePopsClients, usePopsClientMachines,
-  usePopsPermissions, useFiliaisList, type PopsClientRow, type PopsMachineRow,
+  usePopsExecutorResults, usePopsPermissions, useFiliaisList,
+  type PopsClientRow, type PopsMachineRow, type PopsPlatformFilter,
 } from '@/hooks/usePops';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
 import { PopsStatusBadge } from '@/components/pops/PopsStatusBadge';
 import { PopsMachineDrawer } from '@/components/pops/PopsMachineDrawer';
+import { PopsPortfolioFilters, type PortfolioFilters } from '@/components/pops/PopsPortfolioFilters';
+import { PopsExecutorResults } from '@/components/pops/PopsExecutorResults';
 
 const PAGE_SIZE = 24;
 const nf = new Intl.NumberFormat('pt-BR');
@@ -23,39 +25,86 @@ const nf = new Intl.NumberFormat('pt-BR');
 const getErrorMessage = (e: unknown) =>
   e instanceof Error ? e.message : 'Não foi possível carregar os dados do POPS.';
 
+/** "Esmaga" o texto para comparação flexível (sem acento/espaço/pontuação). */
+const crush = (v?: string | null) =>
+  (v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+
+const EMPTY_FILTERS: PortfolioFilters = { client: '', serial: '', model: '', platform: 'all' };
+
 const Pops: React.FC = () => {
   const perms = usePopsPermissions();
   const { data: program, isLoading: loadingProgram, error: programError } = usePopsProgram();
   const [filialId, setFilialId] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<PortfolioFilters>(EMPTY_FILTERS);
+  const [applied, setApplied] = useState<PortfolioFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
   const [selectedClient, setSelectedClient] = useState<PopsClientRow | null>(null);
   const [selectedMachineId, setSelectedMachineId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [execPlatform, setExecPlatform] = useState<PopsPlatformFilter>('all');
+  const [execUser, setExecUser] = useState<string | null>(null);
+
+  // Debounce da busca inteligente
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setApplied(filters);
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [filters]);
 
   const { data: filiais = [] } = useFiliaisList(perms.isGlobal);
   const goal = usePopsGoalSummary(program?.id, filialId);
   const clients = usePopsClients(program?.id, {
-    search: searchTerm,
+    search: applied.client,
+    serial: applied.serial,
+    model: applied.model,
+    platform: applied.platform,
     filialId,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   });
   const machines = usePopsClientMachines(program?.id, selectedClient?.client_key ?? null);
 
+  const showManagementPanel = perms.isGlobal || perms.isSupervisorOnly;
+  const executors = usePopsExecutorResults(showManagementPanel ? program?.id : undefined, {
+    filialId,
+    platform: execPlatform,
+    executedBy: execUser,
+  });
+
   const selectedMachine: PopsMachineRow | null = useMemo(
     () => machines.data?.find((m) => m.pops_machine_id === selectedMachineId) ?? null,
     [machines.data, selectedMachineId],
   );
 
-  const totalPages = Math.max(1, Math.ceil((clients.data?.total ?? 0) / PAGE_SIZE));
+  // Destaque e ordenação das máquinas conforme os filtros aplicados (somente apresentação)
+  const machineList = useMemo(() => {
+    const rows = machines.data ?? [];
+    const serial = crush(applied.serial);
+    const model = crush(applied.model);
+    const platform = applied.platform;
+    const hasFilter = !!serial || !!model || platform !== 'all';
+    if (!hasFilter) return rows.map((m) => ({ machine: m, highlight: false }));
 
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(0);
-    setSearchTerm(search);
-  };
+    const matches = (m: PopsMachineRow) =>
+      (!serial || crush(m.pops_serial).includes(serial)) &&
+      (!model || crush(m.pops_model).includes(model) || crush(m.pops_product_series).includes(model)) &&
+      (platform === 'all' || (m.pops_platform ?? '') === platform);
+
+    return rows
+      .map((m) => ({ machine: m, highlight: matches(m) }))
+      .sort((a, b) => Number(b.highlight) - Number(a.highlight));
+  }, [machines.data, applied]);
+
+  const highlightedCount = machineList.filter((m) => m.highlight).length;
+  const totalPages = Math.max(1, Math.ceil((clients.data?.total ?? 0) / PAGE_SIZE));
+  const anyFilterApplied =
+    !!applied.client.trim() || !!applied.serial.trim() || !!applied.model.trim() || applied.platform !== 'all';
 
   if (perms.isLoading || loadingProgram) {
     return (
@@ -120,6 +169,19 @@ const Pops: React.FC = () => {
         </Alert>
       )}
 
+      {showManagementPanel && (
+        <PopsExecutorResults
+          rows={executors.data?.rows ?? []}
+          totalServiced={executors.data?.total_serviced ?? 0}
+          isLoading={executors.isLoading}
+          error={executors.error}
+          platform={execPlatform}
+          onPlatformChange={setExecPlatform}
+          executedBy={execUser}
+          onExecutedByChange={setExecUser}
+        />
+      )}
+
       {!selectedClient ? (
         <Card>
           <CardContent className="p-3 sm:p-4 space-y-4">
@@ -129,19 +191,9 @@ const Pops: React.FC = () => {
                 <h2 className="text-base sm:text-lg font-semibold">Carteira de clientes</h2>
                 <Badge variant="secondary">{nf.format(clients.data?.total ?? 0)}</Badge>
               </div>
-              <form onSubmit={submitSearch} className="flex w-full sm:w-auto gap-2">
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar cliente"
-                    className="pl-9"
-                  />
-                </div>
-                <Button type="submit" variant="secondary">Buscar</Button>
-              </form>
             </div>
+
+            <PopsPortfolioFilters value={filters} onChange={setFilters} />
 
             {clients.isLoading ? (
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -156,7 +208,9 @@ const Pops: React.FC = () => {
               </Alert>
             ) : (clients.data?.rows.length ?? 0) === 0 ? (
               <div className="py-10 text-center text-sm text-muted-foreground">
-                {searchTerm ? 'Nenhum cliente encontrado para a busca.' : 'Nenhum cliente disponível na sua carteira POPS.'}
+                {anyFilterApplied
+                  ? 'Nenhum cliente encontrado para os filtros aplicados.'
+                  : 'Nenhum cliente disponível na sua carteira POPS.'}
               </div>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -220,6 +274,7 @@ const Pops: React.FC = () => {
                 <p className="text-xs text-muted-foreground">
                   {selectedClient.filial_nome || selectedClient.pops_dealer_location || 'Filial não mapeada'} ·{' '}
                   {nf.format(selectedClient.total_maquinas)} máquinas
+                  {highlightedCount > 0 && ` · ${nf.format(highlightedCount)} correspondem ao filtro`}
                 </p>
               </div>
             </div>
@@ -235,13 +290,13 @@ const Pops: React.FC = () => {
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>{getErrorMessage(machines.error)}</AlertDescription>
               </Alert>
-            ) : (machines.data?.length ?? 0) === 0 ? (
+            ) : machineList.length === 0 ? (
               <div className="py-10 text-center text-sm text-muted-foreground">
                 Este cliente não possui máquinas disponíveis no POPS.
               </div>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
-                {machines.data!.map((m) => (
+                {machineList.map(({ machine: m, highlight }) => (
                   <button
                     key={m.pops_machine_id}
                     type="button"
@@ -249,7 +304,9 @@ const Pops: React.FC = () => {
                       setSelectedMachineId(m.pops_machine_id);
                       setDrawerOpen(true);
                     }}
-                    className="rounded-lg border p-3 text-left transition-colors hover:bg-accent"
+                    className={`rounded-lg border p-3 text-left transition-colors hover:bg-accent ${
+                      highlight ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : ''
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
