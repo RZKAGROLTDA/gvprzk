@@ -18,7 +18,7 @@ Auditoria aprovada como diagnóstico. Proposta ajustada nos 3 pontos solicitados
 
 ## 2. Modelo por LOTE (corrigido — PDF não é por cliente)
 
-Referência oficial do PDF: **LOCALIZAÇÃO DE EQUIPAMENTOS JD.docx** (declaração ao processo de garantia/PMP John Deere). O arquivo ainda não está nos uploads — pedirei o anexo na implementação para replicar cabeçalho/texto/tabela com fidelidade.
+Referência oficial do PDF: **LOCALIZAÇÃO DE EQUIPAMENTOS JD.docx** (declaração ao processo de garantia/PMP John Deere). Layout, cabeçalho, texto padrão e tabela serão replicados com fidelidade a partir desse documento.
 
 ### Conceito
 - O painel de gestão continua **agrupado por cliente** (visualização e indicadores), mas a ação é **selecionar máquinas/clientes pendentes e montar um LOTE DE REGULARIZAÇÃO**.
@@ -42,7 +42,7 @@ Chassi/Nº de Série · Conta/Código do cliente · Localização do concession�
    - batch_id, equipment_id
    - snapshot no momento do envio: modelo, chassi/série, client_code, client_name, filial, motivo (`machine_status`), data e responsável da validação, pmp_number, pmp_expiration, city, state
 
-**Regra da pendência** (sem flags no cliente nem na máquina): pendente = máquina em `inativa`/`vendida`/`sucateada` que **não consta em nenhum item de lote enviado**. O histórico do que foi enviado é exatamente o conteúdo dos itens.
+**Regra da pendência** (sem flags no cliente nem na máquina): pendente = máquina em `inativa`/`vendida`/`sucateada` que **não consta em nenhum `equipment_regularization_batch_items` vinculado a um lote com `status = 'enviado'`**. Máquina em lote apenas `gerado` **continua pendente** até o envio efetivo. O histórico do que foi comunicado é exatamente o conteúdo dos itens de lotes enviados.
 
 ### Leitura: RPCs novas (sem alterar as do Parque)
 - `equipment_regularization_clients(filtros)` — painel agrupado por cliente: cliente, código, filial, total identificadas, qtd por motivo, status Pendente/Enviado, último lote.
@@ -61,5 +61,7 @@ Leitura por `can_view_equipment_park()` (mesma regra do Parque); criação de lo
 - Cada lote já terá os campos: destinatário(s), assunto, corpo padrão, PDF anexado, data/hora do envio, enviado por, status e máquinas contidas.
 - Quando definidos destinatário e texto padrão: 1 edge function de envio + 1 secret do provedor (ex. Resend), com dialog de revisão antes do envio e registro do lote como ENVIADO somente após confirmação real.
 
-## Próximo passo
-Aguardo: (a) sua aprovação desta arquitetura; (b) o arquivo da nova base de prioridade para a Etapa 1; (c) o DOCX de referência para o layout do PDF (pode ser na Etapa 2).
+## Status
+Arquitetura **aprovada** (com regra de pendência por lote `enviado` e PDF por lote multi-cliente). Etapa 2 aguardando.
+
+**ETAPA 1 em andamento:** aguardando o arquivo da nova base de prioridade. Fluxo: staging → diff (entram / saem / permanecem / não encontradas / duplicidades / total esperado) → **nada é aplicado antes da aprovação do diff**.
