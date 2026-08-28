@@ -110,8 +110,8 @@ export const R2ValidationPanel: React.FC = () => {
         p_situation: null,
         p_chassis: null,
         p_client: null,
-        p_limit: 20,
-        p_offset: 0,
+        p_page: 1,
+        p_page_size: 20,
       } as never);
       dump.grupos = groups.error ?? groups.data;
 
