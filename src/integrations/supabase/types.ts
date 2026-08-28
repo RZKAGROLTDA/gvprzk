@@ -2808,6 +2808,7 @@ export type Database = {
         Args: { new_role: string; target_user_id: string }
         Returns: boolean
       }
+      can_operate_equipment_regularization: { Args: never; Returns: boolean }
       can_perform_admin_action: { Args: never; Returns: boolean }
       can_view_equipment_park: { Args: never; Returns: boolean }
       can_view_opportunity: {
@@ -2987,6 +2988,66 @@ export type Database = {
       equipment_regularization_batch_status: {
         Args: { p_batch_id: string }
         Returns: string
+      }
+      equipment_regularization_cancel: {
+        Args: { p_batch_id: string; p_reason?: string }
+        Returns: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          document_date: string
+          generated_at: string
+          header_city: string
+          header_state: string
+          id: string
+          notes: string | null
+          pmp_number: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          sent_at: string | null
+          sent_by: string | null
+          signer_name: string
+          signer_role: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "equipment_regularization_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      equipment_regularization_confirm_send: {
+        Args: { p_batch_id: string }
+        Returns: {
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          document_date: string
+          generated_at: string
+          header_city: string
+          header_state: string
+          id: string
+          notes: string | null
+          pmp_number: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          sent_at: string | null
+          sent_by: string | null
+          signer_name: string
+          signer_role: string
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "equipment_regularization_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_activity_metrics_v2: {
         Args: {
