@@ -11,6 +11,7 @@ import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, S
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
+import { R2ValidationPanel } from '@/components/equipment/R2ValidationPanel';
 import {
   MACHINE_TYPES, MACHINE_STATUSES,
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
@@ -246,6 +247,10 @@ const Equipamentos: React.FC = () => {
           Exportar Excel
         </Button>
       </div>
+
+      {/* TEMPORÁRIO: diagnóstico da R2 (remover após validação) */}
+      <R2ValidationPanel />
+
 
       {/* Resumo do parque */}
       <Card>
