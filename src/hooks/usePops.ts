@@ -172,14 +172,14 @@ export const usePopsClients = (
     queryFn: async (): Promise<{ total: number; rows: PopsClientRow[] }> => {
       const { data, error } = await supabase.rpc('pops_portfolio_clients', {
         p_program_id: programId!,
-        p_filial_id: opts.filialId ?? undefined,
-        p_search: opts.search?.trim() ? opts.search.trim() : undefined,
+        p_filial_id: opts.filialId ?? null,
+        p_search: opts.search?.trim() ? opts.search.trim() : null,
         p_limit: opts.limit,
         p_offset: opts.offset,
-        p_serial: opts.serial?.trim() ? opts.serial.trim() : undefined,
-        p_model: opts.model?.trim() ? opts.model.trim() : undefined,
-        p_platform: opts.platform && opts.platform !== 'all' ? opts.platform : undefined,
-      });
+        p_serial: opts.serial?.trim() ? opts.serial.trim() : null,
+        p_model: opts.model?.trim() ? opts.model.trim() : null,
+        p_platform: opts.platform && opts.platform !== 'all' ? opts.platform : null,
+      } as never);
       if (error) throw error;
       const payload = (data ?? {}) as { total?: number; rows?: PopsClientRow[] };
       return { total: payload.total ?? 0, rows: payload.rows ?? [] };
