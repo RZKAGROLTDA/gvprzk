@@ -701,6 +701,7 @@ const Equipamentos: React.FC = () => {
           </div>
         </>
       )}
+      </>) : null}
 
       <EquipmentEditDialog
         equipment={editing}
