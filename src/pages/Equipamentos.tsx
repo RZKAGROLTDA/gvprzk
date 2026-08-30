@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck, AlertTriangle, RefreshCw, ClipboardList, ArrowLeft } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
@@ -38,6 +38,7 @@ const Equipamentos: React.FC = () => {
   const [editing, setEditing] = useState<ClientEquipment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [view, setView] = useState<'menu' | 'validacao' | 'regularizacao'>('menu');
 
   // Diretório de validadores (id → nome, filial)
   const { data: validators = [] } = useEquipmentValidators();
@@ -238,20 +239,63 @@ const Equipamentos: React.FC = () => {
             </p>
           </div>
         </div>
-        <Button onClick={handleExport} disabled={exporting} className="shrink-0">
-          {exporting ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-          )}
-          Exportar Excel
-        </Button>
+        {view === 'validacao' ? (
+          <Button onClick={handleExport} disabled={exporting} className="shrink-0">
+            {exporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+            )}
+            Exportar Excel
+          </Button>
+        ) : null}
       </div>
 
-      {/* R2 — Regularização do Parque */}
-      <EquipmentRegularizationPanel />
+      {/* Entrada — escolha da atividade */}
+      {view === 'menu' ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <button type="button" onClick={() => setView('validacao')} className="text-left">
+            <Card className="h-full transition-colors hover:border-primary/50 hover:bg-muted/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Tractor className="h-5 w-5 text-primary" />
+                  Validação do Parque
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  KPIs de validação, execução das validações, filtros e listagem das máquinas do parque.
+                </p>
+              </CardHeader>
+            </Card>
+          </button>
+          <button type="button" onClick={() => setView('regularizacao')} className="text-left">
+            <Card className="h-full transition-colors hover:border-primary/50 hover:bg-muted/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ClipboardList className="h-5 w-5 text-primary" />
+                  Regularização de Máquinas
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Pendências de máquinas vendidas, inativas ou sucata e criação de lotes de regularização.
+                </p>
+              </CardHeader>
+            </Card>
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => setView('menu')}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Parque de Máquinas
+          </Button>
+          <Badge variant="secondary" className="text-xs">
+            {view === 'validacao' ? 'Validação do Parque' : 'Regularização de Máquinas'}
+          </Badge>
+        </div>
+      )}
 
+      {/* Regularização do Parque — página dedicada */}
+      {view === 'regularizacao' ? <EquipmentRegularizationPanel /> : null}
 
+      {view === 'validacao' ? (<>
       {/* Resumo do parque */}
       <Card>
         <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
@@ -657,6 +701,7 @@ const Equipamentos: React.FC = () => {
           </div>
         </>
       )}
+      </>) : null}
 
       <EquipmentEditDialog
         equipment={editing}
