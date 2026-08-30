@@ -123,7 +123,7 @@ const GroupRow: React.FC<GroupRowProps> = ({
             <p className="text-sm text-muted-foreground">Nenhuma máquina pendente neste grupo.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+                  <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-muted-foreground">
                     <th className="py-2 pr-3 font-medium"> </th>
@@ -131,8 +131,7 @@ const GroupRow: React.FC<GroupRowProps> = ({
                     <th className="py-2 pr-3 font-medium whitespace-nowrap">Chassi/Série</th>
                     <th className="py-2 pr-3 font-medium whitespace-nowrap">Ano</th>
                     <th className="py-2 pr-3 font-medium whitespace-nowrap">Situação</th>
-                    <th className="py-2 pr-3 font-medium whitespace-nowrap">Última validação</th>
-                    <th className="py-2 font-medium whitespace-nowrap">Fonte</th>
+                    <th className="py-2 font-medium whitespace-nowrap">Última validação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,10 +152,9 @@ const GroupRow: React.FC<GroupRowProps> = ({
                           {SITUATION_LABEL[m.machine_situation] ?? m.machine_situation}
                         </Badge>
                       </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">
+                      <td className="py-2 whitespace-nowrap">
                         {dateOrDash(m.last_validation_at)}
                       </td>
-                      <td className="py-2">{m.validation_source || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
