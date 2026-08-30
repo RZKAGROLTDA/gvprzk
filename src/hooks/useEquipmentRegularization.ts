@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 export type RegSituation = 'vendida' | 'inativa' | 'sucata';
 
@@ -103,6 +104,44 @@ export const useRegularizationMachines = (
     },
     ...CACHE,
   });
+
+export interface RegApplyItem {
+  equipment_id: string;
+  new_situation: 'permanece' | RegSituation;
+  destination_client_code: string | null;
+  destination_client_name: string | null;
+}
+
+export const useApplyRegularization = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ items, notes }: { items: RegApplyItem[]; notes?: string }) => {
+      const { data, error } = await supabase.rpc(
+        'equipment_regularization_apply' as never,
+        { p_items: items, p_notes: notes ?? null } as never,
+      );
+      if (error) throw error;
+      return data as unknown as { batch_id: string; total: number };
+    },
+    onSuccess: (d) => {
+      toast({
+        title: 'Regularização concluída',
+        description: `${d.total} máquina(s) regularizada(s) com sucesso.`,
+      });
+      qc.invalidateQueries({ queryKey: ['reg-kpis'] });
+      qc.invalidateQueries({ queryKey: ['reg-clients'] });
+      qc.invalidateQueries({ queryKey: ['reg-machines'] });
+      qc.invalidateQueries({ queryKey: ['equipment-park'] });
+    },
+    onError: (e) => {
+      toast({
+        title: 'Erro na regularização',
+        description: (e as Error)?.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
 export const useFiliaisList = () =>
   useQuery({

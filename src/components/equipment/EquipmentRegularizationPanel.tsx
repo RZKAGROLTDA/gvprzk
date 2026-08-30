@@ -15,13 +15,13 @@ import {
   AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ClipboardList, Loader2, Tractor,
 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
 import { formatDateDisplay } from '@/lib/utils';
 import {
   useFiliaisList, useRegularizationClients, useRegularizationKpis,
   useRegularizationMachines,
   type RegClientGroup, type RegFilters, type RegMachine, type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
+import { RegularizationBatchDialog } from '@/components/equipment/RegularizationBatchDialog';
 
 const ALL = 'all';
 const NO_FILIAL = 'none';
@@ -176,6 +176,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
   const [chassis, setChassis] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Record<string, RegMachine>>({});
+  const [batchOpen, setBatchOpen] = useState(false);
 
   const { data: filiais = [] } = useFiliaisList();
 
@@ -381,20 +382,19 @@ export const EquipmentRegularizationPanel: React.FC = () => {
               <Button size="sm" variant="outline" onClick={() => setSelected({})}>
                 Limpar seleção
               </Button>
-              <Button
-                size="sm"
-                onClick={() =>
-                  toast({
-                    title: 'Próxima fase',
-                    description: 'Etapa de criação do lote será habilitada na próxima fase.',
-                  })
-                }
-              >
+              <Button size="sm" onClick={() => setBatchOpen(true)}>
                 Criar lote de regularização
               </Button>
             </div>
           </div>
         ) : null}
+
+        <RegularizationBatchDialog
+          open={batchOpen}
+          onOpenChange={setBatchOpen}
+          machines={Object.values(selected)}
+          onDone={() => setSelected({})}
+        />
       </CardContent>
     </Card>
   );

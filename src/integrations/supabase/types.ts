@@ -603,14 +603,19 @@ export type Database = {
           client_name: string | null
           created_at: string
           dealer_location: string | null
+          destination_client_code: string | null
+          destination_client_name: string | null
           equipment_id: string
           expiration_date: string | null
           filial_id: string | null
           id: string
           machine_situation: string
           model: string | null
+          new_situation: string | null
           notes: string | null
           pmp_number: string | null
+          regularized_at: string | null
+          regularized_by: string | null
           responsible_account: string | null
           serial_chassis: string | null
           state: string | null
@@ -624,14 +629,19 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           dealer_location?: string | null
+          destination_client_code?: string | null
+          destination_client_name?: string | null
           equipment_id: string
           expiration_date?: string | null
           filial_id?: string | null
           id?: string
           machine_situation: string
           model?: string | null
+          new_situation?: string | null
           notes?: string | null
           pmp_number?: string | null
+          regularized_at?: string | null
+          regularized_by?: string | null
           responsible_account?: string | null
           serial_chassis?: string | null
           state?: string | null
@@ -645,14 +655,19 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           dealer_location?: string | null
+          destination_client_code?: string | null
+          destination_client_name?: string | null
           equipment_id?: string
           expiration_date?: string | null
           filial_id?: string | null
           id?: string
           machine_situation?: string
           model?: string | null
+          new_situation?: string | null
           notes?: string | null
           pmp_number?: string | null
+          regularized_at?: string | null
+          regularized_by?: string | null
           responsible_account?: string | null
           serial_chassis?: string | null
           state?: string | null
@@ -2984,6 +2999,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      equipment_regularization_apply: {
+        Args: { p_items: Json; p_notes?: string }
+        Returns: Json
       }
       equipment_regularization_batch_status: {
         Args: { p_batch_id: string }
