@@ -15,13 +15,13 @@ import {
   AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ClipboardList, Loader2, Tractor,
 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
 import { formatDateDisplay } from '@/lib/utils';
 import {
   useFiliaisList, useRegularizationClients, useRegularizationKpis,
   useRegularizationMachines,
   type RegClientGroup, type RegFilters, type RegMachine, type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
+import { RegularizationBatchDialog } from '@/components/equipment/RegularizationBatchDialog';
 
 const ALL = 'all';
 const NO_FILIAL = 'none';
