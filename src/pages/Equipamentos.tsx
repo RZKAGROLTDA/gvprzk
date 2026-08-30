@@ -11,7 +11,7 @@ import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, S
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
-import { R2ValidationPanel } from '@/components/equipment/R2ValidationPanel';
+import { EquipmentRegularizationPanel } from '@/components/equipment/EquipmentRegularizationPanel';
 import {
   MACHINE_TYPES, MACHINE_STATUSES,
   machineStatusLabel, statusBadgeVariant, VALIDATION_PRIORITY_LABEL,
@@ -248,8 +248,8 @@ const Equipamentos: React.FC = () => {
         </Button>
       </div>
 
-      {/* TEMPORÁRIO: diagnóstico da R2 (remover após validação) */}
-      <R2ValidationPanel />
+      {/* R2 — Regularização do Parque */}
+      <EquipmentRegularizationPanel />
 
 
       {/* Resumo do parque */}
