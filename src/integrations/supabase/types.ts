@@ -531,19 +531,30 @@ export type Database = {
       }
       equipment_regularization_batches: {
         Row: {
+          applied_at: string | null
+          applied_by: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string
           created_by: string | null
           document_date: string
+          email_message: string | null
+          email_subject: string | null
           generated_at: string
           header_city: string
           header_state: string
           id: string
           notes: string | null
+          pdf_generated_at: string | null
+          pdf_generated_by: string | null
           pmp_number: string | null
+          provider_message_id: string | null
           recipient_email: string | null
           recipient_name: string | null
+          recipients: string[] | null
+          send_attempts: number
+          send_error: string | null
+          send_status: string
           sent_at: string | null
           sent_by: string | null
           signer_name: string
@@ -552,19 +563,30 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           created_at?: string
           created_by?: string | null
           document_date?: string
+          email_message?: string | null
+          email_subject?: string | null
           generated_at?: string
           header_city: string
           header_state: string
           id?: string
           notes?: string | null
+          pdf_generated_at?: string | null
+          pdf_generated_by?: string | null
           pmp_number?: string | null
+          provider_message_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
+          recipients?: string[] | null
+          send_attempts?: number
+          send_error?: string | null
+          send_status?: string
           sent_at?: string | null
           sent_by?: string | null
           signer_name: string
@@ -573,19 +595,30 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          applied_at?: string | null
+          applied_by?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           created_at?: string
           created_by?: string | null
           document_date?: string
+          email_message?: string | null
+          email_subject?: string | null
           generated_at?: string
           header_city?: string
           header_state?: string
           id?: string
           notes?: string | null
+          pdf_generated_at?: string | null
+          pdf_generated_by?: string | null
           pmp_number?: string | null
+          provider_message_id?: string | null
           recipient_email?: string | null
           recipient_name?: string | null
+          recipients?: string[] | null
+          send_attempts?: number
+          send_error?: string | null
+          send_status?: string
           sent_at?: string | null
           sent_by?: string | null
           signer_name?: string
@@ -3000,10 +3033,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      equipment_regularization_apply: {
-        Args: { p_items: Json; p_notes?: string }
-        Returns: Json
-      }
       equipment_regularization_batch_status: {
         Args: { p_batch_id: string }
         Returns: string
@@ -3011,19 +3040,30 @@ export type Database = {
       equipment_regularization_cancel: {
         Args: { p_batch_id: string; p_reason?: string }
         Returns: {
+          applied_at: string | null
+          applied_by: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string
           created_by: string | null
           document_date: string
+          email_message: string | null
+          email_subject: string | null
           generated_at: string
           header_city: string
           header_state: string
           id: string
           notes: string | null
+          pdf_generated_at: string | null
+          pdf_generated_by: string | null
           pmp_number: string | null
+          provider_message_id: string | null
           recipient_email: string | null
           recipient_name: string | null
+          recipients: string[] | null
+          send_attempts: number
+          send_error: string | null
+          send_status: string
           sent_at: string | null
           sent_by: string | null
           signer_name: string
@@ -3041,19 +3081,30 @@ export type Database = {
       equipment_regularization_confirm_send: {
         Args: { p_batch_id: string }
         Returns: {
+          applied_at: string | null
+          applied_by: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string
           created_by: string | null
           document_date: string
+          email_message: string | null
+          email_subject: string | null
           generated_at: string
           header_city: string
           header_state: string
           id: string
           notes: string | null
+          pdf_generated_at: string | null
+          pdf_generated_by: string | null
           pmp_number: string | null
+          provider_message_id: string | null
           recipient_email: string | null
           recipient_name: string | null
+          recipients: string[] | null
+          send_attempts: number
+          send_error: string | null
+          send_status: string
           sent_at: string | null
           sent_by: string | null
           signer_name: string
@@ -3067,6 +3118,43 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      equipment_regularization_create_batch: {
+        Args: {
+          p_document_date?: string
+          p_equipment_ids: string[]
+          p_header_city?: string
+          p_header_state?: string
+          p_notes?: string
+          p_pmp_number?: string
+          p_recipient_email?: string
+          p_recipient_name?: string
+          p_signer_name?: string
+          p_signer_role?: string
+        }
+        Returns: Json
+      }
+      equipment_regularization_finalize: {
+        Args: {
+          p_batch_id: string
+          p_email_message?: string
+          p_email_subject?: string
+          p_provider_message_id?: string
+          p_recipients: string[]
+        }
+        Returns: Json
+      }
+      equipment_regularization_get_batch: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
+      equipment_regularization_mark_pdf_generated: {
+        Args: { p_batch_id: string }
+        Returns: undefined
+      }
+      equipment_regularization_mark_send_error: {
+        Args: { p_batch_id: string; p_error: string; p_recipients?: string[] }
+        Returns: undefined
       }
       equipment_regularization_pending_clients: {
         Args: {
