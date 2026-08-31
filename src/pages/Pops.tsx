@@ -53,6 +53,10 @@ const Pops: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [execPlatform, setExecPlatform] = useState<PopsPlatformFilter>('all');
   const [execUser, setExecUser] = useState<string | null>(null);
+  // Seleção de máquinas apenas para geração documental do PDF (não altera registros)
+  const [selectedForPdf, setSelectedForPdf] = useState<Record<string, PopsMachineRow>>({});
+  const { profile } = useProfile();
+
 
   // Debounce da busca inteligente
   useEffect(() => {
