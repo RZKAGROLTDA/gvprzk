@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,6 @@ import {
 import { useProfile } from '@/hooks/useProfile';
 import { buildPopsMachinesPdf } from '@/lib/popsMachinesPdf';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
-import { PopsStatusBadge } from '@/components/pops/PopsStatusBadge';
 import { PopsMachineDrawer } from '@/components/pops/PopsMachineDrawer';
 import { PopsPortfolioFilters, type PortfolioFilters } from '@/components/pops/PopsPortfolioFilters';
 import { PopsExecutorResults } from '@/components/pops/PopsExecutorResults';
