@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -172,6 +171,7 @@ export const TrainingsPanel: React.FC = () => {
         'Criado em': new Date(r.created_at).toLocaleString('pt-BR'),
       }));
 
+const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet), 'Treinamentos');
       XLSX.writeFile(wb, `Treinamentos_${new Date().toISOString().slice(0, 10)}.xlsx`);

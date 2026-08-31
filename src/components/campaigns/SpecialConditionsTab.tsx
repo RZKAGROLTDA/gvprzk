@@ -48,7 +48,6 @@ import {
   Search,
   ShieldCheck,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ClientAutocomplete } from '@/pages/Campaigns';
@@ -248,7 +247,7 @@ export const SpecialConditionsTab: React.FC = () => {
     return false;
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!list.length) {
       toast.info('Nenhum dado para exportar');
       return;
@@ -272,6 +271,7 @@ export const SpecialConditionsTab: React.FC = () => {
       'Aprovado em': e.approved_at ? new Date(e.approved_at).toLocaleString('pt-BR') : '',
       'Observação': e.observation || '',
     }));
+const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Condições Especiais');

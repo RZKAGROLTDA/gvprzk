@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { getRoleLabel } from '@/lib/roles';
 import { formatDateDisplay } from '@/lib/utils';
 import type {
@@ -41,7 +40,7 @@ export const monthLabel = (mes: string): string => {
 
 const asText = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
 
-export const exportServiceOpportunitiesExcel = (
+export const exportServiceOpportunitiesExcel = async (
   rows: ServiceOpportunityDetailRow[],
   summary: ServiceOpportunitiesSummary,
 ) => {
@@ -65,6 +64,7 @@ export const exportServiceOpportunitiesExcel = (
     'ID do Checklist': r.task_id,
   }));
 
+const XLSX = await import('xlsx');
   const ws1 = XLSX.utils.json_to_sheet(sheet1);
   // Preserva código do cliente e chassi/série como texto (não perder zeros à esquerda).
   const textCols = ['F', 'I', 'J', 'K', 'Q'];
