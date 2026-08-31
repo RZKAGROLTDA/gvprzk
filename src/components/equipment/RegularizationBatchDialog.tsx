@@ -133,6 +133,55 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
     window.open(url, '_blank');
   };
 
+  /**
+   * E-mail: gera + baixa o PDF e abre o cliente de e-mail padrão (mailto:).
+   * Anexo automático não é possível via mailto: — o usuário anexa o arquivo baixado.
+   * Isso NÃO regulariza nada: o lote segue "Aguardando envio".
+   */
+  const handleEmail = () => {
+    const out = makePdf();
+    if (!out) return;
+
+    const url = URL.createObjectURL(out.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = out.fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const clienteLinha = clients.length === 1
+      ? `${clients[0].name} (${clients[0].code})`
+      : `${clients.length} clientes`;
+    const subject = `Regularização de Máquinas — ${clienteLinha}`;
+    const body = [
+      'Prezado(a),',
+      '',
+      'Segue em anexo o documento de Regularização de Máquinas referente ao seu Parque de Máquinas.',
+      '',
+      `Cliente: ${clienteLinha}`,
+      `Máquinas no documento: ${batch.data?.items.length ?? machines.length}`,
+      `Lote: ${batchId ?? '—'}`,
+      '',
+      'Solicitamos a conferência das informações e, caso haja divergência, o retorno a esta',
+      'concessionária para atualização cadastral.',
+      '',
+      'Atenciosamente,',
+      signerName || '',
+      signerRole || '',
+    ].join('\n');
+
+    window.open(
+      `mailto:${emailTo.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    );
+
+    toast({
+      title: 'PDF gerado e baixado',
+      description: `Anexe o arquivo "${out.fileName}" ao e-mail que foi aberto. O lote continua aguardando envio.`,
+    });
+  };
+
+
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
