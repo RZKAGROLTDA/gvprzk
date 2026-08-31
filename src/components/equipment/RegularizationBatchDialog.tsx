@@ -18,7 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle2, Download, Eye, FileText, Loader2, Wrench } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, Eye, FileText, Loader2, Mail, Wrench } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import {
   useCreateRegularizationBatch,
   useMarkPdfGenerated,
@@ -27,6 +28,7 @@ import {
   type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
 import { buildRegularizationPdf } from '@/lib/equipmentRegularizationPdf';
+
 
 const SITUATION_LABEL: Record<RegSituation, string> = {
   vendida: 'Vendida',
@@ -56,6 +58,9 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
   const [signerRole, setSignerRole] = useState('Gerente Corporativo de Serviços');
   const [notes, setNotes] = useState('');
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [emailTo, setEmailTo] = useState('');
+  const { toast } = useToast();
+
 
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
 
@@ -72,6 +77,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
     setBatchId(null);
     setCity(''); setState(''); setPmp(''); setNotes('');
     setSignerName(''); setSignerRole('Gerente Corporativo de Serviços');
+    setEmailTo('');
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     setPdfUrl(null);
   };
@@ -127,6 +133,55 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
     setPdfUrl(url);
     window.open(url, '_blank');
   };
+
+  /**
+   * E-mail: gera + baixa o PDF e abre o cliente de e-mail padrão (mailto:).
+   * Anexo automático não é possível via mailto: — o usuário anexa o arquivo baixado.
+   * Isso NÃO regulariza nada: o lote segue "Aguardando envio".
+   */
+  const handleEmail = () => {
+    const out = makePdf();
+    if (!out) return;
+
+    const url = URL.createObjectURL(out.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = out.fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const clienteLinha = clients.length === 1
+      ? `${clients[0].name} (${clients[0].code})`
+      : `${clients.length} clientes`;
+    const subject = `Regularização de Máquinas — ${clienteLinha}`;
+    const body = [
+      'Prezado(a),',
+      '',
+      'Segue em anexo o documento de Regularização de Máquinas referente ao seu Parque de Máquinas.',
+      '',
+      `Cliente: ${clienteLinha}`,
+      `Máquinas no documento: ${batch.data?.items.length ?? machines.length}`,
+      `Lote: ${batchId ?? '—'}`,
+      '',
+      'Solicitamos a conferência das informações e, caso haja divergência, o retorno a esta',
+      'concessionária para atualização cadastral.',
+      '',
+      'Atenciosamente,',
+      signerName || '',
+      signerRole || '',
+    ].join('\n');
+
+    window.open(
+      `mailto:${emailTo.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    );
+
+    toast({
+      title: 'PDF gerado e baixado',
+      description: `Anexe o arquivo "${out.fileName}" ao e-mail que foi aberto. O lote continua aguardando envio.`,
+    });
+  };
+
+
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -247,6 +302,26 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
               </p>
             ) : null}
 
+            <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <div>
+                <Label className="text-xs">E-mail do destinatário (opcional)</Label>
+                <Input
+                  type="email"
+                  value={emailTo}
+                  onChange={(e) => setEmailTo(e.target.value)}
+                  placeholder="cliente@empresa.com.br"
+                />
+              </div>
+              <Button disabled={!batch.data} onClick={handleEmail} variant="secondary">
+                <Mail className="mr-2 h-4 w-4" /> Email
+              </Button>
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                Ao clicar em Email, o PDF é gerado e baixado automaticamente e o e-mail é aberto
+                preenchido. Anexe o arquivo baixado antes de enviar (o navegador não permite anexo
+                automático).
+              </p>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <Button disabled={!batch.data} onClick={handlePreview} variant="outline">
                 <Eye className="mr-2 h-4 w-4" /> Visualizar PDF
@@ -255,6 +330,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
                 <Download className="mr-2 h-4 w-4" /> Baixar PDF
               </Button>
             </div>
+
 
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
               <FileText className="mt-0.5 h-4 w-4 shrink-0" />
