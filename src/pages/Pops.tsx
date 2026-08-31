@@ -2,22 +2,28 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import {
-  AlertTriangle, ArrowLeft, Building2, ChevronLeft, ChevronRight, Tractor, Users,
+  AlertTriangle, ArrowLeft, Building2, ChevronLeft, ChevronRight, Download, FileText,
+  Tractor, Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   usePopsProgram, usePopsGoalSummary, usePopsClients, usePopsClientMachines,
   usePopsExecutorResults, usePopsPermissions, useFiliaisList,
   type PopsClientRow, type PopsMachineRow, type PopsPlatformFilter,
 } from '@/hooks/usePops';
+import { useProfile } from '@/hooks/useProfile';
+import { buildPopsMachinesPdf } from '@/lib/popsMachinesPdf';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
 import { PopsStatusBadge } from '@/components/pops/PopsStatusBadge';
 import { PopsMachineDrawer } from '@/components/pops/PopsMachineDrawer';
 import { PopsPortfolioFilters, type PortfolioFilters } from '@/components/pops/PopsPortfolioFilters';
 import { PopsExecutorResults } from '@/components/pops/PopsExecutorResults';
+
 
 const PAGE_SIZE = 24;
 const nf = new Intl.NumberFormat('pt-BR');
