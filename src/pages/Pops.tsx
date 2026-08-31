@@ -2,22 +2,28 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import {
-  AlertTriangle, ArrowLeft, Building2, ChevronLeft, ChevronRight, Tractor, Users,
+  AlertTriangle, ArrowLeft, Building2, ChevronLeft, ChevronRight, Download, FileText,
+  Tractor, Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   usePopsProgram, usePopsGoalSummary, usePopsClients, usePopsClientMachines,
   usePopsExecutorResults, usePopsPermissions, useFiliaisList,
   type PopsClientRow, type PopsMachineRow, type PopsPlatformFilter,
 } from '@/hooks/usePops';
+import { useProfile } from '@/hooks/useProfile';
+import { buildPopsMachinesPdf } from '@/lib/popsMachinesPdf';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
 import { PopsStatusBadge } from '@/components/pops/PopsStatusBadge';
 import { PopsMachineDrawer } from '@/components/pops/PopsMachineDrawer';
 import { PopsPortfolioFilters, type PortfolioFilters } from '@/components/pops/PopsPortfolioFilters';
 import { PopsExecutorResults } from '@/components/pops/PopsExecutorResults';
+
 
 const PAGE_SIZE = 24;
 const nf = new Intl.NumberFormat('pt-BR');
@@ -35,6 +41,14 @@ const crush = (v?: string | null) =>
 
 const EMPTY_FILTERS: PortfolioFilters = { client: '', serial: '', model: '', platform: 'all' };
 
+/** Rótulos de situação usados no PDF (mesmos exibidos na relação de máquinas). */
+const SITUATION_LABEL: Record<PopsMachineRow['status'], string> = {
+  foco: 'Foco',
+  em_andamento: 'Em andamento',
+  servicada: 'Serviçada',
+};
+
+
 const Pops: React.FC = () => {
   const perms = usePopsPermissions();
   const { data: program, isLoading: loadingProgram, error: programError } = usePopsProgram();
@@ -47,6 +61,10 @@ const Pops: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [execPlatform, setExecPlatform] = useState<PopsPlatformFilter>('all');
   const [execUser, setExecUser] = useState<string | null>(null);
+  // Seleção de máquinas apenas para geração documental do PDF (não altera registros)
+  const [selectedForPdf, setSelectedForPdf] = useState<Record<string, PopsMachineRow>>({});
+  const { profile } = useProfile();
+
 
   // Debounce da busca inteligente
   useEffect(() => {
@@ -100,6 +118,57 @@ const Pops: React.FC = () => {
       .map((m) => ({ machine: m, highlight: matches(m) }))
       .sort((a, b) => Number(b.highlight) - Number(a.highlight));
   }, [machines.data, applied]);
+
+  // Limpa a seleção ao trocar de cliente
+  useEffect(() => {
+    setSelectedForPdf({});
+  }, [selectedClient?.client_key]);
+
+  const pdfSelection = useMemo(() => Object.values(selectedForPdf), [selectedForPdf]);
+
+  const toggleMachineSelection = (m: PopsMachineRow, checked: boolean) =>
+    setSelectedForPdf((prev) => {
+      const next = { ...prev };
+      if (checked) next[m.pops_machine_id] = m;
+      else delete next[m.pops_machine_id];
+      return next;
+    });
+
+  /** Geração puramente documental: nada é alterado nas máquinas. */
+  const handleGeneratePdf = (mode: 'preview' | 'download') => {
+    if (pdfSelection.length === 0) return;
+    const first = pdfSelection[0];
+    const { blob, fileName } = buildPopsMachinesPdf({
+      clientName: selectedClient?.pops_client_name ?? first.pops_client_name,
+      clientCode: first.pops_client_code,
+      filial:
+        selectedClient?.filial_nome ??
+        first.filial_nome ??
+        selectedClient?.pops_dealer_location ??
+        first.pops_dealer_location,
+      responsible: profile?.name ?? null,
+      machines: pdfSelection.map((m) => ({
+        model: m.pops_model,
+        serial: m.pops_serial,
+        year: m.pops_manufacture_year,
+        situation: SITUATION_LABEL[m.status] ?? m.status,
+      })),
+    });
+
+    const url = URL.createObjectURL(blob);
+    if (mode === 'download') {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF gerado e baixado.');
+    } else {
+      window.open(url, '_blank');
+      toast.success('PDF gerado para visualização.');
+    }
+  };
+
 
   const highlightedCount = machineList.filter((m) => m.highlight).length;
   const totalPages = Math.max(1, Math.ceil((clients.data?.total ?? 0) / PAGE_SIZE));
@@ -295,46 +364,80 @@ const Pops: React.FC = () => {
                 Este cliente não possui máquinas disponíveis no POPS.
               </div>
             ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {machineList.map(({ machine: m, highlight }) => (
-                  <button
-                    key={m.pops_machine_id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMachineId(m.pops_machine_id);
-                      setDrawerOpen(true);
-                    }}
-                    className={`rounded-lg border p-3 text-left transition-colors hover:bg-accent ${
-                      highlight ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="font-mono text-sm font-semibold break-all">
-                          {m.pops_serial || 'Sem serial'}
-                        </span>
+              <>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {machineList.map(({ machine: m, highlight }) => (
+                    <div
+                      key={m.pops_machine_id}
+                      className={`rounded-lg border p-3 text-left transition-colors ${
+                        highlight ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={!!selectedForPdf[m.pops_machine_id]}
+                          onCheckedChange={(v) => toggleMachineSelection(m, v === true)}
+                          aria-label="Selecionar máquina para o PDF"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedMachineId(m.pops_machine_id);
+                            setDrawerOpen(true);
+                          }}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="font-mono text-sm font-semibold break-all">
+                                {m.pops_serial || 'Sem serial'}
+                              </span>
+                            </div>
+                            <PopsStatusBadge status={m.status} />
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span>Modelo: <span className="text-foreground">{m.pops_model || '—'}</span></span>
+                            <span>Série: <span className="text-foreground">{m.pops_product_series || '—'}</span></span>
+                            <span>Ano: <span className="text-foreground">{m.pops_manufacture_year || '—'}</span></span>
+                            <span>Plataforma: <span className="text-foreground">{m.pops_platform || '—'}</span></span>
+                          </div>
+                          {m.status === 'servicada' && (
+                            <p className="mt-2 text-xs text-primary">
+                              {m.final_service_name} · OS {m.os_number}
+                            </p>
+                          )}
+                          {m.equipment_id && (
+                            <p className="mt-1 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
+                          )}
+                        </button>
                       </div>
-                      <PopsStatusBadge status={m.status} />
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span>Modelo: <span className="text-foreground">{m.pops_model || '—'}</span></span>
-                      <span>Série: <span className="text-foreground">{m.pops_product_series || '—'}</span></span>
-                      <span>Ano: <span className="text-foreground">{m.pops_manufacture_year || '—'}</span></span>
-                      <span>Plataforma: <span className="text-foreground">{m.pops_platform || '—'}</span></span>
+                  ))}
+                </div>
+
+                {pdfSelection.length > 0 && (
+                  <div className="sticky bottom-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 shadow-lg">
+                    <p className="text-sm font-medium">
+                      {nf.format(pdfSelection.length)} máquina(s) selecionada(s)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setSelectedForPdf({})}>
+                        Limpar seleção
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleGeneratePdf('preview')}>
+                        <FileText className="mr-2 h-4 w-4" /> Gerar PDF
+                      </Button>
+                      <Button size="sm" onClick={() => handleGeneratePdf('download')}>
+                        <Download className="mr-2 h-4 w-4" /> Baixar PDF
+                      </Button>
                     </div>
-                    {m.status === 'servicada' && (
-                      <p className="mt-2 text-xs text-primary">
-                        {m.final_service_name} · OS {m.os_number}
-                      </p>
-                    )}
-                    {m.equipment_id && (
-                      <p className="mt-1 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
-                    )}
-                  </button>
-                ))}
-              </div>
+                  </div>
+                )}
+              </>
             )}
+
           </CardContent>
         </Card>
       )}
