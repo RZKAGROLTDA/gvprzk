@@ -41,6 +41,14 @@ const crush = (v?: string | null) =>
 
 const EMPTY_FILTERS: PortfolioFilters = { client: '', serial: '', model: '', platform: 'all' };
 
+/** Rótulos de situação usados no PDF (mesmos exibidos na relação de máquinas). */
+const SITUATION_LABEL: Record<PopsMachineRow['status'], string> = {
+  foco: 'Foco',
+  em_andamento: 'Em andamento',
+  servicada: 'Serviçada',
+};
+
+
 const Pops: React.FC = () => {
   const perms = usePopsPermissions();
   const { data: program, isLoading: loadingProgram, error: programError } = usePopsProgram();
