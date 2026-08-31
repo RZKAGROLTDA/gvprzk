@@ -105,43 +105,91 @@ export const useRegularizationMachines = (
     ...CACHE,
   });
 
-export interface RegApplyItem {
-  equipment_id: string;
-  new_situation: 'permanece' | RegSituation;
-  destination_client_code: string | null;
-  destination_client_name: string | null;
+/**
+ * Criação do lote — NÃO regulariza nada.
+ * O lote nasce em "aguardando_envio", grava apenas o snapshot das máquinas e
+ * não altera client_equipment. As máquinas continuam pendentes.
+ */
+export interface CreateBatchInput {
+  equipmentIds: string[];
+  headerCity?: string | null;
+  headerState?: string | null;
+  documentDate?: string | null;
+  signerName?: string | null;
+  signerRole?: string | null;
+  recipientName?: string | null;
+  recipientEmail?: string | null;
+  pmpNumber?: string | null;
+  notes?: string | null;
 }
 
-export const useApplyRegularization = () => {
+export const useCreateRegularizationBatch = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ items, notes }: { items: RegApplyItem[]; notes?: string }) => {
+    mutationFn: async (input: CreateBatchInput) => {
       const { data, error } = await supabase.rpc(
-        'equipment_regularization_apply' as never,
-        { p_items: items, p_notes: notes ?? null } as never,
+        'equipment_regularization_create_batch' as never,
+        {
+          p_equipment_ids: input.equipmentIds,
+          p_header_city: input.headerCity ?? null,
+          p_header_state: input.headerState ?? null,
+          p_document_date: input.documentDate ?? null,
+          p_signer_name: input.signerName ?? null,
+          p_signer_role: input.signerRole ?? null,
+          p_recipient_name: input.recipientName ?? null,
+          p_recipient_email: input.recipientEmail ?? null,
+          p_pmp_number: input.pmpNumber ?? null,
+          p_notes: input.notes ?? null,
+        } as never,
       );
       if (error) throw error;
-      return data as unknown as { batch_id: string; total: number };
+      return data as unknown as { batch_id: string; total: number; status: string };
     },
     onSuccess: (d) => {
       toast({
-        title: 'Regularização concluída',
-        description: `${d.total} máquina(s) regularizada(s) com sucesso.`,
+        title: 'Lote criado',
+        description: `${d.total} máquina(s) no lote. Status: aguardando envio — nada foi alterado no Parque.`,
       });
-      qc.invalidateQueries({ queryKey: ['reg-kpis'] });
-      qc.invalidateQueries({ queryKey: ['reg-clients'] });
-      qc.invalidateQueries({ queryKey: ['reg-machines'] });
-      qc.invalidateQueries({ queryKey: ['equipment-park'] });
+      qc.invalidateQueries({ queryKey: ['reg-batch'] });
     },
     onError: (e) => {
       toast({
-        title: 'Erro na regularização',
+        title: 'Erro ao criar o lote',
         description: (e as Error)?.message,
         variant: 'destructive',
       });
     },
   });
 };
+
+/** Detalhe do lote (snapshot dos itens) — base única do PDF. */
+export const useRegularizationBatch = (batchId: string | null) =>
+  useQuery({
+    queryKey: ['reg-batch', batchId],
+    enabled: !!batchId,
+    queryFn: async (): Promise<RegBatchDetail> => {
+      const { data, error } = await supabase.rpc(
+        'equipment_regularization_get_batch' as never,
+        { p_batch_id: batchId } as never,
+      );
+      if (error) throw error;
+      return data as unknown as RegBatchDetail;
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+/** Marca que o PDF foi gerado — auditoria apenas, não regulariza. */
+export const useMarkPdfGenerated = () =>
+  useMutation({
+    mutationFn: async (batchId: string) => {
+      const { error } = await supabase.rpc(
+        'equipment_regularization_mark_pdf_generated' as never,
+        { p_batch_id: batchId } as never,
+      );
+      if (error) throw error;
+    },
+  });
 
 export const useFiliaisList = () =>
   useQuery({
