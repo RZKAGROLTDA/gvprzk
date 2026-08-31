@@ -284,8 +284,10 @@ export const fetchRemoteVersionWithRetry = async (
   delayMs = 1200,
 ): Promise<RemoteVersion | null> => {
   for (let i = 0; i < attempts; i += 1) {
-    const remote = await fetchRemoteVersion();
-    if (remote) return remote;
+    const result = await fetchVersionShared();
+    if (result && result !== NOT_A_VERSION_FILE) return result;
+    // Ambiente sem version.json (dev/preview) → repetir devolveria o mesmo HTML.
+    if (result === NOT_A_VERSION_FILE) return null;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
     if (i < attempts - 1) {
       await new Promise((r) => setTimeout(r, delayMs));
