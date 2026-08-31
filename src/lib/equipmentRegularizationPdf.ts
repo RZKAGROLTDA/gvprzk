@@ -133,7 +133,7 @@ export function buildRegularizationPdf(batch: RegBatchDetail): {
 
     // Cabeçalho da tabela
     const cols = [MARGIN, MARGIN + 48, MARGIN + 108, MARGIN + 132];
-    pdf.setFillColor(240);
+    pdf.setFillColor(240, 240, 240);
     pdf.rect(MARGIN, y - 4, PAGE_W - MARGIN * 2, 6, 'F');
     pdf.setFont('helvetica', 'bold');
     pdf.text('Chassi / Série', cols[0] + 1, y);
