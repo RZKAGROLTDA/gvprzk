@@ -107,15 +107,21 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
     );
   };
 
-  const makePdf = () => {
+  /** Abre em nova aba; se o popup for bloqueado (geração assíncrona), navega. */
+  const openUrl = (url: string) => {
+    const w = window.open(url, '_blank');
+    if (!w) window.location.href = url;
+  };
+
+  const makePdf = async () => {
     if (!batch.data) return null;
-    const { blob, fileName } = buildRegularizationPdf(batch.data);
+    const { blob, fileName } = await buildRegularizationPdf(batch.data);
     if (batchId) markPdf.mutate(batchId);
     return { blob, fileName };
   };
 
-  const handleDownload = () => {
-    const out = makePdf();
+  const handleDownload = async () => {
+    const out = await makePdf();
     if (!out) return;
     const url = URL.createObjectURL(out.blob);
     const a = document.createElement('a');
@@ -125,13 +131,13 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handlePreview = () => {
-    const out = makePdf();
+  const handlePreview = async () => {
+    const out = await makePdf();
     if (!out) return;
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     const url = URL.createObjectURL(out.blob);
     setPdfUrl(url);
-    window.open(url, '_blank');
+    openUrl(url);
   };
 
   /**
@@ -139,8 +145,8 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
    * Anexo automático não é possível via mailto: — o usuário anexa o arquivo baixado.
    * Isso NÃO regulariza nada: o lote segue "Aguardando envio".
    */
-  const handleEmail = () => {
-    const out = makePdf();
+  const handleEmail = async () => {
+    const out = await makePdf();
     if (!out) return;
 
     const url = URL.createObjectURL(out.blob);
@@ -171,7 +177,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
       signerRole || '',
     ].join('\n');
 
-    window.open(
+    openUrl(
       `mailto:${emailTo.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
     );
 

@@ -156,10 +156,10 @@ const Pops: React.FC = () => {
     });
 
   /** Geração puramente documental: nada é alterado nas máquinas. */
-  const handleGeneratePdf = (mode: 'preview' | 'download') => {
+  const handleGeneratePdf = async (mode: 'preview' | 'download') => {
     if (pdfSelection.length === 0) return;
     const first = pdfSelection[0];
-    const { blob, fileName } = buildPopsMachinesPdf({
+    const { blob, fileName } = await buildPopsMachinesPdf({
       clientName: selectedClient?.pops_client_name ?? first.pops_client_name,
       clientCode: first.pops_client_code,
       filial:
@@ -185,7 +185,8 @@ const Pops: React.FC = () => {
       URL.revokeObjectURL(url);
       toast.success('PDF gerado e baixado.');
     } else {
-      window.open(url, '_blank');
+      const w = window.open(url, '_blank');
+      if (!w) window.location.href = url;
       toast.success('PDF gerado para visualização.');
     }
   };
