@@ -82,17 +82,61 @@ export const isAppBusy = (): boolean => {
   return false;
 };
 
-export const fetchRemoteVersion = async (): Promise<RemoteVersion | null> => {
+/**
+ * Resposta "não-JSON" (dev/preview servem o index.html no lugar do
+ * version.json). Não é falha de rede: repetir a chamada devolveria o mesmo
+ * HTML, então não faz sentido tentar de novo no mesmo ciclo.
+ */
+const NOT_A_VERSION_FILE = Symbol('not-a-version-file');
+type FetchResult = RemoteVersion | null | typeof NOT_A_VERSION_FILE;
+
+// Deduplicação: chamadas concorrentes (watcher + gate + StrictMode) compartilham
+// a MESMA requisição, e o resultado é reusado por uma janela curta.
+const MIN_FETCH_INTERVAL_MS = 30 * 1000;
+let inFlight: Promise<FetchResult> | null = null;
+let lastResult: FetchResult = null;
+let lastFetchAt = 0;
+
+const doFetch = async (): Promise<FetchResult> => {
   try {
     const res = await fetch(`/version.json?t=${Date.now()}`, {
       cache: 'no-store',
       headers: { 'cache-control': 'no-cache' },
     });
     if (!res.ok) return null;
-    return (await res.json()) as RemoteVersion;
+    const type = res.headers.get('content-type') || '';
+    const body = await res.text();
+    if (!type.includes('json') && !body.trimStart().startsWith('{')) {
+      return NOT_A_VERSION_FILE; // ambiente sem version.json (dev/preview)
+    }
+    try {
+      return JSON.parse(body) as RemoteVersion;
+    } catch {
+      return NOT_A_VERSION_FILE;
+    }
   } catch {
-    return null; // offline ou version.json ausente
+    return null; // offline ou falha temporária de rede
   }
+};
+
+const fetchVersionShared = async (): Promise<FetchResult> => {
+  if (inFlight) return inFlight;
+  if (Date.now() - lastFetchAt < MIN_FETCH_INTERVAL_MS) return lastResult;
+  inFlight = doFetch()
+    .then((r) => {
+      lastResult = r;
+      lastFetchAt = Date.now();
+      return r;
+    })
+    .finally(() => {
+      inFlight = null;
+    });
+  return inFlight;
+};
+
+export const fetchRemoteVersion = async (): Promise<RemoteVersion | null> => {
+  const r = await fetchVersionShared();
+  return r && r !== NOT_A_VERSION_FILE ? r : null;
 };
 
 export const isDifferentVersion = (remote: RemoteVersion | null): boolean => {
