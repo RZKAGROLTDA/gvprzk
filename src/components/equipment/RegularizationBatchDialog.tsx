@@ -18,7 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, CheckCircle2, Download, Eye, FileText, Loader2, Wrench } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, Eye, FileText, Loader2, Mail, Wrench } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import {
   useCreateRegularizationBatch,
   useMarkPdfGenerated,
@@ -27,6 +28,7 @@ import {
   type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
 import { buildRegularizationPdf } from '@/lib/equipmentRegularizationPdf';
+
 
 const SITUATION_LABEL: Record<RegSituation, string> = {
   vendida: 'Vendida',
