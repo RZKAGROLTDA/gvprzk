@@ -58,6 +58,9 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
   const [signerRole, setSignerRole] = useState('Gerente Corporativo de Serviços');
   const [notes, setNotes] = useState('');
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [emailTo, setEmailTo] = useState('');
+  const { toast } = useToast();
+
 
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
 
