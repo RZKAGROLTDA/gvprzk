@@ -29,8 +29,11 @@ export function useAutoVersionCheck() {
     let stopped = false;
     let busyTimer: ReturnType<typeof setTimeout> | undefined;
 
+    let lastRunAt = 0;
+
     const run = async () => {
       if (stopped) return;
+      lastRunAt = Date.now();
       const outcome = await checkForUpdate();
       if (outcome.status === 'deferred' && !stopped) {
         clearTimeout(busyTimer);
@@ -42,8 +45,12 @@ export function useAutoVersionCheck() {
 
     const interval = setInterval(run, POLL_INTERVAL_MS);
     const onOnline = () => void run();
+    // Voltar à aba não deve gerar uma verificação a cada foco: só revalida
+    // se já passou o intervalo normal de poll.
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void run();
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastRunAt < POLL_INTERVAL_MS) return;
+      void run();
     };
 
     window.addEventListener('online', onOnline);
