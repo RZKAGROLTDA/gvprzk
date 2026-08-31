@@ -111,6 +111,57 @@ const Pops: React.FC = () => {
       .sort((a, b) => Number(b.highlight) - Number(a.highlight));
   }, [machines.data, applied]);
 
+  // Limpa a seleção ao trocar de cliente
+  useEffect(() => {
+    setSelectedForPdf({});
+  }, [selectedClient?.client_key]);
+
+  const pdfSelection = useMemo(() => Object.values(selectedForPdf), [selectedForPdf]);
+
+  const toggleMachineSelection = (m: PopsMachineRow, checked: boolean) =>
+    setSelectedForPdf((prev) => {
+      const next = { ...prev };
+      if (checked) next[m.pops_machine_id] = m;
+      else delete next[m.pops_machine_id];
+      return next;
+    });
+
+  /** Geração puramente documental: nada é alterado nas máquinas. */
+  const handleGeneratePdf = (mode: 'preview' | 'download') => {
+    if (pdfSelection.length === 0) return;
+    const first = pdfSelection[0];
+    const { blob, fileName } = buildPopsMachinesPdf({
+      clientName: selectedClient?.pops_client_name ?? first.pops_client_name,
+      clientCode: first.pops_client_code,
+      filial:
+        selectedClient?.filial_nome ??
+        first.filial_nome ??
+        selectedClient?.pops_dealer_location ??
+        first.pops_dealer_location,
+      responsible: profile?.name ?? null,
+      machines: pdfSelection.map((m) => ({
+        model: m.pops_model,
+        serial: m.pops_serial,
+        year: m.pops_manufacture_year,
+        situation: SITUATION_LABEL[m.status] ?? m.status,
+      })),
+    });
+
+    const url = URL.createObjectURL(blob);
+    if (mode === 'download') {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF gerado e baixado.');
+    } else {
+      window.open(url, '_blank');
+      toast.success('PDF gerado para visualização.');
+    }
+  };
+
+
   const highlightedCount = machineList.filter((m) => m.highlight).length;
   const totalPages = Math.max(1, Math.ceil((clients.data?.total ?? 0) / PAGE_SIZE));
   const anyFilterApplied =
