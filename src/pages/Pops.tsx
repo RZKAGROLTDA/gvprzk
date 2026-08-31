@@ -295,46 +295,80 @@ const Pops: React.FC = () => {
                 Este cliente não possui máquinas disponíveis no POPS.
               </div>
             ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {machineList.map(({ machine: m, highlight }) => (
-                  <button
-                    key={m.pops_machine_id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMachineId(m.pops_machine_id);
-                      setDrawerOpen(true);
-                    }}
-                    className={`rounded-lg border p-3 text-left transition-colors hover:bg-accent ${
-                      highlight ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="font-mono text-sm font-semibold break-all">
-                          {m.pops_serial || 'Sem serial'}
-                        </span>
+              <>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {machineList.map(({ machine: m, highlight }) => (
+                    <div
+                      key={m.pops_machine_id}
+                      className={`rounded-lg border p-3 text-left transition-colors ${
+                        highlight ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={!!selectedForPdf[m.pops_machine_id]}
+                          onCheckedChange={(v) => toggleMachineSelection(m, v === true)}
+                          aria-label="Selecionar máquina para o PDF"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedMachineId(m.pops_machine_id);
+                            setDrawerOpen(true);
+                          }}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="font-mono text-sm font-semibold break-all">
+                                {m.pops_serial || 'Sem serial'}
+                              </span>
+                            </div>
+                            <PopsStatusBadge status={m.status} />
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <span>Modelo: <span className="text-foreground">{m.pops_model || '—'}</span></span>
+                            <span>Série: <span className="text-foreground">{m.pops_product_series || '—'}</span></span>
+                            <span>Ano: <span className="text-foreground">{m.pops_manufacture_year || '—'}</span></span>
+                            <span>Plataforma: <span className="text-foreground">{m.pops_platform || '—'}</span></span>
+                          </div>
+                          {m.status === 'servicada' && (
+                            <p className="mt-2 text-xs text-primary">
+                              {m.final_service_name} · OS {m.os_number}
+                            </p>
+                          )}
+                          {m.equipment_id && (
+                            <p className="mt-1 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
+                          )}
+                        </button>
                       </div>
-                      <PopsStatusBadge status={m.status} />
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span>Modelo: <span className="text-foreground">{m.pops_model || '—'}</span></span>
-                      <span>Série: <span className="text-foreground">{m.pops_product_series || '—'}</span></span>
-                      <span>Ano: <span className="text-foreground">{m.pops_manufacture_year || '—'}</span></span>
-                      <span>Plataforma: <span className="text-foreground">{m.pops_platform || '—'}</span></span>
+                  ))}
+                </div>
+
+                {pdfSelection.length > 0 && (
+                  <div className="sticky bottom-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3 shadow-lg">
+                    <p className="text-sm font-medium">
+                      {nf.format(pdfSelection.length)} máquina(s) selecionada(s)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setSelectedForPdf({})}>
+                        Limpar seleção
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleGeneratePdf('preview')}>
+                        <FileText className="mr-2 h-4 w-4" /> Gerar PDF
+                      </Button>
+                      <Button size="sm" onClick={() => handleGeneratePdf('download')}>
+                        <Download className="mr-2 h-4 w-4" /> Baixar PDF
+                      </Button>
                     </div>
-                    {m.status === 'servicada' && (
-                      <p className="mt-2 text-xs text-primary">
-                        {m.final_service_name} · OS {m.os_number}
-                      </p>
-                    )}
-                    {m.equipment_id && (
-                      <p className="mt-1 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
-                    )}
-                  </button>
-                ))}
-              </div>
+                  </div>
+                )}
+              </>
             )}
+
           </CardContent>
         </Card>
       )}
