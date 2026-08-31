@@ -77,6 +77,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
     setBatchId(null);
     setCity(''); setState(''); setPmp(''); setNotes('');
     setSignerName(''); setSignerRole('Gerente Corporativo de Serviços');
+    setEmailTo('');
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
     setPdfUrl(null);
   };
