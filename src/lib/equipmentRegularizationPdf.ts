@@ -115,24 +115,24 @@ export function buildRegularizationPdf(batch: RegBatchDetail): {
     // Identificação
     pdf.setFontSize(10.5);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Cliente: ', MARGIN, y);
+    pdf.text('Cliente:', MARGIN, y);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(name, MARGIN + pdf.getTextWidth('Cliente: '), y);
+    pdf.text(name, MARGIN + pdf.getTextWidth('Cliente:') + 2, y);
     y += 5.5;
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Código: ', MARGIN, y);
+    pdf.text('Código:', MARGIN, y);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(code, MARGIN + pdf.getTextWidth('Código: '), y);
+    pdf.text(code, MARGIN + pdf.getTextWidth('Código:') + 2, y);
     y += 5.5;
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Filial: ', MARGIN, y);
+    pdf.text('Filial:', MARGIN, y);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(filial, MARGIN + pdf.getTextWidth('Filial: '), y);
+    pdf.text(filial, MARGIN + pdf.getTextWidth('Filial:') + 2, y);
     y += 5.5;
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Data: ', MARGIN, y);
+    pdf.text('Data:', MARGIN, y);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(docDate, MARGIN + pdf.getTextWidth('Data: '), y);
+    pdf.text(docDate, MARGIN + pdf.getTextWidth('Data:') + 2, y);
     y += 10;
 
     // Tabela
