@@ -386,6 +386,19 @@ const Pops: React.FC = () => {
               </div>
             ) : (
               <>
+                <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card/50 p-3">
+                  <Checkbox
+                    ref={selectAllRef}
+                    checked={allSelected}
+                    onCheckedChange={(v) => toggleSelectAll(v === true)}
+                    aria-label="Selecionar todas as máquinas"
+                  />
+                  <span className="text-sm font-medium">Selecionar todas</span>
+                  <span className="text-xs text-muted-foreground">
+                    {nf.format(selectedCount)} de {nf.format(visibleCount)} máquinas selecionadas
+                  </span>
+                </div>
+
                 <div className="grid gap-2 sm:grid-cols-2">
                   {machineList.map(({ machine: m, highlight }) => (
                     <div
@@ -409,14 +422,11 @@ const Pops: React.FC = () => {
                           }}
                           className="min-w-0 flex-1 text-left"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
-                              <span className="font-mono text-sm font-semibold break-all">
-                                {m.pops_serial || 'Sem serial'}
-                              </span>
-                            </div>
-                            <PopsStatusBadge status={m.status} />
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <span className="font-mono text-sm font-semibold break-all">
+                              {m.pops_serial || 'Sem serial'}
+                            </span>
                           </div>
                           <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
                             <span>Modelo: <span className="text-foreground">{m.pops_model || '—'}</span></span>
@@ -424,13 +434,8 @@ const Pops: React.FC = () => {
                             <span>Ano: <span className="text-foreground">{m.pops_manufacture_year || '—'}</span></span>
                             <span>Plataforma: <span className="text-foreground">{m.pops_platform || '—'}</span></span>
                           </div>
-                          {m.status === 'servicada' && (
-                            <p className="mt-2 text-xs text-primary">
-                              {m.final_service_name} · OS {m.os_number}
-                            </p>
-                          )}
                           {m.equipment_id && (
-                            <p className="mt-1 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
+                            <p className="mt-2 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
                           )}
                         </button>
                       </div>
