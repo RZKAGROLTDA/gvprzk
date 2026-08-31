@@ -8,7 +8,9 @@
  * A função devolve o Blob do documento para que a MESMA instância possa ser
  * baixada, visualizada e, futuramente, anexada ao e-mail de envio.
  */
-import jsPDF from 'jspdf';
+import type jsPDFType from 'jspdf';
+
+type jsPDF = jsPDFType;
 import { formatDateDisplay } from '@/lib/utils';
 
 export interface RegBatchItem {
@@ -68,11 +70,12 @@ const ensureSpace = (pdf: jsPDF, y: number, needed: number): number => {
   return 30;
 };
 
-export function buildRegularizationPdf(batch: RegBatchDetail): {
+export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   blob: Blob;
   fileName: string;
-} {
-  const pdf = new jsPDF('p', 'mm', 'a4');
+}> {
+  const { default: JsPDF } = await import('jspdf');
+  const pdf = new JsPDF('p', 'mm', 'a4');
   let y = 34;
 
   // Título

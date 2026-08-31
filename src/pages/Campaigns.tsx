@@ -34,7 +34,6 @@ import {
   Pencil,
   Download,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -167,7 +166,7 @@ const DiscountPeriodsEditor: React.FC<{
 };
 
 // Exporta uma matriz de objetos para .xlsx aplicando formatos a colunas conhecidas.
-const exportRowsToExcel = (
+const exportRowsToExcel = async (
   rows: Record<string, any>[],
   fileBaseName: string,
   sheetName: string,
@@ -177,6 +176,7 @@ const exportRowsToExcel = (
     toast.info('Nenhum dado para exportar');
     return;
   }
+const XLSX = await import('xlsx');
   const ws = XLSX.utils.json_to_sheet(rows);
   const headers = Object.keys(rows[0]);
   const currencyCols = new Set(formats?.currencyCols || []);

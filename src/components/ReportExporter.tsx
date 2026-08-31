@@ -4,9 +4,6 @@ import { Download } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
@@ -73,6 +70,8 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
         return;
       }
 
+      const { default: jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
       const doc = new jsPDF();
       
       // Título do relatório
@@ -204,6 +203,7 @@ export const ReportExporter: React.FC<ReportExporterProps> = ({
       });
 
       // Criar planilha
+      const XLSX = await import('xlsx');
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Visitas');

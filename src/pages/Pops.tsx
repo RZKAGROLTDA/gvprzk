@@ -48,6 +48,61 @@ const SITUATION_LABEL: Record<PopsMachineRow['status'], string> = {
 };
 
 
+
+/**
+ * Card de máquina do POPS — memoizado para não re-renderizar a lista inteira
+ * a cada mudança de seleção. Layout e comportamento idênticos ao anterior.
+ */
+interface MachineCardProps {
+  machine: PopsMachineRow;
+  highlight: boolean;
+  selected: boolean;
+  onToggle: (m: PopsMachineRow, checked: boolean) => void;
+  onOpen: (machineId: string) => void;
+}
+
+const MachineCard = React.memo<MachineCardProps>(({
+  machine: m, highlight, selected, onToggle, onOpen,
+}) => (
+  <div
+    className={`rounded-lg border p-3 text-left transition-colors ${
+      highlight ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : ''
+    }`}
+  >
+    <div className="flex items-start gap-2">
+      <Checkbox
+        className="mt-0.5"
+        checked={selected}
+        onCheckedChange={(v) => onToggle(m, v === true)}
+        aria-label="Selecionar máquina para o PDF"
+      />
+      <button
+        type="button"
+        onClick={() => onOpen(m.pops_machine_id)}
+        className="min-w-0 flex-1 text-left"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="font-mono text-sm font-semibold break-all">
+            {m.pops_serial || 'Sem serial'}
+          </span>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>Modelo: <span className="text-foreground">{m.pops_model || '—'}</span></span>
+          <span>Série: <span className="text-foreground">{m.pops_product_series || '—'}</span></span>
+          <span>Ano: <span className="text-foreground">{m.pops_manufacture_year || '—'}</span></span>
+          <span>Plataforma: <span className="text-foreground">{m.pops_platform || '—'}</span></span>
+        </div>
+        {m.equipment_id && (
+          <p className="mt-2 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
+        )}
+      </button>
+    </div>
+  </div>
+));
+MachineCard.displayName = 'MachineCard';
+
+
 const Pops: React.FC = () => {
   const perms = usePopsPermissions();
   const { data: program, isLoading: loadingProgram, error: programError } = usePopsProgram();
@@ -147,19 +202,25 @@ const Pops: React.FC = () => {
       return next;
     });
 
-  const toggleMachineSelection = (m: PopsMachineRow, checked: boolean) =>
+  const toggleMachineSelection = React.useCallback((m: PopsMachineRow, checked: boolean) => {
     setSelectedForPdf((prev) => {
       const next = { ...prev };
       if (checked) next[m.pops_machine_id] = m;
       else delete next[m.pops_machine_id];
       return next;
     });
+  }, []);
+
+  const openMachineDrawer = React.useCallback((machineId: string) => {
+    setSelectedMachineId(machineId);
+    setDrawerOpen(true);
+  }, []);
 
   /** Geração puramente documental: nada é alterado nas máquinas. */
-  const handleGeneratePdf = (mode: 'preview' | 'download') => {
+  const handleGeneratePdf = async (mode: 'preview' | 'download') => {
     if (pdfSelection.length === 0) return;
     const first = pdfSelection[0];
-    const { blob, fileName } = buildPopsMachinesPdf({
+    const { blob, fileName } = await buildPopsMachinesPdf({
       clientName: selectedClient?.pops_client_name ?? first.pops_client_name,
       clientCode: first.pops_client_code,
       filial:
@@ -185,7 +246,8 @@ const Pops: React.FC = () => {
       URL.revokeObjectURL(url);
       toast.success('PDF gerado e baixado.');
     } else {
-      window.open(url, '_blank');
+      const w = window.open(url, '_blank');
+      if (!w) window.location.href = url;
       toast.success('PDF gerado para visualização.');
     }
   };
@@ -401,45 +463,14 @@ const Pops: React.FC = () => {
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   {machineList.map(({ machine: m, highlight }) => (
-                    <div
+                    <MachineCard
                       key={m.pops_machine_id}
-                      className={`rounded-lg border p-3 text-left transition-colors ${
-                        highlight ? 'border-primary ring-1 ring-primary/40 bg-primary/5' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <Checkbox
-                          className="mt-0.5"
-                          checked={!!selectedForPdf[m.pops_machine_id]}
-                          onCheckedChange={(v) => toggleMachineSelection(m, v === true)}
-                          aria-label="Selecionar máquina para o PDF"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedMachineId(m.pops_machine_id);
-                            setDrawerOpen(true);
-                          }}
-                          className="min-w-0 flex-1 text-left"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Tractor className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            <span className="font-mono text-sm font-semibold break-all">
-                              {m.pops_serial || 'Sem serial'}
-                            </span>
-                          </div>
-                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                            <span>Modelo: <span className="text-foreground">{m.pops_model || '—'}</span></span>
-                            <span>Série: <span className="text-foreground">{m.pops_product_series || '—'}</span></span>
-                            <span>Ano: <span className="text-foreground">{m.pops_manufacture_year || '—'}</span></span>
-                            <span>Plataforma: <span className="text-foreground">{m.pops_platform || '—'}</span></span>
-                          </div>
-                          {m.equipment_id && (
-                            <p className="mt-2 text-[11px] text-muted-foreground/70">Vinculada ao Parque</p>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                      machine={m}
+                      highlight={highlight}
+                      selected={!!selectedForPdf[m.pops_machine_id]}
+                      onToggle={toggleMachineSelection}
+                      onOpen={openMachineDrawer}
+                    />
                   ))}
                 </div>
 

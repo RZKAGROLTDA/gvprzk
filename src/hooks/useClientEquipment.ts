@@ -173,7 +173,12 @@ const buildParkParams = (filters: EquipmentFilters) => {
   };
 };
 
-export const useEquipmentPark = (filters: EquipmentFilters, page = 0, pageSize = 50) => {
+export const useEquipmentPark = (
+  filters: EquipmentFilters,
+  page = 0,
+  pageSize = 50,
+  enabled = true,
+) => {
   const p = buildParkParams(filters);
   const validatedByKey = p.validatedByIn ? [...p.validatedByIn].sort().join(',') : null;
 
@@ -195,6 +200,7 @@ export const useEquipmentPark = (filters: EquipmentFilters, page = 0, pageSize =
         pageSize,
       },
     ],
+    enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -247,7 +253,7 @@ export const useEquipmentParkKpis = (filters?: {
   machineStatus?: string | null;
   pukStatus?: string | null;
   validationPriority?: boolean | null;
-}) => {
+}, enabled = true) => {
   const search = norm(filters?.search);
   const filialId = norm(filters?.filialId);
   const machineStatus = norm(filters?.machineStatus);
@@ -260,6 +266,7 @@ export const useEquipmentParkKpis = (filters?: {
       'park-kpis',
       { search, filialId, machineStatus, pukStatus, validationPriority },
     ],
+    enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -307,9 +314,10 @@ export interface EquipmentValidationSummary {
   by_filial: EquipmentValidationSummaryRow[];
 }
 
-export const useEquipmentValidationSummary = () => {
+export const useEquipmentValidationSummary = (enabled = true) => {
   return useQuery<EquipmentValidationSummary | null>({
     queryKey: ['client-equipment', 'validation-summary'],
+    enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
@@ -349,9 +357,10 @@ export interface EquipmentValidator {
   validated_count: number;
 }
 
-export const useEquipmentValidators = () => {
+export const useEquipmentValidators = (enabled = true) => {
   return useQuery({
     queryKey: ['client-equipment', 'validators'],
+    enabled,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<EquipmentValidator[]> => {

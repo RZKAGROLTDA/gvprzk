@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -192,7 +191,7 @@ const VacationsPage: React.FC = () => {
     return { wStart, wEnd, groups: Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name)) };
   }, [filtered, monthCursor]);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const rows = filtered.map((v) => ({
       Funcionário: v.employee_name,
       Cargo: displayRole(v.employee_role),
@@ -204,6 +203,7 @@ const VacationsPage: React.FC = () => {
       Observação: v.observation || '',
       'Criado por': creatorMap[v.created_by] || v.created_by,
     }));
+const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Férias');

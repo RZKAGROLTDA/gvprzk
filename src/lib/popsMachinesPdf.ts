@@ -5,7 +5,9 @@
  * relação de máquinas do cliente. Não altera registros, status ou vínculos.
  * Segue o mesmo padrão jsPDF nativo usado em equipmentRegularizationPdf.ts.
  */
-import jsPDF from 'jspdf';
+import type jsPDFType from 'jspdf';
+
+type jsPDF = jsPDFType;
 
 export interface PopsPdfMachine {
   model: string | null;
@@ -47,8 +49,11 @@ const nowBr = () =>
     minute: '2-digit',
   });
 
-export function buildPopsMachinesPdf(data: PopsPdfInput): { blob: Blob; fileName: string } {
-  const pdf = new jsPDF('p', 'mm', 'a4');
+export async function buildPopsMachinesPdf(
+  data: PopsPdfInput,
+): Promise<{ blob: Blob; fileName: string }> {
+  const { default: JsPDF } = await import('jspdf');
+  const pdf = new JsPDF('p', 'mm', 'a4');
   const generatedAt = nowBr();
   let y = 18;
 

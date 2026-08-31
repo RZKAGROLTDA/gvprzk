@@ -3,8 +3,6 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Task } from '@/types/task';
@@ -115,6 +113,8 @@ export const TaskReportExporter: React.FC<TaskReportExporterProps> = ({
       const standardData = await mapTaskToStandardFields(fullTask);
       const salesStatus = mapSalesStatus(fullTask);
       
+      const { default: jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
       const doc = new jsPDF();
 
       let yPosition = 20;

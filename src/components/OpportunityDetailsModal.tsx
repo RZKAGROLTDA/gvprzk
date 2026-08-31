@@ -46,8 +46,6 @@ import {
   History,
   Sparkles,
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { SectionCard } from '@/components/task-form/sections/SectionCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { WorkshopChecklistView } from '@/components/WorkshopChecklistView';
@@ -346,6 +344,8 @@ export const OpportunityDetailsModal: React.FC<OpportunityDetailsModalProps> = (
     const { generateReportPDF } = await import('@/lib/generateReportPDF');
     await generateReportPDF(currentTask.id, {
       fallback: async (currentTask) => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 0;

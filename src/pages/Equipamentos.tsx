@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -39,9 +38,12 @@ const Equipamentos: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [view, setView] = useState<'menu' | 'validacao' | 'regularizacao'>('menu');
+  // Só a view "validacao" consome os dados do Parque — evita queries no menu
+  // e na Regularização (que usa exclusivamente as RPCs R2).
+  const parkQueriesEnabled = view === 'validacao';
 
   // Diretório de validadores (id → nome, filial)
-  const { data: validators = [] } = useEquipmentValidators();
+  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled);
   const validatorMap = useMemo(() => {
     const map = new Map<string, EquipmentValidator>();
     validators.forEach((v) => map.set(v.user_id, v));
@@ -88,15 +90,19 @@ const Equipamentos: React.FC = () => {
     filters,
     page,
     PAGE_SIZE,
+    parkQueriesEnabled,
   );
   const rows = data?.rows ?? [];
   const total = data?.totalCount;
 
   // KPIs do parque — uma única chamada server-side
-  const { data: kpis, refetch: refetchKpis } = useEquipmentParkKpis({
-    search: search || null,
-    machineStatus: machineStatus === ALL ? null : machineStatus,
-  });
+  const { data: kpis, refetch: refetchKpis } = useEquipmentParkKpis(
+    {
+      search: search || null,
+      machineStatus: machineStatus === ALL ? null : machineStatus,
+    },
+    parkQueriesEnabled,
+  );
 
 
 
@@ -182,6 +188,7 @@ const Equipamentos: React.FC = () => {
         'Filial do Validador': validatorFilial(e.validated_by),
       }));
 
+const XLSX = await import('xlsx');
       const ws = XLSX.utils.json_to_sheet(exportRows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Parque de Máquinas');
@@ -209,7 +216,7 @@ const Equipamentos: React.FC = () => {
   );
 
   // Resumo por filial — fonte correta: get_equipment_validation_summary().by_filial
-  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary();
+  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary(parkQueriesEnabled);
 
   /** Força a revalidação de listagem + KPIs + resumo (botão de atualizar). */
   const refetchAll = () => {
