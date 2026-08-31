@@ -123,6 +123,30 @@ const Pops: React.FC = () => {
     setSelectedForPdf({});
   }, [selectedClient?.client_key]);
 
+  const selectAllRef = useRef<HTMLButtonElement>(null);
+  const visibleMachineIds = useMemo(() => machineList.map(({ machine }) => machine.pops_machine_id), [machineList]);
+  const selectedCount = pdfSelection.length;
+  const visibleCount = machineList.length;
+  const allSelected = visibleCount > 0 && selectedCount === visibleCount;
+  const someSelected = selectedCount > 0 && selectedCount < visibleCount;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      (selectAllRef.current as HTMLButtonElement & { indeterminate?: boolean }).indeterminate = someSelected;
+    }
+  }, [someSelected]);
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedForPdf((prev) => {
+      const next = { ...prev };
+      machineList.forEach(({ machine }) => {
+        if (checked) next[machine.pops_machine_id] = machine;
+        else delete next[machine.pops_machine_id];
+      });
+      return next;
+    });
+  };
+
   const pdfSelection = useMemo(() => Object.values(selectedForPdf), [selectedForPdf]);
 
   const toggleMachineSelection = (m: PopsMachineRow, checked: boolean) =>
