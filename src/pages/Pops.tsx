@@ -123,8 +123,9 @@ const Pops: React.FC = () => {
     setSelectedForPdf({});
   }, [selectedClient?.client_key]);
 
+  const pdfSelection = useMemo(() => Object.values(selectedForPdf), [selectedForPdf]);
+
   const selectAllRef = useRef<HTMLButtonElement>(null);
-  const visibleMachineIds = useMemo(() => machineList.map(({ machine }) => machine.pops_machine_id), [machineList]);
   const selectedCount = pdfSelection.length;
   const visibleCount = machineList.length;
   const allSelected = visibleCount > 0 && selectedCount === visibleCount;
@@ -136,7 +137,7 @@ const Pops: React.FC = () => {
     }
   }, [someSelected]);
 
-  const toggleSelectAll = (checked: boolean) => {
+  const toggleSelectAll = (checked: boolean) =>
     setSelectedForPdf((prev) => {
       const next = { ...prev };
       machineList.forEach(({ machine }) => {
@@ -145,9 +146,6 @@ const Pops: React.FC = () => {
       });
       return next;
     });
-  };
-
-  const pdfSelection = useMemo(() => Object.values(selectedForPdf), [selectedForPdf]);
 
   const toggleMachineSelection = (m: PopsMachineRow, checked: boolean) =>
     setSelectedForPdf((prev) => {
