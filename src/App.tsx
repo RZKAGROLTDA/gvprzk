@@ -13,38 +13,38 @@ import { SecurityHeaders } from '@/components/SecurityHeaders';
 import { ServiceUnavailable } from '@/components/ServiceUnavailable';
 import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseHealth } from '@/hooks/useSupabaseHealth';
-import Dashboard from "./pages/Dashboard";
-import { SalesFunnel } from "./components/SalesFunnel";
-import MyDay from "./pages/MyDay";
-import { MyDayLanding } from "@/components/myday/MyDayLanding";
-import CreateTask from "./pages/CreateTask";
-import CreateFieldVisit from "./pages/CreateFieldVisit";
-import CreateCall from "./pages/CreateCall";
-import CreateWorkshopChecklist from "./pages/CreateWorkshopChecklist";
-import CreateTechnicalVisit from "./pages/CreateTechnicalVisit";
+const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const SalesFunnel = React.lazy(() => import("./components/SalesFunnel").then((m) => ({ default: m.SalesFunnel })));
+const MyDay = React.lazy(() => import("./pages/MyDay"));
+const MyDayLanding = React.lazy(() => import("@/components/myday/MyDayLanding").then((m) => ({ default: m.MyDayLanding })));
+const CreateTask = React.lazy(() => import("./pages/CreateTask"));
+const CreateFieldVisit = React.lazy(() => import("./pages/CreateFieldVisit"));
+const CreateCall = React.lazy(() => import("./pages/CreateCall"));
+const CreateWorkshopChecklist = React.lazy(() => import("./pages/CreateWorkshopChecklist"));
+const CreateTechnicalVisit = React.lazy(() => import("./pages/CreateTechnicalVisit"));
 
-import Campaigns from "./pages/Campaigns";
-import Management from "./pages/Management";
-import { Users } from "./pages/Users";
-import { Filiais } from "./pages/Filiais";
-import Equipamentos from "./pages/Equipamentos";
-import Pops from "./pages/Pops";
-import PerformanceByFilial from "./pages/PerformanceByFilial";
-import PerformanceBySeller from "./pages/PerformanceBySeller";
-import { Home } from "./pages/Home";
-import InviteAccept from "./pages/InviteAccept";
-import UserRegistration from "./pages/UserRegistration";
-import RegistrationSuccess from "./pages/RegistrationSuccess";
-import SecureRegistration from "./pages/SecureRegistration";
-import ProfileSetup from "./pages/ProfileSetup";
-import NotFound from "./pages/NotFound";
-import ResetPassword from "./pages/ResetPassword";
-import CRM from "./pages/CRM";
-import Vacations from "./pages/Vacations";
+const Campaigns = React.lazy(() => import("./pages/Campaigns"));
+const Management = React.lazy(() => import("./pages/Management"));
+const Users = React.lazy(() => import("./pages/Users").then((m) => ({ default: m.Users })));
+const Filiais = React.lazy(() => import("./pages/Filiais").then((m) => ({ default: m.Filiais })));
+const Equipamentos = React.lazy(() => import("./pages/Equipamentos"));
+const Pops = React.lazy(() => import("./pages/Pops"));
+const PerformanceByFilial = React.lazy(() => import("./pages/PerformanceByFilial"));
+const PerformanceBySeller = React.lazy(() => import("./pages/PerformanceBySeller"));
+
+const InviteAccept = React.lazy(() => import("./pages/InviteAccept"));
+const UserRegistration = React.lazy(() => import("./pages/UserRegistration"));
+const RegistrationSuccess = React.lazy(() => import("./pages/RegistrationSuccess"));
+const SecureRegistration = React.lazy(() => import("./pages/SecureRegistration"));
+const ProfileSetup = React.lazy(() => import("./pages/ProfileSetup"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
+const CRM = React.lazy(() => import("./pages/CRM"));
+const Vacations = React.lazy(() => import("./pages/Vacations"));
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import MediaDiagnostics from "./pages/MediaDiagnostics";
-import UserVersions from "./pages/UserVersions";
-import ClientMasterReview from "./pages/ClientMasterReview";
+const MediaDiagnostics = React.lazy(() => import("./pages/MediaDiagnostics"));
+const UserVersions = React.lazy(() => import("./pages/UserVersions"));
+const ClientMasterReview = React.lazy(() => import("./pages/ClientMasterReview"));
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAutoVersionCheck } from "@/hooks/useAutoVersionCheck";
@@ -64,6 +64,13 @@ import { AlertCircle, LogOut, RefreshCw } from "lucide-react";
 // render (nada a limpar); string/null = usuário já observado nesta sessão.
 let lastQueryClientUserId: string | null | undefined = undefined;
 
+// Fallback único de carregamento de rota (mesmo spinner já usado no gate de auth).
+const RouteFallback: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+  </div>
+);
+
 interface ProtectedRoutesProps {
   user: any;
   profile: any;
@@ -77,7 +84,11 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
 
   // If user exists but no profile found, show profile setup
   if (!profile) {
-    return <ProfileSetup />;
+    return (
+      <React.Suspense fallback={<RouteFallback />}>
+        <ProfileSetup />
+      </React.Suspense>
+    );
   }
 
   // Block access until approved
@@ -93,6 +104,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
 
   // Approved: show main app routes
   return (
+    <React.Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route path="/" element={<Layout><MyDayLanding /></Layout>} />
       <Route path="/meu-dia" element={<Layout><ErrorBoundary title="Não foi possível exibir o Meu Dia"><MyDay /></ErrorBoundary></Layout>} />
@@ -118,6 +130,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/profile-setup" element={<Layout><ProfileSetup /></Layout>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </React.Suspense>
   );
 };
 
@@ -125,6 +138,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
 const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => {
   return (
     <BrowserRouter>
+      <React.Suspense fallback={<RouteFallback />}>
       <Routes>
         {/* Public routes - accessible without authentication */}
         <Route path="/register" element={<UserRegistration />} />
@@ -136,6 +150,7 @@ const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => 
         {/* Protected routes */}
         <Route path="/*" element={<ProtectedRoutes user={user} profile={profile} />} />
       </Routes>
+      </React.Suspense>
     </BrowserRouter>
   );
 };
