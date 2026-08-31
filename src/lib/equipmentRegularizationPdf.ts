@@ -57,19 +57,15 @@ export const SITUATION_PDF_LABEL: Record<string, string> = {
   sucata: 'Sucata',
 };
 
-const MARGIN = 14;
+const MARGIN = 25;
 const PAGE_W = 210;
 const PAGE_H = 297;
-
-const line = (pdf: jsPDF, y: number) => {
-  pdf.setDrawColor(200);
-  pdf.line(MARGIN, y, PAGE_W - MARGIN, y);
-};
+const CONTENT_W = PAGE_W - MARGIN * 2;
 
 const ensureSpace = (pdf: jsPDF, y: number, needed: number): number => {
-  if (y + needed <= PAGE_H - 20) return y;
+  if (y + needed <= PAGE_H - 25) return y;
   pdf.addPage();
-  return 20;
+  return 30;
 };
 
 export function buildRegularizationPdf(batch: RegBatchDetail): {
@@ -77,38 +73,32 @@ export function buildRegularizationPdf(batch: RegBatchDetail): {
   fileName: string;
 } {
   const pdf = new jsPDF('p', 'mm', 'a4');
-  let y = 18;
+  let y = 34;
 
-  // Cabeçalho
+  // Título
   pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(15);
-  pdf.text('REGULARIZAÇÃO DE MÁQUINAS', PAGE_W / 2, y, { align: 'center' });
-  y += 6;
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(9);
-  pdf.setTextColor(110);
-  pdf.text('Documento de comunicação ao cliente — Parque de Máquinas', PAGE_W / 2, y, {
-    align: 'center',
-  });
-  pdf.setTextColor(0);
-  y += 4;
-  line(pdf, y);
-  y += 7;
+  pdf.setFontSize(16);
+  pdf.text('DECLARAÇÃO DE NÃO LOCALIZAÇÃO', PAGE_W / 2, y, { align: 'center' });
+  y += 14;
 
-  // Dados do documento
+  // Texto introdutório
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10.5);
+  const intro1 =
+    'Declaramos para os devidos fins que os equipamentos John Deere listados abaixo não foram ' +
+    'localizados pelo concessionário. Foram realizadas tentativas de contato e, conforme ' +
+    'informações disponíveis, os equipamentos encontram-se vendidos, inativos ou não localizados.';
+  const intro2 =
+    'Diante disso, solicitamos a regularização desses equipamentos no Parque de Máquinas, ' +
+    'considerando a situação apresentada para cada chassi.';
+  [intro1, intro2].forEach((p) => {
+    const lines = pdf.splitTextToSize(p, CONTENT_W);
+    pdf.text(lines, MARGIN, y, { align: 'justify', maxWidth: CONTENT_W });
+    y += lines.length * 5.2 + 5;
+  });
+  y += 4;
+
   const docDate = batch.document_date ? formatDateDisplay(batch.document_date) : '—';
-  const place = [batch.header_city, batch.header_state].filter(Boolean).join(' / ') || '—';
-  pdf.setFontSize(9);
-  pdf.text(`Local: ${place}`, MARGIN, y);
-  pdf.text(`Data: ${docDate}`, PAGE_W / 2, y);
-  y += 5;
-  pdf.text(`Lote: ${batch.id}`, MARGIN, y);
-  if (batch.pmp_number) pdf.text(`PMP: ${batch.pmp_number}`, PAGE_W / 2, y);
-  y += 5;
-  pdf.text(`Total de máquinas: ${batch.items.length}`, MARGIN, y);
-  y += 6;
-  line(pdf, y);
-  y += 8;
 
   // Agrupamento por cliente
   const groups = new Map<string, RegBatchItem[]>();
@@ -120,94 +110,113 @@ export function buildRegularizationPdf(batch: RegBatchDetail): {
 
   groups.forEach((items, key) => {
     const [code, name, filial] = key.split('|');
-    y = ensureSpace(pdf, y, 30);
+    y = ensureSpace(pdf, y, 40);
 
+    // Identificação
+    pdf.setFontSize(10.5);
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(10);
-    pdf.text(`Cliente: ${name}`, MARGIN, y);
-    y += 5;
+    pdf.text('Cliente: ', MARGIN, y);
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9);
-    pdf.text(`Código: ${code}    Filial: ${filial}`, MARGIN, y);
-    y += 6;
+    pdf.text(name, MARGIN + pdf.getTextWidth('Cliente: '), y);
+    y += 5.5;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Código: ', MARGIN, y);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(code, MARGIN + pdf.getTextWidth('Código: '), y);
+    y += 5.5;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Filial: ', MARGIN, y);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(filial, MARGIN + pdf.getTextWidth('Filial: '), y);
+    y += 5.5;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Data: ', MARGIN, y);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(docDate, MARGIN + pdf.getTextWidth('Data: '), y);
+    y += 10;
 
-    // Cabeçalho da tabela
-    const cols = [MARGIN, MARGIN + 48, MARGIN + 108, MARGIN + 132];
-    pdf.setFillColor(240, 240, 240);
-    pdf.rect(MARGIN, y - 4, PAGE_W - MARGIN * 2, 6, 'F');
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Chassi / Série', cols[0] + 1, y);
-    pdf.text('Modelo', cols[1], y);
-    pdf.text('Ano', cols[2], y);
-    pdf.text('Situação', cols[3], y);
-    pdf.setFont('helvetica', 'normal');
-    y += 6;
+    // Tabela
+    const colW = [56, 60, 18, 26];
+    const tableW = colW.reduce((a, b) => a + b, 0);
+    const x0 = (PAGE_W - tableW) / 2;
+    const colX = [x0, x0 + colW[0], x0 + colW[0] + colW[1], x0 + colW[0] + colW[1] + colW[2]];
+
+    const drawHeader = () => {
+      pdf.setDrawColor(120);
+      pdf.setLineWidth(0.2);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(9.5);
+      pdf.line(x0, y - 5, x0 + tableW, y - 5);
+      pdf.text('Chassi / Série', colX[0] + 2, y);
+      pdf.text('Modelo', colX[1] + 2, y);
+      pdf.text('Ano', colX[2] + 2, y);
+      pdf.text('Situação', colX[3] + 2, y);
+      y += 2.5;
+      pdf.line(x0, y, x0 + tableW, y);
+      y += 5;
+      pdf.setFont('helvetica', 'normal');
+    };
+
+    drawHeader();
 
     items.forEach((it) => {
-      y = ensureSpace(pdf, y, 8);
-      pdf.text(String(it.serial_chassis || '—').slice(0, 26), cols[0] + 1, y);
-      pdf.text(String(it.model || '—').slice(0, 30), cols[1], y);
-      pdf.text(it.year ? String(it.year) : '—', cols[2], y);
-      pdf.text(SITUATION_PDF_LABEL[it.machine_situation] ?? it.machine_situation, cols[3], y);
+      const before = y;
+      y = ensureSpace(pdf, y, 10);
+      if (y !== before) drawHeader();
+      pdf.setFontSize(9.5);
+      pdf.text(String(it.serial_chassis || '—').slice(0, 28), colX[0] + 2, y);
+      pdf.text(String(it.model || '—').slice(0, 30), colX[1] + 2, y);
+      pdf.text(it.year ? String(it.year) : '—', colX[2] + 2, y);
+      pdf.text(
+        SITUATION_PDF_LABEL[it.machine_situation] ?? it.machine_situation,
+        colX[3] + 2,
+        y,
+      );
+      y += 3;
+      pdf.setDrawColor(215);
+      pdf.line(x0, y, x0 + tableW, y);
       y += 5;
-      pdf.setDrawColor(235);
-      pdf.line(MARGIN, y - 2, PAGE_W - MARGIN, y - 2);
     });
 
-    y += 6;
+    pdf.setDrawColor(120);
+    pdf.line(x0, y - 5, x0 + tableW, y - 5);
+    y += 8;
   });
 
   // Texto final
-  y = ensureSpace(pdf, y, 40);
-  y += 2;
-  pdf.setFontSize(9);
-  const texto =
-    'Comunicamos que as máquinas relacionadas neste documento constam em nosso Parque de Máquinas ' +
-    'com as situações acima indicadas. Solicitamos a conferência das informações e, caso haja ' +
-    'divergência, o retorno a esta concessionária para atualização cadastral. Não havendo ' +
-    'manifestação, as informações serão consideradas corretas para fins de controle do parque e ' +
-    'atendimento de garantia.';
-  const wrapped = pdf.splitTextToSize(texto, PAGE_W - MARGIN * 2);
-  pdf.text(wrapped, MARGIN, y);
-  y += wrapped.length * 4.5 + 10;
+  y = ensureSpace(pdf, y, 30);
+  pdf.setFontSize(10.5);
+  const fim = pdf.splitTextToSize(
+    'Cientes das informações apresentadas, solicitamos a regularização dos equipamentos ' +
+      'relacionados acima no Parque de Máquinas.',
+    CONTENT_W,
+  );
+  pdf.text(fim, MARGIN, y, { align: 'justify', maxWidth: CONTENT_W });
+  y += fim.length * 5.2 + 8;
 
   if (batch.notes) {
     y = ensureSpace(pdf, y, 20);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Observações:', MARGIN, y);
-    pdf.setFont('helvetica', 'normal');
-    y += 5;
-    const obs = pdf.splitTextToSize(batch.notes, PAGE_W - MARGIN * 2);
+    const obs = pdf.splitTextToSize(batch.notes, CONTENT_W);
     pdf.text(obs, MARGIN, y);
-    y += obs.length * 4.5 + 8;
+    y += obs.length * 5.2 + 8;
   }
 
-  // Assinatura (somente responsável RZK)
-  y = ensureSpace(pdf, y, 30);
-  y += 8;
-  pdf.line(MARGIN, y, MARGIN + 80, y);
+  // Assinatura
+  y = ensureSpace(pdf, y, 34);
+  y += 16;
+  pdf.setDrawColor(80);
+  pdf.line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
   y += 5;
-  pdf.text(batch.signer_name || '—', MARGIN, y);
-  y += 4.5;
+  pdf.setFontSize(10);
+  pdf.text(batch.signer_name || '—', PAGE_W / 2, y, { align: 'center' });
+  y += 5;
+  pdf.setFontSize(9.5);
   pdf.setTextColor(110);
-  pdf.text(batch.signer_role || '—', MARGIN, y);
-  y += 4.5;
-  pdf.text(`Data: ${docDate}`, MARGIN, y);
+  pdf.text(batch.signer_role || '—', PAGE_W / 2, y, { align: 'center' });
   pdf.setTextColor(0);
 
-  // Rodapé
-  const pages = pdf.getNumberOfPages();
-  for (let i = 1; i <= pages; i += 1) {
-    pdf.setPage(i);
-    pdf.setFontSize(7.5);
-    pdf.setTextColor(140);
-    pdf.text(`Lote ${batch.id}`, MARGIN, PAGE_H - 10);
-    pdf.text(`Página ${i} de ${pages}`, PAGE_W - MARGIN, PAGE_H - 10, { align: 'right' });
-    pdf.setTextColor(0);
-  }
-
   const blob = pdf.output('blob') as Blob;
-  const fileName = `regularizacao-${batch.id.slice(0, 8)}.pdf`;
+  const fileName = 'declaracao-nao-localizacao.pdf';
   return { blob, fileName };
 }
 
