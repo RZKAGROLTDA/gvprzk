@@ -1,31 +1,20 @@
-# Acesso Multi-Filial Controlado
+# Acesso Multi-Filial Controlado (funcionalidade geral)
 
-Objetivo: um usuário mantém **1 filial principal** (`profiles.filial_id`) e pode receber **0..N filiais adicionais** explicitamente habilitadas. Nada de acesso global. Role permanece intocada — multi-filial é apenas escopo.
+Multi-filial = **escopo de dados**. Não cria role, não dá acesso global. Todo usuário tem 1 filial principal (`profiles.filial_id`) e 0..N filiais adicionais habilitadas pelo administrador.
 
-## 1. Levantamento — o que hoje usa filial única
+## 1. Desenho final da arquitetura
 
-Funções auxiliares (fonte de verdade do escopo hoje):
-- `get_user_filial_id()` — retorna `profiles.filial_id` do usuário logado.
-- `get_supervisor_filial_id(uuid)` — filial do supervisor aprovado.
-- `user_same_filial(uuid)` — compara `filial_id` de dois perfis.
-- `pops_scope()` — devolve `{scope, filial_id}` (uma filial só).
-- `my_day_scope()` — devolve `filial_id` única.
+```text
+profiles.filial_id  ──┐
+                      ├──> get_user_filial_ids(user_id) -> uuid[]   (fonte única de verdade)
+user_filiais(active) ─┘         │
+                                ├──> user_can_access_filial(filial_id, user_id) -> boolean
+                                └──> user_can_access_filial_nome(nome text) -> boolean  (tasks.filial é texto)
+```
 
-RPCs que dependem dessas funções ou de `p.filial_id`:
-- Métricas/relatórios: `get_activity_metrics_v2`, `get_funnel_metrics_v2`, `get_tasks_metrics_v2`, `get_reports_dataset_v2`, `get_performance_by_filial_v2`, `get_performance_by_seller_v2`, `get_consolidated_sales_counts_v2`, `get_sales_breakdown`, `get_sales_funnel_counts`, `get_prospects_aggregate`.
-- Gerencial: `get_management_seller_summary`, `get_management_client_details`, `get_management_product_analysis`, `get_service_opportunities_summary`, `get_service_opportunities_details`.
-- Tarefas/clientes: `get_tasks_optimized`, `get_secure_tasks_paginated(_filtered)`, `get_secure_tasks_enhanced`, `get_secure_task_by_id`, `get_secure_clients_*`, `get_secure_customer_data_*`, `get_completely_secure_tasks`, `get_supervisor_filial_tasks`, `can_access_task_related_data`, `can_access_customer_data`, `can_access_media_object`.
-- Parque: `get_equipment_park_paginated`, `get_equipment_park_kpis`, `get_equipment_validation_summary`, `search_client_equipment` (leitura já global via `can_view_equipment_park`).
-- Regularização: `equipment_regularization_pending_kpis/clients/machines`, `equipment_regularization_create_batch`, `..._get_batch`.
-- POPS: `pops_scope`, `pops_can_read_machine`, `pops_portfolio_clients`, `pops_portfolio_client_machines`, `pops_goal_summary`, `pops_executor_results`, `pops_import_distribution`.
-- Meu Dia: `my_day_scope`, `my_day_summary_build`, `my_day_details_build`, `get_my_day_team_summary`.
-- CRM/agenda/treinos/férias: `get_weekly_followups_agenda`, `get_trainings_stats`, `trainings_enforce_snapshot`, `can_insert_vacation`, `get_filial_users`, `get_filial_user_counts`, `get_secure_user_directory`.
+Toda RLS/RPC que hoje compara `filial_id = <filial do usuário>` passa a chamar `user_can_access_filial(...)`. Nenhum módulo implementa lógica própria. Usuários com direito global (admin/manager) continuam decidindo por `has_role`, antes e independentemente dessas funções.
 
-RLS que filtram por filial (via `get_supervisor_filial_id` / join em `profiles`): `campaign_clients`, `clients`, `opportunities`, `opportunity_items`, `pops_machines`, `pops_client_assignments`, `pops_import_rows`, `special_conditions`, `task_followups`, `trainings`, `team_vacations`, `client_equipment`, `equipment_regularization_*`, `visit_schedules`.
-
-Frontend que usa `profile.filial_id` como filtro único: `useProfile`, `useFilteredConsultants`, `useVacations`, `useTrainings`, `useVisitSchedules`, `useWeeklyAgenda`, `useMyDay`, `usePops`, `useClientEquipment`, `useEquipmentRegularization`, `useServiceOpportunities`, `useManagementData`, `useConsolidatedSalesMetrics`, além das telas `MyDay`, `Pops`, `Management`, `Vacations`, `Campaigns`, `CreateTask`, `CRM` (Carteira/Agenda/Treinamentos), `Equipamentos`, `Users`, `FilialUsersDialog`, `TeamFilters`, `VisitScheduleForm`, `SpecialConditionsTab`.
-
-## 2. Estrutura proposta (migration)
+## 2. Estrutura exata da tabela
 
 ```sql
 create table public.user_filiais (
@@ -42,57 +31,105 @@ create table public.user_filiais (
 grant select on public.user_filiais to authenticated;
 grant all on public.user_filiais to service_role;
 alter table public.user_filiais enable row level security;
--- leitura: o próprio usuário vê suas filiais; gestor/admin veem todas
--- escrita: somente manager/admin (via has_role)
+create index on public.user_filiais (user_id) where active;
 ```
 
-Decisão sobre `is_primary`: **não incluir**. A principal continua exclusivamente em `profiles.filial_id` (compatibilidade total e evita duas fontes de verdade divergindo). `user_filiais` guarda apenas as adicionais; um trigger impede inserir a filial principal como adicional.
+- **Sem `is_primary`**: a principal fica exclusivamente em `profiles.filial_id` (evita duas fontes divergentes). Trigger bloqueia inserir a filial principal como adicional.
+- Remover acesso = `active = false` (histórico preservado, com autor e data).
+- RLS: usuário lê as próprias linhas; manager/admin leem e escrevem todas (via `has_role`).
 
 ## 3. Funções auxiliares novas
 
+| Função | Retorno | Papel |
+|---|---|---|
+| `get_user_filial_ids(p_user_id uuid default auth.uid())` | `uuid[]` | principal + adicionais ativas (só de perfil `approved` + `active`) |
+| `user_can_access_filial(p_filial_id uuid, p_user_id uuid default auth.uid())` | `boolean` | checagem por id |
+| `user_can_access_filial_nome(p_nome text)` | `boolean` | checagem por nome com `LOWER(TRIM())` |
+| `set_user_filiais(target_user_id uuid, filial_ids uuid[])` | `jsonb` | RPC administrativa (só manager/admin), grava log em `security_audit_log` |
+
+Todas `STABLE SECURITY DEFINER`, `search_path = public`, escritas para funcionar como InitPlan em RLS (custo equivalente ao atual).
+
+## 4. Funções existentes: substituídas ou adaptadas
+
+| Função | Ação |
+|---|---|
+| `get_user_filial_id()` | **mantida** — passa a significar explicitamente "filial principal" |
+| `get_supervisor_filial_id(uuid)` | **mantida** para compatibilidade, mas deixa de ser usada em RLS de escopo |
+| `user_same_filial(uuid)` | **adaptada** — passa a testar interseção de `get_user_filial_ids` dos dois usuários |
+| `pops_scope()` | **adaptada** — adiciona `filial_ids` (array) mantendo `filial_id` |
+| `my_day_scope()` | **adaptada** — adiciona coluna `filial_ids` mantendo `filial_id` |
+
+## 5. RPCs afetadas
+
+Escopo por filial (passam a usar as funções centrais):
+- Métricas/relatórios: `get_activity_metrics_v2`, `get_funnel_metrics_v2`, `get_tasks_metrics_v2`, `get_reports_dataset_v2`, `get_performance_by_filial_v2`, `get_performance_by_seller_v2`, `get_consolidated_sales_counts_v2`, `get_sales_breakdown`, `get_sales_funnel_counts`, `get_prospects_aggregate`, `get_task_type_counts`.
+- Gestão: `get_management_seller_summary`, `get_management_client_details`, `get_management_product_analysis`, `get_service_opportunities_summary`, `get_service_opportunities_details`.
+- Tarefas/clientes/mídia: `get_tasks_optimized`, `get_secure_tasks_paginated`, `get_secure_tasks_paginated_filtered`, `get_secure_tasks_enhanced`, `get_secure_task_by_id`, `get_completely_secure_tasks`, `get_supervisor_filial_tasks`, `get_secure_clients_enhanced`, `get_secure_clients_with_masking`, `get_secure_customer_data_*`, `can_access_task_related_data`, `can_access_customer_data`, `can_access_media_object`, `get_secure_task_media`.
+- CRM/agenda/treinos/férias: `get_weekly_followups_agenda`, `get_trainings_stats`, `trainings_enforce_snapshot`, `can_insert_vacation`, `get_filial_users`, `get_filial_user_counts`, `get_secure_user_directory`, `get_user_directory_with_fallback`.
+- POPS: `pops_scope`, `pops_can_read_machine`, `pops_portfolio_clients`, `pops_portfolio_client_machines`, `pops_goal_summary`, `pops_executor_results`, `pops_import_distribution`.
+- Meu Dia: `my_day_scope`, `my_day_summary_build`, `my_day_details_build`, `get_my_day_team_summary`.
+- Regularização: `equipment_regularization_pending_kpis/clients/machines`, `..._create_batch`, `..._get_batch`.
+
+## 6. RLS afetadas
+
+`campaign_clients`, `clients`, `opportunities`, `opportunity_items`, `special_conditions`, `task_followups`, `trainings`, `team_vacations`, `visit_schedules`, `pops_machines`, `pops_client_assignments`, `pops_import_rows`, `equipment_regularization_batches/items`.
+
+Padrão de troca:
 ```sql
--- todas as filiais do usuário: principal + adicionais ativas
-create function public.get_user_filial_ids(p_user_id uuid default auth.uid())
-returns uuid[] language sql stable security definer set search_path = public;
+-- antes
+filial_id = get_supervisor_filial_id(auth.uid())
+-- depois
+public.user_can_access_filial(filial_id)
 
-create function public.user_has_filial(p_filial_id uuid, p_user_id uuid default auth.uid())
-returns boolean language sql stable security definer set search_path = public;
-
--- versão por nome (tasks.filial é texto) usando LOWER(TRIM())
-create function public.user_has_filial_nome(p_filial_nome text)
-returns boolean language sql stable security definer set search_path = public;
+-- antes (por nome)
+t.filial = f.nome
+-- depois
+public.user_can_access_filial_nome(t.filial)
 ```
 
-Compatibilidade: `get_user_filial_id()` e `get_supervisor_filial_id()` continuam existindo e retornando a principal (nada quebra). `pops_scope()` e `my_day_scope()` passam a expor também `filial_ids` (array), mantendo `filial_id` para não quebrar consumidores atuais.
+## 7. Classificação A / B / C
 
-## 4. RLS a alterar
+**A. Precisa ser alterado** (restringe a uma filial que deveria ser escopo):
+`user_same_filial`, `pops_scope`, `my_day_scope`, `pops_can_read_machine`, RLS das tabelas do item 6, RPCs de escopo do item 5 (métricas, gestão, tarefas, clientes, CRM, POPS, Meu Dia, Regularização).
 
-Padrão de troca: `filial_id = get_supervisor_filial_id(auth.uid())` → `public.user_has_filial(filial_id)`; comparações por nome (`t.filial = f.nome`) → `public.user_has_filial_nome(t.filial)`. Tabelas afetadas: `campaign_clients`, `clients`, `opportunities`, `opportunity_items`, `special_conditions`, `task_followups`, `trainings`, `team_vacations`, `visit_schedules`, `pops_machines`, `pops_client_assignments`, `pops_import_rows`, `equipment_regularization_*`. `client_equipment` já é global em leitura — sem mudança.
+**B. Pode ser mantido** (representa a filial principal, não o escopo):
+`get_user_filial_id()`, `get_supervisor_filial_id()`, `create_secure_profile`, `update_user_filial_secure`, `secure_update_profile`, `get_filiais_for_registration`, `special_conditions_status_guard` (guarda de status), gravação de `filial_id` no cadastro de tarefas/treinos/férias (default vem da principal), `mask_customer_*`.
 
-Como `user_has_filial` é STABLE/SECURITY DEFINER e devolve boolean, o custo por linha fica equivalente ao atual (mesma estratégia de InitPlan já aplicada).
+**C. Não deve ser alterado** (já global ou regra independente):
+`can_view_equipment_park` e todo o Parque de Máquinas (`get_equipment_park_paginated`, `get_equipment_park_kpis`, `get_equipment_validation_summary`, `search_client_equipment`, `can_edit_client_equipment`), `has_role` e demais funções de RBAC, `can_perform_admin_action`, `can_modify_user_role`, todo o subsistema de auditoria/segurança (`security_audit_log`, `check_*`), `clients_master`/`search_clients` (base mestre global), `filiais` (catálogo público interno).
 
-## 5. Telas afetadas
+## 8. Impacto no frontend
 
-- **Gerenciar Usuários** (`src/pages/Users.tsx`): nova coluna/ação "Filiais" abrindo modal com filial principal (select atual) + lista de checkboxes das filiais adicionais. Salvar via RPC `set_user_filiais(target_user_id, filial_ids[])` (somente manager/admin, com log em `security_audit_log`).
-- Filtros de filial passam de valor único para lista permitida: `MyDay`, `Pops`, `Management`, `Reports`, `PerformanceByFilial/Seller`, `CRM` (Carteira, Agenda, Treinamentos, Programação), `Equipamentos` (Validação e Regularização), `Campaigns`, `Vacations`, `CreateTask` (filial atendida).
-- Novo hook `useUserFiliais()` (React Query, staleTime 10m) devolvendo `{ primaryFilialId, filialIds, filiais }`; hooks listados no item 1 passam a consumi-lo em vez de `profile.filial_id`.
-- Quando o usuário tem mais de uma filial, os selects de filial passam a listar as filiais permitidas com opção "Todas as minhas filiais".
+- Novo hook `useUserFiliais()` (React Query, staleTime 10m): `{ primaryFilialId, filialIds, filiais, hasMulti }`.
+- Hooks que hoje leem `profile.filial_id` passam a consumir `filialIds`: `useFilteredConsultants`, `useVacations`, `useTrainings`, `useVisitSchedules`, `useWeeklyAgenda`, `useMyDay`, `usePops`, `useClientEquipment`, `useEquipmentRegularization`, `useServiceOpportunities`, `useManagementData`, `useConsolidatedSalesMetrics`.
+- Telas com filtro de filial passam a listar as filiais permitidas + "Todas as minhas filiais": `MyDay`, `Pops`, `Management`, `Reports`, `PerformanceByFilial/Seller`, `CRM` (Carteira, Agenda, Programação, Treinamentos), `Equipamentos` (Validação e Regularização), `Campaigns`, `Vacations`, `CreateTask` (filial atendida, default = principal).
+- **Gerenciar Usuários**: modal "Filiais" com select da principal + checkboxes múltiplos das adicionais. Exibição na tabela: `Filial principal: Caiapônia` / `Acesso adicional: Planalto Verde` ou `Somente filial principal`.
 
-## 6. Configuração no cadastro do usuário
+## 9. Retrocompatibilidade
 
-Fluxo: Gerenciar Usuários → usuário → "Filiais" → seleciona principal + marca adicionais → salvar. Remover uma adicional é desmarcar o checkbox (o registro fica `active = false`, preservando histórico de quem habilitou e quando). Nenhuma role é tocada em nenhum momento.
+`get_user_filial_ids` retorna `[filial principal]` quando não há linha ativa em `user_filiais` — comportamento idêntico ao atual para 100% dos usuários hoje. A migration não insere nenhuma linha em `user_filiais`. Funções antigas continuam existindo com a mesma assinatura.
 
-## 7. Consolidação das contas do Diogo (etapa separada, após aprovação)
+## 10. Estratégia para usuários globais
 
-Situação atual:
-- `diogo.silva@rzkagro.com.br` — RAC, filial Caiapônia, `rejected` + `inactive`, conta banida em `auth.users`.
-- `diogosilvacpa451@gmail.com` — RAC, filial Planalto Verde, aprovada e ativa.
+Levantamento antes de alterar: hoje o direito global vem de `has_role(uid,'admin')` / `has_role(uid,'manager')` (usado em `pops_scope`, `my_day_scope` e nas RLS). Em toda função alterada, o ramo global é avaliado **primeiro** e permanece intocado; `user_can_access_filial` só é consultada quando o usuário não é global. Assim nenhum gestor passa a ser limitado por `user_filiais`.
 
-Plano proposto: manter a conta **corporativa** como oficial (reativar, `approved`/`active`, remover ban, role `rac`, principal = Caiapônia, adicional = Planalto Verde) e reatribuir o histórico da conta pessoal para ela — `tasks.created_by`, `task_followups`, `visit_schedules`, `trainings`, `opportunities` (via tasks), `pops_machines.responsible_user_id`, `pops_client_assignments.rac_user_id`, `special_conditions`, `client_equipment.created_by/validated_by`. Depois a conta pessoal é desativada (soft delete, `historical_users` preserva o rastro). Nada disso entra na migration multi-filial: vira um script de dados revisado com você antes de rodar.
+## 11. Plano de implementação por etapas
 
-## Ordem de execução após aprovação
+1. **M1** — tabela `user_filiais` + grants + RLS + trigger + funções centrais + `set_user_filiais`. Zero mudança de comportamento.
+2. **M2** — adaptar `user_same_filial`, `pops_scope`, `my_day_scope` e as RLS do item 6.
+3. **M3** — adaptar as RPCs de escopo do item 5.
+4. **F1** — `useUserFiliais` + tela administrativa em Gerenciar Usuários.
+5. **F2** — filtros multi-filial nas telas afetadas.
+6. **V1** — validação com o caso Diogo (RAC, principal Caiapônia, adicional Planalto Verde). Consolidação das duas contas fica para etapa posterior, com script de histórico revisado.
 
-1. Migration: tabela `user_filiais` + grants + RLS + funções auxiliares + `set_user_filiais`.
-2. Atualização das RLS/RPCs de escopo (lote único, sem mudança de comportamento para quem tem só 1 filial).
-3. Frontend: `useUserFiliais` + tela administrativa + filtros.
-4. Script de consolidação do Diogo.
+## 12. Testes necessários
+
+| Cenário | Esperado |
+|---|---|
+| Usuário com 1 filial (qualquer role não global) | Resultados idênticos aos de hoje em Tarefas, CRM, POPS, Meu Dia, Relatórios, Regularização |
+| Usuário com 2 filiais | Vê dados das duas em todos os módulos; filtro oferece as duas |
+| Terceira filial não vinculada | RPC direta e SELECT direto retornam vazio / erro de permissão (teste feito com token autenticado, não só pela UI) |
+| Remoção da adicional | Acesso à filial removida cessa na próxima consulta, sem apagar histórico |
+| Admin/manager | Continua global, sem influência de `user_filiais` |
+| Escrita em `user_filiais` por não-gestor | Bloqueado por RLS e pela RPC |
+| Performance | `get_equipment_park_paginated` e listagens principais mantêm os tempos atuais (comparar antes/depois) |
