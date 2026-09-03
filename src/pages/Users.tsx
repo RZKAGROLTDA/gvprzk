@@ -310,6 +310,10 @@ export const Users: React.FC = () => {
         </div>
       </div>
 
+      {isAdmin && <TempReactivateDiogo />}
+
+
+
       {!isAdmin && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="p-4">
