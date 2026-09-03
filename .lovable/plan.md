@@ -14,9 +14,10 @@ user_filiais(active) ─┘         │
 
 Toda RLS/RPC que hoje compara `filial_id = <filial do usuário>` passa a chamar `user_can_access_filial(...)`. Nenhum módulo implementa lógica própria. Usuários com direito global (admin/manager) continuam decidindo por `has_role`, antes e independentemente dessas funções.
 
-## 2. Estrutura exata da tabela
+## 2. Estrutura exata da tabela + Migration M1 (completa)
 
 ```sql
+-- 1) Tabela
 create table public.user_filiais (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
@@ -26,28 +27,150 @@ create table public.user_filiais (
   created_by uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  deactivated_at timestamptz,
+  deactivated_by uuid,
   unique (user_id, filial_id)
 );
+
+-- 2) Grants
 grant select on public.user_filiais to authenticated;
 grant all on public.user_filiais to service_role;
+
+-- 3) RLS
 alter table public.user_filiais enable row level security;
-create index on public.user_filiais (user_id) where active;
+
+create policy user_filiais_select_self_or_admin on public.user_filiais
+  for select to authenticated
+  using (user_id = (select auth.uid())
+         or public.has_role((select auth.uid()),'manager')
+         or public.has_role((select auth.uid()),'admin'));
+
+create policy user_filiais_write_admin on public.user_filiais
+  for all to authenticated
+  using (public.has_role((select auth.uid()),'manager') or public.has_role((select auth.uid()),'admin'))
+  with check (public.has_role((select auth.uid()),'manager') or public.has_role((select auth.uid()),'admin'));
+
+create index user_filiais_user_active_idx on public.user_filiais (user_id) where active;
+
+-- 4) Trigger de auditoria + bloqueio da filial principal
+create or replace function public.user_filiais_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_primary uuid;
+begin
+  select filial_id into v_primary from public.profiles where user_id = new.user_id;
+  if new.active and new.filial_id = v_primary then
+    raise exception 'Filial principal não pode ser cadastrada como adicional' using errcode='23514';
+  end if;
+  new.updated_at := now();
+  if tg_op = 'UPDATE' then
+    if old.active and not new.active then
+      new.deactivated_at := now(); new.deactivated_by := auth.uid();
+    elsif not old.active and new.active then
+      new.deactivated_at := null; new.deactivated_by := null;
+      new.created_at := old.created_at; new.created_by := old.created_by; -- preserva origem
+    end if;
+  end if;
+  return new;
+end $$;
+
+create trigger user_filiais_guard_trg before insert or update on public.user_filiais
+  for each row execute function public.user_filiais_guard();
+
+-- 5) Troca de filial principal: desativa vínculo adicional duplicado
+create or replace function public.profiles_sync_primary_filial()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.filial_id is not null and new.filial_id is distinct from old.filial_id then
+    update public.user_filiais
+       set active = false
+     where user_id = new.user_id and filial_id = new.filial_id and active;
+  end if;
+  return new;
+end $$;
+
+create trigger profiles_sync_primary_filial_trg after update of filial_id on public.profiles
+  for each row execute function public.profiles_sync_primary_filial();
+
+-- 6) Funções centrais
+create or replace function public.get_user_filial_ids(p_user_id uuid default auth.uid())
+returns uuid[] language plpgsql stable security definer set search_path = public as $$
+declare v_ids uuid[];
+begin
+  if p_user_id is distinct from auth.uid()
+     and not (public.has_role(auth.uid(),'manager') or public.has_role(auth.uid(),'admin')) then
+    raise exception 'Acesso negado' using errcode='42501';
+  end if;
+  select array_remove(array_agg(distinct fid), null) into v_ids from (
+    select p.filial_id as fid from public.profiles p
+      where p.user_id = p_user_id and p.approval_status='approved' and p.employment_status='active'
+    union
+    select uf.filial_id from public.user_filiais uf
+      join public.profiles p2 on p2.user_id = uf.user_id
+      where uf.user_id = p_user_id and uf.active
+        and p2.approval_status='approved' and p2.employment_status='active'
+  ) s;
+  return coalesce(v_ids, '{}'::uuid[]);
+end $$;
+
+create or replace function public.user_can_access_filial(p_filial_id uuid, p_user_id uuid default auth.uid())
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_filial_id is not null
+     and p_filial_id = any (public.get_user_filial_ids(p_user_id));
+$$;
+
+-- Por nome: resolve para filial_id; ambíguo ou inexistente => false
+create or replace function public.user_can_access_filial_nome(p_nome text)
+returns boolean language plpgsql stable security definer set search_path = public as $$
+declare v_id uuid; v_count int;
+begin
+  if p_nome is null or btrim(p_nome) = '' then return false; end if;
+  select count(*), min(f.id) into v_count, v_id from public.filiais f
+   where lower(btrim(f.nome)) = lower(btrim(p_nome));
+  if v_count <> 1 then return false; end if;
+  return public.user_can_access_filial(v_id);
+end $$;
+
+-- 7) RPC administrativa
+create or replace function public.set_user_filiais(target_user_id uuid, filial_ids uuid[])
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_primary uuid;
+begin
+  if not (public.has_role(auth.uid(),'manager') or public.has_role(auth.uid(),'admin')) then
+    raise exception 'Acesso negado' using errcode='42501';
+  end if;
+  select filial_id into v_primary from public.profiles where user_id = target_user_id;
+
+  update public.user_filiais set active = false
+   where user_id = target_user_id and active
+     and filial_id <> all (coalesce(filial_ids,'{}'::uuid[]));
+
+  insert into public.user_filiais (user_id, filial_id, active, created_by)
+  select target_user_id, fid, true, auth.uid()
+    from unnest(coalesce(filial_ids,'{}'::uuid[])) fid
+   where fid is distinct from v_primary
+  on conflict (user_id, filial_id)
+    do update set active = true, updated_at = now();
+
+  insert into public.security_audit_log (event_type, user_id, target_user_id, metadata)
+  values ('user_filiais_updated', auth.uid(), target_user_id,
+          jsonb_build_object('filial_ids', filial_ids, 'primary', v_primary));
+
+  return jsonb_build_object('success', true,
+    'filial_ids', public.get_user_filial_ids(target_user_id));
+end $$;
+
+grant execute on function public.set_user_filiais(uuid, uuid[]) to authenticated;
+grant execute on function public.get_user_filial_ids(uuid) to authenticated;
+grant execute on function public.user_can_access_filial(uuid, uuid) to authenticated;
+grant execute on function public.user_can_access_filial_nome(text) to authenticated;
 ```
 
-- **Sem `is_primary`**: a principal fica exclusivamente em `profiles.filial_id` (evita duas fontes divergentes). Trigger bloqueia inserir a filial principal como adicional.
-- Remover acesso = `active = false` (histórico preservado, com autor e data).
-- RLS: usuário lê as próprias linhas; manager/admin leem e escrevem todas (via `has_role`).
+Notas:
+- **Sem `is_primary`**: a principal fica exclusivamente em `profiles.filial_id`.
+- Remover acesso = `active = false` com `deactivated_at`/`deactivated_by`; reativar limpa esses campos e preserva `created_at`/`created_by`.
+- `get_user_filial_ids(p_user_id)` só aceita outro usuário se o chamador for manager/admin (item 5 da sua lista); funções internas SECURITY DEFINER usam a forma sem argumento.
+- Débito técnico registrado: migrar `tasks.filial` (texto) para `tasks.filial_id`.
 
-## 3. Funções auxiliares novas
-
-| Função | Retorno | Papel |
-|---|---|---|
-| `get_user_filial_ids(p_user_id uuid default auth.uid())` | `uuid[]` | principal + adicionais ativas (só de perfil `approved` + `active`) |
-| `user_can_access_filial(p_filial_id uuid, p_user_id uuid default auth.uid())` | `boolean` | checagem por id |
-| `user_can_access_filial_nome(p_nome text)` | `boolean` | checagem por nome com `LOWER(TRIM())` |
-| `set_user_filiais(target_user_id uuid, filial_ids uuid[])` | `jsonb` | RPC administrativa (só manager/admin), grava log em `security_audit_log` |
-
-Todas `STABLE SECURITY DEFINER`, `search_path = public`, escritas para funcionar como InitPlan em RLS (custo equivalente ao atual).
 
 ## 4. Funções existentes: substituídas ou adaptadas
 
