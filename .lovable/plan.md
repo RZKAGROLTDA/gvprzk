@@ -227,6 +227,8 @@ public.user_can_access_filial_nome(t.filial)
 - Hooks que hoje leem `profile.filial_id` passam a consumir `filialIds`: `useFilteredConsultants`, `useVacations`, `useTrainings`, `useVisitSchedules`, `useWeeklyAgenda`, `useMyDay`, `usePops`, `useClientEquipment`, `useEquipmentRegularization`, `useServiceOpportunities`, `useManagementData`, `useConsolidatedSalesMetrics`.
 - Telas com filtro de filial passam a listar as filiais permitidas + "Todas as minhas filiais": `MyDay`, `Pops`, `Management`, `Reports`, `PerformanceByFilial/Seller`, `CRM` (Carteira, Agenda, Programação, Treinamentos), `Equipamentos` (Validação e Regularização), `Campaigns`, `Vacations`, `CreateTask` (filial atendida, default = principal).
 - **Gerenciar Usuários**: modal "Filiais" com select da principal + checkboxes múltiplos das adicionais. Exibição na tabela: `Filial principal: Caiapônia` / `Acesso adicional: Planalto Verde` ou `Somente filial principal`.
+- **Revogação imediata de cache**: após `set_user_filiais` (ou troca da principal), a UI executa uma invalidação ampla — `user-filiais`, `profile`, `tasks`, `taskDetails`, `crm*`, `visit-schedules`, `weekly-agenda`, `trainings`, `followups`, `pops*`, `my-day*`, `reports*`, `management*`, `equipment*`, `regularization*`, `campaigns`, `special-conditions`, `vacations` — via helper único `invalidateFilialScopedQueries()` em `useSecurityCache`. O staleTime de 10m continua valendo para navegação normal, mas nunca depois de uma alteração administrativa.
+
 
 ## 9. Retrocompatibilidade
 
@@ -234,7 +236,7 @@ public.user_can_access_filial_nome(t.filial)
 
 ## 10. Estratégia para usuários globais
 
-Levantamento antes de alterar: hoje o direito global vem de `has_role(uid,'admin')` / `has_role(uid,'manager')` (usado em `pops_scope`, `my_day_scope` e nas RLS). Em toda função alterada, o ramo global é avaliado **primeiro** e permanece intocado; `user_can_access_filial` só é consultada quando o usuário não é global. Assim nenhum gestor passa a ser limitado por `user_filiais`.
+Verificado no banco (não apenas no código): as únicas roles globais são **admin** e **manager**. Roles existentes em `user_roles`: sales_consultant (49), supervisor (18), rac (14), manager (11), csa (3), admin (2). Nenhuma policy concede escopo global a outra role (as policies só citam admin, manager e supervisor — este último sempre restrito à filial). Em toda função alterada, o ramo global é avaliado **primeiro** e permanece intocado; `user_can_access_filial` só é consultada quando o usuário não é global.
 
 ## 11. Plano de implementação por etapas
 
@@ -256,3 +258,9 @@ Levantamento antes de alterar: hoje o direito global vem de `has_role(uid,'admin
 | Admin/manager | Continua global, sem influência de `user_filiais` |
 | Escrita em `user_filiais` por não-gestor | Bloqueado por RLS e pela RPC |
 | Performance | `get_equipment_park_paginated` e listagens principais mantêm os tempos atuais (comparar antes/depois) |
+| Troca de filial principal | Vínculo adicional igual à nova principal é desativado automaticamente, sem duplicação |
+| Antiga adicional vira principal | `get_user_filial_ids` não retorna duplicata; `user_filiais` fica sem linha ativa para ela |
+| Remoção pelo admin | Acesso backend cessa na consulta seguinte e a filial deixa de ser oferecida na UI após a invalidação |
+| `tasks.filial` inválido/ambíguo | `user_can_access_filial_nome` retorna false (não libera acesso) |
+| Usuário comum consultando outro `p_user_id` | `get_user_filial_ids` levanta erro 42501 |
+| Reativação de vínculo | `deactivated_at`/`deactivated_by` limpos, `created_at`/`created_by` originais preservados |
