@@ -11,3 +11,9 @@
 ## Débito técnico
 - [ ] Migrar `tasks.filial` (texto) para `tasks.filial_id` (uuid)
 - [ ] Consolidação das duas contas do Diogo preservando histórico
+
+## Restaurar acesso Diogo corporativo (prioridade)
+- [ ] Desbanir auth diogo.silva@rzkagro.com.br
+- [ ] Profile approved/active, deactivated_at null, filial Caiaponia
+- [ ] Garantir role RAC em user_roles
+- [ ] Validar estado final
