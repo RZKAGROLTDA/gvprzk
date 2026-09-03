@@ -13,7 +13,8 @@
 - [ ] Consolidação das duas contas do Diogo preservando histórico
 
 ## Restaurar acesso Diogo corporativo (prioridade)
-- [ ] Desbanir auth diogo.silva@rzkagro.com.br
+- [x] Desbanir auth diogo.silva@rzkagro.com.br (Admin Auth API via edge function `reactivate-user`)
+- [ ] Reativar profile SEM desabilitar triggers globais (executar update com JWT de manager/admin dentro da edge function)
 - [ ] Profile approved/active, deactivated_at null, filial Caiaponia
 - [ ] Garantir role RAC em user_roles
 - [ ] Validar estado final
