@@ -12,6 +12,8 @@ import { Users as UsersIcon, Building, Trash2, AlertTriangle, Search } from 'luc
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 import { useUserRole } from '@/hooks/useUserRole';
+import { TempReactivateDiogo } from '@/components/TempReactivateDiogo';
+
 
 interface Profile {
   id: string;
@@ -309,6 +311,10 @@ export const Users: React.FC = () => {
           <OfflineIndicator />
         </div>
       </div>
+
+      {isAdmin && <TempReactivateDiogo />}
+
+
 
       {!isAdmin && (
         <Card className="border-amber-200 bg-amber-50">
