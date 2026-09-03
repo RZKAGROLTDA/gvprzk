@@ -2657,6 +2657,53 @@ export type Database = {
         }
         Relationships: []
       }
+      user_filiais: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          deactivated_at: string | null
+          deactivated_by: string | null
+          filial_id: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          filial_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          filial_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_filiais_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_invitations: {
         Row: {
           created_at: string
@@ -4280,6 +4327,7 @@ export type Database = {
         }[]
       }
       get_user_filial_id: { Args: never; Returns: string }
+      get_user_filial_ids: { Args: { p_user_id?: string }; Returns: string[] }
       get_user_role: { Args: never; Returns: string }
       get_user_security_level: { Args: never; Returns: string }
       get_weekly_followups_agenda: {
@@ -4717,6 +4765,10 @@ export type Database = {
         Args: { p_batch_id?: string }
         Returns: number
       }
+      set_user_filiais: {
+        Args: { filial_ids: string[]; target_user_id: string }
+        Returns: Json
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       simple_is_admin: { Args: never; Returns: boolean }
@@ -4745,6 +4797,14 @@ export type Database = {
       update_user_role_secure: {
         Args: { new_role: string; target_user_id: string }
         Returns: undefined
+      }
+      user_can_access_filial: {
+        Args: { p_filial_id: string; p_user_id?: string }
+        Returns: boolean
+      }
+      user_can_access_filial_nome: {
+        Args: { p_nome: string }
+        Returns: boolean
       }
       user_same_filial: { Args: { target_user_id: string }; Returns: boolean }
       validate_and_sanitize_input: {
