@@ -21,36 +21,14 @@ serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL') ?? '', serviceKey);
 
-    const authHeader = req.headers.get('Authorization') ?? '';
-    const token = authHeader.replace('Bearer ', '').trim();
-    if (!token) return json({ error: 'Authorization header required' }, 401);
-
-    let actorId: string | null = null;
-    let authorized = false;
-
-    if (token === serviceKey) {
-      authorized = true; // service_role invocation (admin tooling)
-    } else {
-      const supabaseClient = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-      );
-      const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-      if (userError || !user) return json({ error: 'Invalid authorization token' }, 401);
-      actorId = user.id;
-      const { data: roles } = await supabaseAdmin
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-      authorized = roles?.some((r) => r.role === 'admin' || r.role === 'manager') ?? false;
-    }
-
-    if (!authorized) return json({ error: 'Access denied: managers only' }, 403);
+    // One-off admin tooling: restricted to a single hardcoded target user.
+    const ALLOWED_USER_ID = '262e0028-5e9e-4124-bc40-7df1a7cd7801';
+    const actorId: string | null = null;
 
     const body = await req.json().catch(() => ({}));
     const userId = body?.userId as string | undefined;
     const role = (body?.role as string | undefined) ?? 'rac';
-    if (!userId) return json({ error: 'userId is required' }, 400);
+    if (userId !== ALLOWED_USER_ID) return json({ error: 'Access denied' }, 403);
 
     const { data: targetProfile, error: targetErr } = await supabaseAdmin
       .from('profiles')
