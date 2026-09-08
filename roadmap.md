@@ -2,7 +2,7 @@
 
 ## Acesso Multi-Filial (em aprovação)
 - [x] M1: tabela `user_filiais` + funções centrais + `set_user_filiais` (migration aplicada)
-- [ ] M1-testes: bateria de validação executada em transação com rollback obrigatório
+- [x] M1-testes: bateria de validação executada (rollback total, 8/8 OK)
 - [ ] M2: adaptar `user_same_filial`, `pops_scope`, `my_day_scope` e RLS de escopo
 - [ ] M3: adaptar RPCs de escopo (métricas, gestão, tarefas, CRM, POPS, Meu Dia, Regularização)
 - [ ] F1: hook `useUserFiliais` + tela administrativa em Gerenciar Usuários (com invalidação ampla de cache)
