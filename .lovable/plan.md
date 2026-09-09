@@ -1,137 +1,507 @@
-# M2 — Escopo multi-filial nas funções-base e nas RLS mapeadas (desenho, não executado)
+# M2 — Migration completa para revisão (NÃO executada)
 
-Princípio: onde hoje existe **uma** filial (`profiles.filial_id`), passa a existir o **conjunto** `get_user_filial_ids()` (principal + adicionais ativas). Admin e manager continuam globais e são avaliados **antes** de qualquer verificação de filial. Nenhuma role muda, nenhum acesso global novo é criado. Para quem tem só a filial principal, o conjunto tem 1 elemento — resultado idêntico ao atual.
+Escopo: funções-base + RLS já mapeadas. `my_day_scope()` original permanece intacta; é criada `my_day_scope_v2()`. Nenhuma RPC da M3, nenhum frontend, nenhum vínculo real para o Diogo. `get_supervisor_filial_id` e `get_user_filial_id` seguem representando apenas a filial principal. Admin/manager são avaliados primeiro em todos os ramos, sem alteração. Usuário sem vínculo adicional: `get_user_filial_ids` devolve exatamente `[filial principal]`, portanto `user_can_access_filial(x)` equivale a `x = filial principal` — comportamento idêntico ao atual.
 
-## 1. Funções-base — versão final
+## SQL completo
 
 ```sql
--- user_same_filial: interseção de conjuntos em vez de igualdade
+-- =====================================================================
+-- M2 — Escopo multi-filial: funções-base + RLS mapeadas
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1. Helper interno (sem checagem de chamador; não exposto a authenticated)
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_user_filial_ids_internal(p_user_id uuid)
+RETURNS uuid[] LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT coalesce(array_remove(array_agg(DISTINCT fid), NULL), '{}'::uuid[])
+  FROM (
+    SELECT p.filial_id AS fid
+      FROM public.profiles p
+     WHERE p.user_id = p_user_id
+       AND p.approval_status = 'approved'
+       AND p.employment_status = 'active'
+    UNION
+    SELECT uf.filial_id
+      FROM public.user_filiais uf
+      JOIN public.profiles p2 ON p2.user_id = uf.user_id
+     WHERE uf.user_id = p_user_id
+       AND uf.active
+       AND p2.approval_status = 'approved'
+       AND p2.employment_status = 'active'
+  ) s;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_user_filial_ids_internal(uuid) FROM PUBLIC;
+-- sem GRANT para authenticated: uso exclusivo por funções SECURITY DEFINER
+
+-- ---------------------------------------------------------------------
+-- 2. user_same_filial — igualdade -> interseção de conjuntos
+-- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.user_same_filial(target_user_id uuid)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT target_user_id IS NOT NULL
      AND EXISTS (
        SELECT 1
-       FROM unnest(public.get_user_filial_ids(auth.uid())) a(fid)
+       FROM unnest(public.get_user_filial_ids_internal(auth.uid())) AS a(fid)
        WHERE a.fid = ANY (public.get_user_filial_ids_internal(target_user_id))
      );
 $$;
 
--- helper interno: mesma lógica de get_user_filial_ids, SEM a checagem de chamador
--- (necessário porque user_same_filial precisa ler o conjunto de OUTRO usuário)
-CREATE OR REPLACE FUNCTION public.get_user_filial_ids_internal(p_user_id uuid)
-RETURNS uuid[] LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT coalesce(array_remove(array_agg(DISTINCT fid), NULL), '{}'::uuid[])
-  FROM (
-    SELECT p.filial_id AS fid FROM public.profiles p
-     WHERE p.user_id = p_user_id AND p.approval_status='approved' AND p.employment_status='active'
-    UNION
-    SELECT uf.filial_id FROM public.user_filiais uf
-      JOIN public.profiles p2 ON p2.user_id = uf.user_id
-     WHERE uf.user_id = p_user_id AND uf.active
-       AND p2.approval_status='approved' AND p2.employment_status='active'
-  ) s;
-$$;
-REVOKE EXECUTE ON FUNCTION public.get_user_filial_ids_internal(uuid) FROM PUBLIC;
--- NÃO concedido a authenticated: uso apenas interno por outras funções SECURITY DEFINER.
-
--- pops_scope: acrescenta filial_ids, mantém filial_id (principal) para compatibilidade
+-- ---------------------------------------------------------------------
+-- 3. pops_scope — acrescenta filial_ids, mantém scope e filial_id
+-- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.pops_scope()
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_uid uuid := (SELECT auth.uid()); v_enabled boolean; v_filial uuid;
-        v_scope text := 'none'; v_ids uuid[];
+DECLARE
+  v_uid uuid := (SELECT auth.uid());
+  v_enabled boolean;
+  v_filial uuid;
+  v_scope text := 'none';
+  v_ids uuid[];
 BEGIN
   IF v_uid IS NULL THEN
-    RETURN jsonb_build_object('scope','none','filial_id',NULL,'filial_ids','[]'::jsonb,'user_id',NULL);
+    RETURN jsonb_build_object('scope','none','filial_id',NULL,
+                              'filial_ids','[]'::jsonb,'user_id',NULL);
   END IF;
+
   SELECT (p.approval_status='approved' AND p.employment_status='active'), p.filial_id
-    INTO v_enabled, v_filial FROM public.profiles p WHERE p.user_id = v_uid;
+    INTO v_enabled, v_filial
+    FROM public.profiles p WHERE p.user_id = v_uid;
+
   IF COALESCE(v_enabled,false) = false THEN
-    RETURN jsonb_build_object('scope','none','filial_id',NULL,'filial_ids','[]'::jsonb,'user_id',v_uid);
+    RETURN jsonb_build_object('scope','none','filial_id',NULL,
+                              'filial_ids','[]'::jsonb,'user_id',v_uid);
   END IF;
-  IF public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager') THEN v_scope := 'global';
-  ELSIF public.has_role(v_uid,'supervisor') OR public.has_role(v_uid,'rac')
-     OR public.has_role(v_uid,'cpa')       OR public.has_role(v_uid,'csa') THEN v_scope := 'filial';
+
+  IF public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager') THEN
+    v_scope := 'global';
+  ELSIF public.has_role(v_uid,'supervisor')
+     OR public.has_role(v_uid,'rac')
+     OR public.has_role(v_uid,'cpa')
+     OR public.has_role(v_uid,'csa') THEN
+    v_scope := 'filial';
   END IF;
+
   v_ids := public.get_user_filial_ids_internal(v_uid);
-  RETURN jsonb_build_object('scope',v_scope,'filial_id',v_filial,
+
+  RETURN jsonb_build_object('scope', v_scope, 'filial_id', v_filial,
                             'filial_ids', to_jsonb(v_ids), 'user_id', v_uid);
 END $$;
 
--- my_day_scope: acrescenta coluna filial_ids, mantém filial_id
-CREATE OR REPLACE FUNCTION public.my_day_scope()
+-- ---------------------------------------------------------------------
+-- 4. my_day_scope_v2 — NOVA. my_day_scope() original NÃO é tocada.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.my_day_scope_v2()
 RETURNS TABLE(user_id uuid, role text, filial_id uuid, filial_ids uuid[], scope text)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_uid uuid := auth.uid(); v_role text; v_filial uuid; v_found boolean;
+DECLARE
+  v_uid uuid := auth.uid();
+  v_role text;
+  v_filial uuid;
+  v_found boolean;
 BEGIN
-  IF v_uid IS NULL THEN RAISE EXCEPTION 'Acesso negado: usuário não autenticado' USING ERRCODE='42501'; END IF;
-  SELECT p.filial_id, true INTO v_filial, v_found FROM public.profiles p
-   WHERE p.user_id = v_uid AND p.approval_status='approved' AND p.employment_status='active';
-  IF NOT COALESCE(v_found,false) THEN
-    RAISE EXCEPTION 'Acesso negado: usuário não aprovado ou inativo' USING ERRCODE='42501';
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Acesso negado: usuário não autenticado' USING ERRCODE = '42501';
   END IF;
+
+  SELECT p.filial_id, true INTO v_filial, v_found
+    FROM public.profiles p
+   WHERE p.user_id = v_uid
+     AND p.approval_status = 'approved'
+     AND p.employment_status = 'active';
+
+  IF NOT COALESCE(v_found,false) THEN
+    RAISE EXCEPTION 'Acesso negado: usuário não aprovado ou inativo' USING ERRCODE = '42501';
+  END IF;
+
   v_role := public.get_user_role();
-  RETURN QUERY SELECT v_uid, v_role, v_filial,
-    public.get_user_filial_ids_internal(v_uid),
-    CASE WHEN v_role IN ('admin','manager') THEN 'global'
-         WHEN v_role = 'supervisor' THEN 'filial' ELSE 'self' END;
+
+  RETURN QUERY
+  SELECT v_uid, v_role, v_filial,
+         public.get_user_filial_ids_internal(v_uid),
+         CASE WHEN v_role IN ('admin','manager') THEN 'global'
+              WHEN v_role = 'supervisor'          THEN 'filial'
+              ELSE 'self' END;
 END $$;
+
+REVOKE EXECUTE ON FUNCTION public.my_day_scope_v2() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.my_day_scope_v2() TO authenticated;
+
+-- ---------------------------------------------------------------------
+-- 5. can_insert_vacation — filial principal -> filiais permitidas
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.can_insert_vacation(p_filial_id uuid)
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.profiles p
+     WHERE p.user_id = auth.uid()
+       AND p.approval_status = 'approved'
+       AND (public.has_role(auth.uid(),'admin'::app_role)
+         OR public.has_role(auth.uid(),'manager'::app_role))
+  ) THEN
+    RETURN true;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.profiles p
+     WHERE p.user_id = auth.uid()
+       AND p.approval_status = 'approved'
+       AND (public.has_role(auth.uid(),'supervisor'::app_role)
+         OR public.has_role(auth.uid(),'rac'::app_role)
+         OR public.has_role(auth.uid(),'cpa'::app_role)
+         OR public.has_role(auth.uid(),'csa'::app_role))
+  ) AND public.user_can_access_filial(p_filial_id) THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
+END $$;
+
+-- =====================================================================
+-- 6. RLS
+-- =====================================================================
+
+-- 6.1 campaign_clients ------------------------------------------------
+DROP POLICY IF EXISTS campaign_clients_select ON public.campaign_clients;
+CREATE POLICY campaign_clients_select ON public.campaign_clients
+  FOR SELECT USING (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  );
+
+DROP POLICY IF EXISTS campaign_clients_insert ON public.campaign_clients;
+CREATE POLICY campaign_clients_insert ON public.campaign_clients
+  FOR INSERT WITH CHECK (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  );
+
+DROP POLICY IF EXISTS campaign_clients_update ON public.campaign_clients;
+CREATE POLICY campaign_clients_update ON public.campaign_clients
+  FOR UPDATE USING (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  ) WITH CHECK (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  );
+-- campaign_clients_delete: não contém filial, mantida como está.
+
+-- 6.2 special_conditions ----------------------------------------------
+DROP POLICY IF EXISTS special_conditions_select ON public.special_conditions;
+CREATE POLICY special_conditions_select ON public.special_conditions
+  FOR SELECT USING (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  );
+
+DROP POLICY IF EXISTS special_conditions_insert ON public.special_conditions;
+CREATE POLICY special_conditions_insert ON public.special_conditions
+  FOR INSERT WITH CHECK (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  );
+
+DROP POLICY IF EXISTS special_conditions_update ON public.special_conditions;
+CREATE POLICY special_conditions_update ON public.special_conditions
+  FOR UPDATE USING (
+    has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR (seller_id = auth.uid() AND status = 'pendente'::text)
+  ) WITH CHECK (
+    has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR (seller_id = auth.uid() AND status = 'pendente'::text)
+  );
+
+DROP POLICY IF EXISTS special_conditions_delete ON public.special_conditions;
+CREATE POLICY special_conditions_delete ON public.special_conditions
+  FOR DELETE USING (
+    has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR (seller_id = auth.uid() AND status = 'pendente'::text)
+  );
+
+-- 6.3 visit_schedules -------------------------------------------------
+DROP POLICY IF EXISTS visit_schedules_select ON public.visit_schedules;
+CREATE POLICY visit_schedules_select ON public.visit_schedules
+  FOR SELECT USING (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  );
+
+DROP POLICY IF EXISTS visit_schedules_insert ON public.visit_schedules;
+CREATE POLICY visit_schedules_insert ON public.visit_schedules
+  FOR INSERT WITH CHECK (
+    created_by = auth.uid()
+    AND (
+      seller_id = auth.uid()
+      OR has_role(auth.uid(),'manager'::app_role)
+      OR has_role(auth.uid(),'admin'::app_role)
+      OR (has_role(auth.uid(),'supervisor'::app_role)
+          AND public.user_can_access_filial(filial_id))
+    )
+  );
+
+DROP POLICY IF EXISTS visit_schedules_update ON public.visit_schedules;
+CREATE POLICY visit_schedules_update ON public.visit_schedules
+  FOR UPDATE USING (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  ) WITH CHECK (
+    seller_id = auth.uid()
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+  );
+
+DROP POLICY IF EXISTS visit_schedules_delete ON public.visit_schedules;
+CREATE POLICY visit_schedules_delete ON public.visit_schedules
+  FOR DELETE USING (
+    has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR (seller_id = auth.uid() AND status <> 'realizado'::text)
+  );
+
+-- 6.4 task_followups (mantém o padrão (SELECT ...) por performance) ---
+DROP POLICY IF EXISTS task_followups_select ON public.task_followups;
+CREATE POLICY task_followups_select ON public.task_followups
+  FOR SELECT USING (
+    responsible_user_id = (SELECT auth.uid())
+    OR (SELECT has_role((SELECT auth.uid()),'manager'::app_role))
+    OR (SELECT has_role((SELECT auth.uid()),'admin'::app_role))
+    OR ((SELECT has_role((SELECT auth.uid()),'supervisor'::app_role))
+        AND public.user_can_access_filial(filial_id))
+  );
+
+DROP POLICY IF EXISTS task_followups_insert ON public.task_followups;
+CREATE POLICY task_followups_insert ON public.task_followups
+  FOR INSERT WITH CHECK (
+    (SELECT has_role((SELECT auth.uid()),'manager'::app_role))
+    OR (SELECT has_role((SELECT auth.uid()),'admin'::app_role))
+    OR ((SELECT has_role((SELECT auth.uid()),'supervisor'::app_role))
+        AND public.user_can_access_filial(filial_id))
+    OR (responsible_user_id = (SELECT auth.uid()) AND created_by = (SELECT auth.uid()))
+  );
+
+DROP POLICY IF EXISTS task_followups_update ON public.task_followups;
+CREATE POLICY task_followups_update ON public.task_followups
+  FOR UPDATE USING (
+    responsible_user_id = (SELECT auth.uid())
+    OR (SELECT has_role((SELECT auth.uid()),'manager'::app_role))
+    OR (SELECT has_role((SELECT auth.uid()),'admin'::app_role))
+    OR ((SELECT has_role((SELECT auth.uid()),'supervisor'::app_role))
+        AND public.user_can_access_filial(filial_id))
+  ) WITH CHECK (
+    responsible_user_id = (SELECT auth.uid())
+    OR (SELECT has_role((SELECT auth.uid()),'manager'::app_role))
+    OR (SELECT has_role((SELECT auth.uid()),'admin'::app_role))
+    OR ((SELECT has_role((SELECT auth.uid()),'supervisor'::app_role))
+        AND public.user_can_access_filial(filial_id))
+  );
+
+-- 6.5 trainings -------------------------------------------------------
+DROP POLICY IF EXISTS trainings_select_scope ON public.trainings;
+CREATE POLICY trainings_select_scope ON public.trainings
+  FOR SELECT USING (
+    has_role(auth.uid(),'admin'::app_role)
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR user_id = auth.uid()
+  );
+
+DROP POLICY IF EXISTS trainings_update_scope ON public.trainings;
+CREATE POLICY trainings_update_scope ON public.trainings
+  FOR UPDATE USING (
+    has_role(auth.uid(),'admin'::app_role)
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR user_id = auth.uid()
+  ) WITH CHECK (
+    has_role(auth.uid(),'admin'::app_role)
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR user_id = auth.uid()
+  );
+
+DROP POLICY IF EXISTS trainings_delete_scope ON public.trainings;
+CREATE POLICY trainings_delete_scope ON public.trainings
+  FOR DELETE USING (
+    has_role(auth.uid(),'admin'::app_role)
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(filial_id))
+    OR user_id = auth.uid()
+  );
+-- trainings_insert_scope: não usa filial, mantida.
+
+-- 6.6 clients ---------------------------------------------------------
+DROP POLICY IF EXISTS secure_clients_select_contact_protected ON public.clients;
+CREATE POLICY secure_clients_select_contact_protected ON public.clients
+  FOR SELECT USING (
+    auth.uid() = created_by
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(
+              (SELECT creator.filial_id FROM public.profiles creator
+                WHERE creator.user_id = clients.created_by LIMIT 1)))
+  );
+
+DROP POLICY IF EXISTS enhanced_clients_update ON public.clients;
+CREATE POLICY enhanced_clients_update ON public.clients
+  FOR UPDATE USING (
+    auth.uid() = created_by
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(
+              (SELECT creator.filial_id FROM public.profiles creator
+                WHERE creator.user_id = clients.created_by LIMIT 1)))
+  ) WITH CHECK (
+    auth.uid() = created_by
+    OR has_role(auth.uid(),'manager'::app_role)
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial(
+              (SELECT creator.filial_id FROM public.profiles creator
+                WHERE creator.user_id = clients.created_by LIMIT 1)))
+  );
+
+-- 6.7 opportunities ---------------------------------------------------
+DROP POLICY IF EXISTS opportunities_select_with_supervisor_filial_access ON public.opportunities;
+CREATE POLICY opportunities_select_with_supervisor_filial_access ON public.opportunities
+  FOR SELECT USING (
+    has_role(auth.uid(),'manager'::app_role)
+    OR has_role(auth.uid(),'admin'::app_role)
+    OR EXISTS (SELECT 1 FROM public.tasks t
+                WHERE t.id = opportunities.task_id AND t.created_by = auth.uid())
+    OR (has_role(auth.uid(),'supervisor'::app_role)
+        AND public.user_can_access_filial_nome(opportunities.filial))
+  );
+
+DROP POLICY IF EXISTS "Users can create opportunities for their tasks" ON public.opportunities;
+CREATE POLICY "Users can create opportunities for their tasks" ON public.opportunities
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.tasks t
+       WHERE t.id = opportunities.task_id
+         AND (t.created_by = auth.uid()
+              OR has_role(auth.uid(),'manager'::app_role)
+              OR (has_role(auth.uid(),'supervisor'::app_role)
+                  AND public.user_can_access_filial_nome(t.filial)))
+    )
+  );
+
+-- 6.8 opportunity_items ----------------------------------------------
+DROP POLICY IF EXISTS opportunity_items_access ON public.opportunity_items;
+CREATE POLICY opportunity_items_access ON public.opportunity_items
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.opportunities o
+        JOIN public.tasks t ON t.id = o.task_id
+       WHERE o.id = opportunity_items.opportunity_id
+         AND (t.created_by = auth.uid()
+              OR has_role(auth.uid(),'manager'::app_role)
+              OR has_role(auth.uid(),'admin'::app_role)
+              OR (has_role(auth.uid(),'supervisor'::app_role)
+                  AND public.user_can_access_filial_nome(t.filial)))
+    )
+  ) WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.opportunities o
+        JOIN public.tasks t ON t.id = o.task_id
+       WHERE o.id = opportunity_items.opportunity_id
+         AND (t.created_by = auth.uid()
+              OR has_role(auth.uid(),'manager'::app_role)
+              OR has_role(auth.uid(),'admin'::app_role)
+              OR (has_role(auth.uid(),'supervisor'::app_role)
+                  AND public.user_can_access_filial_nome(t.filial)))
+    )
+  );
+
+-- 6.9 pops_machines ---------------------------------------------------
+DROP POLICY IF EXISTS pops_machines_select_scope ON public.pops_machines;
+CREATE POLICY pops_machines_select_scope ON public.pops_machines
+  FOR SELECT USING (
+    CASE (public.pops_scope() ->> 'scope')
+      WHEN 'global' THEN true
+      ELSE (pops_filial_id IS NOT NULL
+            AND public.user_can_access_filial(pops_filial_id))
+    END
+  );
+
+-- 6.10 pops_client_assignments ---------------------------------------
+DROP POLICY IF EXISTS pops_client_assignments_select_scope ON public.pops_client_assignments;
+CREATE POLICY pops_client_assignments_select_scope ON public.pops_client_assignments
+  FOR SELECT USING (
+    CASE (public.pops_scope() ->> 'scope')
+      WHEN 'global' THEN true
+      WHEN 'self'   THEN rac_user_id = (SELECT auth.uid())
+      WHEN 'filial' THEN EXISTS (
+        SELECT 1
+          FROM public.pops_machines m
+          JOIN public.pops_import_rows r ON r.confirmed_machine_id = m.id
+          JOIN public.client_equipment e ON e.id = m.equipment_id
+         WHERE m.program_id = pops_client_assignments.program_id
+           AND r.pops_client_code_norm = pops_client_assignments.pops_client_code_norm
+           AND public.user_can_access_filial(e.filial_id)
+      )
+      ELSE false
+    END
+  );
 ```
 
-Ponto de atenção: `my_day_scope()` muda de assinatura de retorno (nova coluna). Como o retorno é `TABLE`, é preciso `DROP FUNCTION public.my_day_scope()` antes do `CREATE`, e recriar na mesma migration todas as funções que fazem `SELECT * FROM my_day_scope()` — serão revisadas e recriadas com `SELECT` de colunas nomeadas para não quebrar. Alternativa mais segura, a decidir: **não** alterar `my_day_scope()` na M2 e criar `my_day_scope_v2()` , deixando a troca dos consumidores para a M3. Recomendação: seguir a alternativa v2.
+## Não alterado nesta migration
 
-## 2, 3. RLS alteradas — regra antiga x regra nova
+- `my_day_scope()` original, `get_supervisor_filial_id`, `get_user_filial_id`, `has_role` e todo o RBAC.
+- Todas as RPCs da M3 (métricas, gestão, tarefas, clientes, CRM, POPS, Meu Dia, Regularização).
+- `equipment_regularization_batches/items`, `pops_import_rows`, Parque de Máquinas, `tasks`, `profiles`, `task_equipment`, `task_access_metadata`, `can_view_opportunity`.
+- Nenhum dado: nenhum INSERT/UPDATE em `user_filiais` ou `profiles`; o Diogo continua somente com Caiapônia.
+- Nenhum arquivo de frontend.
 
-| Tabela / policy | Regra antiga | Regra nova |
-|---|---|---|
-| `campaign_clients` select/insert/update | `supervisor AND filial_id = get_supervisor_filial_id(auth.uid())` | `supervisor AND user_can_access_filial(filial_id)` |
-| `special_conditions` select/insert/update/delete | idem | idem |
-| `visit_schedules` select/insert/update/delete | idem | idem |
-| `task_followups` select/insert/update | idem (com `(SELECT auth.uid())`) | `supervisor AND user_can_access_filial(filial_id)` (mantendo o wrapper `(SELECT ...)`) |
-| `trainings` select/update/delete | `supervisor AND NOT (filial_id IS DISTINCT FROM get_supervisor_filial_id(...))` | `supervisor AND user_can_access_filial(filial_id)` |
-| `clients` select/update | `EXISTS(profiles viewer/p1 … viewer.filial_id = filial do criador)` | `supervisor AND user_can_access_filial((SELECT filial_id FROM profiles WHERE user_id = clients.created_by))` |
-| `opportunities` select/insert | `supervisor AND EXISTS(profiles JOIN filiais … t.filial = f.nome)` | `supervisor AND user_can_access_filial_nome(t.filial)` (para `opportunities.filial` no select, idem sobre a própria coluna) |
-| `opportunity_items` (ALL) + insert | idem via join tasks/filiais | `supervisor AND user_can_access_filial_nome(t.filial)` |
-| `pops_machines` select | `pops_filial_id = (pops_scope()->>'filial_id')::uuid` | `pops_filial_id IS NOT NULL AND user_can_access_filial(pops_filial_id)` (ramo `global` inalterado) |
-| `pops_client_assignments` select | subquery com `e.filial_id = (pops_scope()->>'filial_id')::uuid` | mesma subquery com `user_can_access_filial(e.filial_id)` |
-| `team_vacations` insert | `can_insert_vacation(filial_id)` compara `p.filial_id = p_filial_id` | função adaptada: `user_can_access_filial(p_filial_id)` no ramo não-global |
-| `equipment_regularization_batches/items` | já usam `can_view_equipment_park()` / `can_*_equipment_regularization()`, sem filtro por filial | **sem alteração** (classe C do plano) |
-| `pops_import_rows` | `pops_is_manager()` | **sem alteração** |
-| `profiles_select_supervisor_filial`, `secure_task_select_enhanced`, `task_equipment`, `task_access_metadata`, `can_view_opportunity` | comparações de filial única | **fora da M2** — dependem de `tasks.filial` texto e de RPCs; entram na M3 junto com os consumidores |
+## Bateria de testes após a aplicação (em `BEGIN … ROLLBACK`)
 
-Funções auxiliares também adaptadas na M2 (usadas dentro das RLS acima): `can_insert_vacation`, `user_same_filial`.
-`get_supervisor_filial_id` e `get_user_filial_id` **permanecem** intactas (passam a significar "filial principal").
-
-## 4. Impacto esperado por módulo
-
-| Módulo | Antes | Depois |
-|---|---|---|
-| Campanhas / Condições Especiais | supervisor vê só a filial principal | vê todas as filiais habilitadas |
-| CRM (programação de visitas, retornos, treinamentos) | idem | idem |
-| Clientes / Oportunidades | supervisor vê criadores da mesma filial | vê criadores de qualquer filial habilitada |
-| POPS | escopo `filial` = 1 filial | escopo `filial` = conjunto de filiais |
-| Férias | inserção só na filial principal | inserção em qualquer filial habilitada |
-| Meu Dia | inalterado nesta etapa (`my_day_scope_v2` criada, consumidores na M3) | — |
-| Parque / Regularização / Relatórios / Tarefas | **inalterados** (M3) | — |
-| Admin/Manager | global | global, sem qualquer mudança |
-
-## 5. Testes de segurança e regressão (executados em `BEGIN … ROLLBACK`)
-
-| Teste | Esperado |
-|---|---|
-| Usuário com 1 filial (rac/supervisor/csa) | contagem de linhas visíveis em cada tabela do item 2 idêntica ao baseline pré-M2 |
-| Usuário com 2 filiais (vínculo criado só dentro da transação) | passa a ver linhas das duas filiais; `user_can_access_filial` true para ambas |
-| Terceira filial não vinculada | `user_can_access_filial` false; SELECT direto retorna 0 linhas; INSERT com aquela `filial_id` recusado |
-| Admin/manager | contagens globais idênticas ao baseline, indiferentes a `user_filiais` |
-| Forçar filial não autorizada | INSERT/UPDATE em `campaign_clients`, `visit_schedules`, `special_conditions`, `team_vacations` com `filial_id` alheio → violação de RLS |
-| `user_same_filial` | true entre usuários que compartilham qualquer filial; false quando não há interseção |
-| `pops_scope` / `my_day_scope_v2` | `scope` inalterado por role; `filial_ids` contém principal + adicionais; `filial_id` continua sendo a principal |
-| Vínculo desativado no meio da transação | acesso cessa na consulta seguinte |
-| Performance | `EXPLAIN ANALYZE` das listagens de `visit_schedules`, `task_followups` e `pops_machines` sem degradação relevante |
-
-## 6. Fora do escopo da M2
-
-RPCs da M3, qualquer alteração de frontend, configuração multi-filial do Diogo, e qualquer nova permissão global.
-
-## 7. Entregável antes da execução
-
-A migration M2 completa (funções + `DROP/CREATE POLICY` de cada policy da tabela do item 2, em um único bloco) será apresentada para aprovação antes de qualquer execução, junto com a decisão sobre `my_day_scope` v2 vs. alteração in-place.
+1. Baseline por role (1 filial): contagens de `campaign_clients`, `special_conditions`, `visit_schedules`, `task_followups`, `trainings`, `clients`, `opportunities`, `pops_machines` iguais às de antes da M2.
+2. Vínculo adicional criado apenas dentro da transação: usuário passa a ver as duas filiais.
+3. Terceira filial: `user_can_access_filial` false, SELECT vazio, INSERT recusado.
+4. Admin/manager: contagens globais idênticas, indiferentes a `user_filiais`.
+5. Tentativa de forçar `filial_id` alheio em insert/update: violação de RLS.
+6. `user_same_filial`, `pops_scope`, `my_day_scope_v2`: interseção correta, `scope` inalterado, `filial_id` = principal.
+7. Desativação do vínculo dentro da transação: acesso cessa na consulta seguinte.
+8. `EXPLAIN ANALYZE` das listagens principais sem degradação relevante.
