@@ -1,266 +1,137 @@
-# Acesso Multi-Filial Controlado (funcionalidade geral)
+# M2 — Escopo multi-filial nas funções-base e nas RLS mapeadas (desenho, não executado)
 
-Multi-filial = **escopo de dados**. Não cria role, não dá acesso global. Todo usuário tem 1 filial principal (`profiles.filial_id`) e 0..N filiais adicionais habilitadas pelo administrador.
+Princípio: onde hoje existe **uma** filial (`profiles.filial_id`), passa a existir o **conjunto** `get_user_filial_ids()` (principal + adicionais ativas). Admin e manager continuam globais e são avaliados **antes** de qualquer verificação de filial. Nenhuma role muda, nenhum acesso global novo é criado. Para quem tem só a filial principal, o conjunto tem 1 elemento — resultado idêntico ao atual.
 
-## 1. Desenho final da arquitetura
-
-```text
-profiles.filial_id  ──┐
-                      ├──> get_user_filial_ids(user_id) -> uuid[]   (fonte única de verdade)
-user_filiais(active) ─┘         │
-                                ├──> user_can_access_filial(filial_id, user_id) -> boolean
-                                └──> user_can_access_filial_nome(nome text) -> boolean  (tasks.filial é texto)
-```
-
-Toda RLS/RPC que hoje compara `filial_id = <filial do usuário>` passa a chamar `user_can_access_filial(...)`. Nenhum módulo implementa lógica própria. Usuários com direito global (admin/manager) continuam decidindo por `has_role`, antes e independentemente dessas funções.
-
-## 2. Estrutura exata da tabela + Migration M1 (completa)
+## 1. Funções-base — versão final
 
 ```sql
--- 1) Tabela
-create table public.user_filiais (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
-  filial_id uuid not null references public.filiais(id) on delete cascade,
-  active boolean not null default true,
-  notes text,
-  created_by uuid,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deactivated_at timestamptz,
-  deactivated_by uuid,
-  unique (user_id, filial_id)
-);
-
--- 2) Grants
-grant select on public.user_filiais to authenticated;
-grant all on public.user_filiais to service_role;
-
--- 3) RLS
-alter table public.user_filiais enable row level security;
-
-create policy user_filiais_select_self_or_admin on public.user_filiais
-  for select to authenticated
-  using (user_id = (select auth.uid())
-         or public.has_role((select auth.uid()),'manager')
-         or public.has_role((select auth.uid()),'admin'));
-
-create policy user_filiais_write_admin on public.user_filiais
-  for all to authenticated
-  using (public.has_role((select auth.uid()),'manager') or public.has_role((select auth.uid()),'admin'))
-  with check (public.has_role((select auth.uid()),'manager') or public.has_role((select auth.uid()),'admin'));
-
-create index user_filiais_user_active_idx on public.user_filiais (user_id) where active;
-
--- 4) Trigger de auditoria + bloqueio da filial principal
-create or replace function public.user_filiais_guard()
-returns trigger language plpgsql security definer set search_path = public as $$
-declare v_primary uuid;
-begin
-  select filial_id into v_primary from public.profiles where user_id = new.user_id;
-  if new.active and new.filial_id = v_primary then
-    raise exception 'Filial principal não pode ser cadastrada como adicional' using errcode='23514';
-  end if;
-  new.updated_at := now();
-  if tg_op = 'UPDATE' then
-    if old.active and not new.active then
-      new.deactivated_at := now(); new.deactivated_by := auth.uid();
-    elsif not old.active and new.active then
-      new.deactivated_at := null; new.deactivated_by := null;
-      new.created_at := old.created_at; new.created_by := old.created_by; -- preserva origem
-    end if;
-  end if;
-  return new;
-end $$;
-
-create trigger user_filiais_guard_trg before insert or update on public.user_filiais
-  for each row execute function public.user_filiais_guard();
-
--- 5) Troca de filial principal: desativa vínculo adicional duplicado
-create or replace function public.profiles_sync_primary_filial()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  if new.filial_id is not null and new.filial_id is distinct from old.filial_id then
-    update public.user_filiais
-       set active = false
-     where user_id = new.user_id and filial_id = new.filial_id and active;
-  end if;
-  return new;
-end $$;
-
-create trigger profiles_sync_primary_filial_trg after update of filial_id on public.profiles
-  for each row execute function public.profiles_sync_primary_filial();
-
--- 6) Funções centrais
-create or replace function public.get_user_filial_ids(p_user_id uuid default auth.uid())
-returns uuid[] language plpgsql stable security definer set search_path = public as $$
-declare v_ids uuid[];
-begin
-  if p_user_id is distinct from auth.uid()
-     and not (public.has_role(auth.uid(),'manager') or public.has_role(auth.uid(),'admin')) then
-    raise exception 'Acesso negado' using errcode='42501';
-  end if;
-  select array_remove(array_agg(distinct fid), null) into v_ids from (
-    select p.filial_id as fid from public.profiles p
-      where p.user_id = p_user_id and p.approval_status='approved' and p.employment_status='active'
-    union
-    select uf.filial_id from public.user_filiais uf
-      join public.profiles p2 on p2.user_id = uf.user_id
-      where uf.user_id = p_user_id and uf.active
-        and p2.approval_status='approved' and p2.employment_status='active'
-  ) s;
-  return coalesce(v_ids, '{}'::uuid[]);
-end $$;
-
-create or replace function public.user_can_access_filial(p_filial_id uuid, p_user_id uuid default auth.uid())
-returns boolean language sql stable security definer set search_path = public as $$
-  select p_filial_id is not null
-     and p_filial_id = any (public.get_user_filial_ids(p_user_id));
+-- user_same_filial: interseção de conjuntos em vez de igualdade
+CREATE OR REPLACE FUNCTION public.user_same_filial(target_user_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT target_user_id IS NOT NULL
+     AND EXISTS (
+       SELECT 1
+       FROM unnest(public.get_user_filial_ids(auth.uid())) a(fid)
+       WHERE a.fid = ANY (public.get_user_filial_ids_internal(target_user_id))
+     );
 $$;
 
--- Por nome: resolve para filial_id; ambíguo ou inexistente => false
-create or replace function public.user_can_access_filial_nome(p_nome text)
-returns boolean language plpgsql stable security definer set search_path = public as $$
-declare v_id uuid; v_count int;
-begin
-  if p_nome is null or btrim(p_nome) = '' then return false; end if;
-  select count(*), min(f.id) into v_count, v_id from public.filiais f
-   where lower(btrim(f.nome)) = lower(btrim(p_nome));
-  if v_count <> 1 then return false; end if;
-  return public.user_can_access_filial(v_id);
-end $$;
+-- helper interno: mesma lógica de get_user_filial_ids, SEM a checagem de chamador
+-- (necessário porque user_same_filial precisa ler o conjunto de OUTRO usuário)
+CREATE OR REPLACE FUNCTION public.get_user_filial_ids_internal(p_user_id uuid)
+RETURNS uuid[] LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT coalesce(array_remove(array_agg(DISTINCT fid), NULL), '{}'::uuid[])
+  FROM (
+    SELECT p.filial_id AS fid FROM public.profiles p
+     WHERE p.user_id = p_user_id AND p.approval_status='approved' AND p.employment_status='active'
+    UNION
+    SELECT uf.filial_id FROM public.user_filiais uf
+      JOIN public.profiles p2 ON p2.user_id = uf.user_id
+     WHERE uf.user_id = p_user_id AND uf.active
+       AND p2.approval_status='approved' AND p2.employment_status='active'
+  ) s;
+$$;
+REVOKE EXECUTE ON FUNCTION public.get_user_filial_ids_internal(uuid) FROM PUBLIC;
+-- NÃO concedido a authenticated: uso apenas interno por outras funções SECURITY DEFINER.
 
--- 7) RPC administrativa
-create or replace function public.set_user_filiais(target_user_id uuid, filial_ids uuid[])
-returns jsonb language plpgsql security definer set search_path = public as $$
-declare v_primary uuid;
-begin
-  if not (public.has_role(auth.uid(),'manager') or public.has_role(auth.uid(),'admin')) then
-    raise exception 'Acesso negado' using errcode='42501';
-  end if;
-  select filial_id into v_primary from public.profiles where user_id = target_user_id;
+-- pops_scope: acrescenta filial_ids, mantém filial_id (principal) para compatibilidade
+CREATE OR REPLACE FUNCTION public.pops_scope()
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_uid uuid := (SELECT auth.uid()); v_enabled boolean; v_filial uuid;
+        v_scope text := 'none'; v_ids uuid[];
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('scope','none','filial_id',NULL,'filial_ids','[]'::jsonb,'user_id',NULL);
+  END IF;
+  SELECT (p.approval_status='approved' AND p.employment_status='active'), p.filial_id
+    INTO v_enabled, v_filial FROM public.profiles p WHERE p.user_id = v_uid;
+  IF COALESCE(v_enabled,false) = false THEN
+    RETURN jsonb_build_object('scope','none','filial_id',NULL,'filial_ids','[]'::jsonb,'user_id',v_uid);
+  END IF;
+  IF public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager') THEN v_scope := 'global';
+  ELSIF public.has_role(v_uid,'supervisor') OR public.has_role(v_uid,'rac')
+     OR public.has_role(v_uid,'cpa')       OR public.has_role(v_uid,'csa') THEN v_scope := 'filial';
+  END IF;
+  v_ids := public.get_user_filial_ids_internal(v_uid);
+  RETURN jsonb_build_object('scope',v_scope,'filial_id',v_filial,
+                            'filial_ids', to_jsonb(v_ids), 'user_id', v_uid);
+END $$;
 
-  update public.user_filiais set active = false
-   where user_id = target_user_id and active
-     and filial_id <> all (coalesce(filial_ids,'{}'::uuid[]));
-
-  insert into public.user_filiais (user_id, filial_id, active, created_by)
-  select target_user_id, fid, true, auth.uid()
-    from unnest(coalesce(filial_ids,'{}'::uuid[])) fid
-   where fid is distinct from v_primary
-  on conflict (user_id, filial_id)
-    do update set active = true, updated_at = now();
-
-  insert into public.security_audit_log (event_type, user_id, target_user_id, metadata)
-  values ('user_filiais_updated', auth.uid(), target_user_id,
-          jsonb_build_object('filial_ids', filial_ids, 'primary', v_primary));
-
-  return jsonb_build_object('success', true,
-    'filial_ids', public.get_user_filial_ids(target_user_id));
-end $$;
-
-grant execute on function public.set_user_filiais(uuid, uuid[]) to authenticated;
-grant execute on function public.get_user_filial_ids(uuid) to authenticated;
-grant execute on function public.user_can_access_filial(uuid, uuid) to authenticated;
-grant execute on function public.user_can_access_filial_nome(text) to authenticated;
+-- my_day_scope: acrescenta coluna filial_ids, mantém filial_id
+CREATE OR REPLACE FUNCTION public.my_day_scope()
+RETURNS TABLE(user_id uuid, role text, filial_id uuid, filial_ids uuid[], scope text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_uid uuid := auth.uid(); v_role text; v_filial uuid; v_found boolean;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Acesso negado: usuário não autenticado' USING ERRCODE='42501'; END IF;
+  SELECT p.filial_id, true INTO v_filial, v_found FROM public.profiles p
+   WHERE p.user_id = v_uid AND p.approval_status='approved' AND p.employment_status='active';
+  IF NOT COALESCE(v_found,false) THEN
+    RAISE EXCEPTION 'Acesso negado: usuário não aprovado ou inativo' USING ERRCODE='42501';
+  END IF;
+  v_role := public.get_user_role();
+  RETURN QUERY SELECT v_uid, v_role, v_filial,
+    public.get_user_filial_ids_internal(v_uid),
+    CASE WHEN v_role IN ('admin','manager') THEN 'global'
+         WHEN v_role = 'supervisor' THEN 'filial' ELSE 'self' END;
+END $$;
 ```
 
-Notas:
-- **Sem `is_primary`**: a principal fica exclusivamente em `profiles.filial_id`.
-- Remover acesso = `active = false` com `deactivated_at`/`deactivated_by`; reativar limpa esses campos e preserva `created_at`/`created_by`.
-- `get_user_filial_ids(p_user_id)` só aceita outro usuário se o chamador for manager/admin (item 5 da sua lista); funções internas SECURITY DEFINER usam a forma sem argumento.
-- Débito técnico registrado: migrar `tasks.filial` (texto) para `tasks.filial_id`.
+Ponto de atenção: `my_day_scope()` muda de assinatura de retorno (nova coluna). Como o retorno é `TABLE`, é preciso `DROP FUNCTION public.my_day_scope()` antes do `CREATE`, e recriar na mesma migration todas as funções que fazem `SELECT * FROM my_day_scope()` — serão revisadas e recriadas com `SELECT` de colunas nomeadas para não quebrar. Alternativa mais segura, a decidir: **não** alterar `my_day_scope()` na M2 e criar `my_day_scope_v2()` , deixando a troca dos consumidores para a M3. Recomendação: seguir a alternativa v2.
 
+## 2, 3. RLS alteradas — regra antiga x regra nova
 
-## 4. Funções existentes: substituídas ou adaptadas
+| Tabela / policy | Regra antiga | Regra nova |
+|---|---|---|
+| `campaign_clients` select/insert/update | `supervisor AND filial_id = get_supervisor_filial_id(auth.uid())` | `supervisor AND user_can_access_filial(filial_id)` |
+| `special_conditions` select/insert/update/delete | idem | idem |
+| `visit_schedules` select/insert/update/delete | idem | idem |
+| `task_followups` select/insert/update | idem (com `(SELECT auth.uid())`) | `supervisor AND user_can_access_filial(filial_id)` (mantendo o wrapper `(SELECT ...)`) |
+| `trainings` select/update/delete | `supervisor AND NOT (filial_id IS DISTINCT FROM get_supervisor_filial_id(...))` | `supervisor AND user_can_access_filial(filial_id)` |
+| `clients` select/update | `EXISTS(profiles viewer/p1 … viewer.filial_id = filial do criador)` | `supervisor AND user_can_access_filial((SELECT filial_id FROM profiles WHERE user_id = clients.created_by))` |
+| `opportunities` select/insert | `supervisor AND EXISTS(profiles JOIN filiais … t.filial = f.nome)` | `supervisor AND user_can_access_filial_nome(t.filial)` (para `opportunities.filial` no select, idem sobre a própria coluna) |
+| `opportunity_items` (ALL) + insert | idem via join tasks/filiais | `supervisor AND user_can_access_filial_nome(t.filial)` |
+| `pops_machines` select | `pops_filial_id = (pops_scope()->>'filial_id')::uuid` | `pops_filial_id IS NOT NULL AND user_can_access_filial(pops_filial_id)` (ramo `global` inalterado) |
+| `pops_client_assignments` select | subquery com `e.filial_id = (pops_scope()->>'filial_id')::uuid` | mesma subquery com `user_can_access_filial(e.filial_id)` |
+| `team_vacations` insert | `can_insert_vacation(filial_id)` compara `p.filial_id = p_filial_id` | função adaptada: `user_can_access_filial(p_filial_id)` no ramo não-global |
+| `equipment_regularization_batches/items` | já usam `can_view_equipment_park()` / `can_*_equipment_regularization()`, sem filtro por filial | **sem alteração** (classe C do plano) |
+| `pops_import_rows` | `pops_is_manager()` | **sem alteração** |
+| `profiles_select_supervisor_filial`, `secure_task_select_enhanced`, `task_equipment`, `task_access_metadata`, `can_view_opportunity` | comparações de filial única | **fora da M2** — dependem de `tasks.filial` texto e de RPCs; entram na M3 junto com os consumidores |
 
-| Função | Ação |
+Funções auxiliares também adaptadas na M2 (usadas dentro das RLS acima): `can_insert_vacation`, `user_same_filial`.
+`get_supervisor_filial_id` e `get_user_filial_id` **permanecem** intactas (passam a significar "filial principal").
+
+## 4. Impacto esperado por módulo
+
+| Módulo | Antes | Depois |
+|---|---|---|
+| Campanhas / Condições Especiais | supervisor vê só a filial principal | vê todas as filiais habilitadas |
+| CRM (programação de visitas, retornos, treinamentos) | idem | idem |
+| Clientes / Oportunidades | supervisor vê criadores da mesma filial | vê criadores de qualquer filial habilitada |
+| POPS | escopo `filial` = 1 filial | escopo `filial` = conjunto de filiais |
+| Férias | inserção só na filial principal | inserção em qualquer filial habilitada |
+| Meu Dia | inalterado nesta etapa (`my_day_scope_v2` criada, consumidores na M3) | — |
+| Parque / Regularização / Relatórios / Tarefas | **inalterados** (M3) | — |
+| Admin/Manager | global | global, sem qualquer mudança |
+
+## 5. Testes de segurança e regressão (executados em `BEGIN … ROLLBACK`)
+
+| Teste | Esperado |
 |---|---|
-| `get_user_filial_id()` | **mantida** — passa a significar explicitamente "filial principal" |
-| `get_supervisor_filial_id(uuid)` | **mantida** para compatibilidade, mas deixa de ser usada em RLS de escopo |
-| `user_same_filial(uuid)` | **adaptada** — passa a testar interseção de `get_user_filial_ids` dos dois usuários |
-| `pops_scope()` | **adaptada** — adiciona `filial_ids` (array) mantendo `filial_id` |
-| `my_day_scope()` | **adaptada** — adiciona coluna `filial_ids` mantendo `filial_id` |
+| Usuário com 1 filial (rac/supervisor/csa) | contagem de linhas visíveis em cada tabela do item 2 idêntica ao baseline pré-M2 |
+| Usuário com 2 filiais (vínculo criado só dentro da transação) | passa a ver linhas das duas filiais; `user_can_access_filial` true para ambas |
+| Terceira filial não vinculada | `user_can_access_filial` false; SELECT direto retorna 0 linhas; INSERT com aquela `filial_id` recusado |
+| Admin/manager | contagens globais idênticas ao baseline, indiferentes a `user_filiais` |
+| Forçar filial não autorizada | INSERT/UPDATE em `campaign_clients`, `visit_schedules`, `special_conditions`, `team_vacations` com `filial_id` alheio → violação de RLS |
+| `user_same_filial` | true entre usuários que compartilham qualquer filial; false quando não há interseção |
+| `pops_scope` / `my_day_scope_v2` | `scope` inalterado por role; `filial_ids` contém principal + adicionais; `filial_id` continua sendo a principal |
+| Vínculo desativado no meio da transação | acesso cessa na consulta seguinte |
+| Performance | `EXPLAIN ANALYZE` das listagens de `visit_schedules`, `task_followups` e `pops_machines` sem degradação relevante |
 
-## 5. RPCs afetadas
+## 6. Fora do escopo da M2
 
-Escopo por filial (passam a usar as funções centrais):
-- Métricas/relatórios: `get_activity_metrics_v2`, `get_funnel_metrics_v2`, `get_tasks_metrics_v2`, `get_reports_dataset_v2`, `get_performance_by_filial_v2`, `get_performance_by_seller_v2`, `get_consolidated_sales_counts_v2`, `get_sales_breakdown`, `get_sales_funnel_counts`, `get_prospects_aggregate`, `get_task_type_counts`.
-- Gestão: `get_management_seller_summary`, `get_management_client_details`, `get_management_product_analysis`, `get_service_opportunities_summary`, `get_service_opportunities_details`.
-- Tarefas/clientes/mídia: `get_tasks_optimized`, `get_secure_tasks_paginated`, `get_secure_tasks_paginated_filtered`, `get_secure_tasks_enhanced`, `get_secure_task_by_id`, `get_completely_secure_tasks`, `get_supervisor_filial_tasks`, `get_secure_clients_enhanced`, `get_secure_clients_with_masking`, `get_secure_customer_data_*`, `can_access_task_related_data`, `can_access_customer_data`, `can_access_media_object`, `get_secure_task_media`.
-- CRM/agenda/treinos/férias: `get_weekly_followups_agenda`, `get_trainings_stats`, `trainings_enforce_snapshot`, `can_insert_vacation`, `get_filial_users`, `get_filial_user_counts`, `get_secure_user_directory`, `get_user_directory_with_fallback`.
-- POPS: `pops_scope`, `pops_can_read_machine`, `pops_portfolio_clients`, `pops_portfolio_client_machines`, `pops_goal_summary`, `pops_executor_results`, `pops_import_distribution`.
-- Meu Dia: `my_day_scope`, `my_day_summary_build`, `my_day_details_build`, `get_my_day_team_summary`.
-- Regularização: `equipment_regularization_pending_kpis/clients/machines`, `..._create_batch`, `..._get_batch`.
+RPCs da M3, qualquer alteração de frontend, configuração multi-filial do Diogo, e qualquer nova permissão global.
 
-## 6. RLS afetadas
+## 7. Entregável antes da execução
 
-`campaign_clients`, `clients`, `opportunities`, `opportunity_items`, `special_conditions`, `task_followups`, `trainings`, `team_vacations`, `visit_schedules`, `pops_machines`, `pops_client_assignments`, `pops_import_rows`, `equipment_regularization_batches/items`.
-
-Padrão de troca:
-```sql
--- antes
-filial_id = get_supervisor_filial_id(auth.uid())
--- depois
-public.user_can_access_filial(filial_id)
-
--- antes (por nome)
-t.filial = f.nome
--- depois
-public.user_can_access_filial_nome(t.filial)
-```
-
-## 7. Classificação A / B / C
-
-**A. Precisa ser alterado** (restringe a uma filial que deveria ser escopo):
-`user_same_filial`, `pops_scope`, `my_day_scope`, `pops_can_read_machine`, RLS das tabelas do item 6, RPCs de escopo do item 5 (métricas, gestão, tarefas, clientes, CRM, POPS, Meu Dia, Regularização).
-
-**B. Pode ser mantido** (representa a filial principal, não o escopo):
-`get_user_filial_id()`, `get_supervisor_filial_id()`, `create_secure_profile`, `update_user_filial_secure`, `secure_update_profile`, `get_filiais_for_registration`, `special_conditions_status_guard` (guarda de status), gravação de `filial_id` no cadastro de tarefas/treinos/férias (default vem da principal), `mask_customer_*`.
-
-**C. Não deve ser alterado** (já global ou regra independente):
-`can_view_equipment_park` e todo o Parque de Máquinas (`get_equipment_park_paginated`, `get_equipment_park_kpis`, `get_equipment_validation_summary`, `search_client_equipment`, `can_edit_client_equipment`), `has_role` e demais funções de RBAC, `can_perform_admin_action`, `can_modify_user_role`, todo o subsistema de auditoria/segurança (`security_audit_log`, `check_*`), `clients_master`/`search_clients` (base mestre global), `filiais` (catálogo público interno).
-
-## 8. Impacto no frontend
-
-- Novo hook `useUserFiliais()` (React Query, staleTime 10m): `{ primaryFilialId, filialIds, filiais, hasMulti }`.
-- Hooks que hoje leem `profile.filial_id` passam a consumir `filialIds`: `useFilteredConsultants`, `useVacations`, `useTrainings`, `useVisitSchedules`, `useWeeklyAgenda`, `useMyDay`, `usePops`, `useClientEquipment`, `useEquipmentRegularization`, `useServiceOpportunities`, `useManagementData`, `useConsolidatedSalesMetrics`.
-- Telas com filtro de filial passam a listar as filiais permitidas + "Todas as minhas filiais": `MyDay`, `Pops`, `Management`, `Reports`, `PerformanceByFilial/Seller`, `CRM` (Carteira, Agenda, Programação, Treinamentos), `Equipamentos` (Validação e Regularização), `Campaigns`, `Vacations`, `CreateTask` (filial atendida, default = principal).
-- **Gerenciar Usuários**: modal "Filiais" com select da principal + checkboxes múltiplos das adicionais. Exibição na tabela: `Filial principal: Caiapônia` / `Acesso adicional: Planalto Verde` ou `Somente filial principal`.
-- **Revogação imediata de cache**: após `set_user_filiais` (ou troca da principal), a UI executa uma invalidação ampla — `user-filiais`, `profile`, `tasks`, `taskDetails`, `crm*`, `visit-schedules`, `weekly-agenda`, `trainings`, `followups`, `pops*`, `my-day*`, `reports*`, `management*`, `equipment*`, `regularization*`, `campaigns`, `special-conditions`, `vacations` — via helper único `invalidateFilialScopedQueries()` em `useSecurityCache`. O staleTime de 10m continua valendo para navegação normal, mas nunca depois de uma alteração administrativa.
-
-
-## 9. Retrocompatibilidade
-
-`get_user_filial_ids` retorna `[filial principal]` quando não há linha ativa em `user_filiais` — comportamento idêntico ao atual para 100% dos usuários hoje. A migration não insere nenhuma linha em `user_filiais`. Funções antigas continuam existindo com a mesma assinatura.
-
-## 10. Estratégia para usuários globais
-
-Verificado no banco (não apenas no código): as únicas roles globais são **admin** e **manager**. Roles existentes em `user_roles`: sales_consultant (49), supervisor (18), rac (14), manager (11), csa (3), admin (2). Nenhuma policy concede escopo global a outra role (as policies só citam admin, manager e supervisor — este último sempre restrito à filial). Em toda função alterada, o ramo global é avaliado **primeiro** e permanece intocado; `user_can_access_filial` só é consultada quando o usuário não é global.
-
-## 11. Plano de implementação por etapas
-
-1. **M1** — tabela `user_filiais` + grants + RLS + trigger + funções centrais + `set_user_filiais`. Zero mudança de comportamento.
-2. **M2** — adaptar `user_same_filial`, `pops_scope`, `my_day_scope` e as RLS do item 6.
-3. **M3** — adaptar as RPCs de escopo do item 5.
-4. **F1** — `useUserFiliais` + tela administrativa em Gerenciar Usuários.
-5. **F2** — filtros multi-filial nas telas afetadas.
-6. **V1** — validação com o caso Diogo (RAC, principal Caiapônia, adicional Planalto Verde). Consolidação das duas contas fica para etapa posterior, com script de histórico revisado.
-
-## 12. Testes necessários
-
-| Cenário | Esperado |
-|---|---|
-| Usuário com 1 filial (qualquer role não global) | Resultados idênticos aos de hoje em Tarefas, CRM, POPS, Meu Dia, Relatórios, Regularização |
-| Usuário com 2 filiais | Vê dados das duas em todos os módulos; filtro oferece as duas |
-| Terceira filial não vinculada | RPC direta e SELECT direto retornam vazio / erro de permissão (teste feito com token autenticado, não só pela UI) |
-| Remoção da adicional | Acesso à filial removida cessa na próxima consulta, sem apagar histórico |
-| Admin/manager | Continua global, sem influência de `user_filiais` |
-| Escrita em `user_filiais` por não-gestor | Bloqueado por RLS e pela RPC |
-| Performance | `get_equipment_park_paginated` e listagens principais mantêm os tempos atuais (comparar antes/depois) |
-| Troca de filial principal | Vínculo adicional igual à nova principal é desativado automaticamente, sem duplicação |
-| Antiga adicional vira principal | `get_user_filial_ids` não retorna duplicata; `user_filiais` fica sem linha ativa para ela |
-| Remoção pelo admin | Acesso backend cessa na consulta seguinte e a filial deixa de ser oferecida na UI após a invalidação |
-| `tasks.filial` inválido/ambíguo | `user_can_access_filial_nome` retorna false (não libera acesso) |
-| Usuário comum consultando outro `p_user_id` | `get_user_filial_ids` levanta erro 42501 |
-| Reativação de vínculo | `deactivated_at`/`deactivated_by` limpos, `created_at`/`created_by` originais preservados |
+A migration M2 completa (funções + `DROP/CREATE POLICY` de cada policy da tabela do item 2, em um único bloco) será apresentada para aprovação antes de qualquer execução, junto com a decisão sobre `my_day_scope` v2 vs. alteração in-place.
