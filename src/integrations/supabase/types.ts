@@ -4328,6 +4328,10 @@ export type Database = {
       }
       get_user_filial_id: { Args: never; Returns: string }
       get_user_filial_ids: { Args: { p_user_id?: string }; Returns: string[] }
+      get_user_filial_ids_internal: {
+        Args: { p_user_id: string }
+        Returns: string[]
+      }
       get_user_role: { Args: never; Returns: string }
       get_user_security_level: { Args: never; Returns: string }
       get_weekly_followups_agenda: {
@@ -4564,6 +4568,16 @@ export type Database = {
         Args: never
         Returns: {
           filial_id: string
+          role: string
+          scope: string
+          user_id: string
+        }[]
+      }
+      my_day_scope_v2: {
+        Args: never
+        Returns: {
+          filial_id: string
+          filial_ids: string[]
           role: string
           scope: string
           user_id: string
