@@ -368,6 +368,15 @@ const Pops: React.FC = () => {
                 <h2 className="text-base sm:text-lg font-semibold">Carteira de clientes</h2>
                 <Badge variant="secondary">{nf.format(clients.data?.total ?? 0)}</Badge>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportServicedExcel}
+                disabled={exportingExcel}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {exportingExcel ? 'Gerando...' : 'Exportar Excel (Serviçadas)'}
+              </Button>
             </div>
 
             <PopsPortfolioFilters value={filters} onChange={setFilters} />
