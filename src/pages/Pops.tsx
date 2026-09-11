@@ -18,6 +18,7 @@ import {
 } from '@/hooks/usePops';
 import { useProfile } from '@/hooks/useProfile';
 import { buildPopsMachinesPdf } from '@/lib/popsMachinesPdf';
+import { exportPopsServicedExcel } from '@/lib/popsServicedExcel';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
 import { PopsMachineDrawer } from '@/components/pops/PopsMachineDrawer';
 import { PopsPortfolioFilters, type PortfolioFilters } from '@/components/pops/PopsPortfolioFilters';
@@ -117,6 +118,7 @@ const Pops: React.FC = () => {
   const [execUser, setExecUser] = useState<string | null>(null);
   // Seleção de máquinas apenas para geração documental do PDF (não altera registros)
   const [selectedForPdf, setSelectedForPdf] = useState<Record<string, PopsMachineRow>>({});
+  const [exportingExcel, setExportingExcel] = useState(false);
   const { profile } = useProfile();
 
 
@@ -253,6 +255,29 @@ const Pops: React.FC = () => {
   };
 
 
+  /** Excel somente das máquinas serviçadas, conforme os filtros aplicados. */
+  const handleExportServicedExcel = async () => {
+    if (!program?.id) return;
+    setExportingExcel(true);
+    try {
+      const count = await exportPopsServicedExcel({
+        programId: program.id,
+        filialId,
+        platform: applied.platform,
+        client: applied.client,
+        serial: applied.serial,
+        model: applied.model,
+        executedBy: showManagementPanel ? execUser : null,
+      });
+      if (count === 0) toast.info('Nenhuma máquina serviçada encontrada para os filtros aplicados.');
+      else toast.success(`Excel gerado com ${nf.format(count)} máquina(s) serviçada(s).`);
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const highlightedCount = machineList.filter((m) => m.highlight).length;
   const totalPages = Math.max(1, Math.ceil((clients.data?.total ?? 0) / PAGE_SIZE));
   const anyFilterApplied =
@@ -343,6 +368,15 @@ const Pops: React.FC = () => {
                 <h2 className="text-base sm:text-lg font-semibold">Carteira de clientes</h2>
                 <Badge variant="secondary">{nf.format(clients.data?.total ?? 0)}</Badge>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportServicedExcel}
+                disabled={exportingExcel}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {exportingExcel ? 'Gerando...' : 'Exportar Excel (Serviçadas)'}
+              </Button>
             </div>
 
             <PopsPortfolioFilters value={filters} onChange={setFilters} />
