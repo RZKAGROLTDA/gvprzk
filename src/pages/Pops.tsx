@@ -18,6 +18,7 @@ import {
 } from '@/hooks/usePops';
 import { useProfile } from '@/hooks/useProfile';
 import { buildPopsMachinesPdf } from '@/lib/popsMachinesPdf';
+import { exportPopsServicedExcel } from '@/lib/popsServicedExcel';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
 import { PopsMachineDrawer } from '@/components/pops/PopsMachineDrawer';
 import { PopsPortfolioFilters, type PortfolioFilters } from '@/components/pops/PopsPortfolioFilters';
@@ -117,6 +118,7 @@ const Pops: React.FC = () => {
   const [execUser, setExecUser] = useState<string | null>(null);
   // Seleção de máquinas apenas para geração documental do PDF (não altera registros)
   const [selectedForPdf, setSelectedForPdf] = useState<Record<string, PopsMachineRow>>({});
+  const [exportingExcel, setExportingExcel] = useState(false);
   const { profile } = useProfile();
 
 
@@ -252,6 +254,29 @@ const Pops: React.FC = () => {
     }
   };
 
+
+  /** Excel somente das máquinas serviçadas, conforme os filtros aplicados. */
+  const handleExportServicedExcel = async () => {
+    if (!program?.id) return;
+    setExportingExcel(true);
+    try {
+      const count = await exportPopsServicedExcel({
+        programId: program.id,
+        filialId,
+        platform: applied.platform,
+        client: applied.client,
+        serial: applied.serial,
+        model: applied.model,
+        executedBy: showManagementPanel ? execUser : null,
+      });
+      if (count === 0) toast.info('Nenhuma máquina serviçada encontrada para os filtros aplicados.');
+      else toast.success(`Excel gerado com ${nf.format(count)} máquina(s) serviçada(s).`);
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
 
   const highlightedCount = machineList.filter((m) => m.highlight).length;
   const totalPages = Math.max(1, Math.ceil((clients.data?.total ?? 0) / PAGE_SIZE));
