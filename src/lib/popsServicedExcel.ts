@@ -98,15 +98,21 @@ const fetchServiceNames = async (ids: string[]) => {
   return map;
 };
 
-const fetchExecutorNames = async (ids: string[]) => {
+/**
+ * Nomes dos executores (PM RAC) via RPC de resultados por executor — respeita o
+ * escopo do usuário e não depende de leitura direta de profiles.
+ */
+const fetchExecutorNames = async (f: PopsServicedExcelFilters) => {
   const map = new Map<string, string>();
-  if (ids.length === 0) return map;
-  const { data, error } = await supabase
-    .from('user_directory_cache')
-    .select('user_id, name')
-    .in('user_id', ids);
+  const { data, error } = await supabase.rpc('pops_executor_results', {
+    p_program_id: f.programId,
+    p_filial_id: f.filialId ?? undefined,
+  });
   if (error) throw error;
-  (data ?? []).forEach((u) => map.set(u.user_id, u.name));
+  const payload = (data ?? {}) as { rows?: { user_id: string; executor_name: string }[] };
+  (payload.rows ?? []).forEach((r) => {
+    if (r.user_id) map.set(r.user_id, r.executor_name ?? '');
+  });
   return map;
 };
 
@@ -118,7 +124,7 @@ export async function exportPopsServicedExcel(
 
   const [services, executors] = await Promise.all([
     fetchServiceNames([...new Set(machines.map((m) => m.final_service_id).filter(Boolean) as string[])]),
-    fetchExecutorNames([...new Set(machines.map((m) => m.executed_by).filter(Boolean) as string[])]),
+    fetchExecutorNames(f),
   ]);
 
   const data = machines.map((m, i) => ({
