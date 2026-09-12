@@ -124,7 +124,7 @@ export async function exportPopsServicedExcel(
 
   const [services, executors] = await Promise.all([
     fetchServiceNames([...new Set(machines.map((m) => m.final_service_id).filter(Boolean) as string[])]),
-    fetchExecutorNames([...new Set(machines.map((m) => m.executed_by).filter(Boolean) as string[])]),
+    fetchExecutorNames(f),
   ]);
 
   const data = machines.map((m, i) => ({
