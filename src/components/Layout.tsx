@@ -11,6 +11,7 @@ import { useSessionSecurity } from '@/hooks/useSessionSecurity';
 import { getVersionInfo, formatVersion } from '@/config/version';
 import { ForceUpdateButton } from '@/components/ForceUpdateButton';
 import { getRoleLabel, isRacEquivalentRole } from '@/lib/roles';
+import { FilialSelector } from '@/components/FilialSelector';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -151,6 +152,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
             </div>
             
             <div className="flex items-center space-x-2 sm:space-x-4">
+              <FilialSelector />
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                   <User className="h-4 w-4 text-primary-foreground" />
