@@ -1,75 +1,73 @@
-# M3 — Acesso Multi-Filial no Frontend (levantamento e plano)
+# M3 — Etapa 3: aplicar a Filial Ativa nas telas (diagnóstico, sem implementar)
 
-Etapa de diagnóstico. Nenhuma alteração foi feita.
+## O que o levantamento mostrou
 
-## Situação encontrada
+Hoje quase nenhuma tela usa a filial principal do cadastro para filtrar. O padrão atual é:
+o filtro de filial começa em "Todos" (sem filtro) e é o banco (M1/M2) que limita o usuário
+às filiais permitidas. Ou seja: o multi-filial já enxerga as duas filiais somadas, mas não
+consegue **focar** em uma delas, porque nada no frontend está ligado à Filial Ativa.
 
-O sistema hoje carrega o cadastro do usuário com **uma única filial** (a principal) e usa esse valor
-para travar escopo, preencher formulários e montar filtros. As regras de banco já aprovadas (M1/M2)
-reconhecem filiais adicionais, mas a interface não sabe que elas existem.
+Três exceções que hoje travam na filial principal:
 
-### Já prontas (nada a mudar, só passar a filial ativa)
-Telas cujos filtros de filial já são livres e apenas obedecem às regras do banco:
-- POPS (filtro de filial próprio)
-- CRM: Agenda Semanal, Programação, Retornos, Carteira de Clientes, Treinamentos (filtro gerencial)
-- Relatórios / KPIs (filtro de filial por nome ou código)
-- Validação do Parque e Regularização (filtro de filial próprio)
-- Meu Dia — Minha equipe (filtro de filial já enviado ao banco)
+- Lista de consultores/equipe (`useFilteredConsultants`): supervisor é fixado na filial principal.
+- Treinamentos: supervisor é fixado na filial principal.
+- Análise Gerencial: supervisor é fixado na filial principal e o seletor fica desabilitado.
 
-Consequência: para quem tiver 2 filiais, essas telas já retornam as duas somadas, mas ainda **não existe
-um lugar para escolher qual delas olhar** de forma consistente, e algumas listas auxiliares ficam incompletas.
+E um caso de formulário: Programação de visita pré-preenche a filial com a principal
+(fora do escopo desta etapa, por ser criação de registro).
 
-### Ainda presas à filial principal (precisam mudar)
-- **Lista de colegas/consultores** usada em vários filtros: monta a lista só da filial principal, então
-  vendedores da segunda filial não aparecem para filtrar.
-- **Treinamentos**: o escopo do supervisor é fixado na filial principal.
-- **Criação de tarefas** (Ligação, Visita de Campo, Visita Técnica, Checklist de Oficina): a filial vem
-  automaticamente do cadastro, sem opção de registrar na segunda filial.
-- **Análise Gerencial**: supervisor é amarrado à filial principal e é bloqueado se ela estiver vazia.
-- **Indicadores de vendas consolidados**: calculados só com a filial principal.
-- **Férias**: o formulário trava na filial principal.
-- **Cabeçalho do aplicativo**: mostra apenas o nome da filial principal, sem indicar as demais.
+## Tela por tela
 
-## Plano da M3 (por etapas, cada uma autorizada por você)
+| Tela | Comportamento atual | Alteração necessária | Risco |
+|---|---|---|---|
+| POPS | Filtro de filial local começa em "Todos"; metas, carteira e executores recebem esse valor | Iniciar o filtro na Filial Ativa e reagir à troca no cabeçalho; para não-global, limitar a lista de filiais às autorizadas | Baixo. Cuidado para o Excel/PDF exportarem o mesmo recorte da tela |
+| CRM — Agenda Semanal | Filtro local "Todos" | Iniciar na Filial Ativa e reagir à troca | Baixo |
+| CRM — Programação | Filtro local "Todos" | Iniciar na Filial Ativa e reagir à troca (só a listagem, não o formulário) | Baixo |
+| CRM — Retornos | Filtro aplicado na memória sobre os dados já carregados | Iniciar na Filial Ativa e reagir à troca | Baixo |
+| CRM — Carteira de Clientes | Filtro local "Todos" enviado ao banco | Iniciar na Filial Ativa e reagir à troca | Médio: a Carteira usa nome de filial em parte dos filtros; precisa converter para o identificador certo |
+| CRM — Treinamentos | Supervisor travado na filial principal | Passar a usar a Filial Ativa; gestor global mantém "Todas" | Médio: é onde o supervisor multi-filial hoje perde dados da segunda filial |
+| CRM — Gerencial | Filtro local "Todos" com contagens por filial | Iniciar na Filial Ativa e reagir à troca | Baixo |
+| Meu Dia / Minha Equipe | Filtro de filial começa vazio; o banco define o escopo | Iniciar na Filial Ativa e reagir à troca; mostrar o seletor de filial quando o usuário tiver 2+ | Médio: hoje o seletor de filial fica escondido para supervisor |
+| Relatórios / KPIs | Filtro por **nome** de filial, começa em "Todos" | Iniciar na Filial Ativa e reagir à troca; restringir a lista às filiais autorizadas | Médio: conversão nome ↔ identificador e KPIs que hoje ignoram filial |
+| Desempenho por Vendedor / por Filial | Filial fixada como "sem filtro"; o recorte vem da lista de vendedores | Passar a Filial Ativa no lugar do valor fixo | Médio: números mudam para quem tem 2 filiais (passa a ver uma por vez) |
+| Validação do Parque | Filtro local; validadores filtrados na memória | Iniciar na Filial Ativa e reagir à troca | Baixo |
+| Regularização | Filtro local "Todos" + opção "sem filial" | Iniciar na Filial Ativa, mantendo a opção "sem filial" | Baixo |
+| Listas de consultores / equipe / executores | Supervisor travado na filial principal | Passar a acompanhar a Filial Ativa | Alto: é a lista mais reutilizada; um erro aqui esvazia filtros de várias telas |
+| Criação de tarefas / atividades | Usa a filial principal | **Fora desta etapa**, conforme combinado | — |
 
-### Etapa 1 — Base de filiais do usuário
-- Novo carregamento das filiais autorizadas (principal + adicionais ativas), a partir da estrutura criada na M1.
-- Nova "filial ativa" guardada na sessão do navegador, com a principal como padrão.
-- Regra de segurança: a filial ativa só pode ser uma das autorizadas; qualquer outra volta para a principal.
-- Admin/Manager continuam globais e ganham a opção "Todas as filiais".
+## Como será feito (parte técnica)
 
-### Etapa 2 — Seletor no topo
-- Seletor de filial no cabeçalho, **exibido somente para quem tem 2 ou mais filiais**.
-- Quem tem 1 filial vê exatamente a tela atual, sem seletor.
-- Trocar a filial recarrega os dados das telas abertas.
+- Fonte única já pronta: `useUserFiliais()` (`filiais`, `filialIds`, `primaryFilialId`,
+  `activeFilialId`, `isGlobal`, `isMultiFilial`).
+- Cada tela deixa de iniciar o filtro em `'all'`/`null` e passa a iniciar em `activeFilialId`,
+  reagindo à troca via efeito. Usuário com 1 filial: `activeFilialId` = principal, e como o
+  banco já restringia a essa filial, o resultado é idêntico ao de hoje.
+- Admin/manager global mantêm `activeFilialId = null` = "Todas as filiais": nada muda.
+- Telas que filtram por **nome** (Relatórios, parte do CRM) usam `filiais` do hook para
+  converter o identificador ativo no nome correspondente.
+- Nas telas onde o filtro de filial é uma lista, a lista passa a mostrar apenas
+  `filiais` (autorizadas) para não-global; global continua vendo todas.
+- `useFilteredConsultants`, empregados de Treinamentos e executores POPS passam a receber
+  `activeFilialId` em vez da filial principal.
+- Nada de escrita: `profiles.filial_id` e `user_filiais` não são tocados; o banco (M1/M2)
+  continua sendo a autoridade final e barra qualquer filial fora do escopo.
+- Chaves de cache do React Query passam a incluir a filial ativa, para a troca no cabeçalho
+  atualizar os dados sem misturar recortes.
 
-### Etapa 3 — Ligar as telas ao seletor
-Ordem sugerida, uma frente por vez com validação:
-1. Listas de colegas/consultores e Meu Dia (equipe)
-2. CRM: Agenda Semanal, Programação, Retornos, Carteira, Treinamentos
-3. POPS
-4. Tarefas (criação e listagens) — passa a permitir escolher entre as filiais autorizadas
-5. Relatórios/KPIs e Análise Gerencial
-6. Validação do Parque e Regularização
-7. Férias e cabeçalho
+## Ordem sugerida de implementação
 
-### Etapa 4 — Validação final
-Caso oficial: Diogo Jesus Silva com Caiapônia + Planalto Verde.
-- Confere que o seletor mostra só essas duas.
-- Confere que cada tela muda os dados ao trocar.
-- Confere que uma terceira filial continua inacessível.
-- Confere que usuários de uma filial só não notam diferença.
+1. Listas auxiliares (consultores/equipe/executores) — base das demais telas.
+2. POPS + Validação do Parque + Regularização.
+3. CRM (5 abas) + Gerencial.
+4. Meu Dia / Minha Equipe.
+5. Relatórios / KPIs / Desempenho.
+6. Validação final com Diogo (Caiapônia + Planalto Verde), em vínculo reversível.
 
-## Riscos
-- **Telas com muitos filtros** (CRM, POPS, Relatórios): risco de conflito entre o filtro de filial da própria
-  tela e a filial ativa do topo. Mitigação: a filial ativa define o padrão e limita as opções do filtro.
-- **Criação de tarefas**: hoje a filial é preenchida sozinha; passar a exigir escolha pode confundir. Mitigação:
-  manter a principal pré-selecionada.
-- **Dados históricos**: registros antigos permanecem na filial em que foram criados; nada é transferido.
-- **Cache de telas**: é necessário limpar o cache ao trocar de filial para não exibir dados da filial anterior.
-- **Bloqueios existentes** (ex.: Análise Gerencial exige filial) podem se comportar diferente com múltiplas
-  filiais; serão revisados na etapa correspondente.
+## Riscos gerais
 
-## Fora do escopo
-Nada de M1/M2 é alterado. Nenhum vínculo de filial é criado nesta etapa, inclusive o do Diogo, que só será
-configurado quando você autorizar a validação final.
+- Telas que hoje somam as duas filiais passarão a mostrar uma por vez: mudança de números
+  esperada e desejada, mas precisa ser comunicada.
+- Dados históricos sem filial preenchida podem desaparecer de listas filtradas; manter a
+  opção "sem filial" onde já existe.
+- Cache antigo pode exibir o recorte anterior por alguns segundos se a chave não incluir a
+  filial ativa — daí a mudança nas chaves de cache.
