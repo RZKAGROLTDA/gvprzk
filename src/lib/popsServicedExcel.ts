@@ -163,8 +163,8 @@ export async function exportPopsServicedExcel(
   const XLSX = await import('xlsx');
   const ws = XLSX.utils.json_to_sheet(data);
   ws['!cols'] = [
-    { wch: 6 }, { wch: 26 }, { wch: 11 }, { wch: 22 }, { wch: 14 },
-    { wch: 20 }, { wch: 16 }, { wch: 36 }, { wch: 30 },
+    { wch: 6 }, { wch: 26 }, { wch: 14 }, { wch: 11 }, { wch: 22 },
+    { wch: 14 }, { wch: 20 }, { wch: 16 }, { wch: 36 }, { wch: 30 },
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Serviçadas');
