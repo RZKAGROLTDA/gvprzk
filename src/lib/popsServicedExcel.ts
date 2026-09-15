@@ -116,20 +116,41 @@ const fetchExecutorNames = async (f: PopsServicedExcelFilters) => {
   return map;
 };
 
+/**
+ * Matrículas PM dos executores (profiles.pm_registration), consultadas do
+ * perfil no momento da exportação — nada é gravado em pops_machines.
+ * Se a leitura falhar por escopo/RLS, a coluna sai em branco.
+ */
+const fetchExecutorRegistrations = async (userIds: string[]) => {
+  const map = new Map<string, string>();
+  if (userIds.length === 0) return map;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_id, pm_registration')
+    .in('user_id', userIds);
+  if (error) return map;
+  (data ?? []).forEach((p) => {
+    if (p.user_id && p.pm_registration) map.set(p.user_id, p.pm_registration);
+  });
+  return map;
+};
+
 export async function exportPopsServicedExcel(
   f: PopsServicedExcelFilters,
 ): Promise<number> {
   const machines = await fetchServicedMachines(f);
   if (machines.length === 0) return 0;
 
-  const [services, executors] = await Promise.all([
+  const [services, executors, registrations] = await Promise.all([
     fetchServiceNames([...new Set(machines.map((m) => m.final_service_id).filter(Boolean) as string[])]),
     fetchExecutorNames(f),
+    fetchExecutorRegistrations([...new Set(machines.map((m) => m.executed_by).filter(Boolean) as string[])]),
   ]);
 
   const data = machines.map((m, i) => ({
     '#': i + 1,
     'PM RAC': (m.executed_by && executors.get(m.executed_by)) || '',
+    'Matrícula PM': (m.executed_by && registrations.get(m.executed_by)) || '',
     'Divisional': divisionalFor(m.pops_dealer_location),
     'Loja': m.pops_dealer_location ?? '',
     'OS': m.os_number ?? '',
@@ -142,8 +163,8 @@ export async function exportPopsServicedExcel(
   const XLSX = await import('xlsx');
   const ws = XLSX.utils.json_to_sheet(data);
   ws['!cols'] = [
-    { wch: 6 }, { wch: 26 }, { wch: 11 }, { wch: 22 }, { wch: 14 },
-    { wch: 20 }, { wch: 16 }, { wch: 36 }, { wch: 30 },
+    { wch: 6 }, { wch: 26 }, { wch: 14 }, { wch: 11 }, { wch: 22 },
+    { wch: 14 }, { wch: 20 }, { wch: 16 }, { wch: 36 }, { wch: 30 },
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Serviçadas');
