@@ -1596,6 +1596,7 @@ export type Database = {
           filial_id: string | null
           id: string
           name: string
+          pm_registration: string | null
           registration_date: string | null
           role: string
           updated_at: string
@@ -1612,6 +1613,7 @@ export type Database = {
           filial_id?: string | null
           id?: string
           name: string
+          pm_registration?: string | null
           registration_date?: string | null
           role: string
           updated_at?: string
@@ -1628,6 +1630,7 @@ export type Database = {
           filial_id?: string | null
           id?: string
           name?: string
+          pm_registration?: string | null
           registration_date?: string | null
           role?: string
           updated_at?: string
