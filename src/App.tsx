@@ -13,6 +13,7 @@ import { SecurityHeaders } from '@/components/SecurityHeaders';
 import { ServiceUnavailable } from '@/components/ServiceUnavailable';
 import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseHealth } from '@/hooks/useSupabaseHealth';
+import { clearAllActiveFiliais } from '@/lib/activeFilial';
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
 const SalesFunnel = React.lazy(() => import("./components/SalesFunnel").then((m) => ({ default: m.SalesFunnel })));
 const MyDay = React.lazy(() => import("./pages/MyDay"));
@@ -189,6 +190,7 @@ const AuthAwareWrapper: React.FC = () => {
     // impedindo vazamento de cache entre usuários.
     if (lastQueryClientUserId !== currentUserId) {
       queryClient.clear();
+      clearAllActiveFiliais();
       lastQueryClientUserId = currentUserId;
     }
   }, [user?.id, queryClient]);

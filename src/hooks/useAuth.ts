@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { clearAllActiveFiliais } from '@/lib/activeFilial';
 
 interface AuthContextType {
   user: User | null;
@@ -88,6 +89,8 @@ export const useAuthProvider = () => {
     try {
       await supabase.auth.signOut();
       localStorage.clear();
+      // Filial ativa é por usuário: nunca deve sobreviver ao logout.
+      clearAllActiveFiliais();
       setTimeout(() => {
         window.location.href = '/';
       }, 100);

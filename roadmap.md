@@ -7,7 +7,9 @@
 - [ ] M2-testes: bateria corrigida (T9 com colunas reais, admin e manager separados, cobertura de todas as RLS alteradas) em BEGIN/ROLLBACK — aguardando autorização
 - [ ] M2.1: lacuna antiga de `admin` nas policies de `clients` (tratar separadamente)
 - [ ] M3: adaptar RPCs de escopo (métricas, gestão, tarefas, CRM, POPS, Meu Dia, Regularização)
-- [ ] F1: hook `useUserFiliais` + tela administrativa em Gerenciar Usuários (com invalidação ampla de cache)
+- [x] M3-Etapa1: fonte única de filiais autorizadas no frontend (`useUserFiliais` + filial ativa por usuário)
+- [ ] M3-Etapa2: seletor de filial no cabeçalho (2+ filiais)
+- [ ] F1: tela administrativa em Gerenciar Usuários + tela administrativa em Gerenciar Usuários (com invalidação ampla de cache)
 - [ ] F2: filtros multi-filial nas telas afetadas
 - [ ] V1: aplicar caso Diogo (RAC, principal Caiapônia, adicional Planalto Verde)
 
