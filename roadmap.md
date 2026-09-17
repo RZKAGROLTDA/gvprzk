@@ -10,3 +10,5 @@
   - Implementar campo Filiais Adicionais (dialog + hook), salvar via set_user_filiais
   - Bateria de testes reversível (inclui validação temporária Diogo Caiapônia+Planalto Verde, sem gravar permanente)
 - [ ] Aguardando autorização: primeiro acesso multi-filial real (Diogo)
+
+- [ ] M3 Filial Ativa efetiva: revisar arquitetura A (user_active_filial no banco) x B (sessão + parâmetro validado) e minimizar alterações de RLS antes de implementar E1

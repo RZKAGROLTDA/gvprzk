@@ -1,105 +1,89 @@
-# Multi-Filial — Filial Ativa como filial efetiva (diagnóstico, sem implementação)
+# Multi-Filial — Filial Ativa como filial efetiva (revisão de arquitetura, sem implementação)
 
-## 1. Causa raiz
+## 1. Causa raiz (confirmada)
 
-Hoje existem apenas duas noções no banco:
+O banco conhece apenas duas coisas: a filial principal (`profiles.filial_id`) e o
+**escopo autorizado** (`get_user_filial_ids_internal` = principal + adicionais ativas).
+A Filial Ativa existe só no frontend, então:
 
-- `profiles.filial_id` — filial principal (usada por funções antigas).
-- `get_user_filial_ids_internal(user)` — **união** de principal + adicionais ativas (M2).
+- consultas com parâmetro de filial funcionam;
+- consultas sem parâmetro devolvem a **união** das filiais (dado misturado);
+- funções antigas devolvem sempre a **principal** (rótulo/escopo errado).
 
-Não existe no banco a noção de **Filial Ativa**. A Filial Ativa vive só no frontend
-(`sessionStorage`, `useUserFiliais` / `useActiveFilialFilter`) e é enviada apenas às
-consultas que já possuem um parâmetro de filial. Consequências:
+## 2. Alternativa A x Alternativa B
 
-1. Onde a RPC/consulta **tem** parâmetro (`p_filial_id`), a troca funciona.
-2. Onde a RPC/consulta **não tem** parâmetro, o resultado volta pela RLS/escopo do
-   banco, que devolve a **união das duas filiais** (Caiapônia + Planalto Verde) —
-   exatamente o efeito indesejado.
-3. Funções que ainda leem `profiles.filial_id` devolvem **sempre Caiapônia**, mesmo
-   com Planalto Verde selecionada (ex.: rótulo/escopo de `pops_scope`,
-   `my_day_scope`, `get_supervisor_filial_id`, `get_user_filial_id`).
-
-Ou seja: temos "permissão para 2 filiais", não "atuar como usuário da filial escolhida".
-
-## 2. Pontos afetados
-
-### Banco — funções de escopo
-| Função | Comportamento hoje | Problema |
+| Critério | A) `user_active_filial` no banco | B) Filial Ativa na sessão + parâmetro validado no banco |
 | --- | --- | --- |
-| `get_user_filial_id()` | principal | ignora Filial Ativa |
-| `get_supervisor_filial_id(user)` | principal | ignora Filial Ativa |
-| `get_user_filial_ids_internal(user)` | união principal+adicionais | mistura as filiais |
-| `user_same_filial`, `pops_scope`, `my_day_scope_v2`, `can_insert_vacation` | união (M2) | mistura as filiais |
-| `pops_scope().filial_id`, `my_day_scope().filial_id` | principal | rótulo/escopo errado |
+| Duas abas / dois dispositivos | **Falha**: uma linha por usuário; a aba B muda o contexto da aba A e a A passa a mostrar outra filial sem aviso | **Correto**: cada aba/dispositivo carrega o próprio contexto na requisição |
+| Segurança | No banco | No banco: cada função valida `p_filial_id = ANY(get_user_filial_ids_internal(auth.uid()))`, senão erro `42501`. O frontend nunca amplia acesso |
+| Alterações de RLS | Alta: as policies precisam ler a filial ativa (33 policies) | **Mínima**: RLS continua garantindo apenas o escopo autorizado |
+| Risco de regressão | Alto (RLS + escrita a cada troca de filial) | Baixo (mudança concentrada em RPCs/consultas) |
+| Filial única | Preservado | Preservado (ativa = principal) |
+| Admin/manager global | Preservado | Preservado (`NULL` = todas) |
+| Escrita no banco a cada troca | Sim (linha por usuário) | Não |
+| Cache/React Query | Chave não muda → risco de dado velho | Filial entra na chave → invalidação natural |
 
-### Banco — RLS
-33 policies dependem de filial e hoje resolvem pela união:
-`pops_machines`, `pops_client_assignments`, `client_equipment` (via funções),
-`tasks`, `task_followups`, `task_equipment`, `task_access_metadata`, `visit_schedules`,
-`trainings`, `opportunities`, `opportunity_items`, `products`, `clients`,
-`campaign_clients`, `special_conditions`, `profiles`, `team_vacations`.
+### Recomendação: **B**
 
-### Banco — RPCs sem parâmetro de filial (resultado = união)
-`get_my_day_summary`, `get_my_day_details`, `get_equipment_validation_summary`,
-`get_equipment_validators`, `pops_scope`, `my_day_scope*`, além das leituras diretas
-por tabela (Parque, Regularização, Campanhas, Tarefas, Retornos, Treinamentos).
+A é reprovada exatamente pelo risco levantado: estado global por usuário provoca
+interferência entre abas e dispositivos, além de exigir mexer em toda a RLS.
 
-### Frontend — dependência da filial principal
-`CreateTask.tsx`, `TechnicalVisitForm.tsx`, `VisitScheduleForm.tsx`,
-`SpecialConditionsTab.tsx`, `Campaigns.tsx` (filial padrão), `Vacations.tsx`
-(`lockedFilialId`), `Management.tsx` (supervisor → `profile.filial_id`),
-`useConsolidatedSalesMetrics`, `useTrainings`, `useWeeklyAgenda`/`useVisitSchedules`
-(criação), `useManagementData`.
+Em B a segurança continua 100% no banco, porque a filial recebida é sempre conferida
+contra `get_user_filial_ids_internal(auth.uid())` **dentro** de funções
+`SECURITY DEFINER`, e a RLS permanece como segunda barreira: mesmo que alguém envie uma
+filial não autorizada, a função rejeita e a RLS não devolveria as linhas.
 
-## 3. Arquitetura proposta
+## 3. Separação das duas regras
 
-Separar formalmente as duas regras, com a Filial Ativa **conhecida pelo banco**:
+- **RLS = teto de permissão.** Continua respondendo "este usuário pode ver esta linha?"
+  usando o escopo autorizado (M2, já validado). **Nenhuma das 33 policies precisa
+  conhecer a Filial Ativa** — nenhuma delas é usada para *escolher* a filial exibida.
+- **Consulta/RPC = seleção da filial.** Passa a receber a filial efetiva e filtrar por
+  ela. `NULL` mantém o comportamento atual (todas as permitidas / global).
 
-1. **Escopo autorizado** — permanece `get_user_filial_ids()` (M1/M2). Define o que o
-   usuário pode selecionar. Nada muda.
-2. **Filial efetiva** — nova camada:
-   - tabela `public.user_active_filial (user_id, filial_id, updated_at)`, 1 linha por usuário;
-   - RPC `set_active_filial(p_filial_id uuid)` — valida contra o escopo autorizado e
-     grava; `NULL` = "todas as permitidas" (padrão de admin/manager);
-   - função `effective_filial_ids(user)`: se houver filial ativa válida → **apenas ela**;
-     senão → escopo autorizado completo (retrocompatível);
-   - função `effective_filial_id(user)`: filial ativa válida, senão a principal.
-3. **Reapontar** todas as funções de escopo e as 33 policies para
-   `effective_filial_ids()`, e os rótulos (`pops_scope.filial_id`, `my_day_scope*`)
-   para `effective_filial_id()`.
-4. **Frontend**: `useUserFiliais.setActiveFilialId` passa a chamar `set_active_filial`
-   e invalidar o cache do React Query; os formulários de criação passam a usar a
-   filial efetiva em vez de `profile.filial_id`.
+Exceções a tratar como **filtro na consulta**, não em RLS: leituras diretas de tabela no
+frontend (Parque, Regularização, Campanhas, Treinamentos, Retornos, Tarefas) — passam a
+enviar `filial_id` explicitamente.
 
-Garantias: usuário com 1 filial não muda nada (ativa = principal = união);
-admin/manager continuam globais enquanto não escolherem uma filial; nenhum acesso novo
-é concedido, porque a filial ativa é sempre validada contra o escopo autorizado.
+## 4. Alterações necessárias
 
-## 4. Alterações necessárias (por etapas, uma aprovação por etapa)
+### Banco (todas com filial efetiva validada; `NULL` = comportamento atual)
+1. `pops_scope(p_filial_id uuid DEFAULT NULL)` → `filial_id`/`filial_ids` refletem a
+   filial efetiva (raiz do problema confirmado no POPS/máquinas).
+2. `my_day_scope_v2`, `get_my_day_summary`, `get_my_day_details`,
+   `get_my_day_team_summary` → novo parâmetro de filial efetiva.
+3. `get_equipment_validation_summary`, `get_equipment_validators` → novo parâmetro.
+4. `get_performance_by_filial_v2` e demais RPCs de KPI sem filtro de filial → novo parâmetro.
+5. `get_secure_tasks_paginated_filtered` → aceitar filial por ID além do texto atual.
+6. Função auxiliar única `assert_filial_allowed(p_filial_id)` reutilizada por todas.
+7. **Nenhuma policy de RLS alterada nesta arquitetura.**
+8. `get_user_filial_id`, `get_supervisor_filial_id` permanecem intactas (filial principal).
 
-- **E1 — Base de filial efetiva (SQL):** tabela + RLS + `set_active_filial` +
-  `effective_filial_id(s)`, sem reapontar nada ainda.
-- **E2 — Funções de escopo:** `user_same_filial`, `pops_scope`, `my_day_scope_v2`,
-  `get_supervisor_filial_id`, `get_user_filial_id`, `can_insert_vacation`.
-- **E3 — RLS:** as 33 policies dependentes de filial.
-- **E4 — RPCs de agregação sem parâmetro:** Meu Dia, Parque/Validação, POPS, KPIs.
-- **E5 — Frontend leitura:** trocar `setActiveFilialId` para a RPC + invalidação de cache.
-- **E6 — Frontend criação/operação:** tarefas, visitas, checklists, campanhas,
-  condições especiais, férias, Análise Gerencial usarem a filial efetiva.
+### Frontend
+9. `useActiveFilialFilter`/`useUserFiliais` como única fonte da filial efetiva, sempre na
+   chave do React Query (evita cache da filial anterior).
+10. Telas de leitura: POPS, Parque, Validação, Regularização, CRM, Meu Dia, Retornos,
+    Treinamentos, Campanhas, Relatórios/KPIs passam a enviar a filial efetiva.
+11. Criação/operação (tarefas, visitas, checklists, condições especiais, férias) usa a
+    filial efetiva em vez de `profile.filial_id`.
 
-## 5. Plano de testes (tudo com `BEGIN/ROLLBACK`, sem vínculo permanente)
+Etapas sugeridas: **E1** função de validação + POPS; **E2** Parque/Validação/Regularização;
+**E3** CRM/Meu Dia/Retornos/Treinamentos; **E4** Campanhas/Relatórios/KPIs;
+**E5** criação/operação. Uma aprovação por etapa.
 
-1. Single-filial (Jhonatan/Canarana): todos os números iguais ao baseline atual.
-2. Diogo com Caiapônia+Planalto Verde: ativa = Caiapônia → números idênticos ao
-   baseline single-filial de Caiapônia (sem soma).
-3. Ativa = Planalto Verde → dados exclusivamente de Planalto Verde em POPS
-   (clientes, máquinas, serviços, contadores, Excel), Parque, Validação,
-   Regularização, CRM, Meu Dia, visitas/retornos, campanhas, KPIs/relatórios.
-4. Voltar para Caiapônia → retorno exato aos valores do teste 2.
-5. Terceira filial não autorizada: `set_active_filial` recusa (`42501`) e nenhum dado.
-6. Admin/manager sem filial ativa → global; com filial ativa → apenas aquela.
-7. Desativar o vínculo adicional com Planalto Verde ativa → cai para a principal.
-8. Auditoria de `set_active_filial` registrada; nenhuma alteração em cadastro,
-   cargos, matrícula PM ou Excel POPS.
+## 5. Plano de testes (`BEGIN/ROLLBACK`, sem vínculo permanente)
 
-Resultados serão apresentados como `Teste | Obtido | Esperado | Status`.
+1. Filial única (Jhonatan/Canarana): todos os números iguais ao baseline.
+2. Diogo com Caiapônia+Planalto Verde, ativa = Caiapônia: igual ao baseline de Caiapônia,
+   **sem soma** com Planalto Verde.
+3. Ativa = Planalto Verde: dados exclusivamente de Planalto Verde em POPS (clientes,
+   máquinas, serviços, contadores, filtros, Excel), Parque, Validação, Regularização,
+   CRM, Meu Dia, visitas/retornos, campanhas, KPIs/relatórios.
+4. Volta para Caiapônia: valores idênticos ao teste 2.
+5. Filial não autorizada enviada pelo frontend: erro `42501` e nenhum dado.
+6. Duas abas simultâneas com filiais diferentes: cada aba mantém a própria filial.
+7. Admin/manager sem filial ativa: global; com filial ativa: apenas aquela.
+8. Vínculo adicional desativado com Planalto Verde ativa: cai para a principal.
+9. Nada alterado em cadastro, cargos, matrícula PM, Excel POPS, M1/M2.
+
+Resultados apresentados como `Teste | Obtido | Esperado | Status`.
