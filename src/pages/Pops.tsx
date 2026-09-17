@@ -160,7 +160,7 @@ const Pops: React.FC = () => {
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   });
-  const machines = usePopsClientMachines(program?.id, selectedClient?.client_key ?? null);
+  const machines = usePopsClientMachines(program?.id, selectedClient?.client_key ?? null, filialId);
 
   const showManagementPanel = perms.isGlobal || perms.isSupervisorOnly;
   const executors = usePopsExecutorResults(showManagementPanel ? program?.id : undefined, {

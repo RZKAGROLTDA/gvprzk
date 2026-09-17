@@ -142,7 +142,7 @@ export const usePopsGoalSummary = (programId?: string, filialId?: string | null)
     queryFn: async (): Promise<PopsGoalSummary> => {
       const { data, error } = await supabase.rpc('pops_goal_summary', {
         p_program_id: programId!,
-        p_filial_id: filialId ?? undefined,
+        p_filial_id: filialId ?? null,
       });
       if (error) throw error;
       return data as unknown as PopsGoalSummary;
@@ -199,9 +199,9 @@ export const usePopsExecutorResults = (
     queryFn: async (): Promise<{ total_serviced: number; rows: PopsExecutorRow[] }> => {
       const { data, error } = await supabase.rpc('pops_executor_results', {
         p_program_id: programId!,
-        p_filial_id: opts.filialId ?? undefined,
-        p_platform: opts.platform && opts.platform !== 'all' ? opts.platform : undefined,
-        p_executed_by: opts.executedBy ?? undefined,
+        p_filial_id: opts.filialId ?? null,
+        p_platform: opts.platform && opts.platform !== 'all' ? opts.platform : null,
+        p_executed_by: opts.executedBy ?? null,
       });
       if (error) throw error;
       const payload = (data ?? {}) as { total_serviced?: number; rows?: PopsExecutorRow[] };
@@ -213,14 +213,19 @@ export const usePopsExecutorResults = (
   });
 
 
-export const usePopsClientMachines = (programId?: string, clientKey?: string | null) =>
+export const usePopsClientMachines = (
+  programId?: string,
+  clientKey?: string | null,
+  filialId?: string | null,
+) =>
   useQuery({
-    queryKey: ['pops', 'machines', programId ?? null, clientKey ?? null],
+    queryKey: ['pops', 'machines', programId ?? null, clientKey ?? null, filialId ?? null],
     queryFn: async (): Promise<PopsMachineRow[]> => {
       const { data, error } = await supabase.rpc('pops_portfolio_client_machines', {
         p_program_id: programId!,
         p_client_key: clientKey!,
-      });
+        p_filial_id: filialId ?? null,
+      } as never);
       if (error) throw error;
       return (data ?? []) as unknown as PopsMachineRow[];
     },
