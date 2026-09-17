@@ -140,6 +140,15 @@ const Pops: React.FC = () => {
     return () => clearTimeout(t);
   }, [filters]);
 
+  // Troca de filial (cabeçalho ou filtro local): reinicia paginação, cliente e
+  // executor selecionado, para não exibir dado da filial anterior.
+  useEffect(() => {
+    setPage(0);
+    setSelectedClient(null);
+    setSelectedMachineId(null);
+    setExecUser(null);
+  }, [filialId]);
+
   const { data: filiais = [] } = useFiliaisList(perms.isGlobal);
   const goal = usePopsGoalSummary(program?.id, filialId);
   const clients = usePopsClients(program?.id, {
@@ -338,11 +347,11 @@ const Pops: React.FC = () => {
         programName={program.name}
         summary={goal.data}
         isLoading={goal.isLoading}
-        showFilialFilter={perms.isGlobal}
-        filiais={filiais}
+        showFilialFilter={filialIsGlobal || isMultiFilial}
+        filiais={filialIsGlobal ? filiais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))}
         filialId={filialId}
         onFilialChange={(id) => {
-          setFilialId(id);
+          setFilial(id ?? 'all');
           setPage(0);
           setSelectedClient(null);
         }}
