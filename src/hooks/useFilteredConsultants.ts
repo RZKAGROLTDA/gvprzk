@@ -16,11 +16,11 @@ import { useUserFiliais } from '@/hooks/useUserFiliais';
 export const useFilteredConsultants = (filialId?: string | null) => {
   const { isSupervisor, isAdmin, isManager } = useUserRole();
   const { profile } = useProfile();
-  const { activeFilialId, isGlobal } = useUserFiliais();
+  const { activeFilialId } = useUserFiliais();
 
-  const supervisorScope = isSupervisor && !isAdmin && !isManager && !isGlobal;
-  const scopeFilialId =
-    filialId !== undefined ? filialId : supervisorScope ? activeFilialId : null;
+  // Padrão: a lista acompanha a Filial Ativa do cabeçalho.
+  // Global com "Todas as filiais" => activeFilialId nulo => sem filtro.
+  const scopeFilialId = filialId !== undefined ? filialId : activeFilialId;
 
   const { data: allConsultants = [], isLoading } = useQuery({
     queryKey: ['filtered-consultants', isSupervisor, isAdmin, isManager, scopeFilialId],
