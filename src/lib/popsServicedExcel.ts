@@ -106,7 +106,7 @@ const fetchExecutorNames = async (f: PopsServicedExcelFilters) => {
   const map = new Map<string, string>();
   const { data, error } = await supabase.rpc('pops_executor_results', {
     p_program_id: f.programId,
-    p_filial_id: f.filialId ?? undefined,
+    p_filial_id: f.filialId ?? null,
   });
   if (error) throw error;
   const payload = (data ?? {}) as { rows?: { user_id: string; executor_name: string }[] };
