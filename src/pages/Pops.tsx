@@ -17,6 +17,7 @@ import {
   type PopsClientRow, type PopsMachineRow, type PopsPlatformFilter,
 } from '@/hooks/usePops';
 import { useProfile } from '@/hooks/useProfile';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { buildPopsMachinesPdf } from '@/lib/popsMachinesPdf';
 import { exportPopsServicedExcel } from '@/lib/popsServicedExcel';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
@@ -107,7 +108,15 @@ MachineCard.displayName = 'MachineCard';
 const Pops: React.FC = () => {
   const perms = usePopsPermissions();
   const { data: program, isLoading: loadingProgram, error: programError } = usePopsProgram();
-  const [filialId, setFilialId] = useState<string | null>(null);
+  // M3: filtro de filial ancorado na Filial Ativa do cabeçalho.
+  const {
+    filial,
+    setFilial,
+    filialId,
+    allowedFiliais,
+    isGlobal: filialIsGlobal,
+    isMultiFilial,
+  } = useActiveFilialFilter();
   const [filters, setFilters] = useState<PortfolioFilters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<PortfolioFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
