@@ -241,7 +241,10 @@ export const ClientPortfolio: React.FC = () => {
     if (!consultants.some((c) => c.id === seller)) setSeller('all');
   }, [consultants, seller]);
 
-  const filialOptions = isGlobal && allowedFiliais.length === 0 ? filiais : allowedFiliais;
+  // Global (admin/manager) escolhe qualquer filial; demais, somente as autorizadas.
+  const filialOptions = isGlobal
+    ? filiais.map((f) => ({ id: f.id, nome: f.nome }))
+    : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
