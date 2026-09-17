@@ -29,6 +29,7 @@ const ALL = 'all';
 
 export const TeamFilters: React.FC<TeamFiltersProps> = ({
   showFilialFilter,
+  allowAllFiliais = true,
   filiais,
   filters,
   onChange,
@@ -57,7 +58,7 @@ export const TeamFilters: React.FC<TeamFiltersProps> = ({
               <SelectValue placeholder="Todas as filiais" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Todas as filiais</SelectItem>
+              {allowAllFiliais && <SelectItem value={ALL}>Todas as filiais</SelectItem>}
               {filiais.map((f) => (
                 <SelectItem key={f.id} value={f.id}>
                   {f.nome}
