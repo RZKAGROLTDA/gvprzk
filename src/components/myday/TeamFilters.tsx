@@ -12,8 +12,10 @@ import { getRoleLabel } from '@/lib/roles';
 import { TEAM_MEMBER_ROLES, type MyDayTeamFilters, type MyDayTeamRow } from '@/lib/myDay';
 
 interface TeamFiltersProps {
-  /** Supervisor não escolhe filial (escopo fixo no banco). */
+  /** Só aparece para quem tem 2+ filiais autorizadas ou visão global. */
   showFilialFilter: boolean;
+  /** Somente admin/manager global podem ver "Todas as filiais". */
+  allowAllFiliais?: boolean;
   filiais: { id: string; nome: string }[];
   filters: MyDayTeamFilters;
   onChange: (next: MyDayTeamFilters) => void;
