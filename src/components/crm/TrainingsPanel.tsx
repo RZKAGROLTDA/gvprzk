@@ -282,12 +282,12 @@ const XLSX = await import('xlsx');
                   <Select value={filialFilter} onValueChange={setFilialFilter}>
                     <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={ALL}>Todas</SelectItem>
-                      {filiais
-                        .filter((f) => !scopeFilialId || f.id === scopeFilialId)
-                        .map((f) => (
-                          <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-                        ))}
+                      {(isGlobal || filialOptions.length > 1) && (
+                        <SelectItem value={ALL}>Todas</SelectItem>
+                      )}
+                      {filialOptions.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
