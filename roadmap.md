@@ -10,7 +10,9 @@
 - [x] M3-Etapa1: fonte única de filiais autorizadas no frontend (`useUserFiliais` + filial ativa por usuário)
 - [x] M3-Etapa2: seletor de filial no cabeçalho (2+ filiais)
 - [x] M3-Etapa3 Bloco 3A: POPS, Agenda Semanal, Programação (listagem) e Retornos usando a Filial Ativa
-- [ ] M3-Etapa3 Bloco 3B: Carteira, Treinamentos, Meu Dia/Equipe, Relatórios/KPIs, Parque, Regularização, Gerencial
+- [ ] M3-Etapa3 Bloco 3B: Carteira, Treinamentos, Meu Dia/Equipe (frontend aplicado) — falta ajuste multi-filial em `get_clients_overview_v2` (aguardando autorização) e bateria de testes
+- [ ] M3-Etapa3 restante: Relatórios/KPIs, Parque, Regularização, Gerencial
+- [x] Matrícula PM no Excel POPS (coluna consultada de `profiles.pm_registration` na exportação) — concluído e validado
 - [ ] F1: tela administrativa em Gerenciar Usuários + tela administrativa em Gerenciar Usuários (com invalidação ampla de cache)
 - [ ] F2: filtros multi-filial nas telas afetadas
 - [ ] V1: aplicar caso Diogo (RAC, principal Caiapônia, adicional Planalto Verde)
