@@ -1,73 +1,57 @@
-# M3 — Etapa 3: aplicar a Filial Ativa nas telas (diagnóstico, sem implementar)
+# M3 — Gestão de Filiais Adicionais no Administrativo (diagnóstico + plano)
 
-## O que o levantamento mostrou
+Somente levantamento. Nada implementado, nada alterado no banco.
 
-Hoje quase nenhuma tela usa a filial principal do cadastro para filtrar. O padrão atual é:
-o filtro de filial começa em "Todos" (sem filtro) e é o banco (M1/M2) que limita o usuário
-às filiais permitidas. Ou seja: o multi-filial já enxerga as duas filiais somadas, mas não
-consegue **focar** em uma delas, porque nada no frontend está ligado à Filial Ativa.
+## 1. Onde o campo será incluído
 
-Três exceções que hoje travam na filial principal:
+Tela **Gerenciar Usuários** (`Users`), na lista de "Usuários Aprovados".
 
-- Lista de consultores/equipe (`useFilteredConsultants`): supervisor é fixado na filial principal.
-- Treinamentos: supervisor é fixado na filial principal.
-- Análise Gerencial: supervisor é fixado na filial principal e o seletor fica desabilitado.
+- A coluna **Filial** continua exibindo apenas a **Filial Principal** (lógica atual intacta).
+- Nova coluna **Filiais Adicionais**:
+  - exibe as adicionais ativas como etiquetas (ou "Nenhuma");
+  - para administrador/gestor autorizado, um botão "Gerenciar" abre uma janela com a seleção múltipla.
+- A janela mostra: Filial Principal (somente leitura) + lista de filiais com caixas de seleção, marcando as adicionais ativas. Botões Salvar / Cancelar.
+- Para quem não tem permissão, a coluna é apenas de leitura, sem botão.
 
-E um caso de formulário: Programação de visita pré-preenche a filial com a principal
-(fora do escopo desta etapa, por ser criação de registro).
+## 2. Componentes/arquivos alterados
 
-## Tela por tela
+| Arquivo | Alteração |
+|---|---|
+| `src/pages/Users.tsx` | nova coluna + botão + estado da janela |
+| `src/components/users/AdditionalFiliaisDialog.tsx` (novo) | janela de seleção múltipla |
+| `src/hooks/useUserAdditionalFiliais.ts` (novo) | carregar e salvar as adicionais de um usuário |
 
-| Tela | Comportamento atual | Alteração necessária | Risco |
-|---|---|---|---|
-| POPS | Filtro de filial local começa em "Todos"; metas, carteira e executores recebem esse valor | Iniciar o filtro na Filial Ativa e reagir à troca no cabeçalho; para não-global, limitar a lista de filiais às autorizadas | Baixo. Cuidado para o Excel/PDF exportarem o mesmo recorte da tela |
-| CRM — Agenda Semanal | Filtro local "Todos" | Iniciar na Filial Ativa e reagir à troca | Baixo |
-| CRM — Programação | Filtro local "Todos" | Iniciar na Filial Ativa e reagir à troca (só a listagem, não o formulário) | Baixo |
-| CRM — Retornos | Filtro aplicado na memória sobre os dados já carregados | Iniciar na Filial Ativa e reagir à troca | Baixo |
-| CRM — Carteira de Clientes | Filtro local "Todos" enviado ao banco | Iniciar na Filial Ativa e reagir à troca | Médio: a Carteira usa nome de filial em parte dos filtros; precisa converter para o identificador certo |
-| CRM — Treinamentos | Supervisor travado na filial principal | Passar a usar a Filial Ativa; gestor global mantém "Todas" | Médio: é onde o supervisor multi-filial hoje perde dados da segunda filial |
-| CRM — Gerencial | Filtro local "Todos" com contagens por filial | Iniciar na Filial Ativa e reagir à troca | Baixo |
-| Meu Dia / Minha Equipe | Filtro de filial começa vazio; o banco define o escopo | Iniciar na Filial Ativa e reagir à troca; mostrar o seletor de filial quando o usuário tiver 2+ | Médio: hoje o seletor de filial fica escondido para supervisor |
-| Relatórios / KPIs | Filtro por **nome** de filial, começa em "Todos" | Iniciar na Filial Ativa e reagir à troca; restringir a lista às filiais autorizadas | Médio: conversão nome ↔ identificador e KPIs que hoje ignoram filial |
-| Desempenho por Vendedor / por Filial | Filial fixada como "sem filtro"; o recorte vem da lista de vendedores | Passar a Filial Ativa no lugar do valor fixo | Médio: números mudam para quem tem 2 filiais (passa a ver uma por vez) |
-| Validação do Parque | Filtro local; validadores filtrados na memória | Iniciar na Filial Ativa e reagir à troca | Baixo |
-| Regularização | Filtro local "Todos" + opção "sem filial" | Iniciar na Filial Ativa, mantendo a opção "sem filial" | Baixo |
-| Listas de consultores / equipe / executores | Supervisor travado na filial principal | Passar a acompanhar a Filial Ativa | Alto: é a lista mais reutilizada; um erro aqui esvazia filtros de várias telas |
-| Criação de tarefas / atividades | Usa a filial principal | **Fora desta etapa**, conforme combinado | — |
+Nada em `useUserFiliais`, `FilialSelector`, `activeFilial`, RLS, M1/M2 ou Excel do POPS.
 
-## Como será feito (parte técnica)
+## 3. Carregamento das filiais atuais
 
-- Fonte única já pronta: `useUserFiliais()` (`filiais`, `filialIds`, `primaryFilialId`,
-  `activeFilialId`, `isGlobal`, `isMultiFilial`).
-- Cada tela deixa de iniciar o filtro em `'all'`/`null` e passa a iniciar em `activeFilialId`,
-  reagindo à troca via efeito. Usuário com 1 filial: `activeFilialId` = principal, e como o
-  banco já restringia a essa filial, o resultado é idêntico ao de hoje.
-- Admin/manager global mantêm `activeFilialId = null` = "Todas as filiais": nada muda.
-- Telas que filtram por **nome** (Relatórios, parte do CRM) usam `filiais` do hook para
-  converter o identificador ativo no nome correspondente.
-- Nas telas onde o filtro de filial é uma lista, a lista passa a mostrar apenas
-  `filiais` (autorizadas) para não-global; global continua vendo todas.
-- `useFilteredConsultants`, empregados de Treinamentos e executores POPS passam a receber
-  `activeFilialId` em vez da filial principal.
-- Nada de escrita: `profiles.filial_id` e `user_filiais` não são tocados; o banco (M1/M2)
-  continua sendo a autoridade final e barra qualquer filial fora do escopo.
-- Chaves de cache do React Query passam a incluir a filial ativa, para a troca no cabeçalho
-  atualizar os dados sem misturar recortes.
+- Lista de filiais: já carregada em `Users.tsx` (`filiais`), reaproveitada.
+- Adicionais ativas do usuário selecionado: leitura de `user_filiais` filtrando pelo usuário e por vínculos ativos, carregada quando a janela abre (cache curto, sem refetch em foco).
+- Nada é inferido por cargo, região ou nome de filial.
 
-## Ordem sugerida de implementação
+## 4. Salvamento
 
-1. Listas auxiliares (consultores/equipe/executores) — base das demais telas.
-2. POPS + Validação do Parque + Regularização.
-3. CRM (5 abas) + Gerencial.
-4. Meu Dia / Minha Equipe.
-5. Relatórios / KPIs / Desempenho.
-6. Validação final com Diogo (Caiapônia + Planalto Verde), em vínculo reversível.
+- Uma única chamada a `set_user_filiais(target_user_id, filial_ids)` com a lista completa de adicionais marcadas.
+- A função já validada é a responsável por: autorização do solicitante, existência do perfil alvo, remoção da principal da lista efetiva, reativação/desativação de vínculos, preservação de histórico e registro na auditoria (`requested_filial_ids`, `effective_additional_filial_ids`, `primary_filial_id`).
+- Desmarcar uma filial equivale a enviá-la fora da lista → o vínculo é desativado e o acesso encerrado.
+- Após salvar: mensagem de sucesso e atualização da lista e do escopo do usuário afetado.
 
-## Riscos gerais
+## 5. Como a principal não entra como adicional
 
-- Telas que hoje somam as duas filiais passarão a mostrar uma por vez: mudança de números
-  esperada e desejada, mas precisa ser comunicada.
-- Dados históricos sem filial preenchida podem desaparecer de listas filtradas; manter a
-  opção "sem filial" onde já existe.
-- Cache antigo pode exibir o recorte anterior por alguns segundos se a chave não incluir a
-  filial ativa — daí a mudança nas chaves de cache.
+Três camadas:
+1. a filial principal é exibida separada e **não aparece** entre as opções marcáveis;
+2. antes de enviar, o frontend remove a principal da lista;
+3. a função no banco já descarta a principal da lista efetiva.
+
+## 6. Testes previstos
+
+- Usuário sem adicional: coluna "Nenhuma"; comportamento das telas idêntico ao atual.
+- Adicionar 1 adicional; verificar exibição e escopo do usuário (2 filiais).
+- Adicionar 2 adicionais e depois retirar 1; verificar encerramento do acesso.
+- Retirar todas: usuário volta exatamente ao estado de filial única.
+- Principal não selecionável e ignorada mesmo se forçada.
+- Usuário sem permissão não vê o botão e a chamada é recusada pelo banco.
+- Auditoria registrada em cada alteração, com os campos esperados.
+- Admin/manager continuam globais.
+- Caso final: Diogo Jesus Silva com Caiapônia + Planalto Verde, conferindo troca de filial ativa no cabeçalho.
+- Testes de banco em `BEGIN/ROLLBACK`; nenhum vínculo permanente sem sua autorização.
