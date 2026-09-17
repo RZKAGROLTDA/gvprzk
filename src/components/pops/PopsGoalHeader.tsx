@@ -17,6 +17,8 @@ type Props = {
   summary?: PopsGoalSummary;
   isLoading: boolean;
   showFilialFilter: boolean;
+  /** Permite a opção "Todas as filiais" (apenas admin/gestor). */
+  allowAllFiliais?: boolean;
   filiais: { id: string; nome: string }[];
   filialId: string | null;
   onFilialChange: (id: string | null) => void;
@@ -82,6 +84,7 @@ export const PopsGoalHeader: React.FC<Props> = ({
   summary,
   isLoading,
   showFilialFilter,
+  allowAllFiliais = true,
   filiais,
   filialId,
   onFilialChange,
@@ -113,7 +116,7 @@ export const PopsGoalHeader: React.FC<Props> = ({
                     <SelectValue placeholder="Todas as filiais" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas as filiais</SelectItem>
+                    {allowAllFiliais && <SelectItem value="all">Todas as filiais</SelectItem>}
                     {filiais.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
                         {f.nome}
