@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import {
   useVisitSchedules,
   VisitSchedule,
@@ -56,11 +57,22 @@ export const VisitSchedulePanel: React.FC = () => {
   const { user } = useAuth();
   const { isManager, isAdmin, isSupervisor } = useUserRole() as any;
   const isPrivileged = !!(isManager || isAdmin || isSupervisor);
-  const { consultants } = useFilteredConsultants();
 
-  const { data: filiais = [] } = useQuery({
+  // M3: listagem ancorada na Filial Ativa do cabeçalho (o formulário segue inalterado).
+  const {
+    filial: filialFilter,
+    setFilial: setFilialFilter,
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+    isMultiFilial,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
+
+  const { data: allFiliais = [] } = useQuery({
     queryKey: ['filiais-options-vsp'],
     staleTime: 10 * 60_000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
       if (error) throw error;
@@ -68,19 +80,25 @@ export const VisitSchedulePanel: React.FC = () => {
     },
   });
 
+  const filiais = isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
+
   const [weekStart, setWeekStart] = useState<Date>(startOfWeekMon(new Date()));
   const weekEnd = addDays(weekStart, 6);
 
   const [sellerFilter, setSellerFilter] = useState<string>('all');
-  const [filialFilter, setFilialFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [clientSearch, setClientSearch] = useState('');
+
+  // Troca de filial: vendedor selecionado pode não pertencer à nova filial.
+  React.useEffect(() => {
+    setSellerFilter('all');
+  }, [scopedFilialId]);
 
   const { data: schedules = [], isLoading } = useVisitSchedules({
     startDate: toISO(weekStart),
     endDate: toISO(weekEnd),
     sellerId: sellerFilter !== 'all' ? sellerFilter : undefined,
-    filialId: filialFilter !== 'all' ? filialFilter : undefined,
+    filialId: scopedFilialId ?? undefined,
     status: statusFilter !== 'all' ? (statusFilter as VisitScheduleStatus) : undefined,
     clientSearch: clientSearch || undefined,
   });
