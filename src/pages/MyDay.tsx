@@ -48,7 +48,6 @@ const MyDay: React.FC = () => {
 
   // M3 — Etapa 3B: a equipe segue a Filial Ativa do cabeçalho.
   const {
-    filial,
     setFilial,
     filialId: activeScopeFilialId,
     allowedFiliais,
