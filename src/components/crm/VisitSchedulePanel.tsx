@@ -210,7 +210,7 @@ export const VisitSchedulePanel: React.FC = () => {
                 </SelectContent>
               </Select>
             )}
-            {(isManager || isAdmin) && (
+            {(isGlobal || isMultiFilial) && (
               <Select value={filialFilter} onValueChange={setFilialFilter}>
                 <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
                 <SelectContent>

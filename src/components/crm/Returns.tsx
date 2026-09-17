@@ -50,18 +50,30 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
 
 export const Returns: React.FC = () => {
   const { data = [], isLoading } = useFollowupsProspectsOnly();
-  const { consultants } = useFilteredConsultants();
   const qc = useQueryClient();
 
-  const { data: filiais = [] } = useQuery({
+  // M3: filtro de filial ancorado na Filial Ativa do cabeçalho.
+  const {
+    filial,
+    setFilial,
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
+
+  const { data: allFiliais = [] } = useQuery({
     queryKey: ['filiais-options'],
     staleTime: 15 * 60 * 1000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const filiais = isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
 
   const consultantById = useMemo(() => {
     const m = new Map<string, string>();
