@@ -17,6 +17,7 @@ import {
   type PopsClientRow, type PopsMachineRow, type PopsPlatformFilter,
 } from '@/hooks/usePops';
 import { useProfile } from '@/hooks/useProfile';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { buildPopsMachinesPdf } from '@/lib/popsMachinesPdf';
 import { exportPopsServicedExcel } from '@/lib/popsServicedExcel';
 import { PopsGoalHeader } from '@/components/pops/PopsGoalHeader';
@@ -107,7 +108,15 @@ MachineCard.displayName = 'MachineCard';
 const Pops: React.FC = () => {
   const perms = usePopsPermissions();
   const { data: program, isLoading: loadingProgram, error: programError } = usePopsProgram();
-  const [filialId, setFilialId] = useState<string | null>(null);
+  // M3: filtro de filial ancorado na Filial Ativa do cabeçalho.
+  const {
+    filial,
+    setFilial,
+    filialId,
+    allowedFiliais,
+    isGlobal: filialIsGlobal,
+    isMultiFilial,
+  } = useActiveFilialFilter();
   const [filters, setFilters] = useState<PortfolioFilters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<PortfolioFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
@@ -130,6 +139,15 @@ const Pops: React.FC = () => {
     }, 350);
     return () => clearTimeout(t);
   }, [filters]);
+
+  // Troca de filial (cabeçalho ou filtro local): reinicia paginação, cliente e
+  // executor selecionado, para não exibir dado da filial anterior.
+  useEffect(() => {
+    setPage(0);
+    setSelectedClient(null);
+    setSelectedMachineId(null);
+    setExecUser(null);
+  }, [filialId]);
 
   const { data: filiais = [] } = useFiliaisList(perms.isGlobal);
   const goal = usePopsGoalSummary(program?.id, filialId);
@@ -329,11 +347,11 @@ const Pops: React.FC = () => {
         programName={program.name}
         summary={goal.data}
         isLoading={goal.isLoading}
-        showFilialFilter={perms.isGlobal}
-        filiais={filiais}
+        showFilialFilter={filialIsGlobal || isMultiFilial}
+        filiais={filialIsGlobal ? filiais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))}
         filialId={filialId}
         onFilialChange={(id) => {
-          setFilialId(id);
+          setFilial(id ?? 'all');
           setPage(0);
           setSelectedClient(null);
         }}

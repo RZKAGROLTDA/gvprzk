@@ -8,7 +8,9 @@
 - [ ] M2.1: lacuna antiga de `admin` nas policies de `clients` (tratar separadamente)
 - [ ] M3: adaptar RPCs de escopo (métricas, gestão, tarefas, CRM, POPS, Meu Dia, Regularização)
 - [x] M3-Etapa1: fonte única de filiais autorizadas no frontend (`useUserFiliais` + filial ativa por usuário)
-- [ ] M3-Etapa2: seletor de filial no cabeçalho (2+ filiais)
+- [x] M3-Etapa2: seletor de filial no cabeçalho (2+ filiais)
+- [x] M3-Etapa3 Bloco 3A: POPS, Agenda Semanal, Programação (listagem) e Retornos usando a Filial Ativa
+- [ ] M3-Etapa3 Bloco 3B: Carteira, Treinamentos, Meu Dia/Equipe, Relatórios/KPIs, Parque, Regularização, Gerencial
 - [ ] F1: tela administrativa em Gerenciar Usuários + tela administrativa em Gerenciar Usuários (com invalidação ampla de cache)
 - [ ] F2: filtros multi-filial nas telas afetadas
 - [ ] V1: aplicar caso Diogo (RAC, principal Caiapônia, adicional Planalto Verde)

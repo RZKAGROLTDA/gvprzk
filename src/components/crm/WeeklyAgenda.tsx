@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { useWeeklyAgenda, WeeklyAgendaDay } from '@/hooks/useWeeklyAgenda';
 import { FollowupRow } from '@/hooks/useFollowups';
 import { useAuth } from '@/hooks/useAuth';
@@ -53,12 +54,22 @@ const endOfMonth = (d: Date) => { const x = startOfDay(d); x.setMonth(x.getMonth
 export const WeeklyAgenda: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { consultants } = useFilteredConsultants();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  const { data: filiais = [] } = useQuery({
+  // M3: filtro de filial ancorado na Filial Ativa do cabeçalho.
+  const {
+    filial,
+    setFilial,
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
+
+  const { data: allFiliais = [] } = useQuery({
     queryKey: ['filiais-options'],
     staleTime: 15 * 60 * 1000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
       if (error) throw error;
@@ -66,13 +77,20 @@ export const WeeklyAgenda: React.FC = () => {
     },
   });
 
+  const filiais = isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
+
   const [mode, setMode] = useState<RangeMode>('week');
   const [anchor, setAnchor] = useState<Date>(() => startOfWeekMon(new Date()));
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const [seller, setSeller] = useState<string>('all');
-  const [filial, setFilial] = useState<string>('all');
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+  // Ao trocar de filial, o vendedor selecionado pode não pertencer à nova filial.
+  React.useEffect(() => {
+    setSeller('all');
+    setSelectedDay(null);
+  }, [scopedFilialId]);
 
   const { startDate, endDate } = useMemo(() => {
     if (mode === 'today') {

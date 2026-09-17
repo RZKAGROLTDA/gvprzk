@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useFollowupsProspectsOnly, FollowupRow } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -50,18 +51,30 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
 
 export const Returns: React.FC = () => {
   const { data = [], isLoading } = useFollowupsProspectsOnly();
-  const { consultants } = useFilteredConsultants();
   const qc = useQueryClient();
 
-  const { data: filiais = [] } = useQuery({
+  // M3: filtro de filial ancorado na Filial Ativa do cabeçalho.
+  const {
+    filial,
+    setFilial,
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
+
+  const { data: allFiliais = [] } = useQuery({
     queryKey: ['filiais-options'],
     staleTime: 15 * 60 * 1000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const filiais = isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
 
   const consultantById = useMemo(() => {
     const m = new Map<string, string>();
@@ -78,12 +91,16 @@ export const Returns: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [seller, setSeller] = useState<string>('all');
-  const [filial, setFilial] = useState<string>('all');
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
   const [statusF, setStatusF] = useState<string>('all');
   const [priorityF, setPriorityF] = useState<string>('all');
   const [tempF, setTempF] = useState<string>('all');
+
+  // Troca de filial: vendedor selecionado pode não pertencer à nova filial.
+  React.useEffect(() => {
+    setSeller('all');
+  }, [scopedFilialId]);
 
   // Ações state
   const [historyClient, setHistoryClient] = useState<{ name: string; code: string | null } | null>(null);
