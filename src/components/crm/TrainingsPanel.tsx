@@ -117,7 +117,7 @@ export const TrainingsPanel: React.FC = () => {
     startDate: startDate || null,
     endDate: endDate || null,
     userId: canSelectEmployee && employeeFilter !== ALL ? employeeFilter : null,
-    filialId: canSelectEmployee && filialFilter !== ALL ? filialFilter : null,
+    filialId: filialFilter !== ALL ? filialFilter : null,
     status: statusFilter !== ALL ? (statusFilter as TrainingStatus) : null,
   }), [canSelectEmployee, employeeFilter, endDate, filialFilter, startDate, statusFilter]);
 
@@ -132,6 +132,14 @@ export const TrainingsPanel: React.FC = () => {
     scopeFilialId,
     canSelectEmployee
   );
+
+  // Colaborador selecionado é limpo quando não pertence à Filial Ativa.
+  React.useEffect(() => {
+    if (employeeFilter === ALL || employeesLoading) return;
+    if (!employees.some((e) => e.user_id === employeeFilter)) setEmployeeFilter(ALL);
+  }, [employees, employeesLoading, employeeFilter]);
+
+  const filialOptions = isGlobal ? filiais : allowedFiliais;
 
   const { data: trainings = [], isLoading, error } = useTrainings(filters);
   const { data: stats } = useTrainingStats(filters);
