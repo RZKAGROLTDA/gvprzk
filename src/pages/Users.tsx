@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Building, Trash2, AlertTriangle, Search } from 'lucide-react';
+import { Users as UsersIcon, Building, Building2, Trash2, AlertTriangle, Search } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 import { useUserRole } from '@/hooks/useUserRole';
+import { AdditionalFiliaisDialog } from '@/components/users/AdditionalFiliaisDialog';
 
 
 
@@ -38,6 +39,14 @@ export const Users: React.FC = () => {
   const [filialFilter, setFilialFilter] = useState<string>('all');
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // M3: filiais adicionais ativas por usuário (somente leitura para exibição)
+  const [additionalByUser, setAdditionalByUser] = useState<Record<string, string[]>>({});
+  const [additionalDialogUser, setAdditionalDialogUser] = useState<{
+    user_id: string;
+    name: string;
+    filial_id: string | null;
+    filial_nome?: string;
+  } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim().toLowerCase()), 300);
@@ -65,6 +74,17 @@ export const Users: React.FC = () => {
         .order('nome');
 
       if (filiaisError) throw filiaisError;
+
+      // M3: vínculos adicionais ativos (RLS restringe a gestores autorizados)
+      const { data: adicionaisData } = await supabase
+        .from('user_filiais')
+        .select('user_id, filial_id')
+        .eq('active', true);
+      const mapa: Record<string, string[]> = {};
+      ((adicionaisData ?? []) as { user_id: string; filial_id: string }[]).forEach((r) => {
+        (mapa[r.user_id] ||= []).push(r.filial_id);
+      });
+      setAdditionalByUser(mapa);
 
       // User profiles are now handled by the secure hook
       setFiliais(filiaisData || []);
@@ -429,6 +449,7 @@ export const Users: React.FC = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Permissão</TableHead>
                 <TableHead>Filial</TableHead>
+                <TableHead>Filiais Adicionais</TableHead>
                 <TableHead>Cargo</TableHead>
                 {isManager && <TableHead>Ações</TableHead>}
               </TableRow>
@@ -463,6 +484,31 @@ export const Users: React.FC = () => {
                     ) : (
                       <span className="text-muted-foreground">Sem filial</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {(additionalByUser[profile.user_id] ?? []).length > 0 ? (
+                        (additionalByUser[profile.user_id] ?? []).map((fid) => (
+                          <Badge key={fid} variant="outline" className="text-xs">
+                            {filiais.find((f) => f.id === fid)?.nome ?? 'Filial'}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Nenhuma</span>
+                      )}
+                      {isManager && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2"
+                          onClick={() => setAdditionalDialogUser(profile)}
+                          title="Gerenciar filiais adicionais"
+                        >
+                          <Building2 className="h-4 w-4" />
+                          Gerenciar
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                      <div className="flex gap-2">
@@ -544,6 +590,23 @@ export const Users: React.FC = () => {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {additionalDialogUser && (
+        <AdditionalFiliaisDialog
+          open={!!additionalDialogUser}
+          onOpenChange={(open) => {
+            if (!open) {
+              setAdditionalDialogUser(null);
+              loadData(); // atualiza etiquetas de adicionais na tabela
+            }
+          }}
+          userId={additionalDialogUser.user_id}
+          userName={additionalDialogUser.name}
+          primaryFilialId={additionalDialogUser.filial_id}
+          primaryFilialNome={additionalDialogUser.filial_nome ?? null}
+          filiais={filiais}
+        />
       )}
     </div>
   );
