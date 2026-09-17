@@ -14,3 +14,4 @@
 - [ ] M3 Filial Ativa efetiva: revisar arquitetura A (user_active_filial no banco) x B (sessão + parâmetro validado) e minimizar alterações de RLS antes de implementar E1
 - [ ] M3 E1 (arquitetura B aprovada): POPS usando Filial Ativa como filial efetiva + validacao no banco, sem alterar RLS
 - [ ] M3 E1: revisao final antes de aplicar (validar filial existente/ativa, mapear todas as chamadas POPS, Excel e consultas diretas)
+- [ ] M3 E1 aplicar versao final + bateria completa (Diogo Caiaponia/Planalto Verde, Excel, 42501)
