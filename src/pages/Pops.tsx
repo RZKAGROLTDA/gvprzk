@@ -348,6 +348,7 @@ const Pops: React.FC = () => {
         summary={goal.data}
         isLoading={goal.isLoading}
         showFilialFilter={filialIsGlobal || isMultiFilial}
+        allowAllFiliais={filialIsGlobal}
         filiais={filialIsGlobal ? filiais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))}
         filialId={filialId}
         onFilialChange={(id) => {
