@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
