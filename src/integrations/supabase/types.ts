@@ -3065,6 +3065,10 @@ export type Database = {
           threat_description: string
         }[]
       }
+      effective_filial_ids: {
+        Args: { p_filial_id?: string }
+        Returns: string[]
+      }
       ensure_campaign_client_master: {
         Args: { p_client_code: string; p_client_name: string }
         Returns: {
@@ -4665,7 +4669,11 @@ export type Database = {
       pops_norm_place: { Args: { p: string }; Returns: string }
       pops_norm_serial: { Args: { p_text: string }; Returns: string }
       pops_portfolio_client_machines: {
-        Args: { p_client_key: string; p_program_id: string }
+        Args: {
+          p_client_key: string
+          p_filial_id?: string
+          p_program_id: string
+        }
         Returns: Json
       }
       pops_portfolio_clients: {
