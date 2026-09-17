@@ -1,89 +1,104 @@
-# Multi-Filial — Filial Ativa como filial efetiva (revisão de arquitetura, sem implementação)
+# M3 / E1 — Revisão final antes de aplicar (POPS + Filial Ativa)
 
-## 1. Causa raiz (confirmada)
+Nada foi aplicado. Resultado da revisão e versão final abaixo.
 
-O banco conhece apenas duas coisas: a filial principal (`profiles.filial_id`) e o
-**escopo autorizado** (`get_user_filial_ids_internal` = principal + adicionais ativas).
-A Filial Ativa existe só no frontend, então:
+## 1. Achados da revisão
 
-- consultas com parâmetro de filial funcionam;
-- consultas sem parâmetro devolvem a **união** das filiais (dado misturado);
-- funções antigas devolvem sempre a **principal** (rótulo/escopo errado).
+| # | Ponto verificado | Achado | Correção na versão final |
+| --- | --- | --- | --- |
+| 1 | `effective_filial_ids` para admin/manager | Aceitava qualquer UUID informado | Passa a exigir que a filial exista no cadastro de filiais (`public.filiais`), senão erro `42501`. `NULL` continua = visão global |
+| 2 | `pops_goal_summary` (`usePopsGoalSummary`) | Enviava `p_filial_id: filialId ?? undefined` — a chave é **omitida** e o banco assume `NULL` | Passa a enviar `?? null` explicitamente |
+| 3 | `pops_executor_results` (`usePopsExecutorResults`) | Mesmo problema do item 2 | Passa a enviar `?? null` |
+| 4 | `pops_portfolio_clients` (`usePopsClients`) | Já envia `filialId` explicitamente | Sem mudança |
+| 5 | `pops_portfolio_client_machines` (`usePopsClientMachines`) | **Não recebia filial nenhuma**; usava a filial principal do cadastro (`pops_scope`) — este é o problema confirmado nas máquinas | Ganha parâmetro de filial efetiva e o frontend passa a enviá-lo |
+| 6 | Excel “Serviçadas” (`popsServicedExcel.ts`) | Leitura direta de `pops_machines` já filtra por `pops_filial_id` quando há filial; mas a busca de nomes dos executores usava `?? undefined` | `?? null` explícito. Com Planalto Verde ativa, nenhuma máquina de Caiapônia entra no arquivo |
+| 7 | Dependência de `NULL` | Usuário multi-filial podia escolher “Todas as permitidas” no filtro local, o que **misturaria** as duas filiais | Para quem não é admin/manager: (a) o filtro local do POPS deixa de oferecer “Todas”; (b) no banco, `NULL` de usuário não-global passa a significar **somente a filial principal**, nunca a união |
+| 8 | Outras consultas da tela POPS | `pops_programs` e `pops_services` não dependem de filial; `pops_client_assignments` não é consultada pelo frontend; `pops_complete_machine` é escrita de uma máquina já listada e continua protegida pela RLS | Sem mudança nesta etapa |
+| 9 | RLS | Continua sendo o teto de permissão (escopo autorizado M2) | **Nenhuma das 33 policies alterada** |
+| 10 | `pops_scope`, `get_user_filial_id`, `get_supervisor_filial_id` | Usadas pela RLS e por outros módulos | Mantidas intactas |
 
-## 2. Alternativa A x Alternativa B
+Observação: o cadastro de filiais (`public.filiais`) não possui coluna de “ativa”; a
+validação possível é de existência da filial, o que já impede filial inválida.
 
-| Critério | A) `user_active_filial` no banco | B) Filial Ativa na sessão + parâmetro validado no banco |
-| --- | --- | --- |
-| Duas abas / dois dispositivos | **Falha**: uma linha por usuário; a aba B muda o contexto da aba A e a A passa a mostrar outra filial sem aviso | **Correto**: cada aba/dispositivo carrega o próprio contexto na requisição |
-| Segurança | No banco | No banco: cada função valida `p_filial_id = ANY(get_user_filial_ids_internal(auth.uid()))`, senão erro `42501`. O frontend nunca amplia acesso |
-| Alterações de RLS | Alta: as policies precisam ler a filial ativa (33 policies) | **Mínima**: RLS continua garantindo apenas o escopo autorizado |
-| Risco de regressão | Alto (RLS + escrita a cada troca de filial) | Baixo (mudança concentrada em RPCs/consultas) |
-| Filial única | Preservado | Preservado (ativa = principal) |
-| Admin/manager global | Preservado | Preservado (`NULL` = todas) |
-| Escrita no banco a cada troca | Sim (linha por usuário) | Não |
-| Cache/React Query | Chave não muda → risco de dado velho | Filial entra na chave → invalidação natural |
+## 2. Versão final — banco
 
-### Recomendação: **B**
+Nova função de segurança (única fonte da filial efetiva):
 
-A é reprovada exatamente pelo risco levantado: estado global por usuário provoca
-interferência entre abas e dispositivos, além de exigir mexer em toda a RLS.
+```sql
+CREATE OR REPLACE FUNCTION public.effective_filial_ids(p_filial_id uuid DEFAULT NULL)
+RETURNS uuid[] LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_global boolean;
+  v_allowed uuid[];
+  v_primary uuid;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501'; END IF;
 
-Em B a segurança continua 100% no banco, porque a filial recebida é sempre conferida
-contra `get_user_filial_ids_internal(auth.uid())` **dentro** de funções
-`SECURITY DEFINER`, e a RLS permanece como segunda barreira: mesmo que alguém envie uma
-filial não autorizada, a função rejeita e a RLS não devolveria as linhas.
+  v_global := public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager');
 
-## 3. Separação das duas regras
+  IF p_filial_id IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM public.filiais f WHERE f.id = p_filial_id) THEN
+    RAISE EXCEPTION 'Filial inexistente' USING ERRCODE='42501';
+  END IF;
 
-- **RLS = teto de permissão.** Continua respondendo "este usuário pode ver esta linha?"
-  usando o escopo autorizado (M2, já validado). **Nenhuma das 33 policies precisa
-  conhecer a Filial Ativa** — nenhuma delas é usada para *escolher* a filial exibida.
-- **Consulta/RPC = seleção da filial.** Passa a receber a filial efetiva e filtrar por
-  ela. `NULL` mantém o comportamento atual (todas as permitidas / global).
+  IF v_global THEN
+    RETURN CASE WHEN p_filial_id IS NULL THEN '{}'::uuid[] ELSE ARRAY[p_filial_id] END;
+  END IF;
 
-Exceções a tratar como **filtro na consulta**, não em RLS: leituras diretas de tabela no
-frontend (Parque, Regularização, Campanhas, Treinamentos, Retornos, Tarefas) — passam a
-enviar `filial_id` explicitamente.
+  v_allowed := public.get_user_filial_ids_internal(v_uid);
+  IF coalesce(array_length(v_allowed,1),0) = 0 THEN
+    RAISE EXCEPTION 'Acesso negado: usuário sem filial autorizada' USING ERRCODE='42501';
+  END IF;
 
-## 4. Alterações necessárias
+  IF p_filial_id IS NOT NULL THEN
+    IF NOT (p_filial_id = ANY(v_allowed)) THEN
+      RAISE EXCEPTION 'Acesso negado: filial não autorizada' USING ERRCODE='42501';
+    END IF;
+    RETURN ARRAY[p_filial_id];
+  END IF;
 
-### Banco (todas com filial efetiva validada; `NULL` = comportamento atual)
-1. `pops_scope(p_filial_id uuid DEFAULT NULL)` → `filial_id`/`filial_ids` refletem a
-   filial efetiva (raiz do problema confirmado no POPS/máquinas).
-2. `my_day_scope_v2`, `get_my_day_summary`, `get_my_day_details`,
-   `get_my_day_team_summary` → novo parâmetro de filial efetiva.
-3. `get_equipment_validation_summary`, `get_equipment_validators` → novo parâmetro.
-4. `get_performance_by_filial_v2` e demais RPCs de KPI sem filtro de filial → novo parâmetro.
-5. `get_secure_tasks_paginated_filtered` → aceitar filial por ID além do texto atual.
-6. Função auxiliar única `assert_filial_allowed(p_filial_id)` reutilizada por todas.
-7. **Nenhuma policy de RLS alterada nesta arquitetura.**
-8. `get_user_filial_id`, `get_supervisor_filial_id` permanecem intactas (filial principal).
+  -- Sem Filial Ativa: filial principal do cadastro (nunca a união de filiais)
+  SELECT p.filial_id INTO v_primary FROM public.profiles p
+   WHERE p.user_id = v_uid AND p.approval_status='approved' AND p.employment_status='active';
+  RETURN CASE WHEN v_primary IS NULL THEN v_allowed ELSE ARRAY[v_primary] END;
+END $$;
+REVOKE EXECUTE ON FUNCTION public.effective_filial_ids(uuid) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.effective_filial_ids(uuid) TO authenticated;
+```
 
-### Frontend
-9. `useActiveFilialFilter`/`useUserFiliais` como única fonte da filial efetiva, sempre na
-   chave do React Query (evita cache da filial anterior).
-10. Telas de leitura: POPS, Parque, Validação, Regularização, CRM, Meu Dia, Retornos,
-    Treinamentos, Campanhas, Relatórios/KPIs passam a enviar a filial efetiva.
-11. Criação/operação (tarefas, visitas, checklists, condições especiais, férias) usa a
-    filial efetiva em vez de `profile.filial_id`.
+Nas 4 RPCs do POPS (`pops_goal_summary`, `pops_portfolio_clients`,
+`pops_executor_results`, `pops_portfolio_client_machines`), a única mudança de lógica é
+trocar a filial derivada do cadastro por:
 
-Etapas sugeridas: **E1** função de validação + POPS; **E2** Parque/Validação/Regularização;
-**E3** CRM/Meu Dia/Retornos/Treinamentos; **E4** Campanhas/Relatórios/KPIs;
-**E5** criação/operação. Uma aprovação por etapa.
+```sql
+v_filiais := public.effective_filial_ids(p_filial_id);
+...  AND (cardinality(v_filiais) = 0 OR m.pops_filial_id = ANY(v_filiais))
+```
 
-## 5. Plano de testes (`BEGIN/ROLLBACK`, sem vínculo permanente)
+e devolver `filial_id` = a filial efetiva (ou `NULL` na visão global).
+`pops_portfolio_client_machines` é recriada com a assinatura
+`(p_program_id uuid, p_client_key text, p_filial_id uuid DEFAULT NULL)` — sem
+sobrecarga — com `GRANT EXECUTE` para `authenticated`. Todo o resto (filtros, busca,
+paginação, ordenação e formato de retorno) permanece idêntico.
 
-1. Filial única (Jhonatan/Canarana): todos os números iguais ao baseline.
-2. Diogo com Caiapônia+Planalto Verde, ativa = Caiapônia: igual ao baseline de Caiapônia,
-   **sem soma** com Planalto Verde.
-3. Ativa = Planalto Verde: dados exclusivamente de Planalto Verde em POPS (clientes,
-   máquinas, serviços, contadores, filtros, Excel), Parque, Validação, Regularização,
-   CRM, Meu Dia, visitas/retornos, campanhas, KPIs/relatórios.
+## 3. Versão final — frontend
+
+- `src/hooks/usePops.ts`: `?? null` em vez de `?? undefined` nas 3 RPCs; `usePopsClientMachines(programId, clientKey, filialId)` com a filial na chave de cache.
+- `src/pages/Pops.tsx`: envia `filialId` também para as máquinas do cliente; filtro local sem opção “Todas” para quem não é admin/manager.
+- `src/lib/popsServicedExcel.ts`: `?? null` na busca de executores (o filtro por filial na leitura das máquinas já existe).
+
+## 4. Plano de testes (`Teste | Filial Ativa | Obtido | Esperado | Status`)
+
+1. Contagens reais de POPS em Caiapônia e Planalto Verde (baseline direto na base).
+2. Diogo, Caiapônia ativa: carteira, máquinas, foco/pendentes, serviçadas, contadores, indicadores, serviços, executores, filtros, busca, detalhes e Excel = apenas Caiapônia.
+3. Diogo, Planalto Verde ativa: os mesmos itens = apenas Planalto Verde.
 4. Volta para Caiapônia: valores idênticos ao teste 2.
-5. Filial não autorizada enviada pelo frontend: erro `42501` e nenhum dado.
-6. Duas abas simultâneas com filiais diferentes: cada aba mantém a própria filial.
-7. Admin/manager sem filial ativa: global; com filial ativa: apenas aquela.
-8. Vínculo adicional desativado com Planalto Verde ativa: cai para a principal.
-9. Nada alterado em cadastro, cargos, matrícula PM, Excel POPS, M1/M2.
+5. Terceira filial enviada na RPC: `42501`, nenhum dado.
+6. Filial inexistente enviada por admin/manager: `42501`.
+7. Usuário de filial única (Jhonatan/Canarana): idêntico ao baseline atual.
+8. Admin/manager sem filial: visão global; com filial: apenas aquela.
+9. Excel Serviçadas com Planalto Verde ativa: nenhuma máquina de Caiapônia, Matrícula PM preservada.
+10. Nada alterado em RLS, cadastro, cargos, matrículas ou vínculos.
 
-Resultados apresentados como `Teste | Obtido | Esperado | Status`.
+Tudo reversível (`BEGIN/ROLLBACK`); o vínculo do Diogo é temporário no teste.
