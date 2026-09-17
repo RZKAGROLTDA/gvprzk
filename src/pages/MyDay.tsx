@@ -220,10 +220,16 @@ const MyDay: React.FC = () => {
 
           <TabsContent value="team" className="space-y-4">
             <TeamFilters
-              showFilialFilter={!isSupervisorOnly}
-              filiais={filiais as { id: string; nome: string }[]}
+              showFilialFilter={isGlobal || isMultiFilial}
+              allowAllFiliais={isGlobal}
+              filiais={filialOptions}
               filters={teamFilters}
-              onChange={setTeamFilters}
+              onChange={(next) => {
+                if (next.filialId !== teamFilters.filialId) {
+                  setFilial(next.filialId ?? 'all');
+                }
+                setLocalFilters({ ...next, filialId: null });
+              }}
               rows={team.data?.rows ?? []}
               search={search}
               onSearchChange={setSearch}
