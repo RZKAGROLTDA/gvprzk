@@ -17,6 +17,8 @@ type Props = {
   summary?: PopsGoalSummary;
   isLoading: boolean;
   showFilialFilter: boolean;
+  /** Permite a opção "Todas as filiais" (apenas admin/gestor). */
+  allowAllFiliais?: boolean;
   filiais: { id: string; nome: string }[];
   filialId: string | null;
   onFilialChange: (id: string | null) => void;
