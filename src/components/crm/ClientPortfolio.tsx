@@ -235,6 +235,14 @@ export const ClientPortfolio: React.FC = () => {
   // Reset page on filter change
   useEffect(() => { setPage(1); }, [search, seller, filial, status, priority, temperature, quickFilter, from, to, pageSize]);
 
+  // Ao trocar a Filial Ativa, o vendedor selecionado só continua se pertencer à nova filial.
+  useEffect(() => {
+    if (seller === 'all') return;
+    if (!consultants.some((c) => c.id === seller)) setSeller('all');
+  }, [consultants, seller]);
+
+  const filialOptions = isGlobal && allowedFiliais.length === 0 ? filiais : allowedFiliais;
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageStart = (currentPage - 1) * pageSize;
@@ -249,7 +257,7 @@ export const ClientPortfolio: React.FC = () => {
   }), [aggregates]);
 
   const clearFilters = () => {
-    setSearch(''); setSeller('all'); setFilial('all'); setStatus('all');
+    setSearch(''); setSeller('all'); setStatus('all');
     setPriority('all'); setTemperature('all'); setFrom(undefined); setTo(undefined);
     setQuickFilter('all');
   };
