@@ -116,7 +116,7 @@ export const PopsGoalHeader: React.FC<Props> = ({
                     <SelectValue placeholder="Todas as filiais" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas as filiais</SelectItem>
+                    {allowAllFiliais && <SelectItem value="all">Todas as filiais</SelectItem>}
                     {filiais.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
                         {f.nome}
