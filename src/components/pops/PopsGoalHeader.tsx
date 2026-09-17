@@ -84,6 +84,7 @@ export const PopsGoalHeader: React.FC<Props> = ({
   summary,
   isLoading,
   showFilialFilter,
+  allowAllFiliais = true,
   filiais,
   filialId,
   onFilialChange,
