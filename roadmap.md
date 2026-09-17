@@ -12,3 +12,4 @@
 - [ ] Aguardando autorização: primeiro acesso multi-filial real (Diogo)
 
 - [ ] M3 Filial Ativa efetiva: revisar arquitetura A (user_active_filial no banco) x B (sessão + parâmetro validado) e minimizar alterações de RLS antes de implementar E1
+- [ ] M3 E1 (arquitetura B aprovada): POPS usando Filial Ativa como filial efetiva + validacao no banco, sem alterar RLS
