@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useFollowupsProspectsOnly, FollowupRow } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -90,7 +91,7 @@ export const Returns: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [seller, setSeller] = useState<string>('all');
-  const [filial, setFilial] = useState<string>('all');
+  
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
   const [statusF, setStatusF] = useState<string>('all');
