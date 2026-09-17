@@ -296,8 +296,10 @@ export const ClientPortfolio: React.FC = () => {
           <Select value={filial} onValueChange={setFilial}>
             <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas as filiais</SelectItem>
-              {filiais.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>))}
+              {(isGlobal || filialOptions.length > 1) && (
+                <SelectItem value="all">Todas as filiais</SelectItem>
+              )}
+              {filialOptions.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>))}
             </SelectContent>
           </Select>
           <Select value={status} onValueChange={setStatus}>
