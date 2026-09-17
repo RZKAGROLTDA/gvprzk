@@ -41,7 +41,12 @@ export const Users: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   // M3: filiais adicionais ativas por usuário (somente leitura para exibição)
   const [additionalByUser, setAdditionalByUser] = useState<Record<string, string[]>>({});
-  const [additionalDialogUser, setAdditionalDialogUser] = useState<Profile | null>(null);
+  const [additionalDialogUser, setAdditionalDialogUser] = useState<{
+    user_id: string;
+    name: string;
+    filial_id: string | null;
+    filial_nome?: string;
+  } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim().toLowerCase()), 300);
