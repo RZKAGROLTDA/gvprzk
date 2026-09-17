@@ -91,12 +91,16 @@ export const Returns: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [seller, setSeller] = useState<string>('all');
-  
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
   const [statusF, setStatusF] = useState<string>('all');
   const [priorityF, setPriorityF] = useState<string>('all');
   const [tempF, setTempF] = useState<string>('all');
+
+  // Troca de filial: vendedor selecionado pode não pertencer à nova filial.
+  React.useEffect(() => {
+    setSeller('all');
+  }, [scopedFilialId]);
 
   // Ações state
   const [historyClient, setHistoryClient] = useState<{ name: string; code: string | null } | null>(null);
