@@ -1,21 +1,29 @@
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useProfile } from '@/hooks/useProfile';
+import { useUserFiliais } from '@/hooks/useUserFiliais';
 
 /**
- * Hook that returns consultants filtered by the current user's role:
- * - Admin/Manager: all approved users
- * - Supervisor: only users from the same filial
- * - Others: all approved users (filtered by RLS)
+ * Consultores filtrados conforme o acesso do usuário:
+ * - Admin/Manager: todos os usuários aprovados
+ * - Supervisor: usuários da filial em foco (Filial Ativa do cabeçalho — M3)
+ * - Demais: todos os aprovados (limitados pelo RLS)
+ *
+ * `filialId` permite que a tela alinhe a lista ao seu próprio filtro de filial.
+ * `null` explícito = sem filtro de filial.
  */
-export const useFilteredConsultants = () => {
+export const useFilteredConsultants = (filialId?: string | null) => {
   const { isSupervisor, isAdmin, isManager } = useUserRole();
   const { profile } = useProfile();
+  const { activeFilialId, isGlobal } = useUserFiliais();
+
+  const supervisorScope = isSupervisor && !isAdmin && !isManager && !isGlobal;
+  const scopeFilialId =
+    filialId !== undefined ? filialId : supervisorScope ? activeFilialId : null;
 
   const { data: allConsultants = [], isLoading } = useQuery({
-    queryKey: ['filtered-consultants', isSupervisor, isAdmin, isManager, profile?.filial_id],
+    queryKey: ['filtered-consultants', isSupervisor, isAdmin, isManager, scopeFilialId],
     queryFn: async () => {
       let query = supabase
         .from('profiles')
@@ -23,9 +31,8 @@ export const useFilteredConsultants = () => {
         .eq('approval_status', 'approved')
         .order('name');
 
-      // Supervisor: filter by their filial
-      if (isSupervisor && !isAdmin && !isManager && profile?.filial_id) {
-        query = query.eq('filial_id', profile.filial_id);
+      if (scopeFilialId) {
+        query = query.eq('filial_id', scopeFilialId);
       }
 
       const { data, error } = await query;
