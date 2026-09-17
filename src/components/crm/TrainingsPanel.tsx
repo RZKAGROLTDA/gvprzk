@@ -41,6 +41,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useFiliaisList } from '@/hooks/useVacations';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import {
   TrainingRow,
   TrainingStatus,
@@ -92,12 +93,20 @@ export const TrainingsPanel: React.FC = () => {
   const { isManager, isSupervisor } = useUserRole();
 
   const canSelectEmployee = isManager || isSupervisor;
-  const scopeFilialId = isSupervisor && !isManager ? profile?.filial_id ?? null : null;
+
+  // M3 — Etapa 3B: filtros e equipe seguem a Filial Ativa do cabeçalho.
+  const {
+    filial: filialFilter,
+    setFilial: setFilialFilter,
+    filialId: activeScopeFilialId,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const scopeFilialId = activeScopeFilialId;
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState<string>(ALL);
-  const [filialFilter, setFilialFilter] = useState<string>(ALL);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -108,7 +117,7 @@ export const TrainingsPanel: React.FC = () => {
     startDate: startDate || null,
     endDate: endDate || null,
     userId: canSelectEmployee && employeeFilter !== ALL ? employeeFilter : null,
-    filialId: canSelectEmployee && filialFilter !== ALL ? filialFilter : null,
+    filialId: filialFilter !== ALL ? filialFilter : null,
     status: statusFilter !== ALL ? (statusFilter as TrainingStatus) : null,
   }), [canSelectEmployee, employeeFilter, endDate, filialFilter, startDate, statusFilter]);
 
@@ -123,6 +132,14 @@ export const TrainingsPanel: React.FC = () => {
     scopeFilialId,
     canSelectEmployee
   );
+
+  // Colaborador selecionado é limpo quando não pertence à Filial Ativa.
+  React.useEffect(() => {
+    if (employeeFilter === ALL || employeesLoading) return;
+    if (!employees.some((e) => e.user_id === employeeFilter)) setEmployeeFilter(ALL);
+  }, [employees, employeesLoading, employeeFilter]);
+
+  const filialOptions = isGlobal ? filiais : allowedFiliais;
 
   const { data: trainings = [], isLoading, error } = useTrainings(filters);
   const { data: stats } = useTrainingStats(filters);
@@ -265,12 +282,12 @@ const XLSX = await import('xlsx');
                   <Select value={filialFilter} onValueChange={setFilialFilter}>
                     <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={ALL}>Todas</SelectItem>
-                      {filiais
-                        .filter((f) => !scopeFilialId || f.id === scopeFilialId)
-                        .map((f) => (
-                          <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-                        ))}
+                      {(isGlobal || filialOptions.length > 1) && (
+                        <SelectItem value={ALL}>Todas</SelectItem>
+                      )}
+                      {filialOptions.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

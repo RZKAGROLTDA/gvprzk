@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -71,7 +72,15 @@ const PAGE_SIZE_OPTIONS = [30, 50, 100, 200];
 
 export const ClientPortfolio: React.FC = () => {
   const { data = [], isLoading } = useFollowups();
-  const { consultants } = useFilteredConsultants();
+  // M3 — Etapa 3B: a Carteira trabalha com o ID da Filial Ativa.
+  const {
+    filial,
+    setFilial,
+    filialId: activeScopeFilialId,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(activeScopeFilialId);
   const queryClient = useQueryClient();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailClient, setDetailClient] = useState<ClientAggregate | null>(null);
@@ -114,7 +123,6 @@ export const ClientPortfolio: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [seller, setSeller] = useState<string>('all');
-  const [filial, setFilial] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
   const [priority, setPriority] = useState<string>('all');
   const [temperature, setTemperature] = useState<string>('all');
@@ -227,6 +235,17 @@ export const ClientPortfolio: React.FC = () => {
   // Reset page on filter change
   useEffect(() => { setPage(1); }, [search, seller, filial, status, priority, temperature, quickFilter, from, to, pageSize]);
 
+  // Ao trocar a Filial Ativa, o vendedor selecionado só continua se pertencer à nova filial.
+  useEffect(() => {
+    if (seller === 'all') return;
+    if (!consultants.some((c) => c.id === seller)) setSeller('all');
+  }, [consultants, seller]);
+
+  // Global (admin/manager) escolhe qualquer filial; demais, somente as autorizadas.
+  const filialOptions = isGlobal
+    ? filiais.map((f) => ({ id: f.id, nome: f.nome }))
+    : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pageStart = (currentPage - 1) * pageSize;
@@ -241,7 +260,7 @@ export const ClientPortfolio: React.FC = () => {
   }), [aggregates]);
 
   const clearFilters = () => {
-    setSearch(''); setSeller('all'); setFilial('all'); setStatus('all');
+    setSearch(''); setSeller('all'); setStatus('all');
     setPriority('all'); setTemperature('all'); setFrom(undefined); setTo(undefined);
     setQuickFilter('all');
   };
@@ -277,8 +296,10 @@ export const ClientPortfolio: React.FC = () => {
           <Select value={filial} onValueChange={setFilial}>
             <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas as filiais</SelectItem>
-              {filiais.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>))}
+              {(isGlobal || filialOptions.length > 1) && (
+                <SelectItem value="all">Todas as filiais</SelectItem>
+              )}
+              {filialOptions.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>))}
             </SelectContent>
           </Select>
           <Select value={status} onValueChange={setStatus}>

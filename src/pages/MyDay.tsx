@@ -27,6 +27,7 @@ import {
   type MyDayTeamRow,
 } from '@/lib/myDay';
 import { parseLocalDate } from '@/lib/utils';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 const BUCKETS: MyDayBucket[] = ['overdue', 'today', 'upcoming'];
 
@@ -42,15 +43,38 @@ const MyDay: React.FC = () => {
     showTeam && !roles.some((r) => ['admin', 'manager'].includes(String(r).toLowerCase()));
 
   const [tab, setTab] = React.useState<'me' | 'team'>('me');
-  const [teamFilters, setTeamFilters] = React.useState<MyDayTeamFilters>({
+  const [search, setSearch] = React.useState('');
+  const [member, setMember] = React.useState<MyDayTeamRow | null>(null);
+
+  // M3 — Etapa 3B: a equipe segue a Filial Ativa do cabeçalho.
+  const {
+    setFilial,
+    filialId: activeScopeFilialId,
+    allowedFiliais,
+    isGlobal,
+    isMultiFilial,
+  } = useActiveFilialFilter();
+
+  const [localFilters, setLocalFilters] = React.useState<MyDayTeamFilters>({
     filialId: null,
     role: null,
     userId: null,
   });
-  const [search, setSearch] = React.useState('');
-  const [member, setMember] = React.useState<MyDayTeamRow | null>(null);
+
+  const teamFilters = React.useMemo<MyDayTeamFilters>(
+    () => ({ ...localFilters, filialId: activeScopeFilialId }),
+    [localFilters, activeScopeFilialId],
+  );
+
+  // Ao trocar de filial, o colaborador selecionado é limpo.
+  React.useEffect(() => {
+    setLocalFilters((prev) => (prev.userId ? { ...prev, userId: null } : prev));
+  }, [activeScopeFilialId]);
 
   const { data: filiais = [] } = useFiliaisList();
+  const filialOptions = isGlobal
+    ? (filiais as { id: string; nome: string }[])
+    : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
   const team = useMyDayTeamSummary(teamFilters, showTeam && tab === 'team');
 
   const teamRows = React.useMemo(() => {
@@ -195,10 +219,16 @@ const MyDay: React.FC = () => {
 
           <TabsContent value="team" className="space-y-4">
             <TeamFilters
-              showFilialFilter={!isSupervisorOnly}
-              filiais={filiais as { id: string; nome: string }[]}
+              showFilialFilter={isGlobal || isMultiFilial}
+              allowAllFiliais={isGlobal}
+              filiais={filialOptions}
               filters={teamFilters}
-              onChange={setTeamFilters}
+              onChange={(next) => {
+                if (next.filialId !== teamFilters.filialId) {
+                  setFilial(next.filialId ?? 'all');
+                }
+                setLocalFilters({ ...next, filialId: null });
+              }}
               rows={team.data?.rows ?? []}
               search={search}
               onSearchChange={setSearch}

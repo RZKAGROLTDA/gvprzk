@@ -12,8 +12,10 @@ import { getRoleLabel } from '@/lib/roles';
 import { TEAM_MEMBER_ROLES, type MyDayTeamFilters, type MyDayTeamRow } from '@/lib/myDay';
 
 interface TeamFiltersProps {
-  /** Supervisor não escolhe filial (escopo fixo no banco). */
+  /** Só aparece para quem tem 2+ filiais autorizadas ou visão global. */
   showFilialFilter: boolean;
+  /** Somente admin/manager global podem ver "Todas as filiais". */
+  allowAllFiliais?: boolean;
   filiais: { id: string; nome: string }[];
   filters: MyDayTeamFilters;
   onChange: (next: MyDayTeamFilters) => void;
@@ -27,6 +29,7 @@ const ALL = 'all';
 
 export const TeamFilters: React.FC<TeamFiltersProps> = ({
   showFilialFilter,
+  allowAllFiliais = true,
   filiais,
   filters,
   onChange,
@@ -55,7 +58,7 @@ export const TeamFilters: React.FC<TeamFiltersProps> = ({
               <SelectValue placeholder="Todas as filiais" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Todas as filiais</SelectItem>
+              {allowAllFiliais && <SelectItem value={ALL}>Todas as filiais</SelectItem>}
               {filiais.map((f) => (
                 <SelectItem key={f.id} value={f.id}>
                   {f.nome}
