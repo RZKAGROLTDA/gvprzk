@@ -72,7 +72,15 @@ const PAGE_SIZE_OPTIONS = [30, 50, 100, 200];
 
 export const ClientPortfolio: React.FC = () => {
   const { data = [], isLoading } = useFollowups();
-  const { consultants } = useFilteredConsultants();
+  // M3 — Etapa 3B: a Carteira trabalha com o ID da Filial Ativa.
+  const {
+    filial,
+    setFilial,
+    filialId: activeScopeFilialId,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(activeScopeFilialId);
   const queryClient = useQueryClient();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailClient, setDetailClient] = useState<ClientAggregate | null>(null);
@@ -115,7 +123,6 @@ export const ClientPortfolio: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [seller, setSeller] = useState<string>('all');
-  const [filial, setFilial] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
   const [priority, setPriority] = useState<string>('all');
   const [temperature, setTemperature] = useState<string>('all');
