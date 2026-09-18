@@ -43,8 +43,11 @@ const Equipamentos: React.FC = () => {
   // e na Regularização (que usa exclusivamente as RPCs R2).
   const parkQueriesEnabled = view === 'validacao';
 
+  // M3/E2 — Filial Ativa do cabeçalho é a filial efetiva do Parque/Validação.
+  const { filialId: activeFilialId } = useActiveFilialFilter();
+
   // Diretório de validadores (id → nome, filial)
-  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled);
+  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled, activeFilialId);
   const validatorMap = useMemo(() => {
     const map = new Map<string, EquipmentValidator>();
     validators.forEach((v) => map.set(v.user_id, v));
