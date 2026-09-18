@@ -19,6 +19,7 @@ import {
   useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators, useEquipmentValidationSummary,
   type ClientEquipment, type EquipmentValidator, type EquipmentValidationSummaryRow,
 } from '@/hooks/useClientEquipment';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 
 const ALL = 'all';
@@ -73,9 +74,18 @@ const Equipamentos: React.FC = () => {
     return null;
   }, [validatedByFilter, validatorFilialFilter, validators]);
 
+  // M3/E2 — Filial Ativa do cabeçalho é a filial efetiva do Parque.
+  const { filialId: activeFilialId } = useActiveFilialFilter();
+
+  // Ao trocar de filial, volta para a primeira página.
+  React.useEffect(() => {
+    setPage(0);
+  }, [activeFilialId]);
+
   const filters = useMemo(
     () => ({
       search,
+      filialId: activeFilialId,
       machineType: machineType === ALL ? null : machineType,
       machineStatus: machineStatus === ALL ? null : machineStatus,
       clientCode,
@@ -83,7 +93,7 @@ const Equipamentos: React.FC = () => {
       validationPriority: priorityOnly ? true : null,
       validatedByIn,
     }),
-    [search, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn],
+    [search, activeFilialId, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn],
   );
 
   const { data, isLoading, isFetching, isError, error, refetch } = useEquipmentPark(
@@ -99,6 +109,7 @@ const Equipamentos: React.FC = () => {
   const { data: kpis, refetch: refetchKpis } = useEquipmentParkKpis(
     {
       search: search || null,
+      filialId: activeFilialId,
       machineStatus: machineStatus === ALL ? null : machineStatus,
     },
     parkQueriesEnabled,
@@ -145,6 +156,8 @@ const Equipamentos: React.FC = () => {
           .range(p * EXPORT_PAGE, p * EXPORT_PAGE + EXPORT_PAGE - 1);
 
         const norm = (v?: string) => (v && v.trim() ? v.trim() : null);
+        // M3/E2 — a exportação acompanha exatamente a Filial Ativa.
+        if (activeFilialId) q = q.eq('filial_id', activeFilialId);
         if (norm(clientCode)) q = q.eq('client_code', norm(clientCode)!);
         if (norm(clientName)) q = q.ilike('client_name', `%${norm(clientName)!}%`);
         if (machineType !== ALL) q = q.eq('machine_type', machineType);
