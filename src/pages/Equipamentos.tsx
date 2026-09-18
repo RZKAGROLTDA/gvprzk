@@ -109,6 +109,7 @@ const Equipamentos: React.FC = () => {
   const { data: kpis, refetch: refetchKpis } = useEquipmentParkKpis(
     {
       search: search || null,
+      filialId: activeFilialId,
       machineStatus: machineStatus === ALL ? null : machineStatus,
     },
     parkQueriesEnabled,
