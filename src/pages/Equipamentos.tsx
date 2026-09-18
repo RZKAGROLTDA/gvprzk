@@ -156,6 +156,8 @@ const Equipamentos: React.FC = () => {
           .range(p * EXPORT_PAGE, p * EXPORT_PAGE + EXPORT_PAGE - 1);
 
         const norm = (v?: string) => (v && v.trim() ? v.trim() : null);
+        // M3/E2 — a exportação acompanha exatamente a Filial Ativa.
+        if (activeFilialId) q = q.eq('filial_id', activeFilialId);
         if (norm(clientCode)) q = q.eq('client_code', norm(clientCode)!);
         if (norm(clientName)) q = q.ilike('client_name', `%${norm(clientName)!}%`);
         if (machineType !== ALL) q = q.eq('machine_type', machineType);
