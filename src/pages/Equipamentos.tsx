@@ -19,6 +19,7 @@ import {
   useEquipmentPark, useEquipmentParkKpis, useEquipmentValidators, useEquipmentValidationSummary,
   type ClientEquipment, type EquipmentValidator, type EquipmentValidationSummaryRow,
 } from '@/hooks/useClientEquipment';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 
 const ALL = 'all';
