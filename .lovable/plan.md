@@ -1,104 +1,46 @@
-# M3 / E1 — Revisão final antes de aplicar (POPS + Filial Ativa)
+# Regularização do Parque — Diagnóstico (E2)
 
-Nada foi aplicado. Resultado da revisão e versão final abaixo.
+Nada foi alterado. Abaixo o que hoje ignora a Filial Ativa e a proposta.
 
-## 1. Achados da revisão
+## Situação atual
 
-| # | Ponto verificado | Achado | Correção na versão final |
-| --- | --- | --- | --- |
-| 1 | `effective_filial_ids` para admin/manager | Aceitava qualquer UUID informado | Passa a exigir que a filial exista no cadastro de filiais (`public.filiais`), senão erro `42501`. `NULL` continua = visão global |
-| 2 | `pops_goal_summary` (`usePopsGoalSummary`) | Enviava `p_filial_id: filialId ?? undefined` — a chave é **omitida** e o banco assume `NULL` | Passa a enviar `?? null` explicitamente |
-| 3 | `pops_executor_results` (`usePopsExecutorResults`) | Mesmo problema do item 2 | Passa a enviar `?? null` |
-| 4 | `pops_portfolio_clients` (`usePopsClients`) | Já envia `filialId` explicitamente | Sem mudança |
-| 5 | `pops_portfolio_client_machines` (`usePopsClientMachines`) | **Não recebia filial nenhuma**; usava a filial principal do cadastro (`pops_scope`) — este é o problema confirmado nas máquinas | Ganha parâmetro de filial efetiva e o frontend passa a enviá-lo |
-| 6 | Excel “Serviçadas” (`popsServicedExcel.ts`) | Leitura direta de `pops_machines` já filtra por `pops_filial_id` quando há filial; mas a busca de nomes dos executores usava `?? undefined` | `?? null` explícito. Com Planalto Verde ativa, nenhuma máquina de Caiapônia entra no arquivo |
-| 7 | Dependência de `NULL` | Usuário multi-filial podia escolher “Todas as permitidas” no filtro local, o que **misturaria** as duas filiais | Para quem não é admin/manager: (a) o filtro local do POPS deixa de oferecer “Todas”; (b) no banco, `NULL` de usuário não-global passa a significar **somente a filial principal**, nunca a união |
-| 8 | Outras consultas da tela POPS | `pops_programs` e `pops_services` não dependem de filial; `pops_client_assignments` não é consultada pelo frontend; `pops_complete_machine` é escrita de uma máquina já listada e continua protegida pela RLS | Sem mudança nesta etapa |
-| 9 | RLS | Continua sendo o teto de permissão (escopo autorizado M2) | **Nenhuma das 33 policies alterada** |
-| 10 | `pops_scope`, `get_user_filial_id`, `get_supervisor_filial_id` | Usadas pela RLS e por outros módulos | Mantidas intactas |
+**Pendentes / contadores / clientes / máquinas**
+As três consultas (`equipment_regularization_pending_kpis`, `_pending_clients`, `_pending_machines`) já aceitam uma filial, mas ela vem do filtro da própria tela, que começa em "Todas as filiais". Resultado: quem tem duas filiais vê hoje a soma das duas, e o filtro nem valida se a filial escolhida é autorizada. Nenhuma delas usa a regra da Filial Ativa (`effective_filial_ids`).
 
-Observação: o cadastro de filiais (`public.filiais`) não possui coluna de “ativa”; a
-validação possível é de existência da filial, o que já impede filial inválida.
+**Lotes: aguardando envio, concluídos, erro de envio, cancelados**
+Não existe nenhuma lista dessas etapas na tela hoje — só o lote recém-criado é aberto em diálogo. Portanto não há o que corrigir agora, mas também nenhum lugar onde a filial seja considerada.
 
-## 2. Versão final — banco
+**Criação de lote** (`equipment_regularization_create_batch`)
+Aceita qualquer máquina pendente de qualquer filial. Um colaborador com as duas filiais pode criar um lote com máquinas de Caiapônia enquanto opera em Planalto Verde, e até misturar as duas no mesmo lote.
 
-Nova função de segurança (única fonte da filial efetiva):
+**Detalhe do lote / PDF** (`equipment_regularization_get_batch`)
+Devolve qualquer lote para quem pode ver o Parque, sem checar a filial das máquinas do lote.
 
-```sql
-CREATE OR REPLACE FUNCTION public.effective_filial_ids(p_filial_id uuid DEFAULT NULL)
-RETURNS uuid[] LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
-DECLARE
-  v_uid uuid := auth.uid();
-  v_global boolean;
-  v_allowed uuid[];
-  v_primary uuid;
-BEGIN
-  IF v_uid IS NULL THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501'; END IF;
+**Finalizar envio, confirmar envio, cancelar, registrar erro, marcar PDF gerado**
+Todas checam apenas permissão e autoria do lote. Nenhuma verifica a filial: operando em Planalto Verde é possível concluir, cancelar ou reenviar um lote de Caiapônia.
 
-  v_global := public.has_role(v_uid,'admin') OR public.has_role(v_uid,'manager');
+## Alterações propostas
 
-  IF p_filial_id IS NOT NULL
-     AND NOT EXISTS (SELECT 1 FROM public.filiais f WHERE f.id = p_filial_id) THEN
-    RAISE EXCEPTION 'Filial inexistente' USING ERRCODE='42501';
-  END IF;
+### Banco (9 funções, mesma regra já validada no Parque e na Validação)
 
-  IF v_global THEN
-    RETURN CASE WHEN p_filial_id IS NULL THEN '{}'::uuid[] ELSE ARRAY[p_filial_id] END;
-  END IF;
+| Função | Motivo |
+|---|---|
+| `_pending_kpis`, `_pending_clients`, `_pending_machines` | passar a filtrar por `effective_filial_ids(p_filial_id)` além do filtro da tela; filial não autorizada → 42501 |
+| `_create_batch` | novo parâmetro final `p_filial_id`; recusar máquina fora da filial informada e gravar a filial do lote |
+| `_get_batch` | recusar lote cujas máquinas não pertencem à filial autorizada/ativa |
+| `_finalize`, `_confirm_send`, `_cancel`, `_mark_send_error`, `_mark_pdf_generated` | novo parâmetro final `p_filial_id`; recusar operação sobre lote de outra filial |
 
-  v_allowed := public.get_user_filial_ids_internal(v_uid);
-  IF coalesce(array_length(v_allowed,1),0) = 0 THEN
-    RAISE EXCEPTION 'Acesso negado: usuário sem filial autorizada' USING ERRCODE='42501';
-  END IF;
+Regra única em todas: `effective_filial_ids` decide — vazio = global (admin/gestor sem filial), sem filial informada = filial principal, filial não autorizada = 42501. Assinaturas mudam apenas por acréscimo no final, sem sobrecarga; `EXECUTE` revogado de `PUBLIC` e concedido a `authenticated`.
 
-  IF p_filial_id IS NOT NULL THEN
-    IF NOT (p_filial_id = ANY(v_allowed)) THEN
-      RAISE EXCEPTION 'Acesso negado: filial não autorizada' USING ERRCODE='42501';
-    END IF;
-    RETURN ARRAY[p_filial_id];
-  END IF;
+Nada da lógica funcional muda: `client_equipment.machine_status` continua a fonte oficial, o lote continua snapshot, PDF/e-mail não altera o Parque, finalização só registra o envio e cancelado segue liberando recriação.
 
-  -- Sem Filial Ativa: filial principal do cadastro (nunca a união de filiais)
-  SELECT p.filial_id INTO v_primary FROM public.profiles p
-   WHERE p.user_id = v_uid AND p.approval_status='approved' AND p.employment_status='active';
-  RETURN CASE WHEN v_primary IS NULL THEN v_allowed ELSE ARRAY[v_primary] END;
-END $$;
-REVOKE EXECUTE ON FUNCTION public.effective_filial_ids(uuid) FROM PUBLIC;
-GRANT  EXECUTE ON FUNCTION public.effective_filial_ids(uuid) TO authenticated;
-```
+### Frontend (2 arquivos)
 
-Nas 4 RPCs do POPS (`pops_goal_summary`, `pops_portfolio_clients`,
-`pops_executor_results`, `pops_portfolio_client_machines`), a única mudança de lógica é
-trocar a filial derivada do cadastro por:
+- `src/hooks/useEquipmentRegularization.ts` — enviar a Filial Ativa em todas as consultas e operações e incluí-la nas chaves de cache, para a troca de filial atualizar na hora.
+- `src/components/equipment/EquipmentRegularizationPanel.tsx` — o filtro de filial passa a partir da Filial Ativa; a opção "Todas as filiais" fica apenas para administradores/gestores sem filial selecionada, para nunca somar filiais.
 
-```sql
-v_filiais := public.effective_filial_ids(p_filial_id);
-...  AND (cardinality(v_filiais) = 0 OR m.pops_filial_id = ANY(v_filiais))
-```
+Não serão tocados: Parque, Validação, POPS, regras de acesso (RLS), cargos, usuários, matrículas PM e vínculos.
 
-e devolver `filial_id` = a filial efetiva (ou `NULL` na visão global).
-`pops_portfolio_client_machines` é recriada com a assinatura
-`(p_program_id uuid, p_client_key text, p_filial_id uuid DEFAULT NULL)` — sem
-sobrecarga — com `GRANT EXECUTE` para `authenticated`. Todo o resto (filtros, busca,
-paginação, ordenação e formato de retorno) permanece idêntico.
+## Testes previstos (somente leitura; escrita em BEGIN/ROLLBACK)
 
-## 3. Versão final — frontend
-
-- `src/hooks/usePops.ts`: `?? null` em vez de `?? undefined` nas 3 RPCs; `usePopsClientMachines(programId, clientKey, filialId)` com a filial na chave de cache.
-- `src/pages/Pops.tsx`: envia `filialId` também para as máquinas do cliente; filtro local sem opção “Todas” para quem não é admin/manager.
-- `src/lib/popsServicedExcel.ts`: `?? null` na busca de executores (o filtro por filial na leitura das máquinas já existe).
-
-## 4. Plano de testes (`Teste | Filial Ativa | Obtido | Esperado | Status`)
-
-1. Contagens reais de POPS em Caiapônia e Planalto Verde (baseline direto na base).
-2. Diogo, Caiapônia ativa: carteira, máquinas, foco/pendentes, serviçadas, contadores, indicadores, serviços, executores, filtros, busca, detalhes e Excel = apenas Caiapônia.
-3. Diogo, Planalto Verde ativa: os mesmos itens = apenas Planalto Verde.
-4. Volta para Caiapônia: valores idênticos ao teste 2.
-5. Terceira filial enviada na RPC: `42501`, nenhum dado.
-6. Filial inexistente enviada por admin/manager: `42501`.
-7. Usuário de filial única (Jhonatan/Canarana): idêntico ao baseline atual.
-8. Admin/manager sem filial: visão global; com filial: apenas aquela.
-9. Excel Serviçadas com Planalto Verde ativa: nenhuma máquina de Caiapônia, Matrícula PM preservada.
-10. Nada alterado em RLS, cadastro, cargos, matrículas ou vínculos.
-
-Tudo reversível (`BEGIN/ROLLBACK`); o vínculo do Diogo é temporário no teste.
+Diogo: Caiapônia → Planalto Verde → volta a Caiapônia, comparando pendentes, contadores, clientes e máquinas com a base; máquina de Caiapônia recusada em lote com Planalto Verde ativa e vice-versa; concluir/cancelar/reenviar lote de outra filial recusado; usuário de filial única inalterado; filial não autorizada → 42501; admin sem filial global e com filial restrito.
