@@ -314,16 +314,18 @@ export interface EquipmentValidationSummary {
   by_filial: EquipmentValidationSummaryRow[];
 }
 
-export const useEquipmentValidationSummary = (enabled = true) => {
+export const useEquipmentValidationSummary = (enabled = true, filialId?: string | null) => {
   return useQuery<EquipmentValidationSummary | null>({
-    queryKey: ['client-equipment', 'validation-summary'],
+    queryKey: ['client-equipment', 'validation-summary', filialId ?? null],
     enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
     queryFn: async (): Promise<EquipmentValidationSummary | null> => {
-      const { data, error } = await (supabase as any).rpc('get_equipment_validation_summary');
+      const { data, error } = await (supabase as any).rpc('get_equipment_validation_summary', {
+        p_filial_id: filialId ?? null,
+      });
       if (error) throw error;
       const row = (((data as unknown) as any[]) ?? [])[0];
       if (!row) return null;
@@ -357,14 +359,16 @@ export interface EquipmentValidator {
   validated_count: number;
 }
 
-export const useEquipmentValidators = (enabled = true) => {
+export const useEquipmentValidators = (enabled = true, filialId?: string | null) => {
   return useQuery({
-    queryKey: ['client-equipment', 'validators'],
+    queryKey: ['client-equipment', 'validators', filialId ?? null],
     enabled,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<EquipmentValidator[]> => {
-      const { data, error } = await (supabase as any).rpc('get_equipment_validators');
+      const { data, error } = await (supabase as any).rpc('get_equipment_validators', {
+        p_filial_id: filialId ?? null,
+      });
       if (error) throw error;
       return ((data as unknown) as EquipmentValidator[]) ?? [];
     },

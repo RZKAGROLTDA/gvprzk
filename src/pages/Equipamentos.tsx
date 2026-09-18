@@ -43,8 +43,11 @@ const Equipamentos: React.FC = () => {
   // e na Regularização (que usa exclusivamente as RPCs R2).
   const parkQueriesEnabled = view === 'validacao';
 
+  // M3/E2 — Filial Ativa do cabeçalho é a filial efetiva do Parque/Validação.
+  const { filialId: activeFilialId } = useActiveFilialFilter();
+
   // Diretório de validadores (id → nome, filial)
-  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled);
+  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled, activeFilialId);
   const validatorMap = useMemo(() => {
     const map = new Map<string, EquipmentValidator>();
     validators.forEach((v) => map.set(v.user_id, v));
@@ -74,8 +77,6 @@ const Equipamentos: React.FC = () => {
     return null;
   }, [validatedByFilter, validatorFilialFilter, validators]);
 
-  // M3/E2 — Filial Ativa do cabeçalho é a filial efetiva do Parque.
-  const { filialId: activeFilialId } = useActiveFilialFilter();
 
   // Ao trocar de filial, volta para a primeira página.
   React.useEffect(() => {
@@ -229,7 +230,7 @@ const XLSX = await import('xlsx');
   );
 
   // Resumo por filial — fonte correta: get_equipment_validation_summary().by_filial
-  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary(parkQueriesEnabled);
+  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary(parkQueriesEnabled, activeFilialId);
 
   /** Força a revalidação de listagem + KPIs + resumo (botão de atualizar). */
   const refetchAll = () => {
