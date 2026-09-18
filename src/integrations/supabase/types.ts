@@ -3406,7 +3406,7 @@ export type Database = {
         }[]
       }
       get_equipment_validation_summary: {
-        Args: never
+        Args: { p_filial_id?: string }
         Returns: {
           by_filial: Json
           distinct_validated_clients: number
@@ -3416,7 +3416,7 @@ export type Database = {
         }[]
       }
       get_equipment_validators: {
-        Args: never
+        Args: { p_filial_id?: string }
         Returns: {
           filial_id: string
           filial_nome: string
