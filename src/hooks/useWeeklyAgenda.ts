@@ -23,6 +23,8 @@ export const useWeeklyAgenda = (params: {
   endDate: Date;
   responsibleUserId?: string | null;
   filialId?: string | null;
+  /** Só executa quando o escopo da Filial Ativa está resolvido. */
+  enabled?: boolean;
 }) => {
   const { user } = useAuth();
   const startStr = toISODate(params.startDate);
