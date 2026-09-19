@@ -22,6 +22,7 @@ import {
   type RegClientGroup, type RegFilters, type RegMachine, type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
 import { RegularizationBatchDialog } from '@/components/equipment/RegularizationBatchDialog';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 const ALL = 'all';
 const NO_FILIAL = 'none';
