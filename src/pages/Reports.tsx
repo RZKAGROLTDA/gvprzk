@@ -61,7 +61,6 @@ const Reports: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
-  const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
 
   // M3 — Filial Ativa define o contexto dos relatórios.
