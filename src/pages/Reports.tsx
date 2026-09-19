@@ -293,9 +293,9 @@ const Reports: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {isGlobal && <SelectItem value="all">Todas as filiais</SelectItem>}
-                    {filiais.map((filial) => (
-                      <SelectItem key={filial.id} value={filial.nome}>
-                        {filial.nome}
+                    {filiais.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>
+                        {opt.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
