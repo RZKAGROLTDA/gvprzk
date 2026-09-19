@@ -63,6 +63,7 @@ export const WeeklyAgenda: React.FC = () => {
     filialId: scopedFilialId,
     allowedFiliais,
     isGlobal,
+    isScopeReady,
   } = useActiveFilialFilter();
   const { consultants } = useFilteredConsultants(scopedFilialId);
 
