@@ -118,7 +118,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
   const makePdf = async () => {
     if (!batch.data) return null;
     const { blob, fileName } = await buildRegularizationPdf(batch.data);
-    if (batchId) markPdf.mutate(batchId);
+    if (batchId) markPdf.mutate({ batchId, filialId: activeFilialId });
     return { blob, fileName };
   };
 
