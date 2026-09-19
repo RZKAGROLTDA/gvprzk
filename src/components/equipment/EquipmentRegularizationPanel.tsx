@@ -212,7 +212,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
     resetPage();
   };
   const clearFilters = () => {
-    setFilialFilter(ALL);
+    if (isGlobal) setFilialFilter(ALL);
     setSituation(ALL);
     setClientInput('');
     setChassisInput('');
