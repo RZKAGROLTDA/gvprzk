@@ -63,9 +63,11 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: colaborador inexistente, não aprovado ou inativo' USING ERRCODE = '42501';
   END IF;
 
-  -- Filial Ativa efetiva: autoridade única (mesma regra do Carteira/CRM).
-  v_eff := public.effective_filial_ids(p_filial_id);
-  -- Global sem filial devolve '{}'::uuid[] → sem restrição. Demais casos: 1 filial exata.
+  -- 3) Não-self: resolve a Filial Ativa efetiva (se p_filial_id era NULL,
+  --    não-global resolve para a principal; global para '{}'::uuid[] = sem restrição).
+  IF v_eff IS NULL THEN
+    v_eff := public.effective_filial_ids(NULL);
+  END IF;
   IF array_length(v_eff, 1) IS NOT NULL
      AND (v_filial IS NULL OR NOT (v_filial = ANY(v_eff))) THEN
     RAISE EXCEPTION 'Acesso negado: colaborador de outra filial' USING ERRCODE = '42501';
