@@ -241,14 +241,14 @@ const PerformanceBySeller: React.FC = () => {
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
 
   const { data: userStats = [], isFetching, refetch } = useQuery<SellerStat[]>({
-    queryKey: ['performance-by-seller-v2', user?.id ?? null, startStr, endStr, responsibleUserId],
-    enabled: !!user?.id,
+    queryKey: ['performance-by-seller-v2', user?.id ?? null, startStr, endStr, responsibleUserId, scopedFilialId],
+    enabled: !!user?.id && isScopeReady,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_performance_by_seller_v2', {
         p_start_date: startStr,
         p_end_date: endStr,
-        p_filial_id: null,
+        p_filial_id: scopedFilialId,
         p_responsible_user_id: responsibleUserId,
       });
       if (error) throw error;
