@@ -30,3 +30,9 @@
 - [x] Frontend: Regularização parte da Filial Ativa, sem "Sem filial" para usuário comum
 - [x] Bateria em BEGIN/ROLLBACK
 - [x] Revisão comparativa (status/permissões) antes de aplicar a Regularização
+
+## E3 Carteira/CRM — Filial Ativa (aprovada, em aplicação)
+- [ ] Aplicar 9 RPCs com effective_filial_ids (clients_overview, activity/funnel/reports/tasks metrics, consolidated, performance seller/filial, weekly agenda)
+- [ ] Frontend CRM + funil + relatórios: Filial Ativa + filialId nas queryKeys (useTasks FORA; useFollowups aguarda filial)
+- [ ] Bateria BEGIN/ROLLBACK Diogo/Jhonatan/admin + tabela de resultados
+- [ ] Depois: Meu Dia (etapa separada) e diagnóstico específico de useTasks/offline
