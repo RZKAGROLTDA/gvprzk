@@ -28,6 +28,7 @@ import {
   type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
 import { buildRegularizationPdf } from '@/lib/equipmentRegularizationPdf';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 
 const SITUATION_LABEL: Record<RegSituation, string> = {
