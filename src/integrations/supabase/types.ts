@@ -3177,38 +3177,22 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      equipment_regularization_create_batch:
-        | {
-            Args: {
-              p_document_date?: string
-              p_equipment_ids: string[]
-              p_header_city?: string
-              p_header_state?: string
-              p_notes?: string
-              p_pmp_number?: string
-              p_recipient_email?: string
-              p_recipient_name?: string
-              p_signer_name?: string
-              p_signer_role?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_document_date?: string
-              p_equipment_ids: string[]
-              p_filial_id?: string
-              p_header_city?: string
-              p_header_state?: string
-              p_notes?: string
-              p_pmp_number?: string
-              p_recipient_email?: string
-              p_recipient_name?: string
-              p_signer_name?: string
-              p_signer_role?: string
-            }
-            Returns: Json
-          }
+      equipment_regularization_create_batch: {
+        Args: {
+          p_document_date?: string
+          p_equipment_ids: string[]
+          p_filial_id?: string
+          p_header_city?: string
+          p_header_state?: string
+          p_notes?: string
+          p_pmp_number?: string
+          p_recipient_email?: string
+          p_recipient_name?: string
+          p_signer_name?: string
+          p_signer_role?: string
+        }
+        Returns: Json
+      }
       equipment_regularization_finalize: {
         Args: {
           p_batch_id: string
