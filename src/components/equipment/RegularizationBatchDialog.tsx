@@ -28,6 +28,7 @@ import {
   type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
 import { buildRegularizationPdf } from '@/lib/equipmentRegularizationPdf';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 
 const SITUATION_LABEL: Record<RegSituation, string> = {
@@ -46,10 +47,11 @@ interface Props {
 export const RegularizationBatchDialog: React.FC<Props> = ({
   open, onOpenChange, machines, onDone,
 }) => {
+  const { filialId: activeFilialId } = useActiveFilialFilter();
   const createBatch = useCreateRegularizationBatch();
   const markPdf = useMarkPdfGenerated();
   const [batchId, setBatchId] = useState<string | null>(null);
-  const batch = useRegularizationBatch(batchId);
+  const batch = useRegularizationBatch(batchId, activeFilialId);
 
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -102,6 +104,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
         signerName: signerName.trim() || null,
         signerRole: signerRole.trim() || null,
         notes: notes.trim() || null,
+        filialId: activeFilialId,
       },
       { onSuccess: (d) => setBatchId(d.batch_id) },
     );
@@ -116,7 +119,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
   const makePdf = async () => {
     if (!batch.data) return null;
     const { blob, fileName } = await buildRegularizationPdf(batch.data);
-    if (batchId) markPdf.mutate(batchId);
+    if (batchId) markPdf.mutate({ batchId, filialId: activeFilialId });
     return { blob, fileName };
   };
 

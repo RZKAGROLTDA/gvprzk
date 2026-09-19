@@ -22,6 +22,7 @@ import {
   type RegClientGroup, type RegFilters, type RegMachine, type RegSituation,
 } from '@/hooks/useEquipmentRegularization';
 import { RegularizationBatchDialog } from '@/components/equipment/RegularizationBatchDialog';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 const ALL = 'all';
 const NO_FILIAL = 'none';
@@ -168,7 +169,14 @@ const GroupRow: React.FC<GroupRowProps> = ({
 };
 
 export const EquipmentRegularizationPanel: React.FC = () => {
-  const [filialFilter, setFilialFilter] = useState(ALL);
+  const {
+    filial: activeFilial,
+    setFilial: setActiveFilial,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const filialFilter = activeFilial;
+  const setFilialFilter = setActiveFilial;
   const [situation, setSituation] = useState(ALL);
   const [clientInput, setClientInput] = useState('');
   const [chassisInput, setChassisInput] = useState('');
@@ -178,17 +186,20 @@ export const EquipmentRegularizationPanel: React.FC = () => {
   const [selected, setSelected] = useState<Record<string, RegMachine>>({});
   const [batchOpen, setBatchOpen] = useState(false);
 
-  const { data: filiais = [] } = useFiliaisList();
+  const { data: allFiliais = [] } = useFiliaisList();
+  const filiais = isGlobal
+    ? allFiliais
+    : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
 
   const filters = useMemo<RegFilters>(
     () => ({
       filialId: filialFilter === ALL || filialFilter === NO_FILIAL ? null : filialFilter,
-      withoutFilial: filialFilter === NO_FILIAL,
+      withoutFilial: isGlobal && filialFilter === NO_FILIAL,
       client: client.trim() || null,
       situation: situation === ALL ? null : (situation as RegSituation),
       chassis: chassis.trim() || null,
     }),
-    [filialFilter, client, situation, chassis],
+    [filialFilter, client, situation, chassis, isGlobal],
   );
 
   const kpis = useRegularizationKpis(filters);
@@ -201,7 +212,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
     resetPage();
   };
   const clearFilters = () => {
-    setFilialFilter(ALL);
+    if (isGlobal) setFilialFilter(ALL);
     setSituation(ALL);
     setClientInput('');
     setChassisInput('');
@@ -269,8 +280,8 @@ export const EquipmentRegularizationPanel: React.FC = () => {
           >
             <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Todas as filiais</SelectItem>
-              <SelectItem value={NO_FILIAL}>Sem filial</SelectItem>
+              {isGlobal ? <SelectItem value={ALL}>Todas as filiais</SelectItem> : null}
+              {isGlobal ? <SelectItem value={NO_FILIAL}>Sem filial</SelectItem> : null}
               {filiais.map((f) => (
                 <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
               ))}
