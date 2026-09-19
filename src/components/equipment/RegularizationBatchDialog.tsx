@@ -104,6 +104,7 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
         signerName: signerName.trim() || null,
         signerRole: signerRole.trim() || null,
         notes: notes.trim() || null,
+        filialId: activeFilialId,
       },
       { onSuccess: (d) => setBatchId(d.batch_id) },
     );
