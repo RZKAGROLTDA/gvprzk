@@ -97,7 +97,7 @@ const Reports: React.FC = () => {
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
   // 'Todas' nunca amplia o escopo: sem seleção local, vale a Filial Ativa.
   const filialFilter =
-    selectedFilial && selectedFilial !== 'all' ? selectedFilial : scopedFilialId;
+    filial && filial !== 'all' ? filial : scopedFilialId;
 
   const {
     data: metrics,
@@ -154,7 +154,7 @@ const Reports: React.FC = () => {
     setDateFrom(undefined);
     setDateTo(undefined);
     setSelectedConsultant('all');
-    setSelectedFilial('all');
+    setFilial(scopedFilialId ?? 'all');
     setSelectedFilialAtendida('all');
     toast({
       title: '✨ Filtros limpos',
@@ -180,7 +180,7 @@ const Reports: React.FC = () => {
     !!dateFrom ||
     !!dateTo ||
     selectedConsultant !== 'all' ||
-    selectedFilial !== 'all' ||
+    filial !== 'all' ||
     selectedFilialAtendida !== 'all';
 
   return (
@@ -281,8 +281,8 @@ const Reports: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Filial</label>
-                <Select value={selectedFilial} onValueChange={setSelectedFilial}>
-                  <SelectTrigger className={selectedFilial !== 'all' ? 'border-primary' : ''}>
+                <Select value={filial} onValueChange={setFilial}>
+                  <SelectTrigger className={filial !== 'all' ? 'border-primary' : ''}>
                     <SelectValue placeholder="Todas as filiais" />
                   </SelectTrigger>
                   <SelectContent>
@@ -381,8 +381,8 @@ const Reports: React.FC = () => {
                     Até: {formatDateDisplay(dateTo)}
                   </Badge>
                 )}
-                {selectedFilial !== 'all' && (
-                  <Badge variant="secondary" className="gap-1">Filial: {selectedFilial}</Badge>
+                {filial !== 'all' && (
+                  <Badge variant="secondary" className="gap-1">Filial: {selectedFilialName}</Badge>
                 )}
                 {selectedFilialAtendida !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
@@ -413,8 +413,8 @@ const Reports: React.FC = () => {
                 <p className="text-2xl font-bold text-primary">
                   {loading ? '...' : totalTasks}
                 </p>
-                {selectedFilial !== 'all' && !loading && (
-                  <p className="text-xs text-muted-foreground">Filial: {selectedFilial}</p>
+                {filial !== 'all' && !loading && (
+                  <p className="text-xs text-muted-foreground">Filial: {selectedFilialName}</p>
                 )}
               </div>
               <Activity className="h-8 w-8 text-primary/50" />
