@@ -64,12 +64,20 @@ const Reports: React.FC = () => {
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
 
-  const { consultants } = useFilteredConsultants();
+  // M3 — Filial Ativa define o contexto dos relatórios.
+  const {
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+    isScopeReady,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
 
   // Filiais (catálogo) — staleTime longo, dados estáticos
-  const { data: filiais = [] } = useQuery<FilialOption[]>({
+  const { data: allFiliais = [] } = useQuery<FilialOption[]>({
     queryKey: ['filiais-options'],
     staleTime: 15 * 60 * 1000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('filiais')
@@ -79,13 +87,18 @@ const Reports: React.FC = () => {
       return data ?? [];
     },
   });
+  const filiais = useMemo<FilialOption[]>(
+    () => (isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))),
+    [isGlobal, allFiliais, allowedFiliais],
+  );
 
   const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
   const endStr = dateTo ? formatDateToLocal(dateTo) : null;
   const responsibleUserId =
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
+  // 'Todas' nunca amplia o escopo: sem seleção local, vale a Filial Ativa.
   const filialFilter =
-    selectedFilial && selectedFilial !== 'all' ? selectedFilial : null;
+    selectedFilial && selectedFilial !== 'all' ? selectedFilial : scopedFilialId;
 
   const {
     data: metrics,
