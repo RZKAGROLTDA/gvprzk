@@ -50,7 +50,6 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
 };
 
 export const Returns: React.FC = () => {
-  const { data = [], isLoading } = useFollowupsProspectsOnly();
   const qc = useQueryClient();
 
   // M3: filtro de filial ancorado na Filial Ativa do cabeçalho.
@@ -60,7 +59,12 @@ export const Returns: React.FC = () => {
     filialId: scopedFilialId,
     allowedFiliais,
     isGlobal,
+    isScopeReady,
   } = useActiveFilialFilter();
+  const { data = [], isLoading } = useFollowupsProspectsOnly({
+    filialId: scopedFilialId,
+    enabled: isScopeReady,
+  });
   const { consultants } = useFilteredConsultants(scopedFilialId);
 
   const { data: allFiliais = [] } = useQuery({
