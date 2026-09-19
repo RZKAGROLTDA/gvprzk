@@ -17,16 +17,16 @@
 - [ ] M3 E1 aplicar versao final + bateria completa (Diogo Caiaponia/Planalto Verde, Excel, 42501)
 
 ## M3 / E2 — Filial Ativa nos módulos (aprovado 18/09)
-- [ ] Parque de Máquinas (lista, KPIs, Excel) restrito à Filial Ativa para todos
-- [ ] Validação do Parque (resumo + validadores) restrito à Filial Ativa
-- [ ] Regularização (pendências, contadores, máquinas por cliente, lotes/PDF/cancelamento/reenvio/finalização) sem misturar filiais
+- [x] Parque de Máquinas (lista, KPIs, Excel) restrito à Filial Ativa para todos
+- [x] Validação do Parque (resumo + validadores) restrito à Filial Ativa
+- [x] Regularização (pendências, contadores, máquinas por cliente, lotes/PDF/cancelamento/reenvio/finalização) sem misturar filiais
 - [ ] Carteira/CRM somente Filial Ativa (nunca soma)
 - [ ] My Day: visão de equipe acompanha a Filial Ativa
 - [ ] Bateria Caiapônia ↔ Planalto Verde ↔ volta, filial única e filial não autorizada
 
-## E2 — Regularização (em andamento)
-- [ ] 9 funções da Regularização com Filial Ativa (effective_filial_ids) + assert_batch_filial
-- [ ] Lote legado sem filial: somente admin/gestor em contexto global
-- [ ] Frontend: Regularização parte da Filial Ativa, sem "Sem filial" para usuário comum
-- [ ] Bateria em BEGIN/ROLLBACK
-- [ ] Revisão comparativa (status/permissões) antes de aplicar a Regularização
+## E2 — Regularização (concluída)
+- [x] 9 funções da Regularização com Filial Ativa (effective_filial_ids) + assert_batch_filial
+- [x] Lote legado sem filial: somente admin/gestor em contexto global
+- [x] Frontend: Regularização parte da Filial Ativa, sem "Sem filial" para usuário comum
+- [x] Bateria em BEGIN/ROLLBACK
+- [x] Revisão comparativa (status/permissões) antes de aplicar a Regularização
