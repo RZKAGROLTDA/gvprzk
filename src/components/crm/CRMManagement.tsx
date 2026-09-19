@@ -45,18 +45,35 @@ type FilialStat = {
 };
 
 export const CRMManagement: React.FC = () => {
-  const { data: all = [], isLoading } = useFollowups();
-  const { consultants } = useFilteredConsultants();
+  // M3 — Filial Ativa define o contexto do Gerencial.
+  const {
+    filial,
+    setFilial,
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+    isScopeReady,
+  } = useActiveFilialFilter();
+  const { data: all = [], isLoading } = useFollowups({
+    filialId: scopedFilialId,
+    enabled: isScopeReady,
+  });
+  const { consultants } = useFilteredConsultants(scopedFilialId);
 
-  const { data: filiais = [] } = useQuery({
+  const { data: allFiliais = [] } = useQuery({
     queryKey: ['filiais-options'],
     staleTime: 15 * 60 * 1000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
       if (error) throw error;
       return data ?? [];
     },
   });
+  const filiais = useMemo(
+    () => (isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))),
+    [isGlobal, allFiliais, allowedFiliais],
+  );
 
   const consultantById = useMemo(() => {
     const m = new Map<string, string>();
