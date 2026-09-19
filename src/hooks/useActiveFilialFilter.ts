@@ -54,5 +54,10 @@ export const useActiveFilialFilter = () => {
     isGlobal,
     isMultiFilial,
     isLoading,
+    /**
+     * Indica que o escopo de filial já está definido e as consultas podem rodar.
+     * Para usuário não-global exige uma filial resolvida (nunca consulta a união).
+     */
+    isScopeReady: isGlobal ? !isLoading : !isLoading && filial !== 'all',
   };
 };
