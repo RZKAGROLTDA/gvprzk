@@ -65,6 +65,8 @@ const Reports: React.FC = () => {
 
   // M3 — Filial Ativa define o contexto dos relatórios.
   const {
+    filial,
+    setFilial,
     filialId: scopedFilialId,
     allowedFiliais,
     isGlobal,
