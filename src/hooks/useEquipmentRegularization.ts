@@ -169,14 +169,14 @@ export const useCreateRegularizationBatch = () => {
 };
 
 /** Detalhe do lote (snapshot dos itens) — base única do PDF. */
-export const useRegularizationBatch = (batchId: string | null) =>
+export const useRegularizationBatch = (batchId: string | null, filialId: string | null = null) =>
   useQuery({
-    queryKey: ['reg-batch', batchId],
+    queryKey: ['reg-batch', batchId, filialId],
     enabled: !!batchId,
     queryFn: async (): Promise<RegBatchDetail> => {
       const { data, error } = await supabase.rpc(
         'equipment_regularization_get_batch' as never,
-        { p_batch_id: batchId } as never,
+        { p_batch_id: batchId, p_filial_id: filialId } as never,
       );
       if (error) throw error;
       return data as unknown as RegBatchDetail;
@@ -188,10 +188,10 @@ export const useRegularizationBatch = (batchId: string | null) =>
 /** Marca que o PDF foi gerado — auditoria apenas, não regulariza. */
 export const useMarkPdfGenerated = () =>
   useMutation({
-    mutationFn: async (batchId: string) => {
+    mutationFn: async ({ batchId, filialId }: { batchId: string; filialId?: string | null }) => {
       const { error } = await supabase.rpc(
         'equipment_regularization_mark_pdf_generated' as never,
-        { p_batch_id: batchId } as never,
+        { p_batch_id: batchId, p_filial_id: filialId ?? null } as never,
       );
       if (error) throw error;
     },
