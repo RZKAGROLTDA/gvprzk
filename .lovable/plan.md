@@ -36,6 +36,14 @@ DECLARE
 BEGIN
   SELECT * INTO s FROM public.my_day_scope();
 
+  -- 1) Filial Ativa informada é validada ANTES de qualquer retorno:
+  --    effective_filial_ids lança 42501 para filial não autorizada/inexistente,
+  --    inclusive quando o alvo é o próprio usuário.
+  IF p_filial_id IS NOT NULL THEN
+    v_eff := public.effective_filial_ids(p_filial_id);
+  END IF;
+
+  -- 2) Caso self (com p_filial_id NULL) preservado exatamente como hoje.
   IF p_user_id IS NULL OR p_user_id = s.user_id THEN
     RETURN QUERY SELECT s.user_id, s.role, s.filial_id, true;
     RETURN;
