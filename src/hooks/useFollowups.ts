@@ -39,7 +39,10 @@ const FOLLOWUP_COLUMNS =
 const PAGE_SIZE = 1000;
 const HARD_CAP = 50_000; // proteção contra loop em caso de erro
 
-async function fetchAllFollowups(filterProspectsOnly: boolean): Promise<FollowupRow[]> {
+async function fetchAllFollowups(
+  filterProspectsOnly: boolean,
+  filialId?: string | null,
+): Promise<FollowupRow[]> {
   const out: FollowupRow[] = [];
   let from = 0;
 
@@ -51,6 +54,9 @@ async function fetchAllFollowups(filterProspectsOnly: boolean): Promise<Followup
           .select(`${FOLLOWUP_COLUMNS}, tasks!inner(sales_type)`)
           .eq('tasks.sales_type', 'prospect')
       : supabase.from('task_followups').select(FOLLOWUP_COLUMNS);
+
+    // Filial Ativa define o contexto operacional; a RLS continua sendo o teto.
+    if (filialId) query = query.eq('filial_id', filialId);
 
     const { data, error } = await query
       .order('activity_date', { ascending: false })
