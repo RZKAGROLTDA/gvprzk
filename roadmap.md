@@ -29,3 +29,4 @@
 - [ ] Lote legado sem filial: somente admin/gestor em contexto global
 - [ ] Frontend: Regularização parte da Filial Ativa, sem "Sem filial" para usuário comum
 - [ ] Bateria em BEGIN/ROLLBACK
+- [ ] Revisão comparativa (status/permissões) antes de aplicar a Regularização
