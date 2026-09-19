@@ -46,10 +46,11 @@ interface Props {
 export const RegularizationBatchDialog: React.FC<Props> = ({
   open, onOpenChange, machines, onDone,
 }) => {
+  const { filialId: activeFilialId } = useActiveFilialFilter();
   const createBatch = useCreateRegularizationBatch();
   const markPdf = useMarkPdfGenerated();
   const [batchId, setBatchId] = useState<string | null>(null);
-  const batch = useRegularizationBatch(batchId);
+  const batch = useRegularizationBatch(batchId, activeFilialId);
 
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
