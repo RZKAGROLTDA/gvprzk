@@ -3603,6 +3603,7 @@ export type Database = {
       get_performance_by_filial_v2: {
         Args: {
           p_end_date?: string
+          p_filial_id?: string
           p_responsible_user_id?: string
           p_start_date?: string
         }
