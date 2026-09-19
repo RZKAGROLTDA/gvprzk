@@ -53,6 +53,7 @@ const MyDay: React.FC = () => {
     allowedFiliais,
     isGlobal,
     isMultiFilial,
+    isScopeReady,
   } = useActiveFilialFilter();
 
   const [localFilters, setLocalFilters] = React.useState<MyDayTeamFilters>({
@@ -75,7 +76,7 @@ const MyDay: React.FC = () => {
   const filialOptions = isGlobal
     ? (filiais as { id: string; nome: string }[])
     : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
-  const team = useMyDayTeamSummary(teamFilters, showTeam && tab === 'team');
+  const team = useMyDayTeamSummary(teamFilters, showTeam && tab === 'team' && isScopeReady);
 
   const teamRows = React.useMemo(() => {
     const rows = team.data?.rows ?? [];
@@ -261,6 +262,7 @@ const MyDay: React.FC = () => {
       <UserDayDialog
         open={!!member}
         member={member}
+        filialId={activeScopeFilialId}
         onOpenChange={(open) => {
           if (!open) setMember(null);
         }}
