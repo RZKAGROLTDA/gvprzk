@@ -23,3 +23,9 @@
 - [ ] Carteira/CRM somente Filial Ativa (nunca soma)
 - [ ] My Day: visão de equipe acompanha a Filial Ativa
 - [ ] Bateria Caiapônia ↔ Planalto Verde ↔ volta, filial única e filial não autorizada
+
+## E2 — Regularização (em andamento)
+- [ ] 9 funções da Regularização com Filial Ativa (effective_filial_ids) + assert_batch_filial
+- [ ] Lote legado sem filial: somente admin/gestor em contexto global
+- [ ] Frontend: Regularização parte da Filial Ativa, sem "Sem filial" para usuário comum
+- [ ] Bateria em BEGIN/ROLLBACK
