@@ -287,7 +287,7 @@ const Reports: React.FC = () => {
                     <SelectValue placeholder="Todas as filiais" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas as filiais</SelectItem>
+                    {isGlobal && <SelectItem value="all">Todas as filiais</SelectItem>}
                     {filiais.map((filial) => (
                       <SelectItem key={filial.id} value={filial.nome}>
                         {filial.nome}
