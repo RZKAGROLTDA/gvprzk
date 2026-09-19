@@ -124,6 +124,8 @@ export interface CreateBatchInput {
   recipientEmail?: string | null;
   pmpNumber?: string | null;
   notes?: string | null;
+  /** M3/E2 — Filial Ativa: validada no banco por effective_filial_ids(). */
+  filialId?: string | null;
 }
 
 export const useCreateRegularizationBatch = () => {
