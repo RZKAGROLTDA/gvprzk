@@ -92,7 +92,6 @@ export const CRMManagement: React.FC = () => {
     const d = new Date(); d.setDate(d.getDate() - 30); return startOfDay(d);
   });
   const [to, setTo] = useState<Date | undefined>(() => startOfDay(new Date()));
-  const [filial, setFilial] = useState('all');
   const [seller, setSeller] = useState('all');
   const [statusF, setStatusF] = useState('all');
   const [priorityF, setPriorityF] = useState('all');
