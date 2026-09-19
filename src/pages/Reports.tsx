@@ -113,7 +113,7 @@ const Reports: React.FC = () => {
       filialFilter,
       responsibleUserId,
     ],
-    enabled: !!user?.id,
+    enabled: !!user?.id && isScopeReady,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       // Resolver nome/uuid/'all' → uuid|null (filtros normalizados).
