@@ -230,7 +230,8 @@ const PerformanceBySeller: React.FC = () => {
   const [periodValue, setPeriodValue] = useState<PeriodValue>(() => buildPeriodValue('30'));
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
 
-  const { consultants } = useFilteredConsultants();
+  const { filialId: scopedFilialId, isScopeReady } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
 
   const startStr = periodValue.startStr;
   const endStr = periodValue.endStr;
