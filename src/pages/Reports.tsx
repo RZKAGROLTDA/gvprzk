@@ -92,6 +92,10 @@ const Reports: React.FC = () => {
     () => (isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))),
     [isGlobal, allFiliais, allowedFiliais],
   );
+  const selectedFilialName = useMemo(
+    () => filiais.find((f) => f.id === filial)?.nome ?? '',
+    [filiais, filial],
+  );
 
   const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
   const endStr = dateTo ? formatDateToLocal(dateTo) : null;
