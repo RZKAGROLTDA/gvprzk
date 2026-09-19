@@ -321,7 +321,7 @@ export const CRMManagement: React.FC = () => {
           <Select value={filial} onValueChange={setFilial}>
             <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas filiais</SelectItem>
+              {isGlobal && <SelectItem value="all">Todas filiais</SelectItem>}
               {filiais.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
             </SelectContent>
           </Select>
