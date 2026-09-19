@@ -168,7 +168,14 @@ const GroupRow: React.FC<GroupRowProps> = ({
 };
 
 export const EquipmentRegularizationPanel: React.FC = () => {
-  const [filialFilter, setFilialFilter] = useState(ALL);
+  const {
+    filial: activeFilial,
+    setFilial: setActiveFilial,
+    allowedFiliais,
+    isGlobal,
+  } = useActiveFilialFilter();
+  const filialFilter = activeFilial;
+  const setFilialFilter = setActiveFilial;
   const [situation, setSituation] = useState(ALL);
   const [clientInput, setClientInput] = useState('');
   const [chassisInput, setChassisInput] = useState('');
