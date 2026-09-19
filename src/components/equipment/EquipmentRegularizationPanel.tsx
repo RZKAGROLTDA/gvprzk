@@ -199,7 +199,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
       situation: situation === ALL ? null : (situation as RegSituation),
       chassis: chassis.trim() || null,
     }),
-    [filialFilter, client, situation, chassis],
+    [filialFilter, client, situation, chassis, isGlobal],
   );
 
   const kpis = useRegularizationKpis(filters);
