@@ -31,7 +31,7 @@
 - [x] Revisão comparativa (status/permissões) antes de aplicar a Regularização
 
 ## E4 — Meu Dia, Filial Ativa (diagnóstico aprovado; proposta ajustada, aguardando autorização)
-- [ ] Banco: my_day_assert_target(p_user_id, p_filial_id DEFAULT NULL) assinatura única (sem overload); get_my_day_team_summary via effective_filial_ids; get_my_day_user_summary/user_details com p_filial_id
+- [ ] Banco: my_day_assert_target(p_user_id, p_filial_id DEFAULT NULL) assinatura única (sem overload); validar filial via effective_filial_ids ANTES do caso self (filial não autorizada → 42501 mesmo para self); get_my_day_team_summary via effective_filial_ids; get_my_day_user_summary/user_details com p_filial_id
 - [ ] Frontend: filialId nas chamadas e queryKeys de equipe/individual (useMyDay.ts, MyDay.tsx, UserDayDialog.tsx); bloqueio por isScopeReady
 - [ ] Meu Dia pessoal 100% intacto (summary/details/context/builders/queryKeys)
 - [ ] Bateria: supervisor principal/adicional/volta sem soma, 42501 não autorizada e consultor comum, admin global/restrito, troca sem reload
