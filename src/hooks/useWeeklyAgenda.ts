@@ -34,7 +34,7 @@ export const useWeeklyAgenda = (params: {
 
   return useQuery({
     queryKey: ['weekly_followups_agenda', user?.id, startStr, endStr, responsible, filial],
-    enabled: !!user?.id,
+    enabled: !!user?.id && (params.enabled ?? true),
     staleTime: 60_000,
     queryFn: async (): Promise<WeeklyAgendaDay[]> => {
       const { data, error } = await supabase.rpc('get_weekly_followups_agenda', {
