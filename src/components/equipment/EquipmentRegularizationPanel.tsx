@@ -280,8 +280,8 @@ export const EquipmentRegularizationPanel: React.FC = () => {
           >
             <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>Todas as filiais</SelectItem>
-              <SelectItem value={NO_FILIAL}>Sem filial</SelectItem>
+              {isGlobal ? <SelectItem value={ALL}>Todas as filiais</SelectItem> : null}
+              {isGlobal ? <SelectItem value={NO_FILIAL}>Sem filial</SelectItem> : null}
               {filiais.map((f) => (
                 <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
               ))}
