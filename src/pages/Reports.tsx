@@ -40,6 +40,7 @@ import { useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 interface FilialOption {
   id: string;
