@@ -20,12 +20,13 @@ const BUCKETS: MyDayBucket[] = ['overdue', 'today', 'upcoming'];
 interface UserDayDialogProps {
   open: boolean;
   member: MyDayTeamRow | null;
+  filialId?: string | null;
   onOpenChange: (open: boolean) => void;
 }
 
-/** Meu Dia do colaborador em modo somente leitura (carregado sob demanda). */
-export const UserDayDialog: React.FC<UserDayDialogProps> = ({ open, member, onOpenChange }) => {
-  const { data, isLoading, isError } = useMyDayUserSummary(member?.user_id ?? null, open);
+/** Meu Dia do colaborador em modo somente leitura (carregado sob demanda). Segue a Filial Ativa. */
+export const UserDayDialog: React.FC<UserDayDialogProps> = ({ open, member, filialId, onOpenChange }) => {
+  const { data, isLoading, isError } = useMyDayUserSummary(member?.user_id ?? null, filialId ?? null, open);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

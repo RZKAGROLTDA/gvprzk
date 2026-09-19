@@ -91,13 +91,14 @@ export const useMyDayTeamSummary = (filters: MyDayTeamFilters, enabled: boolean)
   });
 };
 
-/** Meu Dia de um colaborador — somente sob demanda (ao abrir o detalhe). */
-export const useMyDayUserSummary = (userId: string | null, enabled: boolean) => {
+/** Meu Dia de um colaborador — somente sob demanda (ao abrir o detalhe). Segue a Filial Ativa. */
+export const useMyDayUserSummary = (userId: string | null, filialId: string | null, enabled: boolean) => {
   return useQuery({
-    queryKey: ['my-day-user-summary', userId],
+    queryKey: ['my-day-user-summary', userId, filialId],
     queryFn: async (): Promise<MyDaySummary> => {
       const { data, error } = await supabase.rpc('get_my_day_user_summary' as never, {
         p_user_id: userId,
+        p_filial_id: filialId,
       } as never);
       if (error) throw error;
       return data as unknown as MyDaySummary;
@@ -116,10 +117,11 @@ export const useMyDayUserDetails = (
   bucket: MyDayBucket | null,
   page: number,
   pageSize: number,
+  filialId: string | null,
   enabled: boolean,
 ) => {
   return useQuery({
-    queryKey: ['my-day-user-details', userId, block, bucket, page, pageSize],
+    queryKey: ['my-day-user-details', userId, filialId, block, bucket, page, pageSize],
     queryFn: async (): Promise<MyDayDetails> => {
       const { data, error } = await supabase.rpc('get_my_day_user_details' as never, {
         p_user_id: userId,
@@ -127,6 +129,7 @@ export const useMyDayUserDetails = (
         p_bucket: bucket as string,
         p_limit: pageSize,
         p_offset: page * pageSize,
+        p_filial_id: filialId,
       } as never);
       if (error) throw error;
       return data as unknown as MyDayDetails;

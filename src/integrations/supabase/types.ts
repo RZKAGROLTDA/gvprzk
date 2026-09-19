@@ -3579,13 +3579,17 @@ export type Database = {
         Args: {
           p_block: string
           p_bucket: string
+          p_filial_id?: string
           p_limit?: number
           p_offset?: number
           p_user_id: string
         }
         Returns: Json
       }
-      get_my_day_user_summary: { Args: { p_user_id: string }; Returns: Json }
+      get_my_day_user_summary: {
+        Args: { p_filial_id?: string; p_user_id: string }
+        Returns: Json
+      }
       get_performance_by_filial: {
         Args: { p_date_from?: string; p_date_to?: string }
         Returns: {
@@ -4553,7 +4557,7 @@ export type Database = {
       monitor_tasks_new_unauthorized_access: { Args: never; Returns: undefined }
       monitor_unauthorized_customer_access: { Args: never; Returns: undefined }
       my_day_assert_target: {
-        Args: { p_user_id: string }
+        Args: { p_filial_id?: string; p_user_id: string }
         Returns: {
           filial_id: string
           is_self: boolean
