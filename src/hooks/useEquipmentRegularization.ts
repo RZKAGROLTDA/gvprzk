@@ -145,6 +145,7 @@ export const useCreateRegularizationBatch = () => {
           p_recipient_email: input.recipientEmail ?? null,
           p_pmp_number: input.pmpNumber ?? null,
           p_notes: input.notes ?? null,
+          p_filial_id: input.filialId ?? null,
         } as never,
       );
       if (error) throw error;
