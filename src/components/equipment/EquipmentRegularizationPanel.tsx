@@ -186,12 +186,15 @@ export const EquipmentRegularizationPanel: React.FC = () => {
   const [selected, setSelected] = useState<Record<string, RegMachine>>({});
   const [batchOpen, setBatchOpen] = useState(false);
 
-  const { data: filiais = [] } = useFiliaisList();
+  const { data: allFiliais = [] } = useFiliaisList();
+  const filiais = isGlobal
+    ? allFiliais
+    : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
 
   const filters = useMemo<RegFilters>(
     () => ({
       filialId: filialFilter === ALL || filialFilter === NO_FILIAL ? null : filialFilter,
-      withoutFilial: filialFilter === NO_FILIAL,
+      withoutFilial: isGlobal && filialFilter === NO_FILIAL,
       client: client.trim() || null,
       situation: situation === ALL ? null : (situation as RegSituation),
       chassis: chassis.trim() || null,
