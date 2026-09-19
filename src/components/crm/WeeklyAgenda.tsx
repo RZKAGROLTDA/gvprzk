@@ -125,7 +125,8 @@ export const WeeklyAgenda: React.FC = () => {
     startDate,
     endDate,
     responsibleUserId: seller !== 'all' ? seller : null,
-    filialId: filial !== 'all' ? filial : null,
+    filialId: scopedFilialId,
+    enabled: isScopeReady,
   });
 
   const maxActivities = useMemo(
