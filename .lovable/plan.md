@@ -1,66 +1,48 @@
-# Regularização do Parque — Conferência e proposta final (E2)
+# Regularização — revisão comparativa (somente diferenças). Nada aplicado.
 
-Nada foi alterado no banco nem no frontend.
+## 1. Estados do lote — nada muda
 
-## Respostas da conferência
+Confirmado na versão em produção: a criação nasce em **aguardando_envio**; **confirmar envio** e **cancelar** exigem status **gerado**; **concluir envio (finalize)** aceita **aguardando_envio** ou **erro_envio**; **erro de envio** aceita **aguardando_envio** ou **erro_envio**; **marcar PDF gerado** só atualiza quando o lote está em aguardando_envio ou erro_envio.
 
-**1. O lote tem filial própria?** Não. A tabela de lotes não possui campo de filial. O snapshot de itens tem um campo de filial, mas ele está **vazio em 100% dos registros** (124 de 124) — a criação do lote nunca o preencheu. Hoje, portanto, **não é possível determinar a filial de um lote com segurança**.
+Essa é exatamente a regra que a proposta mantém — nenhum estado, transição ou exigência de status foi alterado, incluído ou removido. (Os 11 lotes existentes estão todos em "aguardando envio".)
 
-**2. Um lote pode conter máquinas de filiais diferentes?** Tecnicamente sim (nada impede). Na prática, nenhum dos 11 lotes existentes mistura filiais — todos os 11 são de máquinas **sem filial cadastrada**, todos em "aguardando envio". Na nova regra, misturar passa a ser proibido.
+## 2. Finalização — nada muda
 
-**Conclusão sobre o campo:** não vou criar um campo novo "por padrão". A filial do lote passa a ser o campo de filial **do próprio snapshot de itens**, que já existe e apenas deixou de ser preenchido. A criação passa a gravá-lo, e a validação das operações usa a filial dos itens (que, por regra nova, é sempre uma só). Os 11 lotes atuais ficam classificados como "sem filial", operáveis apenas por quem está em contexto global ou no filtro "Sem filial" — nenhum dado de lote é reescrito.
+`finalize` mantém idênticos: status `concluido`, `send_status = 'enviado'`, limpeza do erro, incremento de tentativas, destinatários, id da mensagem, assunto/mensagem com o mesmo COALESCE, `sent_at`/`sent_by`, `applied_at`/`applied_by`, a marcação de `regularized_by`/`regularized_at` nos itens e os dois `set_config`. Única inclusão: a validação da Filial Ativa, **depois** da checagem de autor/gestor e **antes** de qualquer alteração.
 
-**3. Assinaturas atuais completas (as 9 funções)**
+## 3. Permissões existentes — comparação linha por linha
 
-```
-equipment_regularization_pending_kpis(p_filial_id uuid, p_without_filial boolean, p_client text, p_situation text, p_chassis text)
-equipment_regularization_pending_clients(p_filial_id uuid, p_without_filial boolean, p_client text, p_situation text, p_chassis text, p_page integer, p_page_size integer)
-equipment_regularization_pending_machines(p_client_key text, p_filial_id uuid, p_without_filial boolean, p_client text, p_situation text, p_chassis text)
-equipment_regularization_create_batch(p_equipment_ids uuid[], p_header_city text, p_header_state text, p_document_date date, p_signer_name text, p_signer_role text, p_recipient_name text, p_recipient_email text, p_pmp_number text, p_notes text)
-equipment_regularization_get_batch(p_batch_id uuid)
-equipment_regularization_finalize(p_batch_id uuid, p_recipients text[], p_provider_message_id text, p_email_subject text, p_email_message text)
-equipment_regularization_confirm_send(p_batch_id uuid)
-equipment_regularization_cancel(p_batch_id uuid, p_reason text)
-equipment_regularization_mark_send_error(p_batch_id uuid, p_error text, p_recipients text[])
-equipment_regularization_mark_pdf_generated(p_batch_id uuid)
-```
+| Função | Checagens hoje | Na proposta |
+|---|---|---|
+| finalize | permissão de operar; autor **ou** gestor; status; destinatários; itens > 0 | todas mantidas + validação de filial |
+| confirm_send | permissão de operar; autor **ou** gestor; status = gerado; itens > 0 | todas mantidas + validação de filial |
+| cancel | permissão de operar; autor **ou** gestor; status = gerado | todas mantidas + validação de filial |
+| mark_send_error | permissão de operar; lote existe; status | **hoje não tem checagem de autoria/gestor** — a proposta não acrescenta nenhuma; mantém como está + validação de filial |
+| mark_pdf_generated | permissão de operar (nada mais; o UPDATE simplesmente não atinge lote em outro status) | mantida + validação de filial |
 
-Todas passam a receber a filial como **último parâmetro opcional** (`p_filial_id uuid DEFAULT NULL`), exceto as três de pendências, que já a têm. Sem sobrecarga de função.
+**Ponto que eu vou corrigir na proposta:** na versão que montei, `mark_pdf_generated` passava a lançar "Lote nao encontrado". Hoje ela é silenciosa nesse caso. Vou remover essa exceção para não mudar comportamento — a função segue silenciosa quando o lote não existe, e a validação de filial só roda quando o lote existe.
 
-**4. Como cada operação valida que o lote é da Filial Ativa**
+Em `get_batch` o "Lote nao encontrado" já existe hoje; apenas passa a ser verificado antes da montagem do retorno (mesma mensagem, mesmo efeito).
 
-Uma única função auxiliar nova, `equipment_regularization_assert_batch_filial(p_batch_id, p_filial_id)`:
+## 4. Pendências — como as três condições convivem
 
-```
-v_filiais  := public.effective_filial_ids(p_filial_id);   -- autoriza e resolve o contexto
-v_batch_f  := filial única dos itens do lote (ou nulo, se lote legado sem filial)
+- **Usuário não global** (comum ou multi-filial): a filial efetiva vem de `effective_filial_ids(p_filial_id)` — filial ativa validada, ou a principal quando nada é informado. Filial não autorizada → 42501. O caminho "Sem filial" fica sem resultado por construção (a máquina teria de ter filial nula e pertencer à lista ao mesmo tempo), e no frontend a opção deixa de existir para esse usuário.
+- **Admin/gestor**: sem filial → global; com filial informada → somente aquela filial; "Sem filial" continua disponível apenas na visão global, como filtro administrativo.
 
--- contexto global (admin/gestor sem filial): libera
-IF cardinality(v_filiais) = 0 THEN RETURN; END IF;
+## 5. Lotes legados — confirmado
 
--- lote de outra filial, ou lote sem filial fora do contexto global: recusa
-IF v_batch_f IS NULL OR NOT (v_batch_f = ANY(v_filiais)) THEN
-  RAISE EXCEPTION 'Lote de outra filial: operacao nao permitida no contexto atual'
-    USING ERRCODE = '42501';
-END IF;
-```
+Os 11 lotes / 124 itens sem filial não são tocados, nem preenchidos, nem inferidos. Usuário comum ou multi-filial: bloqueado (42501). Admin/gestor com filial ativa: bloqueado. Admin/gestor na visão global: permitido. A validação também recusa lote com mais de uma filial em contexto de filial, sem nunca escolher uma delas.
 
-- **create_batch**: antes de inserir, calcula a filial de cada máquina; recusa (42501) máquina fora do contexto e recusa lote com mais de uma filial; grava a filial no snapshot de cada item.
-- **get_batch** (base do PDF): chama a função auxiliar antes de montar o retorno.
-- **finalize, confirm_send, cancel, mark_send_error, mark_pdf_generated**: chamam a função auxiliar logo após a checagem de permissão existente, antes de qualquer alteração.
-- **pending_kpis / pending_clients / pending_machines**: filtram por `effective_filial_ids(p_filial_id)` além dos filtros da tela.
+## 6. Criação — confirmado
 
-Em todas: contexto vazio = global (admin/gestor sem filial); sem filial informada por usuário comum = filial principal; filial não autorizada = 42501. `EXECUTE` revogado de `PUBLIC`, concedido a `authenticated`.
+Todas as máquinas são validadas antes do primeiro registro (situação pendente, filial ativa, filial única, já regularizada, já em lote aguardando). Nenhum registro é criado se qualquer uma falhar. A filial continua sendo gravada no item do lote, como já era previsto pela estrutura atual. **Nenhum campo novo** é criado na tabela de lotes.
 
-## Frontend
+## Resumo das diferenças
 
-- `src/hooks/useEquipmentRegularization.ts` — envia a Filial Ativa em todas as consultas **e operações** (criar, PDF, finalizar, cancelar, reenviar) e a inclui nas chaves de cache.
-- `src/components/equipment/EquipmentRegularizationPanel.tsx` — o filtro de filial deixa de ser um contexto próprio: parte da Filial Ativa do cabeçalho e acompanha sua troca. "Todas as filiais" e "Sem filial" só aparecem para administradores/gestores sem filial selecionada.
+1. As três consultas de pendências passam a restringir pela filial efetiva.
+2. Criação recebe a filial ativa como último parâmetro, valida tudo antes de inserir e proíbe mistura de filiais.
+3. As seis operações de lote (PDF/detalhe, concluir, confirmar, cancelar, erro, marcar PDF) recebem a filial ativa como último parâmetro e ganham **uma única linha** de validação.
+4. `mark_pdf_generated` sem a exceção de "lote não encontrado" (correção deste ajuste).
+5. Nada mais: nenhum status, permissão, auditoria ou regra de negócio alterada.
 
-## Não muda
-
-`client_equipment.machine_status` segue a fonte oficial; lote segue snapshot; PDF/e-mail não altera o Parque; finalização só registra o envio; cancelado segue liberando recriação. Parque, Validação, POPS, regras de acesso, cargos, usuários, matrículas e vínculos intocados.
-
-## Testes após autorização (leitura; escrita em BEGIN/ROLLBACK)
-
-Diogo Caiapônia → Planalto Verde → volta a Caiapônia (pendências, contadores, clientes, máquinas conferidos contra a base); máquina de Caiapônia recusada com Planalto Verde ativa e vice-versa; lote com duas filiais recusado; PDF, finalizar, cancelar e reenviar de lote de outra filial recusados com 42501; usuário de filial única inalterado; filial não autorizada 42501; admin sem filial global e com filial restrito.
+Aguardo sua autorização para aplicar.
