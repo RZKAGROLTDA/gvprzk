@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 
 export interface TasksMetricsV2Filters {
+  /** Só executa quando o escopo da Filial Ativa está resolvido. */
+  enabled?: boolean;
   period?: string;
   filial?: string;
   consultantId?: string;
@@ -54,6 +56,7 @@ export const useTasksMetricsV2 = (filters?: TasksMetricsV2Filters) => {
         by_status: r.by_status ?? {},
       };
     },
+    enabled: filters?.enabled ?? true,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

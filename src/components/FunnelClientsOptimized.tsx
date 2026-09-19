@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Download, Search, Filter } from 'lucide-react';
 import { useFiliais } from '@/hooks/useTasksOptimized';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { useClientsOverviewV2 } from '@/hooks/useClientsOverviewV2';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,12 +29,20 @@ export const FunnelClientsOptimized: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [selectedConsultant, setSelectedConsultant] = useState('all');
-  const [selectedFilial, setSelectedFilial] = useState('all');
+  // M3 — Filial Ativa define o contexto desta tela.
+  const {
+    filial: selectedFilial,
+    setFilial: setSelectedFilial,
+    allowedFiliais,
+    isGlobal,
+    isScopeReady,
+  } = useActiveFilialFilter();
 
   const { data, isLoading } = useClientsOverviewV2({
     period: selectedPeriod,
     filial: selectedFilial,
     consultantId: selectedConsultant,
+    enabled: isScopeReady,
     search: searchTerm,
     limit: 100,
     offset: 0,
@@ -46,6 +55,7 @@ export const FunnelClientsOptimized: React.FC = () => {
     ? Math.round((clientsWithActivity / rows.length) * 100)
     : 0;
 
+  const filialOptions = isGlobal ? filiais : allowedFiliais;
   const filialNameById = new Map(filiais.map((f: any) => [f.id, f.nome]));
   const consultantNameById = new Map(consultants.map((c: any) => [c.id, c.name]));
 
@@ -156,9 +166,9 @@ export const FunnelClientsOptimized: React.FC = () => {
               <Select value={selectedFilial} onValueChange={setSelectedFilial}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as filiais</SelectItem>
-                  {filiais.map((f: any) => (
-                    <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>
+                  {isGlobal && <SelectItem value="all">Todas as filiais</SelectItem>}
+                  {filialOptions.map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 
 export interface ClientsOverviewV2Filters {
+  /** Só executa quando o escopo da Filial Ativa está resolvido. */
+  enabled?: boolean;
   period?: string;
   filial?: string;
   consultantId?: string;
@@ -62,6 +64,7 @@ export const useClientsOverviewV2 = (filters?: ClientsOverviewV2Filters) => {
       const r = (data ?? {}) as { total?: number; rows?: ClientOverviewRow[] };
       return { total: r.total ?? 0, rows: r.rows ?? [] };
     },
+    enabled: filters?.enabled ?? true,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
