@@ -13,6 +13,7 @@ import {
   Phone, Trophy, UserCheck, Users, UserX, X,
 } from 'lucide-react';
 import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
