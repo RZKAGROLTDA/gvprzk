@@ -54,14 +54,15 @@ const PerformanceByFilial: React.FC = () => {
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
 
   const { data: filialStats = [], isFetching, refetch } = useQuery<FilialStats[]>({
-    queryKey: ['performance-by-filial-v2', user?.id ?? null, startStr, endStr, responsibleUserId],
-    enabled: !!user?.id,
+    queryKey: ['performance-by-filial-v2', user?.id ?? null, startStr, endStr, responsibleUserId, scopedFilialId],
+    enabled: !!user?.id && isScopeReady,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_performance_by_filial_v2', {
         p_start_date: startStr,
         p_end_date: endStr,
         p_responsible_user_id: responsibleUserId,
+        p_filial_id: scopedFilialId,
       });
       if (error) throw error;
 
