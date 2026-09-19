@@ -13,6 +13,7 @@ import {
   Phone, Trophy, UserCheck, Users, UserX, X,
 } from 'lucide-react';
 import { useFollowups, FollowupRow, getClientKey } from '@/hooks/useFollowups';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -45,18 +46,35 @@ type FilialStat = {
 };
 
 export const CRMManagement: React.FC = () => {
-  const { data: all = [], isLoading } = useFollowups();
-  const { consultants } = useFilteredConsultants();
+  // M3 — Filial Ativa define o contexto do Gerencial.
+  const {
+    filial,
+    setFilial,
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+    isScopeReady,
+  } = useActiveFilialFilter();
+  const { data: all = [], isLoading } = useFollowups({
+    filialId: scopedFilialId,
+    enabled: isScopeReady,
+  });
+  const { consultants } = useFilteredConsultants(scopedFilialId);
 
-  const { data: filiais = [] } = useQuery({
+  const { data: allFiliais = [] } = useQuery({
     queryKey: ['filiais-options'],
     staleTime: 15 * 60 * 1000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase.from('filiais').select('id, nome').order('nome');
       if (error) throw error;
       return data ?? [];
     },
   });
+  const filiais = useMemo(
+    () => (isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))),
+    [isGlobal, allFiliais, allowedFiliais],
+  );
 
   const consultantById = useMemo(() => {
     const m = new Map<string, string>();
@@ -74,7 +92,6 @@ export const CRMManagement: React.FC = () => {
     const d = new Date(); d.setDate(d.getDate() - 30); return startOfDay(d);
   });
   const [to, setTo] = useState<Date | undefined>(() => startOfDay(new Date()));
-  const [filial, setFilial] = useState('all');
   const [seller, setSeller] = useState('all');
   const [statusF, setStatusF] = useState('all');
   const [priorityF, setPriorityF] = useState('all');
@@ -304,7 +321,7 @@ export const CRMManagement: React.FC = () => {
           <Select value={filial} onValueChange={setFilial}>
             <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas filiais</SelectItem>
+              {isGlobal && <SelectItem value="all">Todas filiais</SelectItem>}
               {filiais.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
             </SelectContent>
           </Select>

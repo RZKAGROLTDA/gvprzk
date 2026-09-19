@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ import { useNavigate } from 'react-router-dom';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 
 interface FilialOption {
   id: string;
@@ -60,15 +61,24 @@ const Reports: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
-  const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
 
-  const { consultants } = useFilteredConsultants();
+  // M3 — Filial Ativa define o contexto dos relatórios.
+  const {
+    filial,
+    setFilial,
+    filialId: scopedFilialId,
+    allowedFiliais,
+    isGlobal,
+    isScopeReady,
+  } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
 
   // Filiais (catálogo) — staleTime longo, dados estáticos
-  const { data: filiais = [] } = useQuery<FilialOption[]>({
+  const { data: allFiliais = [] } = useQuery<FilialOption[]>({
     queryKey: ['filiais-options'],
     staleTime: 15 * 60 * 1000,
+    enabled: isGlobal,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('filiais')
@@ -78,13 +88,22 @@ const Reports: React.FC = () => {
       return data ?? [];
     },
   });
+  const filiais = useMemo<FilialOption[]>(
+    () => (isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }))),
+    [isGlobal, allFiliais, allowedFiliais],
+  );
+  const selectedFilialName = useMemo(
+    () => filiais.find((f) => f.id === filial)?.nome ?? '',
+    [filiais, filial],
+  );
 
   const startStr = dateFrom ? formatDateToLocal(dateFrom) : null;
   const endStr = dateTo ? formatDateToLocal(dateTo) : null;
   const responsibleUserId =
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
+  // 'Todas' nunca amplia o escopo: sem seleção local, vale a Filial Ativa.
   const filialFilter =
-    selectedFilial && selectedFilial !== 'all' ? selectedFilial : null;
+    filial && filial !== 'all' ? filial : scopedFilialId;
 
   const {
     data: metrics,
@@ -99,7 +118,7 @@ const Reports: React.FC = () => {
       filialFilter,
       responsibleUserId,
     ],
-    enabled: !!user?.id,
+    enabled: !!user?.id && isScopeReady,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       // Resolver nome/uuid/'all' → uuid|null (filtros normalizados).
@@ -141,7 +160,7 @@ const Reports: React.FC = () => {
     setDateFrom(undefined);
     setDateTo(undefined);
     setSelectedConsultant('all');
-    setSelectedFilial('all');
+    setFilial(scopedFilialId ?? 'all');
     setSelectedFilialAtendida('all');
     toast({
       title: '✨ Filtros limpos',
@@ -167,7 +186,7 @@ const Reports: React.FC = () => {
     !!dateFrom ||
     !!dateTo ||
     selectedConsultant !== 'all' ||
-    selectedFilial !== 'all' ||
+    filial !== 'all' ||
     selectedFilialAtendida !== 'all';
 
   return (
@@ -268,15 +287,15 @@ const Reports: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Filial</label>
-                <Select value={selectedFilial} onValueChange={setSelectedFilial}>
-                  <SelectTrigger className={selectedFilial !== 'all' ? 'border-primary' : ''}>
+                <Select value={filial} onValueChange={setFilial}>
+                  <SelectTrigger className={filial !== 'all' ? 'border-primary' : ''}>
                     <SelectValue placeholder="Todas as filiais" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas as filiais</SelectItem>
-                    {filiais.map((filial) => (
-                      <SelectItem key={filial.id} value={filial.nome}>
-                        {filial.nome}
+                    {isGlobal && <SelectItem value="all">Todas as filiais</SelectItem>}
+                    {filiais.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.id}>
+                        {opt.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -368,8 +387,8 @@ const Reports: React.FC = () => {
                     Até: {formatDateDisplay(dateTo)}
                   </Badge>
                 )}
-                {selectedFilial !== 'all' && (
-                  <Badge variant="secondary" className="gap-1">Filial: {selectedFilial}</Badge>
+                {filial !== 'all' && (
+                  <Badge variant="secondary" className="gap-1">Filial: {selectedFilialName}</Badge>
                 )}
                 {selectedFilialAtendida !== 'all' && (
                   <Badge variant="secondary" className="gap-1">
@@ -400,8 +419,8 @@ const Reports: React.FC = () => {
                 <p className="text-2xl font-bold text-primary">
                   {loading ? '...' : totalTasks}
                 </p>
-                {selectedFilial !== 'all' && !loading && (
-                  <p className="text-xs text-muted-foreground">Filial: {selectedFilial}</p>
+                {filial !== 'all' && !loading && (
+                  <p className="text-xs text-muted-foreground">Filial: {selectedFilialName}</p>
                 )}
               </div>
               <Activity className="h-8 w-8 text-primary/50" />

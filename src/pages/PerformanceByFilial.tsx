@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { PeriodFilter, buildPeriodValue, type PeriodValue } from '@/components/ui/PeriodFilter';
 
 interface FilialStats {
@@ -46,7 +47,8 @@ const PerformanceByFilial: React.FC = () => {
   const [periodValue, setPeriodValue] = useState<PeriodValue>(() => buildPeriodValue('30'));
   const [selectedConsultant, setSelectedConsultant] = useState<string>('all');
 
-  const { consultants } = useFilteredConsultants();
+  const { filialId: scopedFilialId, isScopeReady } = useActiveFilialFilter();
+  const { consultants } = useFilteredConsultants(scopedFilialId);
 
   const startStr = periodValue.startStr;
   const endStr = periodValue.endStr;
@@ -54,14 +56,15 @@ const PerformanceByFilial: React.FC = () => {
     selectedConsultant && selectedConsultant !== 'all' ? selectedConsultant : null;
 
   const { data: filialStats = [], isFetching, refetch } = useQuery<FilialStats[]>({
-    queryKey: ['performance-by-filial-v2', user?.id ?? null, startStr, endStr, responsibleUserId],
-    enabled: !!user?.id,
+    queryKey: ['performance-by-filial-v2', user?.id ?? null, startStr, endStr, responsibleUserId, scopedFilialId],
+    enabled: !!user?.id && isScopeReady,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_performance_by_filial_v2', {
         p_start_date: startStr,
         p_end_date: endStr,
         p_responsible_user_id: responsibleUserId,
+        p_filial_id: scopedFilialId,
       });
       if (error) throw error;
 

@@ -23,6 +23,8 @@ export const useWeeklyAgenda = (params: {
   endDate: Date;
   responsibleUserId?: string | null;
   filialId?: string | null;
+  /** Só executa quando o escopo da Filial Ativa está resolvido. */
+  enabled?: boolean;
 }) => {
   const { user } = useAuth();
   const startStr = toISODate(params.startDate);
@@ -32,7 +34,7 @@ export const useWeeklyAgenda = (params: {
 
   return useQuery({
     queryKey: ['weekly_followups_agenda', user?.id, startStr, endStr, responsible, filial],
-    enabled: !!user?.id,
+    enabled: !!user?.id && (params.enabled ?? true),
     staleTime: 60_000,
     queryFn: async (): Promise<WeeklyAgendaDay[]> => {
       const { data, error } = await supabase.rpc('get_weekly_followups_agenda', {

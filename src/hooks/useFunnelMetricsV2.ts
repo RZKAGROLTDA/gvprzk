@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 
 export interface FunnelV2Filters {
+  /** Só executa quando o escopo da Filial Ativa está resolvido. */
+  enabled?: boolean;
   period?: string;            // '7' | '30' | '90' | '365' | 'all'
   filial?: string;            // name | uuid | 'all'
   consultantId?: string;      // uuid | 'all'
@@ -45,6 +47,7 @@ export const useFunnelMetricsV2 = (filters?: FunnelV2Filters) => {
       if (error) throw error;
       return (data ?? {}) as Record<string, any>;
     },
+    enabled: filters?.enabled ?? true,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

@@ -39,7 +39,10 @@ const FOLLOWUP_COLUMNS =
 const PAGE_SIZE = 1000;
 const HARD_CAP = 50_000; // proteção contra loop em caso de erro
 
-async function fetchAllFollowups(filterProspectsOnly: boolean): Promise<FollowupRow[]> {
+async function fetchAllFollowups(
+  filterProspectsOnly: boolean,
+  filialId?: string | null,
+): Promise<FollowupRow[]> {
   const out: FollowupRow[] = [];
   let from = 0;
 
@@ -51,6 +54,9 @@ async function fetchAllFollowups(filterProspectsOnly: boolean): Promise<Followup
           .select(`${FOLLOWUP_COLUMNS}, tasks!inner(sales_type)`)
           .eq('tasks.sales_type', 'prospect')
       : supabase.from('task_followups').select(FOLLOWUP_COLUMNS);
+
+    // Filial Ativa define o contexto operacional; a RLS continua sendo o teto.
+    if (filialId) query = query.eq('filial_id', filialId);
 
     const { data, error } = await query
       .order('activity_date', { ascending: false })
@@ -69,30 +75,41 @@ async function fetchAllFollowups(filterProspectsOnly: boolean): Promise<Followup
   return out;
 }
 
+export interface FollowupsScope {
+  /** ID da Filial Ativa. `null` = sem filtro (apenas global/admin). */
+  filialId?: string | null;
+  /** Só executa quando o escopo de filial já está resolvido. */
+  enabled?: boolean;
+}
+
 /**
  * Fonte única para Agenda Semanal e Gerencial.
  * Lê task_followups direto, SEM filtro por sales_type, SEM JOIN.
- * RLS já restringe o que cada usuário enxerga.
+ * A Filial Ativa define o contexto; a RLS segue como teto de acesso.
  */
-export const useFollowups = () => {
+export const useFollowups = (scope?: FollowupsScope) => {
   const { user } = useAuth();
+  const filialId = scope?.filialId ?? null;
+  const ready = scope?.enabled ?? true;
   return useQuery({
-    queryKey: ['task_followups', 'all', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['task_followups', 'all', user?.id, filialId],
+    enabled: !!user?.id && ready,
     staleTime: 5 * 60_000,
-    queryFn: () => fetchAllFollowups(false),
+    queryFn: () => fetchAllFollowups(false, filialId),
   });
 };
 
 /**
  * Variante usada pela tela Retornos: apenas follow-ups de tasks do tipo prospect.
  */
-export const useFollowupsProspectsOnly = () => {
+export const useFollowupsProspectsOnly = (scope?: FollowupsScope) => {
   const { user } = useAuth();
+  const filialId = scope?.filialId ?? null;
+  const ready = scope?.enabled ?? true;
   return useQuery({
-    queryKey: ['task_followups', 'prospects', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['task_followups', 'prospects', user?.id, filialId],
+    enabled: !!user?.id && ready,
     staleTime: 5 * 60_000,
-    queryFn: () => fetchAllFollowups(true),
+    queryFn: () => fetchAllFollowups(true, filialId),
   });
 };

@@ -63,6 +63,7 @@ export const WeeklyAgenda: React.FC = () => {
     filialId: scopedFilialId,
     allowedFiliais,
     isGlobal,
+    isScopeReady,
   } = useActiveFilialFilter();
   const { consultants } = useFilteredConsultants(scopedFilialId);
 
@@ -125,7 +126,8 @@ export const WeeklyAgenda: React.FC = () => {
     startDate,
     endDate,
     responsibleUserId: seller !== 'all' ? seller : null,
-    filialId: filial !== 'all' ? filial : null,
+    filialId: scopedFilialId,
+    enabled: isScopeReady,
   });
 
   const maxActivities = useMemo(

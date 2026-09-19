@@ -71,7 +71,6 @@ const statusStyle = (s: FollowupRow['followup_status']) => {
 const PAGE_SIZE_OPTIONS = [30, 50, 100, 200];
 
 export const ClientPortfolio: React.FC = () => {
-  const { data = [], isLoading } = useFollowups();
   // M3 — Etapa 3B: a Carteira trabalha com o ID da Filial Ativa.
   const {
     filial,
@@ -79,7 +78,12 @@ export const ClientPortfolio: React.FC = () => {
     filialId: activeScopeFilialId,
     allowedFiliais,
     isGlobal,
+    isScopeReady,
   } = useActiveFilialFilter();
+  const { data = [], isLoading } = useFollowups({
+    filialId: activeScopeFilialId,
+    enabled: isScopeReady,
+  });
   const { consultants } = useFilteredConsultants(activeScopeFilialId);
   const queryClient = useQueryClient();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
