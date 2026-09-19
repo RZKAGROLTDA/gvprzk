@@ -1,72 +1,190 @@
-# Meu Dia — Filial Ativa (diagnóstico + proposta)
+# Meu Dia — Filial Ativa (proposta final, aguardando autorização)
 
-Etapa somente de diagnóstico. Nada foi alterado no banco nem nas telas.
+Incorpora os dois ajustes: assinatura única de `my_day_assert_target` (sem overload) e `effective_filial_ids` como autoridade única da Filial Ativa.
 
-## 1. Meu Dia pessoal (deve continuar igual)
+## 1. Assinaturas atuais em pg_proc (levantadas)
 
-Consultas: `get_my_day_summary()` e `get_my_day_details(p_block, p_bucket, p_limit, p_offset)`.
-Ambas passam por `my_day_context()`, que usa apenas `auth.uid()` — não existe nenhum parâmetro nem filtro de filial.
+- `my_day_assert_target(p_user_id uuid)` — única assinatura existente.
+- `get_my_day_team_summary(p_filial_id uuid, p_role text, p_user_id uuid)` — única.
+- `get_my_day_user_summary(p_user_id uuid)` — única.
+- `get_my_day_user_details(p_user_id uuid, p_block text, p_bucket text, p_limit integer, p_offset integer)` — única.
+- `my_day_scope()`, `my_day_scope_v2()`, `my_day_context()`, `my_day_summary_build(uuid,text)`, `my_day_details_build(uuid,text,text,integer,integer)`, `my_day_role_of(uuid)` — existem e NÃO serão alteradas.
 
-Frontend: `useMyDaySummary()` e `useMyDayDetails()` (`src/hooks/useMyDay.ts`), consumidos em `src/pages/MyDay.tsx` (aba "Minha visão") e `src/components/myday/SeeAllDialog.tsx`.
-queryKeys: `['my-day-summary', userId]` e `['my-day-details', block, bucket, page, pageSize]`.
+## 2. Consumidores de my_day_assert_target
 
-Conclusão: nada a mudar. A proposta não toca nessas funções, hooks ou chaves de cache.
+Consulta em `pg_proc` (definições de todas as funções do schema public) e busca em todo o `src/`:
+- Banco: somente `get_my_day_user_summary` e `get_my_day_user_details`.
+- Frontend: nenhuma chamada direta (apenas a entrada gerada em `types.ts`, regenerada pela migração).
 
-## 2. Visão da equipe
+Nenhum outro consumidor existe; a assinatura antiga pode ser removida com segurança.
 
-Consulta: `get_my_day_team_summary(p_filial_id, p_role, p_user_id)` — SECURITY DEFINER, usa `my_day_scope()`.
+## 3. SQL final proposto
 
-Comportamento atual:
-- `my_day_scope()` devolve `scope = 'global'` (admin/manager), `'filial'` (supervisor) ou `'self'`, e `filial_id` = **somente a filial principal do cadastro** (`profiles.filial_id`).
-- Linha decisiva: a filial usada é `CASE WHEN scope = 'filial' THEN scope.filial_id ELSE p_filial_id END`. Ou seja, **para supervisor o `p_filial_id` enviado pela tela é ignorado**; sempre vale a filial principal.
-- A lista de colaboradores filtra `profiles.filial_id = v_filial`, logo não há soma de filiais — mas também não há como ver a equipe de uma filial adicional.
-- Para admin/manager: `p_filial_id` é respeitado; `NULL` = todas as filiais (global). Correto.
-- `scope = 'self'` → erro 42501. Correto.
+```sql
+-- 3.1 my_day_assert_target — assinatura única (uuid, uuid DEFAULT NULL)
+DROP FUNCTION public.my_day_assert_target(uuid);
 
-Frontend: `useMyDayTeamSummary(filters, enabled)`; a tela já envia `filialId` = Filial Ativa do cabeçalho (`useActiveFilialFilter`), já limpa o colaborador selecionado ao trocar de filial e já inclui `filialId` na queryKey `['my-day-team-summary', filialId, role, userId]`. Filtro local remanescente: apenas a busca por nome (em memória) — inofensiva.
-Ponto aberto no frontend: a consulta roda com `enabled = tab === 'team'`, sem esperar a resolução da Filial Ativa (`isScopeReady`).
+CREATE FUNCTION public.my_day_assert_target(p_user_id uuid, p_filial_id uuid DEFAULT NULL)
+ RETURNS TABLE(user_id uuid, role text, filial_id uuid, is_self boolean)
+ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE
+  s        record;
+  v_filial uuid;
+  v_found  boolean;
+  v_eff    uuid[];
+BEGIN
+  SELECT * INTO s FROM public.my_day_scope();
 
-Conclusão: o bloqueio do supervisor multi-filial está **no banco**, não na tela.
+  IF p_user_id IS NULL OR p_user_id = s.user_id THEN
+    RETURN QUERY SELECT s.user_id, s.role, s.filial_id, true;
+    RETURN;
+  END IF;
 
-## 3. Abertura/consulta individual de um colaborador
+  IF s.scope = 'self' THEN
+    RAISE EXCEPTION 'Acesso negado: sem permissão para consultar outros colaboradores' USING ERRCODE = '42501';
+  END IF;
 
-Consultas: `get_my_day_user_summary(p_user_id)` e `get_my_day_user_details(p_user_id, ...)`, ambas via `my_day_assert_target(p_user_id)`.
+  SELECT p.filial_id, true INTO v_filial, v_found
+  FROM public.profiles p
+  WHERE p.user_id = p_user_id
+    AND p.approval_status = 'approved'
+    AND p.employment_status = 'active';
 
-`my_day_assert_target` compara a filial principal do colaborador com `my_day_scope().filial_id`: se diferente, erro 42501. Portanto o supervisor multi-filial, operando numa filial adicional, **não consegue abrir** o colaborador daquela filial. Não existe parâmetro de filial nessas funções.
+  IF NOT COALESCE(v_found, false) THEN
+    RAISE EXCEPTION 'Acesso negado: colaborador inexistente, não aprovado ou inativo' USING ERRCODE = '42501';
+  END IF;
 
-Frontend: `UserDayDialog` → `useMyDayUserSummary(userId, open)`; queryKeys `['my-day-user-summary', userId]` e `['my-day-user-details', userId, block, bucket, page, pageSize]` — sem `filialId`.
+  -- Filial Ativa efetiva: autoridade única (mesma regra do Carteira/CRM).
+  v_eff := public.effective_filial_ids(p_filial_id);
+  -- Global sem filial devolve '{}'::uuid[] → sem restrição. Demais casos: 1 filial exata.
+  IF array_length(v_eff, 1) IS NOT NULL
+     AND (v_filial IS NULL OR NOT (v_filial = ANY(v_eff))) THEN
+    RAISE EXCEPTION 'Acesso negado: colaborador de outra filial' USING ERRCODE = '42501';
+  END IF;
 
-## 4. Observação
+  RETURN QUERY SELECT p_user_id, public.my_day_role_of(p_user_id), v_filial, false;
+END;
+$function$;
+```
 
-`my_day_scope_v2()` já existe (devolve também `filial_ids[]` via `get_user_filial_ids_internal`), mas **nenhuma função do Meu Dia a utiliza hoje**. É a base natural da correção.
+Comportamento: self → sempre OK (intacto); consultor comum (`self` scope) → 42501; supervisor/admin/manager → o colaborador precisa pertencer à(s) filial(is) efetiva(s) resolvida(s) por `effective_filial_ids(p_filial_id)`; não autorizada → 42501. Nunca principal + adicionais: `effective_filial_ids` devolve no máximo UMA filial para não-global.
 
----
+```sql
+-- 3.2 get_my_day_team_summary — mesma assinatura e mesmo retorno;
+--     apenas a resolução da filial muda (linha v_filial := ...).
+CREATE OR REPLACE FUNCTION public.get_my_day_team_summary(
+  p_filial_id uuid DEFAULT NULL, p_role text DEFAULT NULL, p_user_id uuid DEFAULT NULL)
+ RETURNS jsonb
+ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE
+  s            record;
+  v_today      date := (now() AT TIME ZONE 'America/Sao_Paulo')::date;
+  v_week_start date;
+  v_week_end   date;
+  v_is_weekend boolean;
+  v_month_start date;
+  v_month_end   date;
+  v_win_start   date;
+  v_win_end     date;
+  v_elapsed_wd  integer;
+  v_elapsed_all integer;
+  v_total_wd    integer;
+  v_total_all   integer;
+  v_filial     uuid;
+  v_role       text := NULLIF(btrim(COALESCE(p_role, '')), '');
+  v_rows       jsonb;
+  v_kpi        jsonb;
+BEGIN
+  SELECT * INTO s FROM public.my_day_scope();
 
-# Proposta técnica mínima (não aplicar ainda)
+  IF s.scope = 'self' THEN
+    RAISE EXCEPTION 'Acesso negado: sem permissão para visão de equipe' USING ERRCODE = '42501';
+  END IF;
 
-## Banco (3 objetos)
+  -- ÚNICA ALTERAÇÃO FUNCIONAL: supervisor resolve a Filial Ativa via
+  -- effective_filial_ids (NULL → somente a principal; informada → validada, senão 42501).
+  -- Global (admin/manager) mantém o comportamento atual: NULL = todas, informada = somente ela.
+  v_filial := CASE
+    WHEN s.scope = 'global' THEN p_filial_id
+    ELSE (public.effective_filial_ids(p_filial_id))[1]
+  END;
 
-1. **`my_day_assert_target(p_user_id uuid, p_filial_id uuid DEFAULT NULL)`** — nova assinatura de 2 parâmetros, mantendo o retorno atual. Validação da filial passa a usar `effective_filial_ids(p_filial_id)` (mesmo padrão já aprovado em Carteira/CRM): o colaborador precisa pertencer a uma das filiais efetivas; filial não autorizada continua 42501. A assinatura de 1 parâmetro é preservada como repasse com `NULL`, para não quebrar nada.
-2. **`get_my_day_team_summary(p_filial_id, p_role, p_user_id)`** — mesma assinatura, mesmo retorno. Troca `my_day_scope()` por `my_day_scope_v2()` e resolve a filial-alvo:
-   - `scope = 'self'` → 42501 (igual a hoje);
-   - supervisor: `p_filial_id` obrigatório e validado por `effective_filial_ids(p_filial_id)`; `NULL` cai na filial principal. Nunca a união de filiais;
-   - admin/manager: `NULL` = global, informado = somente aquela filial (igual a hoje).
-   O restante do corpo (CTEs `membros`/`filtrados`/`metas`/`agg`, metas diárias/semanais, janela semanal truncada pelo mês, KPIs) fica **byte-idêntico**.
-3. **`get_my_day_user_summary(p_user_id, p_filial_id DEFAULT NULL)`** e **`get_my_day_user_details(p_user_id, p_block, p_bucket, p_limit, p_offset, p_filial_id DEFAULT NULL)`** — repassam `p_filial_id` ao `my_day_assert_target`. Retorno inalterado.
+  -- >>> Daqui em diante o corpo é IDÊNTICO ao atual (janelas, CTEs
+  -- membros/filtrados/metas/agg, metas diárias e semanais, KPIs e RETURN),
+  -- sem nenhuma outra mudança. <<<
+  ... (corpo atual preservado byte a byte)
+END;
+$function$;
+```
 
-`my_day_scope()` não é alterada. `my_day_context()`, `my_day_summary_build`, `my_day_details_build`, `get_my_day_summary` e `get_my_day_details` não são tocadas. Nenhuma policy RLS, cargo, matrícula ou vínculo é alterado. Ao final, conferência em `pg_proc` para garantir assinatura única por função alterada (sem overload órfão).
+```sql
+-- 3.3 get_my_day_user_summary — sem overload: drop da antiga, nova com p_filial_id
+DROP FUNCTION public.get_my_day_user_summary(uuid);
 
-## Frontend (4 arquivos)
+CREATE FUNCTION public.get_my_day_user_summary(p_user_id uuid, p_filial_id uuid DEFAULT NULL)
+ RETURNS jsonb
+ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE t record;
+BEGIN
+  SELECT * INTO t FROM public.my_day_assert_target(p_user_id, p_filial_id);
+  RETURN public.my_day_summary_build(t.user_id, t.role);
+END;
+$function$;
 
-- `src/hooks/useMyDay.ts`: `useMyDayUserSummary` e `useMyDayUserDetails` passam a receber e enviar `filialId`, incluindo-o na queryKey. `useMyDaySummary`/`useMyDayDetails` intocados.
-- `src/pages/MyDay.tsx`: a aba da equipe só consulta depois que a Filial Ativa está resolvida (`isScopeReady`); repassa a filial ao diálogo do colaborador.
-- `src/components/myday/UserDayDialog.tsx`: recebe `filialId` e o encaminha aos hooks.
-- Nenhum filtro local de filial é criado; o cabeçalho continua sendo a única origem da Filial Ativa.
+-- 3.4 get_my_day_user_details — idem
+DROP FUNCTION public.get_my_day_user_details(uuid, text, text, integer, integer);
 
-## Bateria de validação prevista (após autorização)
+CREATE FUNCTION public.get_my_day_user_details(
+  p_user_id uuid, p_block text, p_bucket text,
+  p_limit integer DEFAULT 50, p_offset integer DEFAULT 0,
+  p_filial_id uuid DEFAULT NULL)
+ RETURNS jsonb
+ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE t record;
+BEGIN
+  SELECT * INTO t FROM public.my_day_assert_target(p_user_id, p_filial_id);
+  RETURN public.my_day_details_build(t.user_id, p_block, p_bucket, p_limit, p_offset);
+END;
+$function$;
+```
 
-Formato Teste | Filial Ativa | Obtido | Esperado | Status, cobrindo: supervisor na filial principal; supervisor na filial adicional (equipe apenas daquela filial, sem soma com a principal); troca de filial e volta, sem resíduo; filial não autorizada → 42501; abertura individual de colaborador da filial ativa (OK) e de outra filial (42501); consultor comum → 42501 na equipe; admin sem filial → global; admin com filial → somente aquela; Meu Dia pessoal com números idênticos aos de hoje; troca de filial na tela sem reload e sem cache residual.
+Conferência pós-migração (pg_proc): cada função com exatamente UMA assinatura — `my_day_assert_target(uuid, uuid)`, `get_my_day_user_summary(uuid, uuid)`, `get_my_day_user_details(uuid, text, text, integer, integer, uuid)`, `get_my_day_team_summary(uuid, text, uuid)`. Sem overload e sem caminho antigo.
+
+`my_day_scope()` intacta. `my_day_scope_v2()` não é usada (não cria segunda lógica de decisão). Meu Dia pessoal (`get_my_day_summary`, `get_my_day_details`, `my_day_context`, builders) 100% intacto. Nenhuma RLS, cargo, matrícula ou vínculo é tocado.
+
+## 4. Alterações exatas no frontend
+
+**`src/hooks/useMyDay.ts`** — apenas os hooks de equipe/individual:
+- `useMyDayUserSummary(userId, filialId, enabled)`: queryKey vira `['my-day-user-summary', userId, filialId]`; RPC recebe `{ p_user_id: userId, p_filial_id: filialId }`.
+- `useMyDayUserDetails(userId, block, bucket, page, pageSize, filialId, enabled)`: queryKey vira `['my-day-user-details', userId, filialId, block, bucket, page, pageSize]`; RPC recebe `p_filial_id` adicional.
+- `useMyDayTeamSummary`: sem mudança de código (já envia `p_filial_id` e já tem `filialId` na queryKey).
+- `useMyDaySummary` e `useMyDayDetails` (pessoais): intocados, mesmas queryKeys.
+
+**`src/pages/MyDay.tsx`**:
+- `useActiveFilialFilter()` passa a desestruturar também `isScopeReady`.
+- `useMyDayTeamSummary(teamFilters, showTeam && tab === 'team' && isScopeReady)` — não-global nunca consulta antes da Filial Ativa resolvida.
+- `<UserDayDialog ... filialId={activeScopeFilialId} />`.
+
+**`src/components/myday/UserDayDialog.tsx`**:
+- Nova prop `filialId?: string | null`; repassada ao `useMyDayUserSummary(member?.user_id ?? null, filialId ?? null, open)`.
+
+Nenhum outro arquivo. Nenhum filtro local de filial criado. `useMyDayUserDetails` não tem consumidor ativo hoje, mas é atualizado para não ficar como caminho sem filial.
+
+## 5. Garantia de sem-overload / sem-bypass
+
+- As três funções com assinatura antiga são removidas com `DROP FUNCTION` explícito na mesma migração; `CREATE OR REPLACE` só é usado onde a assinatura não muda.
+- Para não-global, `effective_filial_ids(NULL)` devolve SOMENTE a filial principal — nunca a união; filial informada fora do escopo → 42501.
+- Frontend: não-global só chama equipe/individual com `filialId` resolvido (`isScopeReady`).
+
+## 6. Bateria prevista (após autorização), sem correções automáticas
+
+Formato Teste | Filial Ativa | Obtido | Esperado | Status:
+supervisor na principal; supervisor na adicional (somente equipe dela, sem soma); troca e volta sem resíduo; filial não autorizada → 42501; abrir colaborador da filial ativa (OK) e de outra filial (42501); consultor comum na equipe → 42501; admin sem filial → global; admin com filial → somente ela; Meu Dia pessoal idêntico ao atual; troca de filial na tela sem reload/cache residual. Falha → parar e apresentar a causa.
 
 ## Fora do escopo
 
-`my_day_scope()`, Meu Dia pessoal, `useTasks`/tarefas/offline, POPS, CRM/Carteira, Parque, Validação, Regularização, RLS, cargos, usuários, matrículas e vínculos.
+`my_day_scope()`, Meu Dia pessoal, `useTasks`/tarefas/offline, RLS, POPS, CRM/Carteira, Parque, Validação, Regularização.

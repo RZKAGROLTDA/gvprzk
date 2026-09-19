@@ -20,8 +20,7 @@
 - [x] Parque de Máquinas (lista, KPIs, Excel) restrito à Filial Ativa para todos
 - [x] Validação do Parque (resumo + validadores) restrito à Filial Ativa
 - [x] Regularização (pendências, contadores, máquinas por cliente, lotes/PDF/cancelamento/reenvio/finalização) sem misturar filiais
-- [ ] Carteira/CRM somente Filial Ativa (nunca soma)
-- [ ] My Day: visão de equipe acompanha a Filial Ativa
+- [x] Carteira/CRM somente Filial Ativa (nunca soma) — E3 concluída (banco + telas validados)
 - [ ] Bateria Caiapônia ↔ Planalto Verde ↔ volta, filial única e filial não autorizada
 
 ## E2 — Regularização (concluída)
@@ -31,8 +30,9 @@
 - [x] Bateria em BEGIN/ROLLBACK
 - [x] Revisão comparativa (status/permissões) antes de aplicar a Regularização
 
-## E3 Carteira/CRM — Filial Ativa (aprovada, em aplicação)
-- [ ] Aplicar 9 RPCs com effective_filial_ids (clients_overview, activity/funnel/reports/tasks metrics, consolidated, performance seller/filial, weekly agenda)
-- [ ] Frontend CRM + funil + relatórios: Filial Ativa + filialId nas queryKeys (useTasks FORA; useFollowups aguarda filial)
-- [ ] Bateria BEGIN/ROLLBACK Diogo/Jhonatan/admin + tabela de resultados
-- [ ] Depois: Meu Dia (etapa separada) e diagnóstico específico de useTasks/offline
+## E4 — Meu Dia, Filial Ativa (diagnóstico aprovado; proposta ajustada, aguardando autorização)
+- [ ] Banco: my_day_assert_target(p_user_id, p_filial_id DEFAULT NULL) assinatura única (sem overload); get_my_day_team_summary via effective_filial_ids; get_my_day_user_summary/user_details com p_filial_id
+- [ ] Frontend: filialId nas chamadas e queryKeys de equipe/individual (useMyDay.ts, MyDay.tsx, UserDayDialog.tsx); bloqueio por isScopeReady
+- [ ] Meu Dia pessoal 100% intacto (summary/details/context/builders/queryKeys)
+- [ ] Bateria: supervisor principal/adicional/volta sem soma, 42501 não autorizada e consultor comum, admin global/restrito, troca sem reload
+- [ ] Depois: diagnóstico específico de useTasks/offline
