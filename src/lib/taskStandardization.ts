@@ -26,6 +26,10 @@ export const loadFiliaisCache = async (): Promise<void> => {
   }
 };
 
+/** Lista (id, nome) das filiais já carregadas em cache — leitura apenas. */
+export const getFiliaisCacheList = (): { id: string; nome: string }[] =>
+  Array.from(filiaisCache.entries()).map(([id, nome]) => ({ id, nome }));
+
 export const resolveFilialName = (filialId: string | null): string => {
   if (!filialId) return 'Não informado';
   

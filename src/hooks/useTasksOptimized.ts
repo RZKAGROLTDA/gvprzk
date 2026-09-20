@@ -6,7 +6,9 @@ import { useOffline } from '@/hooks/useOffline';
 import { Task, ProductType, Reminder } from '@/types/task';
 import { toast } from '@/components/ui/use-toast';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
-import { loadFiliaisCache, createTaskWithFilialSnapshot } from '@/lib/taskStandardization';
+import { loadFiliaisCache, createTaskWithFilialSnapshot, getFiliaisCacheList } from '@/lib/taskStandardization';
+import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
+import { filterOfflineTasksByFilial } from '@/lib/offlineFilialScope';
 import { getSalesValueAsNumber, canPerformNumericOperation } from '@/lib/securityUtils';
 import { fetchTaskMedia } from '@/lib/taskMedia';
 import { insertTaskIdempotent } from '@/lib/taskSubmission';
@@ -24,6 +26,11 @@ export const useTasksOptimized = (includeDetails = false) => {
   const { user } = useAuth();
   const { isOnline, getOfflineTasks, saveTaskOffline } = useOffline();
   const queryClient = useQueryClient();
+  // M3 — Filial Ativa: única autoridade de escopo desta listagem.
+  const { filialId: activeScopeFilialId, isScopeReady } = useActiveFilialFilter();
+  const tasksQueryKey = includeDetails
+    ? ([...QUERY_KEYS.tasks, activeScopeFilialId, 'with-details'] as const)
+    : ([...QUERY_KEYS.tasks, activeScopeFilialId] as const);
 
   // Função para verificar e criar perfil se necessário
   const ensureUserProfile = async () => {
@@ -78,7 +85,7 @@ export const useTasksOptimized = (includeDetails = false) => {
 
   // Query com retry automático e fallback
   const tasksQuery = useQuery({
-    queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
+    queryKey: tasksQueryKey,
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
@@ -109,7 +116,11 @@ export const useTasksOptimized = (includeDetails = false) => {
 
           if (!isOnline) {
             console.log('📴 App offline - usando dados locais');
-            return getOfflineTasks();
+            return filterOfflineTasksByFilial(
+              getOfflineTasks(),
+              activeScopeFilialId,
+              getFiliaisCacheList(),
+            );
           }
 
           console.log('🔄 Carregando tasks via função segura (paginado)...');
@@ -117,7 +128,11 @@ export const useTasksOptimized = (includeDetails = false) => {
           let tasksData, error;
           try {
             const result = await supabase
-              .rpc('get_secure_tasks_paginated', { p_limit: TASKS_PAGE_LIMIT, p_offset: 0 })
+              .rpc('get_secure_tasks_paginated', {
+                p_limit: TASKS_PAGE_LIMIT,
+                p_offset: 0,
+                p_filial_id: activeScopeFilialId,
+              })
               .abortSignal(controller.signal);
             tasksData = result.data;
             error = result.error;
@@ -206,7 +221,7 @@ export const useTasksOptimized = (includeDetails = false) => {
         
         // Melhor tratamento de erro - tentar cache local primeiro
         console.log('🔄 Tentando recuperar dados do cache local...');
-        const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
+        const cachedData = queryClient.getQueryData(tasksQueryKey);
         if (cachedData) {
           console.log('✅ Dados recuperados do cache local');
           return cachedData as Task[];
@@ -215,7 +230,11 @@ export const useTasksOptimized = (includeDetails = false) => {
         // Se offline, tentar dados offline
         if (!isOnline) {
           console.log('📴 Recuperando dados offline');
-          return getOfflineTasks();
+          return filterOfflineTasksByFilial(
+            getOfflineTasks(),
+            activeScopeFilialId,
+            getFiliaisCacheList(),
+          );
         }
         
         // Circuit breaker melhorado - só retornar vazio em último caso
@@ -223,7 +242,8 @@ export const useTasksOptimized = (includeDetails = false) => {
         throw error; // Permitir que React Query tente novamente
       }
     },
-    enabled: !!user,
+    // Não-global nunca consulta antes da Filial Ativa estar resolvida.
+    enabled: !!user && isScopeReady,
     staleTime: 3 * 60 * 1000, // 3 minutos - OTIMIZAÇÃO: reduzir Disk IO
     refetchOnWindowFocus: false, // OTIMIZAÇÃO: desabilitado para reduzir queries
     refetchOnMount: false, // OTIMIZAÇÃO: usar cache existente
@@ -263,6 +283,9 @@ export const useTasksOptimized = (includeDetails = false) => {
           email: taskData.email,
           phone: taskData.phone,
           filial: standardizedTaskData.filial || '',
+          // Campo ADITIVO (D1): UUID da Filial Ativa no momento da criação offline.
+          // Não altera o payload enviado ao banco na sincronização.
+          filialId: activeScopeFilialId || (standardizedTaskData as any).filial_id || null,
           filialAtendida: taskData.filialAtendida,
           taskType: (standardizedTaskData.taskType as any) || 'prospection',
           checklist: taskData.checklist || [],
