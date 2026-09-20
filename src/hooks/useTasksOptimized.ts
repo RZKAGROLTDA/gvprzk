@@ -283,6 +283,9 @@ export const useTasksOptimized = (includeDetails = false) => {
           email: taskData.email,
           phone: taskData.phone,
           filial: standardizedTaskData.filial || '',
+          // Campo ADITIVO (D1): UUID da Filial Ativa no momento da criação offline.
+          // Não altera o payload enviado ao banco na sincronização.
+          filialId: activeScopeFilialId || (standardizedTaskData as any).filial_id || null,
           filialAtendida: taskData.filialAtendida,
           taskType: (standardizedTaskData.taskType as any) || 'prospection',
           checklist: taskData.checklist || [],
