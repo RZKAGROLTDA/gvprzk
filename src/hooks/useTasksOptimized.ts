@@ -26,6 +26,11 @@ export const useTasksOptimized = (includeDetails = false) => {
   const { user } = useAuth();
   const { isOnline, getOfflineTasks, saveTaskOffline } = useOffline();
   const queryClient = useQueryClient();
+  // M3 — Filial Ativa: única autoridade de escopo desta listagem.
+  const { filialId: activeScopeFilialId, isScopeReady } = useActiveFilialFilter();
+  const tasksQueryKey = includeDetails
+    ? ([...QUERY_KEYS.tasks, activeScopeFilialId, 'with-details'] as const)
+    : ([...QUERY_KEYS.tasks, activeScopeFilialId] as const);
 
   // Função para verificar e criar perfil se necessário
   const ensureUserProfile = async () => {
