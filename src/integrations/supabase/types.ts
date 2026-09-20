@@ -4050,7 +4050,7 @@ export type Database = {
         }[]
       }
       get_secure_tasks_paginated: {
-        Args: { p_limit?: number; p_offset?: number }
+        Args: { p_filial_id?: string; p_limit?: number; p_offset?: number }
         Returns: {
           access_level: string
           check_in_location: Json
