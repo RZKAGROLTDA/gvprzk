@@ -590,6 +590,8 @@ export interface EquipmentCreatePayload {
   hours?: number | null;
   machine_status?: string;
   observation?: string | null;
+  /** Filial Ativa do cabeçalho (obrigatória para cadastrar). */
+  filialId?: string | null;
 }
 
 export class DuplicateEquipmentError extends Error {
