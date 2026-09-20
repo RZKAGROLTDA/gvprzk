@@ -13,6 +13,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { MACHINE_STATUSES, MACHINE_TYPES } from './equipmentConstants';
 import { useCreateEquipment, type ClientEquipment, DuplicateEquipmentError } from '@/hooks/useClientEquipment';
+import { useUserFiliais } from '@/hooks/useUserFiliais';
 
 interface Props {
   open: boolean;
@@ -26,6 +27,7 @@ export const EquipmentCreateDialog: React.FC<Props> = ({
   open, onOpenChange, clientCode, clientName, onCreated,
 }) => {
   const { mutateAsync, isPending } = useCreateEquipment();
+  const { activeFilialId } = useUserFiliais();
 
   const [machineType, setMachineType] = useState<string>('');
   const [model, setModel] = useState('');
@@ -46,7 +48,8 @@ export const EquipmentCreateDialog: React.FC<Props> = ({
     setObservation('');
   }, [open]);
 
-  const canSave = !!clientName?.trim() && (!!model.trim() || !!serial.trim());
+  const canSave =
+    !!clientName?.trim() && (!!model.trim() || !!serial.trim()) && !!activeFilialId;
 
   const handleSave = async () => {
     if (!clientName?.trim()) {
@@ -57,8 +60,17 @@ export const EquipmentCreateDialog: React.FC<Props> = ({
       });
       return;
     }
+    if (!activeFilialId) {
+      toast({
+        title: 'Selecione uma filial',
+        description: 'Escolha a filial no cabeçalho para cadastrar a máquina.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       const created = await mutateAsync({
+        filialId: activeFilialId,
         client_code: clientCode ?? null,
         client_name: clientName,
         machine_type: machineType || null,

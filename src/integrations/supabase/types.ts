@@ -3034,6 +3034,57 @@ export type Database = {
               next_return_date: string
             }[]
           }
+      create_client_equipment: {
+        Args: {
+          p_client_code?: string
+          p_client_name: string
+          p_filial_id?: string
+          p_hours?: number
+          p_machine_status?: string
+          p_machine_type?: string
+          p_model?: string
+          p_observation?: string
+          p_serial_chassis?: string
+          p_year?: number
+        }
+        Returns: {
+          client_code: string | null
+          client_name: string
+          created_at: string
+          created_by: string | null
+          filial_id: string | null
+          hours: number | null
+          id: string
+          import_batch_id: string | null
+          last_validation_at: string | null
+          machine_status: string
+          machine_type: string | null
+          model: string | null
+          observation: string | null
+          previous_client_code: string | null
+          previous_client_name: string | null
+          product_raw: string | null
+          puk_status: string | null
+          serial_chassis: string | null
+          transfer_history: Json | null
+          transfer_observation: string | null
+          transferred_at: string | null
+          transferred_by: string | null
+          updated_at: string
+          validated_by: string | null
+          validation_priority: boolean
+          validation_priority_reason: string | null
+          validation_priority_updated_at: string | null
+          validation_source: string | null
+          year: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "client_equipment"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       create_secure_profile: {
         Args: {
           email_param: string
@@ -4855,6 +4906,57 @@ export type Database = {
       validate_and_sanitize_task_input: {
         Args: { input_data: Json }
         Returns: Json
+      }
+      validate_client_equipment: {
+        Args: {
+          p_client_code?: string
+          p_equipment_id: string
+          p_filial_id?: string
+          p_hours?: number
+          p_machine_status?: string
+          p_mark_validated?: boolean
+          p_model?: string
+          p_observation?: string
+          p_serial_chassis?: string
+          p_year?: number
+        }
+        Returns: {
+          client_code: string | null
+          client_name: string
+          created_at: string
+          created_by: string | null
+          filial_id: string | null
+          hours: number | null
+          id: string
+          import_batch_id: string | null
+          last_validation_at: string | null
+          machine_status: string
+          machine_type: string | null
+          model: string | null
+          observation: string | null
+          previous_client_code: string | null
+          previous_client_name: string | null
+          product_raw: string | null
+          puk_status: string | null
+          serial_chassis: string | null
+          transfer_history: Json | null
+          transfer_observation: string | null
+          transferred_at: string | null
+          transferred_by: string | null
+          updated_at: string
+          validated_by: string | null
+          validation_priority: boolean
+          validation_priority_reason: string | null
+          validation_priority_updated_at: string | null
+          validation_source: string | null
+          year: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "client_equipment"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       validate_client_input: { Args: { input_data: Json }; Returns: boolean }
       validate_data_integrity: {
