@@ -116,7 +116,11 @@ export const useTasksOptimized = (includeDetails = false) => {
 
           if (!isOnline) {
             console.log('📴 App offline - usando dados locais');
-            return getOfflineTasks();
+            return filterOfflineTasksByFilial(
+              getOfflineTasks(),
+              activeScopeFilialId,
+              getFiliaisCacheList(),
+            );
           }
 
           console.log('🔄 Carregando tasks via função segura (paginado)...');
