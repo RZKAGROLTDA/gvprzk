@@ -132,7 +132,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
     try {
       await mutateAsync({
         id: equipment.id,
-        patch: { ...buildPatch(), markValidated },
+        patch: { ...buildPatch(), markValidated, filialId: activeFilialId ?? null },
       });
       toast({ title: '✅ ' + successMsg });
       onOpenChange(false);
@@ -510,7 +510,14 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
               {isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
               Salvar
             </Button>
-            <Button type="button" onClick={saveAndValidate} disabled={busy}>
+            <Button
+              type="button"
+              onClick={saveAndValidate}
+              disabled={busy || needsFilialToValidate}
+              title={needsFilialToValidate
+                ? 'Selecione uma filial no cabeçalho para validar esta máquina'
+                : undefined}
+            >
               <CheckCircle2 className="h-4 w-4 mr-1.5" />
               Salvar e validar
             </Button>
