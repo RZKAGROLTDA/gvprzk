@@ -221,7 +221,7 @@ export const useTasksOptimized = (includeDetails = false) => {
         
         // Melhor tratamento de erro - tentar cache local primeiro
         console.log('🔄 Tentando recuperar dados do cache local...');
-        const cachedData = queryClient.getQueryData(QUERY_KEYS.tasks);
+        const cachedData = queryClient.getQueryData(tasksQueryKey);
         if (cachedData) {
           console.log('✅ Dados recuperados do cache local');
           return cachedData as Task[];
@@ -230,7 +230,11 @@ export const useTasksOptimized = (includeDetails = false) => {
         // Se offline, tentar dados offline
         if (!isOnline) {
           console.log('📴 Recuperando dados offline');
-          return getOfflineTasks();
+          return filterOfflineTasksByFilial(
+            getOfflineTasks(),
+            activeScopeFilialId,
+            getFiliaisCacheList(),
+          );
         }
         
         // Circuit breaker melhorado - só retornar vazio em último caso
