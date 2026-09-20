@@ -615,35 +615,18 @@ export const useCreateEquipment = () => {
       if (!userId) throw new Error('Usuário não autenticado.');
       if (!p.client_name?.trim()) throw new Error('Cliente é obrigatório.');
 
-      const insertPayload: Record<string, any> = {
-        client_code: p.client_code?.trim() || null,
-        client_name: p.client_name.trim(),
-        machine_type: p.machine_type?.trim() || null,
-        model: p.model?.trim() || null,
-        serial_chassis: p.serial_chassis?.trim() || null,
-        year: p.year ?? null,
-        hours: p.hours ?? null,
-        machine_status: p.machine_status || 'ativa',
-        observation: p.observation?.trim() || null,
-        validation_priority: false,
-        validation_source: 'manual_visita',
-        created_by: userId,
-      };
+      const clientCode = p.client_code?.trim() || null;
+      const serial = p.serial_chassis?.trim() || null;
 
-      // Validação prévia: evita duplicidade de cliente + chassi/série,
-      // respeitando a normalização de zeros à esquerda do client_code.
-      if (insertPayload.client_code && insertPayload.serial_chassis) {
+      // Validação prévia (mensagem amigável); a RPC repete a mesma checagem no banco.
+      if (clientCode && serial) {
         const { data: existing, error: searchErr } = await (supabase as any).rpc(
           'search_client_equipment',
-          {
-            p_client_code: insertPayload.client_code,
-            p_client_name: null,
-            p_serial: null,
-          },
+          { p_client_code: clientCode, p_client_name: null, p_serial: null },
         );
         if (searchErr) throw searchErr;
-        const pCode = normalizeClientCode(insertPayload.client_code);
-        const pSerial = insertPayload.serial_chassis.toLowerCase();
+        const pCode = normalizeClientCode(clientCode);
+        const pSerial = serial.toLowerCase();
         const duplicate = (existing as unknown as ClientEquipment[] | null)?.find((e) => {
           const eCode = normalizeClientCode(e.client_code);
           const eSerial = e.serial_chassis?.trim().toLowerCase() || '';
@@ -652,12 +635,24 @@ export const useCreateEquipment = () => {
         if (duplicate) throw new DuplicateEquipmentError();
       }
 
-      const { data, error } = await supabase
-        .from('client_equipment' as any)
-        .insert(insertPayload)
-        .select(EQUIPMENT_COLUMNS)
-        .maybeSingle();
-      if (error) throw error;
+      // RPC SECURITY DEFINER: grava a Filial Ativa e mantém a mesma autorização.
+      const { data: rows, error } = await (supabase as any).rpc('create_client_equipment', {
+        p_client_name: p.client_name.trim(),
+        p_filial_id: p.filialId ?? null,
+        p_client_code: clientCode,
+        p_machine_type: p.machine_type?.trim() || null,
+        p_model: p.model?.trim() || null,
+        p_serial_chassis: serial,
+        p_year: p.year ?? null,
+        p_hours: p.hours ?? null,
+        p_machine_status: p.machine_status || 'ativa',
+        p_observation: p.observation?.trim() || null,
+      });
+      if (error) {
+        if (String(error.code) === '23505') throw new DuplicateEquipmentError();
+        throw error;
+      }
+      const data = Array.isArray(rows) ? rows[0] ?? null : rows ?? null;
       if (!data) throw new Error('Não foi possível cadastrar o equipamento.');
       return data as unknown as ClientEquipment;
     },
