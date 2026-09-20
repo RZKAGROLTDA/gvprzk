@@ -21,6 +21,7 @@ import {
   classifyEquipmentError, equipmentErrorTitle, type ClientEquipment,
 } from '@/hooks/useClientEquipment';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserFiliais } from '@/hooks/useUserFiliais';
 
 interface Props {
   equipment: ClientEquipment | null;
@@ -40,6 +41,10 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
     open ? equipment?.id : undefined,
   );
   const readOnly = open && canEdit === false;
+  const { activeFilialId } = useUserFiliais();
+  // Máquina sem filial só pode ser validada com uma Filial Ativa selecionada
+  // (a validação grava exatamente essa filial na máquina).
+  const needsFilialToValidate = !equipment?.filial_id && !activeFilialId;
 
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
