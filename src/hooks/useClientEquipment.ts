@@ -516,19 +516,22 @@ export const useUpdateEquipment = () => {
         );
       }
 
-      const { markValidated, ...rest } = patch;
-      const update: Record<string, any> = { ...rest, updated_at: new Date().toISOString() };
-      if (markValidated) {
-        update.last_validation_at = new Date().toISOString();
-        update.validated_by = session.user.id;
-      }
-      const { data, error } = await supabase
-        .from('client_equipment' as any)
-        .update(update)
-        .eq('id', id)
-        .select(EQUIPMENT_COLUMNS)
-        .maybeSingle();
+      // RPC SECURITY DEFINER: mesma autorização da policy + regra da Filial Ativa.
+      // Filial só é atribuída (NULL -> Filial Ativa) quando markValidated = true.
+      const { data: rows, error } = await (supabase as any).rpc('validate_client_equipment', {
+        p_equipment_id: id,
+        p_filial_id: patch.filialId ?? null,
+        p_mark_validated: !!patch.markValidated,
+        p_model: patch.model ?? null,
+        p_year: patch.year ?? null,
+        p_hours: patch.hours ?? null,
+        p_serial_chassis: patch.serial_chassis ?? null,
+        p_observation: patch.observation ?? null,
+        p_machine_status: patch.machine_status ?? null,
+        p_client_code: patch.client_code ?? null,
+      });
       if (error) throw classifyEquipmentError(error);
+      const data = Array.isArray(rows) ? rows[0] ?? null : rows ?? null;
       if (!data) {
         // 0 linhas: RLS de UPDATE barrou (outra filial) ou o registro sumiu.
         const { data: canEdit } = await (supabase as any).rpc('can_edit_client_equipment', {
