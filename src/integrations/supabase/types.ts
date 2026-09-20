@@ -4909,6 +4909,8 @@ export type Database = {
       }
       validate_client_equipment: {
         Args: {
+          p_clear_hours?: boolean
+          p_clear_year?: boolean
           p_client_code?: string
           p_equipment_id: string
           p_filial_id?: string

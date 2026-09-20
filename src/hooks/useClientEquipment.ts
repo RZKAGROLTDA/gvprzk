@@ -379,13 +379,20 @@ export const useEquipmentValidators = (enabled = true, filialId?: string | null)
 // Atualização de equipamento (campos editáveis pela UI)
 // -----------------------------------------------------------------------------
 export interface EquipmentUpdatePayload {
+  /** '' = apagar o valor atual; null/ausente = manter o valor atual. */
   model?: string | null;
   year?: number | null;
   hours?: number | null;
+  /** '' = apagar o valor atual; null/ausente = manter o valor atual. */
   serial_chassis?: string | null;
+  /** '' = apagar o valor atual; null/ausente = manter o valor atual. */
   observation?: string | null;
   machine_status?: string;
   client_code?: string | null;
+  /** true = apagar o ano existente (o usuário limpou o campo). */
+  clearYear?: boolean;
+  /** true = apagar as horas existentes (o usuário limpou o campo). */
+  clearHours?: boolean;
   /** Quando true, grava last_validation_at = now() e validated_by = auth.uid() */
   markValidated?: boolean;
   /** Filial Ativa do cabeçalho (obrigatória para validar máquina sem filial). */
@@ -529,6 +536,8 @@ export const useUpdateEquipment = () => {
         p_observation: patch.observation ?? null,
         p_machine_status: patch.machine_status ?? null,
         p_client_code: patch.client_code ?? null,
+        p_clear_year: !!patch.clearYear,
+        p_clear_hours: !!patch.clearHours,
       });
       if (error) throw classifyEquipmentError(error);
       const data = Array.isArray(rows) ? rows[0] ?? null : rows ?? null;

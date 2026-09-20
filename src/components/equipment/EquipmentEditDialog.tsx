@@ -117,11 +117,15 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
   if (!equipment) return null;
 
   const buildPatch = () => ({
-    model: model.trim() || null,
+    // Textos: string vazia = o usuário apagou o campo (grava vazio/NULL).
+    model: model.trim(),
+    serial_chassis: serial.trim(),
+    observation: observation.trim(),
     year: year ? Number(year) : null,
     hours: hours ? Number(hours) : null,
-    serial_chassis: serial.trim() || null,
-    observation: observation.trim() || null,
+    // Números: só pedem limpeza quando havia valor e o usuário apagou.
+    clearYear: !year && equipment.year != null,
+    clearHours: !hours && equipment.hours != null,
     machine_status: machineStatus,
     client_code: equipment.client_code
       ? equipment.client_code
