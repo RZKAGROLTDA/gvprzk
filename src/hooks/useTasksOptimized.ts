@@ -128,7 +128,11 @@ export const useTasksOptimized = (includeDetails = false) => {
           let tasksData, error;
           try {
             const result = await supabase
-              .rpc('get_secure_tasks_paginated', { p_limit: TASKS_PAGE_LIMIT, p_offset: 0 })
+              .rpc('get_secure_tasks_paginated', {
+                p_limit: TASKS_PAGE_LIMIT,
+                p_offset: 0,
+                p_filial_id: activeScopeFilialId,
+              })
               .abortSignal(controller.signal);
             tasksData = result.data;
             error = result.error;
