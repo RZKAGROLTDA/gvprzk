@@ -242,7 +242,8 @@ export const useTasksOptimized = (includeDetails = false) => {
         throw error; // Permitir que React Query tente novamente
       }
     },
-    enabled: !!user,
+    // Não-global nunca consulta antes da Filial Ativa estar resolvida.
+    enabled: !!user && isScopeReady,
     staleTime: 3 * 60 * 1000, // 3 minutos - OTIMIZAÇÃO: reduzir Disk IO
     refetchOnWindowFocus: false, // OTIMIZAÇÃO: desabilitado para reduzir queries
     refetchOnMount: false, // OTIMIZAÇÃO: usar cache existente
