@@ -85,7 +85,7 @@ export const useTasksOptimized = (includeDetails = false) => {
 
   // Query com retry automático e fallback
   const tasksQuery = useQuery({
-    queryKey: includeDetails ? [...QUERY_KEYS.tasks, 'with-details'] : QUERY_KEYS.tasks,
+    queryKey: tasksQueryKey,
     queryFn: async () => {
       if (!user) throw new Error('User not authenticated');
 
