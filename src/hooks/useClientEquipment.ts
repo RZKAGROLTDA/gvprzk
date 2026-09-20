@@ -385,10 +385,11 @@ export interface EquipmentUpdatePayload {
   serial_chassis?: string | null;
   observation?: string | null;
   machine_status?: string;
-  puk_status?: string | null;
   client_code?: string | null;
   /** Quando true, grava last_validation_at = now() e validated_by = auth.uid() */
   markValidated?: boolean;
+  /** Filial Ativa do cabeçalho (obrigatória para validar máquina sem filial). */
+  filialId?: string | null;
 }
 
 /**
