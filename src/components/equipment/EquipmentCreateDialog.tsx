@@ -13,6 +13,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { MACHINE_STATUSES, MACHINE_TYPES } from './equipmentConstants';
 import { useCreateEquipment, type ClientEquipment, DuplicateEquipmentError } from '@/hooks/useClientEquipment';
+import { useUserFiliais } from '@/hooks/useUserFiliais';
 
 interface Props {
   open: boolean;
@@ -26,6 +27,7 @@ export const EquipmentCreateDialog: React.FC<Props> = ({
   open, onOpenChange, clientCode, clientName, onCreated,
 }) => {
   const { mutateAsync, isPending } = useCreateEquipment();
+  const { activeFilialId } = useUserFiliais();
 
   const [machineType, setMachineType] = useState<string>('');
   const [model, setModel] = useState('');
