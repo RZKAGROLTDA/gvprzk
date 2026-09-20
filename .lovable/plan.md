@@ -1,200 +1,110 @@
-# Meu Dia — Filial Ativa (proposta final, aguardando autorização)
+# Validação de máquinas com Filial Ativa — proposta (não aplicada)
 
-Incorpora os dois ajustes: assinatura única de `my_day_assert_target` (sem overload) e `effective_filial_ids` como autoridade única da Filial Ativa.
+Objetivo: nenhuma validação nova pode terminar sem filial, e nenhuma validação pode mudar a filial de uma máquina que já tem filial.
 
-## 1. Assinaturas atuais em pg_proc (levantadas)
+## 1. Nova função de banco (RPC) e assinatura
 
-- `my_day_assert_target(p_user_id uuid)` — única assinatura existente.
-- `get_my_day_team_summary(p_filial_id uuid, p_role text, p_user_id uuid)` — única.
-- `get_my_day_user_summary(p_user_id uuid)` — única.
-- `get_my_day_user_details(p_user_id uuid, p_block text, p_bucket text, p_limit integer, p_offset integer)` — única.
-- `my_day_scope()`, `my_day_scope_v2()`, `my_day_context()`, `my_day_summary_build(uuid,text)`, `my_day_details_build(uuid,text,text,integer,integer)`, `my_day_role_of(uuid)` — existem e NÃO serão alteradas.
-
-## 2. Consumidores de my_day_assert_target
-
-Consulta em `pg_proc` (definições de todas as funções do schema public) e busca em todo o `src/`:
-- Banco: somente `get_my_day_user_summary` e `get_my_day_user_details`.
-- Frontend: nenhuma chamada direta (apenas a entrada gerada em `types.ts`, regenerada pela migração).
-
-Nenhum outro consumidor existe; a assinatura antiga pode ser removida com segurança.
-
-## 3. SQL final proposto
-
-```sql
--- 3.1 my_day_assert_target — assinatura única (uuid, uuid DEFAULT NULL)
-DROP FUNCTION public.my_day_assert_target(uuid);
-
-CREATE FUNCTION public.my_day_assert_target(p_user_id uuid, p_filial_id uuid DEFAULT NULL)
- RETURNS TABLE(user_id uuid, role text, filial_id uuid, is_self boolean)
- LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
-AS $function$
-DECLARE
-  s        record;
-  v_filial uuid;
-  v_found  boolean;
-  v_eff    uuid[];
-BEGIN
-  SELECT * INTO s FROM public.my_day_scope();
-
-  -- 1) Filial Ativa informada é validada ANTES de qualquer retorno:
-  --    effective_filial_ids lança 42501 para filial não autorizada/inexistente,
-  --    inclusive quando o alvo é o próprio usuário.
-  IF p_filial_id IS NOT NULL THEN
-    v_eff := public.effective_filial_ids(p_filial_id);
-  END IF;
-
-  -- 2) Caso self (com p_filial_id NULL) preservado exatamente como hoje.
-  IF p_user_id IS NULL OR p_user_id = s.user_id THEN
-    RETURN QUERY SELECT s.user_id, s.role, s.filial_id, true;
-    RETURN;
-  END IF;
-
-  IF s.scope = 'self' THEN
-    RAISE EXCEPTION 'Acesso negado: sem permissão para consultar outros colaboradores' USING ERRCODE = '42501';
-  END IF;
-
-  SELECT p.filial_id, true INTO v_filial, v_found
-  FROM public.profiles p
-  WHERE p.user_id = p_user_id
-    AND p.approval_status = 'approved'
-    AND p.employment_status = 'active';
-
-  IF NOT COALESCE(v_found, false) THEN
-    RAISE EXCEPTION 'Acesso negado: colaborador inexistente, não aprovado ou inativo' USING ERRCODE = '42501';
-  END IF;
-
-  -- 3) Não-self: resolve a Filial Ativa efetiva (se p_filial_id era NULL,
-  --    não-global resolve para a principal; global para '{}'::uuid[] = sem restrição).
-  IF v_eff IS NULL THEN
-    v_eff := public.effective_filial_ids(NULL);
-  END IF;
-  IF array_length(v_eff, 1) IS NOT NULL
-     AND (v_filial IS NULL OR NOT (v_filial = ANY(v_eff))) THEN
-    RAISE EXCEPTION 'Acesso negado: colaborador de outra filial' USING ERRCODE = '42501';
-  END IF;
-
-  RETURN QUERY SELECT p_user_id, public.my_day_role_of(p_user_id), v_filial, false;
-END;
-$function$;
+```
+public.validate_client_equipment(
+  p_equipment_id  uuid,
+  p_filial_id     uuid,            -- Filial Ativa do cabeçalho
+  p_mark_validated boolean DEFAULT true,
+  p_model         text    DEFAULT NULL,
+  p_year          integer DEFAULT NULL,
+  p_hours         numeric DEFAULT NULL,
+  p_serial_chassis text   DEFAULT NULL,
+  p_observation   text    DEFAULT NULL,
+  p_machine_status text   DEFAULT NULL,
+  p_client_code   text    DEFAULT NULL
+) RETURNS SETOF public.client_equipment
 ```
 
-Comportamento: self → sempre OK (intacto); consultor comum (`self` scope) → 42501; supervisor/admin/manager → o colaborador precisa pertencer à(s) filial(is) efetiva(s) resolvida(s) por `effective_filial_ids(p_filial_id)`; não autorizada → 42501. Nunca principal + adicionais: `effective_filial_ids` devolve no máximo UMA filial para não-global.
+- VOLATILE, SECURITY DEFINER, owner postgres, `SET search_path = public`.
+- Assinatura única (confirmação em `pg_proc` antes e depois). Sem sobrecarga.
+- `REVOKE ALL FROM PUBLIC` + `GRANT EXECUTE TO authenticated`.
+- Retorna a linha já atualizada, com as mesmas colunas que a tela usa hoje.
 
-```sql
--- 3.2 get_my_day_team_summary — mesma assinatura e mesmo retorno;
---     apenas a resolução da filial muda (linha v_filial := ...).
-CREATE OR REPLACE FUNCTION public.get_my_day_team_summary(
-  p_filial_id uuid DEFAULT NULL, p_role text DEFAULT NULL, p_user_id uuid DEFAULT NULL)
- RETURNS jsonb
- LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
-AS $function$
-DECLARE
-  s            record;
-  v_today      date := (now() AT TIME ZONE 'America/Sao_Paulo')::date;
-  v_week_start date;
-  v_week_end   date;
-  v_is_weekend boolean;
-  v_month_start date;
-  v_month_end   date;
-  v_win_start   date;
-  v_win_end     date;
-  v_elapsed_wd  integer;
-  v_elapsed_all integer;
-  v_total_wd    integer;
-  v_total_all   integer;
-  v_filial     uuid;
-  v_role       text := NULLIF(btrim(COALESCE(p_role, '')), '');
-  v_rows       jsonb;
-  v_kpi        jsonb;
-BEGIN
-  SELECT * INTO s FROM public.my_day_scope();
+Fluxo interno, em ordem:
 
-  IF s.scope = 'self' THEN
-    RAISE EXCEPTION 'Acesso negado: sem permissão para visão de equipe' USING ERRCODE = '42501';
-  END IF;
+1. `auth.uid()` obrigatório, senão erro de autenticação.
+2. Perfil aprovado e ativo (mesma checagem já usada no parque) + `can_view_equipment_park()`.
+3. `v_eff := effective_filial_ids(p_filial_id)` — única autoridade de filial; filial não autorizada devolve 42501 por si mesma.
+4. Lê a filial atual da máquina (`FOR UPDATE`).
+5. Decide a filial:
+   - máquina **sem** filial: exige filial operacional definida. Se `cardinality(v_eff) = 1` → grava essa filial. Se `cardinality(v_eff) = 0` (admin/manager em visão global) → erro orientando a selecionar uma filial; não grava nada.
+   - máquina **com** filial: não altera a filial. Se `cardinality(v_eff) > 0` e a filial da máquina não está em `v_eff` → 42501 (somente leitura para o perfil atual).
+6. `UPDATE` único com os campos permitidos + `validated_by = auth.uid()` e `last_validation_at = now()` quando `p_mark_validated`.
 
-  -- ÚNICA ALTERAÇÃO FUNCIONAL: supervisor resolve a Filial Ativa via
-  -- effective_filial_ids (NULL → somente a principal; informada → validada, senão 42501).
-  -- Global (admin/manager) mantém o comportamento atual: NULL = todas, informada = somente ela.
-  v_filial := CASE
-    WHEN s.scope = 'global' THEN p_filial_id
-    ELSE (public.effective_filial_ids(p_filial_id))[1]
-  END;
+## 2. Campos que a função pode alterar
 
-  -- >>> Daqui em diante o corpo é IDÊNTICO ao atual (janelas, CTEs
-  -- membros/filtrados/metas/agg, metas diárias e semanais, KPIs e RETURN),
-  -- sem nenhuma outra mudança. <<<
-  ... (corpo atual preservado byte a byte)
-END;
-$function$;
-```
+Apenas: `model`, `year`, `hours`, `serial_chassis`, `observation`, `machine_status`, `client_code` (somente quando estava vazio, como hoje), `filial_id` (somente de NULL para a Filial Ativa), `validated_by`, `last_validation_at`, `updated_at`.
 
-```sql
--- 3.3 get_my_day_user_summary — sem overload: drop da antiga, nova com p_filial_id
-DROP FUNCTION public.get_my_day_user_summary(uuid);
+Nunca toca: cliente já preenchido, transferências, histórico de transferência, prioridade de validação, lote de importação, `created_by`, `validation_source`.
 
-CREATE FUNCTION public.get_my_day_user_summary(p_user_id uuid, p_filial_id uuid DEFAULT NULL)
- RETURNS jsonb
- LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
-AS $function$
-DECLARE t record;
-BEGIN
-  SELECT * INTO t FROM public.my_day_assert_target(p_user_id, p_filial_id);
-  RETURN public.my_day_summary_build(t.user_id, t.role);
-END;
-$function$;
+## 3. Tela de edição/validação e `useUpdateEquipment`
 
--- 3.4 get_my_day_user_details — idem
-DROP FUNCTION public.get_my_day_user_details(uuid, text, text, integer, integer);
+- `useUpdateEquipment` passa a chamar a RPC em vez de `UPDATE` direto, mantendo a mesma interface (`{ id, patch }` + `markValidated`) e a mesma classificação de erros (42501 → "outra filial", sessão, tempo excedido, conflito).
+- Passa `p_filial_id: activeScopeFilialId` do mesmo hook de Filial Ativa já usado no parque; a mutação só é habilitada quando o escopo está pronto.
+- Novo erro tratado: admin/manager sem filial selecionada → aviso "selecione uma filial no cabeçalho para validar esta máquina" e botão de validar desabilitado nesse caso (máquina sem filial + visão global).
+- Transferência de máquina continua como está (fora do escopo).
+- Invalidação de cache atual (`['client-equipment']`) preservada.
 
-CREATE FUNCTION public.get_my_day_user_details(
-  p_user_id uuid, p_block text, p_bucket text,
-  p_limit integer DEFAULT 50, p_offset integer DEFAULT 0,
-  p_filial_id uuid DEFAULT NULL)
- RETURNS jsonb
- LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
-AS $function$
-DECLARE t record;
-BEGIN
-  SELECT * INTO t FROM public.my_day_assert_target(p_user_id, p_filial_id);
-  RETURN public.my_day_details_build(t.user_id, p_block, p_bucket, p_limit, p_offset);
-END;
-$function$;
-```
+## 4. Criação manual de máquina
 
-Conferência pós-migração (pg_proc): cada função com exatamente UMA assinatura — `my_day_assert_target(uuid, uuid)`, `get_my_day_user_summary(uuid, uuid)`, `get_my_day_user_details(uuid, text, text, integer, integer, uuid)`, `get_my_day_team_summary(uuid, text, uuid)`. Sem overload e sem caminho antigo.
+- `useCreateEquipment` passa a gravar `filial_id` = Filial Ativa, com a mesma validação.
+- Para não duplicar regra de autorização, a criação também passa por função de banco própria (`create_client_equipment(...)`, SECURITY DEFINER, mesma checagem de perfil e `effective_filial_ids`), preservando a checagem de duplicidade de chassi que já existe.
+- Admin/manager em visão global: exige filial selecionada para criar.
+- Máquinas antigas não são alteradas.
 
-`my_day_scope()` intacta. `my_day_scope_v2()` não é usada (não cria segunda lógica de decisão). Meu Dia pessoal (`get_my_day_summary`, `get_my_day_details`, `my_day_context`, builders) 100% intacto. Nenhuma RLS, cargo, matrícula ou vínculo é tocado.
+## 5. Admin/manager em visão global
 
-## 4. Alterações exatas no frontend
+Regra escolhida (mais segura): **não permitir** validar máquina sem filial sem antes selecionar uma Filial Ativa. Nada de filial arbitrária, nada de herdar filial do perfil. Validar máquina que já tem filial continua permitido em visão global, sem alterar a filial.
 
-**`src/hooks/useMyDay.ts`** — apenas os hooks de equipe/individual:
-- `useMyDayUserSummary(userId, filialId, enabled)`: queryKey vira `['my-day-user-summary', userId, filialId]`; RPC recebe `{ p_user_id: userId, p_filial_id: filialId }`.
-- `useMyDayUserDetails(userId, block, bucket, page, pageSize, filialId, enabled)`: queryKey vira `['my-day-user-details', userId, filialId, block, bucket, page, pageSize]`; RPC recebe `p_filial_id` adicional.
-- `useMyDayTeamSummary`: sem mudança de código (já envia `p_filial_id` e já tem `filialId` na queryKey).
-- `useMyDaySummary` e `useMyDayDetails` (pessoais): intocados, mesmas queryKeys.
+## 6. Segurança
 
-**`src/pages/MyDay.tsx`**:
-- `useActiveFilialFilter()` passa a desestruturar também `isScopeReady`.
-- `useMyDayTeamSummary(teamFilters, showTeam && tab === 'team' && isScopeReady)` — não-global nunca consulta antes da Filial Ativa resolvida.
-- `<UserDayDialog ... filialId={activeScopeFilialId} />`.
+- Sem permissão genérica nova: a política de `UPDATE` da tabela permanece como está; a RPC é SECURITY DEFINER e restringe as colunas.
+- Autorização: usuário autenticado, perfil aprovado e ativo, `can_view_equipment_park()`, `effective_filial_ids` como teto e 42501 para filial não autorizada.
+- Proteção anti-transferência: a filial só muda de NULL para a Filial Ativa; qualquer outra tentativa é ignorada/bloqueada.
+- Sem alteração em RLS, cargos, vínculos, POPS, Parque (leitura), Regularização, Meu Dia, CRM.
 
-**`src/components/myday/UserDayDialog.tsx`**:
-- Nova prop `filialId?: string | null`; repassada ao `useMyDayUserSummary(member?.user_id ?? null, filialId ?? null, open)`.
+## 7. Bateria de testes (formato Teste | Filial Ativa | Obtido | Esperado | Status)
 
-Nenhum outro arquivo. Nenhum filtro local de filial criado. `useMyDayUserDetails` não tem consumidor ativo hoje, mas é atualizado para não ficar como caminho sem filial.
+Estrutura: assinatura única em `pg_proc`; privilégios (sem PUBLIC, com authenticated); colunas retornadas iguais às atuais.
 
-## 5. Garantia de sem-overload / sem-bypass
+Comportamento (com impersonação real):
+1. Máquina sem filial + RAC com sua filial ativa → grava essa filial, validador e data.
+2. Mesma máquina revalidada → filial permanece a mesma.
+3. Máquina com filial da própria filial ativa → valida, filial inalterada.
+4. Máquina de outra filial → 42501, nada alterado.
+5. Multi-filial (Diogo) com Planalto Verde ativa → máquina sem filial recebe Planalto Verde.
+6. Mesmo usuário com Caiapônia ativa → outra máquina sem filial recebe Caiapônia.
+7. Multi-filial com filial não autorizada (Canarana) → 42501.
+8. Admin/manager sem filial ativa + máquina sem filial → recusado, filial continua NULL.
+9. Admin/manager com filial ativa + máquina sem filial → grava a filial selecionada.
+10. Admin/manager sem filial ativa + máquina com filial → valida, filial inalterada.
+11. Usuário sem filial autorizada → 42501.
+12. Campos editados aplicados corretamente; campos proibidos inalterados (transferência, prioridade, lote, origem).
+13. Criação manual: recebe a Filial Ativa; duplicidade de chassi continua barrada; visão global sem filial → recusado.
+14. Máquina recém-validada aparece imediatamente na listagem da filial correspondente e na lista "Validado por".
+15. Integridade: nenhuma máquina histórica alterada além das usadas nos testes, que serão revertidas.
 
-- As três funções com assinatura antiga são removidas com `DROP FUNCTION` explícito na mesma migração; `CREATE OR REPLACE` só é usado onde a assinatura não muda.
-- Para não-global, `effective_filial_ids(NULL)` devolve SOMENTE a filial principal — nunca a união; filial informada fora do escopo → 42501.
-- Frontend: não-global só chama equipe/individual com `filialId` resolvido (`isScopeReady`).
+Testes de escrita usarão transação com desfazimento (ou reversão explícita dos valores originais) e comprovação final de que nada permaneceu alterado. Qualquer falha: paro, mostro a causa e não corrijo automaticamente.
 
-## 6. Bateria prevista (após autorização), sem correções automáticas
+## 8. Impacto no fluxo atual
 
-Formato Teste | Filial Ativa | Obtido | Esperado | Status:
-supervisor na principal; supervisor na adicional (somente equipe dela, sem soma); troca e volta sem resíduo; filial não autorizada → 42501; abrir colaborador da filial ativa (OK) e de outra filial (42501); consultor comum na equipe → 42501; admin sem filial → global; admin com filial → somente ela; Meu Dia pessoal idêntico ao atual; troca de filial na tela sem reload/cache residual. Falha → parar e apresentar a causa.
+- Validação deixa de ser UPDATE direto e passa por função de banco; a tela muda pouco (mesmos botões, mesmas mensagens, um bloqueio novo para visão global sem filial).
+- A partir da correção, nenhuma máquina nova fica sem filial ao ser validada ou criada.
+- Regularização de Máquinas passa a receber máquinas já com filial nas novas validações; o passivo histórico continua fora do fluxo até decidirmos (item abaixo).
+- As 19.231 máquinas sem filial e as 54 do Filipe permanecem intocadas nesta etapa.
 
-## Fora do escopo
+## Caso Filipe — proposta separada (54 máquinas)
 
-`my_day_scope()`, Meu Dia pessoal, `useTasks`/tarefas/offline, RLS, POPS, CRM/Carteira, Parque, Validação, Regularização.
+Evidência levantada: das 54, apenas **5** têm vínculo com visita registrada — e elas apontam **4 para Canarana e 1 para Querência**. As outras **49 não têm nenhuma evidência** de contexto de filial. Ou seja, ser RAC de Querência não sustenta atribuir Querência às 54; há inclusive contra-evidência.
+
+Alternativas, sem inventar filial:
+- **A. Só o comprovável:** atribuir filial apenas às 5 com vínculo de visita, cada uma conforme a filial da própria visita (4 Canarana, 1 Querência). As 49 continuam sem filial.
+- **B. Confirmação do responsável:** apresentar ao Filipe (ou ao gestor) a lista das 49 para confirmação filial por filial, gravando só o que ele confirmar, com registro de quem confirmou.
+- **C. Derivar do cliente:** quando todas as outras máquinas do mesmo cliente já tiverem uma única filial, propor essa filial — apenas como sugestão a confirmar, nunca automático.
+- **D. Aguardar:** manter o passivo e resolvê-lo naturalmente na próxima validação de cada máquina, já com a regra nova.
+
+Recomendação: A + B (A é comprovável e imediato; B resolve o resto sem suposição). C só como apoio à decisão de B. Nada disso será executado sem sua escolha.
