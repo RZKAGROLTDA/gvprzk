@@ -45,7 +45,7 @@ const Field = ({ label, value }: { label: string; value?: string | null }) => (
   </div>
 );
 
-export const PopsMachineDrawer: React.FC<Props> = ({ machine, open, onOpenChange, canComplete }) => {
+export const PopsMachineDrawer: React.FC<Props> = ({ machine, open, onOpenChange, canComplete, filialId }) => {
   const { data: services = [], isLoading: loadingServices } = usePopsServices();
   const complete = useCompletePopsMachine();
   const [serviceId, setServiceId] = useState<string>('');
@@ -73,6 +73,7 @@ export const PopsMachineDrawer: React.FC<Props> = ({ machine, open, onOpenChange
         machineId: machine.pops_machine_id,
         serviceId,
         osNumber: osNumber.trim(),
+        filialId: filialId ?? null,
       });
       toast.success('Máquina concluída com sucesso.');
     } catch (e) {

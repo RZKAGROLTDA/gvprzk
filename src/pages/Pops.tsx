@@ -560,6 +560,7 @@ const Pops: React.FC = () => {
           if (!v) setSelectedMachineId(null);
         }}
         canComplete={perms.canComplete}
+        filialId={filialId}
       />
     </div>
   );
