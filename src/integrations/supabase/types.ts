@@ -1819,6 +1819,21 @@ export type Database = {
         }
         Relationships: []
       }
+      stage_base_city: {
+        Row: {
+          cidade: string | null
+          sn: string | null
+        }
+        Insert: {
+          cidade?: string | null
+          sn?: string | null
+        }
+        Update: {
+          cidade?: string | null
+          sn?: string | null
+        }
+        Relationships: []
+      }
       task_access_metadata: {
         Row: {
           created_at: string | null
