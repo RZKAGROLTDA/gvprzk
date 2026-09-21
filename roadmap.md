@@ -41,3 +41,5 @@
 - [ ] SQL ajustado: todas as auxiliares como TEMP, execução atômica em uma transação, COMMIT só se todas as validações passarem
 - [ ] Seleção recalculada no momento da execução (sem número fixo)
 - [ ] Após COMMIT: confirmar que não restam auxiliares em public e reler os números persistidos
+
+- [ ] POPS: conclusao de servico deve autorizar por Filial Ativa + filiais autorizadas (effective_filial_ids) em vez da filial principal — simulacao reversivel em andamento; aplicacao aguarda aprovacao.
