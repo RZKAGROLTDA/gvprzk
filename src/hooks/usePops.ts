@@ -234,16 +234,26 @@ export const usePopsClientMachines = (
     refetchOnWindowFocus: false,
   });
 
-/** Conclusão da máquina. A mensagem de erro do backend é repassada intacta. */
+/**
+ * Conclusão da máquina. A mensagem de erro do backend é repassada intacta.
+ * A Filial Ativa (p_filial_id) é enviada ao backend, que autoriza por
+ * effective_filial_ids(p_filial_id) — Filial Ativa + filiais autorizadas.
+ */
 export const useCompletePopsMachine = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (vars: { machineId: string; serviceId: string; osNumber: string }) => {
+    mutationFn: async (vars: {
+      machineId: string;
+      serviceId: string;
+      osNumber: string;
+      filialId?: string | null;
+    }) => {
       const { data, error } = await supabase.rpc('pops_complete_machine', {
         p_machine_id: vars.machineId,
         p_service_id: vars.serviceId,
         p_os_number: vars.osNumber,
-      });
+        p_filial_id: vars.filialId ?? null,
+      } as never);
       if (error) throw new Error(error.message);
       return data as unknown as Record<string, unknown>;
     },
@@ -278,7 +288,7 @@ export const usePopsPermissions = () => {
   return {
     isLoading,
     canAccess: isGlobal || isSupervisor || isRacEquivalent,
-    canComplete: isGlobal || isRacEquivalent,
+    canComplete: isGlobal || isRacEquivalent || isSupervisor,
     isGlobal,
     isSupervisorOnly: isSupervisor && !isGlobal && !isRacEquivalent,
   };

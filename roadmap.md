@@ -42,4 +42,4 @@
 - [ ] Seleção recalculada no momento da execução (sem número fixo)
 - [ ] Após COMMIT: confirmar que não restam auxiliares em public e reler os números persistidos
 
-- [ ] POPS: conclusao de servico deve autorizar por Filial Ativa + filiais autorizadas (effective_filial_ids) em vez da filial principal — simulacao reversivel em andamento; aplicacao aguarda aprovacao.
+- [x] POPS: conclusao de servico autoriza por Filial Ativa + filiais autorizadas (effective_filial_ids), com Supervisor incluido; aplicado no banco (pops_complete_machine com p_filial_id) e na tela (usePops/PopsMachineDrawer/Pops).
