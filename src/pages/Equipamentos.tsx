@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck, AlertTriangle, RefreshCw, ClipboardList, ArrowLeft } from 'lucide-react';
+import { Loader2, FileSpreadsheet, Tractor, ChevronLeft, ChevronRight, Pencil, Star, ArrowRightLeft, CheckCircle2, Clock, UserCheck, AlertTriangle, RefreshCw, ClipboardList, ArrowLeft, CircleGauge } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { EquipmentEditDialog } from '@/components/equipment';
@@ -244,6 +244,15 @@ const XLSX = await import('xlsx');
     return [...rows].sort((a, b) => b.validated_count - a.validated_count);
   }, [validationSummary]);
 
+  const totalPark = kpis?.total ?? 0;
+  const totalValidated = kpis?.total_validadas ?? 0;
+  const totalPriorities = kpis?.prioridades ?? 0;
+  const priorityValidated = validationSummary?.priority_validated ?? 0;
+  const totalPending = Math.max(0, totalPark - totalValidated);
+  const priorityPending = Math.max(0, totalPriorities - priorityValidated);
+  const overallProgress = totalPark > 0 ? (totalValidated / totalPark) * 100 : 0;
+  const priorityProgress = totalPriorities > 0 ? (priorityValidated / totalPriorities) * 100 : 0;
+
 
 
   return (
@@ -318,47 +327,77 @@ const XLSX = await import('xlsx');
 
       {view === 'validacao' ? (<>
       {/* Resumo do parque */}
-      <Card>
-        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           <SummaryCell
-            icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
-            label="Total"
+            icon={<Tractor className="h-4 w-4" />}
+            label="Total do Parque"
             value={kpis?.total}
+            tone="neutral"
           />
           <SummaryCell
-            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-            label="Total Validadas"
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            label="Validadas (Total)"
             value={kpis?.total_validadas}
+            subtitle={`${formatPercent(overallProgress)} do Parque`}
+            tone="success"
           />
           <SummaryCell
-            icon={<Star className="h-4 w-4 text-amber-500 fill-amber-500" />}
+            icon={<Star className="h-4 w-4 fill-current" />}
             label="Prioridades"
             value={kpis?.prioridades}
+            subtitle={`${formatPercent(totalPark > 0 ? (totalPriorities / totalPark) * 100 : 0)} do Parque`}
+            tone="warning"
             highlight={priorityOnly}
             onClick={() => { setPriorityOnly((v) => !v); setPage(0); }}
           />
           <SummaryCell
-            icon={<Tractor className="h-4 w-4 text-muted-foreground" />}
-            label="Não Prioridades"
+            icon={<CircleGauge className="h-4 w-4" />}
+            label="Não Prioritárias"
             value={kpis?.nao_prioridades}
+            subtitle={`${formatPercent(totalPark > 0 ? ((kpis?.nao_prioridades ?? 0) / totalPark) * 100 : 0)} do Parque`}
+            tone="neutral"
           />
           <SummaryCell
-            icon={<UserCheck className="h-4 w-4 text-primary" />}
+            icon={<UserCheck className="h-4 w-4" />}
             label="Clientes"
             value={kpis?.clientes}
+            subtitle="com máquinas"
+            tone="primary"
           />
           <SummaryCell
-            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-            label="Pendentes"
-            value={kpis?.pendentes}
+            icon={<Clock className="h-4 w-4" />}
+            label="Pendentes (Total)"
+            value={totalPending}
+            subtitle={`${formatPercent(totalPark > 0 ? (totalPending / totalPark) * 100 : 0)} do Parque`}
+            tone="danger"
           />
           <SummaryCell
-            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-            label="Validações 7 dias"
-            value={kpis?.validacoes_7d}
+            icon={<CheckCircle2 className="h-4 w-4" />}
+            label="Validadas (Prioridade)"
+            value={priorityValidated}
+            subtitle={`${formatPercent(priorityProgress)} das prioridades`}
+            tone="success"
           />
-        </CardContent>
-      </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ValidationProgressPanel
+          title="Progresso da Validação Geral"
+          subtitle="Todas as máquinas do parque"
+          percentage={overallProgress}
+          validated={totalValidated}
+          pending={totalPending}
+          tone="success"
+        />
+        <ValidationProgressPanel
+          title="Progresso das Prioridades"
+          subtitle="Máquinas da lista atual"
+          percentage={priorityProgress}
+          validated={priorityValidated}
+          pending={priorityPending}
+          tone="warning"
+        />
+      </div>
 
 
       {/* Execução das Validações — resumo por filial (fonte: get_equipment_validation_summary) */}
@@ -738,41 +777,46 @@ const XLSX = await import('xlsx');
 
 export default Equipamentos;
 
-const KPI_LABELS: Record<string, string> = {
-  Total: 'Total',
-  Prioritárias: 'Prioritárias',
-  Validadas: 'Validadas',
-  'Clientes Validados': 'Clientes',
-  Pendentes: 'Pendentes',
-  'Validações hoje': 'Validações (hoje)',
-  'Validações 7 dias': 'Validações (7d)',
-};
-
 interface SummaryCellProps {
   icon?: React.ReactNode;
   label: string;
   value?: number | string;
+  subtitle?: string;
+  tone?: 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
   highlight?: boolean;
   onClick?: () => void;
 }
 
-const SummaryCell: React.FC<SummaryCellProps> = ({ icon, label, value, highlight, onClick }) => {
-  const displayLabel = KPI_LABELS[label] ?? label;
+const SUMMARY_TONES = {
+  neutral: 'text-muted-foreground bg-muted/50',
+  primary: 'text-primary bg-primary/10',
+  success: 'text-success bg-success/10',
+  warning: 'text-warning bg-warning/10',
+  danger: 'text-destructive bg-destructive/10',
+};
+
+const formatPercent = (value: number) =>
+  new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value) + '%';
+
+const SummaryCell: React.FC<SummaryCellProps> = ({
+  icon, label, value, subtitle, tone = 'neutral', highlight, onClick,
+}) => {
   const content = (
     <div
-      className={`rounded-md border px-3 py-2 transition-colors h-full flex flex-col justify-between ${
-        highlight ? 'border-amber-500/60 bg-amber-50 dark:bg-amber-950/20' : 'border-border/60'
-      } ${onClick ? 'cursor-pointer hover:bg-muted/40' : ''}`}
+      className={`flex h-full min-h-32 flex-col rounded-lg border bg-card p-4 shadow-sm transition-colors ${
+        highlight ? 'border-warning bg-warning/5 ring-1 ring-warning/30' : 'border-border/70'
+      } ${onClick ? 'cursor-pointer hover:border-warning/60 hover:bg-warning/5' : ''}`}
     >
-      <div className="flex items-center gap-1.5 min-w-0 h-4">
-        <span className="shrink-0">{icon}</span>
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis leading-none">
-          {displayLabel}
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">{label}</span>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${SUMMARY_TONES[tone]}`}>
+          {icon}
         </span>
       </div>
-      <p className="text-lg font-bold tabular-nums leading-none">
+      <p className="mt-auto pt-3 text-2xl font-bold tabular-nums leading-none">
         {value == null ? '—' : typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
       </p>
+      <p className="mt-2 min-h-4 text-xs text-muted-foreground">{subtitle ?? ' '}</p>
     </div>
   );
   if (onClick) {
@@ -783,4 +827,73 @@ const SummaryCell: React.FC<SummaryCellProps> = ({ icon, label, value, highlight
     );
   }
   return content;
+};
+
+interface ValidationProgressPanelProps {
+  title: string;
+  subtitle: string;
+  percentage: number;
+  validated: number;
+  pending: number;
+  tone: 'success' | 'warning';
+}
+
+const ValidationProgressPanel: React.FC<ValidationProgressPanelProps> = ({
+  title, subtitle, percentage, validated, pending, tone,
+}) => {
+  const progressColor = tone === 'success' ? 'bg-success' : 'bg-warning';
+  const iconColor = tone === 'success' ? 'text-success bg-success/10' : 'text-warning bg-warning/10';
+  const safePercentage = Math.min(100, Math.max(0, percentage));
+
+  return (
+    <Card className="border-border/70 shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold">{title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-2xl font-bold tabular-nums">{formatPercent(percentage)}</p>
+            <p className="text-xs text-muted-foreground">validadas</p>
+          </div>
+        </div>
+
+        <div
+          className="mt-5 h-2 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-label={title}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Number(safePercentage.toFixed(1))}
+        >
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
+            style={{ width: `${safePercentage}%` }}
+          />
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 border-t pt-4">
+          <div className="flex items-center gap-3">
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${iconColor}`}>
+              <CheckCircle2 className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="font-semibold tabular-nums">{validated.toLocaleString('pt-BR')}</p>
+              <p className="text-xs text-muted-foreground">validadas</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Clock className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="font-semibold tabular-nums">{pending.toLocaleString('pt-BR')}</p>
+              <p className="text-xs text-muted-foreground">pendentes</p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
