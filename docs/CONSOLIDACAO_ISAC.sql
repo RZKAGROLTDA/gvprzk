@@ -22,6 +22,26 @@
 
 BEGIN;
 
+-- ------------------------------------- [BASELINE] leitura atual (sem números fixos)
+CREATE TEMP TABLE tmp_baseline_profiles ON COMMIT DROP AS
+  SELECT user_id, employment_status::text AS employment_status, approval_status, filial_id, role
+    FROM public.profiles;
+
+CREATE TEMP TABLE tmp_baseline ON COMMIT DROP AS
+  SELECT 'tasks' AS k, count(*) AS c FROM public.tasks WHERE created_by = '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4'
+  UNION ALL SELECT 'followups',      count(*) FROM public.task_followups   WHERE responsible_user_id = '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4'
+  UNION ALL SELECT 'agendamentos',   count(*) FROM public.visit_schedules  WHERE seller_id = '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4'
+  UNION ALL SELECT 'pops',           count(*) FROM public.pops_machines    WHERE executed_by = '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4'
+  UNION ALL SELECT 'validacoes',     count(*) FROM public.client_equipment WHERE validated_by = '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4'
+  UNION ALL SELECT 'trainings',      count(*) FROM public.trainings        WHERE user_id = '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4'
+  UNION ALL SELECT 'tasks_p',        count(*) FROM public.tasks            WHERE created_by = '04884288-d6bc-4f40-9857-519abae62605'
+  UNION ALL SELECT 'followups_p',    count(*) FROM public.task_followups   WHERE responsible_user_id = '04884288-d6bc-4f40-9857-519abae62605'
+  UNION ALL SELECT 'agendamentos_p', count(*) FROM public.visit_schedules  WHERE seller_id = '04884288-d6bc-4f40-9857-519abae62605'
+  UNION ALL SELECT 'pops_p',         count(*) FROM public.pops_machines    WHERE executed_by = '04884288-d6bc-4f40-9857-519abae62605'
+  UNION ALL SELECT 'validacoes_p',   count(*) FROM public.client_equipment WHERE validated_by = '04884288-d6bc-4f40-9857-519abae62605'
+  UNION ALL SELECT 'trainings_p',    count(*) FROM public.trainings        WHERE user_id = '04884288-d6bc-4f40-9857-519abae62605'
+  UNION ALL SELECT 'roles_outros',   count(*) FROM public.user_roles       WHERE user_id <> '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4';
+
 -- ---------------------------------------------------------------- [A] INFRA
 CREATE TABLE IF NOT EXISTS public.user_account_links (
   alias_user_id   uuid PRIMARY KEY,
