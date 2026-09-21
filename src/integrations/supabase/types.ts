@@ -4682,12 +4682,9 @@ export type Database = {
         Args: { p_pops_machine_id: string }
         Returns: boolean
       }
-      pops_can_write_machine: {
-        Args: { p_pops_machine_id: string }
-        Returns: boolean
-      }
       pops_complete_machine: {
         Args: {
+          p_filial_id?: string
           p_machine_id: string
           p_os_number: string
           p_service_id: string
