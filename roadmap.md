@@ -36,3 +36,8 @@
 - [ ] Meu Dia pessoal 100% intacto (summary/details/context/builders/queryKeys)
 - [ ] Bateria: supervisor principal/adicional/volta sem soma, 42501 não autorizada e consultor comum, admin global/restrito, troca sem reload
 - [ ] Depois: diagnóstico específico de useTasks/offline
+
+## Etapa 1 — Filial das prioridades pendentes Nível A (aguardando aprovação do SQL ajustado)
+- [ ] SQL ajustado: todas as auxiliares como TEMP, execução atômica em uma transação, COMMIT só se todas as validações passarem
+- [ ] Seleção recalculada no momento da execução (sem número fixo)
+- [ ] Após COMMIT: confirmar que não restam auxiliares em public e reler os números persistidos
