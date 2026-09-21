@@ -34,6 +34,8 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canComplete: boolean;
+  /** Filial Ativa selecionada no cabeçalho; enviada ao backend na conclusão. */
+  filialId?: string | null;
 };
 
 const Field = ({ label, value }: { label: string; value?: string | null }) => (
