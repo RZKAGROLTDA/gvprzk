@@ -43,3 +43,11 @@
 - [ ] Após COMMIT: confirmar que não restam auxiliares em public e reler os números persistidos
 
 - [x] POPS: conclusao de servico autoriza por Filial Ativa + filiais autorizadas (effective_filial_ids), com Supervisor incluido; aplicado no banco (pops_complete_machine com p_filial_id) e na tela (usePops/PopsMachineDrawer/Pops).
+
+## Consolidacao de contas — Isac Manso Stanke (aguardando aplicacao)
+- [ ] Infra user_account_links + resolve_primary_user_id (aprovada conceitualmente)
+- [ ] Vinculo alias 513dcb05 -> titular 04884288 (PM2064), idempotente e com guarda de divergencia
+- [ ] Desativacao da conta antiga pelo procedimento oficial (historico 100% preservado)
+- [ ] Consolidacao de TODOS os indicadores por colaborador: get_performance_by_seller_v2, get_activity_metrics_v2, get_my_day_team_summary (tela da duplicidade), get_equipment_validators, pops_executor_results
+- [ ] Transacao unica com validacoes 1..9 + idempotencia; falha => ROLLBACK
+- [ ] Nao aplicar a Robson, Diogo, Deibdy
