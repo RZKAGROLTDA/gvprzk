@@ -52,6 +52,7 @@ import { toast } from 'sonner';
 import {
   useCampaignRules,
   useCampaignClients,
+  useActiveCampaignClients,
   useSearchCampaignClients,
   useCreateCampaignRule,
   useUpdateCampaignRule,
