@@ -60,3 +60,5 @@
 - [ ] Mapear todas as RPCs/telas que agrupam por created_by/responsible_user_id/seller_id/executed_by/validated_by/user_id e listar nao cobertas
 - [ ] Validar Filial Ativa intacta (identidade != escopo)
 - [ ] Numeros reais A e P + consolidado esperado; idempotencia; ROLLBACK integral
+
+- [ ] Consolidação Isac: aplicar migration (BEGIN/COMMIT + validações E) e depois rodar V10–V17 em sessão autenticada; só então usar o botão Desativar.
