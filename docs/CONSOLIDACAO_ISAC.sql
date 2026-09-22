@@ -102,11 +102,20 @@ $$;
 REVOKE ALL ON FUNCTION public.resolve_primary_user_id(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.resolve_primary_user_id(uuid) TO authenticated, service_role;
 
+-- Baseline dos vínculos já existentes (para provar que nenhum outro foi tocado).
+CREATE TEMP TABLE tmp_baseline_links ON COMMIT DROP AS
+  SELECT alias_user_id, primary_user_id FROM public.user_account_links;
+
+
 -- ------------------------------------------------- [B] VÍNCULO DO ISAC (aqui)
+-- created_by: recebe auth.uid() quando houver sessao administrativa; executado por
+-- migracao (sem sessao) fica NULL e a autoria fica registrada em reason.
+-- Sem ON CONFLICT DO UPDATE: um alias ja vinculado a outro titular ABORTA tudo.
 DO $$
 DECLARE
   v_alias   uuid := '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4';  -- stankeisac@gmail.com
   v_primary uuid := '04884288-d6bc-4f40-9857-519abae62605';  -- isac.stanke@rzkagro.com.br
+  v_exist   uuid;
   v_ok_alias   int;
   v_ok_primary int;
 BEGIN
@@ -121,14 +130,18 @@ BEGIN
       v_ok_alias, v_ok_primary;
   END IF;
 
-  INSERT INTO public.user_account_links (alias_user_id, primary_user_id, pm_registration, reason, created_by)
-  VALUES (v_alias, v_primary, 'PM2064',
-          'Conta pessoal antiga do titular PM2064 (Isac Manso Stanke); consolidacao de relatorio autorizada.',
-          v_primary)
-  ON CONFLICT (alias_user_id) DO UPDATE
-    SET primary_user_id = EXCLUDED.primary_user_id,
-        pm_registration = EXCLUDED.pm_registration,
-        reason          = EXCLUDED.reason;   -- idempotente
+  SELECT primary_user_id INTO v_exist FROM public.user_account_links WHERE alias_user_id = v_alias;
+
+  IF v_exist IS NULL THEN
+    INSERT INTO public.user_account_links (alias_user_id, primary_user_id, pm_registration, reason, created_by)
+    VALUES (v_alias, v_primary, 'PM2064',
+            'Conta pessoal antiga do titular PM2064 (Isac Manso Stanke). Consolidacao de relatorio autorizada pela gestao; executada por migracao sem sessao (auth.uid() nulo).',
+            auth.uid());
+  ELSIF v_exist = v_primary THEN
+    NULL;  -- idempotente: vinculo correto ja existe
+  ELSE
+    RAISE EXCEPTION 'VALIDACAO B: alias ja vinculado a outro titular (%) — abortado', v_exist;
+  END IF;
 END $$;
 
 -- ------------------------------- [C] DESATIVAÇÃO DA CONTA ANTIGA (aqui)
@@ -165,10 +178,15 @@ BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
   v_filiais := public.effective_filial_ids(p_filial_id);
 
+  -- LOGICA ANTERIOR (defeito): finance = scoped JOIN tasks por task_id, e as subqueries
+  -- somavam TODAS as vendas do responsavel em CADA linha de filial => venda repetida
+  -- quando a task tinha mais de um followup e quando o responsavel atuava em 2 filiais.
+  -- LOGICA CORRIGIDA: atividades por followup; vendas DISTINCT por task dentro de
+  -- (titular, filial), agregadas separadamente e unidas por (titular, filial).
   RETURN QUERY
   WITH scoped AS (
     SELECT tf.id, tf.task_id,
-           public.resolve_primary_user_id(tf.responsible_user_id) AS responsible_user_id, -- CONSOLIDA
+           public.resolve_primary_user_id(tf.responsible_user_id) AS rid,
            tf.filial_id, tf.activity_type,
            COALESCE(NULLIF(tf.client_code, ''), LOWER(TRIM(tf.client_name))) AS client_key
     FROM public.task_followups tf
@@ -177,26 +195,38 @@ BEGIN
       AND (cardinality(v_filiais) = 0 OR tf.filial_id = ANY(v_filiais))
       AND (v_is_manager OR tf.responsible_user_id = v_uid OR (v_is_supervisor AND tf.filial_id = ANY(v_filiais)))
   ),
-  finance AS (
-    SELECT tf.responsible_user_id, t.sales_value, t.partial_sales_value, t.sales_type, t.sales_confirmed
-    FROM scoped tf JOIN public.tasks t ON t.id = tf.task_id
+  acts AS (
+    SELECT s.rid, s.filial_id,
+      COUNT(*)::bigint AS total_activities,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'visita')::bigint AS visitas,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'ligacao')::bigint AS ligacoes,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'checklist')::bigint AS checklists,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'prospection')::bigint AS prospections,
+      COUNT(DISTINCT s.client_key) FILTER (WHERE s.client_key IS NOT NULL AND s.client_key <> '')::bigint AS unique_clients
+    FROM scoped s GROUP BY s.rid, s.filial_id
+  ),
+  sales_tasks AS (
+    SELECT DISTINCT s.rid, s.filial_id, t.id AS task_id,
+           t.sales_value, t.partial_sales_value, t.sales_type, t.sales_confirmed
+    FROM scoped s JOIN public.tasks t ON t.id = s.task_id
+  ),
+  sales AS (
+    SELECT st.rid, st.filial_id,
+      COUNT(*) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'ganho')::bigint AS sales_total_count,
+      COALESCE(SUM(st.sales_value) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'ganho'), 0)::numeric AS sales_total_value,
+      COUNT(*) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'parcial')::bigint AS sales_partial_count,
+      COALESCE(SUM(st.partial_sales_value) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'parcial'), 0)::numeric AS sales_partial_value
+    FROM sales_tasks st GROUP BY st.rid, st.filial_id
   )
-  SELECT s.responsible_user_id, p.name, s.filial_id, f.nome,
-    COUNT(*)::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'visita')::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'ligacao')::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'checklist')::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'prospection')::bigint,
-    COUNT(DISTINCT s.client_key) FILTER (WHERE s.client_key IS NOT NULL AND s.client_key <> '')::bigint,
-    (SELECT COUNT(*) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'ganho')::bigint,
-    (SELECT COALESCE(SUM(fi.sales_value), 0) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'ganho')::numeric,
-    (SELECT COUNT(*) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'parcial')::bigint,
-    (SELECT COALESCE(SUM(fi.partial_sales_value), 0) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'parcial')::numeric
-  FROM scoped s
-  LEFT JOIN public.profiles p ON p.user_id = s.responsible_user_id
-  LEFT JOIN public.filiais f ON f.id = s.filial_id
-  GROUP BY s.responsible_user_id, p.name, s.filial_id, f.nome
-  ORDER BY 5 DESC;
+  SELECT a.rid, p.name, a.filial_id, f.nome,
+         a.total_activities, a.visitas, a.ligacoes, a.checklists, a.prospections, a.unique_clients,
+         COALESCE(sa.sales_total_count, 0), COALESCE(sa.sales_total_value, 0),
+         COALESCE(sa.sales_partial_count, 0), COALESCE(sa.sales_partial_value, 0)
+  FROM acts a
+  LEFT JOIN sales sa ON sa.rid = a.rid AND sa.filial_id IS NOT DISTINCT FROM a.filial_id
+  LEFT JOIN public.profiles p ON p.user_id = a.rid
+  LEFT JOIN public.filiais f ON f.id = a.filial_id
+  ORDER BY a.total_activities DESC;
 END;
 $function$;
 
@@ -586,9 +616,9 @@ DECLARE
   v_primary uuid := '04884288-d6bc-4f40-9857-519abae62605';
   n int; m int; k int;
 BEGIN
-  -- 1) vínculo único e sem ambiguidade
-  SELECT count(*) INTO n FROM public.user_account_links;
-  IF n <> 1 THEN RAISE EXCEPTION 'V1: esperado exatamente 1 vinculo, encontrado %', n; END IF;
+  -- 1) vínculo do ALIAS único e sem ambiguidade (a tabela pode conter outros vínculos)
+  SELECT count(*) INTO n FROM public.user_account_links WHERE alias_user_id = v_alias;
+  IF n <> 1 THEN RAISE EXCEPTION 'V1: esperado exatamente 1 vinculo para o alias, encontrado %', n; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.user_account_links
                   WHERE alias_user_id = v_alias AND primary_user_id = v_primary
                     AND pm_registration = 'PM2064') THEN
@@ -681,12 +711,29 @@ BEGIN
   SELECT c INTO m FROM tmp_baseline WHERE k = 'roles_outros';
   IF n <> m THEN RAISE EXCEPTION 'V8: cargos de outros usuarios alterados'; END IF;
 
+  -- 8b) nenhum vínculo de outro usuário alterado/removido
+  SELECT count(*) INTO n FROM public.user_account_links l
+   WHERE l.alias_user_id <> v_alias
+     AND NOT EXISTS (SELECT 1 FROM tmp_baseline_links b
+                      WHERE b.alias_user_id = l.alias_user_id
+                        AND b.primary_user_id = l.primary_user_id);
+  SELECT count(*) INTO m FROM tmp_baseline_links b
+   WHERE b.alias_user_id <> v_alias
+     AND NOT EXISTS (SELECT 1 FROM public.user_account_links l
+                      WHERE l.alias_user_id = b.alias_user_id
+                        AND l.primary_user_id = b.primary_user_id);
+  IF n <> 0 OR m <> 0 THEN RAISE EXCEPTION 'V8: vinculos de outros usuarios alterados'; END IF;
+
   -- 9) idempotência: repetir vínculo e desativação não gera efeito novo
+  --    (sem ON CONFLICT DO UPDATE: nunca troca o titular silenciosamente)
   INSERT INTO public.user_account_links (alias_user_id, primary_user_id, pm_registration, reason, created_by)
-  VALUES (v_alias, v_primary, 'PM2064', 'reexecucao', v_primary)
+  VALUES (v_alias, v_primary, 'PM2064', 'reexecucao', auth.uid())
   ON CONFLICT (alias_user_id) DO NOTHING;
-  SELECT count(*) INTO n FROM public.user_account_links;
+  SELECT count(*) INTO n FROM public.user_account_links WHERE alias_user_id = v_alias;
   IF n <> 1 THEN RAISE EXCEPTION 'V9: vinculo duplicado na reexecucao'; END IF;
+  IF (SELECT primary_user_id FROM public.user_account_links WHERE alias_user_id = v_alias) <> v_primary THEN
+    RAISE EXCEPTION 'V9: titular do alias mudou na reexecucao';
+  END IF;
   UPDATE public.profiles SET employment_status = 'inactive'
    WHERE user_id = v_alias AND employment_status <> 'inactive';
   IF (SELECT count(*) FROM public.profiles WHERE user_id = v_alias) <> 1 THEN

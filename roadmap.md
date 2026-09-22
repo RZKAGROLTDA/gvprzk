@@ -51,3 +51,12 @@
 - [ ] Consolidacao de TODOS os indicadores por colaborador: get_performance_by_seller_v2, get_activity_metrics_v2, get_my_day_team_summary (tela da duplicidade), get_equipment_validators, pops_executor_results
 - [ ] Transacao unica com validacoes 1..9 + idempotencia; falha => ROLLBACK
 - [ ] Nao aplicar a Robson, Diogo, Deibdy
+
+## Consolidacao Isac — revisao solicitada (simulacao reversivel, sem COMMIT)
+- [ ] V1/V9 validam apenas o vinculo do alias (nao a tabela inteira)
+- [ ] Guarda contra remapeamento do alias (alias -> outro titular => abortar)
+- [ ] created_by do vinculo: usar auth.uid() administrativo quando existir; documentar quando NULL
+- [ ] get_performance_by_seller_v2: vendas contadas uma vez por task (sem duplicacao por followup) e sem repetir valor entre filiais
+- [ ] Mapear todas as RPCs/telas que agrupam por created_by/responsible_user_id/seller_id/executed_by/validated_by/user_id e listar nao cobertas
+- [ ] Validar Filial Ativa intacta (identidade != escopo)
+- [ ] Numeros reais A e P + consolidado esperado; idempotencia; ROLLBACK integral
