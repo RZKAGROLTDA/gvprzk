@@ -301,7 +301,7 @@ const CampaignMultiSelect: React.FC<{
 
   const summary =
     selected === null
-      ? 'Todas as campanhas'
+      ? allLabel
       : count === 0
         ? 'Nenhuma campanha'
         : count === 1
