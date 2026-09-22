@@ -103,10 +103,14 @@ REVOKE ALL ON FUNCTION public.resolve_primary_user_id(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.resolve_primary_user_id(uuid) TO authenticated, service_role;
 
 -- ------------------------------------------------- [B] VÍNCULO DO ISAC (aqui)
+-- created_by: recebe auth.uid() quando houver sessao administrativa; executado por
+-- migracao (sem sessao) fica NULL e a autoria fica registrada em reason.
+-- Sem ON CONFLICT DO UPDATE: um alias ja vinculado a outro titular ABORTA tudo.
 DO $$
 DECLARE
   v_alias   uuid := '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4';  -- stankeisac@gmail.com
   v_primary uuid := '04884288-d6bc-4f40-9857-519abae62605';  -- isac.stanke@rzkagro.com.br
+  v_exist   uuid;
   v_ok_alias   int;
   v_ok_primary int;
 BEGIN
@@ -121,14 +125,18 @@ BEGIN
       v_ok_alias, v_ok_primary;
   END IF;
 
-  INSERT INTO public.user_account_links (alias_user_id, primary_user_id, pm_registration, reason, created_by)
-  VALUES (v_alias, v_primary, 'PM2064',
-          'Conta pessoal antiga do titular PM2064 (Isac Manso Stanke); consolidacao de relatorio autorizada.',
-          v_primary)
-  ON CONFLICT (alias_user_id) DO UPDATE
-    SET primary_user_id = EXCLUDED.primary_user_id,
-        pm_registration = EXCLUDED.pm_registration,
-        reason          = EXCLUDED.reason;   -- idempotente
+  SELECT primary_user_id INTO v_exist FROM public.user_account_links WHERE alias_user_id = v_alias;
+
+  IF v_exist IS NULL THEN
+    INSERT INTO public.user_account_links (alias_user_id, primary_user_id, pm_registration, reason, created_by)
+    VALUES (v_alias, v_primary, 'PM2064',
+            'Conta pessoal antiga do titular PM2064 (Isac Manso Stanke). Consolidacao de relatorio autorizada pela gestao; executada por migracao sem sessao (auth.uid() nulo).',
+            auth.uid());
+  ELSIF v_exist = v_primary THEN
+    NULL;  -- idempotente: vinculo correto ja existe
+  ELSE
+    RAISE EXCEPTION 'VALIDACAO B: alias ja vinculado a outro titular (%) — abortado', v_exist;
+  END IF;
 END $$;
 
 -- ------------------------------- [C] DESATIVAÇÃO DA CONTA ANTIGA (aqui)
