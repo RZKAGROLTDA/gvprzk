@@ -173,10 +173,15 @@ BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
   v_filiais := public.effective_filial_ids(p_filial_id);
 
+  -- LOGICA ANTERIOR (defeito): finance = scoped JOIN tasks por task_id, e as subqueries
+  -- somavam TODAS as vendas do responsavel em CADA linha de filial => venda repetida
+  -- quando a task tinha mais de um followup e quando o responsavel atuava em 2 filiais.
+  -- LOGICA CORRIGIDA: atividades por followup; vendas DISTINCT por task dentro de
+  -- (titular, filial), agregadas separadamente e unidas por (titular, filial).
   RETURN QUERY
   WITH scoped AS (
     SELECT tf.id, tf.task_id,
-           public.resolve_primary_user_id(tf.responsible_user_id) AS responsible_user_id, -- CONSOLIDA
+           public.resolve_primary_user_id(tf.responsible_user_id) AS rid,
            tf.filial_id, tf.activity_type,
            COALESCE(NULLIF(tf.client_code, ''), LOWER(TRIM(tf.client_name))) AS client_key
     FROM public.task_followups tf
@@ -185,26 +190,38 @@ BEGIN
       AND (cardinality(v_filiais) = 0 OR tf.filial_id = ANY(v_filiais))
       AND (v_is_manager OR tf.responsible_user_id = v_uid OR (v_is_supervisor AND tf.filial_id = ANY(v_filiais)))
   ),
-  finance AS (
-    SELECT tf.responsible_user_id, t.sales_value, t.partial_sales_value, t.sales_type, t.sales_confirmed
-    FROM scoped tf JOIN public.tasks t ON t.id = tf.task_id
+  acts AS (
+    SELECT s.rid, s.filial_id,
+      COUNT(*)::bigint AS total_activities,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'visita')::bigint AS visitas,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'ligacao')::bigint AS ligacoes,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'checklist')::bigint AS checklists,
+      COUNT(*) FILTER (WHERE s.activity_type::text = 'prospection')::bigint AS prospections,
+      COUNT(DISTINCT s.client_key) FILTER (WHERE s.client_key IS NOT NULL AND s.client_key <> '')::bigint AS unique_clients
+    FROM scoped s GROUP BY s.rid, s.filial_id
+  ),
+  sales_tasks AS (
+    SELECT DISTINCT s.rid, s.filial_id, t.id AS task_id,
+           t.sales_value, t.partial_sales_value, t.sales_type, t.sales_confirmed
+    FROM scoped s JOIN public.tasks t ON t.id = s.task_id
+  ),
+  sales AS (
+    SELECT st.rid, st.filial_id,
+      COUNT(*) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'ganho')::bigint AS sales_total_count,
+      COALESCE(SUM(st.sales_value) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'ganho'), 0)::numeric AS sales_total_value,
+      COUNT(*) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'parcial')::bigint AS sales_partial_count,
+      COALESCE(SUM(st.partial_sales_value) FILTER (WHERE st.sales_confirmed AND st.sales_type = 'parcial'), 0)::numeric AS sales_partial_value
+    FROM sales_tasks st GROUP BY st.rid, st.filial_id
   )
-  SELECT s.responsible_user_id, p.name, s.filial_id, f.nome,
-    COUNT(*)::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'visita')::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'ligacao')::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'checklist')::bigint,
-    COUNT(*) FILTER (WHERE s.activity_type::text = 'prospection')::bigint,
-    COUNT(DISTINCT s.client_key) FILTER (WHERE s.client_key IS NOT NULL AND s.client_key <> '')::bigint,
-    (SELECT COUNT(*) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'ganho')::bigint,
-    (SELECT COALESCE(SUM(fi.sales_value), 0) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'ganho')::numeric,
-    (SELECT COUNT(*) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'parcial')::bigint,
-    (SELECT COALESCE(SUM(fi.partial_sales_value), 0) FROM finance fi WHERE fi.responsible_user_id = s.responsible_user_id AND fi.sales_confirmed = true AND fi.sales_type = 'parcial')::numeric
-  FROM scoped s
-  LEFT JOIN public.profiles p ON p.user_id = s.responsible_user_id
-  LEFT JOIN public.filiais f ON f.id = s.filial_id
-  GROUP BY s.responsible_user_id, p.name, s.filial_id, f.nome
-  ORDER BY 5 DESC;
+  SELECT a.rid, p.name, a.filial_id, f.nome,
+         a.total_activities, a.visitas, a.ligacoes, a.checklists, a.prospections, a.unique_clients,
+         COALESCE(sa.sales_total_count, 0), COALESCE(sa.sales_total_value, 0),
+         COALESCE(sa.sales_partial_count, 0), COALESCE(sa.sales_partial_value, 0)
+  FROM acts a
+  LEFT JOIN sales sa ON sa.rid = a.rid AND sa.filial_id IS NOT DISTINCT FROM a.filial_id
+  LEFT JOIN public.profiles p ON p.user_id = a.rid
+  LEFT JOIN public.filiais f ON f.id = a.filial_id
+  ORDER BY a.total_activities DESC;
 END;
 $function$;
 
