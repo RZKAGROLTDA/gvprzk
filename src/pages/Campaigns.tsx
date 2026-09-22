@@ -945,6 +945,7 @@ export const ClientAutocomplete: React.FC<{
 const ruleTriggerLabel = (r: CampaignRule): string => {
   const periods = formatPeriodsInline(getRuleDiscountPeriods(r));
   return [
+    `${r.campaign_name} —`,
     formatCurrency(Number(r.trigger_min)),
     periods ? `— ${periods}` : null,
     `/ Comp. ${formatCurrency(Number(r.commitment_value))}`,
