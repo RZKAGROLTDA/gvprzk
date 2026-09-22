@@ -2579,6 +2579,36 @@ export type Database = {
           },
         ]
       }
+      user_account_links: {
+        Row: {
+          alias_user_id: string
+          created_at: string
+          created_by: string | null
+          pm_registration: string | null
+          primary_user_id: string
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          alias_user_id: string
+          created_at?: string
+          created_by?: string | null
+          pm_registration?: string | null
+          primary_user_id: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alias_user_id?: string
+          created_at?: string
+          created_by?: string | null
+          pm_registration?: string | null
+          primary_user_id?: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_app_versions: {
         Row: {
           app_version: string | null
@@ -3696,6 +3726,7 @@ export type Database = {
         Args: {
           p_end_date?: string
           p_filial_id?: string
+          p_responsible_user_id?: string
           p_start_date?: string
         }
         Returns: {
@@ -4790,6 +4821,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      resolve_primary_user_id: { Args: { p_user_id: string }; Returns: string }
       search_client_equipment: {
         Args: {
           p_client_code?: string
