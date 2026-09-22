@@ -284,7 +284,18 @@ const CampaignMultiSelect: React.FC<{
   onSelectCurrent: () => void;
   onSelectAll: () => void;
   onClear: () => void;
-}> = ({ options, selected, onToggle, onSelectCurrent, onSelectAll, onClear }) => {
+  hideCurrentAction?: boolean;
+  allLabel?: string;
+}> = ({
+  options,
+  selected,
+  onToggle,
+  onSelectCurrent,
+  onSelectAll,
+  onClear,
+  hideCurrentAction,
+  allLabel = 'Todas as campanhas',
+}) => {
   const isChecked = (id: string) => (selected ? selected.includes(id) : true);
   const count = selected ? selected.length : options.length;
 
