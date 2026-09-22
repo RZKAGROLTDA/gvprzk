@@ -611,9 +611,9 @@ DECLARE
   v_primary uuid := '04884288-d6bc-4f40-9857-519abae62605';
   n int; m int; k int;
 BEGIN
-  -- 1) vínculo único e sem ambiguidade
-  SELECT count(*) INTO n FROM public.user_account_links;
-  IF n <> 1 THEN RAISE EXCEPTION 'V1: esperado exatamente 1 vinculo, encontrado %', n; END IF;
+  -- 1) vínculo do ALIAS único e sem ambiguidade (a tabela pode conter outros vínculos)
+  SELECT count(*) INTO n FROM public.user_account_links WHERE alias_user_id = v_alias;
+  IF n <> 1 THEN RAISE EXCEPTION 'V1: esperado exatamente 1 vinculo para o alias, encontrado %', n; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.user_account_links
                   WHERE alias_user_id = v_alias AND primary_user_id = v_primary
                     AND pm_registration = 'PM2064') THEN
