@@ -1160,12 +1160,26 @@ BEGIN
     RAISE EXCEPTION 'V9: perfil antigo duplicado/removido';
   END IF;
 
+  -- V17) Filial Ativa preservada (independente de sessão; roda dentro da transação).
+  IF (SELECT filial_id FROM public.profiles WHERE user_id = v_primary)
+     IS DISTINCT FROM (SELECT filial_id FROM tmp_baseline_profiles WHERE user_id = v_primary) THEN
+    RAISE EXCEPTION 'V17: filial do titular foi alterada';
+  END IF;
+  SELECT count(*) INTO n FROM public.user_filiais
+   WHERE user_id IN (v_alias, v_primary) AND active;
+  SELECT c INTO m FROM tmp_baseline WHERE tmp_baseline.k = 'filiais_isac';
+  IF n <> m THEN RAISE EXCEPTION 'V17: vinculos de filial adicionais alterados (% vs %)', n, m; END IF;
+
   RAISE NOTICE 'TODAS AS VALIDACOES PASSARAM';
+
 END $$;
 
--- ============ [F] VALIDAÇÕES DE LEITURA DAS TELAS (exigem sessão autenticada)
--- Executado em simulação com sessão de admin. Sem sessão (migração), auth.uid() é
--- NULL, as funções retornam vazio por desenho e este bloco é apenas ignorado.
+COMMIT;  -- (qualquer RAISE acima aborta a transação => ROLLBACK integral)
+
+-- ============ [F] VALIDAÇÕES DE LEITURA DAS TELAS (APÓS O COMMIT)
+-- Exigem sessão administrativa autenticada; NÃO fazem parte da transação acima.
+-- Executar exatamente como na simulação. Divergência => informar antes de bloquear o login.
+
 DO $$
 DECLARE
   v_alias   uuid := '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4';
@@ -1174,9 +1188,9 @@ DECLARE
   nv numeric; mv numeric;
 BEGIN
   IF auth.uid() IS NULL THEN
-    RAISE NOTICE 'F: sem sessao autenticada — validacoes de leitura ignoradas';
-    RETURN;
+    RAISE EXCEPTION 'F: sem sessao autenticada — V10..V16 NAO executadas';
   END IF;
+
 
   -- V10) filtro de consultor em get_performance_by_seller_v2:
   --      alias e titular devem retornar EXATAMENTE o mesmo consolidado.
@@ -1288,17 +1302,6 @@ BEGIN
    WHERE public.resolve_primary_user_id(user_id) = v_primary;
   RAISE NOTICE 'V16 OK — treinamentos consolidados: %', n;
 
-  -- V17) Filial Ativa preservada: identidade não altera filial/vínculos do titular.
-  IF (SELECT filial_id FROM public.profiles WHERE user_id = v_primary)
-     IS DISTINCT FROM (SELECT filial_id FROM tmp_baseline_profiles WHERE user_id = v_primary) THEN
-    RAISE EXCEPTION 'V17: filial do titular foi alterada';
-  END IF;
-  SELECT count(*) INTO n FROM public.user_filiais
-   WHERE user_id IN (v_alias, v_primary) AND active;
-  SELECT c INTO m FROM tmp_baseline WHERE tmp_baseline.k = 'filiais_isac';
-  IF n <> m THEN RAISE EXCEPTION 'V17: vinculos de filial adicionais alterados (% vs %)', n, m; END IF;
-
   RAISE NOTICE 'TODAS AS VALIDACOES DE LEITURA PASSARAM';
 END $$;
 
-COMMIT;  -- (qualquer RAISE acima aborta a transação => ROLLBACK automático)
