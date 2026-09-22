@@ -1163,9 +1163,12 @@ BEGIN
   RAISE NOTICE 'TODAS AS VALIDACOES PASSARAM';
 END $$;
 
--- ============ [F] VALIDAÇÕES DE LEITURA DAS TELAS (exigem sessão autenticada)
--- Executado em simulação com sessão de admin. Sem sessão (migração), auth.uid() é
--- NULL, as funções retornam vazio por desenho e este bloco é apenas ignorado.
+COMMIT;  -- (qualquer RAISE acima aborta a transação => ROLLBACK integral)
+
+-- ============ [F] VALIDAÇÕES DE LEITURA DAS TELAS (APÓS O COMMIT)
+-- Exigem sessão administrativa autenticada; NÃO fazem parte da transação acima.
+-- Executar exatamente como na simulação. Divergência => informar antes de bloquear o login.
+
 DO $$
 DECLARE
   v_alias   uuid := '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4';
