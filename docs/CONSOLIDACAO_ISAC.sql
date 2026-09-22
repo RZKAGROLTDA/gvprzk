@@ -1188,9 +1188,9 @@ DECLARE
   nv numeric; mv numeric;
 BEGIN
   IF auth.uid() IS NULL THEN
-    RAISE NOTICE 'F: sem sessao autenticada — validacoes de leitura ignoradas';
-    RETURN;
+    RAISE EXCEPTION 'F: sem sessao autenticada — V10..V16 NAO executadas';
   END IF;
+
 
   -- V10) filtro de consultor em get_performance_by_seller_v2:
   --      alias e titular devem retornar EXATAMENTE o mesmo consolidado.
