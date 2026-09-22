@@ -1664,10 +1664,48 @@ interface SellerInfo {
 
 const SellerSummaryTab: React.FC = () => {
   // Resumo Vendedor considera SOMENTE campanhas ativas
-  const { data: entries, isLoading } = useActiveCampaignClients();
+  const { data: allActiveEntries, isLoading } = useActiveCampaignClients();
+  const { data: rules } = useCampaignRules();
   const [filiais, setFiliais] = useState<{ id: string; nome: string }[]>([]);
   const [sellers, setSellers] = useState<Map<string, SellerInfo>>(new Map());
   const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
+
+  // Filtro de campanhas: somente campanhas ativas/vigentes (encerradas não aparecem)
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[] | null>(null);
+
+  const campaignOptions = useMemo(() => {
+    return (rules || [])
+      .filter((r) => r.active && getCampaignStatus(r) !== 'encerrada')
+      .map((r) => ({
+        id: r.id,
+        label: getCampaignRuleLabel(r),
+        status: getCampaignStatus(r),
+        period: formatPeriod(r),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }, [rules]);
+
+  const activeIdSet = useMemo(
+    () => new Set(campaignOptions.map((o) => o.id)),
+    [campaignOptions]
+  );
+
+  // null = todas as campanhas ativas
+  const entries = useMemo(() => {
+    const base = (allActiveEntries || []).filter(
+      (e) => e.campaign_rule_id && activeIdSet.has(e.campaign_rule_id)
+    );
+    if (!selectedCampaignIds) return base;
+    const sel = new Set(selectedCampaignIds.filter((id) => activeIdSet.has(id)));
+    return base.filter((e) => e.campaign_rule_id && sel.has(e.campaign_rule_id));
+  }, [allActiveEntries, activeIdSet, selectedCampaignIds]);
+
+  const toggleCampaign = (id: string) => {
+    setSelectedCampaignIds((prev) => {
+      const base = prev ?? campaignOptions.map((o) => o.id);
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
+  };
 
   useEffect(() => {
     supabase
