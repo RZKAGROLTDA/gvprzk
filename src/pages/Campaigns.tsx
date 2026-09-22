@@ -1916,6 +1916,19 @@ const SellerSummaryTab: React.FC = () => {
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
+              <div className="min-w-[220px]">
+                <Label className="text-[10px] uppercase text-muted-foreground">Campanhas</Label>
+                <CampaignMultiSelect
+                  options={campaignOptions}
+                  selected={selectedCampaignIds}
+                  onToggle={toggleCampaign}
+                  onSelectCurrent={() => setSelectedCampaignIds(null)}
+                  onSelectAll={() => setSelectedCampaignIds(null)}
+                  onClear={() => setSelectedCampaignIds([])}
+                  hideCurrentAction
+                  allLabel="Todas as campanhas ativas"
+                />
+              </div>
               <div className="min-w-[180px]">
                 <Label className="text-[10px] uppercase text-muted-foreground">Filial</Label>
                 <Select value={filterFilial} onValueChange={setFilterFilial}>
