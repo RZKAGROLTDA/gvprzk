@@ -305,11 +305,16 @@ const CampaignMultiSelect: React.FC<{
           <Megaphone className="h-4 w-4 ml-2 shrink-0 opacity-60" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[340px] p-0" align="start">
-        <div className="flex flex-wrap gap-1 p-2 border-b">
-          <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={onSelectCurrent}>
-            Selecionar todas as vigentes
-          </Button>
+      <PopoverContent
+        className="w-[340px] p-0 flex flex-col max-h-[min(70vh,26rem)]"
+        align="start"
+      >
+        <div className="flex flex-wrap gap-1 p-2 border-b shrink-0">
+          {!hideCurrentAction && (
+            <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={onSelectCurrent}>
+              Selecionar todas as vigentes
+            </Button>
+          )}
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onSelectAll}>
             Todas
           </Button>
@@ -317,7 +322,7 @@ const CampaignMultiSelect: React.FC<{
             Limpar
           </Button>
         </div>
-        <ScrollArea className="max-h-72">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="p-1">
             {options.length === 0 && (
               <p className="text-xs text-muted-foreground p-3">Nenhuma campanha cadastrada.</p>
@@ -347,7 +352,7 @@ const CampaignMultiSelect: React.FC<{
               </label>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
