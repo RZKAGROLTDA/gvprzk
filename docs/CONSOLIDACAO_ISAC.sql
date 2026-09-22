@@ -40,7 +40,8 @@ CREATE TEMP TABLE tmp_baseline ON COMMIT DROP AS
   UNION ALL SELECT 'pops_p',         count(*) FROM public.pops_machines    WHERE executed_by = '04884288-d6bc-4f40-9857-519abae62605'
   UNION ALL SELECT 'validacoes_p',   count(*) FROM public.client_equipment WHERE validated_by = '04884288-d6bc-4f40-9857-519abae62605'
   UNION ALL SELECT 'trainings_p',    count(*) FROM public.trainings        WHERE user_id = '04884288-d6bc-4f40-9857-519abae62605'
-  UNION ALL SELECT 'roles_outros',   count(*) FROM public.user_roles       WHERE user_id <> '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4';
+  UNION ALL SELECT 'roles_outros',   count(*) FROM public.user_roles       WHERE user_id <> '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4'
+  UNION ALL SELECT 'filiais_isac',   count(*) FROM public.user_filiais     WHERE user_id IN ('513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4','04884288-d6bc-4f40-9857-519abae62605') AND active;
 
 -- ---------------------------------------------------------------- [A] INFRA
 CREATE TABLE IF NOT EXISTS public.user_account_links (
@@ -165,7 +166,14 @@ DELETE FROM public.admin_users WHERE user_id = '513dcb05-eab7-4d5c-acfd-d6b1f9bf
 
 -- D1 — Relatório por vendedor/RAC: atividades, visitas, ligações, checklists,
 --      prospecções, clientes únicos, vendas (total/parcial) e conversão.
-CREATE OR REPLACE FUNCTION public.get_performance_by_seller_v2(p_start_date date DEFAULT NULL::date, p_end_date date DEFAULT NULL::date, p_filial_id uuid DEFAULT NULL::uuid)
+--      DIVERGÊNCIA CORRIGIDA: a tela "Performance dos Vendedores"
+--      (src/pages/PerformanceBySeller.tsx) sempre enviou p_responsible_user_id,
+--      parâmetro que a função NÃO possuía — o filtro de consultor era ignorado
+--      silenciosamente. A assinatura antiga de 3 parâmetros é substituída pela de
+--      4 (o 4º com DEFAULT NULL, então chamadas antigas continuam válidas e sem
+--      criar overload). Filtrar pela conta antiga resolve para o titular.
+DROP FUNCTION IF EXISTS public.get_performance_by_seller_v2(date, date, uuid);
+CREATE OR REPLACE FUNCTION public.get_performance_by_seller_v2(p_start_date date DEFAULT NULL::date, p_end_date date DEFAULT NULL::date, p_filial_id uuid DEFAULT NULL::uuid, p_responsible_user_id uuid DEFAULT NULL::uuid)
  RETURNS TABLE(responsible_user_id uuid, responsible_name text, filial_id uuid, filial_nome text, total_activities bigint, visitas bigint, ligacoes bigint, checklists bigint, prospections bigint, unique_clients bigint, sales_total_count bigint, sales_total_value numeric, sales_partial_count bigint, sales_partial_value numeric)
  LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
 AS $function$
@@ -174,6 +182,7 @@ DECLARE
   v_is_manager boolean := has_role(v_uid, 'manager'::app_role) OR has_role(v_uid, 'admin'::app_role);
   v_is_supervisor boolean := has_role(v_uid, 'supervisor'::app_role);
   v_filiais uuid[];
+  v_target uuid := public.resolve_primary_user_id(p_responsible_user_id); -- CONSOLIDA o filtro
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
   v_filiais := public.effective_filial_ids(p_filial_id);
@@ -193,6 +202,7 @@ BEGIN
     WHERE (p_start_date IS NULL OR tf.activity_date::date >= p_start_date)
       AND (p_end_date IS NULL OR tf.activity_date::date <= p_end_date)
       AND (cardinality(v_filiais) = 0 OR tf.filial_id = ANY(v_filiais))
+      AND (v_target IS NULL OR public.resolve_primary_user_id(tf.responsible_user_id) = v_target) -- CONSOLIDA
       AND (v_is_manager OR tf.responsible_user_id = v_uid OR (v_is_supervisor AND tf.filial_id = ANY(v_filiais)))
   ),
   acts AS (
@@ -229,6 +239,9 @@ BEGIN
   ORDER BY a.total_activities DESC;
 END;
 $function$;
+
+REVOKE ALL ON FUNCTION public.get_performance_by_seller_v2(date, date, uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_performance_by_seller_v2(date, date, uuid, uuid) TO authenticated, service_role;
 
 -- D2 — KPIs de atividades/vendas (usa o mesmo conceito no filtro por responsável).
 CREATE OR REPLACE FUNCTION public.get_activity_metrics_v2(p_start_date date DEFAULT NULL::date, p_end_date date DEFAULT NULL::date, p_filial_id uuid DEFAULT NULL::uuid, p_responsible_user_id uuid DEFAULT NULL::uuid)
@@ -609,6 +622,413 @@ BEGIN
   );
 END $function$;
 
+-- D6 — ANÁLISE GERENCIAL > RESUMO POR VENDEDOR.
+--      Identidade consolidada em resolve_primary_user_id(); clientes atendidos
+--      continuam COUNT(DISTINCT client_key) (nunca soma simples); os valores
+--      comerciais vêm de tasks/opportunities (nunca de followups) e são anexados a
+--      UMA única linha do colaborador, para não multiplicar por filial.
+CREATE OR REPLACE FUNCTION public.get_management_seller_summary(p_start_date date DEFAULT NULL::date, p_end_date date DEFAULT NULL::date, p_filial_id uuid DEFAULT NULL::uuid, p_seller_role text DEFAULT NULL::text, p_seller_id uuid DEFAULT NULL::uuid, p_task_types text[] DEFAULT NULL::text[])
+ RETURNS TABLE(seller_id uuid, seller_name text, seller_role text, filial text, visitas bigint, ligacoes bigint, checklists bigint, total_atividades bigint, clientes_atendidos bigint, oportunidade_gerada numeric, valor_convertido numeric, taxa_conversao numeric, ultima_atividade timestamp with time zone)
+ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_is_admin boolean;
+  v_is_manager boolean;
+  v_is_supervisor boolean;
+  v_supervisor_filial uuid;
+  v_seller uuid := public.resolve_primary_user_id(p_seller_id);  -- CONSOLIDA o filtro
+BEGIN
+  IF v_user_id IS NULL THEN RETURN; END IF;
+  v_is_admin := has_role(v_user_id, 'admin'::app_role);
+  v_is_manager := has_role(v_user_id, 'manager'::app_role);
+  v_is_supervisor := has_role(v_user_id, 'supervisor'::app_role);
+  IF v_is_supervisor THEN v_supervisor_filial := get_supervisor_filial_id(v_user_id); END IF;
+
+  RETURN QUERY
+  WITH ops AS (
+    SELECT
+      public.resolve_primary_user_id(tf.responsible_user_id) AS seller_id,  -- CONSOLIDA
+      tf.filial_id,
+      COUNT(*) FILTER (WHERE tf.activity_type::text IN ('visita','prospection')) AS visitas,
+      COUNT(*) FILTER (WHERE tf.activity_type::text = 'ligacao') AS ligacoes,
+      COUNT(*) FILTER (WHERE tf.activity_type::text = 'checklist') AS checklists,
+      COUNT(*) AS total_atividades,
+      COUNT(DISTINCT COALESCE(NULLIF(tf.client_code,''), LOWER(TRIM(tf.client_name)))) AS clientes_atendidos,
+      MAX(tf.activity_date) AS ultima_atividade
+    FROM task_followups tf
+    WHERE
+      (p_start_date IS NULL OR tf.activity_date::date >= p_start_date)
+      AND (p_end_date IS NULL OR tf.activity_date::date <= p_end_date)
+      AND (p_filial_id IS NULL OR tf.filial_id = p_filial_id)
+      AND (v_seller IS NULL OR public.resolve_primary_user_id(tf.responsible_user_id) = v_seller)
+      AND (p_task_types IS NULL OR tf.activity_type::text = ANY(p_task_types))
+      AND (
+        v_is_admin OR v_is_manager
+        OR (v_is_supervisor AND tf.filial_id = v_supervisor_filial)
+        OR tf.responsible_user_id = v_user_id
+      )
+    GROUP BY 1, tf.filial_id
+  ),
+  ops_rank AS (
+    SELECT o.*, ROW_NUMBER() OVER (PARTITION BY o.seller_id
+                                   ORDER BY o.total_atividades DESC, o.filial_id) AS rn
+    FROM ops o
+  ),
+  comm_tasks AS (  -- uma linha por TAREFA de origem (nunca por followup)
+    SELECT DISTINCT public.resolve_primary_user_id(t.created_by) AS seller_id, t.id AS task_id
+    FROM tasks t
+    JOIN profiles pp ON pp.user_id = t.created_by
+    WHERE
+      (p_start_date IS NULL OR t.start_date >= p_start_date)
+      AND (p_end_date IS NULL OR t.start_date <= p_end_date)
+      AND (p_filial_id IS NULL OR pp.filial_id = p_filial_id)
+      AND (v_seller IS NULL OR public.resolve_primary_user_id(t.created_by) = v_seller)
+      AND (
+        v_is_admin OR v_is_manager
+        OR (v_is_supervisor AND pp.filial_id = v_supervisor_filial)
+        OR t.created_by = v_user_id
+      )
+  ),
+  comm AS (
+    SELECT ct.seller_id,
+      COALESCE(SUM(o.valor_total_oportunidade), 0) AS oportunidade_gerada,
+      COALESCE(SUM(o.valor_venda_fechada), 0) AS valor_convertido
+    FROM comm_tasks ct
+    LEFT JOIN opportunities o ON o.task_id = ct.task_id
+    GROUP BY ct.seller_id
+  ),
+  primary_role AS (
+    SELECT ur.user_id, (ARRAY_AGG(ur.role::text ORDER BY
+      CASE ur.role::text WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'supervisor' THEN 3
+        WHEN 'rac' THEN 4 WHEN 'cpa' THEN 4 WHEN 'csa' THEN 4 ELSE 5 END))[1] AS role
+    FROM user_roles ur GROUP BY ur.user_id
+  )
+  SELECT
+    ops_rank.seller_id,
+    p.name AS seller_name,
+    COALESCE(pr.role, 'consultant') AS seller_role,
+    f.nome AS filial,
+    ops_rank.visitas, ops_rank.ligacoes, ops_rank.checklists,
+    ops_rank.total_atividades, ops_rank.clientes_atendidos,
+    CASE WHEN ops_rank.rn = 1 THEN COALESCE(comm.oportunidade_gerada, 0) ELSE 0 END AS oportunidade_gerada,
+    CASE WHEN ops_rank.rn = 1 THEN COALESCE(comm.valor_convertido, 0) ELSE 0 END AS valor_convertido,
+    CASE WHEN ops_rank.rn = 1 AND COALESCE(comm.oportunidade_gerada, 0) > 0
+      THEN ROUND(comm.valor_convertido / comm.oportunidade_gerada * 100, 2)
+      ELSE 0 END AS taxa_conversao,
+    ops_rank.ultima_atividade
+  FROM ops_rank
+  LEFT JOIN comm ON comm.seller_id = ops_rank.seller_id
+  LEFT JOIN profiles p ON p.user_id = ops_rank.seller_id
+  LEFT JOIN filiais f ON f.id = ops_rank.filial_id
+  LEFT JOIN primary_role pr ON pr.user_id = ops_rank.seller_id
+  WHERE (p_seller_role IS NULL OR COALESCE(pr.role, 'consultant') = p_seller_role)
+  ORDER BY COALESCE(comm.valor_convertido, 0) DESC, ops_rank.total_atividades DESC;
+END;
+$function$;
+
+-- D7 — ANÁLISE GERENCIAL > DETALHE POR CLIENTE.
+--      Mesma resolução de titular; cliente permanece individualizado por client_key;
+--      valores comerciais por (cliente, titular) contados uma única vez.
+CREATE OR REPLACE FUNCTION public.get_management_client_details(p_start_date date DEFAULT NULL::date, p_end_date date DEFAULT NULL::date, p_filial_id uuid DEFAULT NULL::uuid, p_seller_role text DEFAULT NULL::text, p_seller_id uuid DEFAULT NULL::uuid, p_task_types text[] DEFAULT NULL::text[])
+ RETURNS TABLE(client_name text, seller_id uuid, seller_name text, seller_role text, filial text, total_atividades bigint, visitas bigint, ligacoes bigint, checklists bigint, oportunidade_gerada numeric, valor_convertido numeric, status_cliente text, ultima_atividade timestamp with time zone)
+ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_is_admin boolean;
+  v_is_manager boolean;
+  v_is_supervisor boolean;
+  v_supervisor_filial uuid;
+  v_seller uuid := public.resolve_primary_user_id(p_seller_id);  -- CONSOLIDA o filtro
+BEGIN
+  IF v_user_id IS NULL THEN RETURN; END IF;
+  v_is_admin := has_role(v_user_id, 'admin'::app_role);
+  v_is_manager := has_role(v_user_id, 'manager'::app_role);
+  v_is_supervisor := has_role(v_user_id, 'supervisor'::app_role);
+  IF v_is_supervisor THEN v_supervisor_filial := get_supervisor_filial_id(v_user_id); END IF;
+
+  RETURN QUERY
+  WITH ops AS (
+    SELECT
+      COALESCE(NULLIF(tf.client_code,''), LOWER(TRIM(tf.client_name))) AS client_key,
+      MAX(tf.client_name) AS client_name,
+      public.resolve_primary_user_id(tf.responsible_user_id) AS seller_id,  -- CONSOLIDA
+      tf.filial_id,
+      COUNT(*) AS total_atividades,
+      COUNT(*) FILTER (WHERE tf.activity_type::text IN ('visita','prospection')) AS visitas,
+      COUNT(*) FILTER (WHERE tf.activity_type::text = 'ligacao') AS ligacoes,
+      COUNT(*) FILTER (WHERE tf.activity_type::text = 'checklist') AS checklists,
+      MAX(tf.activity_date) AS ultima_atividade
+    FROM task_followups tf
+    WHERE
+      (p_start_date IS NULL OR tf.activity_date::date >= p_start_date)
+      AND (p_end_date IS NULL OR tf.activity_date::date <= p_end_date)
+      AND (p_filial_id IS NULL OR tf.filial_id = p_filial_id)
+      AND (v_seller IS NULL OR public.resolve_primary_user_id(tf.responsible_user_id) = v_seller)
+      AND (p_task_types IS NULL OR tf.activity_type::text = ANY(p_task_types))
+      AND (
+        v_is_admin OR v_is_manager
+        OR (v_is_supervisor AND tf.filial_id = v_supervisor_filial)
+        OR tf.responsible_user_id = v_user_id
+      )
+    GROUP BY 1, 3, tf.filial_id
+  ),
+  ops_rank AS (
+    SELECT o.*, ROW_NUMBER() OVER (PARTITION BY o.client_key, o.seller_id
+                                   ORDER BY o.total_atividades DESC, o.filial_id) AS rn
+    FROM ops o
+  ),
+  comm_tasks AS (  -- uma linha por TAREFA de origem
+    SELECT DISTINCT
+      COALESCE(NULLIF(t.clientcode,''), LOWER(TRIM(t.client))) AS client_key,
+      public.resolve_primary_user_id(t.created_by) AS seller_id,           -- CONSOLIDA
+      t.id AS task_id
+    FROM tasks t
+    WHERE (p_start_date IS NULL OR t.start_date >= p_start_date)
+      AND (p_end_date IS NULL OR t.start_date <= p_end_date)
+  ),
+  comm AS (
+    SELECT ct.client_key, ct.seller_id,
+      COALESCE(SUM(o.valor_total_oportunidade), 0) AS oportunidade_gerada,
+      COALESCE(SUM(o.valor_venda_fechada), 0) AS valor_convertido,
+      bool_or(o.status = 'Perdido') AS has_perdido
+    FROM comm_tasks ct
+    LEFT JOIN opportunities o ON o.task_id = ct.task_id
+    GROUP BY ct.client_key, ct.seller_id
+  ),
+  primary_role AS (
+    SELECT ur.user_id, (ARRAY_AGG(ur.role::text ORDER BY
+      CASE ur.role::text WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'supervisor' THEN 3
+        WHEN 'rac' THEN 4 WHEN 'cpa' THEN 4 WHEN 'csa' THEN 4 ELSE 5 END))[1] AS role
+    FROM user_roles ur GROUP BY ur.user_id
+  )
+  SELECT
+    ops_rank.client_name,
+    ops_rank.seller_id,
+    p.name AS seller_name,
+    COALESCE(pr.role, 'consultant') AS seller_role,
+    f.nome AS filial,
+    ops_rank.total_atividades, ops_rank.visitas, ops_rank.ligacoes, ops_rank.checklists,
+    CASE WHEN ops_rank.rn = 1 THEN COALESCE(comm.oportunidade_gerada, 0) ELSE 0 END AS oportunidade_gerada,
+    CASE WHEN ops_rank.rn = 1 THEN COALESCE(comm.valor_convertido, 0) ELSE 0 END AS valor_convertido,
+    CASE
+      WHEN COALESCE(comm.valor_convertido, 0) > 0 THEN 'Ganho'
+      WHEN COALESCE(comm.has_perdido, false) THEN 'Perdido'
+      WHEN COALESCE(comm.oportunidade_gerada, 0) > 0 THEN 'Prospect'
+      ELSE 'Sem Oportunidade'
+    END AS status_cliente,
+    ops_rank.ultima_atividade
+  FROM ops_rank
+  LEFT JOIN comm ON comm.client_key = ops_rank.client_key AND comm.seller_id = ops_rank.seller_id
+  LEFT JOIN profiles p ON p.user_id = ops_rank.seller_id
+  LEFT JOIN filiais f ON f.id = ops_rank.filial_id
+  LEFT JOIN primary_role pr ON pr.user_id = ops_rank.seller_id
+  WHERE (p_seller_role IS NULL OR COALESCE(pr.role, 'consultant') = p_seller_role)
+  ORDER BY COALESCE(comm.valor_convertido, 0) DESC, ops_rank.total_atividades DESC;
+END;
+$function$;
+
+-- D8 — OPORTUNIDADES DE SERVIÇO > RESUMO POR CRIADOR.
+--      Somente a IDENTIDADE do criador é resolvida para o titular (nome, cargo e
+--      filial passam a vir do perfil titular). created_by dos registros NÃO muda,
+--      e o escopo/permissão continua avaliado pela conta que criou a tarefa.
+CREATE OR REPLACE FUNCTION public.get_service_opportunities_summary(p_start_date date DEFAULT NULL::date, p_end_date date DEFAULT NULL::date, p_filial_id uuid DEFAULT NULL::uuid, p_seller_role text DEFAULT NULL::text, p_seller_id uuid DEFAULT NULL::uuid, p_service_type text DEFAULT NULL::text, p_severity text DEFAULT NULL::text, p_machine_type text DEFAULT NULL::text, p_client text DEFAULT NULL::text)
+ RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_is_admin boolean;
+  v_is_manager boolean;
+  v_is_supervisor boolean;
+  v_supervisor_filial uuid;
+  v_seller uuid := public.resolve_primary_user_id(p_seller_id);  -- CONSOLIDA o filtro
+  v_result jsonb;
+BEGIN
+  IF v_user_id IS NULL THEN RETURN NULL; END IF;
+  v_is_admin := has_role(v_user_id, 'admin'::app_role);
+  v_is_manager := has_role(v_user_id, 'manager'::app_role);
+  v_is_supervisor := has_role(v_user_id, 'supervisor'::app_role);
+  IF v_is_supervisor THEN v_supervisor_filial := get_supervisor_filial_id(v_user_id); END IF;
+
+  WITH primary_role AS (
+    SELECT ur.user_id,
+      (ARRAY_AGG(ur.role::text ORDER BY
+        CASE ur.role::text WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 WHEN 'supervisor' THEN 3
+          WHEN 'rac' THEN 4 WHEN 'cpa' THEN 4 WHEN 'csa' THEN 4 ELSE 5 END))[1] AS role
+    FROM user_roles ur
+    GROUP BY ur.user_id
+  ),
+  chk AS (
+    SELECT
+      t.id AS task_id,
+      t.start_date,
+      COALESCE(f.nome, NULLIF(TRIM(t.filial), ''), 'Sem filial') AS filial_nome,
+      pp.filial_id,
+      public.resolve_primary_user_id(t.created_by) AS created_by,   -- CONSOLIDA (só identidade)
+      COALESCE(NULLIF(TRIM(pf.name), ''), NULLIF(TRIM(t.responsible), ''), 'Não informado') AS seller_name,
+      COALESCE(pr.role, 'consultant') AS seller_role,
+      LOWER(TRIM(COALESCE(NULLIF(TRIM(t.clientcode), ''), t.client, ''))) AS client_key,
+      UPPER(COALESCE(
+        NULLIF(TRIM(t.checklist_machine->>'chassi_serie'), ''),
+        NULLIF(TRIM(t.checklist_machine->>'modelo'), '') || '|' || LOWER(TRIM(COALESCE(NULLIF(TRIM(t.clientcode), ''), t.client, ''))),
+        'task:' || t.id::text
+      )) AS machine_key
+    FROM tasks t
+    LEFT JOIN profiles pp ON pp.user_id = t.created_by
+    LEFT JOIN profiles pf ON pf.user_id = public.resolve_primary_user_id(t.created_by)
+    LEFT JOIN filiais f ON f.id = pp.filial_id
+    LEFT JOIN primary_role pr ON pr.user_id = public.resolve_primary_user_id(t.created_by)
+    WHERE t.task_type = 'checklist'
+      AND (p_start_date IS NULL OR t.start_date >= p_start_date)
+      AND (p_end_date IS NULL OR t.start_date <= p_end_date)
+      AND (p_filial_id IS NULL OR pp.filial_id = p_filial_id)
+      AND (v_seller IS NULL OR public.resolve_primary_user_id(t.created_by) = v_seller)
+      AND (p_seller_role IS NULL OR COALESCE(pr.role, 'consultant') = p_seller_role)
+      AND (p_machine_type IS NULL OR LOWER(TRIM(COALESCE(t.checklist_machine->>'tipo',''))) = LOWER(TRIM(p_machine_type)))
+      AND (p_client IS NULL OR t.client ILIKE '%' || p_client || '%' OR COALESCE(t.clientcode,'') ILIKE '%' || p_client || '%')
+      AND (
+        v_is_admin OR v_is_manager
+        OR (v_is_supervisor AND pp.filial_id = v_supervisor_filial)
+        OR t.created_by = v_user_id
+      )
+  ),
+  items AS (
+    SELECT c.*, p.name AS item_name, p.response_status
+    FROM chk c
+    JOIN products p ON p.task_id = c.task_id
+  ),
+  opp AS (
+    SELECT i.*, map_checklist_item_to_service(i.item_name) AS service_type,
+      CASE i.response_status WHEN 'nao_conforme' THEN 'alta' ELSE 'media' END AS severity
+    FROM items i
+    WHERE i.response_status IN ('atencao','nao_conforme')
+      AND map_checklist_item_to_service(i.item_name) IS NOT NULL
+  ),
+  opp_f AS (
+    SELECT * FROM opp
+    WHERE (p_service_type IS NULL OR service_type = p_service_type)
+      AND (p_severity IS NULL OR severity = LOWER(TRIM(p_severity)))
+  ),
+  kpis AS (
+    SELECT
+      (SELECT COUNT(*) FROM opp_f) AS oportunidades,
+      (SELECT COUNT(DISTINCT client_key) FROM opp_f) AS clientes,
+      (SELECT COUNT(DISTINCT machine_key) FROM opp_f) AS maquinas,
+      (SELECT COUNT(DISTINCT task_id) FROM opp_f) AS checklists_com_opp,
+      (SELECT COUNT(*) FROM chk) AS checklists_periodo,
+      (SELECT COUNT(*) FROM items WHERE response_status IS NULL) AS itens_nao_avaliados
+  ),
+  by_service AS (
+    SELECT service_type,
+      COUNT(*) AS oportunidades,
+      COUNT(*) FILTER (WHERE severity = 'alta') AS alta,
+      COUNT(*) FILTER (WHERE severity = 'media') AS media,
+      COUNT(DISTINCT client_key) AS clientes,
+      COUNT(DISTINCT machine_key) AS maquinas,
+      COUNT(DISTINCT task_id) AS checklists
+    FROM opp_f GROUP BY service_type
+  ),
+  by_filial AS (
+    SELECT filial_nome,
+      COUNT(*) AS oportunidades,
+      COUNT(*) FILTER (WHERE severity = 'alta') AS alta,
+      COUNT(*) FILTER (WHERE severity = 'media') AS media,
+      COUNT(DISTINCT client_key) AS clientes,
+      COUNT(DISTINCT task_id) AS checklists
+    FROM opp_f GROUP BY filial_nome
+  ),
+  by_seller AS (
+    SELECT created_by AS seller_id, seller_name, seller_role, filial_nome,
+      COUNT(*) AS oportunidades,
+      COUNT(*) FILTER (WHERE severity = 'alta') AS alta,
+      COUNT(*) FILTER (WHERE severity = 'media') AS media,
+      COUNT(DISTINCT client_key) AS clientes,
+      COUNT(DISTINCT task_id) AS checklists
+    FROM opp_f GROUP BY created_by, seller_name, seller_role, filial_nome
+  ),
+  by_month AS (
+    SELECT to_char(start_date, 'YYYY-MM') AS mes,
+      COUNT(*) AS oportunidades,
+      COUNT(*) FILTER (WHERE severity = 'alta') AS alta,
+      COUNT(*) FILTER (WHERE severity = 'media') AS media,
+      COUNT(DISTINCT task_id) AS checklists
+    FROM opp_f GROUP BY 1
+  )
+  SELECT jsonb_build_object(
+    'kpis', (SELECT jsonb_build_object(
+        'oportunidades', k.oportunidades,
+        'clientes', k.clientes,
+        'maquinas', k.maquinas,
+        'checklists_com_oportunidade', k.checklists_com_opp,
+        'checklists_periodo', k.checklists_periodo,
+        'taxa_oportunidade', CASE WHEN k.checklists_periodo > 0
+          THEN ROUND(k.checklists_com_opp::numeric / k.checklists_periodo * 100, 1) ELSE 0 END,
+        'itens_nao_avaliados', k.itens_nao_avaliados
+      ) FROM kpis k),
+    'by_service', COALESCE((SELECT jsonb_agg(to_jsonb(s) ORDER BY s.oportunidades DESC, s.service_type) FROM by_service s), '[]'::jsonb),
+    'by_filial', COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.oportunidades DESC, x.filial_nome) FROM by_filial x), '[]'::jsonb),
+    'by_seller', COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.oportunidades DESC, x.seller_name) FROM by_seller x), '[]'::jsonb),
+    'by_month', COALESCE((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.mes) FROM by_month x), '[]'::jsonb)
+  ) INTO v_result;
+
+  RETURN v_result;
+END;
+$function$;
+
+-- D9 — VERSÃO ANTIGA DO RELATÓRIO POR VENDEDOR (mantida, não removida nesta etapa).
+--      Consolida por titular; a conta antiga já não entra em approved_sellers
+--      (fica inativa e sem cargo), então não gera segunda linha.
+CREATE OR REPLACE FUNCTION public.get_performance_by_seller(p_date_from date DEFAULT NULL::date, p_date_to date DEFAULT NULL::date)
+ RETURNS TABLE(user_id uuid, user_name text, user_role text, visitas bigint, checklist bigint, ligacoes bigint, prospects bigint, prospects_value numeric, sales_value numeric, conversion_rate numeric)
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+BEGIN
+  RETURN QUERY
+  WITH approved_sellers AS (
+    SELECT DISTINCT ON (p.user_id) p.user_id, p.name, ur.role
+    FROM profiles p
+    JOIN user_roles ur ON ur.user_id = p.user_id
+    WHERE p.approval_status = 'approved'
+      AND ur.role IN ('consultant', 'manager', 'admin')
+      AND NOT EXISTS (SELECT 1 FROM user_account_links l WHERE l.alias_user_id = p.user_id)  -- CONSOLIDA
+    ORDER BY p.user_id, p.name
+  ),
+  task_stats AS (
+    SELECT
+      public.resolve_primary_user_id(t.created_by) AS created_by,  -- CONSOLIDA
+      COUNT(*) FILTER (WHERE t.task_type IN ('prospection', 'visita'))::bigint AS visitas,
+      COUNT(*) FILTER (WHERE t.task_type = 'checklist')::bigint AS checklist,
+      COUNT(*) FILTER (WHERE t.task_type = 'ligacao')::bigint AS ligacoes,
+      COUNT(*) FILTER (WHERE t.is_prospect = true)::bigint AS prospects,
+      COALESCE(SUM(t.sales_value) FILTER (WHERE t.is_prospect = true), 0)::numeric AS prospects_value,
+      COALESCE(SUM(t.sales_value) FILTER (WHERE t.sales_confirmed = true), 0)::numeric AS sales_value
+    FROM tasks t
+    JOIN approved_sellers s ON s.user_id = public.resolve_primary_user_id(t.created_by)
+    WHERE (p_date_from IS NULL OR t.start_date >= p_date_from)
+      AND (p_date_to IS NULL OR t.end_date <= p_date_to)
+    GROUP BY 1
+  )
+  SELECT
+    s.user_id,
+    s.name::text,
+    s.role::text,
+    COALESCE(ts.visitas, 0)::bigint,
+    COALESCE(ts.checklist, 0)::bigint,
+    COALESCE(ts.ligacoes, 0)::bigint,
+    COALESCE(ts.prospects, 0)::bigint,
+    COALESCE(ts.prospects_value, 0)::numeric,
+    COALESCE(ts.sales_value, 0)::numeric,
+    CASE WHEN COALESCE(ts.prospects_value, 0) > 0
+      THEN ROUND((COALESCE(ts.sales_value, 0) / ts.prospects_value * 100)::numeric, 2)
+      ELSE 0::numeric
+    END
+  FROM approved_sellers s
+  LEFT JOIN task_stats ts ON ts.created_by = s.user_id
+  ORDER BY COALESCE(ts.sales_value, 0) DESC;
+END;
+$function$;
+
 -- =========================================================== [E] VALIDAÇÕES
 DO $$
 DECLARE
@@ -708,7 +1128,7 @@ BEGIN
           OR p.filial_id IS DISTINCT FROM b.filial_id OR p.role <> b.role);
   IF n <> 0 THEN RAISE EXCEPTION 'V8: % perfis de outros usuarios alterados', n; END IF;
   SELECT count(*) INTO n FROM public.user_roles WHERE user_id <> v_alias;
-  SELECT c INTO m FROM tmp_baseline WHERE k = 'roles_outros';
+  SELECT c INTO m FROM tmp_baseline WHERE tmp_baseline.k = 'roles_outros';
   IF n <> m THEN RAISE EXCEPTION 'V8: cargos de outros usuarios alterados'; END IF;
 
   -- 8b) nenhum vínculo de outro usuário alterado/removido
@@ -741,6 +1161,144 @@ BEGIN
   END IF;
 
   RAISE NOTICE 'TODAS AS VALIDACOES PASSARAM';
+END $$;
+
+-- ============ [F] VALIDAÇÕES DE LEITURA DAS TELAS (exigem sessão autenticada)
+-- Executado em simulação com sessão de admin. Sem sessão (migração), auth.uid() é
+-- NULL, as funções retornam vazio por desenho e este bloco é apenas ignorado.
+DO $$
+DECLARE
+  v_alias   uuid := '513dcb05-eab7-4d5c-acfd-d6b1f9bf9ce4';
+  v_primary uuid := '04884288-d6bc-4f40-9857-519abae62605';
+  n int; m int; k int; b int;
+  nv numeric; mv numeric;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE NOTICE 'F: sem sessao autenticada — validacoes de leitura ignoradas';
+    RETURN;
+  END IF;
+
+  -- V10) filtro de consultor em get_performance_by_seller_v2:
+  --      alias e titular devem retornar EXATAMENTE o mesmo consolidado.
+  SELECT COALESCE(sum(total_activities),0), COALESCE(sum(visitas),0), COALESCE(sum(ligacoes),0)
+    INTO n, m, k FROM public.get_performance_by_seller_v2(NULL, NULL, NULL, v_primary);
+  SELECT COALESCE(sum(total_activities),0) INTO b
+    FROM public.get_performance_by_seller_v2(NULL, NULL, NULL, v_alias);
+  IF n <> b THEN
+    RAISE EXCEPTION 'V10: filtro pela conta antiga (%) difere do titular (%)', b, n;
+  END IF;
+  SELECT count(*) INTO b FROM public.task_followups
+   WHERE responsible_user_id IN (v_alias, v_primary);
+  IF n <> b THEN RAISE EXCEPTION 'V10: atividades consolidadas % <> soma das contas %', n, b; END IF;
+  IF (m + k) <> n THEN
+    RAISE EXCEPTION 'V10: % atividades <> % visitas + % ligacoes (outros tipos presentes)', n, m, k;
+  END IF;
+  RAISE NOTICE 'V10 OK — Isac consolidado: % atividades = % visitas + % ligacoes', n, m, k;
+  SELECT count(*) INTO b FROM public.get_performance_by_seller_v2(NULL, NULL, NULL, v_primary)
+   WHERE responsible_user_id = v_alias;
+  IF b <> 0 THEN RAISE EXCEPTION 'V10: conta antiga ainda aparece como linha propria'; END IF;
+
+  -- V11) vendas sem multiplicação por follow-up: contagem = tarefas distintas.
+  SELECT COALESCE(sum(sales_total_count),0), COALESCE(sum(sales_partial_count),0)
+    INTO n, m FROM public.get_performance_by_seller_v2(NULL, NULL, NULL, v_primary);
+  SELECT count(DISTINCT t.id) FILTER (WHERE t.sales_confirmed AND t.sales_type = 'ganho'),
+         count(DISTINCT t.id) FILTER (WHERE t.sales_confirmed AND t.sales_type = 'parcial')
+    INTO k, b
+    FROM public.tasks t
+   WHERE t.id IN (SELECT tf.task_id FROM public.task_followups tf
+                   WHERE tf.responsible_user_id IN (v_alias, v_primary));
+  IF n <> k OR m <> b THEN
+    RAISE EXCEPTION 'V11: vendas multiplicadas (total %/% , parcial %/%)', n, k, m, b;
+  END IF;
+
+  -- V12) ANÁLISE GERENCIAL > RESUMO POR VENDEDOR: 1 linha, sem alias, clientes únicos.
+  SELECT count(*) INTO b FROM public.get_management_seller_summary(NULL, NULL, NULL, NULL, v_alias, NULL);
+  SELECT count(*) INTO n FROM public.get_management_seller_summary(NULL, NULL, NULL, NULL, v_primary, NULL);
+  IF n <> b THEN RAISE EXCEPTION 'V12: resumo por vendedor difere entre alias e titular'; END IF;
+  IF n <> 1 THEN RAISE EXCEPTION 'V12: esperado 1 linha do Isac no resumo, encontrado %', n; END IF;
+  SELECT count(*) INTO b FROM public.get_management_seller_summary(NULL, NULL, NULL, NULL, NULL, NULL)
+   WHERE seller_id = v_alias;
+  IF b <> 0 THEN RAISE EXCEPTION 'V12: conta antiga gera segunda linha no resumo'; END IF;
+  SELECT total_atividades, clientes_atendidos INTO n, m
+    FROM public.get_management_seller_summary(NULL, NULL, NULL, NULL, v_primary, NULL);
+  SELECT count(*), count(DISTINCT COALESCE(NULLIF(tf.client_code,''), LOWER(TRIM(tf.client_name))))
+    INTO k, b FROM public.task_followups tf
+   WHERE tf.responsible_user_id IN (v_alias, v_primary);
+  IF n <> k THEN RAISE EXCEPTION 'V12: atividades do resumo % <> soma das contas %', n, k; END IF;
+  IF m <> b THEN RAISE EXCEPTION 'V12: clientes unicos % <> distintos reais % (soma indevida)', m, b; END IF;
+  RAISE NOTICE 'V12 OK — resumo: 1 linha, % atividades, % clientes unicos', n, m;
+
+  -- V13) ANÁLISE GERENCIAL > DETALHE POR CLIENTE: sem alias, cliente individualizado.
+  SELECT count(*) INTO b FROM public.get_management_client_details(NULL, NULL, NULL, NULL, NULL, NULL)
+   WHERE seller_id = v_alias;
+  IF b <> 0 THEN RAISE EXCEPTION 'V13: conta antiga gera linhas no detalhe por cliente'; END IF;
+  SELECT COALESCE(sum(total_atividades),0), count(*) INTO n, m
+    FROM public.get_management_client_details(NULL, NULL, NULL, NULL, v_primary, NULL);
+  SELECT count(*), count(DISTINCT COALESCE(NULLIF(tf.client_code,''), LOWER(TRIM(tf.client_name))))
+    INTO k, b FROM public.task_followups tf
+   WHERE tf.responsible_user_id IN (v_alias, v_primary);
+  IF n <> k THEN RAISE EXCEPTION 'V13: atividades do detalhe % <> soma das contas %', n, k; END IF;
+  IF m <> b THEN RAISE EXCEPTION 'V13: % linhas de cliente <> % clientes distintos', m, b; END IF;
+  SELECT count(*) INTO b FROM public.get_management_client_details(NULL, NULL, NULL, NULL, v_alias, NULL);
+  IF b <> m THEN RAISE EXCEPTION 'V13: detalhe por cliente difere entre alias e titular'; END IF;
+
+  -- V14) OPORTUNIDADES DE SERVIÇO > RESUMO POR CRIADOR: alias não gera linha.
+  SELECT count(*) INTO b FROM jsonb_array_elements(
+      (public.get_service_opportunities_summary(NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL)) -> 'by_seller') e
+   WHERE (e ->> 'seller_id')::uuid = v_alias;
+  IF b <> 0 THEN RAISE EXCEPTION 'V14: conta antiga gera segunda linha em Oportunidades de Servico'; END IF;
+  SELECT count(*) INTO b FROM jsonb_array_elements(
+      (public.get_service_opportunities_summary(NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL)) -> 'by_seller') e
+   WHERE (e ->> 'seller_id')::uuid = v_primary;
+  IF b > 1 THEN RAISE EXCEPTION 'V14: Isac aparece % vezes em Oportunidades de Servico', b; END IF;
+  SELECT (public.get_service_opportunities_summary(NULL,NULL,NULL,NULL,v_alias,NULL,NULL,NULL,NULL)) -> 'kpis' ->> 'oportunidades',
+         (public.get_service_opportunities_summary(NULL,NULL,NULL,NULL,v_primary,NULL,NULL,NULL,NULL)) -> 'kpis' ->> 'oportunidades'
+    INTO n, m;
+  IF COALESCE(n,0) <> COALESCE(m,0) THEN
+    RAISE EXCEPTION 'V14: filtro por alias (%) difere do titular (%)', n, m;
+  END IF;
+
+  -- V15) versão antiga do relatório por vendedor: alias ausente, titular único.
+  SELECT count(*) INTO b FROM public.get_performance_by_seller(NULL, NULL) WHERE user_id = v_alias;
+  IF b <> 0 THEN RAISE EXCEPTION 'V15: relatorio antigo ainda lista a conta antiga'; END IF;
+  SELECT count(*) INTO b FROM public.get_performance_by_seller(NULL, NULL) WHERE user_id = v_primary;
+  IF b > 1 THEN RAISE EXCEPTION 'V15: relatorio antigo duplica o Isac (% linhas)', b; END IF;
+
+  -- V16) agendamentos, POPS (Large/Small), validações e treinamentos consolidados.
+  SELECT count(*) INTO n FROM public.visit_schedules
+   WHERE public.resolve_primary_user_id(seller_id) = v_primary;
+  RAISE NOTICE 'V16 OK — agendamentos consolidados: %', n;
+  SELECT count(*),
+         count(*) FILTER (WHERE upper(btrim(coalesce(pops_platform,''))) = 'LARGE'),
+         count(*) FILTER (WHERE upper(btrim(coalesce(pops_platform,''))) = 'SMALL')
+    INTO n, m, k FROM public.pops_machines
+   WHERE public.resolve_primary_user_id(executed_by) = v_primary;
+  IF (m + k) <> n THEN
+    RAISE EXCEPTION 'V16: % POPS <> % Large + % Small (plataforma ausente)', n, m, k;
+  END IF;
+  RAISE NOTICE 'V16 OK — POPS consolidados: % = % Large + % Small', n, m, k;
+  SELECT count(*) INTO n FROM public.get_equipment_validators(NULL) WHERE user_id = v_alias;
+  IF n <> 0 THEN RAISE EXCEPTION 'V16: conta antiga ainda aparece como validadora'; END IF;
+  SELECT COALESCE(sum(validated_count),0) INTO n
+    FROM public.get_equipment_validators(NULL) WHERE user_id = v_primary;
+  SELECT count(*) INTO m FROM public.client_equipment WHERE validated_by IN (v_alias, v_primary);
+  IF n <> m THEN RAISE EXCEPTION 'V16: validacoes % <> soma das contas %', n, m; END IF;
+  RAISE NOTICE 'V16 OK — maquinas validadas: %', n;
+  SELECT count(*) INTO n FROM public.trainings
+   WHERE public.resolve_primary_user_id(user_id) = v_primary;
+  RAISE NOTICE 'V16 OK — treinamentos consolidados: %', n;
+
+  -- V17) Filial Ativa preservada: identidade não altera filial/vínculos do titular.
+  IF (SELECT filial_id FROM public.profiles WHERE user_id = v_primary)
+     IS DISTINCT FROM (SELECT filial_id FROM tmp_baseline_profiles WHERE user_id = v_primary) THEN
+    RAISE EXCEPTION 'V17: filial do titular foi alterada';
+  END IF;
+  SELECT count(*) INTO n FROM public.user_filiais
+   WHERE user_id IN (v_alias, v_primary) AND active;
+  SELECT c INTO m FROM tmp_baseline WHERE tmp_baseline.k = 'filiais_isac';
+  IF n <> m THEN RAISE EXCEPTION 'V17: vinculos de filial adicionais alterados (% vs %)', n, m; END IF;
+
+  RAISE NOTICE 'TODAS AS VALIDACOES DE LEITURA PASSARAM';
 END $$;
 
 COMMIT;  -- (qualquer RAISE acima aborta a transação => ROLLBACK automático)
