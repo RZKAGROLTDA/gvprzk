@@ -102,6 +102,11 @@ $$;
 REVOKE ALL ON FUNCTION public.resolve_primary_user_id(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.resolve_primary_user_id(uuid) TO authenticated, service_role;
 
+-- Baseline dos vínculos já existentes (para provar que nenhum outro foi tocado).
+CREATE TEMP TABLE tmp_baseline_links ON COMMIT DROP AS
+  SELECT alias_user_id, primary_user_id FROM public.user_account_links;
+
+
 -- ------------------------------------------------- [B] VÍNCULO DO ISAC (aqui)
 -- created_by: recebe auth.uid() quando houver sessao administrativa; executado por
 -- migracao (sem sessao) fica NULL e a autoria fica registrada em reason.
