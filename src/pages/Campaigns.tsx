@@ -36,7 +36,6 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   getCampaignStatus,
   getCampaignRuleLabel,
@@ -284,13 +283,24 @@ const CampaignMultiSelect: React.FC<{
   onSelectCurrent: () => void;
   onSelectAll: () => void;
   onClear: () => void;
-}> = ({ options, selected, onToggle, onSelectCurrent, onSelectAll, onClear }) => {
+  hideCurrentAction?: boolean;
+  allLabel?: string;
+}> = ({
+  options,
+  selected,
+  onToggle,
+  onSelectCurrent,
+  onSelectAll,
+  onClear,
+  hideCurrentAction,
+  allLabel = 'Todas as campanhas',
+}) => {
   const isChecked = (id: string) => (selected ? selected.includes(id) : true);
   const count = selected ? selected.length : options.length;
 
   const summary =
     selected === null
-      ? 'Todas as campanhas'
+      ? allLabel
       : count === 0
         ? 'Nenhuma campanha'
         : count === 1
@@ -305,11 +315,16 @@ const CampaignMultiSelect: React.FC<{
           <Megaphone className="h-4 w-4 ml-2 shrink-0 opacity-60" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[340px] p-0" align="start">
-        <div className="flex flex-wrap gap-1 p-2 border-b">
-          <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={onSelectCurrent}>
-            Selecionar todas as vigentes
-          </Button>
+      <PopoverContent
+        className="w-[340px] p-0 flex flex-col max-h-[min(70vh,26rem)]"
+        align="start"
+      >
+        <div className="flex flex-wrap gap-1 p-2 border-b shrink-0">
+          {!hideCurrentAction && (
+            <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={onSelectCurrent}>
+              Selecionar todas as vigentes
+            </Button>
+          )}
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onSelectAll}>
             Todas
           </Button>
@@ -317,7 +332,7 @@ const CampaignMultiSelect: React.FC<{
             Limpar
           </Button>
         </div>
-        <ScrollArea className="max-h-72">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="p-1">
             {options.length === 0 && (
               <p className="text-xs text-muted-foreground p-3">Nenhuma campanha cadastrada.</p>
@@ -347,7 +362,7 @@ const CampaignMultiSelect: React.FC<{
               </label>
             ))}
           </div>
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -1648,10 +1663,48 @@ interface SellerInfo {
 
 const SellerSummaryTab: React.FC = () => {
   // Resumo Vendedor considera SOMENTE campanhas ativas
-  const { data: entries, isLoading } = useActiveCampaignClients();
+  const { data: allActiveEntries, isLoading } = useActiveCampaignClients();
+  const { data: rules } = useCampaignRules();
   const [filiais, setFiliais] = useState<{ id: string; nome: string }[]>([]);
   const [sellers, setSellers] = useState<Map<string, SellerInfo>>(new Map());
   const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
+
+  // Filtro de campanhas: somente campanhas ativas/vigentes (encerradas não aparecem)
+  const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[] | null>(null);
+
+  const campaignOptions = useMemo(() => {
+    return (rules || [])
+      .filter((r) => r.active && getCampaignStatus(r) !== 'encerrada')
+      .map((r) => ({
+        id: r.id,
+        label: getCampaignRuleLabel(r),
+        status: getCampaignStatus(r),
+        period: formatPeriod(r),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }, [rules]);
+
+  const activeIdSet = useMemo(
+    () => new Set(campaignOptions.map((o) => o.id)),
+    [campaignOptions]
+  );
+
+  // null = todas as campanhas ativas
+  const entries = useMemo(() => {
+    const base = (allActiveEntries || []).filter(
+      (e) => e.campaign_rule_id && activeIdSet.has(e.campaign_rule_id)
+    );
+    if (!selectedCampaignIds) return base;
+    const sel = new Set(selectedCampaignIds.filter((id) => activeIdSet.has(id)));
+    return base.filter((e) => e.campaign_rule_id && sel.has(e.campaign_rule_id));
+  }, [allActiveEntries, activeIdSet, selectedCampaignIds]);
+
+  const toggleCampaign = (id: string) => {
+    setSelectedCampaignIds((prev) => {
+      const base = prev ?? campaignOptions.map((o) => o.id);
+      return base.includes(id) ? base.filter((x) => x !== id) : [...base, id];
+    });
+  };
 
   useEffect(() => {
     supabase
@@ -1862,6 +1915,19 @@ const SellerSummaryTab: React.FC = () => {
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
+              <div className="min-w-[220px]">
+                <Label className="text-[10px] uppercase text-muted-foreground">Campanhas</Label>
+                <CampaignMultiSelect
+                  options={campaignOptions}
+                  selected={selectedCampaignIds}
+                  onToggle={toggleCampaign}
+                  onSelectCurrent={() => setSelectedCampaignIds(null)}
+                  onSelectAll={() => setSelectedCampaignIds(null)}
+                  onClear={() => setSelectedCampaignIds([])}
+                  hideCurrentAction
+                  allLabel="Todas as campanhas ativas"
+                />
+              </div>
               <div className="min-w-[180px]">
                 <Label className="text-[10px] uppercase text-muted-foreground">Filial</Label>
                 <Select value={filterFilial} onValueChange={setFilterFilial}>
