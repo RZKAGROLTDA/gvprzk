@@ -1160,7 +1160,18 @@ BEGIN
     RAISE EXCEPTION 'V9: perfil antigo duplicado/removido';
   END IF;
 
+  -- V17) Filial Ativa preservada (independente de sessão; roda dentro da transação).
+  IF (SELECT filial_id FROM public.profiles WHERE user_id = v_primary)
+     IS DISTINCT FROM (SELECT filial_id FROM tmp_baseline_profiles WHERE user_id = v_primary) THEN
+    RAISE EXCEPTION 'V17: filial do titular foi alterada';
+  END IF;
+  SELECT count(*) INTO n FROM public.user_filiais
+   WHERE user_id IN (v_alias, v_primary) AND active;
+  SELECT c INTO m FROM tmp_baseline WHERE tmp_baseline.k = 'filiais_isac';
+  IF n <> m THEN RAISE EXCEPTION 'V17: vinculos de filial adicionais alterados (% vs %)', n, m; END IF;
+
   RAISE NOTICE 'TODAS AS VALIDACOES PASSARAM';
+
 END $$;
 
 COMMIT;  -- (qualquer RAISE acima aborta a transação => ROLLBACK integral)
