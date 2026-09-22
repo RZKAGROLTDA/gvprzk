@@ -128,6 +128,29 @@ export const useCampaignClients = () => {
   });
 };
 
+// Somente lançamentos vinculados a campanhas ATIVAS (usado no Resumo Vendedor)
+export const useActiveCampaignClients = () => {
+  return useQuery({
+    queryKey: ['campaign_clients', 'active_rules_only'],
+    queryFn: async () => {
+      const { data: rules, error: rulesError } = await supabase
+        .from('campaign_rules')
+        .select('id')
+        .eq('active', true);
+      if (rulesError) throw rulesError;
+      const activeIds = (rules || []).map((r) => r.id);
+      if (activeIds.length === 0) return [] as CampaignClient[];
+      const { data, error } = await supabase
+        .from('campaign_clients')
+        .select('*')
+        .in('campaign_rule_id', activeIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as CampaignClient[];
+    },
+  });
+};
+
 export const useSearchCampaignClients = (query: string) => {
   return useQuery({
     queryKey: ['search_clients_for_campaigns', query],

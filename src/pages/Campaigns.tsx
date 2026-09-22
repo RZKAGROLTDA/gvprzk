@@ -52,6 +52,7 @@ import { toast } from 'sonner';
 import {
   useCampaignRules,
   useCampaignClients,
+  useActiveCampaignClients,
   useSearchCampaignClients,
   useCreateCampaignRule,
   useUpdateCampaignRule,
@@ -1646,7 +1647,8 @@ interface SellerInfo {
 }
 
 const SellerSummaryTab: React.FC = () => {
-  const { data: entries, isLoading } = useCampaignClients();
+  // Resumo Vendedor considera SOMENTE campanhas ativas
+  const { data: entries, isLoading } = useActiveCampaignClients();
   const [filiais, setFiliais] = useState<{ id: string; nome: string }[]>([]);
   const [sellers, setSellers] = useState<Map<string, SellerInfo>>(new Map());
   const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
