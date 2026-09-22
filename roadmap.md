@@ -62,3 +62,5 @@
 - [ ] Numeros reais A e P + consolidado esperado; idempotencia; ROLLBACK integral
 
 - [ ] Consolidação Isac: aplicar migration (BEGIN/COMMIT + validações E) e depois rodar V10–V17 em sessão autenticada; só então usar o botão Desativar.
+
+- [ ] Consolidação Isac: aplicar definitivo, validar pós-COMMIT em sessão admin e bloquear login da conta antiga
