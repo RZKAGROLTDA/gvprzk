@@ -1669,12 +1669,12 @@ const SellerSummaryTab: React.FC = () => {
   const [sellers, setSellers] = useState<Map<string, SellerInfo>>(new Map());
   const [userRoles, setUserRoles] = useState<Map<string, string>>(new Map());
 
-  // Filtro de campanhas: somente campanhas ativas/vigentes (encerradas não aparecem)
+  // Filtro de campanhas: ativa exclusivamente por active = true (datas não excluem)
   const [selectedCampaignIds, setSelectedCampaignIds] = useState<string[] | null>(null);
 
   const campaignOptions = useMemo(() => {
     return (rules || [])
-      .filter((r) => r.active && getCampaignStatus(r) !== 'encerrada')
+      .filter((r) => r.active)
       .map((r) => ({
         id: r.id,
         label: getCampaignRuleLabel(r),
