@@ -706,12 +706,29 @@ BEGIN
   SELECT c INTO m FROM tmp_baseline WHERE k = 'roles_outros';
   IF n <> m THEN RAISE EXCEPTION 'V8: cargos de outros usuarios alterados'; END IF;
 
+  -- 8b) nenhum vínculo de outro usuário alterado/removido
+  SELECT count(*) INTO n FROM public.user_account_links l
+   WHERE l.alias_user_id <> v_alias
+     AND NOT EXISTS (SELECT 1 FROM tmp_baseline_links b
+                      WHERE b.alias_user_id = l.alias_user_id
+                        AND b.primary_user_id = l.primary_user_id);
+  SELECT count(*) INTO m FROM tmp_baseline_links b
+   WHERE b.alias_user_id <> v_alias
+     AND NOT EXISTS (SELECT 1 FROM public.user_account_links l
+                      WHERE l.alias_user_id = b.alias_user_id
+                        AND l.primary_user_id = b.primary_user_id);
+  IF n <> 0 OR m <> 0 THEN RAISE EXCEPTION 'V8: vinculos de outros usuarios alterados'; END IF;
+
   -- 9) idempotência: repetir vínculo e desativação não gera efeito novo
+  --    (sem ON CONFLICT DO UPDATE: nunca troca o titular silenciosamente)
   INSERT INTO public.user_account_links (alias_user_id, primary_user_id, pm_registration, reason, created_by)
-  VALUES (v_alias, v_primary, 'PM2064', 'reexecucao', v_primary)
+  VALUES (v_alias, v_primary, 'PM2064', 'reexecucao', auth.uid())
   ON CONFLICT (alias_user_id) DO NOTHING;
-  SELECT count(*) INTO n FROM public.user_account_links;
+  SELECT count(*) INTO n FROM public.user_account_links WHERE alias_user_id = v_alias;
   IF n <> 1 THEN RAISE EXCEPTION 'V9: vinculo duplicado na reexecucao'; END IF;
+  IF (SELECT primary_user_id FROM public.user_account_links WHERE alias_user_id = v_alias) <> v_primary THEN
+    RAISE EXCEPTION 'V9: titular do alias mudou na reexecucao';
+  END IF;
   UPDATE public.profiles SET employment_status = 'inactive'
    WHERE user_id = v_alias AND employment_status <> 'inactive';
   IF (SELECT count(*) FROM public.profiles WHERE user_id = v_alias) <> 1 THEN
