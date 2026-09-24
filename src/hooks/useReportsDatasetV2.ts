@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
+import { clientRpcParams, type SelectedClient } from '@/components/ClientFilter';
 
 export interface ReportsDatasetV2Filters {
   /** Só executa quando o escopo da Filial Ativa está resolvido. */
@@ -8,6 +9,7 @@ export interface ReportsDatasetV2Filters {
   period?: string;
   filial?: string;
   consultantId?: string;
+  client?: SelectedClient | null;
   limit?: number;
   offset?: number;
 }
@@ -73,7 +75,8 @@ export const useReportsDatasetV2 = (filters?: ReportsDatasetV2Filters) => {
         p_responsible_user_id,
         p_limit: filters?.limit ?? 200,
         p_offset: filters?.offset ?? 0,
-      });
+        ...clientRpcParams(filters?.client),
+      } as any);
       if (error) throw error;
       const r = (data ?? {}) as { total?: number; rows?: ReportRowV2[] };
       return { total: r.total ?? 0, rows: r.rows ?? [] };

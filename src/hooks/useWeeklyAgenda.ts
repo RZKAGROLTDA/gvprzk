@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { clientRpcParams, type SelectedClient } from '@/components/ClientFilter';
 
 export type WeeklyAgendaDay = {
   day: string; // YYYY-MM-DD
@@ -25,6 +26,7 @@ export const useWeeklyAgenda = (params: {
   filialId?: string | null;
   /** Só executa quando o escopo da Filial Ativa está resolvido. */
   enabled?: boolean;
+  client?: SelectedClient | null;
 }) => {
   const { user } = useAuth();
   const startStr = toISODate(params.startDate);
@@ -33,7 +35,7 @@ export const useWeeklyAgenda = (params: {
   const filial = params.filialId || null;
 
   return useQuery({
-    queryKey: ['weekly_followups_agenda', user?.id, startStr, endStr, responsible, filial],
+    queryKey: ['weekly_followups_agenda', user?.id, startStr, endStr, responsible, filial, params.client ?? null],
     enabled: !!user?.id && (params.enabled ?? true),
     staleTime: 60_000,
     queryFn: async (): Promise<WeeklyAgendaDay[]> => {
@@ -42,7 +44,8 @@ export const useWeeklyAgenda = (params: {
         p_end_date: endStr,
         p_responsible_user_id: responsible,
         p_filial_id: filial,
-      });
+        ...clientRpcParams(params.client),
+      } as any);
       if (error) throw error;
       return (data ?? []).map((r: {
         day: string;

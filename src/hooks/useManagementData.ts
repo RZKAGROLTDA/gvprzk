@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { clientRpcParams, type SelectedClient } from '@/components/ClientFilter';
 
 export interface ManagementFilters {
   startDate?: string;       // ISO date string (YYYY-MM-DD or full ISO)
@@ -8,6 +9,7 @@ export interface ManagementFilters {
   sellerRole?: string;
   sellerId?: string;        // UUID (responsible_user_id)
   taskTypes?: string[];     // task_followups.activity_type values
+  client?: SelectedClient | null;
   enabled?: boolean;
 }
 
@@ -81,6 +83,7 @@ const buildParams = (filters: ManagementFilters) => {
       && !filters.taskTypes.some(t => isNullFilter(t))
       ? filters.taskTypes.map(t => t.trim())
       : null,
+    ...clientRpcParams(filters.client),
   };
   return params;
 };
@@ -189,6 +192,7 @@ export const useProductAnalysis = (filters: ManagementFilters & { product?: stri
           ? filters.taskTypes.map(t => t.trim())
           : null,
         p_product: filters.product && filters.product.trim() ? filters.product.trim() : null,
+    ...clientRpcParams(filters.client),
       };
       logRpcDebug('get_management_product_analysis', 'params', params);
       const { data, error } = await supabase.rpc(
@@ -225,6 +229,7 @@ export const useManagementRpcDebug = (filters: ManagementFilters & { product?: s
       ? filters.taskTypes.map(t => t.trim())
       : null,
     p_product: filters.product && filters.product.trim() ? filters.product.trim() : null,
+    ...clientRpcParams(filters.client),
   };
 
   return useQuery({
