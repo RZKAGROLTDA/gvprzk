@@ -681,7 +681,7 @@ export const SalesFunnel: React.FC = () => {
 
     console.log('🔧 filteredTasks: Tasks:', tasksFromSales.length, 'Standalone opportunities:', standaloneOpportunities.length);
     return [...tasksFromSales, ...standaloneOpportunities];
-  }, [filteredSalesData, opportunitiesData, selectedActivity]);
+  }, [filteredSalesData, opportunitiesData, selectedActivity, selectedClient]);
 
   // totalCount agora vem direto do backend (count real com filtros aplicados)
   // infiniteDataCount já contém o total correto da query paginada com filtros
