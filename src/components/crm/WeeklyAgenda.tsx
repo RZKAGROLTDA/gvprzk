@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ClientFilter, matchesClient, type SelectedClient } from '@/components/ClientFilter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -85,6 +86,7 @@ export const WeeklyAgenda: React.FC = () => {
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
   const [seller, setSeller] = useState<string>('all');
+  const [client, setClient] = useState<SelectedClient | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   // Ao trocar de filial, o vendedor selecionado pode não pertencer à nova filial.
@@ -128,6 +130,7 @@ export const WeeklyAgenda: React.FC = () => {
     responsibleUserId: seller !== 'all' ? seller : null,
     filialId: scopedFilialId,
     enabled: isScopeReady,
+    client,
   });
 
   const maxActivities = useMemo(
@@ -149,6 +152,7 @@ export const WeeklyAgenda: React.FC = () => {
   const clearFilters = () => {
     setSeller('all');
     setFilial('all');
+    setClient(null);
     goThisWeek();
     setCustomStart(undefined);
     setCustomEnd(undefined);
@@ -159,7 +163,7 @@ export const WeeklyAgenda: React.FC = () => {
   const FOLLOWUP_COLS =
     'id, task_id, client_name, client_code, activity_type, activity_date, next_return_date, return_notes, followup_status, priority, client_temperature, responsible_user_id, filial_id, notes, created_by, created_at, updated_at';
   const { data: dayItems = [], isLoading: loadingDay } = useQuery({
-    queryKey: ['agenda-day-details', user?.id, selectedDayISO, seller, filial],
+    queryKey: ['agenda-day-details', user?.id, selectedDayISO, seller, filial, client],
     enabled: !!user?.id && !!selectedDayISO,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<FollowupRow[]> => {
@@ -179,7 +183,7 @@ export const WeeklyAgenda: React.FC = () => {
       if (filial !== 'all') q = q.eq('filial_id', filial);
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as FollowupRow[];
+      return ((data ?? []) as FollowupRow[]).filter((f) => matchesClient(client, f.client_code, f.client_name));
     },
   });
 
@@ -249,6 +253,8 @@ export const WeeklyAgenda: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <ClientFilter value={client} onChange={setClient} filialId={scopedFilialId} className="w-full sm:w-[240px]" />
 
           <Button variant="ghost" size="sm" onClick={clearFilters} className="lg:ml-auto">
             <X className="mr-1 h-3 w-3" /> Limpar
