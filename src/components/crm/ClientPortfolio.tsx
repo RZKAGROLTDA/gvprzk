@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ClientFilter, matchesClient, type SelectedClient } from '@/components/ClientFilter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TaskEditModal } from '@/components/TaskEditModal';
 import { Input } from '@/components/ui/input';
@@ -126,6 +127,7 @@ export const ClientPortfolio: React.FC = () => {
 
   // Filtros
   const [search, setSearch] = useState('');
+  const [client, setClient] = useState<SelectedClient | null>(null);
   const [seller, setSeller] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
   const [priority, setPriority] = useState<string>('all');
@@ -140,6 +142,7 @@ export const ClientPortfolio: React.FC = () => {
     return data.filter((f) => {
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
       if (filial !== 'all' && f.filial_id !== filial) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       if (from || to) {
         const ad = startOfDay(new Date(f.activity_date)).getTime();
         if (from && ad < startOfDay(from).getTime()) return false;
@@ -147,7 +150,7 @@ export const ClientPortfolio: React.FC = () => {
       }
       return true;
     });
-  }, [data, seller, filial, from, to]);
+  }, [data, seller, filial, from, to, client]);
 
   const aggregates = useMemo<ClientAggregate[]>(() => {
     const map = new Map<string, FollowupRow[]>();
@@ -264,12 +267,12 @@ export const ClientPortfolio: React.FC = () => {
   }), [aggregates]);
 
   const clearFilters = () => {
-    setSearch(''); setSeller('all'); setStatus('all');
+    setSearch(''); setClient(null); setSeller('all'); setStatus('all');
     setPriority('all'); setTemperature('all'); setFrom(undefined); setTo(undefined);
     setQuickFilter('all');
   };
   const hasFilter =
-    !!search || seller !== 'all' || filial !== 'all' || status !== 'all' ||
+    !!search || !!client || seller !== 'all' || filial !== 'all' || status !== 'all' ||
     priority !== 'all' || temperature !== 'all' || !!from || !!to || quickFilter !== 'all';
 
   return (
@@ -286,6 +289,7 @@ export const ClientPortfolio: React.FC = () => {
       {/* Filtros */}
       <Card>
         <CardContent className="flex flex-col gap-2 p-3 lg:flex-row lg:flex-wrap lg:items-center">
+          <ClientFilter value={client} onChange={setClient} filialId={activeScopeFilialId} className="w-full sm:w-[240px]" />
           <div className="relative w-full sm:w-[240px]">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar nome ou código..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ClientFilter, matchesClient, type SelectedClient } from '@/components/ClientFilter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -94,6 +95,7 @@ export const Returns: React.FC = () => {
 
   // Filtros
   const [search, setSearch] = useState('');
+  const [client, setClient] = useState<SelectedClient | null>(null);
   const [seller, setSeller] = useState<string>('all');
   const [from, setFrom] = useState<Date | undefined>();
   const [to, setTo] = useState<Date | undefined>();
@@ -154,6 +156,7 @@ export const Returns: React.FC = () => {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return data.filter((f) => {
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       if (s) {
         const hay = `${f.client_name} ${f.client_code ?? ''}`.toLowerCase();
         if (!hay.includes(s)) return false;
@@ -200,11 +203,11 @@ export const Returns: React.FC = () => {
   }, [filtered]);
 
   const clearFilters = () => {
-    setSearch(''); setSeller('all'); setFilial('all');
+    setSearch(''); setClient(null); setSeller('all'); setFilial('all');
     setFrom(undefined); setTo(undefined);
     setStatusF('all'); setPriorityF('all'); setTempF('all');
   };
-  const hasFilter = !!search || seller !== 'all' || filial !== 'all' || !!from || !!to
+  const hasFilter = !!search || !!client || seller !== 'all' || filial !== 'all' || !!from || !!to
     || statusF !== 'all' || priorityF !== 'all' || tempF !== 'all';
 
   const handleComplete = (id: string) => completeMut.mutate(id);
@@ -228,6 +231,7 @@ export const Returns: React.FC = () => {
             <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente ou código..." className="pl-8" />
           </div>
+          <ClientFilter value={client} onChange={setClient} filialId={scopedFilialId} />
 
           <Select value={seller} onValueChange={setSeller}>
             <SelectTrigger><SelectValue placeholder="Vendedor" /></SelectTrigger>
