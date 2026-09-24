@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] LUCAS — reativar vínculo C&F - Ananindeua (UPDATE enviado pelo usuário com RETURNING) + validar: autorizada SIM, selecionar SIM, Tasks SIM, não autorizadas bloqueadas; não alterar cargo/filial principal/RLS.
+- [ ] PENDENTE ANTIGO: bloquear login da conta antiga do Isac (profiles.da753f5-e441-4673-8e82-807aede2eab2) — botão "Desativar" indisponível (external_unmanaged); aguardando decisão do usuário (reativar temporariamente ou banir no painel Supabase).
+
+
 ## M3 — Acesso Multi-Filial
 
 - [x] Etapa 1 — Base de filiais do usuário (useUserFiliais, estado por sessão)
