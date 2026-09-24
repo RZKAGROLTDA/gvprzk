@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ClientFilter, matchesClient, type SelectedClient } from '@/components/ClientFilter';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,13 +89,14 @@ export const VisitSchedulePanel: React.FC = () => {
   const [sellerFilter, setSellerFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [clientSearch, setClientSearch] = useState('');
+  const [client, setClient] = useState<SelectedClient | null>(null);
 
   // Troca de filial: vendedor selecionado pode não pertencer à nova filial.
   React.useEffect(() => {
     setSellerFilter('all');
   }, [scopedFilialId]);
 
-  const { data: schedules = [], isLoading } = useVisitSchedules({
+  const { data: schedulesRaw = [], isLoading } = useVisitSchedules({
     startDate: toISO(weekStart),
     endDate: toISO(weekEnd),
     sellerId: sellerFilter !== 'all' ? sellerFilter : undefined,
@@ -102,6 +104,10 @@ export const VisitSchedulePanel: React.FC = () => {
     status: statusFilter !== 'all' ? (statusFilter as VisitScheduleStatus) : undefined,
     clientSearch: clientSearch || undefined,
   });
+  const schedules = useMemo(
+    () => (client ? schedulesRaw.filter((s) => matchesClient(client, s.client_code, s.client_name)) : schedulesRaw),
+    [schedulesRaw, client],
+  );
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<VisitSchedule | null>(null);
@@ -193,7 +199,8 @@ export const VisitSchedulePanel: React.FC = () => {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+            <ClientFilter value={client} onChange={setClient} filialId={scopedFilialId} />
             <Input
               placeholder="Buscar cliente (nome ou código)"
               value={clientSearch}

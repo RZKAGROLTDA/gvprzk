@@ -1,3 +1,4 @@
+import { clientRpcParams } from '@/components/ClientFilter';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
@@ -11,6 +12,7 @@ export interface SalesFilters {
   filial?: string;
   filialAtendida?: string;
   activity?: string;
+  client?: import('@/components/ClientFilter').SelectedClient | null;
 }
 
 export interface ConsolidatedMetrics {
@@ -94,6 +96,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         p_end_date,
         p_filial_id,
         p_responsible_user_id,
+        ...clientRpcParams((filters as any)?.client),
       };
 
       if (import.meta.env.DEV) {
@@ -107,7 +110,7 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
         });
       }
 
-      const { data, error: rpcError } = await supabase.rpc('get_activity_metrics_v2', rpcParams);
+      const { data, error: rpcError } = await supabase.rpc('get_activity_metrics_v2', rpcParams as any);
 
       if (rpcError) {
         // eslint-disable-next-line no-console

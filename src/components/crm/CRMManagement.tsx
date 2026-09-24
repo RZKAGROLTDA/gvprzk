@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ClientFilter, matchesClient, type SelectedClient } from '@/components/ClientFilter';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -93,6 +94,7 @@ export const CRMManagement: React.FC = () => {
   });
   const [to, setTo] = useState<Date | undefined>(() => startOfDay(new Date()));
   const [seller, setSeller] = useState('all');
+  const [client, setClient] = useState<SelectedClient | null>(null);
   const [statusF, setStatusF] = useState('all');
   const [priorityF, setPriorityF] = useState('all');
   const [tempF, setTempF] = useState('all');
@@ -114,9 +116,10 @@ export const CRMManagement: React.FC = () => {
       if (statusF !== 'all' && f.followup_status !== statusF) return false;
       if (priorityF !== 'all' && f.priority !== priorityF) return false;
       if (tempF !== 'all' && (f.client_temperature ?? '') !== tempF) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       return true;
     });
-  }, [all, from, to, filial, seller, statusF, priorityF, tempF]);
+  }, [all, from, to, filial, seller, statusF, priorityF, tempF, client]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -131,6 +134,7 @@ export const CRMManagement: React.FC = () => {
     const baseForReturns = all.filter((f) => {
       if (filial !== 'all' && f.filial_id !== filial) return false;
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       return true;
     });
     const overdueReturns = baseForReturns.filter((f) =>
@@ -155,7 +159,7 @@ export const CRMManagement: React.FC = () => {
       total: filtered.length, visitas, ligacoes, checklists,
       uniqueClients, activeSellers, overdueReturns, inactive30d,
     };
-  }, [filtered, all, filial, seller]);
+  }, [filtered, all, filial, seller, client]);
 
   // Resumo por vendedor
   const sellerStats = useMemo<SellerStat[]>(() => {
@@ -195,6 +199,7 @@ export const CRMManagement: React.FC = () => {
     const base = all.filter((f) => {
       if (filial !== 'all' && f.filial_id !== filial) return false;
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       return true;
     });
 
@@ -227,7 +232,7 @@ export const CRMManagement: React.FC = () => {
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [filtered, all, consultantById, filial, seller]);
+  }, [filtered, all, consultantById, filial, seller, client]);
 
   // Resumo por filial
   const filialStats = useMemo<FilialStat[]>(() => {
@@ -264,6 +269,7 @@ export const CRMManagement: React.FC = () => {
     const base = all.filter((f) => {
       if (filial !== 'all' && f.filial_id !== filial) return false;
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       return true;
     });
 
@@ -294,16 +300,16 @@ export const CRMManagement: React.FC = () => {
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [filtered, all, filialById, filial, seller]);
+  }, [filtered, all, filialById, filial, seller, client]);
 
   const rankActivities = useMemo(() => [...sellerStats].sort((a, b) => b.total - a.total).slice(0, 5), [sellerStats]);
   const rankClients = useMemo(() => [...sellerStats].sort((a, b) => b.uniqueClients - a.uniqueClients).slice(0, 5), [sellerStats]);
   const rankOverdue = useMemo(() => [...sellerStats].filter((s) => s.overdueReturns > 0).sort((a, b) => b.overdueReturns - a.overdueReturns).slice(0, 5), [sellerStats]);
 
   const clearFilters = () => {
-    setFilial('all'); setSeller('all'); setStatusF('all'); setPriorityF('all'); setTempF('all');
+    setFilial('all'); setSeller('all'); setClient(null); setStatusF('all'); setPriorityF('all'); setTempF('all');
   };
-  const hasFilter = filial !== 'all' || seller !== 'all' || statusF !== 'all' || priorityF !== 'all' || tempF !== 'all';
+  const hasFilter = !!client || filial !== 'all' || seller !== 'all' || statusF !== 'all' || priorityF !== 'all' || tempF !== 'all';
 
   return (
     <div className="space-y-4">
@@ -318,6 +324,7 @@ export const CRMManagement: React.FC = () => {
             <Button size="sm" variant="outline" onClick={() => setRange(90)}>Últimos 90d</Button>
           </div>
 
+          <ClientFilter value={client} onChange={setClient} filialId={scopedFilialId} />
           <Select value={filial} onValueChange={setFilial}>
             <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>

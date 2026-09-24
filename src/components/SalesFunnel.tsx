@@ -21,6 +21,7 @@ import { calculateTaskSalesValue } from '@/lib/salesValueCalculator';
 import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
 import { useInfiniteSalesData } from '@/hooks/useInfiniteSalesData';
+import { ClientFilter, matchesClient, type SelectedClient } from '@/components/ClientFilter';
 import { useConsolidatedSalesMetrics } from '@/hooks/useConsolidatedSalesMetrics';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 import { parseLocalDate, formatDateDisplay } from '@/lib/utils';
@@ -98,6 +99,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [taskToDelete, setTaskToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [selectedClient, setSelectedClient] = useState<SelectedClient | null>(null);
   const queryClient = useQueryClient();
   const { isAdmin, isSupervisor, isLoading: isLoadingRole } = useUserRole();
 
@@ -140,6 +142,7 @@ export const SalesFunnel: React.FC = () => {
     setSelectedFilial('all');
     setSelectedFilialAtendida('all');
     setSelectedActivity('all');
+    setSelectedClient(null);
     queryClient.invalidateQueries({ queryKey: ['consolidated-sales-metrics-v2'] });
     queryClient.invalidateQueries({ queryKey: ['client-details'] });
     queryClient.invalidateQueries({ queryKey: ['infinite-sales-data'] });
@@ -186,8 +189,9 @@ export const SalesFunnel: React.FC = () => {
     consultantId: effectiveConsultant,
     filial: selectedFilial,
     filialAtendida: selectedFilialAtendida,
-    activity: selectedActivity
-  }), [selectedPeriod, effectiveConsultant, selectedFilial, selectedFilialAtendida, selectedActivity]);
+    activity: selectedActivity,
+    client: selectedClient,
+  }), [selectedPeriod, effectiveConsultant, selectedFilial, selectedFilialAtendida, selectedActivity, selectedClient]);
 
   // Hook CONSOLIDADO para métricas (substitui useAllSalesData + useSalesFunnelMetrics)
   const {
@@ -325,11 +329,19 @@ export const SalesFunnel: React.FC = () => {
 
   // Flatten client details data
   const clientDetailsData = useMemo(() => {
-    return clientDetailsPages?.pages.flatMap(page => page.data) || [];
-  }, [clientDetailsPages]);
+    const rows = clientDetailsPages?.pages.flatMap(page => page.data) || [];
+    return selectedClient ? rows.filter((t: any) => matchesClient(selectedClient, t.clientcode ?? null, t.client)) : rows;
+  }, [clientDetailsPages, selectedClient]);
+
+  // Com Cliente selecionado, carrega as páginas restantes para que o filtro fique completo.
+  useEffect(() => {
+    if (!selectedClient) return;
+    if (activeView === 'details' && hasNextClientDetailsPage && !isFetchingNextClientDetailsPage) fetchNextClientDetailsPage();
+    if (activeView === 'coverage' && hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [selectedClient, activeView, hasNextClientDetailsPage, isFetchingNextClientDetailsPage, fetchNextClientDetailsPage, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Total count for client details
-  const clientDetailsTotalCount = clientDetailsPages?.pages[0]?.totalCount || 0;
+  const clientDetailsTotalCount = selectedClient ? clientDetailsData.length : (clientDetailsPages?.pages[0]?.totalCount || 0);
 
   // Decidir qual fonte de dados usar baseado na view ativa
   const isLoadingData = activeView === 'overview' 
@@ -339,7 +351,10 @@ export const SalesFunnel: React.FC = () => {
       : activeView === 'details'
         ? isLoadingClientDetails
         : isLoadingInfiniteData;
-  const currentDataSource = infiniteSalesData || [];
+  const currentDataSource = useMemo(() => {
+    const rows = infiniteSalesData || [];
+    return selectedClient ? rows.filter((sale: any) => matchesClient(selectedClient, sale.clientCode ?? sale.clientcode ?? null, sale.clientName ?? sale.client)) : rows;
+  }, [infiniteSalesData, selectedClient]);
 
   // Resetar página de display quando filtros ou itemsPerPage mudam
   React.useEffect(() => {
@@ -597,6 +612,7 @@ export const SalesFunnel: React.FC = () => {
         // Filtrar opportunities que não têm task correspondente ou cuja task não está nos dados carregados
         const isStandalone = !opp.task_id || !taskIds.has(opp.task_id);
         if (!isStandalone) return false;
+        if (selectedClient && !matchesClient(selectedClient, null, (opp as any).cliente_nome)) return false;
 
         if (!allowedActivityTypes) return true;
 
@@ -665,7 +681,7 @@ export const SalesFunnel: React.FC = () => {
 
     console.log('🔧 filteredTasks: Tasks:', tasksFromSales.length, 'Standalone opportunities:', standaloneOpportunities.length);
     return [...tasksFromSales, ...standaloneOpportunities];
-  }, [filteredSalesData, opportunitiesData, selectedActivity]);
+  }, [filteredSalesData, opportunitiesData, selectedActivity, selectedClient]);
 
   // totalCount agora vem direto do backend (count real com filtros aplicados)
   // infiniteDataCount já contém o total correto da query paginada com filtros
@@ -995,7 +1011,7 @@ export const SalesFunnel: React.FC = () => {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
         <div>
           <label className="text-sm font-medium mb-2 block">Período</label>
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -1070,6 +1086,11 @@ export const SalesFunnel: React.FC = () => {
               <SelectItem value="checklist">Checklist</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium mb-2 block">Cliente</label>
+          <ClientFilter value={selectedClient} onChange={setSelectedClient} filialId={selectedFilial} />
         </div>
 
         <div>

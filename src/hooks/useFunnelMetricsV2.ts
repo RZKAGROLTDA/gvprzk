@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
+import { clientRpcParams, type SelectedClient } from '@/components/ClientFilter';
 
 export interface FunnelV2Filters {
   /** Só executa quando o escopo da Filial Ativa está resolvido. */
@@ -8,6 +9,7 @@ export interface FunnelV2Filters {
   period?: string;            // '7' | '30' | '90' | '365' | 'all'
   filial?: string;            // name | uuid | 'all'
   consultantId?: string;      // uuid | 'all'
+  client?: SelectedClient | null;
 }
 
 const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
@@ -43,7 +45,8 @@ export const useFunnelMetricsV2 = (filters?: FunnelV2Filters) => {
         p_end_date: end,
         p_filial_id,
         p_responsible_user_id,
-      });
+        ...clientRpcParams(filters?.client),
+      } as any);
       if (error) throw error;
       return (data ?? {}) as Record<string, any>;
     },
