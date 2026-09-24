@@ -3039,6 +3039,15 @@ export type Database = {
           table_name: string
         }[]
       }
+      client_filter_match: {
+        Args: {
+          p_client_code: string
+          p_client_name: string
+          v_code: string
+          v_name: string
+        }
+        Returns: boolean
+      }
       compute_followup_from_task:
         | {
             Args: {
@@ -3341,6 +3350,8 @@ export type Database = {
       }
       get_activity_metrics_v2: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_end_date?: string
           p_filial_id?: string
           p_responsible_user_id?: string
@@ -3547,6 +3558,8 @@ export type Database = {
       }
       get_funnel_metrics_v2: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_end_date?: string
           p_filial_id?: string
           p_responsible_user_id?: string
@@ -3574,6 +3587,8 @@ export type Database = {
       }
       get_management_client_details: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_end_date?: string
           p_filial_id?: string
           p_seller_id?: string
@@ -3599,6 +3614,8 @@ export type Database = {
       }
       get_management_product_analysis: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_end_date?: string
           p_filial_id?: string
           p_product?: string
@@ -3618,6 +3635,8 @@ export type Database = {
       }
       get_management_seller_summary: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_end_date?: string
           p_filial_id?: string
           p_seller_id?: string
@@ -3762,6 +3781,8 @@ export type Database = {
       }
       get_reports_dataset_v2: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_end_date?: string
           p_filial_id?: string
           p_limit?: number
@@ -4441,6 +4462,8 @@ export type Database = {
       get_user_security_level: { Args: never; Returns: string }
       get_weekly_followups_agenda: {
         Args: {
+          p_client_code?: string
+          p_client_name?: string
           p_end_date: string
           p_filial_id?: string
           p_responsible_user_id?: string
@@ -4866,6 +4889,13 @@ export type Database = {
           client_code: string
           client_name: string
           source: string
+        }[]
+      }
+      search_scoped_clients: {
+        Args: { p_filial_id?: string; p_limit?: number; p_query: string }
+        Returns: {
+          client_code: string
+          client_name: string
         }[]
       }
       secure_delete_task: { Args: { task_id_param: string }; Returns: Json }
