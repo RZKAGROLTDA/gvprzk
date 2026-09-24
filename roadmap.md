@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] LUCAS — vínculo C&F - Ananindeua reativado (21:00 UTC) e validado. Observação: Lucas é Gerente (global) desde 15:37 — backend aceita qualquer filial; seletor da tela só oferece Ananindeua + C&F - Ananindeua.
+- [ ] PENDENTE ANTIGO: bloquear login da conta antiga do Isac (profiles.da753f5-e441-4673-8e82-807aede2eab2) — botão "Desativar" indisponível (external_unmanaged); aguardando decisão do usuário (reativar temporariamente ou banir no painel Supabase).
+
+
 ## M3 — Acesso Multi-Filial
 
 - [x] Etapa 1 — Base de filiais do usuário (useUserFiliais, estado por sessão)
