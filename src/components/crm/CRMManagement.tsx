@@ -134,6 +134,7 @@ export const CRMManagement: React.FC = () => {
     const baseForReturns = all.filter((f) => {
       if (filial !== 'all' && f.filial_id !== filial) return false;
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       return true;
     });
     const overdueReturns = baseForReturns.filter((f) =>
@@ -158,7 +159,7 @@ export const CRMManagement: React.FC = () => {
       total: filtered.length, visitas, ligacoes, checklists,
       uniqueClients, activeSellers, overdueReturns, inactive30d,
     };
-  }, [filtered, all, filial, seller]);
+  }, [filtered, all, filial, seller, client]);
 
   // Resumo por vendedor
   const sellerStats = useMemo<SellerStat[]>(() => {
@@ -198,6 +199,7 @@ export const CRMManagement: React.FC = () => {
     const base = all.filter((f) => {
       if (filial !== 'all' && f.filial_id !== filial) return false;
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       return true;
     });
 
@@ -230,7 +232,7 @@ export const CRMManagement: React.FC = () => {
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [filtered, all, consultantById, filial, seller]);
+  }, [filtered, all, consultantById, filial, seller, client]);
 
   // Resumo por filial
   const filialStats = useMemo<FilialStat[]>(() => {
@@ -267,6 +269,7 @@ export const CRMManagement: React.FC = () => {
     const base = all.filter((f) => {
       if (filial !== 'all' && f.filial_id !== filial) return false;
       if (seller !== 'all' && f.responsible_user_id !== seller) return false;
+      if (!matchesClient(client, f.client_code, f.client_name)) return false;
       return true;
     });
 
@@ -297,7 +300,7 @@ export const CRMManagement: React.FC = () => {
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [filtered, all, filialById, filial, seller]);
+  }, [filtered, all, filialById, filial, seller, client]);
 
   const rankActivities = useMemo(() => [...sellerStats].sort((a, b) => b.total - a.total).slice(0, 5), [sellerStats]);
   const rankClients = useMemo(() => [...sellerStats].sort((a, b) => b.uniqueClients - a.uniqueClients).slice(0, 5), [sellerStats]);
