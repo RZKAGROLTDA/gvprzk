@@ -12,6 +12,7 @@ export interface SalesFilters {
   filial?: string;
   filialAtendida?: string;
   activity?: string;
+  client?: import('@/components/ClientFilter').SelectedClient | null;
 }
 
 export interface ConsolidatedMetrics {
