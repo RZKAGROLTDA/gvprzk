@@ -341,7 +341,7 @@ export const SalesFunnel: React.FC = () => {
   }, [selectedClient, activeView, hasNextClientDetailsPage, isFetchingNextClientDetailsPage, fetchNextClientDetailsPage, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Total count for client details
-  const clientDetailsTotalCount = clientDetailsPages?.pages[0]?.totalCount || 0;
+  const clientDetailsTotalCount = selectedClient ? clientDetailsData.length : (clientDetailsPages?.pages[0]?.totalCount || 0);
 
   // Decidir qual fonte de dados usar baseado na view ativa
   const isLoadingData = activeView === 'overview' 
@@ -612,6 +612,7 @@ export const SalesFunnel: React.FC = () => {
         // Filtrar opportunities que não têm task correspondente ou cuja task não está nos dados carregados
         const isStandalone = !opp.task_id || !taskIds.has(opp.task_id);
         if (!isStandalone) return false;
+        if (selectedClient && !matchesClient(selectedClient, null, (opp as any).cliente_nome)) return false;
 
         if (!allowedActivityTypes) return true;
 
