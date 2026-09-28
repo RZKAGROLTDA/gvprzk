@@ -1,3 +1,4 @@
+import { currentActiveFilialId } from '@/lib/activeFilial';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadPendingPhotos, TASK_PHOTOS_BUCKET, PRODUCT_PHOTOS_BUCKET } from '@/lib/mediaStorage';
@@ -795,7 +796,7 @@ export const useTaskDetails = (taskId: string | null, options: UseTaskDetailsOpt
         : PRODUCT_COLUMNS_BASE;
 
       const [taskResult, extrasResult, productsResult, remindersResult, media] = await Promise.all([
-        supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
+        supabase.rpc('get_secure_task_by_id', { p_task_id: taskId, p_filial_id: await currentActiveFilialId() }),
         // 12 campos leves ausentes na RPC (contato, próxima ação, visita técnica).
         // Consulta direta em `tasks` sob RLS normal — substitui o useTaskEditData na visualização.
         supabase

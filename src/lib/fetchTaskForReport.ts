@@ -1,3 +1,4 @@
+import { currentActiveFilialId } from '@/lib/activeFilial';
 // ============================================================================
 // FONTE ÚNICA DE HIDRATAÇÃO DE TASK PARA RELATÓRIOS/PDF
 // ----------------------------------------------------------------------------
@@ -30,7 +31,7 @@ export async function fetchTaskForReport(taskId: string): Promise<Task | null> {
   if (!taskId) return null;
 
   const [taskResult, productsResult, remindersResult, media] = await Promise.all([
-    supabase.rpc('get_secure_task_by_id', { p_task_id: taskId }),
+    supabase.rpc('get_secure_task_by_id', { p_task_id: taskId, p_filial_id: await currentActiveFilialId() }),
     supabase
       .from('products')
       .select('id, task_id, name, category, selected, quantity, price, observations, photos, response_status, response_notes')
