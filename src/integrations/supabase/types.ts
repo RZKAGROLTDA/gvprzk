@@ -4045,7 +4045,7 @@ export type Database = {
         }[]
       }
       get_secure_task_by_id: {
-        Args: { p_task_id: string }
+        Args: { p_filial_id?: string; p_task_id: string }
         Returns: {
           access_level: string
           check_in_location: Json
@@ -4925,6 +4925,10 @@ export type Database = {
       simple_is_admin: { Args: never; Returns: boolean }
       simple_is_manager: { Args: never; Returns: boolean }
       simple_user_role: { Args: never; Returns: string }
+      supervisor_task_filial_ok: {
+        Args: { p_filial: string; p_filial_id?: string }
+        Returns: boolean
+      }
       test_supervisor_opportunity_access: {
         Args: { p_supervisor_id: string }
         Returns: {
