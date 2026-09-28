@@ -1,3 +1,4 @@
+import { currentActiveFilialId } from '@/lib/activeFilial';
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -152,7 +153,7 @@ export const useTaskEditData = (taskId: string | null) => {
         // FALLBACK: buscar uma única task pela RPC (evita carregar 500 tasks)
         const { data: secureRow, error: secureError } = await supabase.rpc(
           'get_secure_task_by_id',
-          { p_task_id: taskId }
+          { p_task_id: taskId, p_filial_id: await currentActiveFilialId() }
         );
         const foundTask = secureRow?.[0];
         if (!secureError && foundTask) {

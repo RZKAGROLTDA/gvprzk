@@ -54,3 +54,10 @@ export const subscribeActiveFilial = (listener: () => void): (() => void) => {
   window.addEventListener(EVENT, handler);
   return () => window.removeEventListener(EVENT, handler);
 };
+
+/** Filial Ativa gravada para o usuário logado (ou null = padrão do banco). */
+export const currentActiveFilialId = async (): Promise<string | null> => {
+  const { supabase } = await import('@/integrations/supabase/client');
+  const { data } = await supabase.auth.getSession();
+  return readActiveFilial(data.session?.user?.id ?? null);
+};
