@@ -49,6 +49,15 @@ export interface RegBatchDetail {
   pdf_generated_at: string | null;
   sent_at: string | null;
   created_by: string | null;
+  created_at?: string | null;
+  created_by_name?: string | null;
+  sent_by_name?: string | null;
+  validation_started_at?: string | null;
+  applied_at?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
+  history?: Array<{ event: string; at: string; by_name?: string | null; reason?: string; recipients?: string[]; notes?: string | null; serial_chassis?: string | null; machines?: number }>;
+  removed_items?: Array<RegBatchItem & { removed_at: string; removed_reason: string; removed_by_name: string | null }>;
   items: RegBatchItem[];
 }
 

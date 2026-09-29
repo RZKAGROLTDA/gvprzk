@@ -156,7 +156,8 @@ export const useCreateRegularizationBatch = () => {
         title: 'Lote criado',
         description: `${d.total} máquina(s) no lote. Status: aguardando envio — nada foi alterado no Parque.`,
       });
-      qc.invalidateQueries({ queryKey: ['reg-batch'] });
+      ['reg-batch', 'reg-batches', 'reg-kpis', 'reg-clients', 'reg-machines'].forEach((k) =>
+        qc.invalidateQueries({ queryKey: [k] }));
     },
     onError: (e) => {
       toast({
@@ -211,3 +212,93 @@ export const useFiliaisList = () =>
     staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
+/* ===================== Novo fluxo (lotes por etapa) ===================== */
+export type RegStage =
+  | 'aguardando_envio' | 'aguardando_retorno' | 'em_validacao' | 'regularizados' | 'cancelado';
+
+export interface RegBatchRow {
+  id: string;
+  status: string;
+  stage: RegStage;
+  created_at: string;
+  pdf_generated_at: string | null;
+  sent_at: string | null;
+  recipients: string[];
+  send_attempts: number;
+  validation_started_at: string | null;
+  applied_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  filial_id: string | null;
+  filial_nome: string | null;
+  active_items: number;
+  removed_items: number;
+  clients: string | null;
+  client_codes: string | null;
+  created_by_name: string | null;
+}
+
+export const useRegularizationBatches = (
+  stage: RegStage, filialId: string | null, client: string | null, page: number, pageSize: number,
+) =>
+  useQuery({
+    queryKey: ['reg-batches', stage, filialId, client, page, pageSize],
+    queryFn: async (): Promise<{ total: number; counts: Partial<Record<RegStage, number>>; batches: RegBatchRow[] }> => {
+      const { data, error } = await supabase.rpc('equipment_regularization_list_batches' as never, {
+        p_stage: stage, p_filial_id: filialId, p_client: client, p_page: page, p_page_size: pageSize,
+      } as never);
+      if (error) throw error;
+      const d = (data ?? {}) as { total?: number; counts?: Record<string, number>; batches?: RegBatchRow[] };
+      return { total: Number(d.total ?? 0), counts: d.counts ?? {}, batches: d.batches ?? [] };
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
+const invalidateAll = (qc: ReturnType<typeof useQueryClient>) => {
+  ['reg-batches', 'reg-batch', 'reg-kpis', 'reg-clients', 'reg-machines'].forEach((k) =>
+    qc.invalidateQueries({ queryKey: [k] }));
+};
+
+const useRegAction = <T,>(fn: (v: T) => Promise<unknown>, okTitle: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => { toast({ title: okTitle }); invalidateAll(qc); },
+    onError: (e) => toast({ title: 'Não foi possível concluir a ação', description: (e as Error)?.message, variant: 'destructive' }),
+  });
+};
+
+const rpc = async (name: string, args: Record<string, unknown>) => {
+  const { data, error } = await supabase.rpc(name as never, args as never);
+  if (error) throw error;
+  return data;
+};
+
+export const useRegisterSend = () =>
+  useRegAction((v: { batchId: string; recipients: string[]; subject?: string | null; message?: string | null; filialId: string | null }) =>
+    rpc('equipment_regularization_register_send', {
+      p_batch_id: v.batchId, p_recipients: v.recipients, p_email_subject: v.subject ?? null,
+      p_email_message: v.message ?? null, p_filial_id: v.filialId,
+    }), 'Envio registrado');
+
+export const useStartValidation = () =>
+  useRegAction((v: { batchId: string; notes?: string | null; filialId: string | null }) =>
+    rpc('equipment_regularization_start_validation', { p_batch_id: v.batchId, p_notes: v.notes ?? null, p_filial_id: v.filialId }),
+  'Validação iniciada');
+
+export const useConcludeBatch = () =>
+  useRegAction((v: { batchId: string; notes?: string | null; filialId: string | null }) =>
+    rpc('equipment_regularization_conclude', { p_batch_id: v.batchId, p_notes: v.notes ?? null, p_filial_id: v.filialId }),
+  'Lote concluído — máquinas regularizadas');
+
+export const useCancelBatch = () =>
+  useRegAction((v: { batchId: string; reason: string; filialId: string | null }) =>
+    rpc('equipment_regularization_cancel', { p_batch_id: v.batchId, p_reason: v.reason, p_filial_id: v.filialId }),
+  'Lote cancelado');
+
+export const useRemoveBatchItem = () =>
+  useRegAction((v: { itemId: string; reason: string; filialId: string | null }) =>
+    rpc('equipment_regularization_remove_item', { p_item_id: v.itemId, p_reason: v.reason, p_filial_id: v.filialId }),
+  'Máquina retirada do lote');
