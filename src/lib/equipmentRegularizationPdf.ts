@@ -9,6 +9,7 @@
  * baixada, visualizada e, futuramente, anexada ao e-mail de envio.
  */
 import type jsPDFType from 'jspdf';
+import letterheadImage from '@/assets/rzk-agro-letterhead.jpg';
 
 type jsPDF = jsPDFType;
 import { formatDateDisplay } from '@/lib/utils';
@@ -72,11 +73,33 @@ const MARGIN = 25;
 const PAGE_W = 210;
 const PAGE_H = 297;
 const CONTENT_W = PAGE_W - MARGIN * 2;
+const CONTENT_TOP = 46;
+const CONTENT_BOTTOM = 238;
 
-const ensureSpace = (pdf: jsPDF, y: number, needed: number): number => {
-  if (y + needed <= PAGE_H - 25) return y;
+const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => typeof reader.result === 'string'
+    ? resolve(reader.result)
+    : reject(new Error('Não foi possível ler o papel timbrado.'));
+  reader.onerror = () => reject(new Error('Não foi possível ler o papel timbrado.'));
+  reader.readAsDataURL(blob);
+});
+
+const loadLetterhead = async (): Promise<string> => {
+  const response = await fetch(letterheadImage);
+  if (!response.ok) throw new Error('Não foi possível carregar o papel timbrado oficial.');
+  return blobToDataUrl(await response.blob());
+};
+
+const drawLetterhead = (pdf: jsPDF, image: string) => {
+  pdf.addImage(image, 'JPEG', 0, 0, PAGE_W, PAGE_H, 'rzk-letterhead', 'FAST');
+};
+
+const ensureSpace = (pdf: jsPDF, y: number, needed: number, letterhead: string): number => {
+  if (y + needed <= CONTENT_BOTTOM) return y;
   pdf.addPage();
-  return 30;
+  drawLetterhead(pdf, letterhead);
+  return CONTENT_TOP;
 };
 
 export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
@@ -85,7 +108,9 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 }> {
   const { default: JsPDF } = await import('jspdf');
   const pdf = new JsPDF('p', 'mm', 'a4');
-  let y = 34;
+  const letterhead = await loadLetterhead();
+  drawLetterhead(pdf, letterhead);
+  let y = CONTENT_TOP;
 
   // Título
   pdf.setFont('helvetica', 'bold');
@@ -114,7 +139,8 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 
   // Agrupamento por cliente
   const groups = new Map<string, RegBatchItem[]>();
-  batch.items.forEach((it) => {
+  const removedIds = new Set((batch.removed_items ?? []).map((item) => item.id));
+  batch.items.filter((item) => !removedIds.has(item.id)).forEach((it) => {
     const key = `${it.client_code ?? '—'}|${it.client_name ?? '—'}|${it.filial_nome ?? '—'}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(it);
@@ -122,7 +148,7 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 
   groups.forEach((items, key) => {
     const [code, name, filial] = key.split('|');
-    y = ensureSpace(pdf, y, 40);
+    y = ensureSpace(pdf, y, 40, letterhead);
 
     // Identificação
     pdf.setFontSize(10.5);
@@ -173,7 +199,7 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 
     items.forEach((it) => {
       const before = y;
-      y = ensureSpace(pdf, y, 10);
+       y = ensureSpace(pdf, y, 10, letterhead);
       if (y !== before) drawHeader();
       pdf.setFontSize(9.5);
       pdf.text(String(it.serial_chassis || '—').slice(0, 28), colX[0] + 2, y);
@@ -196,7 +222,7 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   });
 
   // Texto final
-  y = ensureSpace(pdf, y, 30);
+  y = ensureSpace(pdf, y, 30, letterhead);
   pdf.setFontSize(10.5);
   const fim = pdf.splitTextToSize(
     'Cientes das informações apresentadas, solicitamos a regularização dos equipamentos ' +
@@ -207,14 +233,14 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   y += fim.length * 5.2 + 8;
 
   if (batch.notes) {
-    y = ensureSpace(pdf, y, 20);
+    y = ensureSpace(pdf, y, 20, letterhead);
     const obs = pdf.splitTextToSize(batch.notes, CONTENT_W);
     pdf.text(obs, MARGIN, y);
     y += obs.length * 5.2 + 8;
   }
 
   // Assinatura
-  y = ensureSpace(pdf, y, 34);
+  y = ensureSpace(pdf, y, 34, letterhead);
   y += 16;
   pdf.setDrawColor(80);
   pdf.line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
