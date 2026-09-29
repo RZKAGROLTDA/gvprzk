@@ -156,7 +156,8 @@ export const useCreateRegularizationBatch = () => {
         title: 'Lote criado',
         description: `${d.total} máquina(s) no lote. Status: aguardando envio — nada foi alterado no Parque.`,
       });
-      qc.invalidateQueries({ queryKey: ['reg-batch'] });
+      ['reg-batch', 'reg-batches', 'reg-kpis', 'reg-clients', 'reg-machines'].forEach((k) =>
+        qc.invalidateQueries({ queryKey: [k] }));
     },
     onError: (e) => {
       toast({

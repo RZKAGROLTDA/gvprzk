@@ -23,6 +23,10 @@ import {
 } from '@/hooks/useEquipmentRegularization';
 import { RegularizationBatchDialog } from '@/components/equipment/RegularizationBatchDialog';
 import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
+import { RegularizationBatchList, STAGE_LABEL } from '@/components/equipment/RegularizationBatches';
+import { useRegularizationBatches, type RegStage } from '@/hooks/useEquipmentRegularization';
+
+const STAGES: RegStage[] = ['aguardando_envio', 'aguardando_retorno', 'em_validacao', 'regularizados', 'cancelado'];
 
 const ALL = 'all';
 const NO_FILIAL = 'none';
@@ -202,6 +206,8 @@ export const EquipmentRegularizationPanel: React.FC = () => {
     [filialFilter, client, situation, chassis, isGlobal],
   );
 
+  const [view, setView] = useState<'pendentes' | RegStage>('pendentes');
+  const stageCounts = useRegularizationBatches('aguardando_envio', filters.filialId, filters.client, 1, 1);
   const kpis = useRegularizationKpis(filters);
   const groups = useRegularizationClients(filters, page, PAGE_SIZE);
 
@@ -257,6 +263,39 @@ export const EquipmentRegularizationPanel: React.FC = () => {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Etapas do fluxo */}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={view === 'pendentes' ? 'default' : 'outline'} onClick={() => setView('pendentes')}>
+            Pendentes ({(kpis.data?.total_pending ?? 0).toLocaleString('pt-BR')})
+          </Button>
+          {STAGES.map((st) => (
+            <Button key={st} size="sm" variant={view === st ? 'default' : 'outline'} onClick={() => setView(st)}>
+              {STAGE_LABEL[st]} ({stageCounts.data?.counts?.[st] ?? 0})
+            </Button>
+          ))}
+        </div>
+
+        {view !== 'pendentes' ? (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Select value={filialFilter} onValueChange={(v) => setFilialFilter(v)}>
+                <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
+                <SelectContent>
+                  {isGlobal ? <SelectItem value={ALL}>Todas as filiais</SelectItem> : null}
+                  {filiais.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Input placeholder="Cliente, código ou chassi" value={clientInput}
+                onChange={(e) => setClientInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') applySearch(); }} />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={applySearch}>Buscar</Button>
+                <Button size="sm" variant="outline" onClick={clearFilters}>Limpar filtros</Button>
+              </div>
+            </div>
+            <RegularizationBatchList key={view} stage={view} filialId={filters.filialId} client={filters.client} />
+          </>
+        ) : (<>
         {/* KPIs */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Kpi label="Máquinas Pendentes" value={kpis.data?.total_pending} loading={kpis.isLoading} />
@@ -406,6 +445,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
           machines={Object.values(selected)}
           onDone={() => setSelected({})}
         />
+        </>)}
       </CardContent>
     </Card>
   );
