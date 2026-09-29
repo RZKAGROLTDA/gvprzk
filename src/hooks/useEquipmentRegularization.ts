@@ -253,6 +253,9 @@ export const useRegularizationBatches = (
       return { total: Number(d.total ?? 0), counts: d.counts ?? {}, batches: d.batches ?? [] };
     },
     staleTime: 60 * 1000,
+    // Global default is refetchOnMount:false; lists must reload when a tab is reopened
+    // after actions (cancel/send/conclude) so count and list never diverge.
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
 
