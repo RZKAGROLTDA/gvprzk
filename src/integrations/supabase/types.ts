@@ -533,6 +533,7 @@ export type Database = {
         Row: {
           applied_at: string | null
           applied_by: string | null
+          cancel_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string
@@ -543,6 +544,7 @@ export type Database = {
           generated_at: string
           header_city: string
           header_state: string
+          history: Json
           id: string
           notes: string | null
           pdf_generated_at: string | null
@@ -561,10 +563,13 @@ export type Database = {
           signer_role: string
           status: string
           updated_at: string
+          validation_started_at: string | null
+          validation_started_by: string | null
         }
         Insert: {
           applied_at?: string | null
           applied_by?: string | null
+          cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           created_at?: string
@@ -575,6 +580,7 @@ export type Database = {
           generated_at?: string
           header_city: string
           header_state: string
+          history?: Json
           id?: string
           notes?: string | null
           pdf_generated_at?: string | null
@@ -593,10 +599,13 @@ export type Database = {
           signer_role?: string
           status?: string
           updated_at?: string
+          validation_started_at?: string | null
+          validation_started_by?: string | null
         }
         Update: {
           applied_at?: string | null
           applied_by?: string | null
+          cancel_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
           created_at?: string
@@ -607,6 +616,7 @@ export type Database = {
           generated_at?: string
           header_city?: string
           header_state?: string
+          history?: Json
           id?: string
           notes?: string | null
           pdf_generated_at?: string | null
@@ -625,6 +635,8 @@ export type Database = {
           signer_role?: string
           status?: string
           updated_at?: string
+          validation_started_at?: string | null
+          validation_started_by?: string | null
         }
         Relationships: []
       }
@@ -649,6 +661,9 @@ export type Database = {
           pmp_number: string | null
           regularized_at: string | null
           regularized_by: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_reason: string | null
           responsible_account: string | null
           serial_chassis: string | null
           state: string | null
@@ -675,6 +690,9 @@ export type Database = {
           pmp_number?: string | null
           regularized_at?: string | null
           regularized_by?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
           responsible_account?: string | null
           serial_chassis?: string | null
           state?: string | null
@@ -701,6 +719,9 @@ export type Database = {
           pmp_number?: string | null
           regularized_at?: string | null
           regularized_by?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_reason?: string | null
           responsible_account?: string | null
           serial_chassis?: string | null
           state?: string | null
@@ -3190,6 +3211,7 @@ export type Database = {
         Returns: {
           applied_at: string | null
           applied_by: string | null
+          cancel_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string
@@ -3200,6 +3222,7 @@ export type Database = {
           generated_at: string
           header_city: string
           header_state: string
+          history: Json
           id: string
           notes: string | null
           pdf_generated_at: string | null
@@ -3218,6 +3241,8 @@ export type Database = {
           signer_role: string
           status: string
           updated_at: string
+          validation_started_at: string | null
+          validation_started_by: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3226,11 +3251,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      equipment_regularization_conclude: {
+        Args: { p_batch_id: string; p_filial_id?: string; p_notes?: string }
+        Returns: Json
+      }
       equipment_regularization_confirm_send: {
         Args: { p_batch_id: string; p_filial_id?: string }
         Returns: {
           applied_at: string | null
           applied_by: string | null
+          cancel_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
           created_at: string
@@ -3241,6 +3271,7 @@ export type Database = {
           generated_at: string
           header_city: string
           header_state: string
+          history: Json
           id: string
           notes: string | null
           pdf_generated_at: string | null
@@ -3259,6 +3290,8 @@ export type Database = {
           signer_role: string
           status: string
           updated_at: string
+          validation_started_at: string | null
+          validation_started_by: string | null
         }
         SetofOptions: {
           from: "*"
@@ -3298,6 +3331,73 @@ export type Database = {
         Args: { p_batch_id: string; p_filial_id?: string }
         Returns: Json
       }
+      equipment_regularization_history_entry: {
+        Args: { p_details?: Json; p_event: string }
+        Returns: Json
+      }
+      equipment_regularization_is_locked: {
+        Args: { p_equipment_id: string }
+        Returns: boolean
+      }
+      equipment_regularization_is_regularized: {
+        Args: { p_equipment_id: string }
+        Returns: boolean
+      }
+      equipment_regularization_list_batches: {
+        Args: {
+          p_client?: string
+          p_filial_id?: string
+          p_page?: number
+          p_page_size?: number
+          p_stage: string
+        }
+        Returns: Json
+      }
+      equipment_regularization_lock_batch: {
+        Args: { p_action: string; p_batch_id: string; p_filial_id: string }
+        Returns: {
+          applied_at: string | null
+          applied_by: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          created_at: string
+          created_by: string | null
+          document_date: string
+          email_message: string | null
+          email_subject: string | null
+          generated_at: string
+          header_city: string
+          header_state: string
+          history: Json
+          id: string
+          notes: string | null
+          pdf_generated_at: string | null
+          pdf_generated_by: string | null
+          pmp_number: string | null
+          provider_message_id: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          recipients: string[] | null
+          send_attempts: number
+          send_error: string | null
+          send_status: string
+          sent_at: string | null
+          sent_by: string | null
+          signer_name: string
+          signer_role: string
+          status: string
+          updated_at: string
+          validation_started_at: string | null
+          validation_started_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "equipment_regularization_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       equipment_regularization_mark_pdf_generated: {
         Args: { p_batch_id: string; p_filial_id?: string }
         Returns: undefined
@@ -3311,6 +3411,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      equipment_regularization_open_statuses: { Args: never; Returns: string[] }
       equipment_regularization_pending_clients: {
         Args: {
           p_chassis?: string
@@ -3344,9 +3445,27 @@ export type Database = {
         }
         Returns: Json
       }
+      equipment_regularization_register_send: {
+        Args: {
+          p_batch_id: string
+          p_email_message?: string
+          p_email_subject?: string
+          p_filial_id?: string
+          p_recipients: string[]
+        }
+        Returns: Json
+      }
+      equipment_regularization_remove_item: {
+        Args: { p_filial_id?: string; p_item_id: string; p_reason: string }
+        Returns: Json
+      }
       equipment_regularization_situation_norm: {
         Args: { p_situation: string }
         Returns: string
+      }
+      equipment_regularization_start_validation: {
+        Args: { p_batch_id: string; p_filial_id?: string; p_notes?: string }
+        Returns: Json
       }
       get_activity_metrics_v2: {
         Args: {
