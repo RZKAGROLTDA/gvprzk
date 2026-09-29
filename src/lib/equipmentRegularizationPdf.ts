@@ -9,7 +9,7 @@
  * baixada, visualizada e, futuramente, anexada ao e-mail de envio.
  */
 import type jsPDFType from 'jspdf';
-import letterheadAsset from '@/assets/rzk-agro-letterhead.png.asset.json';
+import letterheadImage from '@/assets/rzk-agro-letterhead.jpg';
 
 type jsPDF = jsPDFType;
 import { formatDateDisplay } from '@/lib/utils';
@@ -86,13 +86,13 @@ const blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, rej
 });
 
 const loadLetterhead = async (): Promise<string> => {
-  const response = await fetch(letterheadAsset.url);
+  const response = await fetch(letterheadImage);
   if (!response.ok) throw new Error('Não foi possível carregar o papel timbrado oficial.');
   return blobToDataUrl(await response.blob());
 };
 
 const drawLetterhead = (pdf: jsPDF, image: string) => {
-  pdf.addImage(image, 'PNG', 0, 0, PAGE_W, PAGE_H, 'rzk-letterhead', 'FAST');
+  pdf.addImage(image, 'JPEG', 0, 0, PAGE_W, PAGE_H, 'rzk-letterhead', 'FAST');
 };
 
 const ensureSpace = (pdf: jsPDF, y: number, needed: number, letterhead: string): number => {
