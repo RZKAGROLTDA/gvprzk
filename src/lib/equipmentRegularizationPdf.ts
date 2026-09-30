@@ -278,8 +278,30 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   pdf.text('Cliente', PAGE_W / 2, y, { align: 'center' });
   pdf.setTextColor(0);
 
+  /**
+   * Nome do arquivo: Regularizacao_[NOME_DO_CLIENTE].pdf
+   * - Nome do cliente do próprio lote (snapshot), nunca do usuário RZK;
+   * - Sem acentos/caracteres especiais; espaços viram "_"; caixa alta;
+   * - Mais de um cliente: Regularizacao_Varios_Clientes_[lote].pdf
+   *   (o lote não tem número sequencial no banco — usa o identificador curto).
+   */
+  const slugify = (name: string) =>
+    name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9\s]/g, ' ')
+      .trim()
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+
+  const nameSlug = clientNames.length === 1
+    ? (slugify(clientNames[0]) || 'CLIENTE')
+    : clientNames.length === 0
+      ? 'CLIENTE'
+      : `Varios_Clientes_${batch.id.slice(0, 8).toUpperCase()}`;
+
   const blob = pdf.output('blob') as Blob;
-  const fileName = 'declaracao-nao-localizacao.pdf';
+  const fileName = `Regularizacao_${nameSlug}.pdf`;
   return { blob, fileName };
 }
 
