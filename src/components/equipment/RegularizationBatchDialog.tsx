@@ -170,14 +170,16 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
       '',
       `Cliente: ${clienteLinha}`,
       `Máquinas no documento: ${batch.data?.items.length ?? machines.length}`,
-      `Lote: ${batchId ?? '—'}`,
       '',
-      'Solicitamos a conferência das informações e, caso haja divergência, o retorno a esta',
-      'concessionária para atualização cadastral.',
+      'Solicitamos a conferência das informações constantes no documento.',
+      '',
+      'Após a conferência, precisamos receber o documento devidamente assinado pelo cliente por meio de assinatura eletrônica GOV.BR.',
+      '',
+      'Caso haja alguma divergência nas informações, pedimos que nos informe antes da assinatura para que possamos realizar a atualização cadastral necessária.',
+      '',
+      'Após a assinatura, favor retornar o documento assinado para esta concessionária.',
       '',
       'Atenciosamente,',
-      signerName || '',
-      signerRole || '',
     ].join('\n');
 
     openUrl(
