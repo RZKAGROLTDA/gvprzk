@@ -165,10 +165,15 @@ export const RegularizationBatchDetail: React.FC<{
     download(o.blob, o.fileName);
     const names = [...new Set(b.items.map((i) => `${i.client_name ?? '—'} (${i.client_code ?? '—'})`))];
     const subject = `Regularização de Máquinas — ${names.length === 1 ? names[0] : `${names.length} clientes`}`;
-    const body = ['Prezado(a),', '', 'Segue em anexo o documento de Regularização de Máquinas referente ao seu Parque de Máquinas.', '',
-      `Máquinas no documento: ${b.items.length}`, `Lote: ${b.id}`, '',
-      'Solicitamos a conferência das informações e, caso haja divergência, o retorno a esta concessionária para atualização cadastral.', '',
-      'Atenciosamente,', b.signer_name ?? '', b.signer_role ?? ''].join('\n');
+    const clienteLinha = names.length === 1 ? names[0] : `Vários clientes (${names.length})`;
+    const body = ['Prezado(a),', '',
+      'Segue em anexo o documento de Regularização de Máquinas referente ao seu Parque de Máquinas.', '',
+      `Cliente: ${clienteLinha}`, `Máquinas no documento: ${b.items.length}`, '',
+      'Solicitamos a conferência das informações constantes no documento.', '',
+      'Após a conferência, precisamos receber o documento devidamente assinado pelo cliente por meio de assinatura eletrônica GOV.BR.', '',
+      'Caso haja alguma divergência nas informações, pedimos que nos informe antes da assinatura para que possamos realizar a atualização cadastral necessária.', '',
+      'Após a assinatura, favor retornar o documento assinado para esta concessionária.', '',
+      'Atenciosamente,'].join('\n');
     window.location.href = `mailto:${recipientList().join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
