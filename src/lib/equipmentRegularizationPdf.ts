@@ -135,6 +135,7 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 
   const ensureSpace = (y: number, needed: number): number => {
     if (y + needed <= CONTENT_BOTTOM) return y;
+    pdf.addPage();
     return drawPageHeader(true);
   };
 
