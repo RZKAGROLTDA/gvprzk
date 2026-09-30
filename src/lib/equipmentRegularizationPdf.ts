@@ -261,18 +261,21 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
     y += obs.length * 5.2 + 8;
   }
 
-  // Assinatura
+  // Assinatura do CLIENTE do lote (snapshot) — nunca o usuário que gerou o PDF.
   y = ensureSpace(y, 34);
   y += 16;
   pdf.setDrawColor(80);
   pdf.line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
   y += 5;
   pdf.setFontSize(10);
-  pdf.text(batch.signer_name || '—', PAGE_W / 2, y, { align: 'center' });
-  y += 5;
+  pdf.setFont('helvetica', 'bold');
+  const signNameLines = pdf.splitTextToSize(clientLabel, CONTENT_W) as string[];
+  pdf.text(signNameLines, PAGE_W / 2, y, { align: 'center' });
+  y += 5 + (signNameLines.length - 1) * 5;
+  pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9.5);
   pdf.setTextColor(110);
-  pdf.text(batch.signer_role || '—', PAGE_W / 2, y, { align: 'center' });
+  pdf.text('Cliente', PAGE_W / 2, y, { align: 'center' });
   pdf.setTextColor(0);
 
   const blob = pdf.output('blob') as Blob;
