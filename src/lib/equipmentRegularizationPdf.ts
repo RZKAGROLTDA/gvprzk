@@ -95,13 +95,6 @@ const drawLetterhead = (pdf: jsPDF, image: string) => {
   pdf.addImage(image, 'JPEG', 0, 0, PAGE_W, PAGE_H, 'rzk-letterhead', 'FAST');
 };
 
-const ensureSpace = (pdf: jsPDF, y: number, needed: number, letterhead: string): number => {
-  if (y + needed <= CONTENT_BOTTOM) return y;
-  pdf.addPage();
-  drawLetterhead(pdf, letterhead);
-  return CONTENT_TOP;
-};
-
 export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   blob: Blob;
   fileName: string;
@@ -109,14 +102,44 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   const { default: JsPDF } = await import('jspdf');
   const pdf = new JsPDF('p', 'mm', 'a4');
   const letterhead = await loadLetterhead();
-  drawLetterhead(pdf, letterhead);
-  let y = CONTENT_TOP;
 
-  // Título
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(16);
-  pdf.text('DECLARAÇÃO DE NÃO LOCALIZAÇÃO', PAGE_W / 2, y, { align: 'center' });
-  y += 14;
+  // Cliente do PRÓPRIO lote (snapshot), ignorando máquinas retiradas.
+  // Nunca usar nome/cargo do usuário no cabeçalho.
+  const removedIds = new Set((batch.removed_items ?? []).map((item) => item.id));
+  const activeItems = batch.items.filter((it) => !removedIds.has(it.id));
+  const clientNames = [...new Set(
+    activeItems.map((it) => (it.client_name ?? '').trim()).filter(Boolean),
+  )];
+  const clientLabel = clientNames.length === 0
+    ? '—'
+    : clientNames.length <= 2
+      ? clientNames.join(' / ')
+      : `Vários clientes (${clientNames.length})`;
+
+  /**
+   * Cabeçalho do documento em TODAS as páginas: timbre + título + cliente do lote.
+   * `compact` usa a versão reduzida nas páginas de continuação.
+   */
+  const drawPageHeader = (compact: boolean): number => {
+    drawLetterhead(pdf, letterhead);
+    const titleY = compact ? 36 : 46;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(compact ? 12 : 16);
+    pdf.text('DECLARAÇÃO DE NÃO LOCALIZAÇÃO', PAGE_W / 2, titleY, { align: 'center' });
+    pdf.setFontSize(compact ? 10.5 : 12);
+    const labelLines = pdf.splitTextToSize(clientLabel, CONTENT_W) as string[];
+    const labelY = titleY + (compact ? 6.5 : 9);
+    pdf.text(labelLines, PAGE_W / 2, labelY, { align: 'center' });
+    return labelY + labelLines.length * (compact ? 5.5 : 6.5) + (compact ? 7 : 5);
+  };
+
+  const ensureSpace = (y: number, needed: number): number => {
+    if (y + needed <= CONTENT_BOTTOM) return y;
+    pdf.addPage();
+    return drawPageHeader(true);
+  };
+
+  let y = drawPageHeader(false);
 
   // Texto introdutório
   pdf.setFont('helvetica', 'normal');
@@ -139,7 +162,6 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 
   // Agrupamento por cliente
   const groups = new Map<string, RegBatchItem[]>();
-  const removedIds = new Set((batch.removed_items ?? []).map((item) => item.id));
   batch.items.filter((item) => !removedIds.has(item.id)).forEach((it) => {
     const key = `${it.client_code ?? '—'}|${it.client_name ?? '—'}|${it.filial_nome ?? '—'}`;
     if (!groups.has(key)) groups.set(key, []);
@@ -148,7 +170,7 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 
   groups.forEach((items, key) => {
     const [code, name, filial] = key.split('|');
-    y = ensureSpace(pdf, y, 40, letterhead);
+    y = ensureSpace(y, 40);
 
     // Identificação
     pdf.setFontSize(10.5);
@@ -199,7 +221,7 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
 
     items.forEach((it) => {
       const before = y;
-       y = ensureSpace(pdf, y, 10, letterhead);
+       y = ensureSpace(y, 10);
       if (y !== before) drawHeader();
       pdf.setFontSize(9.5);
       pdf.text(String(it.serial_chassis || '—').slice(0, 28), colX[0] + 2, y);
@@ -222,7 +244,7 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   });
 
   // Texto final
-  y = ensureSpace(pdf, y, 30, letterhead);
+  y = ensureSpace(y, 30);
   pdf.setFontSize(10.5);
   const fim = pdf.splitTextToSize(
     'Cientes das informações apresentadas, solicitamos a regularização dos equipamentos ' +
@@ -233,14 +255,14 @@ export async function buildRegularizationPdf(batch: RegBatchDetail): Promise<{
   y += fim.length * 5.2 + 8;
 
   if (batch.notes) {
-    y = ensureSpace(pdf, y, 20, letterhead);
+    y = ensureSpace(y, 20);
     const obs = pdf.splitTextToSize(batch.notes, CONTENT_W);
     pdf.text(obs, MARGIN, y);
     y += obs.length * 5.2 + 8;
   }
 
   // Assinatura
-  y = ensureSpace(pdf, y, 34, letterhead);
+  y = ensureSpace(y, 34);
   y += 16;
   pdf.setDrawColor(80);
   pdf.line(PAGE_W / 2 - 40, y, PAGE_W / 2 + 40, y);
