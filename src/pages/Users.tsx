@@ -317,8 +317,18 @@ export const Users: React.FC = () => {
       const hay = `${p.name || ''} ${p.email || ''}`.toLowerCase();
       if (!hay.includes(debouncedSearch)) return false;
     }
+    if (roleFilter.length > 0 && !roleFilter.includes(p.role)) return false;
     return true;
   });
+
+  // Cargos existentes no sistema (a partir dos usuários aprovados carregados)
+  const availableRoles = Array.from(new Set(approvedUsers.map((p) => p.role).filter(Boolean))).sort((a, b) =>
+    getRoleLabel(a).localeCompare(getRoleLabel(b), 'pt-BR'),
+  );
+
+  const toggleRole = (role: string) => {
+    setRoleFilter((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+  };
   
   // SECURITY FIX: Use isManager from useUserRole hook (user_roles table) instead of profiles.role
   const isAdmin = isManager;
