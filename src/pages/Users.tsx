@@ -438,6 +438,52 @@ export const Users: React.FC = () => {
                   className="pl-8"
                 />
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-56 justify-between font-normal">
+                    <span className="truncate">
+                      {roleFilter.length === 0
+                        ? 'Todos os cargos'
+                        : roleFilter.length === 1
+                          ? getRoleLabel(roleFilter[0])
+                          : `${roleFilter.length} cargos selecionados`}
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="end">
+                  <div className="flex items-center justify-between gap-2 px-1 pb-2">
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setRoleFilter(availableRoles)}
+                    >
+                      Selecionar todos
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:underline"
+                      onClick={() => setRoleFilter([])}
+                    >
+                      Limpar seleção
+                    </button>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto space-y-1">
+                    {availableRoles.map((role) => (
+                      <label
+                        key={role}
+                        className="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={roleFilter.includes(role)}
+                          onCheckedChange={() => toggleRole(role)}
+                        />
+                        {getRoleLabel(role)}
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Select value={filialFilter} onValueChange={setFilialFilter}>
                 <SelectTrigger className="w-full sm:w-64">
                   <SelectValue placeholder="Filtrar por filial" />
