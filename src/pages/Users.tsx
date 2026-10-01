@@ -39,6 +39,7 @@ export const Users: React.FC = () => {
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [loading, setLoading] = useState(true);
   const [filialFilter, setFilialFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   // M3: filiais adicionais ativas por usuário (somente leitura para exibição)
