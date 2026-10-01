@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Users as UsersIcon, Building, Building2, Trash2, AlertTriangle, Search } from 'lucide-react';
+import { Users as UsersIcon, Building, Building2, Trash2, AlertTriangle, Search, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { useSecureUserDirectory } from '@/hooks/useSecureTaskData';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -37,6 +39,7 @@ export const Users: React.FC = () => {
   const [filiais, setFiliais] = useState<Filial[]>([]);
   const [loading, setLoading] = useState(true);
   const [filialFilter, setFilialFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   // M3: filiais adicionais ativas por usuário (somente leitura para exibição)
@@ -314,8 +317,18 @@ export const Users: React.FC = () => {
       const hay = `${p.name || ''} ${p.email || ''}`.toLowerCase();
       if (!hay.includes(debouncedSearch)) return false;
     }
+    if (roleFilter.length > 0 && !roleFilter.includes(p.role)) return false;
     return true;
   });
+
+  // Cargos existentes no sistema (a partir dos usuários aprovados carregados)
+  const availableRoles = Array.from(new Set(approvedUsers.map((p) => p.role).filter(Boolean))).sort((a, b) =>
+    getRoleLabel(a).localeCompare(getRoleLabel(b), 'pt-BR'),
+  );
+
+  const toggleRole = (role: string) => {
+    setRoleFilter((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+  };
   
   // SECURITY FIX: Use isManager from useUserRole hook (user_roles table) instead of profiles.role
   const isAdmin = isManager;
@@ -425,6 +438,52 @@ export const Users: React.FC = () => {
                   className="pl-8"
                 />
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-56 justify-between font-normal">
+                    <span className="truncate">
+                      {roleFilter.length === 0
+                        ? 'Todos os cargos'
+                        : roleFilter.length === 1
+                          ? getRoleLabel(roleFilter[0])
+                          : `${roleFilter.length} cargos selecionados`}
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="end">
+                  <div className="flex items-center justify-between gap-2 px-1 pb-2">
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setRoleFilter(availableRoles)}
+                    >
+                      Selecionar todos
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:underline"
+                      onClick={() => setRoleFilter([])}
+                    >
+                      Limpar seleção
+                    </button>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto space-y-1">
+                    {availableRoles.map((role) => (
+                      <label
+                        key={role}
+                        className="flex items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={roleFilter.includes(role)}
+                          onCheckedChange={() => toggleRole(role)}
+                        />
+                        {getRoleLabel(role)}
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Select value={filialFilter} onValueChange={setFilialFilter}>
                 <SelectTrigger className="w-full sm:w-64">
                   <SelectValue placeholder="Filtrar por filial" />
