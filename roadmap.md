@@ -69,3 +69,5 @@
 
 - [x] Consolidação Isac: COMMIT aplicado + validações pós-COMMIT OK
 - [ ] Consolidação Isac: banir a conta antiga no Auth (botão Desativar indisponível — perfil já saiu da lista de aprovados; depende de ação do gestor)
+
+- [ ] CRM Supervisor: escopo único (último acompanhamento → filial do criador) em detalhe/mídia/storage/produtos; validar Filial Ativa; cache na troca
