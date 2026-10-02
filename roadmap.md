@@ -72,3 +72,7 @@
 
 - [ ] CRM Supervisor: escopo único (último acompanhamento → filial do criador) em detalhe/mídia/storage/produtos; validar Filial Ativa; cache na troca
 - [ ] Entregar SQL revisado (Filial Ativa no Storage, sem caminho alternativo, versão antiga da mídia removida) para aprovação — não executar
+
+- [ ] CRM Supervisor: escopo único pela Filial Ativa no servidor (simular, não aplicar)
+- [ ] Preparar SQL dos 18 cargos ausentes (simular, não gravar)
+- [ ] Telas: gravar Filial Ativa no servidor e limpar dados e fotos ao trocar (após aprovação)
