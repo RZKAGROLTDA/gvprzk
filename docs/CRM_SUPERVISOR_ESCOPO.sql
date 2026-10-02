@@ -146,8 +146,6 @@ GRANT EXECUTE ON FUNCTION public.get_secure_task_media(uuid, uuid) TO authentica
 
 -- ---------------------------------------------------------------------
 -- 5. Storage (fotos) — Supervisor pela Filial Ativa do servidor.
---    A policy media_photos_select mantém "owner = auth.uid()" (rascunhos/
---    uploads próprios), como hoje.
 -- ---------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.can_access_media_object(p_name text)
 RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public' AS $f$
@@ -168,6 +166,19 @@ BEGIN
   RETURN v_created_by = auth.uid();  -- demais cargos: inalterado
 END;
 $f$;
+
+-- Policy de leitura: a exceção "owner = auth.uid()" deixa de valer para
+-- Supervisor (fotos próprias só pela Filial Ativa). Demais cargos: inalterado.
+DROP POLICY IF EXISTS media_photos_select ON storage.objects;
+CREATE POLICY media_photos_select ON storage.objects FOR SELECT TO authenticated
+USING (
+  bucket_id = ANY (ARRAY['task-photos','product-photos'])
+  AND public.is_active_approved_user()
+  AND (
+    public.can_access_media_object(name)
+    OR (owner = auth.uid() AND NOT public.has_role(auth.uid(), 'supervisor'))
+  )
+);
 
 -- ---------------------------------------------------------------------
 -- 6. Produtos e lembretes — ativo/aprovado; Supervisor pela Filial Ativa
