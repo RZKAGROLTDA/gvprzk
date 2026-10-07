@@ -268,6 +268,10 @@ BEGIN
   -- Supervisor fora da Filial Ativa não cai no nível 'limited' por filial principal.
   v := replace(v, $s$ELSIF user_filial_id = task_creator_filial THEN$s$,
     $s$ELSIF current_user_role <> 'supervisor' AND user_filial_id = task_creator_filial THEN$s$);
+  -- Hoje a função falha para qualquer usuário logado (sem permissão no
+  -- registro de auditoria). Passa a rodar como SECURITY DEFINER; o controle
+  -- de acesso continua sendo o da própria função (níveis full/limited/none).
+  v := replace(v, $s$LANGUAGE plpgsql$s$, $s$LANGUAGE plpgsql SECURITY DEFINER$s$);
   EXECUTE v;
 END $d$;
 
