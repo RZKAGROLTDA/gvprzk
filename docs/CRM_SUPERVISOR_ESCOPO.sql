@@ -270,3 +270,18 @@ BEGIN
     $s$ELSIF current_user_role <> 'supervisor' AND user_filial_id = task_creator_filial THEN$s$);
   EXECUTE v;
 END $d$;
+
+-- ---------------------------------------------------------------------
+-- 10. RLS de leitura de tasks: Supervisor somente pela Filial Ativa do
+--     servidor (sem união de filiais e sem exceção de "próprias").
+--     Admin/Gerente e demais cargos: inalterado.
+-- ---------------------------------------------------------------------
+DROP POLICY IF EXISTS secure_task_select_enhanced ON public.tasks;
+CREATE POLICY secure_task_select_enhanced ON public.tasks FOR SELECT
+USING (
+  ((created_by = (SELECT auth.uid())) AND NOT (SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role)))
+  OR (SELECT public.has_role((SELECT auth.uid()), 'manager'::app_role))
+  OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::app_role))
+  OR ((SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role))
+      AND public.task_op_filial_in(id, public.server_active_scope()))
+);
