@@ -274,6 +274,11 @@ export function invalidateSignedUrl(value: string, bucket: MediaBucket = TASK_PH
   signedUrlCache.delete(cacheKey(bucket, value));
 }
 
+/** Limpa todas as signed URLs em cache (troca de Filial Ativa / logout). */
+export function clearSignedUrlCache() {
+  signedUrlCache.clear();
+}
+
 /** Gera (ou reaproveita) uma signed URL. NUNCA persistir esse valor. */
 export async function getSignedUrl(
   bucket: MediaBucket,
