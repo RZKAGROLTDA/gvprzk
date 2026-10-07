@@ -26,9 +26,12 @@ export const EmergencyDataAccess: React.FC = () => {
         .limit(5);
 
       // Teste 2: Função RPC básica
-      const rpcQuery = await supabase
-        .rpc('get_secure_task_data')
-        .limit(5);
+      // Escopo aplicado no servidor: Supervisor só pela Filial Ativa validada;
+      // Admin/Gerente e demais cargos com o comportamento atual.
+      const firstTaskId = directQuery.data?.[0]?.id;
+      const rpcQuery = firstTaskId
+        ? await supabase.rpc('get_secure_task_data', { task_id_param: firstTaskId })
+        : { data: [] as unknown[], error: null as { message: string } | null };
 
       // Teste 3: Verificar perfil do usuário
       const profileQuery = await supabase

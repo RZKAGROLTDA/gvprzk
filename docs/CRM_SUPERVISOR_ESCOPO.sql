@@ -217,3 +217,56 @@ $f$;
 -- 7. Verificação pós-aplicação (leitura): deve restar só a versão (uuid, uuid)
 -- SELECT oid::regprocedure FROM pg_proc WHERE proname = 'get_secure_task_media';
 -- ---------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------
+-- 8. Criação de atividade pelo Supervisor: filial operacional = Filial Ativa
+--    validada no servidor (antes: sempre a filial principal do perfil).
+--    UPDATE de atividade de Supervisor preserva a filial já gravada
+--    (atividades históricas não são recalculadas). Demais cargos: inalterado.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.sync_task_access_metadata()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $f$
+DECLARE v_scope uuid[]; v_fid uuid; v_is_sup boolean;
+BEGIN
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    v_is_sup := NEW.created_by IS NOT NULL AND EXISTS (
+      SELECT 1 FROM public.user_roles ur WHERE ur.user_id = NEW.created_by AND ur.role = 'supervisor');
+    IF v_is_sup AND TG_OP = 'UPDATE'
+       AND EXISTS (SELECT 1 FROM public.task_access_metadata m
+                   WHERE m.task_id = NEW.id AND m.created_by = NEW.created_by) THEN
+      RETURN NEW; -- preserva filial operacional de origem
+    END IF;
+    IF v_is_sup AND TG_OP = 'INSERT' AND NEW.created_by = auth.uid() THEN
+      v_scope := public.server_active_scope();
+      IF coalesce(array_length(v_scope,1),0) = 1 THEN v_fid := v_scope[1]; END IF;
+    END IF;
+    INSERT INTO task_access_metadata (task_id, created_by, creator_filial_id, creator_approval_status)
+    SELECT NEW.id, NEW.created_by, COALESCE(v_fid, p.filial_id), p.approval_status
+    FROM profiles p WHERE p.user_id = NEW.created_by
+    ON CONFLICT (task_id) DO UPDATE SET
+      created_by = EXCLUDED.created_by,
+      creator_filial_id = EXCLUDED.creator_filial_id,
+      creator_approval_status = EXCLUDED.creator_approval_status,
+      updated_at = now();
+  END IF;
+  RETURN NEW;
+END $f$;
+
+-- ---------------------------------------------------------------------
+-- 9. Painel de Emergência (get_secure_task_data): Supervisor somente pela
+--    Filial Ativa validada no servidor. Manager/Admin e demais: inalterado.
+-- ---------------------------------------------------------------------
+DO $d$
+DECLARE v text;
+BEGIN
+  v := pg_get_functiondef('public.get_secure_task_data(uuid)'::regprocedure);
+  IF position($s$current_user_role = 'supervisor' AND user_filial_id = task_creator_filial$s$ in v) = 0 THEN
+    RAISE EXCEPTION 'get_secure_task_data: trecho do supervisor não encontrado';
+  END IF;
+  v := replace(v, $s$current_user_role = 'supervisor' AND user_filial_id = task_creator_filial$s$,
+    $s$current_user_role = 'supervisor' AND public.task_op_filial_in(task_id_param, public.server_active_scope())$s$);
+  -- Supervisor fora da Filial Ativa não cai no nível 'limited' por filial principal.
+  v := replace(v, $s$ELSIF user_filial_id = task_creator_filial THEN$s$,
+    $s$ELSIF current_user_role <> 'supervisor' AND user_filial_id = task_creator_filial THEN$s$);
+  EXECUTE v;
+END $d$;
