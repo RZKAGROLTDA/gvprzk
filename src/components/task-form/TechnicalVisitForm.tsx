@@ -18,6 +18,7 @@ import { toast } from '@/components/ui/use-toast';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/hooks/useProfile';
+import { useCreationFilial } from '@/hooks/useCreationFilial';
 import { useTasksOptimized, useFiliais } from '@/hooks/useTasksOptimized';
 import { BasicInfoBlock } from '@/components/task-form/BasicInfoBlock';
 import { EquipmentParkBlock } from '@/components/equipment';
@@ -93,6 +94,7 @@ const formatBRL = (n: number) =>
 export const TechnicalVisitForm: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const creationFilial = useCreationFilial();
   const { createTask, isCreating } = useTasksOptimized();
   const { data: filiais = [] } = useFiliais();
 
@@ -255,7 +257,7 @@ export const TechnicalVisitForm: React.FC = () => {
   const validate = (): string | null => {
     if (!clientName.trim()) return 'Nome do cliente é obrigatório';
     if (!property.trim()) return 'Propriedade é obrigatória';
-    if (!profile?.filial_id) return 'Filial do usuário não configurada';
+    if (!creationFilial.id) return 'Filial do usuário não configurada';
     return null;
   };
 
@@ -313,7 +315,7 @@ export const TechnicalVisitForm: React.FC = () => {
     else if (salesType === 'parcial') derivedFunnel = 'Negociação';
     else if (salesType === 'prospect') derivedFunnel = funnelStage || 'Prospectado';
 
-    const filialNome = profile?.filial_nome || '';
+    const filialNome = creationFilial.nome || '';
 
     const resolvedContactFunction =
       contactFunction === 'Outros' && contactFunctionOther.trim()
@@ -332,7 +334,7 @@ export const TechnicalVisitForm: React.FC = () => {
       phone,
       email,
       filial: filialNome,
-      filial_id: profile?.filial_id,
+      filial_id: creationFilial.id,
       priority: 'medium',
       startDate: now,
       endDate: now,
@@ -430,7 +432,7 @@ export const TechnicalVisitForm: React.FC = () => {
         property={property}
         onPropertyChange={setProperty}
         vendedor={profile?.name || ''}
-        filial={profile?.filial_nome || 'Não informado'}
+        filial={creationFilial.nome || 'Não informado'}
         showFilialAtendida
         filialAtendida={filialAtendida}
         onFilialAtendidaChange={setFilialAtendida}

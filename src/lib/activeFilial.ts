@@ -61,3 +61,25 @@ export const currentActiveFilialId = async (): Promise<string | null> => {
   const { data } = await supabase.auth.getSession();
   return readActiveFilial(data.session?.user?.id ?? null);
 };
+
+export type ServerFilialSyncResult = 'ok' | 'denied' | 'unavailable';
+
+/**
+ * Registra a Filial Ativa no servidor (RPC `set_active_filial`), que valida
+ * a filial contra as autorizadas. `null` = sem seleção (servidor usa a principal).
+ * - 'denied': servidor recusou (42501) → a tela deve manter a filial anterior.
+ * - 'unavailable': RPC ainda não implantada / sem rede → comportamento local atual.
+ */
+export const syncActiveFilialToServer = async (
+  filialId: string | null,
+): Promise<ServerFilialSyncResult> => {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { error } = await (supabase.rpc as any)('set_active_filial', { p_filial_id: filialId });
+    if (!error) return 'ok';
+    if (error.code === '42501') return 'denied';
+    return 'unavailable';
+  } catch {
+    return 'unavailable';
+  }
+};
