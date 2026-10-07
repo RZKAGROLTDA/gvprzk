@@ -276,6 +276,18 @@ END $d$;
 --     servidor (sem união de filiais e sem exceção de "próprias").
 --     Admin/Gerente e demais cargos: inalterado.
 -- ---------------------------------------------------------------------
+-- Atividade própria recém-criada (antes dos gatilhos de acompanhamento):
+-- vale somente se a filial gravada for a Filial Ativa do servidor.
+CREATE OR REPLACE FUNCTION public.filial_name_in_active_scope(p_filial text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $f$
+  SELECT p_filial IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.filiais f
+    WHERE f.id = ANY(public.server_active_scope())
+      AND lower(trim(f.nome)) = lower(trim(p_filial)))
+$f$;
+REVOKE ALL ON FUNCTION public.filial_name_in_active_scope(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.filial_name_in_active_scope(text) TO authenticated, service_role;
+
 DROP POLICY IF EXISTS secure_task_select_enhanced ON public.tasks;
 CREATE POLICY secure_task_select_enhanced ON public.tasks FOR SELECT
 USING (
@@ -283,5 +295,8 @@ USING (
   OR (SELECT public.has_role((SELECT auth.uid()), 'manager'::app_role))
   OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::app_role))
   OR ((SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role))
-      AND public.task_op_filial_in(id, public.server_active_scope()))
+      AND (public.task_op_filial_in(id, public.server_active_scope())
+           OR (created_by = (SELECT auth.uid())
+               AND NOT EXISTS (SELECT 1 FROM public.task_access_metadata m WHERE m.task_id = id)
+               AND public.filial_name_in_active_scope(filial))))
 );
