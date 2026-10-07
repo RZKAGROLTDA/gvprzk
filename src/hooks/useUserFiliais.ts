@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { clearSignedUrlCache } from '@/lib/mediaStorage';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
@@ -8,7 +10,17 @@ import {
   readActiveFilial,
   subscribeActiveFilial,
   writeActiveFilial,
+  syncActiveFilialToServer,
 } from '@/lib/activeFilial';
+
+// Consultas de identidade/escopo que NÃO dependem da Filial Ativa.
+const KEEP_ON_FILIAL_SWITCH = new Set([
+  'user-filial-ids', 'filiais-nomes', 'filiais', 'filiais-options',
+  'filiais-options-vs', 'filiais-options-vsp', 'profile', 'user-roles', 'userRole',
+]);
+
+// Sincronização inicial com o servidor: uma vez por usuário/sessão de página.
+const serverSynced = new Map<string, string | null>();
 
 /**
  * M3 — Etapa 1: fonte ÚNICA das filiais autorizadas do usuário no frontend.
@@ -115,16 +127,55 @@ export const useUserFiliais = () => {
     return primaryFilialId ?? allowedIds[0] ?? null;
   }, [isGlobal, stored, allowedIds, primaryFilialId]);
 
+  const queryClient = useQueryClient();
+
+  /** Remove dados da filial anterior (atividades, detalhes, mídia, links). */
+  const purgeFilialScopedData = useCallback(() => {
+    clearSignedUrlCache();
+    queryClient.removeQueries({
+      predicate: (q) => !KEEP_ON_FILIAL_SWITCH.has(String(q.queryKey[0])),
+    });
+  }, [queryClient]);
+
   const setActiveFilialId = useCallback(
-    (next: string | null) => {
+    async (next: string | null) => {
       if (!userId) return;
       // Nunca permitir uma filial fora do escopo autorizado.
       if (next && !allowedIds.includes(next)) return;
+      // 1) Servidor primeiro: se recusar, mantém a filial anterior.
+      const res = await syncActiveFilialToServer(next);
+      if (res === 'denied') {
+        toast.error('Filial não autorizada. A filial anterior foi mantida.');
+        return;
+      }
+      serverSynced.set(userId, next);
+      // 2) Limpa dados da filial anterior antes de qualquer nova consulta.
+      purgeFilialScopedData();
+      // 3) Só então troca a filial local (consultas passam a usar a nova).
       writeActiveFilial(userId, next);
       setStored(next);
     },
-    [userId, allowedIds],
+    [userId, allowedIds, purgeFilialScopedData],
   );
+
+  // Ao entrar: registra no servidor a Filial Ativa (ou nenhuma → principal).
+  const isLoadingAll = profileLoading || rolesLoading || idsQuery.isLoading;
+  useEffect(() => {
+    if (!userId || isLoadingAll) return;
+    const target = stored && allowedIds.includes(stored) ? stored : null;
+    if (serverSynced.has(userId) && serverSynced.get(userId) === target) return;
+    serverSynced.set(userId, target);
+    void syncActiveFilialToServer(target).then((res) => {
+      if (res === 'denied') {
+        // Seleção local não aceita pelo servidor: volta para a principal.
+        serverSynced.set(userId, null);
+        void syncActiveFilialToServer(null);
+        writeActiveFilial(userId, null);
+        setStored(null);
+        purgeFilialScopedData();
+      }
+    });
+  }, [userId, isLoadingAll, stored, allowedIds, purgeFilialScopedData]);
 
   const activeFilial = useMemo(
     () => filiais.find((f) => f.id === activeFilialId) ?? null,
