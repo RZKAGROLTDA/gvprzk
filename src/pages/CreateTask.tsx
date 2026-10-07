@@ -24,6 +24,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { toast } from '@/components/ui/use-toast';
 import { ReportExporter } from '@/components/ReportExporter';
 import { useProfile } from '@/hooks/useProfile';
+import { useCreationFilial } from '@/hooks/useCreationFilial';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { getSalesValueAsNumber } from '@/lib/securityUtils';
@@ -101,6 +102,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   const {
     profile
   } = useProfile();
+  const creationFilial = useCreationFilial();
 
   // Mapear tipos da URL para tipos internos
   const getTaskCategoryFromUrl = (urlType: string | null): 'field-visit' | 'call' | 'workshop-checklist' => {
@@ -213,13 +215,12 @@ const CreateTask: React.FC<CreateTaskProps> = ({
   // Definir filial automaticamente quando o perfil carregar
   useEffect(() => {
     if (profile) {
-      console.log('🔄 Profile carregado, definindo filial:', profile.filial_nome);
       setTask(prev => ({
         ...prev,
-        filial: profile.filial_nome || 'Não informado' // Usar nome da filial, não ID
+        filial: creationFilial.nome || 'Não informado' // Usar nome da filial, não ID
       }));
     }
-  }, [profile]);
+  }, [profile, creationFilial.nome]);
 
   // Inicializar lista de equipamentos vazia
   const initializeEquipmentList = () => {
@@ -585,7 +586,7 @@ const CreateTask: React.FC<CreateTaskProps> = ({
       responsible: profile?.name || '',
       client: '',
       property: '',
-      filial: profile?.filial_nome || 'Não informado',
+      filial: creationFilial.nome || 'Não informado',
       cpf: '',
       email: '',
       taskType: getTaskTypeFromCategory(taskCategory),
@@ -931,7 +932,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
     }
 
     // Validação obrigatória da filial do usuário
-    if (!profile?.filial_id) {
+    if (!creationFilial.id) {
       submissionLockRef.current = false;
       setIsSubmitting(false);
       toast({
@@ -951,7 +952,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
       // Garantir que taskType está correto
       responsible: profile?.name || 'Vendedor',
       // SEMPRE usar o nome do vendedor logado
-      filial_id: profile?.filial_id,
+      filial_id: creationFilial.id,
       // Usar ID da filial do profile
       startDate: now,
       // Data atual exata
@@ -989,7 +990,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
         ...taskData,
         responsible: profile?.name || 'Vendedor',
         // SEMPRE nome do vendedor logado
-        filial_id: profile?.filial_id,
+        filial_id: creationFilial.id,
         // ID da filial do profile
         createdAt: now,
         updatedAt: now,
@@ -1224,7 +1225,7 @@ ${taskData.observations ? `📝 *Observações:* ${taskData.observations}` : ''}
             property={task.property || ''}
             onPropertyChange={(v) => setTask(prev => ({ ...prev, property: v }))}
             vendedor={profile?.name || ''}
-            filial={profile?.filial_nome || 'Não informado'}
+            filial={creationFilial.nome || 'Não informado'}
             showFilialAtendida={taskCategory === 'call'}
             filialAtendidaRequired={taskCategory === 'call'}
             filialAtendida={task.filialAtendida || ''}
