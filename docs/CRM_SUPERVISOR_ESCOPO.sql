@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.user_active_filial (
   filial_id  uuid NOT NULL REFERENCES public.filiais(id),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+REVOKE ALL ON public.user_active_filial FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.user_active_filial TO authenticated;
 GRANT ALL ON public.user_active_filial TO service_role;
 ALTER TABLE public.user_active_filial ENABLE ROW LEVEL SECURITY;
@@ -258,17 +259,7 @@ BEGIN
     RETURN public.task_in_supervisor_scope(p_task_id);
   END IF;
   IF auth.uid() = v_created_by THEN RETURN true; END IF;
-  IF v_role IN ('rac','cpa','csa') THEN
-    IF EXISTS (SELECT 1 FROM public.profiles p1 JOIN public.profiles p2 ON p2.user_id = v_created_by
-               WHERE p1.user_id = auth.uid() AND p1.filial_id IS NOT NULL AND p1.filial_id = p2.filial_id) THEN
-      RETURN true;
-    END IF;
-    IF v_task_filial IS NOT NULL AND EXISTS (
-      SELECT 1 FROM public.profiles p1 JOIN public.filiais f ON f.id = p1.filial_id
-      WHERE p1.user_id = auth.uid() AND p1.approval_status = 'approved' AND f.nome = v_task_filial) THEN
-      RETURN true;
-    END IF;
-  END IF;
+  -- RAC/CPA/CSA e demais: somente atividades próprias (mesma regra da leitura de tasks).
   RETURN false;
 END;
 $f$;
