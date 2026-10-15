@@ -76,3 +76,5 @@
 - [ ] CRM Supervisor: escopo único pela Filial Ativa no servidor (simular, não aplicar)
 - [ ] Preparar SQL dos 18 cargos ausentes (simular, não gravar)
 - [ ] Telas: gravar Filial Ativa no servidor e limpar dados e fotos ao trocar (após aprovação)
+
+- [ ] Parque/Regularização: (1) Salvar e validar desabilitado no Editar Equipamento; (2) filtro multi-filial em todas as abas; (3) detalhes em Regularizados/Cancelados + cancelamento de regularizado só após aprovação do fluxo
