@@ -393,7 +393,7 @@ USING (
   OR (SELECT public.has_role((SELECT auth.uid()), 'manager'::app_role))
   OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::app_role))
   OR ((SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role))
-      AND filial_id = ANY ((SELECT public.server_active_scope())))
+      AND filial_id = ANY ((SELECT public.server_active_scope())::uuid[]))
 );
 DROP POLICY IF EXISTS task_followups_update ON public.task_followups;
 CREATE POLICY task_followups_update ON public.task_followups FOR UPDATE
@@ -402,14 +402,14 @@ USING (
   OR (SELECT public.has_role((SELECT auth.uid()), 'manager'::app_role))
   OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::app_role))
   OR ((SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role))
-      AND filial_id = ANY ((SELECT public.server_active_scope())))
+      AND filial_id = ANY ((SELECT public.server_active_scope())::uuid[]))
 )
 WITH CHECK (
   (responsible_user_id = (SELECT auth.uid()) AND NOT (SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role)))
   OR (SELECT public.has_role((SELECT auth.uid()), 'manager'::app_role))
   OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::app_role))
   OR ((SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role))
-      AND filial_id = ANY ((SELECT public.server_active_scope())))
+      AND filial_id = ANY ((SELECT public.server_active_scope())::uuid[]))
 );
 DROP POLICY IF EXISTS task_followups_insert ON public.task_followups;
 CREATE POLICY task_followups_insert ON public.task_followups FOR INSERT
@@ -417,7 +417,7 @@ WITH CHECK (
   (SELECT public.has_role((SELECT auth.uid()), 'manager'::app_role))
   OR (SELECT public.has_role((SELECT auth.uid()), 'admin'::app_role))
   OR ((SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role))
-      AND filial_id = ANY ((SELECT public.server_active_scope())))
+      AND filial_id = ANY ((SELECT public.server_active_scope())::uuid[]))
   OR (responsible_user_id = (SELECT auth.uid()) AND created_by = (SELECT auth.uid())
       AND NOT (SELECT public.has_role((SELECT auth.uid()), 'supervisor'::app_role)))
 );
