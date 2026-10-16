@@ -81,3 +81,5 @@
 
 ## CRM Supervisor — validação final (não aplicar)
 - [ ] Policies SELECT de products conferidas; RAC só produtos acessíveis; 919 do Samuel preservados; simulação com FAIL interrompendo; arquivo sem bloco de simulação; SHA-256
+- [ ] CRM Supervisor PAUSADO (nada aplicado; simulação final não executada)
+- [ ] Parque: botão "Salvar e validar" desabilitado em Editar Equipamento — diagnóstico + proposta antes de corrigir
