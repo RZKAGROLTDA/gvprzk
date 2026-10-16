@@ -176,7 +176,7 @@ export const checkServiceWorkerUpdate = async () => {
   }
 };
 
-export type PrepareResult = { ok: true } | { ok: false; reason: 'offline' | 'unavailable' };
+export type PrepareResult = { ok: boolean; reason?: 'offline' | 'unavailable' };
 
 /**
  * Confirma, direto da rede, que a nova versão está completa no servidor:
