@@ -4,6 +4,7 @@ import {
   CURRENT_BUILD_TIME,
   CURRENT_VERSION,
   checkForUpdate,
+  checkServiceWorkerUpdate,
 } from '@/lib/appUpdate';
 
 const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 min
@@ -34,6 +35,7 @@ export function useAutoVersionCheck() {
     const run = async () => {
       if (stopped) return;
       lastRunAt = Date.now();
+      void checkServiceWorkerUpdate();
       const outcome = await checkForUpdate();
       if (outcome.status === 'deferred' && !stopped) {
         clearTimeout(busyTimer);

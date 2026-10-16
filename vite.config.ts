@@ -65,11 +65,23 @@ export default defineConfig(({ mode }) => {
         clientsClaim: true,
         skipWaiting: true,
         cleanupOutdatedCaches: true,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // HTML fora do precache: a tela inicial vem sempre da rede (NetworkFirst abaixo).
+        globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/, /^\/~oauth/, /version\.json$/],
+        navigateFallback: null,
         runtimeCaching: [
+          {
+            // Navegação: rede primeiro; cópia local só sem internet (offline preservado).
+            urlPattern: ({ request, url }: any) =>
+              request.mode === 'navigate' && !url.pathname.startsWith('/~oauth') && !url.pathname.startsWith('/api'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'app-pages',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 5 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
           // ⚠️ Removido cache NetworkFirst do Supabase API:
           // ele segurava requisições antigas por até 24h (inclusive bundles antigos
           // já invalidados que continuavam fazendo upsert direto em tabelas).

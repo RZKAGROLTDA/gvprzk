@@ -149,48 +149,69 @@ export const isDifferentVersion = (remote: RemoteVersion | null): boolean => {
 };
 
 /**
- * Limpa apenas os caches de app-shell do Workbox (precache/runtime),
- * preservando caches de imagens/fontes e qualquer dado operacional.
+ * Limpa SOMENTE o precache do Workbox (cópia do app-shell: html/js/css do build).
+ * Preservados: cache de imagens do Storage, fontes, localStorage e IndexedDB
+ * (sessão, rascunhos, fotos e fila offline).
  */
+const isSafeAppShellCache = (name: string) => /^workbox-precache-/.test(name) || name === 'app-pages';
+
 const clearAppShellCaches = async () => {
   if (!('caches' in window)) return;
   try {
     const names = await caches.keys();
-    const shell = names.filter((n) => /precache|workbox|runtime|assets/i.test(n));
-    await Promise.allSettled(shell.map((n) => caches.delete(n)));
+    await Promise.allSettled(names.filter(isSafeAppShellCache).map((n) => caches.delete(n)));
   } catch {
     /* ignore */
   }
 };
 
-const activateWaitingServiceWorker = async () => {
+/** Pede ao service worker para buscar uma versão nova (usado no polling). */
+export const checkServiceWorkerUpdate = async () => {
   if (!('serviceWorker' in navigator)) return;
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.allSettled(
-      regs.map(async (reg) => {
-        await reg.update().catch(() => undefined);
-        reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
-      }),
-    );
+    await Promise.allSettled(regs.map((r) => r.update()));
   } catch {
     /* ignore */
+  }
+};
+
+export type PrepareResult = { ok: boolean; reason?: 'offline' | 'unavailable' };
+
+/**
+ * Confirma, direto da rede, que a nova versão está completa no servidor:
+ * version.json válido + index.html novo + bundle principal referenciado acessível.
+ */
+const verifyNewVersionAvailable = async (): Promise<PrepareResult> => {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { ok: false, reason: 'offline' };
+  }
+  try {
+    const t = Date.now();
+    const v = await fetch(`/version.json?t=${t}`, { cache: 'no-store' });
+    if (!v.ok) return { ok: false, reason: 'unavailable' };
+    JSON.parse(await v.text());
+    const html = await fetch(`/?_v=${t}`, { cache: 'no-store' });
+    if (!html.ok) return { ok: false, reason: 'unavailable' };
+    const body = await html.text();
+    const entry = body.match(/<script[^>]+type="module"[^>]+src="([^"]+)"/)?.[1];
+    if (!entry) return { ok: false, reason: 'unavailable' };
+    const js = await fetch(entry, { cache: 'no-store' });
+    if (!js.ok) return { ok: false, reason: 'unavailable' };
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: navigator.onLine === false ? 'offline' : 'unavailable' };
   }
 };
 
 /**
- * Recarrega o app buscando o novo bundle. Não remove nada de localStorage/IndexedDB.
+ * Troca para a versão nova: verifica disponibilidade, desliga o SW antigo
+ * (o novo é registrado no próximo carregamento), limpa só o app-shell e recarrega.
+ * Se algo falhar, NÃO recarrega: o app continua utilizável.
  */
-export const reloadForUpdate = async () => {
-  await activateWaitingServiceWorker();
-  await clearAppShellCaches();
-  const url = new URL(window.location.href);
-  url.searchParams.set('_v', Date.now().toString());
-  window.location.replace(url.toString());
-};
-
-/** Atualização manual (contingência). Também preserva dados operacionais. */
-export const forceUpdateNow = async () => {
+const applyUpdate = async (): Promise<PrepareResult> => {
+  const check = await verifyNewVersionAvailable();
+  if (!check.ok) return check;
   if ('serviceWorker' in navigator) {
     try {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -200,12 +221,37 @@ export const forceUpdateNow = async () => {
     }
   }
   await clearAppShellCaches();
-  remove(KEY_ATTEMPTED);
-  remove(KEY_FAILED);
   const url = new URL(window.location.href);
   url.searchParams.set('_v', Date.now().toString());
   window.location.replace(url.toString());
+  return { ok: true };
 };
+
+/** Recarga automática (1 tentativa por build). */
+export const reloadForUpdate = async () => {
+  const r = await applyUpdate();
+  if (!r.ok) remove(KEY_ATTEMPTED); // permite nova tentativa no próximo ciclo
+  return r;
+};
+
+/** Atualização manual. Preserva dados operacionais. */
+export const forceUpdateNow = async (): Promise<PrepareResult> => {
+  remove(KEY_FAILED);
+  const r = await applyUpdate();
+  if (r.ok) remove(KEY_ATTEMPTED);
+  return r;
+};
+
+/** Há trabalho não salvo? (usado para pedir confirmação na atualização manual) */
+export const hasUnsavedWork = (): boolean => {
+  if (criticalTasks > 0) return true;
+  if (typeof document === 'undefined') return false;
+  return !!document.querySelector('[role="dialog"],[data-unsaved="true"]');
+};
+
+export const UPDATE_AVAILABLE_EVENT = 'app-update-available';
+let availableRemote: RemoteVersion | null = null;
+export const getAvailableUpdate = () => availableRemote;
 
 export type CheckOutcome =
   | { status: 'up-to-date' }
@@ -237,6 +283,10 @@ export const checkForUpdate = async (): Promise<CheckOutcome> => {
   }
 
   const remoteHash = remote.buildHash || remote.version || 'unknown';
+
+  // Sempre avisa a interface (aviso "Nova versão disponível").
+  availableRemote = remote;
+  window.dispatchEvent(new CustomEvent(UPDATE_AVAILABLE_EVENT, { detail: remote }));
 
   // Já tentamos automaticamente para este buildHash e continua divergente → falha.
   if (attempted === remoteHash) {
