@@ -20,6 +20,10 @@ import {
   type ClientEquipment, type EquipmentValidator, type EquipmentValidationSummaryRow,
 } from '@/hooks/useClientEquipment';
 import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
+import { useUserFiliais } from '@/hooks/useUserFiliais';
+import { useQuery } from '@tanstack/react-query';
+import { ParkFilialMultiSelect } from '@/components/equipment/ParkFilialMultiSelect';
+import { LEGACY_SCOPE, defaultParkSelection, toParkScope, type ParkFilialScope } from '@/lib/parkFilialScope';
 
 
 const ALL = 'all';
@@ -46,8 +50,40 @@ const Equipamentos: React.FC = () => {
   // M3/E2 — Filial Ativa do cabeçalho é a filial efetiva do Parque/Validação.
   const { filialId: activeFilialId } = useActiveFilialFilter();
 
+  // Filtro "Filiais" (filial cadastrada da máquina) — exceção multi-filial
+  // restrita a estes painéis. Não altera a Filial Ativa global.
+  const { isGlobal, filiais: userFiliais, isLoading: filiaisLoading } = useUserFiliais();
+  const { data: allFiliais } = useQuery({
+    queryKey: ['filiais-options-park'],
+    enabled: parkQueriesEnabled && isGlobal,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('filiais').select('id, nome').order('nome').limit(500);
+      if (error) throw error;
+      return (data ?? []) as { id: string; nome: string }[];
+    },
+  });
+  const filialOptions = useMemo(
+    () => (isGlobal ? allFiliais ?? [] : userFiliais.map((f) => ({ id: f.id, nome: f.nome })))
+      .slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [isGlobal, allFiliais, userFiliais],
+  );
+  const optionIds = useMemo(() => filialOptions.map((f) => f.id), [filialOptions]);
+  const optionsReady = !filiaisLoading && (isGlobal ? !!allFiliais : true);
+  const [parkSel, setParkSel] = useState<{ ids: string[]; semFilial: boolean } | null>(null);
+  // (Re)inicia a seleção ao abrir/trocar Filial Ativa.
+  React.useEffect(() => {
+    if (!optionsReady) return;
+    setParkSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
+  }, [optionsReady, isGlobal, activeFilialId, optionIds]);
+  const parkScope: ParkFilialScope = useMemo(
+    () => (parkSel ? toParkScope(parkSel.ids, parkSel.semFilial, optionIds, isGlobal) : LEGACY_SCOPE),
+    [parkSel, optionIds, isGlobal],
+  );
+
   // Diretório de validadores (id → nome, filial)
-  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled, activeFilialId);
+  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled, activeFilialId, parkScope);
   const validatorMap = useMemo(() => {
     const map = new Map<string, EquipmentValidator>();
     validators.forEach((v) => map.set(v.user_id, v));
@@ -70,9 +106,11 @@ const Equipamentos: React.FC = () => {
   const validatedByIn = useMemo(() => {
     if (validatedByFilter !== ALL) return [validatedByFilter];
     if (validatorFilialFilter !== ALL) {
-      return validators
+      const ids = validators
         .filter((v) => v.filial_id === validatorFilialFilter)
         .map((v) => v.user_id);
+      // Sem validadores na filial escolhida: nenhum resultado (nunca amplia).
+      return ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000'];
     }
     return null;
   }, [validatedByFilter, validatorFilialFilter, validators]);
@@ -81,7 +119,7 @@ const Equipamentos: React.FC = () => {
   // Ao trocar de filial, volta para a primeira página.
   React.useEffect(() => {
     setPage(0);
-  }, [activeFilialId]);
+  }, [activeFilialId, parkScope]);
 
   const filters = useMemo(
     () => ({
@@ -93,8 +131,9 @@ const Equipamentos: React.FC = () => {
       clientName,
       validationPriority: priorityOnly ? true : null,
       validatedByIn,
+      scope: parkScope,
     }),
-    [search, activeFilialId, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn],
+    [search, activeFilialId, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn, parkScope],
   );
 
   const { data, isLoading, isFetching, isError, error, refetch } = useEquipmentPark(
@@ -112,6 +151,7 @@ const Equipamentos: React.FC = () => {
       search: search || null,
       filialId: activeFilialId,
       machineStatus: machineStatus === ALL ? null : machineStatus,
+      scope: parkScope,
     },
     parkQueriesEnabled,
   );
@@ -143,41 +183,29 @@ const Equipamentos: React.FC = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
+      // Exportação usa a MESMA consulta da lista (mesmos filtros e escopo).
+      const norm = (v?: string) => (v && v.trim() ? v.trim() : null);
       const all: ClientEquipment[] = [];
-      const EXPORT_PAGE = 1000;
-      let p = 0;
-      while (true) {
-        let q = supabase
-          .from('client_equipment' as any)
-          .select(
-            'id, client_code, client_name, filial_id, model, serial_chassis, hours, year, observation, machine_type, product_raw, puk_status, machine_status, last_validation_at, validated_by, import_batch_id, validation_priority, validation_source, validation_priority_reason, validation_priority_updated_at',
-          )
-          .order('validation_priority', { ascending: false, nullsFirst: false })
-          .order('updated_at', { ascending: false })
-          .range(p * EXPORT_PAGE, p * EXPORT_PAGE + EXPORT_PAGE - 1);
-
-        const norm = (v?: string) => (v && v.trim() ? v.trim() : null);
-        // M3/E2 — a exportação acompanha exatamente a Filial Ativa.
-        if (activeFilialId) q = q.eq('filial_id', activeFilialId);
-        if (norm(clientCode)) q = q.eq('client_code', norm(clientCode)!);
-        if (norm(clientName)) q = q.ilike('client_name', `%${norm(clientName)!}%`);
-        if (machineType !== ALL) q = q.eq('machine_type', machineType);
-        if (machineStatus !== ALL) q = q.eq('machine_status', machineStatus);
-        if (priorityOnly) q = q.eq('validation_priority', true);
-        if (validatedByIn && validatedByIn.length > 0) q = q.in('validated_by', validatedByIn);
-        if (norm(search)) {
-          const s = search.replace(/[%,]/g, '');
-          q = q.or(
-            `model.ilike.%${s}%,serial_chassis.ilike.%${s}%,client_name.ilike.%${s}%,client_code.ilike.%${s}%`,
-          );
-        }
-        const { data: batch, error } = await q;
+      const EXPORT_PAGE = 200;
+      for (let off = 0; off <= 50000; off += EXPORT_PAGE) {
+        const { data: batch, error } = await (supabase as any).rpc('get_equipment_park_paginated', {
+          p_search: norm(search),
+          p_filial_id: activeFilialId ?? null,
+          p_machine_status: machineStatus === ALL ? null : machineStatus,
+          p_puk_status: null,
+          p_validation_priority: priorityOnly ? true : null,
+          p_machine_type: machineType === ALL ? null : machineType,
+          p_validated_by: validatedByIn && validatedByIn.length > 0 ? validatedByIn : null,
+          p_client_code: norm(clientCode),
+          p_client_name: norm(clientName),
+          p_limit: EXPORT_PAGE,
+          p_offset: off,
+          ...(parkScope.filialIds === null ? {} : { p_filial_ids: parkScope.filialIds, p_include_sem_filial: parkScope.includeSemFilial }),
+        });
         if (error) throw error;
-        const list = (batch as unknown as ClientEquipment[]) ?? [];
+        const list = (batch as unknown as (ClientEquipment & { filial_nome?: string })[]) ?? [];
         all.push(...list);
         if (list.length < EXPORT_PAGE) break;
-        p += 1;
-        if (all.length > 50000) break; // segurança
       }
 
       if (all.length === 0) {
@@ -198,6 +226,7 @@ const Equipamentos: React.FC = () => {
         'Validado em': e.last_validation_at
           ? new Date(e.last_validation_at).toLocaleString('pt-BR')
           : '—',
+        'Filial da Máquina': (e as any).filial_nome ?? 'Sem filial',
         'Validado por': validatorName(e.validated_by),
         'Filial do Validador': validatorFilial(e.validated_by),
       }));
@@ -230,7 +259,7 @@ const XLSX = await import('xlsx');
   );
 
   // Resumo por filial — fonte correta: get_equipment_validation_summary().by_filial
-  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary(parkQueriesEnabled, activeFilialId);
+  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary(parkQueriesEnabled, activeFilialId, parkScope);
 
   /** Força a revalidação de listagem + KPIs + resumo (botão de atualizar). */
   const refetchAll = () => {
@@ -510,6 +539,16 @@ const XLSX = await import('xlsx');
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Filiais</label>
+            <ParkFilialMultiSelect
+              options={filialOptions}
+              selected={parkSel?.ids ?? []}
+              semFilial={parkSel?.semFilial ?? false}
+              canSemFilial={isGlobal}
+              onChange={(ids, semFilial) => setParkSel({ ids, semFilial })}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Filial do Validador</label>

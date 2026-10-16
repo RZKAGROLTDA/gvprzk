@@ -66,7 +66,11 @@ export interface EquipmentFilters {
   filialId?: string | null;
   /** Lista de user_ids de validadores a filtrar (aplica .in em validated_by). */
   validatedByIn?: string[] | null;
+  /** Escopo multi-filial (só painéis de Validação). Ausente = modo legado. */
+  scope?: ParkFilialScope;
 }
+
+import { type ParkFilialScope, LEGACY_SCOPE, scopeKey, scopeRpcParams } from '@/lib/parkFilialScope';
 
 const norm = (v?: string | null) => {
   if (!v) return null;
@@ -196,6 +200,7 @@ export const useEquipmentPark = (
         filialId: p.filialId,
         validationPriority: p.validationPriority,
         validatedByKey,
+        scope: scopeKey(filters.scope ?? LEGACY_SCOPE),
         page,
         pageSize,
       },
@@ -219,6 +224,7 @@ export const useEquipmentPark = (
         p_client_name: p.clientName,
         p_limit: pageSize,
         p_offset: page * pageSize,
+        ...scopeRpcParams(filters.scope ?? LEGACY_SCOPE),
       });
       if (error) throw error;
       const raw = ((data as unknown) as (EquipmentParkRow & { total_count: number })[]) ?? [];
@@ -253,7 +259,9 @@ export const useEquipmentParkKpis = (filters?: {
   machineStatus?: string | null;
   pukStatus?: string | null;
   validationPriority?: boolean | null;
+  scope?: ParkFilialScope;
 }, enabled = true) => {
+  const scope = filters?.scope ?? LEGACY_SCOPE;
   const search = norm(filters?.search);
   const filialId = norm(filters?.filialId);
   const machineStatus = norm(filters?.machineStatus);
@@ -264,7 +272,7 @@ export const useEquipmentParkKpis = (filters?: {
     queryKey: [
       'client-equipment',
       'park-kpis',
-      { search, filialId, machineStatus, pukStatus, validationPriority },
+      { search, filialId, machineStatus, pukStatus, validationPriority, scope: scopeKey(scope) },
     ],
     enabled,
     staleTime: 5 * 60 * 1000,
@@ -278,6 +286,7 @@ export const useEquipmentParkKpis = (filters?: {
         p_machine_status: machineStatus,
         p_puk_status: pukStatus,
         p_validation_priority: validationPriority,
+        ...scopeRpcParams(scope),
       });
       if (error) throw error;
       const row = (((data as unknown) as any[]) ?? [])[0];
@@ -314,9 +323,9 @@ export interface EquipmentValidationSummary {
   by_filial: EquipmentValidationSummaryRow[];
 }
 
-export const useEquipmentValidationSummary = (enabled = true, filialId?: string | null) => {
+export const useEquipmentValidationSummary = (enabled = true, filialId?: string | null, scope: ParkFilialScope = LEGACY_SCOPE) => {
   return useQuery<EquipmentValidationSummary | null>({
-    queryKey: ['client-equipment', 'validation-summary', filialId ?? null],
+    queryKey: ['client-equipment', 'validation-summary', filialId ?? null, scopeKey(scope)],
     enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -325,6 +334,7 @@ export const useEquipmentValidationSummary = (enabled = true, filialId?: string 
     queryFn: async (): Promise<EquipmentValidationSummary | null> => {
       const { data, error } = await (supabase as any).rpc('get_equipment_validation_summary', {
         p_filial_id: filialId ?? null,
+        ...scopeRpcParams(scope),
       });
       if (error) throw error;
       const row = (((data as unknown) as any[]) ?? [])[0];
@@ -359,15 +369,16 @@ export interface EquipmentValidator {
   validated_count: number;
 }
 
-export const useEquipmentValidators = (enabled = true, filialId?: string | null) => {
+export const useEquipmentValidators = (enabled = true, filialId?: string | null, scope: ParkFilialScope = LEGACY_SCOPE) => {
   return useQuery({
-    queryKey: ['client-equipment', 'validators', filialId ?? null],
+    queryKey: ['client-equipment', 'validators', filialId ?? null, scopeKey(scope)],
     enabled,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<EquipmentValidator[]> => {
       const { data, error } = await (supabase as any).rpc('get_equipment_validators', {
         p_filial_id: filialId ?? null,
+        ...scopeRpcParams(scope),
       });
       if (error) throw error;
       return ((data as unknown) as EquipmentValidator[]) ?? [];
