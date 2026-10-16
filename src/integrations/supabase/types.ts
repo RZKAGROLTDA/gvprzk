@@ -3198,6 +3198,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      equipment_park_scope: {
+        Args: {
+          p_filial_id: string
+          p_filial_ids: string[]
+          p_include_sem_filial: boolean
+        }
+        Returns: {
+          all_filiais: boolean
+          ids: string[]
+          include_null: boolean
+        }[]
+      }
       equipment_regularization_assert_batch_filial: {
         Args: { p_batch_id: string; p_filial_id?: string }
         Returns: undefined
@@ -3567,6 +3579,8 @@ export type Database = {
       get_equipment_park_kpis: {
         Args: {
           p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
           p_machine_status?: string
           p_puk_status?: string
           p_search?: string
@@ -3587,6 +3601,8 @@ export type Database = {
           p_client_code?: string
           p_client_name?: string
           p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
           p_limit?: number
           p_machine_status?: string
           p_machine_type?: string
@@ -3628,7 +3644,11 @@ export type Database = {
         }[]
       }
       get_equipment_validation_summary: {
-        Args: { p_filial_id?: string }
+        Args: {
+          p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
+        }
         Returns: {
           by_filial: Json
           distinct_validated_clients: number
@@ -3638,7 +3658,11 @@ export type Database = {
         }[]
       }
       get_equipment_validators: {
-        Args: { p_filial_id?: string }
+        Args: {
+          p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
+        }
         Returns: {
           filial_id: string
           filial_nome: string
