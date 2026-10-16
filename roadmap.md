@@ -78,3 +78,6 @@
 - [ ] Telas: gravar Filial Ativa no servidor e limpar dados e fotos ao trocar (após aprovação)
 
 - [ ] Parque/Regularização: (1) Salvar e validar desabilitado no Editar Equipamento; (2) filtro multi-filial em todas as abas; (3) detalhes em Regularizados/Cancelados + cancelamento de regularizado só após aprovação do fluxo
+
+## CRM Supervisor — validação final (não aplicar)
+- [ ] Policies SELECT de products conferidas; RAC só produtos acessíveis; 919 do Samuel preservados; simulação com FAIL interrompendo; arquivo sem bloco de simulação; SHA-256
