@@ -41,10 +41,13 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
     open ? equipment?.id : undefined,
   );
   const readOnly = open && canEdit === false;
-  const { activeFilialId } = useUserFiliais();
-  // Máquina sem filial só pode ser validada com uma Filial Ativa selecionada
-  // (a validação grava exatamente essa filial na máquina).
-  const needsFilialToValidate = !equipment?.filial_id && !activeFilialId;
+  const { activeFilialId, filiais: allowedFiliais } = useUserFiliais();
+  // Máquina sem filial e sem Filial Ativa: o usuário escolhe explicitamente
+  // uma filial autorizada apenas para a validação (servidor revalida).
+  const showFilialPicker = !equipment?.filial_id && !activeFilialId;
+  const [validationFilialId, setValidationFilialId] = useState('');
+  useEffect(() => { setValidationFilialId(''); }, [open, equipment?.id]);
+  const needsFilialToValidate = showFilialPicker && !validationFilialId;
 
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
@@ -136,7 +139,13 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
     try {
       await mutateAsync({
         id: equipment.id,
-        patch: { ...buildPatch(), markValidated, filialId: activeFilialId ?? null },
+        patch: {
+          ...buildPatch(),
+          markValidated,
+          filialId:
+            activeFilialId ??
+            (markValidated && showFilialPicker ? validationFilialId || null : null),
+        },
       });
       toast({ title: '✅ ' + successMsg });
       onOpenChange(false);
@@ -313,6 +322,25 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
               </SelectContent>
             </Select>
           </div>
+
+          {showFilialPicker && !readOnly && (
+            <div className="space-y-1 md:col-span-2">
+              <Label>Filial para validação</Label>
+              <Select value={validationFilialId} onValueChange={setValidationFilialId}>
+                <SelectTrigger aria-label="Filial para validação">
+                  <SelectValue placeholder="Selecione a filial" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowedFiliais.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Necessária apenas para "Salvar e validar". O servidor confere a autorização.
+              </p>
+            </div>
+          )}
 
           {!equipment.client_code && (
             <div className="space-y-1 md:col-span-2">
