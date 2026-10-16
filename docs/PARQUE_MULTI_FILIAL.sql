@@ -215,6 +215,13 @@ $$;
 
 -- -----------------------------------------------------------------------------
 -- Execução das Validações (resumo)
+-- DISTINÇÃO EXPLÍCITA (finalidade atual preservada):
+--   * SELEÇÃO das máquinas = filial CADASTRADA da máquina (filtro "Filiais").
+--   * AGRUPAMENTO by_filial = filial do VALIDADOR (perfil > histórico),
+--     com fallback para a filial da máquina — idêntico à função em produção.
+--   Ex.: máquina de Querência validada por usuário de Canarana entra quando
+--   Querência está selecionada e é contada na linha "Canarana".
+-- -----------------------------------------------------------------------------
 -- -----------------------------------------------------------------------------
 DROP FUNCTION IF EXISTS public.get_equipment_validation_summary(uuid);
 
@@ -264,12 +271,14 @@ AS $$
       FROM agg a WHERE a.is_total = 0), '[]'::jsonb);
 $$;
 
--- Permissões de execução: idênticas às atuais (DROP/CREATE recria as ACLs).
-REVOKE ALL ON FUNCTION public.get_equipment_park_paginated(text, uuid, text, text, boolean, text, uuid[], text, text, integer, integer, uuid[], boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_equipment_park_kpis(text, uuid, text, text, boolean, uuid[], boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_equipment_validators(uuid, uuid[], boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_equipment_validation_summary(uuid, uuid[], boolean) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_equipment_park_paginated(text, uuid, text, text, boolean, text, uuid[], text, text, integer, integer, uuid[], boolean) TO anon, authenticated, service_role;
+-- Permissões de execução: somente authenticated e service_role.
+-- anon removido: a tela do Parque só existe após login e todas as funções
+-- recusam auth.uid() nulo; não há dependência legítima de visitante.
+REVOKE ALL ON FUNCTION public.get_equipment_park_paginated(text, uuid, text, text, boolean, text, uuid[], text, text, integer, integer, uuid[], boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_equipment_park_kpis(text, uuid, text, text, boolean, uuid[], boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_equipment_validators(uuid, uuid[], boolean) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_equipment_validation_summary(uuid, uuid[], boolean) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_equipment_park_paginated(text, uuid, text, text, boolean, text, uuid[], text, text, integer, integer, uuid[], boolean) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.get_equipment_park_kpis(text, uuid, text, text, boolean, uuid[], boolean) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_equipment_validators(uuid, uuid[], boolean) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.get_equipment_validation_summary(uuid, uuid[], boolean) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_equipment_validators(uuid, uuid[], boolean) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_equipment_validation_summary(uuid, uuid[], boolean) TO authenticated, service_role;
