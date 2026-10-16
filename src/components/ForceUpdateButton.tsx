@@ -2,23 +2,32 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { forceUpdateNow } from '@/lib/appUpdate';
+import { forceUpdateNow, hasUnsavedWork } from '@/lib/appUpdate';
 
 /**
- * Contingência manual. Recarrega buscando o bundle novo, sem apagar
- * sessão, rascunhos ou fila offline (nenhuma limpeza de localStorage/IndexedDB).
+ * Contingência manual. Confirma a versão nova na rede antes de recarregar,
+ * sem apagar sessão, rascunhos, fotos ou fila offline.
  */
 export const ForceUpdateButton: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleForceUpdate = async () => {
+    if (
+      hasUnsavedWork() &&
+      !window.confirm('Há trabalho em andamento. A página será recarregada. Atualizar agora?')
+    ) {
+      return;
+    }
     setLoading(true);
-    try {
-      toast.loading('Buscando a versão mais recente...', { id: 'force-update' });
-      await forceUpdateNow();
-    } catch (e) {
-      console.error(e);
-      toast.error('Erro ao atualizar', { id: 'force-update' });
+    toast.loading('Buscando a versão mais recente...', { id: 'force-update' });
+    const r = await forceUpdateNow();
+    if (!r.ok) {
+      toast.error(
+        r.reason === 'offline'
+          ? 'Sem internet. Tente novamente quando a conexão voltar.'
+          : 'Não foi possível baixar a nova versão. Tente novamente.',
+        { id: 'force-update' },
+      );
       setLoading(false);
     }
   };
