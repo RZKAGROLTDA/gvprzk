@@ -547,7 +547,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
               onClick={saveAndValidate}
               disabled={busy || needsFilialToValidate}
               title={needsFilialToValidate
-                ? 'Selecione uma filial no cabeçalho para validar esta máquina'
+                ? 'Selecione a filial para validação'
                 : undefined}
             >
               <CheckCircle2 className="h-4 w-4 mr-1.5" />
