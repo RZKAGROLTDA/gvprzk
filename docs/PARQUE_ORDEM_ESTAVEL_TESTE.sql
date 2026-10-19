@@ -1,6 +1,16 @@
 -- Execute todo o script de uma vez no editor SQL, com o papel postgres.
 -- Se houver erro ou cancelamento, execute ROLLBACK; antes de continuar.
 -- Nenhum resultado abaixo representa um teste já executado.
+-- Objetos TEMPORÁRIOS da sessão, criados antes de BEGIN para sobreviver ao rollback.
+-- Não modificam tabelas, funções ou dados permanentes.
+CREATE TEMP TABLE sim_original AS
+SELECT p.oid, pg_get_functiondef(p.oid) AS definicao
+FROM pg_proc p
+WHERE p.oid = 'public.get_equipment_park_paginated(text,uuid,text,text,boolean,text,uuid[],text,text,integer,integer,uuid[],boolean)'::regprocedure;
+CREATE TEMP SEQUENCE sim_concluido;
+
+-- nextval não é revertido: só será chamado depois de TODOS os testes passarem.
+-- Assim, um erro seguido de ROLLBACK nunca pode gerar um falso sucesso.
 BEGIN;
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SET LOCAL lock_timeout = '10s';
@@ -69,18 +79,29 @@ BEGIN
   LIMIT v_limit OFFSET v_offset;
 END $$;
 
-SELECT set_config(
-  'request.jwt.claims',
-  '{"sub":"7c4cb176-3730-41de-b1e7-58bdb92da9e9","role":"authenticated"}',
-  true
-);
+-- Referência independente construída como postgres, somente para comparar os IDs.
+-- As chamadas paginadas abaixo serão feitas como authenticated, não como postgres.
+CREATE TEMP TABLE sim_casos AS
+SELECT 'Todas+Sem filial'::text AS nome, 20195::bigint AS esperado,
+       true AS incluir_sem_filial,
+       (SELECT array_agg(f.id ORDER BY f.id) FROM public.filiais f) AS filiais
+UNION ALL
+SELECT 'Querencia+Canarana', 584::bigint, false,
+       ARRAY['f131ae2a-ba13-4abf-ab64-dfb7cea5c7e4',
+             '5202c983-737b-4f78-a00d-6d9d12f713c3']::uuid[];
+
+CREATE TEMP TABLE sim_esperadas AS
+SELECT c.nome AS teste, ce.id
+FROM pg_temp.sim_casos c
+JOIN public.client_equipment ce
+  ON ce.filial_id = ANY(c.filiais)
+  OR (c.incluir_sem_filial AND ce.filial_id IS NULL);
 
 CREATE TEMP TABLE sim_exportadas (
   teste text NOT NULL,
   id uuid NOT NULL,
   pagina_offset integer NOT NULL
 );
-
 CREATE TEMP TABLE sim_resultados (
   teste text NOT NULL,
   exportadas bigint NOT NULL,
@@ -90,6 +111,33 @@ CREATE TEMP TABLE sim_resultados (
   esperado bigint NOT NULL,
   chamadas integer NOT NULL
 );
+
+GRANT SELECT ON pg_temp.sim_casos, pg_temp.sim_esperadas TO authenticated;
+GRANT SELECT, INSERT ON pg_temp.sim_exportadas, pg_temp.sim_resultados TO authenticated;
+GRANT USAGE ON SEQUENCE pg_temp.sim_concluido TO authenticated;
+
+SELECT set_config(
+  'request.jwt.claims',
+  '{"sub":"7c4cb176-3730-41de-b1e7-58bdb92da9e9","role":"authenticated"}',
+  true
+);
+-- Também neutraliza eventuais claims individuais preexistentes na sessão.
+SELECT set_config('request.jwt.claim.sub', '7c4cb176-3730-41de-b1e7-58bdb92da9e9', true);
+SELECT set_config('request.jwt.claim.role', 'authenticated', true);
+SET LOCAL ROLE authenticated;
+
+DO $auth$
+BEGIN
+  IF current_user <> 'authenticated'
+     OR auth.uid() IS DISTINCT FROM '7c4cb176-3730-41de-b1e7-58bdb92da9e9'::uuid
+     OR auth.role() IS DISTINCT FROM 'authenticated'
+     OR public.has_role(auth.uid(), 'admin') IS DISTINCT FROM true
+     OR public.can_view_equipment_park() IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Contexto authenticated/Admin não confirmado; teste interrompido.';
+  END IF;
+  RAISE NOTICE 'CONTEXTO_ADMIN_AUTHENTICATED_OK';
+END
+$auth$;
 
 DO $teste$
 DECLARE
@@ -105,25 +153,12 @@ DECLARE
   v_total_banco bigint;
 BEGIN
   FOR c IN
-    SELECT 'Todas+Sem filial'::text AS nome, 20195::bigint AS esperado,
-           true AS incluir_sem_filial
-    UNION ALL
-    SELECT 'Querencia+Canarana'::text, 584::bigint, false
+    SELECT nome, esperado, incluir_sem_filial, filiais FROM pg_temp.sim_casos
   LOOP
-    IF c.incluir_sem_filial THEN
-      SELECT array_agg(f.id ORDER BY f.id) INTO v_filiais
-      FROM public.filiais f;
-    ELSE
-      v_filiais := ARRAY[
-        'f131ae2a-ba13-4abf-ab64-dfb7cea5c7e4',
-        '5202c983-737b-4f78-a00d-6d9d12f713c3'
-      ]::uuid[];
-    END IF;
-
+    v_filiais := c.filiais;
     SELECT count(*) INTO v_total_banco
-    FROM public.client_equipment ce
-    WHERE ce.filial_id = ANY(v_filiais)
-       OR (c.incluir_sem_filial AND ce.filial_id IS NULL);
+    FROM pg_temp.sim_esperadas e
+    WHERE e.teste = c.nome;
 
     IF v_total_banco <> c.esperado THEN
       RAISE EXCEPTION '%: total atual % diferente do esperado %. Teste interrompido.',
@@ -159,9 +194,8 @@ BEGIN
     WHERE s.teste = c.nome;
 
     SELECT count(*) INTO v_faltantes
-    FROM public.client_equipment ce
-    WHERE (ce.filial_id = ANY(v_filiais)
-           OR (c.incluir_sem_filial AND ce.filial_id IS NULL))
+    FROM pg_temp.sim_esperadas ce
+    WHERE ce.teste = c.nome
       AND NOT EXISTS (
         SELECT 1 FROM pg_temp.sim_exportadas s
         WHERE s.teste = c.nome AND s.id = ce.id
@@ -171,10 +205,8 @@ BEGIN
     FROM pg_temp.sim_exportadas s
     WHERE s.teste = c.nome
       AND NOT EXISTS (
-        SELECT 1 FROM public.client_equipment ce
-        WHERE ce.id = s.id
-          AND (ce.filial_id = ANY(v_filiais)
-               OR (c.incluir_sem_filial AND ce.filial_id IS NULL))
+        SELECT 1 FROM pg_temp.sim_esperadas ce
+        WHERE ce.id = s.id AND ce.teste = c.nome
       );
 
     IF v_exportadas <> v_distintas THEN
@@ -198,6 +230,10 @@ BEGIN
       (c.nome, v_exportadas, v_distintas, v_faltantes, v_extras,
        c.esperado, v_chamadas);
   END LOOP;
+  IF (SELECT count(*) FROM pg_temp.sim_resultados) <> 2 THEN
+    RAISE EXCEPTION 'Os dois testes completos não foram concluídos.';
+  END IF;
+  PERFORM nextval('pg_temp.sim_concluido'::regclass);
 END
 $teste$;
 
@@ -207,4 +243,31 @@ FROM pg_temp.sim_resultados
 ORDER BY teste;
 
 ROLLBACK;
-SELECT 'SIMULACAO_OK_ROLLBACK' AS resultado;
+
+-- Executado novamente no papel original do editor, depois do rollback.
+-- O marcador só sai se a conclusão foi atingida e a definição original voltou.
+DO $verifica_rollback$
+DECLARE
+  v_original text;
+  v_atual text;
+  v_concluido boolean;
+BEGIN
+  SELECT is_called INTO v_concluido FROM pg_temp.sim_concluido;
+  IF v_concluido IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Teste incompleto ou com erro: não há confirmação de sucesso.';
+  END IF;
+  SELECT definicao INTO STRICT v_original FROM pg_temp.sim_original;
+  SELECT pg_get_functiondef(p.oid) INTO STRICT v_atual
+  FROM pg_proc p
+  WHERE p.oid = 'public.get_equipment_park_paginated(text,uuid,text,text,boolean,text,uuid[],text,text,integer,integer,uuid[],boolean)'::regprocedure;
+  IF v_atual IS DISTINCT FROM v_original THEN
+    RAISE EXCEPTION 'Definição após rollback diferente da original; interromper e investigar.';
+  END IF;
+  RAISE NOTICE 'DEFINICAO_ORIGINAL_IDENTICA';
+  RAISE NOTICE 'SIMULACAO_OK_ROLLBACK';
+END
+$verifica_rollback$;
+
+-- Limpeza apenas dos objetos temporários da sessão.
+DROP TABLE pg_temp.sim_original;
+DROP SEQUENCE pg_temp.sim_concluido;
