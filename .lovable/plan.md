@@ -1,110 +1,62 @@
-# Validação de máquinas com Filial Ativa — proposta (não aplicada)
+# Filtro de várias filiais: Validação e Regularização de Máquinas
 
-Objetivo: nenhuma validação nova pode terminar sem filial, e nenhuma validação pode mudar a filial de uma máquina que já tem filial.
+Nada é aplicado no banco nem publicado sem a sua autorização para cada passo.
 
-## 1. Nova função de banco (RPC) e assinatura
+## 1. Validação de Máquinas (já implementado, falta a ordenação)
+- O filtro "Filiais" continua como está.
+- A ordenação estável depende do arquivo `docs/PARQUE_ORDEM_ESTAVEL.sql`, com SHA-256 `456bfedd...7922`. A mudança é uma linha só: acrescentar o código único da máquina como desempate.
+- Para aplicar, é preciso uma destas duas coisas:
+  - (A) o resultado do teste que você roda no editor SQL;
+  - (B) sua autorização para aplicar e conferir em partes, com volta imediata se algo divergir.
+- Depois de aplicado, confiro em partes pequenas:
+  - Todas as filiais + Sem filial: 20.195 máquinas, sem repetidas nem faltando.
+  - Querência + Canarana: 584.
+  - Indicadores, filtros e exportação continuam batendo com a lista.
 
-```
-public.validate_client_equipment(
-  p_equipment_id  uuid,
-  p_filial_id     uuid,            -- Filial Ativa do cabeçalho
-  p_mark_validated boolean DEFAULT true,
-  p_model         text    DEFAULT NULL,
-  p_year          integer DEFAULT NULL,
-  p_hours         numeric DEFAULT NULL,
-  p_serial_chassis text   DEFAULT NULL,
-  p_observation   text    DEFAULT NULL,
-  p_machine_status text   DEFAULT NULL,
-  p_client_code   text    DEFAULT NULL
-) RETURNS SETOF public.client_equipment
-```
+## 2. Como a Regularização funciona hoje
+- **Tudo segue a Filial Ativa, uma filial por vez.** São 9 funções do servidor (pendências, contadores, máquinas por cliente, lista de lotes, detalhe, PDF, envio, validação, conclusão, cancelamento e retirada de máquina). Cada uma recebe uma única filial e confere a autorização.
+- **Criação de lote:** a criação recusa quando uma máquina:
+  - é de outra filial;
+  - está sem filial, se o usuário não tiver visão global;
+  - já está em outro lote aberto;
+  - já foi regularizada;
+  - não está como vendida, inativa ou sucateada.
 
-- VOLATILE, SECURITY DEFINER, owner postgres, `SET search_path = public`.
-- Assinatura única (confirmação em `pg_proc` antes e depois). Sem sobrecarga.
-- `REVOKE ALL FROM PUBLIC` + `GRANT EXECUTE TO authenticated`.
-- Retorna a linha já atualizada, com as mesmas colunas que a tela usa hoje.
+  Além disso, o lote **é recusado quando junta filiais diferentes**.
+- **Ações sobre um lote existente:** antes de qualquer ação, o servidor exige que todas as máquinas do lote sejam de uma única filial e que essa filial seja a Filial Ativa autorizada. Na visão global, isso é liberado.
+- **"Erro de Envio":** hoje não existe como aba separada. O erro fica registrado no próprio lote, que continua em "Aguardando envio".
 
-Fluxo interno, em ordem:
+## 3. O que proponho mudar
+**Tela**
+- Novo filtro "Filiais" na Regularização, igual ao da Validação:
+  - caixas de seleção, "Selecionar todas" e "Limpar seleção";
+  - "Sem filial" só para Admin e Gerente;
+  - seleção vazia mostra nenhum resultado.
+- Ele vale para os indicadores, a lista de pendentes e todas as abas: Pendentes, Aguardando envio, Aguardando retorno, Em validação, Regularizados, Cancelados e a nova aba **Erro de Envio**. A nova aba mostra os lotes cujo último envio falhou e serve só para consulta. O lote continua na mesma etapa de antes.
+- A seleção fica guardada só dentro da Regularização. A Filial Ativa do cabeçalho não muda.
+- Na tela de pendentes, será possível marcar máquinas de filiais diferentes e criar um único lote com elas.
 
-1. `auth.uid()` obrigatório, senão erro de autenticação.
-2. Perfil aprovado e ativo (mesma checagem já usada no parque) + `can_view_equipment_park()`.
-3. `v_eff := effective_filial_ids(p_filial_id)` — única autoridade de filial; filial não autorizada devolve 42501 por si mesma.
-4. Lê a filial atual da máquina (`FOR UPDATE`).
-5. Decide a filial:
-   - máquina **sem** filial: exige filial operacional definida. Se `cardinality(v_eff) = 1` → grava essa filial. Se `cardinality(v_eff) = 0` (admin/manager em visão global) → erro orientando a selecionar uma filial; não grava nada.
-   - máquina **com** filial: não altera a filial. Se `cardinality(v_eff) > 0` e a filial da máquina não está em `v_eff` → 42501 (somente leitura para o perfil atual).
-6. `UPDATE` único com os campos permitidos + `validated_by = auth.uid()` e `last_validation_at = now()` quando `p_mark_validated`.
+**Servidor** (uma migração, que só aplico com a sua aprovação)
+- As funções de consulta (contadores, pendentes, máquinas por cliente e lista de lotes) passam a aceitar uma lista de filiais e a opção "Sem filial". Elas usam a mesma conferência da Validação: cada filial da lista precisa ser autorizada ao usuário, e uma filial não autorizada é recusada. As chamadas atuais continuam funcionando como hoje.
+- **Criação de lote:** cai a regra "uma filial por lote". Em troca, cada máquina precisa pertencer a uma das filiais selecionadas e autorizadas. Continuam valendo todas as outras regras: duplicidade, lote aberto, já regularizada, situação, e "Sem filial" só na visão global.
+- **Ações sobre lotes** (PDF, envio, reenvio, validação, conclusão, cancelamento e retirada): todas as filiais do lote precisam estar autorizadas ao usuário. Supervisor e RAC não mexem em lotes que tenham qualquer máquina de filial não autorizada.
+- **A filial de cada máquina não muda.** Cada item do lote guarda a filial original da máquina, como hoje. A conclusão só muda a situação.
+- **Permissões e acesso aos dados:** nenhuma permissão nem regra de acesso aos dados muda. Visitantes sem login continuam sem acesso.
 
-## 2. Campos que a função pode alterar
+## 4. Testes antes de aplicar (simulação que se desfaz no final)
+- As chamadas atuais dão os mesmos totais de antes, tanto para Admin quanto para um usuário de filial única.
+- Admin:
+  - uma filial, várias filiais, e todas mais "Sem filial";
+  - a soma por filial é igual ao total consolidado.
+- Iuri (Vila Rica + Canarana):
+  - cria lote com as duas filiais e consegue fazer todas as ações nele;
+  - é recusado ao pedir Querência ou "Sem filial".
+- Duplicidade: a mesma máquina não entra em dois lotes abertos.
+- Os lotes atuais (os 13 aguardando envio e os cancelados) continuam iguais.
 
-Apenas: `model`, `year`, `hours`, `serial_chassis`, `observation`, `machine_status`, `client_code` (somente quando estava vazio, como hoje), `filial_id` (somente de NULL para a Filial Ativa), `validated_by`, `last_validation_at`, `updated_at`.
-
-Nunca toca: cliente já preenchido, transferências, histórico de transferência, prioridade de validação, lote de importação, `created_by`, `validation_source`.
-
-## 3. Tela de edição/validação e `useUpdateEquipment`
-
-- `useUpdateEquipment` passa a chamar a RPC em vez de `UPDATE` direto, mantendo a mesma interface (`{ id, patch }` + `markValidated`) e a mesma classificação de erros (42501 → "outra filial", sessão, tempo excedido, conflito).
-- Passa `p_filial_id: activeScopeFilialId` do mesmo hook de Filial Ativa já usado no parque; a mutação só é habilitada quando o escopo está pronto.
-- Novo erro tratado: admin/manager sem filial selecionada → aviso "selecione uma filial no cabeçalho para validar esta máquina" e botão de validar desabilitado nesse caso (máquina sem filial + visão global).
-- Transferência de máquina continua como está (fora do escopo).
-- Invalidação de cache atual (`['client-equipment']`) preservada.
-
-## 4. Criação manual de máquina
-
-- `useCreateEquipment` passa a gravar `filial_id` = Filial Ativa, com a mesma validação.
-- Para não duplicar regra de autorização, a criação também passa por função de banco própria (`create_client_equipment(...)`, SECURITY DEFINER, mesma checagem de perfil e `effective_filial_ids`), preservando a checagem de duplicidade de chassi que já existe.
-- Admin/manager em visão global: exige filial selecionada para criar.
-- Máquinas antigas não são alteradas.
-
-## 5. Admin/manager em visão global
-
-Regra escolhida (mais segura): **não permitir** validar máquina sem filial sem antes selecionar uma Filial Ativa. Nada de filial arbitrária, nada de herdar filial do perfil. Validar máquina que já tem filial continua permitido em visão global, sem alterar a filial.
-
-## 6. Segurança
-
-- Sem permissão genérica nova: a política de `UPDATE` da tabela permanece como está; a RPC é SECURITY DEFINER e restringe as colunas.
-- Autorização: usuário autenticado, perfil aprovado e ativo, `can_view_equipment_park()`, `effective_filial_ids` como teto e 42501 para filial não autorizada.
-- Proteção anti-transferência: a filial só muda de NULL para a Filial Ativa; qualquer outra tentativa é ignorada/bloqueada.
-- Sem alteração em RLS, cargos, vínculos, POPS, Parque (leitura), Regularização, Meu Dia, CRM.
-
-## 7. Bateria de testes (formato Teste | Filial Ativa | Obtido | Esperado | Status)
-
-Estrutura: assinatura única em `pg_proc`; privilégios (sem PUBLIC, com authenticated); colunas retornadas iguais às atuais.
-
-Comportamento (com impersonação real):
-1. Máquina sem filial + RAC com sua filial ativa → grava essa filial, validador e data.
-2. Mesma máquina revalidada → filial permanece a mesma.
-3. Máquina com filial da própria filial ativa → valida, filial inalterada.
-4. Máquina de outra filial → 42501, nada alterado.
-5. Multi-filial (Diogo) com Planalto Verde ativa → máquina sem filial recebe Planalto Verde.
-6. Mesmo usuário com Caiapônia ativa → outra máquina sem filial recebe Caiapônia.
-7. Multi-filial com filial não autorizada (Canarana) → 42501.
-8. Admin/manager sem filial ativa + máquina sem filial → recusado, filial continua NULL.
-9. Admin/manager com filial ativa + máquina sem filial → grava a filial selecionada.
-10. Admin/manager sem filial ativa + máquina com filial → valida, filial inalterada.
-11. Usuário sem filial autorizada → 42501.
-12. Campos editados aplicados corretamente; campos proibidos inalterados (transferência, prioridade, lote, origem).
-13. Criação manual: recebe a Filial Ativa; duplicidade de chassi continua barrada; visão global sem filial → recusado.
-14. Máquina recém-validada aparece imediatamente na listagem da filial correspondente e na lista "Validado por".
-15. Integridade: nenhuma máquina histórica alterada além das usadas nos testes, que serão revertidas.
-
-Testes de escrita usarão transação com desfazimento (ou reversão explícita dos valores originais) e comprovação final de que nada permaneceu alterado. Qualquer falha: paro, mostro a causa e não corrijo automaticamente.
-
-## 8. Impacto no fluxo atual
-
-- Validação deixa de ser UPDATE direto e passa por função de banco; a tela muda pouco (mesmos botões, mesmas mensagens, um bloqueio novo para visão global sem filial).
-- A partir da correção, nenhuma máquina nova fica sem filial ao ser validada ou criada.
-- Regularização de Máquinas passa a receber máquinas já com filial nas novas validações; o passivo histórico continua fora do fluxo até decidirmos (item abaixo).
-- As 19.231 máquinas sem filial e as 54 do Filipe permanecem intocadas nesta etapa.
-
-## Caso Filipe — proposta separada (54 máquinas)
-
-Evidência levantada: das 54, apenas **5** têm vínculo com visita registrada — e elas apontam **4 para Canarana e 1 para Querência**. As outras **49 não têm nenhuma evidência** de contexto de filial. Ou seja, ser RAC de Querência não sustenta atribuir Querência às 54; há inclusive contra-evidência.
-
-Alternativas, sem inventar filial:
-- **A. Só o comprovável:** atribuir filial apenas às 5 com vínculo de visita, cada uma conforme a filial da própria visita (4 Canarana, 1 Querência). As 49 continuam sem filial.
-- **B. Confirmação do responsável:** apresentar ao Filipe (ou ao gestor) a lista das 49 para confirmação filial por filial, gravando só o que ele confirmar, com registro de quem confirmou.
-- **C. Derivar do cliente:** quando todas as outras máquinas do mesmo cliente já tiverem uma única filial, propor essa filial — apenas como sugestão a confirmar, nunca automático.
-- **D. Aguardar:** manter o passivo e resolvê-lo naturalmente na próxima validação de cada máquina, já com a regra nova.
-
-Recomendação: A + B (A é comprovável e imediato; B resolve o resto sem suposição). C só como apoio à decisão de B. Nada disso será executado sem sua escolha.
+## 5. Riscos
+- **A exceção passa a valer também para a Regularização.** Vou registrar isso na regra permanente: só Validação e Regularização juntam filiais; CRM, POPS e os demais continuam com uma filial só.
+- **PDF e e-mail de um lote com várias filiais:** o cabeçalho continua usando o nome do cliente. O PDF mostra a filial de cada máquina. Se quiser outro formato, me diga.
+- **Lotes antigos sem filial:** continuam disponíveis só para a visão global.
+- **Erro de Envio:** a aba nova depende do registro de envio. Lotes antigos que falharam antes desse registro existir podem não aparecer nela.
+- **O que não muda:** a publicação continua esperando a sua validação, e CRM, POPS e os demais módulos não são alterados.
