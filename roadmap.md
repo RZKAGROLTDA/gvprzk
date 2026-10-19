@@ -85,6 +85,6 @@
 - [ ] Parque: botão "Salvar e validar" desabilitado em Editar Equipamento — diagnóstico + proposta antes de corrigir
 
 ## Multi-filial Validação + Regularização (aprovado plano 19/10)
-- [ ] Preparar SQL da Regularização (consultas + criação de lote + ações com várias filiais) + teste reversível — sem aplicar
-- [ ] Preparar tela da Regularização (filtro Filiais, aba Erro de Envio como visualização, lote multi-filial)
+- [x] SQL da Regularização + teste reversível preparados (docs/REGULARIZACAO_MULTI_FILIAL.sql) — aguardando autorização para aplicar
+- [ ] Tela da Regularização (filtro Filiais, Erro de Envio, lote multi-filial, filial por máquina no PDF) — depois do banco aplicado
 - [ ] Ordenação Validação: docs/PARQUE_ORDEM_ESTAVEL.sql aguardando autorização
