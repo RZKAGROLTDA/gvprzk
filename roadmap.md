@@ -83,3 +83,8 @@
 - [ ] Policies SELECT de products conferidas; RAC só produtos acessíveis; 919 do Samuel preservados; simulação com FAIL interrompendo; arquivo sem bloco de simulação; SHA-256
 - [ ] CRM Supervisor PAUSADO (nada aplicado; simulação final não executada)
 - [ ] Parque: botão "Salvar e validar" desabilitado em Editar Equipamento — diagnóstico + proposta antes de corrigir
+
+## Multi-filial Validação + Regularização (aprovado plano 19/10)
+- [ ] Preparar SQL da Regularização (consultas + criação de lote + ações com várias filiais) + teste reversível — sem aplicar
+- [ ] Preparar tela da Regularização (filtro Filiais, aba Erro de Envio como visualização, lote multi-filial)
+- [ ] Ordenação Validação: docs/PARQUE_ORDEM_ESTAVEL.sql aguardando autorização
