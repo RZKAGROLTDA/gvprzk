@@ -1,10 +1,8 @@
--- =============================================================================
--- TESTE REVERSÍVEL — para executar no SQL Editor do Supabase (sem limite de 60 s)
--- Contém, entre BEGIN e ROLLBACK, o conteúdo EXATO de docs/PARQUE_ORDEM_ESTAVEL.sql
--- (SHA-256 456bfeddffdc18231cff1aadc6a45035c393c8540cf4581a03d6fa214a797922).
--- Termina SEMPRE em ROLLBACK: nada é gravado. Resultado aparece na aba Results.
--- =============================================================================
+-- Execute todo o script de uma vez no editor SQL, com o papel postgres.
+-- Se houver erro ou cancelamento, execute ROLLBACK; antes de continuar.
+-- Nenhum resultado abaixo representa um teste já executado.
 BEGIN;
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SET LOCAL lock_timeout = '10s';
 
 -- =============================================================================
@@ -71,31 +69,142 @@ BEGIN
   LIMIT v_limit OFFSET v_offset;
 END $$;
 
-SELECT set_config('request.jwt.claims','{"sub":"7c4cb176-3730-41de-b1e7-58bdb92da9e9","role":"authenticated"}', true);
+SELECT set_config(
+  'request.jwt.claims',
+  '{"sub":"7c4cb176-3730-41de-b1e7-58bdb92da9e9","role":"authenticated"}',
+  true
+);
 
-CREATE TEMP TABLE sim_todas ON COMMIT DROP AS
-  SELECT x.id, g AS pg
-  FROM generate_series(0, 101) g,
-       LATERAL public.get_equipment_park_paginated(p_limit => 200, p_offset => g * 200,
-         p_filial_ids => (SELECT array_agg(id) FROM public.filiais), p_include_sem_filial => true) x;
+CREATE TEMP TABLE sim_exportadas (
+  teste text NOT NULL,
+  id uuid NOT NULL,
+  pagina_offset integer NOT NULL
+);
 
-CREATE TEMP TABLE sim_qc ON COMMIT DROP AS
-  SELECT x.id
-  FROM generate_series(0, 2) g,
-       LATERAL public.get_equipment_park_paginated(p_limit => 200, p_offset => g * 200,
-         p_filial_ids => ARRAY['f131ae2a-ba13-4abf-ab64-dfb7cea5c7e4','5202c983-737b-4f78-a00d-6d9d12f713c3']::uuid[]) x;
+CREATE TEMP TABLE sim_resultados (
+  teste text NOT NULL,
+  exportadas bigint NOT NULL,
+  distintas bigint NOT NULL,
+  faltantes bigint NOT NULL,
+  extras bigint NOT NULL,
+  esperado bigint NOT NULL,
+  chamadas integer NOT NULL
+);
 
-SELECT 'Todas+Sem filial' AS teste,
-       (SELECT count(*) FROM sim_todas) AS exportadas,
-       (SELECT count(DISTINCT id) FROM sim_todas) AS distintas,
-       (SELECT count(*) FROM public.client_equipment WHERE id NOT IN (SELECT id FROM sim_todas)) AS faltantes,
-       20195 AS esperado
-UNION ALL
-SELECT 'Querencia+Canarana',
-       (SELECT count(*) FROM sim_qc), (SELECT count(DISTINCT id) FROM sim_qc),
-       (SELECT count(*) FROM public.client_equipment
-         WHERE filial_id IN ('f131ae2a-ba13-4abf-ab64-dfb7cea5c7e4','5202c983-737b-4f78-a00d-6d9d12f713c3')
-           AND id NOT IN (SELECT id FROM sim_qc)),
-       584;
+DO $teste$
+DECLARE
+  c record;
+  v_filiais uuid[];
+  v_offset integer;
+  v_linhas integer;
+  v_chamadas integer;
+  v_exportadas bigint;
+  v_distintas bigint;
+  v_faltantes bigint;
+  v_extras bigint;
+  v_total_banco bigint;
+BEGIN
+  FOR c IN
+    SELECT 'Todas+Sem filial'::text AS nome, 20195::bigint AS esperado,
+           true AS incluir_sem_filial
+    UNION ALL
+    SELECT 'Querencia+Canarana'::text, 584::bigint, false
+  LOOP
+    IF c.incluir_sem_filial THEN
+      SELECT array_agg(f.id ORDER BY f.id) INTO v_filiais
+      FROM public.filiais f;
+    ELSE
+      v_filiais := ARRAY[
+        'f131ae2a-ba13-4abf-ab64-dfb7cea5c7e4',
+        '5202c983-737b-4f78-a00d-6d9d12f713c3'
+      ]::uuid[];
+    END IF;
+
+    SELECT count(*) INTO v_total_banco
+    FROM public.client_equipment ce
+    WHERE ce.filial_id = ANY(v_filiais)
+       OR (c.incluir_sem_filial AND ce.filial_id IS NULL);
+
+    IF v_total_banco <> c.esperado THEN
+      RAISE EXCEPTION '%: total atual % diferente do esperado %. Teste interrompido.',
+        c.nome, v_total_banco, c.esperado;
+    END IF;
+
+    v_offset := 0;
+    v_chamadas := 0;
+    LOOP
+      -- Uma nova chamada da RPC para cada offset; sem reutilizar páginas.
+      INSERT INTO pg_temp.sim_exportadas (teste, id, pagina_offset)
+      SELECT c.nome, x.id, v_offset
+      FROM public.get_equipment_park_paginated(
+        p_limit => 200,
+        p_offset => v_offset,
+        p_filial_ids => v_filiais,
+        p_include_sem_filial => c.incluir_sem_filial
+      ) x;
+
+      GET DIAGNOSTICS v_linhas = ROW_COUNT;
+      v_chamadas := v_chamadas + 1;
+      EXIT WHEN v_linhas = 0;
+      v_offset := v_offset + 200;
+
+      IF v_offset > c.esperado + 200 THEN
+        RAISE EXCEPTION '%: paginação não terminou no limite esperado.', c.nome;
+      END IF;
+    END LOOP;
+
+    SELECT count(*), count(DISTINCT s.id)
+      INTO v_exportadas, v_distintas
+    FROM pg_temp.sim_exportadas s
+    WHERE s.teste = c.nome;
+
+    SELECT count(*) INTO v_faltantes
+    FROM public.client_equipment ce
+    WHERE (ce.filial_id = ANY(v_filiais)
+           OR (c.incluir_sem_filial AND ce.filial_id IS NULL))
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_temp.sim_exportadas s
+        WHERE s.teste = c.nome AND s.id = ce.id
+      );
+
+    SELECT count(*) INTO v_extras
+    FROM pg_temp.sim_exportadas s
+    WHERE s.teste = c.nome
+      AND NOT EXISTS (
+        SELECT 1 FROM public.client_equipment ce
+        WHERE ce.id = s.id
+          AND (ce.filial_id = ANY(v_filiais)
+               OR (c.incluir_sem_filial AND ce.filial_id IS NULL))
+      );
+
+    IF v_exportadas <> v_distintas THEN
+      RAISE EXCEPTION '%: % exportadas, % distintas; existem duplicações.',
+        c.nome, v_exportadas, v_distintas;
+    END IF;
+    IF v_faltantes <> 0 THEN
+      RAISE EXCEPTION '%: % máquinas faltantes.', c.nome, v_faltantes;
+    END IF;
+    IF v_exportadas <> c.esperado THEN
+      RAISE EXCEPTION '%: % exportadas, esperado %.',
+        c.nome, v_exportadas, c.esperado;
+    END IF;
+    IF v_extras <> 0 THEN
+      RAISE EXCEPTION '%: % registros fora da seleção.', c.nome, v_extras;
+    END IF;
+
+    INSERT INTO pg_temp.sim_resultados
+      (teste, exportadas, distintas, faltantes, extras, esperado, chamadas)
+    VALUES
+      (c.nome, v_exportadas, v_distintas, v_faltantes, v_extras,
+       c.esperado, v_chamadas);
+  END LOOP;
+END
+$teste$;
+
+SELECT teste, exportadas, distintas, exportadas - distintas AS duplicadas,
+       faltantes, extras, esperado, chamadas
+FROM pg_temp.sim_resultados
+ORDER BY teste;
 
 ROLLBACK;
+SELECT 'SIMULACAO_OK_ROLLBACK' AS resultado;
