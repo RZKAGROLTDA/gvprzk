@@ -1,16 +1,25 @@
 -- Execute todo o script de uma vez no editor SQL, com o papel postgres.
 -- Se houver erro ou cancelamento, execute ROLLBACK; antes de continuar.
 -- Nenhum resultado abaixo representa um teste já executado.
--- Objetos TEMPORÁRIOS da sessão, criados antes de BEGIN para sobreviver ao rollback.
--- Não modificam tabelas, funções ou dados permanentes.
-CREATE TEMP TABLE sim_original AS
-SELECT p.oid, pg_get_functiondef(p.oid) AS definicao
-FROM pg_proc p
-WHERE p.oid = 'public.get_equipment_park_paginated(text,uuid,text,text,boolean,text,uuid[],text,text,integer,integer,uuid[],boolean)'::regprocedure;
-CREATE TEMP SEQUENCE sim_concluido;
+-- PREPARE guarda um literal na sessão, não em tabelas permanentes.
+-- Statements preparados sobrevivem ao ROLLBACK na MESMA conexão.
+-- Diferentemente de tabelas TEMP criadas neste lote, preservam a referência.
+DO $captura$
+DECLARE
+  v_original text;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_prepared_statements
+             WHERE name IN ('sim_park_original', 'sim_park_concluido')) THEN
+    RAISE EXCEPTION 'Marcadores de teste anteriores: use uma conexão nova antes de executar.';
+  END IF;
+  SELECT pg_get_functiondef(p.oid) INTO STRICT v_original
+  FROM pg_proc p
+  WHERE p.oid = 'public.get_equipment_park_paginated(text,uuid,text,text,boolean,text,uuid[],text,text,integer,integer,uuid[],boolean)'::regprocedure;
+  EXECUTE format('PREPARE sim_park_original AS SELECT %L::text AS definicao', v_original);
+END
+$captura$;
 
--- nextval não é revertido: só será chamado depois de TODOS os testes passarem.
--- Assim, um erro seguido de ROLLBACK nunca pode gerar um falso sucesso.
+-- O marcador de conclusão só será preparado depois de TODOS os testes passarem.
 BEGIN;
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SET LOCAL lock_timeout = '10s';
@@ -114,7 +123,6 @@ CREATE TEMP TABLE sim_resultados (
 
 GRANT SELECT ON pg_temp.sim_casos, pg_temp.sim_esperadas TO authenticated;
 GRANT SELECT, INSERT ON pg_temp.sim_exportadas, pg_temp.sim_resultados TO authenticated;
-GRANT USAGE ON SEQUENCE pg_temp.sim_concluido TO authenticated;
 
 SELECT set_config(
   'request.jwt.claims',
@@ -233,7 +241,7 @@ BEGIN
   IF (SELECT count(*) FROM pg_temp.sim_resultados) <> 2 THEN
     RAISE EXCEPTION 'Os dois testes completos não foram concluídos.';
   END IF;
-  PERFORM nextval('pg_temp.sim_concluido'::regclass);
+  EXECUTE 'PREPARE sim_park_concluido AS SELECT true AS concluido';
 END
 $teste$;
 
@@ -252,11 +260,15 @@ DECLARE
   v_atual text;
   v_concluido boolean;
 BEGIN
-  SELECT is_called INTO v_concluido FROM pg_temp.sim_concluido;
+  IF NOT EXISTS (SELECT 1 FROM pg_prepared_statements
+                 WHERE name = 'sim_park_concluido') THEN
+    RAISE EXCEPTION 'Teste incompleto ou com erro: não há confirmação de sucesso.';
+  END IF;
+  EXECUTE 'EXECUTE sim_park_concluido' INTO v_concluido;
   IF v_concluido IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'Teste incompleto ou com erro: não há confirmação de sucesso.';
   END IF;
-  SELECT definicao INTO STRICT v_original FROM pg_temp.sim_original;
+  EXECUTE 'EXECUTE sim_park_original' INTO STRICT v_original;
   SELECT pg_get_functiondef(p.oid) INTO STRICT v_atual
   FROM pg_proc p
   WHERE p.oid = 'public.get_equipment_park_paginated(text,uuid,text,text,boolean,text,uuid[],text,text,integer,integer,uuid[],boolean)'::regprocedure;
@@ -268,6 +280,6 @@ BEGIN
 END
 $verifica_rollback$;
 
--- Limpeza apenas dos objetos temporários da sessão.
-DROP TABLE pg_temp.sim_original;
-DROP SEQUENCE pg_temp.sim_concluido;
+-- Limpeza apenas dos statements preparados nesta sessão.
+DEALLOCATE sim_park_original;
+DEALLOCATE sim_park_concluido;
