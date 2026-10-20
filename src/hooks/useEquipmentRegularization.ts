@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import type { RegBatchDetail } from '@/lib/equipmentRegularizationPdf';
+import { LEGACY_SCOPE, scopeRpcParams, type ParkFilialScope } from '@/lib/parkFilialScope';
 
 export type { RegBatchDetail };
 
@@ -13,6 +14,8 @@ export interface RegFilters {
   client: string | null;
   situation: RegSituation | null;
   chassis: string | null;
+  /** Seleção multifilial (exceção aprovada: Validação e Regularização). null = modo legado (Filial Ativa). */
+  scope?: ParkFilialScope;
 }
 
 export interface RegKpis {
@@ -52,6 +55,7 @@ const baseArgs = (f: RegFilters) => ({
   p_client: f.client,
   p_situation: f.situation,
   p_chassis: f.chassis,
+  ...scopeRpcParams(f.scope ?? LEGACY_SCOPE),
 });
 
 const CACHE = { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false } as const;
