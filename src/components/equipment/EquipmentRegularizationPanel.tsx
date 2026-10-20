@@ -25,6 +25,10 @@ import { RegularizationBatchDialog } from '@/components/equipment/Regularization
 import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { RegularizationBatchList, STAGE_LABEL } from '@/components/equipment/RegularizationBatches';
 import { useRegularizationBatches, type RegStage } from '@/hooks/useEquipmentRegularization';
+import { ParkFilialMultiSelect } from '@/components/equipment/ParkFilialMultiSelect';
+import {
+  LEGACY_SCOPE, defaultParkSelection, toParkScope, type ParkFilialScope,
+} from '@/lib/parkFilialScope';
 
 const STAGES: RegStage[] = ['aguardando_envio', 'aguardando_retorno', 'em_validacao', 'regularizados', 'cancelado'];
 
@@ -173,14 +177,14 @@ const GroupRow: React.FC<GroupRowProps> = ({
 };
 
 export const EquipmentRegularizationPanel: React.FC = () => {
+  // Filial Ativa só define a seleção inicial — o filtro "Filiais" é local e
+  // nunca altera a Filial Ativa global (exceção multifilial aprovada).
   const {
-    filial: activeFilial,
-    setFilial: setActiveFilial,
+    filialId: activeFilialId,
     allowedFiliais,
     isGlobal,
+    isLoading: filiaisLoading,
   } = useActiveFilialFilter();
-  const filialFilter = activeFilial;
-  const setFilialFilter = setActiveFilial;
   const [situation, setSituation] = useState(ALL);
   const [clientInput, setClientInput] = useState('');
   const [chassisInput, setChassisInput] = useState('');
