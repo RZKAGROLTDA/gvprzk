@@ -23,6 +23,7 @@ import {
   useStartValidation, useConcludeBatch, useCancelBatch, useRemoveBatchItem,
   type RegStage, type RegBatchRow,
 } from '@/hooks/useEquipmentRegularization';
+import { LEGACY_SCOPE, type ParkFilialScope } from '@/lib/parkFilialScope';
 
 export const STAGE_LABEL: Record<RegStage, string> = {
   aguardando_envio: 'Aguardando envio',
@@ -51,11 +52,11 @@ const PAGE = 20;
 
 /* ------------------------------ Lista por etapa ------------------------------ */
 export const RegularizationBatchList: React.FC<{
-  stage: RegStage; filialId: string | null; client: string | null;
-}> = ({ stage, filialId, client }) => {
+  stage: RegStage; filialId: string | null; client: string | null; scope?: ParkFilialScope;
+}> = ({ stage, filialId, client, scope = LEGACY_SCOPE }) => {
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
-  const q = useRegularizationBatches(stage, filialId, client, page, PAGE);
+  const q = useRegularizationBatches(stage, filialId, client, page, PAGE, scope);
   const rows = q.data?.batches ?? [];
   const pages = Math.max(1, Math.ceil((q.data?.total ?? 0) / PAGE));
 
@@ -84,7 +85,7 @@ export const RegularizationBatchList: React.FC<{
             <div className="min-w-0">
               <p className="truncate font-medium">{b.clients || '—'}</p>
               <p className="text-xs text-muted-foreground">
-                Lote {b.id.slice(0, 8)} · Código: {b.client_codes || '—'} · Filial: {b.filial_nome || 'Não informada'} · {dateCol(b)}
+                Lote {b.id.slice(0, 8)} · Código: {b.client_codes || '—'} · Filial: {b.filiais_nomes || b.filial_nome || 'Não informada'} · {dateCol(b)}
               </p>
               {stage === 'aguardando_retorno' && b.recipients?.length ? (
                 <p className="text-xs text-muted-foreground">Para: {b.recipients.join(', ')} · {b.send_attempts} envio(s)</p>

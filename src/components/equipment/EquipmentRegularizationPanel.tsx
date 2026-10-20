@@ -25,11 +25,14 @@ import { RegularizationBatchDialog } from '@/components/equipment/Regularization
 import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { RegularizationBatchList, STAGE_LABEL } from '@/components/equipment/RegularizationBatches';
 import { useRegularizationBatches, type RegStage } from '@/hooks/useEquipmentRegularization';
+import { ParkFilialMultiSelect } from '@/components/equipment/ParkFilialMultiSelect';
+import {
+  LEGACY_SCOPE, defaultParkSelection, toParkScope, type ParkFilialScope,
+} from '@/lib/parkFilialScope';
 
 const STAGES: RegStage[] = ['aguardando_envio', 'aguardando_retorno', 'em_validacao', 'regularizados', 'cancelado'];
 
 const ALL = 'all';
-const NO_FILIAL = 'none';
 const PAGE_SIZE = 20;
 
 const SITUATION_LABEL: Record<RegSituation, string> = {
@@ -67,11 +70,15 @@ const GroupRow: React.FC<GroupRowProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const groupFilters = useMemo<RegFilters>(
-    () => ({
-      ...filters,
-      filialId: group.filial_id ?? null,
-      withoutFilial: group.filial_id == null,
-    }),
+    // Com escopo multifilial ativo, a client_key já embute a filial do grupo e o
+    // servidor filtra pelo escopo — não sobrescrever com os parâmetros legados.
+    () => (filters.scope && filters.scope.filialIds !== null
+      ? filters
+      : {
+          ...filters,
+          filialId: group.filial_id ?? null,
+          withoutFilial: group.filial_id == null,
+        }),
     [filters, group.filial_id],
   );
   const { data: machines, isLoading, isError, error } = useRegularizationMachines(
@@ -173,14 +180,14 @@ const GroupRow: React.FC<GroupRowProps> = ({
 };
 
 export const EquipmentRegularizationPanel: React.FC = () => {
+  // Filial Ativa só define a seleção inicial — o filtro "Filiais" é local e
+  // nunca altera a Filial Ativa global (exceção multifilial aprovada).
   const {
-    filial: activeFilial,
-    setFilial: setActiveFilial,
+    filialId: activeFilialId,
     allowedFiliais,
     isGlobal,
+    isLoading: filiaisLoading,
   } = useActiveFilialFilter();
-  const filialFilter = activeFilial;
-  const setFilialFilter = setActiveFilial;
   const [situation, setSituation] = useState(ALL);
   const [clientInput, setClientInput] = useState('');
   const [chassisInput, setChassisInput] = useState('');
@@ -191,23 +198,42 @@ export const EquipmentRegularizationPanel: React.FC = () => {
   const [batchOpen, setBatchOpen] = useState(false);
 
   const { data: allFiliais = [] } = useFiliaisList();
-  const filiais = isGlobal
-    ? allFiliais
-    : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
+  const filiais = useMemo(
+    () => (isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome })))
+      .slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [isGlobal, allFiliais, allowedFiliais],
+  );
+  const optionIds = useMemo(() => filiais.map((f) => f.id), [filiais]);
+  const optionsReady = !filiaisLoading && (!isGlobal || allFiliais.length > 0);
+
+  // Seleção do filtro "Filiais" (filial cadastrada da máquina). Vazia = nenhum
+  // resultado (nunca amplia). "Sem filial" só para Admin/Gerente (isGlobal).
+  const [regSel, setRegSel] = useState<{ ids: string[]; semFilial: boolean } | null>(null);
+  React.useEffect(() => {
+    if (!optionsReady) return;
+    setRegSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
+  }, [optionsReady, isGlobal, activeFilialId, optionIds]);
+  const scope: ParkFilialScope = useMemo(
+    () => (regSel ? toParkScope(regSel.ids, regSel.semFilial, optionIds, isGlobal) : LEGACY_SCOPE),
+    [regSel, optionIds, isGlobal],
+  );
 
   const filters = useMemo<RegFilters>(
     () => ({
-      filialId: filialFilter === ALL || filialFilter === NO_FILIAL ? null : filialFilter,
-      withoutFilial: isGlobal && filialFilter === NO_FILIAL,
+      // Com escopo multifilial ativo, filialId/withoutFilial legados ficam neutros;
+      // o servidor filtra por p_filial_ids/p_include_sem_filial.
+      filialId: null,
+      withoutFilial: false,
       client: client.trim() || null,
       situation: situation === ALL ? null : (situation as RegSituation),
       chassis: chassis.trim() || null,
+      scope,
     }),
-    [filialFilter, client, situation, chassis, isGlobal],
+    [client, situation, chassis, scope],
   );
 
   const [view, setView] = useState<'pendentes' | RegStage>('pendentes');
-  const stageCounts = useRegularizationBatches('aguardando_envio', filters.filialId, filters.client, 1, 1);
+  const stageCounts = useRegularizationBatches('aguardando_envio', null, filters.client, 1, 1, scope);
   const kpis = useRegularizationKpis(filters);
   const groups = useRegularizationClients(filters, page, PAGE_SIZE);
 
@@ -218,12 +244,17 @@ export const EquipmentRegularizationPanel: React.FC = () => {
     resetPage();
   };
   const clearFilters = () => {
-    if (isGlobal) setFilialFilter(ALL);
+    setRegSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
     setSituation(ALL);
     setClientInput('');
     setChassisInput('');
     setClient('');
     setChassis('');
+    resetPage();
+  };
+
+  const onScopeChange = (ids: string[], semFilial: boolean) => {
+    setRegSel({ ids, semFilial });
     resetPage();
   };
 
@@ -278,13 +309,13 @@ export const EquipmentRegularizationPanel: React.FC = () => {
         {view !== 'pendentes' ? (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Select value={filialFilter} onValueChange={(v) => setFilialFilter(v)}>
-                <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
-                <SelectContent>
-                  {isGlobal ? <SelectItem value={ALL}>Todas as filiais</SelectItem> : null}
-                  {filiais.map((f) => (<SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <ParkFilialMultiSelect
+                options={filiais}
+                selected={regSel?.ids ?? []}
+                semFilial={regSel?.semFilial ?? false}
+                canSemFilial={isGlobal}
+                onChange={onScopeChange}
+              />
               <Input placeholder="Cliente, código ou chassi" value={clientInput}
                 onChange={(e) => setClientInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') applySearch(); }} />
@@ -293,7 +324,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
                 <Button size="sm" variant="outline" onClick={clearFilters}>Limpar filtros</Button>
               </div>
             </div>
-            <RegularizationBatchList key={view} stage={view} filialId={filters.filialId} client={filters.client} />
+            <RegularizationBatchList key={view} stage={view} filialId={null} client={filters.client} scope={scope} />
           </>
         ) : (<>
         {/* KPIs */}
@@ -313,19 +344,13 @@ export const EquipmentRegularizationPanel: React.FC = () => {
 
         {/* Filtros */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Select
-            value={filialFilter}
-            onValueChange={(v) => { setFilialFilter(v); resetPage(); }}
-          >
-            <SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
-            <SelectContent>
-              {isGlobal ? <SelectItem value={ALL}>Todas as filiais</SelectItem> : null}
-              {isGlobal ? <SelectItem value={NO_FILIAL}>Sem filial</SelectItem> : null}
-              {filiais.map((f) => (
-                <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <ParkFilialMultiSelect
+            options={filiais}
+            selected={regSel?.ids ?? []}
+            semFilial={regSel?.semFilial ?? false}
+            canSemFilial={isGlobal}
+            onChange={onScopeChange}
+          />
 
           <Select value={situation} onValueChange={(v) => { setSituation(v); resetPage(); }}>
             <SelectTrigger><SelectValue placeholder="Situação" /></SelectTrigger>
@@ -443,6 +468,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
           open={batchOpen}
           onOpenChange={setBatchOpen}
           machines={Object.values(selected)}
+          scope={scope}
           onDone={() => setSelected({})}
         />
         </>)}

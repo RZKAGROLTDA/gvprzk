@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import type { RegBatchDetail } from '@/lib/equipmentRegularizationPdf';
+import { LEGACY_SCOPE, scopeRpcParams, type ParkFilialScope } from '@/lib/parkFilialScope';
 
 export type { RegBatchDetail };
 
@@ -13,6 +14,8 @@ export interface RegFilters {
   client: string | null;
   situation: RegSituation | null;
   chassis: string | null;
+  /** Seleção multifilial (exceção aprovada: Validação e Regularização). null = modo legado (Filial Ativa). */
+  scope?: ParkFilialScope;
 }
 
 export interface RegKpis {
@@ -52,6 +55,7 @@ const baseArgs = (f: RegFilters) => ({
   p_client: f.client,
   p_situation: f.situation,
   p_chassis: f.chassis,
+  ...scopeRpcParams(f.scope ?? LEGACY_SCOPE),
 });
 
 const CACHE = { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false } as const;
@@ -126,6 +130,9 @@ export interface CreateBatchInput {
   notes?: string | null;
   /** M3/E2 — Filial Ativa: validada no banco por effective_filial_ids(). */
   filialId?: string | null;
+  /** Seleção multifilial (exceção aprovada). null/ausente = modo legado (uma filial por lote). */
+  filialIds?: string[] | null;
+  includeSemFilial?: boolean;
 }
 
 export const useCreateRegularizationBatch = () => {
@@ -146,6 +153,9 @@ export const useCreateRegularizationBatch = () => {
           p_pmp_number: input.pmpNumber ?? null,
           p_notes: input.notes ?? null,
           p_filial_id: input.filialId ?? null,
+          ...(input.filialIds
+            ? { p_filial_ids: input.filialIds, p_include_sem_filial: input.includeSemFilial ?? false }
+            : {}),
         } as never,
       );
       if (error) throw error;
@@ -232,6 +242,7 @@ export interface RegBatchRow {
   cancel_reason: string | null;
   filial_id: string | null;
   filial_nome: string | null;
+  filiais_nomes: string | null;
   active_items: number;
   removed_items: number;
   clients: string | null;
@@ -241,12 +252,14 @@ export interface RegBatchRow {
 
 export const useRegularizationBatches = (
   stage: RegStage, filialId: string | null, client: string | null, page: number, pageSize: number,
+  scope: ParkFilialScope = LEGACY_SCOPE,
 ) =>
   useQuery({
-    queryKey: ['reg-batches', stage, filialId, client, page, pageSize],
+    queryKey: ['reg-batches', stage, filialId, client, page, pageSize, scope],
     queryFn: async (): Promise<{ total: number; counts: Partial<Record<RegStage, number>>; batches: RegBatchRow[] }> => {
       const { data, error } = await supabase.rpc('equipment_regularization_list_batches' as never, {
         p_stage: stage, p_filial_id: filialId, p_client: client, p_page: page, p_page_size: pageSize,
+        ...scopeRpcParams(scope),
       } as never);
       if (error) throw error;
       const d = (data ?? {}) as { total?: number; counts?: Record<string, number>; batches?: RegBatchRow[] };
