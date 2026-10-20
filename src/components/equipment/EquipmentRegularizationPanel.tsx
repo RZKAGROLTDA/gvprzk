@@ -33,7 +33,6 @@ import {
 const STAGES: RegStage[] = ['aguardando_envio', 'aguardando_retorno', 'em_validacao', 'regularizados', 'cancelado'];
 
 const ALL = 'all';
-const NO_FILIAL = 'none';
 const PAGE_SIZE = 20;
 
 const SITUATION_LABEL: Record<RegSituation, string> = {
@@ -71,11 +70,15 @@ const GroupRow: React.FC<GroupRowProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const groupFilters = useMemo<RegFilters>(
-    () => ({
-      ...filters,
-      filialId: group.filial_id ?? null,
-      withoutFilial: group.filial_id == null,
-    }),
+    // Com escopo multifilial ativo, a client_key já embute a filial do grupo e o
+    // servidor filtra pelo escopo — não sobrescrever com os parâmetros legados.
+    () => (filters.scope && filters.scope.filialIds !== null
+      ? filters
+      : {
+          ...filters,
+          filialId: group.filial_id ?? null,
+          withoutFilial: group.filial_id == null,
+        }),
     [filters, group.filial_id],
   );
   const { data: machines, isLoading, isError, error } = useRegularizationMachines(
