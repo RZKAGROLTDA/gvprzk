@@ -195,23 +195,42 @@ export const EquipmentRegularizationPanel: React.FC = () => {
   const [batchOpen, setBatchOpen] = useState(false);
 
   const { data: allFiliais = [] } = useFiliaisList();
-  const filiais = isGlobal
-    ? allFiliais
-    : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome }));
+  const filiais = useMemo(
+    () => (isGlobal ? allFiliais : allowedFiliais.map((f) => ({ id: f.id, nome: f.nome })))
+      .slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    [isGlobal, allFiliais, allowedFiliais],
+  );
+  const optionIds = useMemo(() => filiais.map((f) => f.id), [filiais]);
+  const optionsReady = !filiaisLoading && (!isGlobal || allFiliais.length > 0);
+
+  // Seleção do filtro "Filiais" (filial cadastrada da máquina). Vazia = nenhum
+  // resultado (nunca amplia). "Sem filial" só para Admin/Gerente (isGlobal).
+  const [regSel, setRegSel] = useState<{ ids: string[]; semFilial: boolean } | null>(null);
+  React.useEffect(() => {
+    if (!optionsReady) return;
+    setRegSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
+  }, [optionsReady, isGlobal, activeFilialId, optionIds]);
+  const scope: ParkFilialScope = useMemo(
+    () => (regSel ? toParkScope(regSel.ids, regSel.semFilial, optionIds, isGlobal) : LEGACY_SCOPE),
+    [regSel, optionIds, isGlobal],
+  );
 
   const filters = useMemo<RegFilters>(
     () => ({
-      filialId: filialFilter === ALL || filialFilter === NO_FILIAL ? null : filialFilter,
-      withoutFilial: isGlobal && filialFilter === NO_FILIAL,
+      // Com escopo multifilial ativo, filialId/withoutFilial legados ficam neutros;
+      // o servidor filtra por p_filial_ids/p_include_sem_filial.
+      filialId: null,
+      withoutFilial: false,
       client: client.trim() || null,
       situation: situation === ALL ? null : (situation as RegSituation),
       chassis: chassis.trim() || null,
+      scope,
     }),
-    [filialFilter, client, situation, chassis, isGlobal],
+    [client, situation, chassis, scope],
   );
 
   const [view, setView] = useState<'pendentes' | RegStage>('pendentes');
-  const stageCounts = useRegularizationBatches('aguardando_envio', filters.filialId, filters.client, 1, 1);
+  const stageCounts = useRegularizationBatches('aguardando_envio', null, filters.client, 1, 1, scope);
   const kpis = useRegularizationKpis(filters);
   const groups = useRegularizationClients(filters, page, PAGE_SIZE);
 
@@ -222,12 +241,17 @@ export const EquipmentRegularizationPanel: React.FC = () => {
     resetPage();
   };
   const clearFilters = () => {
-    if (isGlobal) setFilialFilter(ALL);
+    setRegSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
     setSituation(ALL);
     setClientInput('');
     setChassisInput('');
     setClient('');
     setChassis('');
+    resetPage();
+  };
+
+  const onScopeChange = (ids: string[], semFilial: boolean) => {
+    setRegSel({ ids, semFilial });
     resetPage();
   };
 
