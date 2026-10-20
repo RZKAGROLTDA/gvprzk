@@ -41,11 +41,13 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   machines: RegMachine[];
+  /** Seleção multifilial do painel (exceção aprovada). Ausente = modo legado. */
+  scope?: ParkFilialScope;
   onDone: () => void;
 }
 
 export const RegularizationBatchDialog: React.FC<Props> = ({
-  open, onOpenChange, machines, onDone,
+  open, onOpenChange, machines, scope, onDone,
 }) => {
   const { filialId: activeFilialId } = useActiveFilialFilter();
   const createBatch = useCreateRegularizationBatch();
@@ -105,6 +107,8 @@ export const RegularizationBatchDialog: React.FC<Props> = ({
         signerRole: signerRole.trim() || null,
         notes: notes.trim() || null,
         filialId: activeFilialId,
+        filialIds: scope?.filialIds ?? null,
+        includeSemFilial: scope?.includeSemFilial ?? false,
       },
       { onSuccess: (d) => setBatchId(d.batch_id) },
     );
