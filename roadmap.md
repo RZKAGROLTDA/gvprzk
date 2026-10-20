@@ -88,5 +88,5 @@
 - [x] SQL da Regularização (docs/REGULARIZACAO_MULTI_FILIAL.sql, SHA 46e742eb...facf9ce) APLICADO 20/10 ~14:37 UTC; dados intactos (41 lotes, 318 itens, 20.198 máquinas, 13 aguardando envio)
 - [x] Tela da Regularização: filtro Filiais multi-select (Selecionar todas/Limpar/Sem filial só Admin-Gerente) aplicado a KPIs, clientes, máquinas e listas de lotes; criação de lote multifilial via escopo; build OK + 5 testes passaram. NÃO publicado — aguardando autorização. Teste autenticado na interface indisponível (Supabase externo); usuário deve validar no preview.
 - [ ] Ordenação Validação: docs/PARQUE_ORDEM_ESTAVEL.sql aguardando autorização
-- [ ] Multifilial Parque/Regularização: filtro pela filial da última validação (não filial cadastral) — diagnóstico read-only antes de alterar banco
+- [ ] Filial da validação (Parque + Regularização): preparar SQL + simulação reversível — registrar filial responsável na validação/mudança de situação, filtros multifiliais pela filial da última validação, backfill só com evidência confiável (289 ficam pendentes de revisão manual), correção de equipment_regularization_pending_machines e init dos filtros. NÃO aplicar/publicar sem autorização.
 - [ ] Regularização: correção de equipment_regularization_pending_machines (texto aprovado) — cancelada, aguardando nova autorização após diagnóstico
