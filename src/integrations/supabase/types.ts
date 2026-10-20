@@ -3317,8 +3317,10 @@ export type Database = {
           p_document_date?: string
           p_equipment_ids: string[]
           p_filial_id?: string
+          p_filial_ids?: string[]
           p_header_city?: string
           p_header_state?: string
+          p_include_sem_filial?: boolean
           p_notes?: string
           p_pmp_number?: string
           p_recipient_email?: string
@@ -3359,6 +3361,8 @@ export type Database = {
         Args: {
           p_client?: string
           p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
           p_page?: number
           p_page_size?: number
           p_stage: string
@@ -3429,6 +3433,8 @@ export type Database = {
           p_chassis?: string
           p_client?: string
           p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
           p_page?: number
           p_page_size?: number
           p_situation?: string
@@ -3441,6 +3447,8 @@ export type Database = {
           p_chassis?: string
           p_client?: string
           p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
           p_situation?: string
           p_without_filial?: boolean
         }
@@ -3452,6 +3460,8 @@ export type Database = {
           p_client?: string
           p_client_key: string
           p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
           p_situation?: string
           p_without_filial?: boolean
         }
