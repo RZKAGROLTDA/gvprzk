@@ -162,7 +162,7 @@ WITH uf AS (
            p.filial_id), NULL) AS fils
   FROM public.profiles p
 ), ev AS (
-  SELECT ce.id, COUNT(DISTINCT f.id) AS n, MIN(f.id) AS fil
+  SELECT ce.id, COUNT(DISTINCT f.id) AS n, MIN(f.id::text)::uuid AS fil
     FROM public.client_equipment ce
     JOIN uf ON uf.user_id = ce.validated_by AND cardinality(uf.fils) > 1
     JOIN public.task_equipment te ON te.equipment_id = ce.id
