@@ -85,6 +85,6 @@
 - [ ] Parque: botão "Salvar e validar" desabilitado em Editar Equipamento — diagnóstico + proposta antes de corrigir
 
 ## Multi-filial Validação + Regularização (aprovado plano 19/10)
-- [x] SQL da Regularização + teste reversível preparados (docs/REGULARIZACAO_MULTI_FILIAL.sql) — aguardando autorização para aplicar
-- [ ] Tela da Regularização (filtro Filiais, Erro de Envio, lote multi-filial, filial por máquina no PDF) — depois do banco aplicado
+- [ ] SQL da Regularização (docs/REGULARIZACAO_MULTI_FILIAL.sql, SHA 46e742eb...facf9ce) NÃO aplicado — aplicação de 20/10 foi cancelada na tela de confirmação; banco confirmado com assinaturas antigas. Aguardando nova autorização do usuário para aplicar.
+- [ ] Tela da Regularização (filtro Filiais multi-select c/ "Selecionar todas"/"Limpar"/"Sem filial" só Admin-Gerente, Erro de Envio, lote multi-filial) — BLOQUEADA até o banco ser aplicado; implementar só em desenvolvimento, sem publicar
 - [ ] Ordenação Validação: docs/PARQUE_ORDEM_ESTAVEL.sql aguardando autorização
