@@ -93,3 +93,6 @@
 - [ ] Correção isolada equipment_regularization_pending_machines: docs/REGULARIZACAO_PENDING_MACHINES_FIX.sql (SHA 7535069d...da2cb5), texto aprovado, independente da migração de filial — AGUARDANDO autorização.
 - [x] Inicialização das telas 21/10: seleção explícita vazia enquanto não pronta, consultas condicionadas à inicialização, preservação na troca da Filial Ativa, principal autorizada como fallback inicial, parâmetros legados neutros e reset de lotes/página por escopo; 10 testes passaram, build OK. Não publicado. Fluxo autenticado e novo critério da filial da validação ainda não verificados/aplicados; dependem da revisão SQL.
 - [ ] Regularização: correção de equipment_regularization_pending_machines (texto aprovado) — cancelada, aguardando nova autorização após diagnóstico
+
+- [x] Correção isolada da expansão de clientes da Regularização aplicada (sem anon), testada e dados intactos (21/10/2026).
+- [ ] Proposta pré-migração PARQUE_FILIAL_VALIDACAO v2 (visibilidade das 5.028, recuperação de filial, filtros atuais, validadores=0, implantação) — aguardando aprovação do usuário.
