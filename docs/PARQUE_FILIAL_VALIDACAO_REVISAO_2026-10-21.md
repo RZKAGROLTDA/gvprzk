@@ -38,7 +38,7 @@ Não houve nova tentativa de escrita, portanto não há resultado `SIMULACAO_OK_
 
 As ferramentas disponíveis nesta sessão têm limites: `read_query` aceita leituras; `run_sql` aceita mudanças de dados, não DDL; a ferramenta de migration é destinada à aplicação de alterações. `PGHOST` está ausente. Não foi usado nenhum desses caminhos para contornar as restrições. Uma simulação integral DDL deve ter um caminho autorizado que mantenha BEGIN/ROLLBACK na mesma sessão, ou ser fornecida para execução no SQL Editor, sem alegar execução inexistente.
 
-## Telas: ajustes necessários, ainda não aplicados nesta revisão
+## Telas: ajustes preparados em desenvolvimento
 
 - Usar seleção inicial somente após carregar as opções autorizadas; enquanto isso, não chamar as consultas de máquinas/indicadores/clientes/lotes nem exportar.
 - Inicializar uma única vez; troca de Filial Ativa não deve substituir a seleção local. Usar principal autorizada quando não houver seleção inicial possível; caso contrário, avisar.
@@ -46,6 +46,10 @@ As ferramentas disponíveis nesta sessão têm limites: `read_query` aceita leit
 - Resetar paginação ao mudar seleção/filtros e não manter resultados antigos de outra seleção como se fossem atuais.
 - Corrigir o erro de pares no jsonb_build_object de pending_machines dentro do SQL proposto; não mascarar o erro na interface.
 - Garantir compatibilidade do escopo de lotes antigos e da filial responsável, preservando filial cadastral.
+
+Implementados nesta revisão: inicialização compartilhada e consultas condicionadas à seleção pronta nos dois painéis; persistência da seleção ao trocar Filial Ativa; fallback inicial para principal autorizada; parâmetros legados neutros; bloqueio de exportação/atualização manual antes da inicialização; seletor desabilitado enquanto não pronto; descarte de resultados anteriores da listagem em troca de filtro; reset da paginação dos lotes e seleção de máquinas na troca do escopo. Critério de filial da validação e correção de expansão de clientes continuam dependentes do SQL, que não foi executado.
+
+Testes executados: `bunx vitest run src/lib/parkFilialScope.test.ts src/hooks/useParkFilialSelection.test.tsx`: **10 testes passaram em 2 arquivos**. Cobrem uma/várias/todas/nenhuma seleção, Sem filial autorizado, bloqueio inicial, fallback principal autorizado e preservação na troca do cabeçalho. Observabilidade: `build OK` em 21/10/2026 14:07:35 UTC. Estes testes verificam lógica frontend, não acesso real ao banco nem fluxo autenticado de criação/expansão/exportação. Projeto usa Supabase externo; sessão autenticada gerenciada não está disponível nesta revisão.
 
 ## Próximo passo seguro
 
