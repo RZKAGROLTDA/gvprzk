@@ -10,10 +10,11 @@ interface Props {
   semFilial: boolean;
   canSemFilial: boolean;
   onChange: (ids: string[], semFilial: boolean) => void;
+  disabled?: boolean;
 }
 
 /** Filtro "Filiais" (filial cadastrada da máquina) — só nos painéis de Validação. */
-export const ParkFilialMultiSelect: React.FC<Props> = ({ options, selected, semFilial, canSemFilial, onChange }) => {
+export const ParkFilialMultiSelect: React.FC<Props> = ({ options, selected, semFilial, canSemFilial, onChange, disabled = false }) => {
   const sel = new Set(selected);
   const count = selected.length + (canSemFilial && semFilial ? 1 : 0);
   const totalOpts = options.length + (canSemFilial ? 1 : 0);
@@ -33,7 +34,7 @@ export const ParkFilialMultiSelect: React.FC<Props> = ({ options, selected, semF
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full justify-between font-normal" aria-label="Filiais">
+        <Button disabled={disabled} variant="outline" className="w-full justify-between font-normal" aria-label="Filiais">
           <span className="truncate">{label}</span>
           <ChevronDown className="h-4 w-4 opacity-60 shrink-0" />
         </Button>

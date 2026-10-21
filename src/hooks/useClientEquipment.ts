@@ -210,7 +210,6 @@ export const useEquipmentPark = (
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
-    placeholderData: (prev) => prev,
     queryFn: async (): Promise<EquipmentParkResult> => {
       const { data, error } = await (supabase as any).rpc('get_equipment_park_paginated', {
         p_search: p.search,
