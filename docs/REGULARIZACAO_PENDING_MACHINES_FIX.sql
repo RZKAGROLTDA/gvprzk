@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Correção ISOLADA de equipment_regularization_pending_machines
--- Status: PREPARADO. NÃO APLICADO. Aguardando autorização.
+-- Status: PREPARADO. Sem EXECUTE para anon (função exige usuário autenticado).
 --
 -- Motivo: a aplicação anterior perdeu dois rótulos no jsonb_build_object
 -- ('client_name' e 'filial_id'), causando o erro
@@ -45,4 +45,4 @@ BEGIN
 END $$;
 
 REVOKE ALL ON FUNCTION public.equipment_regularization_pending_machines(text, uuid, boolean, text, text, text, uuid[], boolean) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.equipment_regularization_pending_machines(text, uuid, boolean, text, text, text, uuid[], boolean) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.equipment_regularization_pending_machines(text, uuid, boolean, text, text, text, uuid[], boolean) TO authenticated, service_role;
