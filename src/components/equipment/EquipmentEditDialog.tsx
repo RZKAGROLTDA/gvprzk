@@ -137,7 +137,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
 
   const persist = async (markValidated: boolean, successMsg: string) => {
     try {
-      await mutateAsync({
+      const saved = await mutateAsync({
         id: equipment.id,
         patch: {
           ...buildPatch(),
@@ -148,6 +148,14 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
         },
       });
       toast({ title: '✅ ' + successMsg });
+      // Etapa 1 (filial da validação): operação concluída, mas sem filial responsável identificável.
+      if ((saved as unknown as { validation_filial_pending?: boolean } | null)?.validation_filial_pending) {
+        toast({
+          title: 'Filial da validação pendente',
+          description:
+            'A operação foi salva, mas não foi possível identificar a filial responsável. Selecione uma Filial Ativa nas próximas validações.',
+        });
+      }
       onOpenChange(false);
     } catch (rawErr: any) {
       const err = classifyEquipmentError(rawErr);
