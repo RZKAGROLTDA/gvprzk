@@ -27,8 +27,9 @@ import { RegularizationBatchList, STAGE_LABEL } from '@/components/equipment/Reg
 import { useRegularizationBatches, type RegStage } from '@/hooks/useEquipmentRegularization';
 import { ParkFilialMultiSelect } from '@/components/equipment/ParkFilialMultiSelect';
 import {
-  LEGACY_SCOPE, defaultParkSelection, toParkScope, type ParkFilialScope,
+  defaultParkSelection, scopeKey,
 } from '@/lib/parkFilialScope';
+import { useParkFilialSelection } from '@/hooks/useParkFilialSelection';
 
 const STAGES: RegStage[] = ['aguardando_envio', 'aguardando_retorno', 'em_validacao', 'regularizados', 'cancelado'];
 
@@ -208,15 +209,14 @@ export const EquipmentRegularizationPanel: React.FC = () => {
 
   // Seleção do filtro "Filiais" (filial cadastrada da máquina). Vazia = nenhum
   // resultado (nunca amplia). "Sem filial" só para Admin/Gerente (isGlobal).
-  const [regSel, setRegSel] = useState<{ ids: string[]; semFilial: boolean } | null>(null);
-  React.useEffect(() => {
-    if (!optionsReady) return;
-    setRegSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
-  }, [optionsReady, isGlobal, activeFilialId, optionIds]);
-  const scope: ParkFilialScope = useMemo(
-    () => (regSel ? toParkScope(regSel.ids, regSel.semFilial, optionIds, isGlobal) : LEGACY_SCOPE),
-    [regSel, optionIds, isGlobal],
+  const primaryFilialId = allowedFiliais.find((f) => f.isPrimary)?.id ?? null;
+  const { selection: regSel, setSelection: setRegSel, scope, isReady: selectionReady } = useParkFilialSelection(
+    optionsReady, isGlobal, activeFilialId, optionIds, primaryFilialId,
   );
+  React.useEffect(() => {
+    setPage(1);
+    setSelected({});
+  }, [scope]);
 
   const filters = useMemo<RegFilters>(
     () => ({
@@ -233,9 +233,9 @@ export const EquipmentRegularizationPanel: React.FC = () => {
   );
 
   const [view, setView] = useState<'pendentes' | RegStage>('pendentes');
-  const stageCounts = useRegularizationBatches('aguardando_envio', null, filters.client, 1, 1, scope);
-  const kpis = useRegularizationKpis(filters);
-  const groups = useRegularizationClients(filters, page, PAGE_SIZE);
+  const stageCounts = useRegularizationBatches('aguardando_envio', null, filters.client, 1, 1, scope, selectionReady);
+  const kpis = useRegularizationKpis(filters, selectionReady);
+  const groups = useRegularizationClients(filters, page, PAGE_SIZE, selectionReady);
 
   const resetPage = () => setPage(1);
   const applySearch = () => {
@@ -244,7 +244,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
     resetPage();
   };
   const clearFilters = () => {
-    setRegSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
+    setRegSel(defaultParkSelection(isGlobal, activeFilialId, optionIds, primaryFilialId));
     setSituation(ALL);
     setClientInput('');
     setChassisInput('');
@@ -294,6 +294,9 @@ export const EquipmentRegularizationPanel: React.FC = () => {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {selectionReady && scope.filialIds?.length === 0 && !scope.includeSemFilial ? (
+          <p role="status" className="text-sm text-muted-foreground">Nenhuma filial selecionada.</p>
+        ) : null}
         {/* Etapas do fluxo */}
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant={view === 'pendentes' ? 'default' : 'outline'} onClick={() => setView('pendentes')}>
@@ -311,6 +314,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <ParkFilialMultiSelect
                 options={filiais}
+                disabled={!selectionReady}
                 selected={regSel?.ids ?? []}
                 semFilial={regSel?.semFilial ?? false}
                 canSemFilial={isGlobal}
@@ -324,7 +328,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
                 <Button size="sm" variant="outline" onClick={clearFilters}>Limpar filtros</Button>
               </div>
             </div>
-            <RegularizationBatchList key={view} stage={view} filialId={null} client={filters.client} scope={scope} />
+            {selectionReady ? <RegularizationBatchList key={`${view}:${scopeKey(scope)}:${filters.client ?? ''}`} stage={view} filialId={null} client={filters.client} scope={scope} /> : null}
           </>
         ) : (<>
         {/* KPIs */}
@@ -346,6 +350,7 @@ export const EquipmentRegularizationPanel: React.FC = () => {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ParkFilialMultiSelect
             options={filiais}
+            disabled={!selectionReady}
             selected={regSel?.ids ?? []}
             semFilial={regSel?.semFilial ?? false}
             canSemFilial={isGlobal}

@@ -23,7 +23,7 @@ import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
 import { useUserFiliais } from '@/hooks/useUserFiliais';
 import { useQuery } from '@tanstack/react-query';
 import { ParkFilialMultiSelect } from '@/components/equipment/ParkFilialMultiSelect';
-import { LEGACY_SCOPE, defaultParkSelection, toParkScope, type ParkFilialScope } from '@/lib/parkFilialScope';
+import { useParkFilialSelection } from '@/hooks/useParkFilialSelection';
 
 
 const ALL = 'all';
@@ -45,17 +45,17 @@ const Equipamentos: React.FC = () => {
   const [view, setView] = useState<'menu' | 'validacao' | 'regularizacao'>('menu');
   // Só a view "validacao" consome os dados do Parque — evita queries no menu
   // e na Regularização (que usa exclusivamente as RPCs R2).
-  const parkQueriesEnabled = view === 'validacao';
+  const parkViewEnabled = view === 'validacao';
 
   // M3/E2 — Filial Ativa do cabeçalho é a filial efetiva do Parque/Validação.
   const { filialId: activeFilialId } = useActiveFilialFilter();
 
   // Filtro "Filiais" (filial cadastrada da máquina) — exceção multi-filial
   // restrita a estes painéis. Não altera a Filial Ativa global.
-  const { isGlobal, filiais: userFiliais, isLoading: filiaisLoading } = useUserFiliais();
+  const { isGlobal, filiais: userFiliais, primaryFilialId, isLoading: filiaisLoading } = useUserFiliais();
   const { data: allFiliais } = useQuery({
     queryKey: ['filiais-options-park'],
-    enabled: parkQueriesEnabled && isGlobal,
+    enabled: parkViewEnabled && isGlobal,
     staleTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
@@ -71,19 +71,13 @@ const Equipamentos: React.FC = () => {
   );
   const optionIds = useMemo(() => filialOptions.map((f) => f.id), [filialOptions]);
   const optionsReady = !filiaisLoading && (isGlobal ? !!allFiliais : true);
-  const [parkSel, setParkSel] = useState<{ ids: string[]; semFilial: boolean } | null>(null);
-  // (Re)inicia a seleção ao abrir/trocar Filial Ativa.
-  React.useEffect(() => {
-    if (!optionsReady) return;
-    setParkSel(defaultParkSelection(isGlobal, activeFilialId, optionIds));
-  }, [optionsReady, isGlobal, activeFilialId, optionIds]);
-  const parkScope: ParkFilialScope = useMemo(
-    () => (parkSel ? toParkScope(parkSel.ids, parkSel.semFilial, optionIds, isGlobal) : LEGACY_SCOPE),
-    [parkSel, optionIds, isGlobal],
+  const { selection: parkSel, setSelection: setParkSel, scope: parkScope, isReady: selectionReady } = useParkFilialSelection(
+    optionsReady, isGlobal, activeFilialId, optionIds, primaryFilialId,
   );
+  const parkQueriesEnabled = parkViewEnabled && selectionReady;
 
   // Diretório de validadores (id → nome, filial)
-  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled, activeFilialId, parkScope);
+  const { data: validators = [] } = useEquipmentValidators(parkQueriesEnabled, null, parkScope);
   const validatorMap = useMemo(() => {
     const map = new Map<string, EquipmentValidator>();
     validators.forEach((v) => map.set(v.user_id, v));
@@ -119,12 +113,12 @@ const Equipamentos: React.FC = () => {
   // Ao trocar de filial, volta para a primeira página.
   React.useEffect(() => {
     setPage(0);
-  }, [activeFilialId, parkScope]);
+  }, [parkScope]);
 
   const filters = useMemo(
     () => ({
       search,
-      filialId: activeFilialId,
+      filialId: null,
       machineType: machineType === ALL ? null : machineType,
       machineStatus: machineStatus === ALL ? null : machineStatus,
       clientCode,
@@ -133,7 +127,7 @@ const Equipamentos: React.FC = () => {
       validatedByIn,
       scope: parkScope,
     }),
-    [search, activeFilialId, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn, parkScope],
+    [search, machineType, machineStatus, clientCode, clientName, priorityOnly, validatedByIn, parkScope],
   );
 
   const { data, isLoading, isFetching, isError, error, refetch } = useEquipmentPark(
@@ -149,8 +143,9 @@ const Equipamentos: React.FC = () => {
   const { data: kpis, refetch: refetchKpis } = useEquipmentParkKpis(
     {
       search: search || null,
-      filialId: activeFilialId,
+      filialId: null,
       machineStatus: machineStatus === ALL ? null : machineStatus,
+      validationPriority: priorityOnly ? true : null,
       scope: parkScope,
     },
     parkQueriesEnabled,
@@ -181,6 +176,7 @@ const Equipamentos: React.FC = () => {
   // Exportar para Excel — respeita filtros ativos
   // -----------------------------------------------------------------
   const handleExport = async () => {
+    if (!parkQueriesEnabled) return;
     setExporting(true);
     try {
       // Exportação usa a MESMA consulta da lista (mesmos filtros e escopo).
@@ -190,7 +186,7 @@ const Equipamentos: React.FC = () => {
       for (let off = 0; off <= 50000; off += EXPORT_PAGE) {
         const { data: batch, error } = await (supabase as any).rpc('get_equipment_park_paginated', {
           p_search: norm(search),
-          p_filial_id: activeFilialId ?? null,
+          p_filial_id: null,
           p_machine_status: machineStatus === ALL ? null : machineStatus,
           p_puk_status: null,
           p_validation_priority: priorityOnly ? true : null,
@@ -259,10 +255,11 @@ const XLSX = await import('xlsx');
   );
 
   // Resumo por filial — fonte correta: get_equipment_validation_summary().by_filial
-  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary(parkQueriesEnabled, activeFilialId, parkScope);
+  const { data: validationSummary, refetch: refetchSummary } = useEquipmentValidationSummary(parkQueriesEnabled, null, parkScope);
 
   /** Força a revalidação de listagem + KPIs + resumo (botão de atualizar). */
   const refetchAll = () => {
+    if (!parkQueriesEnabled) return;
     refetch();
     refetchKpis();
     refetchSummary();
@@ -544,6 +541,7 @@ const XLSX = await import('xlsx');
             <label className="text-xs font-medium text-muted-foreground">Filiais</label>
             <ParkFilialMultiSelect
               options={filialOptions}
+              disabled={!selectionReady}
               selected={parkSel?.ids ?? []}
               semFilial={parkSel?.semFilial ?? false}
               canSemFilial={isGlobal}

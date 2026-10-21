@@ -16,9 +16,11 @@ export function defaultParkSelection(
   isGlobal: boolean,
   activeFilialId: string | null,
   availableIds: string[],
+  primaryFilialId: string | null = null,
 ): { ids: string[]; semFilial: boolean } {
-  if (activeFilialId) return { ids: [activeFilialId], semFilial: false };
+  if (activeFilialId && availableIds.includes(activeFilialId)) return { ids: [activeFilialId], semFilial: false };
   if (isGlobal) return { ids: [...availableIds], semFilial: true };
+  if (primaryFilialId && availableIds.includes(primaryFilialId)) return { ids: [primaryFilialId], semFilial: false };
   return { ids: [], semFilial: false };
 }
 

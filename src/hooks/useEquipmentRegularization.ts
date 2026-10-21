@@ -60,9 +60,10 @@ const baseArgs = (f: RegFilters) => ({
 
 const CACHE = { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false } as const;
 
-export const useRegularizationKpis = (filters: RegFilters) =>
+export const useRegularizationKpis = (filters: RegFilters, enabled = true) =>
   useQuery({
     queryKey: ['reg-kpis', filters],
+    enabled,
     queryFn: async (): Promise<RegKpis> => {
       const { data, error } = await supabase.rpc(
         'equipment_regularization_pending_kpis' as never,
@@ -78,9 +79,11 @@ export const useRegularizationClients = (
   filters: RegFilters,
   page: number,
   pageSize: number,
+  enabled = true,
 ) =>
   useQuery({
     queryKey: ['reg-clients', filters, page, pageSize],
+    enabled,
     queryFn: async (): Promise<{ total_groups: number; clients: RegClientGroup[] }> => {
       const { data, error } = await supabase.rpc(
         'equipment_regularization_pending_clients' as never,
@@ -253,9 +256,11 @@ export interface RegBatchRow {
 export const useRegularizationBatches = (
   stage: RegStage, filialId: string | null, client: string | null, page: number, pageSize: number,
   scope: ParkFilialScope = LEGACY_SCOPE,
+  enabled = true,
 ) =>
   useQuery({
     queryKey: ['reg-batches', stage, filialId, client, page, pageSize, scope],
+    enabled,
     queryFn: async (): Promise<{ total: number; counts: Partial<Record<RegStage, number>>; batches: RegBatchRow[] }> => {
       const { data, error } = await supabase.rpc('equipment_regularization_list_batches' as never, {
         p_stage: stage, p_filial_id: filialId, p_client: client, p_page: page, p_page_size: pageSize,
