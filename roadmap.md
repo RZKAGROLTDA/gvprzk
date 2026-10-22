@@ -99,3 +99,4 @@
 
 - [ ] Etapa 1 filial da validação — revisão final: filial não autorizada via app.validation_filial_id; separar definição da filial cadastral na criação x alteração; histórico rastreia processo/importação; SQL definitivo sem comandos de simulação; simulação com SHA e rollback; tela pronta para publicação coordenada. (sem aplicar/publicar)
 - [ ] Etapa 1 — fechar: validação/situação nunca alteram filial cadastral (inclusive chamadas diretas); identificar processo automático (nome do processo, usuário técnico, lote); apresentar simulação real.
+- [ ] Etapa 1 — simulação autorizada (SHA 8a2dbb91…): testar máquina fora do escopo, pendência de operação automática no histórico, contagens antes/depois.
