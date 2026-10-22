@@ -41,12 +41,14 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
     open ? equipment?.id : undefined,
   );
   const readOnly = open && canEdit === false;
-  const { activeFilialId, filiais: allowedFiliais } = useUserFiliais();
-  // Máquina sem filial e sem Filial Ativa: o usuário escolhe explicitamente
-  // uma filial autorizada apenas para a validação (servidor revalida).
-  const showFilialPicker = !equipment?.filial_id && !activeFilialId;
+  const { activeFilialId, filiais: allowedFiliais, isGlobal } = useUserFiliais();
+  // Filial responsável pela validação (não altera a filial cadastral).
+  // Única filial autorizada (não-global): o servidor usa essa filial.
+  // Gerente/Admin ou várias filiais: escolha explícita, conferida no servidor.
+  const singleFilial = !isGlobal && allowedFiliais.length === 1;
+  const showFilialPicker = !singleFilial;
   const [validationFilialId, setValidationFilialId] = useState('');
-  useEffect(() => { setValidationFilialId(''); }, [open, equipment?.id]);
+  useEffect(() => { setValidationFilialId(activeFilialId ?? ''); }, [open, equipment?.id, activeFilialId]);
   const needsFilialToValidate = showFilialPicker && !validationFilialId;
 
   const [model, setModel] = useState('');
@@ -142,22 +144,24 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
         patch: {
           ...buildPatch(),
           markValidated,
-          filialId:
-            activeFilialId ??
-            (markValidated && showFilialPicker ? validationFilialId || null : null),
+          filialId: showFilialPicker
+            ? (validationFilialId || activeFilialId || null)
+            : (activeFilialId ?? null),
         },
       });
+      void saved;
       toast({ title: '✅ ' + successMsg });
-      // Etapa 1 (filial da validação): operação concluída, mas sem filial responsável identificável.
-      if ((saved as unknown as { validation_filial_pending?: boolean } | null)?.validation_filial_pending) {
-        toast({
-          title: 'Filial da validação pendente',
-          description:
-            'A operação foi salva, mas não foi possível identificar a filial responsável. Selecione uma Filial Ativa nas próximas validações.',
-        });
-      }
       onOpenChange(false);
     } catch (rawErr: any) {
+      const rawMsg = String(rawErr?.message ?? rawErr?.cause?.message ?? '');
+      if (rawMsg.includes('FILIAL_VALIDACAO_OBRIGATORIA')) {
+        toast({
+          title: 'Selecione a filial responsável',
+          description: 'Escolha a filial para validação antes de concluir.',
+          variant: 'destructive',
+        });
+        return;
+      }
       const err = classifyEquipmentError(rawErr);
       console.error('[EquipmentEdit] falha ao salvar:', err.kind, rawErr);
       toast({
