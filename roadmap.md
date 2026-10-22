@@ -96,3 +96,5 @@
 
 - [x] Correção isolada da expansão de clientes da Regularização aplicada (sem anon), testada e dados intactos (21/10/2026).
 - [ ] Proposta pré-migração PARQUE_FILIAL_VALIDACAO v2 (visibilidade das 5.028, recuperação de filial, filtros atuais, validadores=0, implantação) — aguardando aprovação do usuário.
+
+- [ ] Etapa 1 filial da validação — revisão final: filial não autorizada via app.validation_filial_id; separar definição da filial cadastral na criação x alteração; histórico rastreia processo/importação; SQL definitivo sem comandos de simulação; simulação com SHA e rollback; tela pronta para publicação coordenada. (sem aplicar/publicar)

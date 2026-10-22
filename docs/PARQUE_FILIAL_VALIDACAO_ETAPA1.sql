@@ -30,6 +30,7 @@ CREATE TABLE public.client_equipment_validation_filial_history (
   origin text NOT NULL,
   actor_user_id uuid,
   actor_process text NOT NULL,
+  import_batch_id uuid,
   old_machine_status text,
   new_machine_status text,
   old_validation_filial_id uuid,
@@ -75,6 +76,12 @@ DECLARE
   v_status_event boolean;
   v_enforce boolean;
 BEGIN
+  -- Filial cadastral: definida apenas na criacao; validacao/situacao nunca a altera.
+  IF TG_OP = 'UPDATE' AND NEW.filial_id IS DISTINCT FROM OLD.filial_id
+     AND NULLIF(current_setting('app.validation_filial_origin', true), '') IS NOT NULL THEN
+    RAISE EXCEPTION 'Validacao nao pode alterar a filial cadastral' USING ERRCODE = '42501';
+  END IF;
+
   IF TG_OP = 'UPDATE' THEN
     v_new_validation := NEW.last_validation_at IS DISTINCT FROM OLD.last_validation_at
                         AND NEW.last_validation_at IS NOT NULL;
@@ -196,12 +203,12 @@ BEGIN
                      ELSE 'alteracao_direta' END);
 
   INSERT INTO public.client_equipment_validation_filial_history (
-    equipment_id, event_type, operation, origin, actor_user_id, actor_process,
+    equipment_id, event_type, operation, origin, actor_user_id, actor_process, import_batch_id,
     old_machine_status, new_machine_status, old_validation_filial_id, new_validation_filial_id,
     validation_marked, pending
   ) VALUES (
     NEW.id, v_event, lower(TG_OP), v_origin, v_uid,
-    CASE WHEN v_uid IS NULL THEN current_user::text ELSE 'usuario' END,
+    CASE WHEN v_uid IS NULL THEN current_user::text ELSE 'usuario' END, NEW.import_batch_id,
     CASE WHEN TG_OP = 'UPDATE' THEN OLD.machine_status END, NEW.machine_status,
     CASE WHEN TG_OP = 'UPDATE' THEN OLD.validation_filial_id END, NEW.validation_filial_id,
     v_new_validation, NEW.validation_filial_pending
