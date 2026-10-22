@@ -349,7 +349,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">
-                Necessária apenas para "Salvar e validar". O servidor confere a autorização.
+                Obrigatória para validar ou mudar a situação. Não altera a filial cadastrada da máquina; o servidor confere a autorização.
               </p>
             </div>
           )}
@@ -550,7 +550,7 @@ export const EquipmentEditDialog: React.FC<Props> = ({ equipment, open, onOpenCh
             Cancelar
           </Button>
           <div className={`flex flex-col sm:flex-row gap-2 ${readOnly ? 'hidden' : ''}`}>
-            <Button type="button" variant="outline" onClick={saveOnly} disabled={busy}>
+            <Button type="button" variant="outline" onClick={saveOnly} disabled={busy || (needsFilialToValidate && machineStatus !== (equipment.machine_status ?? 'ativa'))}>
               {isPending ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Save className="h-4 w-4 mr-1.5" />}
               Salvar
             </Button>
