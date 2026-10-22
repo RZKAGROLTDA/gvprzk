@@ -98,3 +98,4 @@
 - [ ] Proposta pré-migração PARQUE_FILIAL_VALIDACAO v2 (visibilidade das 5.028, recuperação de filial, filtros atuais, validadores=0, implantação) — aguardando aprovação do usuário.
 
 - [ ] Etapa 1 filial da validação — revisão final: filial não autorizada via app.validation_filial_id; separar definição da filial cadastral na criação x alteração; histórico rastreia processo/importação; SQL definitivo sem comandos de simulação; simulação com SHA e rollback; tela pronta para publicação coordenada. (sem aplicar/publicar)
+- [ ] Etapa 1 — fechar: validação/situação nunca alteram filial cadastral (inclusive chamadas diretas); identificar processo automático (nome do processo, usuário técnico, lote); apresentar simulação real.
