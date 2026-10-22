@@ -1,5 +1,6 @@
 -- ETAPA 1 (v3) - Filial responsavel pela validacao / situacao (registro daqui para frente)
 -- Nao altera filial cadastral (filial_id), nao preenche maquinas antigas, nao muda filtros.
+-- Processos automaticos podem se identificar com set_config('app.process_name', '<nome>', true).
 -- Historico imutavel; filial ja registrada nunca e apagada; filial nao autorizada recusada.
 -- Retorno: UPDATE public.parque_validation_filial_config SET enforce_required = false;
 --          (operacoes voltam a ser aceitas com pendencia; registros preservados)
@@ -30,6 +31,8 @@ CREATE TABLE public.client_equipment_validation_filial_history (
   origin text NOT NULL,
   actor_user_id uuid,
   actor_process text NOT NULL,
+  actor_db_role text NOT NULL,
+  actor_application text,
   import_batch_id uuid,
   old_machine_status text,
   new_machine_status text,
@@ -76,12 +79,6 @@ DECLARE
   v_status_event boolean;
   v_enforce boolean;
 BEGIN
-  -- Filial cadastral: definida apenas na criacao; validacao/situacao nunca a altera.
-  IF TG_OP = 'UPDATE' AND NEW.filial_id IS DISTINCT FROM OLD.filial_id
-     AND NULLIF(current_setting('app.validation_filial_origin', true), '') IS NOT NULL THEN
-    RAISE EXCEPTION 'Validacao nao pode alterar a filial cadastral' USING ERRCODE = '42501';
-  END IF;
-
   IF TG_OP = 'UPDATE' THEN
     v_new_validation := NEW.last_validation_at IS DISTINCT FROM OLD.last_validation_at
                         AND NEW.last_validation_at IS NOT NULL;
@@ -89,6 +86,15 @@ BEGIN
   ELSE
     v_new_validation := NEW.last_validation_at IS NOT NULL;
     v_status_event := NEW.machine_status IN ('vendida', 'inativa', 'sucateada');
+  END IF;
+
+  -- Filial cadastral: definida na criacao; numa maquina existente, validacao ou mudanca
+  -- de situacao nunca a altera (inclusive gravacao direta). Alteracao cadastral so em
+  -- operacao separada, sem validacao/situacao no mesmo comando.
+  IF TG_OP = 'UPDATE' AND NEW.filial_id IS DISTINCT FROM OLD.filial_id
+     AND (v_new_validation OR v_status_event
+          OR NULLIF(current_setting('app.validation_filial_origin', true), '') IS NOT NULL) THEN
+    RAISE EXCEPTION 'Validacao ou mudanca de situacao nao pode alterar a filial cadastral' USING ERRCODE = '42501';
   END IF;
 
   -- Colunas da filial responsavel so mudam por este gatilho.
@@ -203,12 +209,16 @@ BEGIN
                      ELSE 'alteracao_direta' END);
 
   INSERT INTO public.client_equipment_validation_filial_history (
-    equipment_id, event_type, operation, origin, actor_user_id, actor_process, import_batch_id,
+    equipment_id, event_type, operation, origin, actor_user_id, actor_process, actor_db_role,
+    actor_application, import_batch_id,
     old_machine_status, new_machine_status, old_validation_filial_id, new_validation_filial_id,
     validation_marked, pending
   ) VALUES (
     NEW.id, v_event, lower(TG_OP), v_origin, v_uid,
-    CASE WHEN v_uid IS NULL THEN current_user::text ELSE 'usuario' END, NEW.import_batch_id,
+    COALESCE(NULLIF(current_setting('app.process_name', true), ''),
+             CASE WHEN v_uid IS NULL THEN COALESCE(NULLIF(current_setting('application_name', true), ''), session_user::text)
+                  ELSE 'usuario' END),
+    session_user::text, NULLIF(current_setting('application_name', true), ''), NEW.import_batch_id,
     CASE WHEN TG_OP = 'UPDATE' THEN OLD.machine_status END, NEW.machine_status,
     CASE WHEN TG_OP = 'UPDATE' THEN OLD.validation_filial_id END, NEW.validation_filial_id,
     v_new_validation, NEW.validation_filial_pending
