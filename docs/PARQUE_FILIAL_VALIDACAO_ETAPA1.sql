@@ -217,6 +217,9 @@ BEGIN
                      WHEN v_uid IS NULL THEN 'processo_automatico'
                      WHEN TG_OP = 'INSERT' THEN 'cadastro_por_atividade'
                      ELSE 'alteracao_direta' END);
+  IF v_uid IS NOT NULL AND v_origin IN ('importacao', 'processo_automatico') THEN
+    v_origin := CASE WHEN TG_OP = 'INSERT' THEN 'cadastro_por_atividade' ELSE 'alteracao_direta' END;
+  END IF;
 
   INSERT INTO public.client_equipment_validation_filial_history (
     equipment_id, event_type, operation, origin, actor_user_id, actor_process, actor_db_role,
