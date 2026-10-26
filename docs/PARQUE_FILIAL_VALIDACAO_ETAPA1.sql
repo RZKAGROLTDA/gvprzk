@@ -121,6 +121,10 @@ BEGIN
                      WHEN v_uid IS NULL THEN 'processo_automatico'
                      WHEN TG_OP = 'INSERT' THEN 'cadastro_por_atividade'
                      ELSE 'alteracao_direta' END);
+  -- Origem automatica so vale sem usuario autenticado (condicao do banco, nao do valor informado).
+  IF v_uid IS NOT NULL AND v_origin IN ('importacao', 'processo_automatico') THEN
+    v_origin := CASE WHEN TG_OP = 'INSERT' THEN 'cadastro_por_atividade' ELSE 'alteracao_direta' END;
+  END IF;
 
   IF v_uid IS NOT NULL THEN
     v_global := public.has_role(v_uid, 'admin') OR public.has_role(v_uid, 'manager');
@@ -152,11 +156,10 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Sem filial identificada: operacao de usuario em atualizacao e bloqueada (se exigencia ligada);
-  -- inclusoes e processos automaticos seguem com pendencia auditavel.
+  -- Sem filial identificada: qualquer atualizacao de usuario autenticado e bloqueada (se exigencia
+  -- ligada), independente da origem informada; so processos sem usuario seguem com pendencia.
   SELECT c.enforce_required INTO v_enforce FROM public.parque_validation_filial_config c WHERE c.id;
-  IF v_uid IS NOT NULL AND TG_OP = 'UPDATE' AND COALESCE(v_enforce, true)
-     AND v_origin NOT IN ('importacao', 'processo_automatico') THEN
+  IF v_uid IS NOT NULL AND TG_OP = 'UPDATE' AND COALESCE(v_enforce, true) THEN
     RAISE EXCEPTION 'FILIAL_VALIDACAO_OBRIGATORIA: selecione a filial responsavel pela validacao'
       USING ERRCODE = '22023';
   END IF;
