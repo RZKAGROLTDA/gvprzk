@@ -101,3 +101,5 @@
 - [ ] Etapa 1 — fechar: validação/situação nunca alteram filial cadastral (inclusive chamadas diretas); identificar processo automático (nome do processo, usuário técnico, lote); apresentar simulação real.
 - [ ] Etapa 1 — simulação autorizada (SHA 8a2dbb91…): testar máquina fora do escopo, pendência de operação automática no histórico, contagens antes/depois.
 - [ ] Etapa 1 — operação automática sem filial: preservar filial anterior e registrar a operação como pendente no histórico; nova simulação.
+
+- [ ] Etapa 1: confirmar que usuario autenticado nao contorna a filial obrigatoria via app.validation_filial_origin (processo_automatico/importacao)
