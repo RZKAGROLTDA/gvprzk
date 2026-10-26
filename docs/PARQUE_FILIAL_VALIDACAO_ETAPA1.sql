@@ -161,6 +161,8 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
+  -- Marca a operacao atual como pendente para o historico (mesmo com filial anterior gravada).
+  PERFORM set_config('app.vf_op_pending', NEW.id::text, true);
   IF NEW.validation_filial_id IS NULL THEN
     NEW.validation_filial_source := 'pendente:' || v_origin;
     NEW.validation_filial_at := now();
@@ -179,6 +181,7 @@ DECLARE
   v_status_event boolean;
   v_event text;
   v_origin text;
+  v_op_pending boolean;
 BEGIN
   IF TG_OP = 'UPDATE' THEN
     v_new_validation := NEW.last_validation_at IS DISTINCT FROM OLD.last_validation_at
@@ -192,14 +195,18 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  IF TG_OP = 'INSERT' THEN
-    v_event := CASE WHEN NEW.validation_filial_pending THEN 'pendencia' ELSE 'inclusao' END;
+  v_op_pending := current_setting('app.vf_op_pending', true) = NEW.id::text;
+  PERFORM set_config('app.vf_op_pending', '', true);
+
+  IF v_op_pending THEN
+    -- Operacao sem filial identificada: pendente; filial anterior (se houver) preservada.
+    v_event := CASE WHEN NEW.validation_filial_id IS NULL THEN 'pendencia' ELSE 'pendencia_filial_anterior_mantida' END;
+  ELSIF TG_OP = 'INSERT' OR OLD.validation_filial_id IS NULL THEN
+    v_event := 'inclusao';
   ELSIF NEW.validation_filial_id IS DISTINCT FROM OLD.validation_filial_id THEN
-    v_event := CASE WHEN OLD.validation_filial_id IS NULL THEN 'inclusao' ELSE 'alteracao' END;
-  ELSIF NEW.validation_filial_id IS NULL THEN
-    v_event := 'pendencia';
+    v_event := 'alteracao';
   ELSE
-    v_event := 'mantida';
+    v_event := 'confirmacao';
   END IF;
 
   v_origin := COALESCE(NULLIF(current_setting('app.validation_filial_origin', true), ''),
@@ -221,7 +228,7 @@ BEGIN
     session_user::text, NULLIF(current_setting('application_name', true), ''), NEW.import_batch_id,
     CASE WHEN TG_OP = 'UPDATE' THEN OLD.machine_status END, NEW.machine_status,
     CASE WHEN TG_OP = 'UPDATE' THEN OLD.validation_filial_id END, NEW.validation_filial_id,
-    v_new_validation, NEW.validation_filial_pending
+    v_new_validation, v_op_pending
   );
   RETURN NULL;
 END $fn$;
