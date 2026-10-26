@@ -198,7 +198,7 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  v_op_pending := current_setting('app.vf_op_pending', true) = NEW.id::text;
+  v_op_pending := COALESCE(current_setting('app.vf_op_pending', true) = NEW.id::text, false);
   PERFORM set_config('app.vf_op_pending', '', true);
 
   IF v_op_pending THEN
