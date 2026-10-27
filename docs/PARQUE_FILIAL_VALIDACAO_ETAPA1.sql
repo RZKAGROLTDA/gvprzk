@@ -17,6 +17,7 @@ CREATE TABLE public.parque_validation_filial_config (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO public.parque_validation_filial_config (id, enforce_required) VALUES (true, true);
+REVOKE ALL ON public.parque_validation_filial_config FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.parque_validation_filial_config TO authenticated;
 GRANT ALL ON public.parque_validation_filial_config TO service_role;
 ALTER TABLE public.parque_validation_filial_config ENABLE ROW LEVEL SECURITY;
@@ -43,6 +44,7 @@ CREATE TABLE public.client_equipment_validation_filial_history (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_ce_vf_history_equipment ON public.client_equipment_validation_filial_history (equipment_id, created_at DESC);
+REVOKE ALL ON public.client_equipment_validation_filial_history FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.client_equipment_validation_filial_history TO authenticated;
 GRANT ALL ON public.client_equipment_validation_filial_history TO service_role;
 ALTER TABLE public.client_equipment_validation_filial_history ENABLE ROW LEVEL SECURITY;
