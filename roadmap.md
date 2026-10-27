@@ -105,3 +105,8 @@
 - [ ] Etapa 1: confirmar que usuario autenticado nao contorna a filial obrigatoria via app.validation_filial_origin (processo_automatico/importacao)
 - [ ] Etapa 1: validar permissoes com usuarios autenticados reais e confirmar tela pronta para Filial Ativa antes da implantacao
 - [ ] Etapa 1: conferência final compara filial_id original x final de cada máquina (só testes)
+
+## Etapa 1 — Filial responsável pela validação
+- [ ] Simulação A (usuários reais) — testes ajustados (B global=inexistente / restrito=não autorizada; cargos confirmados; máquina ausente = NÃO TESTADO); aguardando aprovação para executar
+- [ ] Ambiente B isolado — diagnóstico pendente
+- [ ] Referências C (somente leitura)
