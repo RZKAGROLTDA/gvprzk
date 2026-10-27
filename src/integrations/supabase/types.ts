@@ -295,6 +295,10 @@ export type Database = {
           transferred_by: string | null
           updated_at: string
           validated_by: string | null
+          validation_filial_at: string | null
+          validation_filial_id: string | null
+          validation_filial_pending: boolean
+          validation_filial_source: string | null
           validation_priority: boolean
           validation_priority_reason: string | null
           validation_priority_updated_at: string | null
@@ -326,6 +330,10 @@ export type Database = {
           transferred_by?: string | null
           updated_at?: string
           validated_by?: string | null
+          validation_filial_at?: string | null
+          validation_filial_id?: string | null
+          validation_filial_pending?: boolean
+          validation_filial_source?: string | null
           validation_priority?: boolean
           validation_priority_reason?: string | null
           validation_priority_updated_at?: string | null
@@ -357,6 +365,10 @@ export type Database = {
           transferred_by?: string | null
           updated_at?: string
           validated_by?: string | null
+          validation_filial_at?: string | null
+          validation_filial_id?: string | null
+          validation_filial_pending?: boolean
+          validation_filial_source?: string | null
           validation_priority?: boolean
           validation_priority_reason?: string | null
           validation_priority_updated_at?: string | null
@@ -371,7 +383,74 @@ export type Database = {
             referencedRelation: "filiais"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "client_equipment_validation_filial_id_fkey"
+            columns: ["validation_filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      client_equipment_validation_filial_history: {
+        Row: {
+          actor_application: string | null
+          actor_db_role: string
+          actor_process: string
+          actor_user_id: string | null
+          created_at: string
+          equipment_id: string
+          event_type: string
+          id: string
+          import_batch_id: string | null
+          new_machine_status: string | null
+          new_validation_filial_id: string | null
+          old_machine_status: string | null
+          old_validation_filial_id: string | null
+          operation: string
+          origin: string
+          pending: boolean
+          validation_marked: boolean
+        }
+        Insert: {
+          actor_application?: string | null
+          actor_db_role: string
+          actor_process: string
+          actor_user_id?: string | null
+          created_at?: string
+          equipment_id: string
+          event_type: string
+          id?: string
+          import_batch_id?: string | null
+          new_machine_status?: string | null
+          new_validation_filial_id?: string | null
+          old_machine_status?: string | null
+          old_validation_filial_id?: string | null
+          operation: string
+          origin: string
+          pending?: boolean
+          validation_marked?: boolean
+        }
+        Update: {
+          actor_application?: string | null
+          actor_db_role?: string
+          actor_process?: string
+          actor_user_id?: string | null
+          created_at?: string
+          equipment_id?: string
+          event_type?: string
+          id?: string
+          import_batch_id?: string | null
+          new_machine_status?: string | null
+          new_validation_filial_id?: string | null
+          old_machine_status?: string | null
+          old_validation_filial_id?: string | null
+          operation?: string
+          origin?: string
+          pending?: boolean
+          validation_marked?: boolean
+        }
+        Relationships: []
       }
       clients: {
         Row: {
@@ -998,6 +1077,24 @@ export type Database = {
           subtotal_ofertado?: number | null
           subtotal_vendido?: number | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      parque_validation_filial_config: {
+        Row: {
+          enforce_required: boolean
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          enforce_required?: boolean
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          enforce_required?: boolean
+          id?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3132,6 +3229,10 @@ export type Database = {
           transferred_by: string | null
           updated_at: string
           validated_by: string | null
+          validation_filial_at: string | null
+          validation_filial_id: string | null
+          validation_filial_pending: boolean
+          validation_filial_source: string | null
           validation_priority: boolean
           validation_priority_reason: string | null
           validation_priority_updated_at: string | null
@@ -5163,6 +5264,10 @@ export type Database = {
           transferred_by: string | null
           updated_at: string
           validated_by: string | null
+          validation_filial_at: string | null
+          validation_filial_id: string | null
+          validation_filial_pending: boolean
+          validation_filial_source: string | null
           validation_priority: boolean
           validation_priority_reason: string | null
           validation_priority_updated_at: string | null
