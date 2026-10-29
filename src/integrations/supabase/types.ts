@@ -3873,6 +3873,62 @@ export type Database = {
           token: string
         }[]
       }
+      get_management_activity_export: {
+        Args: {
+          p_after_id?: string
+          p_client_code?: string
+          p_client_name?: string
+          p_end_date?: string
+          p_filial_atendida?: string
+          p_filial_id?: string
+          p_kind: string
+          p_limit?: number
+          p_seller_id?: string
+          p_seller_role?: string
+          p_start_date?: string
+          p_task_types?: string[]
+        }
+        Returns: {
+          checklist_machine: Json
+          client: string
+          client_code: string
+          contact_function: string
+          contact_name: string
+          email: string
+          equipment_quantity: number
+          filial: string
+          filial_atendida: string
+          followup_next_return: string
+          followup_notes: string
+          followup_status: string
+          followup_temperature: string
+          is_prospect: boolean
+          next_action: string
+          next_action_date: string
+          observations: string
+          opportunity_closed: number
+          opportunity_status: string
+          opportunity_total: number
+          park_machines: Json
+          partial_sales_value: number
+          phone: string
+          property: string
+          property_hectares: number
+          sales_confirmed: boolean
+          sales_type: string
+          sales_value: number
+          seller_id: string
+          seller_name: string
+          seller_role: string
+          start_date: string
+          start_time: string
+          status: string
+          surveyed_machines: Json
+          task_id: string
+          task_type: string
+          technical_visit: Json
+        }[]
+      }
       get_management_client_details: {
         Args: {
           p_client_code?: string
