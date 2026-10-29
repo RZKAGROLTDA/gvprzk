@@ -1,7 +1,8 @@
 # Roadmap
 
 ## Condição Especial — melhoria solicitada em 29/10/2026
-- [ ] Aprovar plano técnico e alterações de banco para período padrão, Tipo de Condição e Margem %.
+- [x] Aprovar plano técnico e alterações de banco para período padrão, Tipo de Condição e Margem %.
+- [ ] Aplicar exclusivamente as duas colunas anuláveis e restrição do tipo; comprovar preservação dos 410 registros sem preenchimento automático.
 - [ ] Após aprovação: implementar apenas na Condição Especial, preservar acessos/dados/aprovação e validar indicadores, filtros e Excel.
 - [ ] Publicação bloqueada até autorização explícita.
 
