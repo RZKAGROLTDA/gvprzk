@@ -94,7 +94,12 @@ BEGIN
   v_is_manager := has_role(v_user_id, 'manager'::app_role);
   v_is_supervisor := has_role(v_user_id, 'supervisor'::app_role);
   -- Filial Ativa / autorização (42501 se não autorizada). '{}' = global sem filtro.
+  -- effective_filial_ids valida p_filial_id contra filial principal + adicionais.
   v_scope := public.effective_filial_ids(p_filial_id);
+  -- [AJUSTE 1] Não-globais: exatamente UMA Filial Ativa; nunca combinar filiais.
+  IF NOT (v_is_admin OR v_is_manager) AND COALESCE(cardinality(v_scope), 0) <> 1 THEN
+    RAISE EXCEPTION 'Acesso negado: selecione uma Filial Ativa autorizada' USING ERRCODE = '42501';
+  END IF;
   v_can_park := public.can_view_equipment_park();
 
   RETURN QUERY
@@ -160,6 +165,14 @@ BEGIN
       JOIN client_equipment ce ON ce.id = te.equipment_id
       LEFT JOIN filiais cf ON cf.id = ce.filial_id
       WHERE te.task_id = b.id
+        -- [AJUSTE 2] Permissão por máquina (SECURITY DEFINER não herda RLS):
+        AND (
+          (v_is_admin OR v_is_manager)
+            AND (cardinality(v_scope) = 0 OR ce.filial_id = ANY(v_scope))
+          OR (NOT (v_is_admin OR v_is_manager)
+            AND ce.filial_id IS NOT NULL
+            AND ce.filial_id = ANY(v_scope))
+        )
     ), '[]'::jsonb) END
   FROM base b
   LEFT JOIN filiais f ON f.id = b.filial_id
