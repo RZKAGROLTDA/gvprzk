@@ -267,7 +267,7 @@ const XLSX = await import('xlsx');
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <KpiCard label="Qtd. Condições" value={isLoading || loadError ? '—' : String(kpis.count)} />
         <KpiCard label="Valor Total Vendido" value={isLoading || loadError ? '—' : formatCurrency(kpis.totalSold)} />
         <KpiCard label="Desconto Médio" value={isLoading || loadError ? '—' : formatPct(kpis.avgDiscountPct)} />
@@ -644,10 +644,10 @@ const XLSX = await import('xlsx');
 };
 
 const KpiCard: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <Card className="border-border/60 shadow-sm">
-    <CardContent className="p-4">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
-      <p className="text-lg font-bold mt-1 break-words">{value}</p>
+  <Card className="min-w-0 border-border/60 shadow-sm">
+    <CardContent className="p-6 h-full flex flex-col gap-3">
+      <p className="text-xs uppercase tracking-normal text-muted-foreground font-medium">{label}</p>
+      <p className={`text-lg font-bold tabular-nums leading-snug ${value === 'Sem dados suficientes' ? 'whitespace-normal' : 'whitespace-nowrap'}`}>{value}</p>
     </CardContent>
   </Card>
 );
