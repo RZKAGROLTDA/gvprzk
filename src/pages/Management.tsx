@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search, RefreshCw, Wrench } from 'lucide-react';
+import { BarChart3, Users, UserCheck, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Activity, Target, TrendingUp, DollarSign, Percent, Package, Search, RefreshCw, Wrench, Download } from 'lucide-react';
+import { exportActivitiesExcel, type ActivityExportKind } from '@/lib/managementActivityExport';
 import ServiceOpportunitiesTab from '@/components/management/ServiceOpportunitiesTab';
 
 import { useUserRole } from '@/hooks/useUserRole';
@@ -109,6 +110,9 @@ const Management: React.FC = () => {
   const [pageSize, setPageSize] = useState(20);
   const [productFilter, setProductFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
+  const [filialAtendida, setFilialAtendida] = useState('');
+  const [exporting, setExporting] = useState<ActivityExportKind | null>(null);
+  const [exportCount, setExportCount] = useState(0);
 
   // Tabs
   const [activeTab, setActiveTab] = useState('vendedores');
@@ -740,6 +744,23 @@ const Management: React.FC = () => {
               </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Relatório — exportações Excel */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base">Relatório</CardTitle></CardHeader>
+        <CardContent className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[200px]">
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Filial Atendida</label>
+            <Input placeholder="Todas" value={filialAtendida} onChange={e => setFilialAtendida(e.target.value)} className="h-10" />
+          </div>
+          {(['ligacao', 'visita', 'checklist'] as const).map(k => (
+            <Button key={k} variant="outline" disabled={!!exporting || !managementContextReady} onClick={() => runActivityExport(k)}>
+              <Download className="h-4 w-4 mr-1.5" />
+              {exporting === k ? `Exportando… ${exportCount}` : `Exportar ${k === 'ligacao' ? 'Ligações' : k === 'visita' ? 'Visitas' : 'Checklists'}`}
+            </Button>
+          ))}
         </CardContent>
       </Card>
 
