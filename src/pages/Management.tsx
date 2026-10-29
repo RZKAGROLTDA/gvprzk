@@ -59,7 +59,6 @@ const statusBadge = (status: string) => {
   return <Badge variant={s.variant}>{s.label}</Badge>;
 };
 
-const formatDebugJson = (value: unknown) => JSON.stringify(value, null, 2) ?? 'null';
 
 type SortDir = 'asc' | 'desc';
 
@@ -289,57 +288,6 @@ const Management: React.FC = () => {
   // ainda não resolveram. Depois disso, mostramos a tela com banner de motivo.
   const showLoadingState = !canRunManagementQueries && !watchdogElapsed && (!authReady || !roleLoaded);
 
-  const sellerRpcParams = useMemo(() => buildManagementParams(filters), [filters]);
-  const clientRpcParams = useMemo(() => buildManagementParams(clientFilters), [clientFilters]);
-
-  const debugContext = useMemo(() => ({
-    auth: {
-      auth_uid: user?.id ?? null,
-      authReady,
-      current_role_label: role,
-      user_roles: rawRoles,
-      roleLoading,
-      roleLoaded,
-    },
-    profile: {
-      profile_user_id: profile?.user_id ?? null,
-      profile_role: profile?.role ?? null,
-      approval_status: profile?.approval_status ?? null,
-      filial_id: profile?.filial_id ?? null,
-      filial_nome: profile?.filial_nome ?? null,
-      profileLoading,
-      profileLoaded,
-      filialLoaded,
-    },
-    flags: {
-      isManager,
-      isAdmin,
-      isSupervisor,
-      isSeller,
-      canRunManagementQueries,
-      blockReason,
-      watchdogElapsed,
-      managementContextReady,
-    },
-  }), [user?.id, authReady, role, rawRoles, roleLoading, roleLoaded, profile?.user_id, profile?.role, profile?.approval_status, profile?.filial_id, profile?.filial_nome, profileLoading, profileLoaded, filialLoaded, isManager, isAdmin, isSupervisor, isSeller, canRunManagementQueries, blockReason, watchdogElapsed, managementContextReady]);
-
-  const debugComparison = useMemo(() => ({
-    seller_summary: {
-      hook_rows: sellerData.length,
-      direct_rows: managementDebugQuery.data?.sellerSummary.rowCount ?? null,
-      same_count: managementDebugQuery.data ? sellerData.length === managementDebugQuery.data.sellerSummary.rowCount : null,
-    },
-    client_details: {
-      hook_rows: clientData.length,
-      direct_rows: managementDebugQuery.data?.clientDetails.rowCount ?? null,
-      same_count: managementDebugQuery.data ? clientData.length === managementDebugQuery.data.clientDetails.rowCount : null,
-    },
-    product_analysis: {
-      hook_rows: productData.length,
-      direct_rows: managementDebugQuery.data?.productAnalysis.rowCount ?? null,
-      same_count: managementDebugQuery.data ? productData.length === managementDebugQuery.data.productAnalysis.rowCount : null,
-    },
-  }), [sellerData.length, clientData.length, productData.length, managementDebugQuery.data]);
 
   const showFilialFilter = isManager || isAdmin;
   const showSellerFilter = !isSeller && !isSupervisor;
@@ -447,27 +395,6 @@ const Management: React.FC = () => {
     ) : null
   );
 
-  // Concise RPC status summary for fast diagnosis on mobile
-  const rpcStatus = useMemo(() => ({
-    seller_summary: {
-      status: sellerQuery.isLoading ? 'loading' : sellerQuery.error ? 'error' : 'ok',
-      rows: sellerData.length,
-      direct_rows: managementDebugQuery.data?.sellerSummary.rowCount ?? null,
-      error: (sellerQuery.error as any)?.message ?? managementDebugQuery.data?.sellerSummary.error?.message ?? null,
-    },
-    client_details: {
-      status: clientQuery.isLoading ? 'loading' : clientQuery.error ? 'error' : 'ok',
-      rows: clientData.length,
-      direct_rows: managementDebugQuery.data?.clientDetails.rowCount ?? null,
-      error: (clientQuery.error as any)?.message ?? managementDebugQuery.data?.clientDetails.error?.message ?? null,
-    },
-    product_analysis: {
-      status: productQuery.isLoading ? 'loading' : productQuery.error ? 'error' : 'ok',
-      rows: productData.length,
-      direct_rows: managementDebugQuery.data?.productAnalysis.rowCount ?? null,
-      error: (productQuery.error as any)?.message ?? managementDebugQuery.data?.productAnalysis.error?.message ?? null,
-    },
-  }), [sellerQuery.isLoading, sellerQuery.error, sellerData.length, clientQuery.isLoading, clientQuery.error, clientData.length, productQuery.isLoading, productQuery.error, productData.length, managementDebugQuery.data]);
 
   const handleRefreshAll = async () => {
     try {
@@ -497,7 +424,6 @@ const Management: React.FC = () => {
     productQuery.isFetching ||
     managementDebugQuery.isFetching;
 
-  const showDebugPanel = import.meta.env.DEV;
 
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -527,51 +453,6 @@ const Management: React.FC = () => {
         </div>
       )}
 
-      {/* Debug panel — somente em desenvolvimento */}
-      {showDebugPanel && (
-      <Card className="border-2 border-amber-500/60 bg-amber-50/30 dark:bg-amber-950/20">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base sm:text-lg">🔍 Debug temporário /management</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-            <div className="rounded border bg-background p-2"><strong>authReady:</strong> {String(authReady)}</div>
-            <div className="rounded border bg-background p-2"><strong>roleLoaded:</strong> {String(roleLoaded)}</div>
-            <div className="rounded border bg-background p-2"><strong>profileLoaded:</strong> {String(profileLoaded)}</div>
-            <div className="rounded border bg-background p-2"><strong>filialLoaded:</strong> {String(filialLoaded)}</div>
-            <div className="rounded border bg-background p-2"><strong>canRun:</strong> {String(canRunManagementQueries)}</div>
-            <div className="rounded border bg-background p-2"><strong>role:</strong> {role}</div>
-            <div className="rounded border bg-background p-2 col-span-2 sm:col-span-3 break-all"><strong>userId:</strong> {userId ?? 'null'}</div>
-            <div className="rounded border bg-background p-2 col-span-2 sm:col-span-3 break-all"><strong>profileFilialId:</strong> {profile?.filial_id ?? 'null'} ({profile?.filial_nome ?? '—'})</div>
-            {blockReason && (
-              <div className="rounded border-2 border-destructive bg-destructive/10 p-2 col-span-2 sm:col-span-3 text-destructive"><strong>blockReason:</strong> {blockReason}</div>
-            )}
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold mb-1">RPCs (status / rows / erro)</p>
-            <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson(rpcStatus)}</pre>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold mb-1">Filtros enviados (p_start_date, p_end_date, p_filial_id, p_seller_id…)</p>
-            <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson({
-              sellerSummary: sellerRpcParams,
-              clientDetails: clientRpcParams,
-              productAnalysis: managementDebugQuery.data?.productAnalysis.params ?? null,
-            })}</pre>
-          </div>
-
-          <details className="text-xs">
-            <summary className="cursor-pointer font-semibold">Detalhes completos (auth, profile, flags, comparativo)</summary>
-            <div className="mt-2 space-y-2">
-              <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson(debugContext)}</pre>
-              <pre className="overflow-x-auto rounded-md border bg-muted p-2 text-[10px] sm:text-xs">{formatDebugJson(debugComparison)}</pre>
-            </div>
-          </details>
-        </CardContent>
-      </Card>
-      )}
 
       {showLoadingState && (
         <Card>
