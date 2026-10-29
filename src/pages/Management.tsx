@@ -153,6 +153,30 @@ const Management: React.FC = () => {
     };
   }, [periodValue, filialId, sellerRole, sellerId, taskTypeFilter, isSupervisor, isManager, isAdmin, isSeller, currentUserId, managementContextReady, profile?.filial_id]);
 
+  const runActivityExport = async (kind: ActivityExportKind) => {
+    if (exporting) return;
+    setExporting(kind);
+    setExportCount(0);
+    try {
+      const n = await exportActivitiesExcel({
+        kind,
+        startDate: filters.startDate ?? null,
+        endDate: filters.endDate ?? null,
+        filialId: filters.filialId ?? null,
+        sellerRole: filters.sellerRole ?? null,
+        sellerId: filters.sellerId ?? null,
+        clientName: clientFilter,
+        filialAtendida,
+      }, setExportCount);
+      if (n === 0) toast.info('Nenhuma atividade encontrada para os filtros selecionados.');
+      else toast.success(`Exportação concluída: ${n} atividades.`);
+    } catch (e: any) {
+      toast.error(`Exportação não concluída: ${e?.message ?? 'erro'}. Nenhum arquivo foi gerado.`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     console.log('🛂 Management auth context', {
