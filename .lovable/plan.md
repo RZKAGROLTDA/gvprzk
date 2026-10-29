@@ -1,62 +1,73 @@
-# Filtro de várias filiais: Validação e Regularização de Máquinas
+# Condição Especial — período, tipo e margem
 
-Nada é aplicado no banco nem publicado sem a sua autorização para cada passo.
+## Escopo e autorização
+Melhorar somente a aba Condição Especial. Este plano não executa migração, não altera telas nem publica. A implementação começa após a aprovação das mudanças abaixo; a publicação continuará dependendo de autorização separada.
 
-## 1. Validação de Máquinas (já implementado, falta a ordenação)
-- O filtro "Filiais" continua como está.
-- A ordenação estável depende do arquivo `docs/PARQUE_ORDEM_ESTAVEL.sql`, com SHA-256 `456bfedd...7922`. A mudança é uma linha só: acrescentar o código único da máquina como desempate.
-- Para aplicar, é preciso uma destas duas coisas:
-  - (A) o resultado do teste que você roda no editor SQL;
-  - (B) sua autorização para aplicar e conferir em partes, com volta imediata se algo divergir.
-- Depois de aplicado, confiro em partes pequenas:
-  - Todas as filiais + Sem filial: 20.195 máquinas, sem repetidas nem faltando.
-  - Querência + Canarana: 584.
-  - Indicadores, filtros e exportação continuam batendo com a lista.
+## 1. Período e filtros
+- Ao abrir a aba ou limpar os filtros, selecionar do primeiro dia do mês atual até hoje, usando datas locais.
+- Manter a **Data Venda** como referência do período, como na tela atual, com início e fim inclusivos. Não substituir datas ausentes por datas de cadastro.
+- Permitir qualquer período histórico. Preservar os filtros existentes e acrescentar **Tipo de Condição: Todos / Condição Safra / Condição Normal**.
+- Aplicar o período na consulta, antes de carregar registros: não buscar todo o histórico na abertura.
+- Tabela, cinco indicadores existentes, novo indicador e Excel usarão exatamente o mesmo conjunto filtrado e autorizado.
+- Registros sem Data Venda continuarão preservados e acessíveis quando o período estiver sem limites; limpar filtros voltará ao mês atual.
 
-## 2. Como a Regularização funciona hoje
-- **Tudo segue a Filial Ativa, uma filial por vez.** São 9 funções do servidor (pendências, contadores, máquinas por cliente, lista de lotes, detalhe, PDF, envio, validação, conclusão, cancelamento e retirada de máquina). Cada uma recebe uma única filial e confere a autorização.
-- **Criação de lote:** a criação recusa quando uma máquina:
-  - é de outra filial;
-  - está sem filial, se o usuário não tiver visão global;
-  - já está em outro lote aberto;
-  - já foi regularizada;
-  - não está como vendida, inativa ou sucateada.
+## 2. Formulário, tabela e Excel
+- Acrescentar **Tipo de Condição** obrigatório na criação e no salvamento da edição, com Safra e Normal. Registros antigos abrirão sem seleção; sua classificação será manual, sem atualização em massa.
+- Acrescentar **Margem %** opcional, manual e editável, com duas casas decimais, junto a Valor Venda, Desconto % e Desconto Total.
+- Não calcular margem pelo desconto. Campo vazio será armazenado como ausência de informação; zero informado será um valor válido.
+- Exibir tipo e margem na tabela e acrescentar as duas colunas ao Excel, preservando todas as colunas atuais. Dados ausentes ficarão em branco no arquivo.
+- Manter regras atuais de edição, status, aprovação, rejeição, exclusão e histórico. Aprovar/rejeitar registros antigos não exigirá classificá-los; a obrigatoriedade vale ao salvar o formulário de criação/edição.
 
-  Além disso, o lote **é recusado quando junta filiais diferentes**.
-- **Ações sobre um lote existente:** antes de qualquer ação, o servidor exige que todas as máquinas do lote sejam de uma única filial e que essa filial seja a Filial Ativa autorizada. Na visão global, isso é liberado.
-- **"Erro de Envio":** hoje não existe como aba separada. O erro fica registrado no próprio lote, que continua em "Aguardando envio".
+## 3. Indicadores
+Manter sem mudanças de fórmula: **Qtd. Condições, Valor Total Vendido, Desconto Médio, Desconto Total e Ticket Médio**.
 
-## 3. O que proponho mudar
-**Tela**
-- Novo filtro "Filiais" na Regularização, igual ao da Validação:
-  - caixas de seleção, "Selecionar todas" e "Limpar seleção";
-  - "Sem filial" só para Admin e Gerente;
-  - seleção vazia mostra nenhum resultado.
-- Ele vale para os indicadores, a lista de pendentes e todas as abas: Pendentes, Aguardando envio, Aguardando retorno, Em validação, Regularizados, Cancelados e a nova aba **Erro de Envio**. A nova aba mostra os lotes cujo último envio falhou e serve só para consulta. O lote continua na mesma etapa de antes.
-- A seleção fica guardada só dentro da Regularização. A Filial Ativa do cabeçalho não muda.
-- Na tela de pendentes, será possível marcar máquinas de filiais diferentes e criar um único lote com elas.
+Adicionar **Margem Média %**:
 
-**Servidor** (uma migração, que só aplico com a sua aprovação)
-- As funções de consulta (contadores, pendentes, máquinas por cliente e lista de lotes) passam a aceitar uma lista de filiais e a opção "Sem filial". Elas usam a mesma conferência da Validação: cada filial da lista precisa ser autorizada ao usuário, e uma filial não autorizada é recusada. As chamadas atuais continuam funcionando como hoje.
-- **Criação de lote:** cai a regra "uma filial por lote". Em troca, cada máquina precisa pertencer a uma das filiais selecionadas e autorizadas. Continuam valendo todas as outras regras: duplicidade, lote aberto, já regularizada, situação, e "Sem filial" só na visão global.
-- **Ações sobre lotes** (PDF, envio, reenvio, validação, conclusão, cancelamento e retirada): todas as filiais do lote precisam estar autorizadas ao usuário. Supervisor e RAC não mexem em lotes que tenham qualquer máquina de filial não autorizada.
-- **A filial de cada máquina não muda.** Cada item do lote guarda a filial original da máquina, como hoje. A conclusão só muda a situação.
-- **Permissões e acesso aos dados:** nenhuma permissão nem regra de acesso aos dados muda. Visitantes sem login continuam sem acesso.
+```text
+Σ (Valor Venda × Margem %) / Σ Valor Venda
+```
 
-## 4. Testes antes de aplicar (simulação que se desfaz no final)
-- As chamadas atuais dão os mesmos totais de antes, tanto para Admin quanto para um usuário de filial única.
-- Admin:
-  - uma filial, várias filiais, e todas mais "Sem filial";
-  - a soma por filial é igual ao total consolidado.
-- Iuri (Vila Rica + Canarana):
-  - cria lote com as duas filiais e consegue fazer todas as ações nele;
-  - é recusado ao pedir Querência ou "Sem filial".
-- Duplicidade: a mesma máquina não entra em dois lotes abertos.
-- Os lotes atuais (os 13 aguardando envio e os cancelados) continuam iguais.
+- Numerador e denominador consideram somente registros com margem preenchida, dentro dos mesmos filtros.
+- Margem zero participa; margem ausente não participa.
+- Se não houver margens preenchidas ou a soma dos valores de venda elegíveis for zero, mostrar **Sem dados suficientes**, nunca uma média fictícia.
+- Arredondar apenas o resultado exibido para duas casas decimais.
+- Exemplo de teste: vendas de R$ 100 com margem de 10% e R$ 300 com margem de 20% resultam em **17,50%**, não 15%. Uma venda adicional sem margem não altera esse resultado.
 
-## 5. Riscos
-- **A exceção passa a valer também para a Regularização.** Vou registrar isso na regra permanente: só Validação e Regularização juntam filiais; CRM, POPS e os demais continuam com uma filial só.
-- **PDF e e-mail de um lote com várias filiais:** o cabeçalho continua usando o nome do cliente. O PDF mostra a filial de cada máquina. Se quiser outro formato, me diga.
-- **Lotes antigos sem filial:** continuam disponíveis só para a visão global.
-- **Erro de Envio:** a aba nova depende do registro de envio. Lotes antigos que falharam antes desse registro existir podem não aparecer nela.
-- **O que não muda:** a publicação continua esperando a sua validação, e CRM, POPS e os demais módulos não são alterados.
+## 4. Alterações técnicas no banco — para aprovação
+Adicionar somente duas colunas em `public.special_conditions`, ambas anuláveis e sem valor padrão:
+
+```sql
+ALTER TABLE public.special_conditions
+  ADD COLUMN condition_type text,
+  ADD COLUMN margin_percent numeric(12,2);
+
+ALTER TABLE public.special_conditions
+  ADD CONSTRAINT special_conditions_condition_type_valid
+  CHECK (condition_type IS NULL OR condition_type IN ('safra', 'normal'));
+```
+
+- `condition_type`: valores armazenados `safra`/`normal`; nomes apresentados Condição Safra/Condição Normal.
+- `margin_percent`: valor manual com precisão de duas casas; nenhum cálculo automático e nenhum intervalo percentual arbitrário imposto.
+- A validação fixa do tipo aceita ausência nos registros antigos. O formulário exigirá uma escolha antes de salvar uma criação ou edição.
+- Não executar UPDATE, preenchimento retroativo, alteração de RLS, concessões, cargos, filiais ou vínculos.
+- Não alterar os gatilhos existentes de status, aprovação, nome do vendedor ou atualização de data.
+- Não criar tabelas nem funções SECURITY DEFINER; as consultas continuarão usando o acesso atual, sob RLS.
+
+### Consulta e compatibilidade
+- Atualizar os campos explícitos consultados e enviados, sem editar manualmente os tipos gerados pelo Supabase.
+- Retirar o teto atual de uma única consulta de 1.000 linhas: carregar páginas de até 1.000, com ordenação por ID e avanço pelo último ID retornado, até terminar.
+- Manter o escopo de acesso atual, sem combinar filiais ou ampliar autorização. Preservar as demais condições dos filtros.
+- Não apresentar indicadores ou liberar Excel como completos enquanto houver lotes pendentes; em falha, não gerar arquivo parcial.
+- Nenhuma alteração nas demais abas ou nas exportações da Análise Gerencial.
+
+## 5. Validação após aprovação
+- Testar abertura e limpeza no mês atual, inclusive virada de mês e datas locais; intervalo histórico inclusivo.
+- Testar criação e edição exigindo tipo, e preservação de registros antigos sem tipo/margem.
+- Testar margem manual com duas casas, zero e ausência de valor; comprovar que desconto não modifica margem.
+- Testar média ponderada com o exemplo de 17,50%, exclusão de valores ausentes e ausência de denominador válido.
+- Conferir as cinco fórmulas existentes, filtragem Safra/Normal/Todos e correspondência entre tabela, indicadores e Excel.
+- Validar paginação com mais de 1.000 registros, IDs únicos e interrupção sem arquivo em caso de falha.
+- Conferir os acessos de vendedores, supervisores e gerentes e o fluxo de aprovação, sem mudar permissões ou registros reais para realizar os testes.
+
+## Estado atual
+Análise somente de leitura: existem **410 condições**, das quais **401 têm Data Venda** e **9 não têm**. Não há campos de tipo ou margem hoje. Nenhuma migração foi executada e nenhuma tela foi alterada ou publicada nesta etapa.

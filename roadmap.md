@@ -1,5 +1,10 @@
 # Roadmap
 
+## Condição Especial — melhoria solicitada em 29/10/2026
+- [ ] Aprovar plano técnico e alterações de banco para período padrão, Tipo de Condição e Margem %.
+- [ ] Após aprovação: implementar apenas na Condição Especial, preservar acessos/dados/aprovação e validar indicadores, filtros e Excel.
+- [ ] Publicação bloqueada até autorização explícita.
+
 - [x] LUCAS — vínculo C&F - Ananindeua reativado (21:00 UTC) e validado. Observação: Lucas é Gerente (global) desde 15:37 — backend aceita qualquer filial; seletor da tela só oferece Ananindeua + C&F - Ananindeua.
 - [ ] PENDENTE ANTIGO: bloquear login da conta antiga do Isac (profiles.da753f5-e441-4673-8e82-807aede2eab2) — botão "Desativar" indisponível (external_unmanaged); aguardando decisão do usuário (reativar temporariamente ou banir no painel Supabase).
 
