@@ -1,7 +1,10 @@
 -- Análise Gerencial → Relatório: exportação Excel de Ligações / Visitas / Checklists
 -- SOMENTE LEITURA. Não altera dados, permissões, RLS nem outras funções.
 -- Escopo de acesso idêntico ao de get_management_seller_summary (bloco de tarefas):
---   admin/manager: todas | supervisor: filial do supervisor | demais: próprias tarefas.
+--   admin/manager: global (filtro de filial opcional)
+--   supervisor: apenas a Filial Ativa resolvida por effective_filial_ids (sem combinar filiais)
+--   demais cargos: apenas as próprias tarefas, dentro da Filial Ativa
+--   filial não autorizada => erro 42501 (lançado por effective_filial_ids).
 -- Paginação keyset por tasks.id (sem OFFSET, sem count), máx. 1000 por chamada.
 
 CREATE OR REPLACE FUNCTION public.get_management_activity_export(
@@ -13,6 +16,8 @@ CREATE OR REPLACE FUNCTION public.get_management_activity_export(
   p_seller_id uuid DEFAULT NULL,
   p_client_code text DEFAULT NULL,
   p_client_name text DEFAULT NULL,
+  p_filial_atendida text DEFAULT NULL,  -- filtro opcional por filial atendida (texto, LOWER/TRIM)
+  p_task_types text[] DEFAULT NULL,     -- subfiltro de tipo dentro do grupo (ex.: só 'prospection')
   p_after_id uuid DEFAULT NULL,
   p_limit integer DEFAULT 1000
 )
@@ -23,6 +28,7 @@ RETURNS TABLE (
   start_time text,
   status text,
   filial text,
+  filial_atendida text,
   seller_id uuid,
   seller_name text,
   seller_role text,
@@ -65,7 +71,8 @@ DECLARE
   v_is_admin boolean;
   v_is_manager boolean;
   v_is_supervisor boolean;
-  v_supervisor_filial uuid;
+  v_scope uuid[];
+  v_can_park boolean;
   v_seller uuid := public.resolve_primary_user_id(p_seller_id);
   v_limit integer := LEAST(GREATEST(COALESCE(p_limit, 1000), 1), 1000);
   v_types text[];
@@ -86,7 +93,9 @@ BEGIN
   v_is_admin := has_role(v_user_id, 'admin'::app_role);
   v_is_manager := has_role(v_user_id, 'manager'::app_role);
   v_is_supervisor := has_role(v_user_id, 'supervisor'::app_role);
-  IF v_is_supervisor THEN v_supervisor_filial := get_supervisor_filial_id(v_user_id); END IF;
+  -- Filial Ativa / autorização (42501 se não autorizada). '{}' = global sem filtro.
+  v_scope := public.effective_filial_ids(p_filial_id);
+  v_can_park := public.can_view_equipment_park();
 
   RETURN QUERY
   WITH primary_role AS (
@@ -97,7 +106,7 @@ BEGIN
   ),
   base AS (
     SELECT t.id, t.task_type, t.start_date, t.start_time, t.status,
-           t.created_by, pp.filial_id, pp.name AS pname,
+           t.created_by, pp.filial_id, t.filial_atendida, pp.name AS pname,
            t.client, t.clientcode, t.property, t.propertyhectares,
            t.contact_name, t.contact_function, t.phone, t.email, t.observations,
            t.sales_type, t.sales_value, t.partial_sales_value, t.sales_confirmed, t.is_prospect,
@@ -110,13 +119,16 @@ BEGIN
       AND (p_after_id IS NULL OR t.id > p_after_id)
       AND (p_start_date IS NULL OR t.start_date >= p_start_date)
       AND (p_end_date IS NULL OR t.start_date <= p_end_date)
-      AND (p_filial_id IS NULL OR pp.filial_id = p_filial_id)
+      AND (p_task_types IS NULL OR t.task_type = ANY(p_task_types))
+      AND (cardinality(v_scope) = 0 OR pp.filial_id = ANY(v_scope))
+      AND (p_filial_atendida IS NULL
+           OR LOWER(TRIM(t.filial_atendida)) = LOWER(TRIM(p_filial_atendida)))
       AND (v_seller IS NULL OR public.resolve_primary_user_id(t.created_by) = v_seller)
       AND (p_seller_role IS NULL OR COALESCE(pr.role, 'consultant') = p_seller_role)
       AND public.client_filter_match(p_client_code, p_client_name, t.clientcode, t.client)
       AND (
         v_is_admin OR v_is_manager
-        OR (v_is_supervisor AND pp.filial_id = v_supervisor_filial)
+        OR v_is_supervisor
         OR t.created_by = v_user_id
       )
     ORDER BY t.id
@@ -124,7 +136,7 @@ BEGIN
   )
   SELECT
     b.id, b.task_type, b.start_date, b.start_time::text, b.status,
-    f.nome, public.resolve_primary_user_id(b.created_by), sp.name,
+    f.nome, b.filial_atendida, public.resolve_primary_user_id(b.created_by), sp.name,
     COALESCE(pr.role, 'consultant'),
     b.client, b.clientcode, b.property, b.propertyhectares::numeric,
     b.contact_name, b.contact_function, b.phone, b.email, b.observations,
@@ -138,7 +150,7 @@ BEGIN
       'service_type', b.technical_visit_data->'service_type',
       'total_estimate', b.technical_visit_data->'total_estimate',
       'equipments', COALESCE(b.technical_visit_data->'equipments', '[]'::jsonb)) ELSE NULL END,
-    COALESCE((
+    CASE WHEN NOT v_can_park THEN '[]'::jsonb ELSE COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
         'equipment_id', ce.id, 'machine_type', ce.machine_type, 'model', ce.model,
         'serial_chassis', ce.serial_chassis, 'year', ce.year, 'hours', ce.hours,
@@ -148,7 +160,7 @@ BEGIN
       JOIN client_equipment ce ON ce.id = te.equipment_id
       LEFT JOIN filiais cf ON cf.id = ce.filial_id
       WHERE te.task_id = b.id
-    ), '[]'::jsonb)
+    ), '[]'::jsonb) END
   FROM base b
   LEFT JOIN filiais f ON f.id = b.filial_id
   LEFT JOIN profiles sp ON sp.user_id = public.resolve_primary_user_id(b.created_by)
@@ -167,5 +179,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.get_management_activity_export(text,date,date,uuid,text,uuid,text,text,uuid,integer) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.get_management_activity_export(text,date,date,uuid,text,uuid,text,text,uuid,integer) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.get_management_activity_export(text,date,date,uuid,text,uuid,text,text,text,text[],uuid,integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_management_activity_export(text,date,date,uuid,text,uuid,text,text,text,text[],uuid,integer) TO authenticated, service_role;
