@@ -407,6 +407,17 @@ const XLSX = await import('xlsx');
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Tipo de Condição</Label>
+              <Select value={fConditionType} onValueChange={setFConditionType}>
+                <SelectTrigger aria-label="Filtrar Tipo de Condição" className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="safra">Condição Safra</SelectItem>
+                  <SelectItem value="normal">Condição Normal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
             <span>Mostrando {list.length} de {all.length} registros</span>
