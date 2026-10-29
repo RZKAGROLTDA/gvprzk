@@ -1,6 +1,6 @@
 -- Análise Gerencial → Relatório: exportação Excel de Ligações / Visitas / Checklists
 -- SOMENTE LEITURA. Não altera dados, permissões, RLS nem outras funções.
--- Escopo de acesso idêntico ao de get_management_seller_summary (bloco de tarefas):
+-- Escopo de acesso (Filial Ativa via effective_filial_ids + cargo):
 --   admin/manager: global (filtro de filial opcional)
 --   supervisor: apenas a Filial Ativa resolvida por effective_filial_ids (sem combinar filiais)
 --   demais cargos: apenas as próprias tarefas, dentro da Filial Ativa
