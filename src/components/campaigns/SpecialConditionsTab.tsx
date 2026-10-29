@@ -64,7 +64,8 @@ import {
 } from '@/hooks/useSpecialConditions';
 import { cn } from '@/lib/utils';
 import { formatDateDisplay, parseLocalDate, formatDateToLocal } from '@/lib/utils';
-import { currentConditionPeriod, conditionInPeriod, conditionTypeLabel, parseConditionMargin, requireConditionType, weightedConditionMargin } from '@/lib/specialConditions';
+import { currentConditionPeriod, conditionInPeriod, conditionTypeLabel, conditionKpis, parseConditionMargin, requireConditionType } from '@/lib/specialConditions';
+import { specialConditionExcelRows } from '@/lib/specialConditionExcel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -217,18 +218,7 @@ export const SpecialConditionsTab: React.FC = () => {
     });
   }, [all, fFilial, fSeller, fStatus, fConditionType, fPay, fInstall, fPayType, fClient, fNF, fStart, fEnd]);
 
-  const kpis = useMemo(() => {
-    const count = list.length;
-    const totalSold = list.reduce((s, e) => s + Number(e.sale_value || 0), 0);
-    const totalDiscount = list.reduce(
-      (s, e) => s + Number(e.total_discount_value ?? (Number(e.sale_value || 0) * Number(e.discount_percent || 0)) / 100),
-      0
-    );
-    const avgDiscountPct =
-      count > 0 ? list.reduce((s, e) => s + Number(e.discount_percent || 0), 0) / count : 0;
-    const ticket = count > 0 ? totalSold / count : 0;
-    return { count, totalSold, totalDiscount, avgDiscountPct, ticket, margin: weightedConditionMargin(list) };
-  }, [list]);
+  const kpis = useMemo(() => conditionKpis(list), [list]);
 
   // Edit dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -260,27 +250,7 @@ export const SpecialConditionsTab: React.FC = () => {
     }
     setExporting(true);
     try {
-    const rows = list.map((e) => ({
-      'Código Cliente': e.client_code,
-      'Cliente': e.client_name,
-      'Filial': e.filial_name || '',
-      'Vendedor': e.seller_name || sellers.get(e.seller_id) || '',
-      'Valor Venda': Number(e.sale_value || 0),
-      'Desconto %': Number(e.discount_percent || 0),
-      'Tipo de Condição': e.condition_type ? conditionTypeLabel(e.condition_type) : '',
-      'Margem %': e.margin_percent === null ? '' : Number(e.margin_percent),
-      'Desconto Total': Number(e.total_discount_value || 0),
-      'NF': e.invoice_number || '',
-      'Cond. Pagamento': e.payment_condition || '',
-      'Parcelamento': (e as any).installments || '',
-      'Tipo Pagamento': (e as any).payment_type || '',
-      'Data Venda': e.sale_date || '',
-      'Data Pagamento': (e as any).payment_date || '',
-      'Status': e.status,
-      'Aprovado por': e.approved_by ? sellers.get(e.approved_by) || '' : '',
-      'Aprovado em': e.approved_at ? new Date(e.approved_at).toLocaleString('pt-BR') : '',
-      'Observação': e.observation || '',
-    }));
+    const rows = specialConditionExcelRows(list, sellers);
 const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();

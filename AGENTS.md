@@ -2,6 +2,7 @@
 
 - Special Conditions loads date-scoped rows through RLS with ascending-ID keyset pages of at most 1,000; only complete results feed the table, indicators and Excel, preventing truncated totals.
 - Special Conditions period, type validation, manual margin parsing and weighted-margin math live in src/lib/specialConditions.ts so their business rules remain independently testable.
+- Special Conditions Excel row mapping lives in src/lib/specialConditionExcel.ts and is shared by the screen export and file-readability validation, keeping validation faithful to the shipped mapping.
 
 - The Regularização PDF uses the official RZK Agro A4 letterhead extracted from the supplied DOCX as a full-page background on every page, preserving visual fidelity and safe content margins.
 - App update flow lives only in src/lib/appUpdate.ts: HTML is never precached (NetworkFirst navigations) and reloads happen only after the new version is confirmed reachable, so users never stay stuck on an old shell.
