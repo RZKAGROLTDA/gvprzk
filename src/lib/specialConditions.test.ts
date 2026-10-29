@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectConditionPages, currentConditionPeriod, conditionInPeriod, parseConditionMargin, requireConditionType, weightedConditionMargin } from './specialConditions';
+import { collectConditionPages, currentConditionPeriod, conditionInPeriod, conditionKpis, parseConditionMargin, requireConditionType, weightedConditionMargin } from './specialConditions';
 
 describe('Condição Especial', () => {
   it('abre e limpa do primeiro dia do mês até hoje em data local', () => {
@@ -33,6 +33,9 @@ describe('Condição Especial', () => {
     expect(weightedConditionMargin([{sale_value:100, margin_percent:0},{sale_value:100, margin_percent:20}])).toBe(10);
     expect(weightedConditionMargin([{sale_value:100, margin_percent:null}])).toBeNull();
     expect(weightedConditionMargin([{sale_value:0, margin_percent:20}])).toBeNull();
+  });
+  it('preserva as cinco fórmulas atuais sem confundir desconto com margem', () => {
+    expect(conditionKpis([{sale_value:100, discount_percent:10, total_discount_value:null, margin_percent:10},{sale_value:300, discount_percent:20, total_discount_value:60, margin_percent:20}])).toEqual({count:2,totalSold:400,totalDiscount:70,avgDiscountPct:15,ticket:200,margin:17.5});
   });
   it('busca mais de 1000 pelo último ID até lote vazio sem perdas', async () => {
     const data = Array.from({length:2021}, (_, i) => ({id: String(i + 1).padStart(6, '0')}));
