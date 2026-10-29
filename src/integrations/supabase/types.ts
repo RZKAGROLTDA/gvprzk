@@ -3687,6 +3687,40 @@ export type Database = {
         }
         Returns: Json
       }
+      get_equipment_park_export: {
+        Args: {
+          p_after_id?: string
+          p_client_code?: string
+          p_client_name?: string
+          p_filial_id?: string
+          p_filial_ids?: string[]
+          p_include_sem_filial?: boolean
+          p_limit?: number
+          p_machine_status?: string
+          p_machine_type?: string
+          p_puk_status?: string
+          p_search?: string
+          p_validated_by?: string[]
+          p_validation_priority?: boolean
+        }
+        Returns: {
+          client_code: string
+          client_name: string
+          filial_id: string
+          filial_nome: string
+          hours: number
+          id: string
+          last_validation_at: string
+          machine_status: string
+          machine_type: string
+          model: string
+          serial_chassis: string
+          updated_at: string
+          validated_by: string
+          validation_priority: boolean
+          year: number
+        }[]
+      }
       get_equipment_park_kpis: {
         Args: {
           p_filial_id?: string
