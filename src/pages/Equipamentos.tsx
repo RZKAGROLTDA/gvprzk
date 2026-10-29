@@ -201,17 +201,22 @@ const Equipamentos: React.FC = () => {
       const expected = Number((head as any[])?.[0]?.total_count ?? 0);
 
       const all: (ClientEquipment & { filial_nome?: string })[] = [];
-      const EXPORT_PAGE = 2000;
+      // O Supabase limita cada resposta a 1.000 linhas; o lote respeita esse teto
+      // e só termina quando um lote vier vazio (independe do teto do servidor).
+      const EXPORT_PAGE = 1000;
       let afterId: string | null = null;
-      for (let guard = 0; guard < 200; guard++) {
+      for (let guard = 0; guard < 1000; guard++) {
         const { data: batch, error } = await (supabase as any).rpc('get_equipment_park_export', {
           ...filters, p_after_id: afterId, p_limit: EXPORT_PAGE,
         });
         if (error) throw error;
         const list = (batch as unknown as (ClientEquipment & { filial_nome?: string })[]) ?? [];
+        if (list.length === 0) break;
+        const lastId = list[list.length - 1].id;
+        if (lastId === afterId) throw new Error('Paginação da exportação não avançou. Nenhum arquivo foi gerado.');
         all.push(...list);
-        if (list.length < EXPORT_PAGE) break;
-        afterId = list[list.length - 1].id;
+        afterId = lastId;
+        if (all.length >= expected && list.length < EXPORT_PAGE) break;
       }
 
       const uniqueIds = new Set(all.map((e) => e.id)).size;
