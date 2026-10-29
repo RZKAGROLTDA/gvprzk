@@ -1857,6 +1857,7 @@ export type Database = {
           attachments: string[] | null
           client_code: string
           client_name: string
+          condition_type: string | null
           created_at: string
           created_by: string
           discount_percent: number
@@ -1865,6 +1866,7 @@ export type Database = {
           id: string
           installments: string | null
           invoice_number: string | null
+          margin_percent: number | null
           nf_date: string | null
           observation: string | null
           payment_condition: string | null
@@ -1885,6 +1887,7 @@ export type Database = {
           attachments?: string[] | null
           client_code: string
           client_name: string
+          condition_type?: string | null
           created_at?: string
           created_by?: string
           discount_percent?: number
@@ -1893,6 +1896,7 @@ export type Database = {
           id?: string
           installments?: string | null
           invoice_number?: string | null
+          margin_percent?: number | null
           nf_date?: string | null
           observation?: string | null
           payment_condition?: string | null
@@ -1913,6 +1917,7 @@ export type Database = {
           attachments?: string[] | null
           client_code?: string
           client_name?: string
+          condition_type?: string | null
           created_at?: string
           created_by?: string
           discount_percent?: number
@@ -1921,6 +1926,7 @@ export type Database = {
           id?: string
           installments?: string | null
           invoice_number?: string | null
+          margin_percent?: number | null
           nf_date?: string | null
           observation?: string | null
           payment_condition?: string | null
