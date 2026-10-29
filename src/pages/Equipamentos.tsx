@@ -179,35 +179,58 @@ const Equipamentos: React.FC = () => {
     if (!parkQueriesEnabled) return;
     setExporting(true);
     try {
-      // Exportação usa a MESMA consulta da lista (mesmos filtros e escopo).
+      // Exportação em lotes por id (keyset): mesmos filtros e escopo da lista.
       const norm = (v?: string) => (v && v.trim() ? v.trim() : null);
-      const all: ClientEquipment[] = [];
-      const EXPORT_PAGE = 200;
-      for (let off = 0; off <= 50000; off += EXPORT_PAGE) {
-        const { data: batch, error } = await (supabase as any).rpc('get_equipment_park_paginated', {
-          p_search: norm(search),
-          p_filial_id: null,
-          p_machine_status: machineStatus === ALL ? null : machineStatus,
-          p_puk_status: null,
-          p_validation_priority: priorityOnly ? true : null,
-          p_machine_type: machineType === ALL ? null : machineType,
-          p_validated_by: validatedByIn && validatedByIn.length > 0 ? validatedByIn : null,
-          p_client_code: norm(clientCode),
-          p_client_name: norm(clientName),
-          p_limit: EXPORT_PAGE,
-          p_offset: off,
-          ...(parkScope.filialIds === null ? {} : { p_filial_ids: parkScope.filialIds, p_include_sem_filial: parkScope.includeSemFilial }),
+      const filters = {
+        p_search: norm(search),
+        p_filial_id: null,
+        p_machine_status: machineStatus === ALL ? null : machineStatus,
+        p_puk_status: null,
+        p_validation_priority: priorityOnly ? true : null,
+        p_machine_type: machineType === ALL ? null : machineType,
+        p_validated_by: validatedByIn && validatedByIn.length > 0 ? validatedByIn : null,
+        p_client_code: norm(clientCode),
+        p_client_name: norm(clientName),
+        ...(parkScope.filialIds === null ? {} : { p_filial_ids: parkScope.filialIds, p_include_sem_filial: parkScope.includeSemFilial }),
+      };
+      // Total esperado (mesma consulta da tela, 1 linha).
+      const { data: head, error: headErr } = await (supabase as any).rpc('get_equipment_park_paginated', {
+        ...filters, p_limit: 1, p_offset: 0,
+      });
+      if (headErr) throw headErr;
+      const expected = Number((head as any[])?.[0]?.total_count ?? 0);
+
+      const all: (ClientEquipment & { filial_nome?: string })[] = [];
+      const EXPORT_PAGE = 2000;
+      let afterId: string | null = null;
+      for (let guard = 0; guard < 200; guard++) {
+        const { data: batch, error } = await (supabase as any).rpc('get_equipment_park_export', {
+          ...filters, p_after_id: afterId, p_limit: EXPORT_PAGE,
         });
         if (error) throw error;
         const list = (batch as unknown as (ClientEquipment & { filial_nome?: string })[]) ?? [];
         all.push(...list);
         if (list.length < EXPORT_PAGE) break;
+        afterId = list[list.length - 1].id;
+      }
+
+      const uniqueIds = new Set(all.map((e) => e.id)).size;
+      if (uniqueIds !== all.length || all.length !== expected) {
+        throw new Error(
+          `Exportação incompleta: esperado ${expected}, recebido ${all.length} (${uniqueIds} únicos). Nenhum arquivo foi gerado.`,
+        );
       }
 
       if (all.length === 0) {
         toast({ title: 'Nada para exportar', description: 'Nenhum equipamento corresponde aos filtros.' });
         return;
       }
+      // Mesma ordem da tela: prioridade desc, atualização desc, id.
+      all.sort((a, b) =>
+        Number(!!b.validation_priority) - Number(!!a.validation_priority) ||
+        String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')) ||
+        String(a.id).localeCompare(String(b.id)),
+      );
 
       const exportRows = all.map((e) => ({
         'Código Cliente': e.client_code ?? '',
