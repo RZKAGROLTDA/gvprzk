@@ -2,8 +2,10 @@
 
 ## Condição Especial — melhoria solicitada em 29/10/2026
 - [x] Aprovar plano técnico e alterações de banco para período padrão, Tipo de Condição e Margem %.
-- [ ] Aplicar exclusivamente as duas colunas anuláveis e restrição do tipo; comprovar preservação dos 410 registros sem preenchimento automático.
-- [ ] Após aprovação: implementar apenas na Condição Especial, preservar acessos/dados/aprovação e validar indicadores, filtros e Excel.
+- [x] Aplicar exclusivamente as duas colunas anuláveis e restrição do tipo; 410 registros e fingerprint anterior preservados, todos os novos campos vazios.
+- [x] Implementar apenas na Condição Especial: período padrão, tipo obrigatório manual, margem manual, sexto indicador ponderado, tabela/Excel e lotes ordenados por ID.
+- [x] Validar 10 testes automáticos; Excel gerado/reaberto com 410 históricos e 126 no mês; 2.021 IDs únicos no teste de paginação. Fingerprint dos dados anteriores intacto.
+- [ ] Validar criação/edição/aprovação, filtros e download pelo navegador com login real por perfil — sessão autenticada indisponível no Supabase externo; depende de validação do usuário no preview.
 - [ ] Publicação bloqueada até autorização explícita.
 
 - [x] LUCAS — vínculo C&F - Ananindeua reativado (21:00 UTC) e validado. Observação: Lucas é Gerente (global) desde 15:37 — backend aceita qualquer filial; seletor da tela só oferece Ananindeua + C&F - Ananindeua.

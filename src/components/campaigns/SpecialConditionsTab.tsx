@@ -63,7 +63,9 @@ import {
   type SpecialConditionStatus,
 } from '@/hooks/useSpecialConditions';
 import { cn } from '@/lib/utils';
-import { formatDateDisplay, parseLocalDate } from '@/lib/utils';
+import { formatDateDisplay, parseLocalDate, formatDateToLocal } from '@/lib/utils';
+import { currentConditionPeriod, conditionInPeriod, conditionTypeLabel, conditionKpis, parseConditionMargin, requireConditionType } from '@/lib/specialConditions';
+import { specialConditionExcelRows } from '@/lib/specialConditionExcel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ChevronDown } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -125,7 +127,13 @@ const safeDate = (s: string | null | undefined) =>
 export const SpecialConditionsTab: React.FC = () => {
   const { profile } = useProfile();
   const { user } = useAuth();
-  const { data: items, isLoading } = useSpecialConditions();
+  const [initialPeriod] = useState(() => currentConditionPeriod());
+  const [fStart, setFStart] = useState(initialPeriod.start);
+  const [fEnd, setFEnd] = useState(initialPeriod.end);
+  const [fConditionType, setFConditionType] = useState('all');
+  const [exporting, setExporting] = useState(false);
+  const { data: items, isFetching, error: loadError } = useSpecialConditions(fStart, fEnd);
+  const isLoading = isFetching;
   const del = useDeleteSpecialCondition();
   const approve = useApproveSpecialCondition();
   const isMobile = useIsMobile();
@@ -164,8 +172,6 @@ export const SpecialConditionsTab: React.FC = () => {
   }, [items]);
 
   // Filtros
-  const [fStart, setFStart] = useState('');
-  const [fEnd, setFEnd] = useState('');
   const [fFilial, setFFilial] = useState('all');
   const [fSeller, setFSeller] = useState('all');
   const [fClient, setFClient] = useState('');
@@ -175,7 +181,7 @@ export const SpecialConditionsTab: React.FC = () => {
   const [fInstall, setFInstall] = useState('all');
   const [fPayType, setFPayType] = useState('all');
 
-  const all = items || [];
+  const all = isLoading || loadError ? [] : items || [];
 
   const sellerOptions = useMemo(() => {
     const ids = Array.from(new Set(all.map((e) => e.seller_id).filter(Boolean)));
@@ -198,6 +204,7 @@ export const SpecialConditionsTab: React.FC = () => {
       if (fFilial !== 'all' && (e.filial_id || '') !== fFilial) return false;
       if (fSeller !== 'all' && e.seller_id !== fSeller) return false;
       if (fStatus !== 'all' && e.status !== fStatus) return false;
+      if (fConditionType !== 'all' && e.condition_type !== fConditionType) return false;
       if (fPay !== 'all' && (e.payment_condition || '') !== fPay) return false;
       if (fInstall !== 'all' && ((e as any).installments || '') !== fInstall) return false;
       if (fPayType !== 'all' && ((e as any).payment_type || '') !== fPayType) return false;
@@ -206,24 +213,12 @@ export const SpecialConditionsTab: React.FC = () => {
         if (!hay.includes(term)) return false;
       }
       if (nfTerm && !(e.invoice_number || '').toLowerCase().includes(nfTerm)) return false;
-      if (fStart && (e.sale_date || '') < fStart) return false;
-      if (fEnd && (e.sale_date || '') > fEnd) return false;
+      if (!conditionInPeriod(e.sale_date, fStart, fEnd)) return false;
       return true;
     });
-  }, [all, fFilial, fSeller, fStatus, fPay, fInstall, fPayType, fClient, fNF, fStart, fEnd]);
+  }, [all, fFilial, fSeller, fStatus, fConditionType, fPay, fInstall, fPayType, fClient, fNF, fStart, fEnd]);
 
-  const kpis = useMemo(() => {
-    const count = list.length;
-    const totalSold = list.reduce((s, e) => s + Number(e.sale_value || 0), 0);
-    const totalDiscount = list.reduce(
-      (s, e) => s + Number(e.total_discount_value ?? (Number(e.sale_value || 0) * Number(e.discount_percent || 0)) / 100),
-      0
-    );
-    const avgDiscountPct =
-      count > 0 ? list.reduce((s, e) => s + Number(e.discount_percent || 0), 0) / count : 0;
-    const ticket = count > 0 ? totalSold / count : 0;
-    return { count, totalSold, totalDiscount, avgDiscountPct, ticket };
-  }, [list]);
+  const kpis = useMemo(() => conditionKpis(list), [list]);
 
   // Edit dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -248,47 +243,39 @@ export const SpecialConditionsTab: React.FC = () => {
   };
 
   const handleExport = async () => {
+    if (isLoading || loadError || exporting) return;
     if (!list.length) {
       toast.info('Nenhum dado para exportar');
       return;
     }
-    const rows = list.map((e) => ({
-      'Código Cliente': e.client_code,
-      'Cliente': e.client_name,
-      'Filial': e.filial_name || '',
-      'Vendedor': e.seller_name || sellers.get(e.seller_id) || '',
-      'Valor Venda': Number(e.sale_value || 0),
-      'Desconto %': Number(e.discount_percent || 0),
-      'Desconto Total': Number(e.total_discount_value || 0),
-      'NF': e.invoice_number || '',
-      'Cond. Pagamento': e.payment_condition || '',
-      'Parcelamento': (e as any).installments || '',
-      'Tipo Pagamento': (e as any).payment_type || '',
-      'Data Venda': e.sale_date || '',
-      'Data Pagamento': (e as any).payment_date || '',
-      'Status': e.status,
-      'Aprovado por': e.approved_by ? sellers.get(e.approved_by) || '' : '',
-      'Aprovado em': e.approved_at ? new Date(e.approved_at).toLocaleString('pt-BR') : '',
-      'Observação': e.observation || '',
-    }));
+    setExporting(true);
+    try {
+    const rows = specialConditionExcelRows(list, sellers);
 const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Condições Especiais');
-    XLSX.writeFile(wb, `condicoes_especiais_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `condicoes_especiais_${formatDateToLocal(new Date())}.xlsx`);
     toast.success('Arquivo Excel gerado');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Não foi possível gerar o Excel');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <KpiCard label="Qtd. Condições" value={String(kpis.count)} />
-        <KpiCard label="Valor Total Vendido" value={formatCurrency(kpis.totalSold)} />
-        <KpiCard label="Desconto Médio" value={formatPct(kpis.avgDiscountPct)} />
-        <KpiCard label="Desconto Total" value={formatCurrency(kpis.totalDiscount)} />
-        <KpiCard label="Ticket Médio" value={formatCurrency(kpis.ticket)} />
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <KpiCard label="Qtd. Condições" value={isLoading || loadError ? '—' : String(kpis.count)} />
+        <KpiCard label="Valor Total Vendido" value={isLoading || loadError ? '—' : formatCurrency(kpis.totalSold)} />
+        <KpiCard label="Desconto Médio" value={isLoading || loadError ? '—' : formatPct(kpis.avgDiscountPct)} />
+        <KpiCard label="Desconto Total" value={isLoading || loadError ? '—' : formatCurrency(kpis.totalDiscount)} />
+        <KpiCard label="Ticket Médio" value={isLoading || loadError ? '—' : formatCurrency(kpis.ticket)} />
+        <KpiCard label="Margem Média %" value={isLoading || loadError ? '—' : kpis.margin === null ? 'Sem dados suficientes' : formatPct(kpis.margin)} />
       </div>
+      {loadError && <p role="alert" className="text-sm text-destructive">Não foi possível carregar todas as condições. {loadError.message} Nenhum arquivo será gerado.</p>}
 
       {/* Filtros */}
       <Card>
@@ -390,6 +377,17 @@ const XLSX = await import('xlsx');
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Tipo de Condição</Label>
+              <Select value={fConditionType} onValueChange={setFConditionType}>
+                <SelectTrigger aria-label="Filtrar Tipo de Condição" className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="safra">Condição Safra</SelectItem>
+                  <SelectItem value="normal">Condição Normal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
             <span>Mostrando {list.length} de {all.length} registros</span>
@@ -399,7 +397,8 @@ const XLSX = await import('xlsx');
               size="sm"
               className="h-7"
               onClick={() => {
-                setFStart(''); setFEnd(''); setFFilial('all'); setFSeller('all');
+                const period = currentConditionPeriod();
+                setFStart(period.start); setFEnd(period.end); setFFilial('all'); setFSeller('all'); setFConditionType('all');
                 setFClient(''); setFNF(''); setFStatus('all'); setFPay('all');
                 setFInstall('all'); setFPayType('all');
               }}
@@ -420,8 +419,8 @@ const XLSX = await import('xlsx');
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" /> Exportar Excel
+              <Button type="button" variant="outline" size="sm" onClick={handleExport} disabled={isLoading || !!loadError || exporting || !list.length}>
+                <Download className="h-4 w-4 mr-2" /> {exporting ? 'Exportando...' : 'Exportar Excel'}
               </Button>
               <Button type="button" size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
                 <Plus className="h-4 w-4 mr-2" /> Nova
@@ -505,6 +504,8 @@ const XLSX = await import('xlsx');
                             <Field label="Filial">{e.filial_name || '—'}</Field>
                             <Field label="Vendedor">{e.seller_name || sellers.get(e.seller_id) || '—'}</Field>
                             <Field label="Desc Total">{formatCurrency(Number(e.total_discount_value || 0))}</Field>
+                            <Field label="Tipo de Condição">{conditionTypeLabel(e.condition_type)}</Field>
+                            <Field label="Margem %">{e.margin_percent === null ? '—' : formatPct(Number(e.margin_percent))}</Field>
                             <Field label="Cond. Pgto">{e.payment_condition || '—'}</Field>
                             <Field label="Parcelamento">{(e as any).installments || '—'}</Field>
                             <Field label="Tipo Pgto">{paymentTypeBadge((e as any).payment_type)}</Field>
@@ -523,7 +524,7 @@ const XLSX = await import('xlsx');
             // Desktop: lista compacta com linha expansível (sem scroll horizontal)
             // Grid columns: chevron | Cliente | NF | Valor Venda | Desc % | Desc Total | Tipo Pgto | Status | Ações
             const gridCols =
-              'grid-cols-[28px_minmax(0,2.2fr)_110px_130px_80px_130px_140px_110px_180px]';
+              'grid-cols-[28px_minmax(160px,2.2fr)_90px_120px_80px_120px_140px_140px_90px_110px_150px]';
             if (isLoading) {
               return <p className="text-center text-sm text-muted-foreground py-8">Carregando...</p>;
             }
@@ -531,7 +532,8 @@ const XLSX = await import('xlsx');
               return <p className="text-center text-sm text-muted-foreground py-8">Nenhuma condição encontrada.</p>;
             }
             return (
-              <div className="rounded-md border overflow-hidden">
+              <div className="rounded-md border overflow-x-auto">
+                <div className="min-w-[1320px]">
                 <div className={cn('hidden md:grid', gridCols, 'gap-2 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground bg-muted/60 border-b')}>
                   <span />
                   <span>Cliente</span>
@@ -540,6 +542,8 @@ const XLSX = await import('xlsx');
                   <span className="text-right">Desc %</span>
                   <span className="text-right">Desc Total</span>
                   <span>Tipo Pgto</span>
+                  <span>Tipo de Condição</span>
+                  <span className="text-right">Margem %</span>
                   <span>Status</span>
                   <span className="text-right">Ações</span>
                 </div>
@@ -548,7 +552,7 @@ const XLSX = await import('xlsx');
                     const pd =
                       e.sale_date && (e as any).payment_date
                         ? (() => {
-                            const s = parseLocalDate(e.sale_date!);
+                            const s = parseLocalDate(e.sale_date);
                             const p = parseLocalDate((e as any).payment_date);
                             if (!s || !p) return null;
                             return Math.round((p.getTime() - s.getTime()) / 86400000);
@@ -582,6 +586,8 @@ const XLSX = await import('xlsx');
                             <span className="text-right tabular-nums">{formatPct(Number(e.discount_percent || 0))}</span>
                             <span className="text-right tabular-nums">{formatCurrency(Number(e.total_discount_value || 0))}</span>
                             <span className="truncate">{paymentTypeBadge((e as any).payment_type)}</span>
+                            <span className="text-xs">{conditionTypeLabel(e.condition_type)}</span>
+                            <span className="text-right tabular-nums">{e.margin_percent === null ? '—' : formatPct(Number(e.margin_percent))}</span>
                             <span>{statusBadge(e.status)}</span>
                             <div className="flex justify-end">{renderActions(e)}</div>
                           </div>
@@ -617,6 +623,7 @@ const XLSX = await import('xlsx');
                     );
                   })}
                 </ul>
+                </div>
               </div>
             );
           })()}
@@ -640,7 +647,7 @@ const KpiCard: React.FC<{ label: string; value: string }> = ({ label, value }) =
   <Card className="border-border/60 shadow-sm">
     <CardContent className="p-4">
       <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{label}</p>
-      <p className="text-xl font-bold mt-1">{value}</p>
+      <p className="text-lg font-bold mt-1 break-words">{value}</p>
     </CardContent>
   </Card>
 );
@@ -701,6 +708,8 @@ const SpecialConditionDialog: React.FC<{
   const [filialId, setFilialId] = useState<string>('');
   const [saleValue, setSaleValue] = useState<string>('');
   const [discountPct, setDiscountPct] = useState<string>('');
+  const [conditionType, setConditionType] = useState('');
+  const [margin, setMargin] = useState('');
   const [invoice, setInvoice] = useState('');
   const [saleDate, setSaleDate] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
@@ -715,6 +724,8 @@ const SpecialConditionDialog: React.FC<{
       setFilialId(editing.filial_id || '');
       setSaleValue(String(editing.sale_value ?? ''));
       setDiscountPct(String(editing.discount_percent ?? ''));
+      setConditionType(editing.condition_type || '');
+      setMargin(editing.margin_percent === null ? '' : Number(editing.margin_percent).toFixed(2));
       setInvoice(editing.invoice_number || '');
       setSaleDate(editing.sale_date || '');
       setPaymentDate((editing as any).payment_date || '');
@@ -726,6 +737,8 @@ const SpecialConditionDialog: React.FC<{
       setFilialId(defaultFilialId || '');
       setSaleValue('');
       setDiscountPct('');
+      setConditionType('');
+      setMargin('');
       setInvoice('');
       setSaleDate('');
       setPaymentDate('');
@@ -753,6 +766,14 @@ const SpecialConditionDialog: React.FC<{
 
   const handleSubmit = async () => {
     if (!client) { toast.error('Selecione um cliente'); return; }
+    let selectedType;
+    let marginValue;
+    try {
+      selectedType = requireConditionType(conditionType);
+      marginValue = parseConditionMargin(margin);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Tipo ou margem inválidos'); return;
+    }
     const sv = parseFloat(saleValue);
     const dp = parseFloat(discountPct);
     if (isNaN(sv) || sv < 0) { toast.error('Valor de venda inválido'); return; }
@@ -769,15 +790,17 @@ const SpecialConditionDialog: React.FC<{
       filial_name: filialName,
       sale_value: sv,
       discount_percent: dp,
+      condition_type: selectedType,
+      margin_percent: marginValue,
       invoice_number: invoice.trim() || null,
       payment_condition: paymentConditionLabel || null,
       installments,
       payment_type: paymentType,
       sale_date: saleDate || null,
-      nf_date: null,
+      nf_date: editing?.nf_date ?? null,
       payment_date: paymentDate || null,
       observation: observation.trim() || null,
-      attachments: [] as string[],
+      attachments: editing?.attachments ?? [] as string[],
     };
 
     if (editing) {
@@ -808,6 +831,16 @@ const SpecialConditionDialog: React.FC<{
             <Label>Cliente *</Label>
             <ClientAutocomplete value={client} onChange={setClient} />
           </div>
+          <div className="space-y-1.5">
+            <Label>Tipo de Condição *</Label>
+            <Select value={conditionType} onValueChange={setConditionType}>
+              <SelectTrigger aria-label="Tipo de Condição" className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="safra">Condição Safra</SelectItem>
+                <SelectItem value="normal">Condição Normal</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -827,7 +860,7 @@ const SpecialConditionDialog: React.FC<{
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Valor Venda *</Label>
               <Input
@@ -853,6 +886,13 @@ const SpecialConditionDialog: React.FC<{
                 readOnly
                 className="h-9 bg-muted"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="condition-margin">Margem %</Label>
+              <Input id="condition-margin" type="number" step="0.01" value={margin}
+                onChange={e => setMargin(e.target.value)}
+                onBlur={() => { try { const value = parseConditionMargin(margin); if (value !== null) setMargin(value.toFixed(2)); } catch { /* validated on save */ } }}
+                className="h-9" />
             </div>
           </div>
 
