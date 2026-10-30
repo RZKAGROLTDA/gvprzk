@@ -1,5 +1,9 @@
 # Roadmap
 
+## Checklists — Chassi da Máquina (30/10/2026)
+- [ ] Verificar relacionamento real e corrigir exclusivamente consulta/mapeamento Excel, preservando acesso e demais colunas.
+- [ ] Validar chassis com registros reais de filiais diferentes; sem publicação solicitada.
+
 ## Condição Especial — melhoria solicitada em 29/10/2026
 - [x] Aprovar plano técnico e alterações de banco para período padrão, Tipo de Condição e Margem %.
 - [x] Aplicar exclusivamente as duas colunas anuláveis e restrição do tipo; 410 registros e fingerprint anterior preservados, todos os novos campos vazios.
