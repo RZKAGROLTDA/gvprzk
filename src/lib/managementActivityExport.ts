@@ -111,7 +111,10 @@ export function buildActivitySheets(kind: ActivityExportKind, rows: Row[]) {
   if (kind === 'ligacao') {
     sheets['Ligações'] = rows.map(activityRow);
   } else if (kind === 'checklist') {
-    sheets['Checklists'] = rows.map(activityRow);
+    sheets['Checklists'] = rows.map(r => ({
+      ...activityRow(r),
+      'Chassi da Máquina': r.checklist_machine?.chassi_serie ?? '',
+    }));
     sheets['Checklist - Máquina'] = rows.filter(r => r.checklist_machine).map(r => {
       const m = r.checklist_machine || {};
       return {

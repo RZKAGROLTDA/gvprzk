@@ -2,8 +2,9 @@
 
 ## Checklists — Chassi da Máquina (30/10/2026)
 - [x] Diagnóstico somente leitura: 2.066 checklists, nenhum vinculado via task_equipment; 2.046 têm chassi na própria checklist_machine, distribuídos em nove filiais.
-- [ ] Correção bloqueada por definição da origem: usuário solicitou cadastro vinculado, mas esse vínculo não existe nos checklists atuais. Aguardar decisão entre chassi registrado na ficha e coluna estritamente vinculada (vazia nos registros atuais).
-- [ ] Após definição da origem, validar Excel sem alterar registros, vínculos ou acessos; sem publicação solicitada.
+- [x] Origem definida pelo usuário: chassi da ficha. Coluna adicionada somente na aba principal Checklists; consulta já retorna esse dado e permanece intacta.
+- [x] Quatro testes passaram; Excel gerado e reaberto com nove checklists reais de nove filiais, IDs e chassis idênticos às fichas. Build OK. Sem alteração de consulta, registros, vínculos ou acessos; não publicado.
+- [ ] Download autenticado pelo navegador — indisponível neste ambiente com Supabase externo; depende de teste do usuário.
 
 ## Condição Especial — melhoria solicitada em 29/10/2026
 - [x] Aprovar plano técnico e alterações de banco para período padrão, Tipo de Condição e Margem %.
