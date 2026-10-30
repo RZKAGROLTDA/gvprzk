@@ -1,8 +1,9 @@
 # Roadmap
 
 ## Checklists — Chassi da Máquina (30/10/2026)
-- [ ] Verificar relacionamento real e corrigir exclusivamente consulta/mapeamento Excel, preservando acesso e demais colunas.
-- [ ] Validar chassis com registros reais de filiais diferentes; sem publicação solicitada.
+- [x] Diagnóstico somente leitura: 2.066 checklists, nenhum vinculado via task_equipment; 2.046 têm chassi na própria checklist_machine, distribuídos em nove filiais.
+- [ ] Correção bloqueada por definição da origem: usuário solicitou cadastro vinculado, mas esse vínculo não existe nos checklists atuais. Aguardar decisão entre chassi registrado na ficha e coluna estritamente vinculada (vazia nos registros atuais).
+- [ ] Após definição da origem, validar Excel sem alterar registros, vínculos ou acessos; sem publicação solicitada.
 
 ## Condição Especial — melhoria solicitada em 29/10/2026
 - [x] Aprovar plano técnico e alterações de banco para período padrão, Tipo de Condição e Margem %.
