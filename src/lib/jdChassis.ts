@@ -38,19 +38,20 @@ export const jdStatusFor = (
 
 const CLASSIFY_CHUNK = 1000;
 
-/** Classifica chassis contra a base JD completa, em lotes. Lança erro se a chamada falhar. */
-export async function classifyChassisList(
-  chassis: (string | null | undefined)[],
-): Promise<Map<string, JdStatus>> {
-  const unique = [...new Set(chassis.map(normalizeChassis).filter((n) => n !== ''))];
+/**
+ * Classifica checklists (por ID) contra a base JD, em lotes de 1.000.
+ * O servidor só devolve checklists que o usuário pode visualizar.
+ */
+export async function classifyChecklistTasks(taskIds: string[]): Promise<Map<string, JdStatus>> {
+  const unique = [...new Set(taskIds.filter(Boolean))];
   const map = new Map<string, JdStatus>();
   for (let i = 0; i < unique.length; i += CLASSIFY_CHUNK) {
-    const { data, error } = await (supabase.rpc as any)('jd_classify_chassis', {
-      p_chassis: unique.slice(i, i + CLASSIFY_CHUNK),
+    const { data, error } = await (supabase.rpc as any)('jd_classify_checklists', {
+      p_task_ids: unique.slice(i, i + CLASSIFY_CHUNK),
     });
     if (error) throw new Error(error.message);
-    for (const row of (data || []) as { chassi_normalizado: string; jd_status: JdStatus }[]) {
-      map.set(row.chassi_normalizado, row.jd_status);
+    for (const row of (data || []) as { task_id: string; jd_status: JdStatus }[]) {
+      map.set(row.task_id, row.jd_status);
     }
   }
   return map;

@@ -176,31 +176,53 @@ GRANT EXECUTE ON FUNCTION public.jd_import_append(uuid, text[]) TO authenticated
 GRANT EXECUTE ON FUNCTION public.jd_import_conclude(uuid) TO authenticated;
 
 -- ------------------------------------------------------------
--- 4. Classificação JD (qualquer usuário autenticado)
---    Recebe chassis, devolve apenas o status — não expõe a base.
+-- 4. Classificação JD por CHECKLIST (não por chassi arbitrário)
+--    Entrada: IDs de atividades (máx. 1.000 por chamada).
+--    Admin: classifica qualquer checklist.
+--    Demais: somente checklists que já pode visualizar
+--    (can_access_task_related_data — mesma regra de acesso às
+--    atividades). IDs não autorizados são omitidos em silêncio;
+--    nenhum chassi é aceito como entrada, logo a base JD não pode
+--    ser sondada com valores arbitrários.
 -- ------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.jd_classify_chassis(p_chassis text[])
-RETURNS TABLE(chassi_normalizado text, jd_status text)
-LANGUAGE sql
+CREATE OR REPLACE FUNCTION public.jd_classify_checklists(p_task_ids uuid[])
+RETURNS TABLE(task_id uuid, jd_status text)
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
-  WITH input AS (
-    SELECT DISTINCT public.normalize_chassis(c) AS n
-    FROM unnest(coalesce(p_chassis, ARRAY[]::text[])) AS c
-  )
-  SELECT i.n,
+DECLARE
+  v_uid uuid := auth.uid();
+  v_is_admin boolean;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501';
+  END IF;
+  IF coalesce(array_length(p_task_ids, 1), 0) > 1000 THEN
+    RAISE EXCEPTION 'Máximo de 1000 atividades por chamada' USING ERRCODE = '22023';
+  END IF;
+  v_is_admin := public.has_role(v_uid, 'admin'::app_role);
+
+  RETURN QUERY
+  SELECT t.id,
     CASE
-      WHEN i.n = '' THEN 'sem_chassi'
-      WHEN b.chassi_normalizado IS NOT NULL THEN 'enviado'
+      WHEN public.normalize_chassis(t.checklist_machine->>'chassi_serie') = '' THEN 'sem_chassi'
+      WHEN EXISTS (
+        SELECT 1 FROM jd_chassis_base b
+        WHERE b.chassi_normalizado = public.normalize_chassis(t.checklist_machine->>'chassi_serie')
+      ) THEN 'enviado'
       ELSE 'disponivel'
-    END AS jd_status
-  FROM input i
-  LEFT JOIN jd_chassis_base b ON b.chassi_normalizado = i.n;
+    END
+  FROM tasks t
+  WHERE t.id = ANY(coalesce(p_task_ids, ARRAY[]::uuid[]))
+    AND t.task_type = 'checklist'
+    AND (v_is_admin OR public.can_access_task_related_data(t.id));
+END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.jd_classify_chassis(text[]) TO authenticated;
+REVOKE ALL ON FUNCTION public.jd_classify_checklists(uuid[]) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.jd_classify_checklists(uuid[]) TO authenticated;
 
 -- ------------------------------------------------------------
 -- 5. get_service_opportunities_details: coluna jd_status + filtro
@@ -209,7 +231,11 @@ GRANT EXECUTE ON FUNCTION public.jd_classify_chassis(text[]) TO authenticated;
 --    visibilidade (admin/gerente/supervisor da filial/próprias)
 --    permanecem idênticos.
 -- ------------------------------------------------------------
-DROP FUNCTION public.get_service_opportunities_details(date, date, uuid, text, text, text, text, text, text, integer, integer);
+-- Assinatura existente conferida no banco (pg_proc), única, sem sobrecarga:
+--   (date, date, uuid, text, uuid, text, text, text, text, integer, integer)
+-- A migração roda numa única transação: DROP e CREATE são atômicos;
+-- em qualquer erro, a função original permanece intacta.
+DROP FUNCTION IF EXISTS public.get_service_opportunities_details(date, date, uuid, text, uuid, text, text, text, text, integer, integer);
 
 CREATE OR REPLACE FUNCTION public.get_service_opportunities_details(
   p_start_date date DEFAULT NULL::date,
@@ -329,3 +355,6 @@ BEGIN
   LIMIT v_limit OFFSET v_offset;
 END;
 $function$;
+
+-- Privilégios idênticos aos atuais (anon, authenticated, service_role).
+GRANT EXECUTE ON FUNCTION public.get_service_opportunities_details(date, date, uuid, text, uuid, text, text, text, text, integer, integer, text) TO anon, authenticated, service_role;
