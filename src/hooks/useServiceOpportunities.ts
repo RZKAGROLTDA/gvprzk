@@ -14,6 +14,7 @@ export interface ServiceOpportunityLocalFilters {
   severity?: 'alta' | 'media' | null;
   machineType?: string | null;
   client?: string | null;
+  jdStatus?: string | null;
 }
 
 export interface ServiceOpportunitiesKpis {
@@ -93,6 +94,7 @@ export interface ServiceOpportunityDetailRow {
   response_status: string;
   observation: string;
   total_count: number;
+  jd_status: string;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -117,6 +119,7 @@ export const buildServiceOpportunityParams = (
   p_severity: isNullFilter(local.severity) ? null : local.severity!.trim(),
   p_machine_type: isNullFilter(local.machineType) ? null : local.machineType!.trim(),
   p_client: local.client && local.client.trim() ? local.client.trim() : null,
+  p_jd_status: isNullFilter(local.jdStatus) ? null : local.jdStatus!.trim(),
 });
 
 const EMPTY_SUMMARY: ServiceOpportunitiesSummary = {
