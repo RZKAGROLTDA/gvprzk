@@ -1,5 +1,6 @@
 import { getRoleLabel } from '@/lib/roles';
 import { formatDateDisplay } from '@/lib/utils';
+import { JD_STATUS_LABEL, type JdStatus } from '@/lib/jdChassis';
 import type {
   ServiceOpportunitiesSummary,
   ServiceOpportunityDetailRow,
@@ -62,6 +63,7 @@ export const exportServiceOpportunitiesExcel = async (
     'response_status': r.response_status,
     'Observação': r.observation,
     'ID do Checklist': r.task_id,
+    'Situação JD': JD_STATUS_LABEL[(r.jd_status as JdStatus) ?? 'sem_chassi'] ?? '',
   }));
 
 const XLSX = await import('xlsx');

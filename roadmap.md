@@ -124,3 +124,12 @@
 - [ ] Simulação A (usuários reais) — testes ajustados (B global=inexistente / restrito=não autorizada; cargos confirmados; máquina ausente = NÃO TESTADO); aguardando aprovação para executar
 - [ ] Ambiente B isolado — diagnóstico pendente
 - [ ] Referências C (somente leitura)
+
+## Auditoria JD — Duplicidade de Chassis (31/10/2026)
+- [x] Plano aprovado com 3 ajustes: base JD e histórico restritos a admin; importação em lotes sem conclusão incompleta; compatibilidade das RPCs com SQL pré-aprovado.
+- [ ] Implementar telas (importação admin, coluna/filtro Situação JD, coluna no Excel de Checklists).
+- [ ] Apresentar SQL definitivo (2 tabelas + import em lotes + classificação dinâmica) para aprovação antes de migrar.
+- [ ] Validar: normalização, deduplicação, 100% dos 2.587 checklists, Excel, não-admin sem acesso à base.
+- [ ] Publicação bloqueada até autorização explícita.
+- [x] Telas implementadas: aba Base JD (admin) em Campanhas, coluna/filtro Situação JD em Oportunidades de Serviço, coluna no Excel de Checklists e no Excel de Oportunidades. 14 testes passaram; typecheck limpo.
+- [ ] SQL definitivo em docs/JD_CHASSIS_AUDIT.sql aguardando aprovação antes da migração.

@@ -34,6 +34,7 @@ import {
   monthLabel,
   exportServiceOpportunitiesExcel,
 } from '@/lib/serviceOpportunities';
+import { JD_STATUS_LABEL, JD_STATUS_VARIANT, type JdStatus } from '@/lib/jdChassis';
 
 interface Props {
   filters: ManagementFilters;
@@ -55,6 +56,7 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
   const [serviceType, setServiceType] = useState<string>('all');
   const [severity, setSeverity] = useState<string>('all');
   const [machineType, setMachineType] = useState<string>('all');
+  const [jdStatus, setJdStatus] = useState<string>('all');
   const [page, setPage] = useState(0);
   const [exporting, setExporting] = useState(false);
 
@@ -64,8 +66,9 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
       severity: severity === 'all' ? null : (severity as 'alta' | 'media'),
       machineType: machineType === 'all' ? null : machineType,
       client: clientFilter?.trim() ? clientFilter.trim() : null,
+      jdStatus: jdStatus === 'all' ? null : jdStatus,
     }),
-    [serviceType, severity, machineType, clientFilter],
+    [serviceType, severity, machineType, clientFilter, jdStatus],
   );
 
   const { data: summary, isLoading: summaryLoading, isError: summaryError } =
@@ -79,12 +82,14 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
   const kpis = summary?.kpis;
   const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const hasLocalFilter = serviceType !== 'all' || severity !== 'all' || machineType !== 'all';
+  const hasLocalFilter =
+    serviceType !== 'all' || severity !== 'all' || machineType !== 'all' || jdStatus !== 'all';
 
   const resetLocal = () => {
     setServiceType('all');
     setSeverity('all');
     setMachineType('all');
+    setJdStatus('all');
     setPage(0);
   };
 
@@ -162,7 +167,7 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
       {/* Filtros locais + exportação */}
       <Card>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de Serviço</label>
               <Select value={serviceType} onValueChange={(v) => { setServiceType(v); setPage(0); }}>
@@ -195,6 +200,18 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
                   {MACHINE_TYPES.map((m) => (
                     <SelectItem key={m} value={m}>{m}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Situação JD</label>
+              <Select value={jdStatus} onValueChange={(v) => { setJdStatus(v); setPage(0); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="enviado">Já enviado à JD</SelectItem>
+                  <SelectItem value="disponivel">Disponível</SelectItem>
+                  <SelectItem value="sem_chassi">Sem chassi</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -375,6 +392,7 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
                       <TableHead className="whitespace-nowrap">Serviço</TableHead>
                       <TableHead className="whitespace-nowrap">Item</TableHead>
                       <TableHead className="whitespace-nowrap">Severidade</TableHead>
+                      <TableHead className="whitespace-nowrap">Situação JD</TableHead>
                       <TableHead className="whitespace-nowrap">Responsável</TableHead>
                       <TableHead className="whitespace-nowrap">Filial</TableHead>
                       <TableHead className="min-w-[200px]">Observação</TableHead>
@@ -403,6 +421,11 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
                         <TableCell className="whitespace-nowrap">
                           <Badge variant={severityVariant(r.severity)}>
                             {SEVERITY_LABELS[r.severity] ?? r.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <Badge variant={JD_STATUS_VARIANT[(r.jd_status as JdStatus) ?? 'sem_chassi'] ?? 'warning'}>
+                            {JD_STATUS_LABEL[(r.jd_status as JdStatus) ?? 'sem_chassi'] ?? 'Sem chassi'}
                           </Badge>
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs">{r.seller_name}</TableCell>

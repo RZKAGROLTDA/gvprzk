@@ -71,6 +71,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { SpecialConditionsTab } from '@/components/campaigns/SpecialConditionsTab';
+import JdChassisTab from '@/components/campaigns/JdChassisTab';
 import {
   getRuleDiscountPeriods,
   getEntryDiscountPeriods,
@@ -224,6 +225,7 @@ const Campaigns: React.FC = () => {
   const canManageRules =
     profile?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'supervisor';
   const canDeleteRules = profile?.role === 'manager' || profile?.role === 'admin';
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <div className="space-y-6">
@@ -243,6 +245,7 @@ const Campaigns: React.FC = () => {
           <TabsTrigger value="summary">Resumo Vendedor</TabsTrigger>
           <TabsTrigger value="rules">Regras</TabsTrigger>
           <TabsTrigger value="special">Condição Especial</TabsTrigger>
+          {isAdmin && <TabsTrigger value="jd">Base JD</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="entries" className="mt-6">
@@ -260,6 +263,12 @@ const Campaigns: React.FC = () => {
         <TabsContent value="special" className="mt-6">
           <SpecialConditionsTab />
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="jd" className="mt-6">
+            <JdChassisTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
