@@ -143,3 +143,6 @@
 
 - [ ] Auditoria JD V2: revisão (chassi divergente, status_of interno, vigência) — aguardando aprovação do SQL
 - [ ] Auditoria JD V2: append sem tabela temporária; Supervisor por Filial Ativa (principal/adicional) — aguardando aprovação
+
+- [x] JD V2: filtro de filial por tasks.filial (filial da atividade) — revisado, aguardando aprovação
+- [ ] JD V2: aplicar migração + telas + testes (aguarda aprovação)
