@@ -30,8 +30,9 @@ describe('Chassi da Máquina no Excel de Checklists', () => {
     const row = { task_id: 'a', task_type: 'checklist', client: 'Cliente', sales_value: 123.45, filial: 'Mineiros', checklist_machine: { chassi_serie: '001234' } };
     const checklist = buildActivitySheets('checklist', [row]).Checklists[0];
     const activity = buildActivitySheets('ligacao', [row])['Ligações'][0];
-    const { 'Chassi da Máquina': chassis, ...existing } = checklist;
+    const { 'Chassi da Máquina': chassis, 'Situação JD': jd, ...existing } = checklist;
     expect(chassis).toBe('001234');
+    expect(jd).toBe('');
     expect(existing).toEqual(activity);
     expect(checklist['Valor Venda']).toBe(123.45);
     expect(buildActivitySheets('visita', [row]).Visitas[0]).not.toHaveProperty('Chassi da Máquina');
@@ -46,5 +47,17 @@ describe('Chassi da Máquina no Excel de Checklists', () => {
     const reopened = XLSX.read(XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }), { type: 'buffer' });
     const result = XLSX.utils.sheet_to_json<Record<string, unknown>>(reopened.Sheets.Checklists, { defval: '' });
     expect(result.map(r => [r['ID Atividade'], r['Chassi da Máquina']])).toEqual([['a', '001234'], ['b', '1bm8400rtrs102137'], ['c', '']]);
+  });
+
+  it('preenche Situação JD com a classificação da base, inclusive sem chassi', () => {
+    const classified = new Map<string, 'enviado' | 'disponivel'>([['1HGBH41JXMN109186', 'enviado']]);
+    const sheets = buildActivitySheets('checklist', [
+      { task_id: 'a', checklist_machine: { chassi_serie: '1hgbh41jx mn109186' } },
+      { task_id: 'b', checklist_machine: { chassi_serie: '9BWZZZ377VT004251' } },
+      { task_id: 'c', checklist_machine: null },
+    ], classified);
+    expect(sheets.Checklists.map(r => r['Situação JD'])).toEqual([
+      'Já enviado à JD', 'Disponível', 'Sem chassi',
+    ]);
   });
 });
