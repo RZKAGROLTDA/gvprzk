@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { classifyChassisList, jdStatusFor, JD_STATUS_LABEL, type JdStatus } from '@/lib/jdChassis';
 
 export type ActivityExportKind = 'ligacao' | 'visita' | 'checklist';
 
@@ -105,8 +106,12 @@ function activityRow(r: Row) {
   };
 }
 
-/** Monta as abas (puro, testável). */
-export function buildActivitySheets(kind: ActivityExportKind, rows: Row[]) {
+/** Monta as abas (puro, testável). jdClassified: mapa chassi normalizado → situação JD. */
+export function buildActivitySheets(
+  kind: ActivityExportKind,
+  rows: Row[],
+  jdClassified?: Map<string, JdStatus>,
+) {
   const sheets: Record<string, Row[]> = {};
   if (kind === 'ligacao') {
     sheets['Ligações'] = rows.map(activityRow);
@@ -114,6 +119,9 @@ export function buildActivitySheets(kind: ActivityExportKind, rows: Row[]) {
     sheets['Checklists'] = rows.map(r => ({
       ...activityRow(r),
       'Chassi da Máquina': r.checklist_machine?.chassi_serie ?? '',
+      'Situação JD': jdClassified
+        ? JD_STATUS_LABEL[jdStatusFor(r.checklist_machine?.chassi_serie, jdClassified)]
+        : '',
     }));
     sheets['Checklist - Máquina'] = rows.filter(r => r.checklist_machine).map(r => {
       const m = r.checklist_machine || {};
@@ -166,9 +174,15 @@ export async function exportActivitiesExcel(
 ): Promise<number> {
   const rows = await fetchAllActivities(p, onProgress);
   if (rows.length === 0) return 0;
+  // Checklists: classifica TODOS os chassis exportados contra a base JD completa,
+  // garantindo que o Excel apresente a mesma situação exibida na tela.
+  const jdClassified =
+    p.kind === 'checklist'
+      ? await classifyChassisList(rows.map(r => r.checklist_machine?.chassi_serie))
+      : undefined;
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
-  for (const [name, data] of Object.entries(buildActivitySheets(p.kind, rows))) {
+  for (const [name, data] of Object.entries(buildActivitySheets(p.kind, rows, jdClassified))) {
     const ws = data.length ? XLSX.utils.json_to_sheet(data) : XLSX.utils.aoa_to_sheet([['Sem registros']]);
     XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
   }
