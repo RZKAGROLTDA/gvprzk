@@ -3,7 +3,8 @@
 ## Base JD — opção oculta (31/10/2026)
 - [x] Diagnóstico: navegação existe; visibilidade dependia de profiles.role legado em vez da autorização admin no servidor.
 - [x] Corrigir somente visibilidade com has_role e permitir quebra da barra de abas em telas menores, sem mudar banco/importação.
-- [ ] Validar correção e publicar conforme autorização; acesso autenticado real indisponível no Supabase externo.
+- [x] Quatro testes de autorização passaram; build OK; publicação solicitada sem bloqueio pelos quatro alertas antigos.
+- [ ] Confirmar entrega da correção publicada; acesso autenticado real indisponível no Supabase externo.
 
 ## Checklists — Chassi da Máquina (30/10/2026)
 - [x] Diagnóstico somente leitura: 2.066 checklists, nenhum vinculado via task_equipment; 2.046 têm chassi na própria checklist_machine, distribuídos em nove filiais.
