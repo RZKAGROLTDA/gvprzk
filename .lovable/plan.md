@@ -1,73 +1,57 @@
-# Condição Especial — período, tipo e margem
+# Auditoria de Duplicidade de Chassis — Campanha JD
 
-## Escopo e autorização
-Melhorar somente a aba Condição Especial. Este plano não executa migração, não altera telas nem publica. A implementação começa após a aprovação das mudanças abaixo; a publicação continuará dependendo de autorização separada.
+## Objetivo
+Cruzar a base de chassis já enviados à John Deere com **todos** os checklists do GVPS (2.587 checklists, 2.582 com chassi na ficha), classificando cada um como "Já enviado à JD", "Disponível" ou "Sem chassi" — na tela e no Excel — sem alterar checklists, vínculos ou regras de acesso.
 
-## 1. Período e filtros
-- Ao abrir a aba ou limpar os filtros, selecionar do primeiro dia do mês atual até hoje, usando datas locais.
-- Manter a **Data Venda** como referência do período, como na tela atual, com início e fim inclusivos. Não substituir datas ausentes por datas de cadastro.
-- Permitir qualquer período histórico. Preservar os filtros existentes e acrescentar **Tipo de Condição: Todos / Condição Safra / Condição Normal**.
-- Aplicar o período na consulta, antes de carregar registros: não buscar todo o histórico na abertura.
-- Tabela, cinco indicadores existentes, novo indicador e Excel usarão exatamente o mesmo conjunto filtrado e autorizado.
-- Registros sem Data Venda continuarão preservados e acessíveis quando o período estiver sem limites; limpar filtros voltará ao mês atual.
+## Banco de dados (migração apresentada para aprovação antes de aplicar)
 
-## 2. Formulário, tabela e Excel
-- Acrescentar **Tipo de Condição** obrigatório na criação e no salvamento da edição, com Safra e Normal. Registros antigos abrirão sem seleção; sua classificação será manual, sem atualização em massa.
-- Acrescentar **Margem %** opcional, manual e editável, com duas casas decimais, junto a Valor Venda, Desconto % e Desconto Total.
-- Não calcular margem pelo desconto. Campo vazio será armazenado como ausência de informação; zero informado será um valor válido.
-- Exibir tipo e margem na tabela e acrescentar as duas colunas ao Excel, preservando todas as colunas atuais. Dados ausentes ficarão em branco no arquivo.
-- Manter regras atuais de edição, status, aprovação, rejeição, exclusão e histórico. Aprovar/rejeitar registros antigos não exigirá classificá-los; a obrigatoriedade vale ao salvar o formulário de criação/edição.
+**1. Tabela `public.jd_chassis_import_batches`** (histórico de importações)
+- Campos: nome do arquivo, quem importou, data, total de linhas, chassis novos, duplicados ignorados.
+- Nunca apaga registros: cada atualização da base gera um novo lote, preservando o histórico.
 
-## 3. Indicadores
-Manter sem mudanças de fórmula: **Qtd. Condições, Valor Total Vendido, Desconto Médio, Desconto Total e Ticket Médio**.
+**2. Tabela `public.jd_chassis_base`** (base consolidada de chassis enviados à JD)
+- Campos: chassi normalizado (único), chassi original, lote de origem, data.
+- Normalização no servidor: maiúsculas + remoção de espaços, ignorando diferenças de caixa/espaços.
+- `ON CONFLICT DO NOTHING`: duplicidades dentro do arquivo ou já existentes na base são ignoradas e contadas.
+- GRANTs: leitura para usuários autenticados; escrita apenas via função de importação.
+- RLS: leitura autenticada; nenhuma escrita direta por usuários.
 
-Adicionar **Margem Média %**:
+**3. Função `import_jd_chassis(chassis text[], filename text)`** (SECURITY DEFINER)
+- Valida `has_role(auth.uid(), 'admin')` — somente administradores importam/atualizam.
+- Normaliza, deduplica, insere novos, registra o lote e retorna o resumo (novos/duplicados).
 
-```text
-Σ (Valor Venda × Margem %) / Σ Valor Venda
-```
+**4. Classificação dinâmica (sem campo novo em `tasks`)**
+- A situação JD é calculada por cruzamento no banco (join com o chassi normalizado de `tasks.checklist_machine->>'chassi_serie'`).
+- Por ser calculada, vale automaticamente para registros históricos e para novos checklists — nenhuma atualização em massa, nenhum checklist é alterado.
 
-- Numerador e denominador consideram somente registros com margem preenchida, dentro dos mesmos filtros.
-- Margem zero participa; margem ausente não participa.
-- Se não houver margens preenchidas ou a soma dos valores de venda elegíveis for zero, mostrar **Sem dados suficientes**, nunca uma média fictícia.
-- Arredondar apenas o resultado exibido para duas casas decimais.
-- Exemplo de teste: vendas de R$ 100 com margem de 10% e R$ 300 com margem de 20% resultam em **17,50%**, não 15%. Uma venda adicional sem margem não altera esse resultado.
+## Como é garantida a auditoria de 100% dos checklists
+- O cruzamento acontece **no banco de dados**, não na tela: não depende de paginação, período, filial ou vendedor.
+- As RPCs existentes (`get_service_opportunities_details` e `get_management_activity_export`) passam a incluir a coluna `jd_status` calculada por join.
+- A auditoria abrange todos os checklists, mas cada usuário continua recebendo **somente os registros que seu perfil e filial já permitem** — os filtros atuais das RPCs permanecem intactos.
+- Sem chassi na ficha → "Sem chassi" (não depende de vínculo com o Parque de Máquinas).
 
-## 4. Alterações técnicas no banco — para aprovação
-Adicionar somente duas colunas em `public.special_conditions`, ambas anuláveis e sem valor padrão:
+## Interface
 
-```sql
-ALTER TABLE public.special_conditions
-  ADD COLUMN condition_type text,
-  ADD COLUMN margin_percent numeric(12,2);
+**Importação (somente administradores)**
+- Nova opção administrativa (em Configurações/Administração): upload de Excel/CSV, pré-visualização com resumo (total, novos, duplicados, inválidos) e confirmação antes de gravar.
 
-ALTER TABLE public.special_conditions
-  ADD CONSTRAINT special_conditions_condition_type_valid
-  CHECK (condition_type IS NULL OR condition_type IN ('safra', 'normal'));
-```
+**Relatório de Oportunidades (Análise Gerencial → Oportunidades de Serviço)**
+- Nova coluna "Situação JD" apenas nos registros do tipo Checklist:
+  - Vermelho: "Já enviado à JD"
+  - Verde: "Disponível"
+  - Amarelo: "Sem chassi"
+- Novo filtro por Situação JD.
+- Demais tipos de oportunidade sem classificação JD.
 
-- `condition_type`: valores armazenados `safra`/`normal`; nomes apresentados Condição Safra/Condição Normal.
-- `margin_percent`: valor manual com precisão de duas casas; nenhum cálculo automático e nenhum intervalo percentual arbitrário imposto.
-- A validação fixa do tipo aceita ausência nos registros antigos. O formulário exigirá uma escolha antes de salvar uma criação ou edição.
-- Não executar UPDATE, preenchimento retroativo, alteração de RLS, concessões, cargos, filiais ou vínculos.
-- Não alterar os gatilhos existentes de status, aprovação, nome do vendedor ou atualização de data.
-- Não criar tabelas nem funções SECURITY DEFINER; as consultas continuarão usando o acesso atual, sob RLS.
+**Exportação Excel de Checklists (Análise Gerencial → Relatório)**
+- Nova coluna "Situação JD" na aba principal, com a mesma classificação da tela.
 
-### Consulta e compatibilidade
-- Atualizar os campos explícitos consultados e enviados, sem editar manualmente os tipos gerados pelo Supabase.
-- Retirar o teto atual de uma única consulta de 1.000 linhas: carregar páginas de até 1.000, com ordenação por ID e avanço pelo último ID retornado, até terminar.
-- Manter o escopo de acesso atual, sem combinar filiais ou ampliar autorização. Preservar as demais condições dos filtros.
-- Não apresentar indicadores ou liberar Excel como completos enquanto houver lotes pendentes; em falha, não gerar arquivo parcial.
-- Nenhuma alteração nas demais abas ou nas exportações da Análise Gerencial.
+## Validações previstas (somente leitura)
+- Testes unitários: normalização (caixa/espaços), deduplicação, classificação nos três estados.
+- Simulação com base de teste em transação reversível: cruzamento cobre 100% dos 2.587 checklists.
+- Excel gerado e reaberto conferindo a coluna.
+- Verificação de que usuário não-admin não consegue importar (erro de permissão).
 
-## 5. Validação após aprovação
-- Testar abertura e limpeza no mês atual, inclusive virada de mês e datas locais; intervalo histórico inclusivo.
-- Testar criação e edição exigindo tipo, e preservação de registros antigos sem tipo/margem.
-- Testar margem manual com duas casas, zero e ausência de valor; comprovar que desconto não modifica margem.
-- Testar média ponderada com o exemplo de 17,50%, exclusão de valores ausentes e ausência de denominador válido.
-- Conferir as cinco fórmulas existentes, filtragem Safra/Normal/Todos e correspondência entre tabela, indicadores e Excel.
-- Validar paginação com mais de 1.000 registros, IDs únicos e interrupção sem arquivo em caso de falha.
-- Conferir os acessos de vendedores, supervisores e gerentes e o fluxo de aprovação, sem mudar permissões ou registros reais para realizar os testes.
-
-## Estado atual
-Análise somente de leitura: existem **410 condições**, das quais **401 têm Data Venda** e **9 não têm**. Não há campos de tipo ou margem hoje. Nenhuma migração foi executada e nenhuma tela foi alterada ou publicada nesta etapa.
+## Fora de escopo
+- Nenhuma alteração em checklists, vínculos de máquinas, RLS existente, fluxo de aprovação ou outras funcionalidades.
+- Nenhuma publicação sem autorização final.
