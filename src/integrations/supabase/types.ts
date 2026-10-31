@@ -896,6 +896,80 @@ export type Database = {
           },
         ]
       }
+      jd_chassis_base: {
+        Row: {
+          batch_id: string
+          chassi_normalizado: string
+          chassi_original: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          batch_id: string
+          chassi_normalizado: string
+          chassi_original: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          batch_id?: string
+          chassi_normalizado?: string
+          chassi_original?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jd_chassis_base_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "jd_chassis_import_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jd_chassis_import_batches: {
+        Row: {
+          concluded_at: string | null
+          created_at: string
+          duplicados: number
+          filename: string
+          id: string
+          imported_by: string
+          invalidos: number
+          novos: number
+          processadas: number
+          status: string
+          total_linhas: number
+        }
+        Insert: {
+          concluded_at?: string | null
+          created_at?: string
+          duplicados?: number
+          filename: string
+          id?: string
+          imported_by: string
+          invalidos?: number
+          novos?: number
+          processadas?: number
+          status?: string
+          total_linhas?: number
+        }
+        Update: {
+          concluded_at?: string | null
+          created_at?: string
+          duplicados?: number
+          filename?: string
+          id?: string
+          imported_by?: string
+          invalidos?: number
+          novos?: number
+          processadas?: number
+          status?: string
+          total_linhas?: number
+        }
+        Relationships: []
+      }
       opportunities: {
         Row: {
           cliente_nome: string
@@ -4623,6 +4697,7 @@ export type Database = {
           p_client?: string
           p_end_date?: string
           p_filial_id?: string
+          p_jd_status?: string
           p_limit?: number
           p_machine_type?: string
           p_offset?: number
@@ -4638,6 +4713,7 @@ export type Database = {
           client_name: string
           filial_nome: string
           item_name: string
+          jd_status: string
           machine_hours: string
           machine_model: string
           machine_serial: string
@@ -4842,6 +4918,22 @@ export type Database = {
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       is_media_task_owner: { Args: { p_name: string }; Returns: boolean }
       is_user_admin: { Args: { _user_id: string }; Returns: boolean }
+      jd_classify_checklists: {
+        Args: { p_task_ids: string[] }
+        Returns: {
+          jd_status: string
+          task_id: string
+        }[]
+      }
+      jd_import_append: {
+        Args: { p_batch_id: string; p_chassis: string[] }
+        Returns: Json
+      }
+      jd_import_conclude: { Args: { p_batch_id: string }; Returns: Json }
+      jd_import_start: {
+        Args: { p_filename: string; p_total_linhas: number }
+        Returns: string
+      }
       log_client_data_access:
         | {
             Args: {
@@ -5065,6 +5157,7 @@ export type Database = {
         Args: { p_role: string; p_user_id: string }
         Returns: Json
       }
+      normalize_chassis: { Args: { p: string }; Returns: string }
       pops_assign_rac_by_client: {
         Args: {
           p_notes?: string
