@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { classifyChecklistTasks, normalizeChassis, jdStatusFor, JD_STATUS_LABEL, type JdStatus } from '@/lib/jdChassis';
+import { classifyChecklistTasks, jdLabel, type JdStatus } from '@/lib/jdChassis';
 
 export type ActivityExportKind = 'ligacao' | 'visita' | 'checklist';
 
@@ -106,7 +106,7 @@ function activityRow(r: Row) {
   };
 }
 
-/** Monta as abas (puro, testável). jdClassified: mapa chassi normalizado → situação JD. */
+/** Monta as abas (puro, testável). jdClassified: mapa ID Atividade → situação JD (auditoria vigente). */
 export function buildActivitySheets(
   kind: ActivityExportKind,
   rows: Row[],
@@ -119,9 +119,7 @@ export function buildActivitySheets(
     sheets['Checklists'] = rows.map(r => ({
       ...activityRow(r),
       'Chassi da Máquina': r.checklist_machine?.chassi_serie ?? '',
-      'Situação JD': jdClassified
-        ? JD_STATUS_LABEL[jdStatusFor(r.checklist_machine?.chassi_serie, jdClassified)]
-        : '',
+      'Situação JD': jdClassified ? jdLabel(jdClassified.get(r.task_id)) : '',
     }));
     sheets['Checklist - Máquina'] = rows.filter(r => r.checklist_machine).map(r => {
       const m = r.checklist_machine || {};
@@ -178,16 +176,7 @@ export async function exportActivitiesExcel(
   // garantindo que o Excel apresente a mesma situação exibida na tela.
   const jdClassified =
     p.kind === 'checklist'
-      ? await (async () => {
-          const byTask = await classifyChecklistTasks(rows.map(r => r.task_id));
-          const byChassis = new Map<string, JdStatus>();
-          for (const r of rows) {
-            const st = byTask.get(r.task_id);
-            const n = normalizeChassis(r.checklist_machine?.chassi_serie);
-            if (st && n) byChassis.set(n, st);
-          }
-          return byChassis;
-        })()
+      ? await classifyChecklistTasks(rows.map(r => r.task_id))
       : undefined;
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();

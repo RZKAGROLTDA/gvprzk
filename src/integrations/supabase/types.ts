@@ -896,6 +896,92 @@ export type Database = {
           },
         ]
       }
+      jd_audit_imports: {
+        Row: {
+          concluded_at: string | null
+          created_at: string
+          filename: string
+          id: string
+          imported_by: string
+          processadas: number
+          qtd_duplicado: number
+          qtd_ok: number
+          qtd_sem_chassi: number
+          sheet_name: string
+          status: string
+          total_linhas: number
+        }
+        Insert: {
+          concluded_at?: string | null
+          created_at?: string
+          filename: string
+          id?: string
+          imported_by: string
+          processadas?: number
+          qtd_duplicado?: number
+          qtd_ok?: number
+          qtd_sem_chassi?: number
+          sheet_name: string
+          status?: string
+          total_linhas: number
+        }
+        Update: {
+          concluded_at?: string | null
+          created_at?: string
+          filename?: string
+          id?: string
+          imported_by?: string
+          processadas?: number
+          qtd_duplicado?: number
+          qtd_ok?: number
+          qtd_sem_chassi?: number
+          sheet_name?: string
+          status?: string
+          total_linhas?: number
+        }
+        Relationships: []
+      }
+      jd_audit_rows: {
+        Row: {
+          chassi_normalizado: string
+          chassi_original: string
+          created_at: string
+          id: string
+          import_id: string
+          row_number: number
+          status: string | null
+          task_id: string
+        }
+        Insert: {
+          chassi_normalizado?: string
+          chassi_original?: string
+          created_at?: string
+          id?: string
+          import_id: string
+          row_number: number
+          status?: string | null
+          task_id: string
+        }
+        Update: {
+          chassi_normalizado?: string
+          chassi_original?: string
+          created_at?: string
+          id?: string
+          import_id?: string
+          row_number?: number
+          status?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jd_audit_rows_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "jd_audit_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jd_chassis_base: {
         Row: {
           batch_id: string
@@ -4918,6 +5004,31 @@ export type Database = {
       is_manager: { Args: { _user_id: string }; Returns: boolean }
       is_media_task_owner: { Args: { p_name: string }; Returns: boolean }
       is_user_admin: { Args: { _user_id: string }; Returns: boolean }
+      jd_audit_append: {
+        Args: { p_import_id: string; p_rows: Json }
+        Returns: number
+      }
+      jd_audit_cancel: { Args: { p_import_id: string }; Returns: undefined }
+      jd_audit_conclude: { Args: { p_import_id: string }; Returns: Json }
+      jd_audit_start: {
+        Args: {
+          p_filename: string
+          p_sheet_name: string
+          p_total_linhas: number
+        }
+        Returns: string
+      }
+      jd_audit_status_of: { Args: { p_task_id: string }; Returns: string }
+      jd_audit_validate_rows: {
+        Args: { p_rows: Json }
+        Returns: {
+          chassi_ficha: string
+          chassi_planilha: string
+          problema: string
+          row_number: number
+          task_id: string
+        }[]
+      }
       jd_classify_checklists: {
         Args: { p_task_ids: string[] }
         Returns: {

@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   normalizeChassis,
   isValidChassis,
-  jdStatusFor,
+  jdLabel,
+  pickAuditSheet,
+  extractJdAuditRows,
   previewJdFile,
-  JD_STATUS_LABEL,
 } from './jdChassis';
 
 describe('Auditoria JD — normalização de chassis', () => {
@@ -30,28 +31,34 @@ describe('Auditoria JD — normalização de chassis', () => {
   });
 });
 
-describe('Auditoria JD — classificação', () => {
-  const classified = new Map<string, 'enviado' | 'disponivel'>([['1HGBH41JXMN109186', 'enviado']]);
-
-  it('marca como enviado quando consta na base JD, independente de caixa/espaços', () => {
-    expect(jdStatusFor('1hgbh41jx mn109186', classified)).toBe('enviado');
-    expect(jdStatusFor('1HGBH41JXMN109186', classified)).toBe('enviado');
+describe('Auditoria JD v2 — rótulos e aba', () => {
+  it('rótulos dos quatro estados; desconhecido = Não auditado', () => {
+    expect(jdLabel('ok')).toBe('OK — Primeiro registro');
+    expect(jdLabel('duplicado')).toBe('Duplicado');
+    expect(jdLabel('sem_chassi')).toBe('Sem chassi');
+    expect(jdLabel(undefined)).toBe('Não auditado');
   });
-
-  it('marca como disponível quando não consta na base', () => {
-    expect(jdStatusFor('9BWZZZ377VT004251', classified)).toBe('disponivel');
+  it('escolhe a aba Checklist - Máquina', () => {
+    expect(pickAuditSheet(['Checklists', 'Checklist - Máquina'])).toBe('Checklist - Máquina');
+    expect(pickAuditSheet(['Checklists'])).toBeNull();
   });
-
-  it('marca como sem chassi quando a ficha não tem chassi', () => {
-    expect(jdStatusFor('', classified)).toBe('sem_chassi');
-    expect(jdStatusFor(null, classified)).toBe('sem_chassi');
-    expect(jdStatusFor('   ', classified)).toBe('sem_chassi');
+  it('lê ID Atividade + Chassi/Série com número real da linha e aponta IDs repetidos/vazios', () => {
+    const id1 = '11111111-1111-1111-1111-111111111111';
+    const id2 = '22222222-2222-2222-2222-222222222222';
+    const r = extractJdAuditRows([
+      ['ID Atividade', 'Data', 'Cliente', 'Chassi/Série'],
+      [id1, '', 'A', '1CQ2122AKG0110160'],
+      [id2, '', 'B', ''],
+      [id1, '', 'C', 'X'],
+      ['', '', 'D', 'Y'],
+    ]);
+    expect(r.rows.map(x => x.row)).toEqual([2, 3, 4]);
+    expect(r.semChassi).toBe(1);
+    expect(r.idsDuplicados).toEqual([id1]);
+    expect(r.idsVazios).toEqual([5]);
   });
-
-  it('possui rótulos para os três estados', () => {
-    expect(JD_STATUS_LABEL.enviado).toBe('Já enviado à JD');
-    expect(JD_STATUS_LABEL.disponivel).toBe('Disponível');
-    expect(JD_STATUS_LABEL.sem_chassi).toBe('Sem chassi');
+  it('bloqueia aba sem as colunas exigidas', () => {
+    expect(() => extractJdAuditRows([['Cliente', 'Chassi da Máquina'], ['A', 'X1']])).toThrow(/ID Atividade/);
   });
 });
 

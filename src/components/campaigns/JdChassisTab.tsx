@@ -15,6 +15,7 @@ import {
   previewJdFile,
   type JdFilePreview,
 } from '@/lib/jdChassis';
+import JdAuditImportCard from './JdAuditImportCard';
 
 interface BatchRow {
   id: string;
@@ -121,6 +122,7 @@ const JdChassisTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <JdAuditImportCard />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3 px-4">

@@ -49,15 +49,16 @@ describe('Chassi da Máquina no Excel de Checklists', () => {
     expect(result.map(r => [r['ID Atividade'], r['Chassi da Máquina']])).toEqual([['a', '001234'], ['b', '1bm8400rtrs102137'], ['c', '']]);
   });
 
-  it('preenche Situação JD com a classificação da base, inclusive sem chassi', () => {
-    const classified = new Map<string, 'enviado' | 'disponivel'>([['1HGBH41JXMN109186', 'enviado']]);
+  it('preenche Situação JD pelo ID Atividade; fora da auditoria = Não auditado', () => {
+    const classified = new Map<string, 'ok' | 'duplicado' | 'sem_chassi'>([['a', 'ok'], ['b', 'duplicado'], ['c', 'sem_chassi']]);
     const sheets = buildActivitySheets('checklist', [
       { task_id: 'a', checklist_machine: { chassi_serie: '1hgbh41jx mn109186' } },
       { task_id: 'b', checklist_machine: { chassi_serie: '9BWZZZ377VT004251' } },
       { task_id: 'c', checklist_machine: null },
+      { task_id: 'd', checklist_machine: { chassi_serie: '1hgbh41jx mn109186' } },
     ], classified);
     expect(sheets.Checklists.map(r => r['Situação JD'])).toEqual([
-      'Já enviado à JD', 'Disponível', 'Sem chassi',
+      'OK — Primeiro registro', 'Duplicado', 'Sem chassi', 'Não auditado',
     ]);
   });
 });
