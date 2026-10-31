@@ -25,7 +25,7 @@ import { ClientFilter, matchesClient, type SelectedClient } from '@/components/C
 import { useConsolidatedSalesMetrics } from '@/hooks/useConsolidatedSalesMetrics';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 import { parseLocalDate, formatDateDisplay } from '@/lib/utils';
-import { classifyChecklistTasks, JD_STATUS_LABEL, JD_STATUS_VARIANT } from '@/lib/jdChassis';
+import { classifyChecklistTasks, jdLabel, jdVariant } from '@/lib/jdChassis';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1384,9 +1384,10 @@ export const SalesFunnel: React.FC = () => {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="enviado">Já enviado</SelectItem>
-                  <SelectItem value="disponivel">Disponível</SelectItem>
+                  <SelectItem value="ok">OK — Primeiro registro</SelectItem>
+                  <SelectItem value="duplicado">Duplicado</SelectItem>
                   <SelectItem value="sem_chassi">Sem chassi</SelectItem>
+                  <SelectItem value="nao_auditado">Não auditado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1460,7 +1461,7 @@ export const SalesFunnel: React.FC = () => {
                         {task.taskType === 'checklist' ? (() => {
                           const st = jdMap?.get(task.id);
                           if (!st) return <span className="text-xs text-muted-foreground">{isLoadingJd ? '...' : '—'}</span>;
-                          return <Badge variant={JD_STATUS_VARIANT[st]} className="whitespace-nowrap">{JD_STATUS_LABEL[st]}</Badge>;
+                          return <Badge variant={jdVariant(st)} className="whitespace-nowrap">{jdLabel(st)}</Badge>;
                         })() : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell>

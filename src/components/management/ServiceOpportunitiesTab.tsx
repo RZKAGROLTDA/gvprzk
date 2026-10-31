@@ -34,7 +34,7 @@ import {
   monthLabel,
   exportServiceOpportunitiesExcel,
 } from '@/lib/serviceOpportunities';
-import { JD_STATUS_LABEL, JD_STATUS_VARIANT, type JdStatus } from '@/lib/jdChassis';
+import { jdLabel, jdVariant } from '@/lib/jdChassis';
 
 interface Props {
   filters: ManagementFilters;
@@ -209,9 +209,10 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="enviado">Já enviado à JD</SelectItem>
-                  <SelectItem value="disponivel">Disponível</SelectItem>
+                  <SelectItem value="ok">OK — Primeiro registro</SelectItem>
+                  <SelectItem value="duplicado">Duplicado</SelectItem>
                   <SelectItem value="sem_chassi">Sem chassi</SelectItem>
+                  <SelectItem value="nao_auditado">Não auditado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -424,8 +425,8 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
                           </Badge>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <Badge variant={JD_STATUS_VARIANT[(r.jd_status as JdStatus) ?? 'sem_chassi'] ?? 'warning'}>
-                            {JD_STATUS_LABEL[(r.jd_status as JdStatus) ?? 'sem_chassi'] ?? 'Sem chassi'}
+                          <Badge variant={jdVariant(r.jd_status)}>
+                            {jdLabel(r.jd_status)}
                           </Badge>
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-xs">{r.seller_name}</TableCell>
