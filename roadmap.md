@@ -3,6 +3,8 @@
 ## Falha de carregamento do relatório
 - [x] Todas as páginas protegidas contra falhas de importação, três tentativas apenas para erro de transporte e recuperação via atualização verificada; sem mudar dados ou permissões.
 - [x] Importação real de SalesFunnel passou; falha persistente simulada mostrou recuperação em vez de tela branca e não recarregou com versão indisponível; 13 testes passaram e build OK.
+- [x] Reverificação solicitada por Robson: SalesFunnel HTTP 200/importação válida, nenhuma dependência nova de PDFs em massa causando o erro, seleção de 50 entre páginas e ZIP real com cinco PDFs passaram; scan sem críticos.
+- [ ] Publicar correção e confirmar abertura pública; menu e relatórios autenticados permanecem bloqueados pela ausência de sessão no Supabase externo.
 
 ## PDFs em massa — Relatórios
 - [x] PDFs atuais em ZIP com hidratação estrita, seleção de todos os resultados filtrados, lotes pequenos e falhas individuais; sem alterar banco ou dados.
