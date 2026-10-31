@@ -3,7 +3,8 @@
 ## PDFs em massa — opção ausente
 - [x] Causa identificada: Reports existia mas não tinha rota nem item de menu; por isso nem era incluído no bundle publicado.
 - [x] Registrar /reports e adicionar Relatórios na navegação existente, sem mudar filtros, dados ou permissões.
-- [ ] Validar importação/menu e publicar; confirmar código e login no site publicado.
+- [x] Relatórios importa sem erro, login obrigatório preservado; seleção de 50 entre páginas e filtro JD passaram; 13 testes e build OK.
+- [ ] Publicar e confirmar rota, menu e painel no bundle publicado; validação autenticada indisponível no Supabase externo.
 
 ## Falha de carregamento do relatório
 - [x] Todas as páginas protegidas contra falhas de importação, três tentativas apenas para erro de transporte e recuperação via atualização verificada; sem mudar dados ou permissões.
