@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { classifyChassisList, jdStatusFor, JD_STATUS_LABEL, type JdStatus } from '@/lib/jdChassis';
+import { classifyChecklistTasks, normalizeChassis, jdStatusFor, JD_STATUS_LABEL, type JdStatus } from '@/lib/jdChassis';
 
 export type ActivityExportKind = 'ligacao' | 'visita' | 'checklist';
 
@@ -178,7 +178,16 @@ export async function exportActivitiesExcel(
   // garantindo que o Excel apresente a mesma situação exibida na tela.
   const jdClassified =
     p.kind === 'checklist'
-      ? await classifyChassisList(rows.map(r => r.checklist_machine?.chassi_serie))
+      ? await (async () => {
+          const byTask = await classifyChecklistTasks(rows.map(r => r.task_id));
+          const byChassis = new Map<string, JdStatus>();
+          for (const r of rows) {
+            const st = byTask.get(r.task_id);
+            const n = normalizeChassis(r.checklist_machine?.chassi_serie);
+            if (st && n) byChassis.set(n, st);
+          }
+          return byChassis;
+        })()
       : undefined;
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
