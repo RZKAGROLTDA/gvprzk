@@ -25,6 +25,7 @@ import { ClientFilter, matchesClient, type SelectedClient } from '@/components/C
 import { useConsolidatedSalesMetrics } from '@/hooks/useConsolidatedSalesMetrics';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 import { parseLocalDate, formatDateDisplay } from '@/lib/utils';
+import { classifyChecklistTasks, JD_STATUS_LABEL, JD_STATUS_VARIANT } from '@/lib/jdChassis';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,6 +83,7 @@ export const SalesFunnel: React.FC = () => {
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
+  const [jdFilter, setJdFilter] = useState<string>('all');
   const [itemsPerPage, setItemsPerPage] = useState<string>('50');
   const [displayPage, setDisplayPage] = useState<number>(1);
   // Deep-link opcional (?view=details) usado pelo Meu Dia — sem alterar o padrão atual.
@@ -682,6 +684,23 @@ export const SalesFunnel: React.FC = () => {
     console.log('🔧 filteredTasks: Tasks:', tasksFromSales.length, 'Standalone opportunities:', standaloneOpportunities.length);
     return [...tasksFromSales, ...standaloneOpportunities];
   }, [filteredSalesData, opportunitiesData, selectedActivity, selectedClient]);
+
+  // Auditoria JD: classificação no servidor (respeita o acesso do usuário)
+  const checklistIds = useMemo(
+    () => [...new Set(filteredTasks.filter(t => t.taskType === 'checklist').map(t => t.id).filter(Boolean))].sort(),
+    [filteredTasks],
+  );
+  const { data: jdMap, isLoading: isLoadingJd } = useQuery({
+    queryKey: ['jd-classify-report', checklistIds],
+    queryFn: () => classifyChecklistTasks(checklistIds),
+    enabled: activeView === 'coverage' && checklistIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const reportTasks = useMemo(() => {
+    if (jdFilter === 'all') return filteredTasks;
+    return filteredTasks.filter(t => t.taskType === 'checklist' && jdMap?.get(t.id) === jdFilter);
+  }, [filteredTasks, jdFilter, jdMap]);
 
   // totalCount agora vem direto do backend (count real com filtros aplicados)
   // infiniteDataCount já contém o total correto da query paginada com filtros
@@ -1359,6 +1378,18 @@ export const SalesFunnel: React.FC = () => {
             </p>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 max-w-xs">
+              <label className="text-sm font-medium mb-2 block">Situação JD</label>
+              <Select value={jdFilter} onValueChange={(v) => { setJdFilter(v); setDisplayPage(1); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="enviado">Já enviado</SelectItem>
+                  <SelectItem value="disponivel">Disponível</SelectItem>
+                  <SelectItem value="sem_chassi">Sem chassi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1370,11 +1401,12 @@ export const SalesFunnel: React.FC = () => {
                   <TableHead>Valor Venda Fechada</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data Criação</TableHead>
+                  <TableHead>Situação JD</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 'all' ? filteredTasks : filteredTasks.slice(0, parseInt(itemsPerPage) * displayPage)).map((task) => {
+                {(itemsPerPage === 'all' ? reportTasks : reportTasks.slice(0, parseInt(itemsPerPage) * displayPage)).map((task) => {
                   // Get opportunity values for this task.
                   // FIX: se a opportunity estiver com valor_total_oportunidade = 0 (ex.: Venda Perdida),
                   // usar o valor vindo dos dados da task/listagem (mesmo valor que aparece no modal).
@@ -1425,6 +1457,13 @@ export const SalesFunnel: React.FC = () => {
                       </TableCell>
                       <TableCell>{formatDateDisplay(task.createdAt)}</TableCell>
                       <TableCell>
+                        {task.taskType === 'checklist' ? (() => {
+                          const st = jdMap?.get(task.id);
+                          if (!st) return <span className="text-xs text-muted-foreground">{isLoadingJd ? '...' : '—'}</span>;
+                          return <Badge variant={JD_STATUS_VARIANT[st]} className="whitespace-nowrap">{JD_STATUS_LABEL[st]}</Badge>;
+                        })() : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
                         <div className="flex space-x-2">
                           <Button
                             variant="outline"
@@ -1469,14 +1508,14 @@ export const SalesFunnel: React.FC = () => {
             <div className="mt-4 text-center space-y-2">
               {(() => {
                 const shown = itemsPerPage === 'all'
-                  ? filteredTasks.length
-                  : Math.min(parseInt(itemsPerPage) * displayPage, filteredTasks.length);
-                const hasMoreLoaded = shown < filteredTasks.length;
+                  ? reportTasks.length
+                  : Math.min(parseInt(itemsPerPage) * displayPage, reportTasks.length);
+                const hasMoreLoaded = shown < reportTasks.length;
                 const hasMoreBackend = hasNextPage;
                 return (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Mostrando {shown} de {filteredTasks.length} oportunidades{hasMoreBackend ? ` (${totalCount} disponíveis)` : ''}.
+                      Mostrando {shown} de {reportTasks.length} oportunidades{hasMoreBackend ? ` (${totalCount} disponíveis)` : ''}.
                       {(hasMoreLoaded || hasMoreBackend) && ' Use os filtros para refinar a busca.'}
                     </p>
                     {(hasMoreLoaded || hasMoreBackend) && (
