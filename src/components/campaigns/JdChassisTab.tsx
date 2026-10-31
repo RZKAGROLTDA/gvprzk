@@ -39,6 +39,7 @@ const JdChassisTab: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [raw, setRaw] = useState<string[]>([]);
   const [preview, setPreview] = useState<JdFilePreview | null>(null);
+  const [columnInfo, setColumnInfo] = useState<{ column: string; samples: string[] } | null>(null);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
