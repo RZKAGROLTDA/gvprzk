@@ -147,3 +147,4 @@
 - [x] JD V2: filtro de filial por tasks.filial (filial da atividade) — revisado, aguardando aprovação
 - [x] JD V2: migração + telas + testes
 - [ ] JD V2: publicar (aguarda autorização do usuário)
+- [x] JD V3 automática (chassi pelos checklists)
