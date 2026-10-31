@@ -86,6 +86,13 @@ describe('PDFs em massa — regras', () => {
     await expect(loadBulkActivities(filters)).rejects.toThrow('42501');
     expect(mock.from).not.toHaveBeenCalled();
   });
+  it('nome forjado ou ambíguo não contorna o ID da filial autorizado no servidor', async () => {
+    mock.rpc.mockResolvedValue({ data: ['authorized'], error: null });
+    mock.from.mockImplementation(() => ({ select: () => ({ limit: () => Promise.resolve({ data: [{ id: 'authorized', nome: 'Filial A' }], error: null }) }) }));
+    await expect(loadBulkActivities({ ...filters, filialName: 'Filial B' })).rejects.toThrow('unicamente');
+    mock.from.mockImplementation(() => ({ select: () => ({ limit: () => Promise.resolve({ data: [{ id: 'authorized', nome: 'Filial A' }, { id: 'other', nome: ' filial a ' }], error: null }) }) }));
+    await expect(loadBulkActivities(filters)).rejects.toThrow('unicamente');
+  });
   it('troca de escopo interrompe e não libera ZIP antigo', async () => {
     await expect(buildActivityZip([row(1)], async () => new Blob(['%PDF-' + 'x'.repeat(200)]), () => {}, () => true)).rejects.toThrow('Filial Ativa');
   });

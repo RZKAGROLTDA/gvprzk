@@ -1,8 +1,10 @@
 # Roadmap
 
 ## PDFs em massa — Relatórios
-- [ ] Reutilizar PDFs atuais em ZIP, seleção de todos os resultados filtrados, lotes pequenos e falhas individuais; sem alterar banco ou dados.
-- [ ] Testar 5, 20 e 50 atividades e verificar acesso e download; publicar somente se os testes essenciais passarem.
+- [x] PDFs atuais em ZIP com hidratação estrita, seleção de todos os resultados filtrados, lotes pequenos e falhas individuais; sem alterar banco ou dados.
+- [x] ZIPs de 5, 20 e 50 atividades sintéticas usando geradores reais; validação de filtros/escopo e falhas, download real de cinco PDFs e seleção entre páginas no navegador.
+- [ ] Conferência autenticada por perfil e Filial Ativa — bloqueada pela conexão Supabase externa sem sessão disponível; testes sintéticos não substituem essa validação.
+- [ ] Publicação autorizada pelo usuário após testes essenciais.
 
 ## Base JD — opção oculta (31/10/2026)
 - [x] Diagnóstico: navegação existe; visibilidade dependia de profiles.role legado em vez da autorização admin no servidor.
