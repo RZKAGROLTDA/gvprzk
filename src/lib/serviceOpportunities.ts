@@ -62,6 +62,7 @@ export const exportServiceOpportunitiesExcel = async (
     'response_status': r.response_status,
     'Observação': r.observation,
     'ID do Checklist': r.task_id,
+    'Situação JD': JD_STATUS_LABEL[(r.jd_status as JdStatus) ?? 'sem_chassi'] ?? '',
   }));
 
 const XLSX = await import('xlsx');
