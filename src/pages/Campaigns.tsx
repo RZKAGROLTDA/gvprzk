@@ -69,6 +69,7 @@ import {
 } from '@/hooks/useCampaigns';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { useJdAdminAccess } from '@/hooks/useJdAdminAccess';
 import { cn } from '@/lib/utils';
 import { SpecialConditionsTab } from '@/components/campaigns/SpecialConditionsTab';
 import JdChassisTab from '@/components/campaigns/JdChassisTab';
@@ -225,7 +226,7 @@ const Campaigns: React.FC = () => {
   const canManageRules =
     profile?.role === 'manager' || profile?.role === 'admin' || profile?.role === 'supervisor';
   const canDeleteRules = profile?.role === 'manager' || profile?.role === 'admin';
-  const isAdmin = profile?.role === 'admin';
+  const { isAdmin } = useJdAdminAccess();
 
   return (
     <div className="space-y-6">
@@ -240,7 +241,7 @@ const Campaigns: React.FC = () => {
       </div>
 
       <Tabs defaultValue="entries" className="w-full">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start gap-1">
           <TabsTrigger value="entries">Lançamentos</TabsTrigger>
           <TabsTrigger value="summary">Resumo Vendedor</TabsTrigger>
           <TabsTrigger value="rules">Regras</TabsTrigger>
