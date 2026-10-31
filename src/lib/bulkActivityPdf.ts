@@ -38,13 +38,30 @@ export function matchesBulkFilters(row: BulkActivity & { filial_atendida?: strin
     && (f.jdStatus === 'all' || (row.task_type === 'checklist' && row.jd_status === f.jdStatus));
 }
 
-/** RLS is the ceiling; validate scope on the server, then narrow by the activity's branch. */
-export async function loadBulkActivities(filters: BulkFilters): Promise<BulkActivity[]> {
+async function validatedBranchName(filters: BulkFilters): Promise<string | null> {
   const { data: scope, error } = await supabase.rpc('effective_filial_ids', { p_filial_id: filters.filialId });
   if (error) throw error;
-  if ((scope?.length ?? 0) > 1 || (scope?.length === 1 && !filters.filialName)) {
-    throw new Error('Selecione uma única Filial Ativa autorizada.');
+  if ((scope?.length ?? 0) > 1) throw new Error('Selecione uma única Filial Ativa autorizada.');
+  const scopeId = scope?.[0];
+  if (!scopeId) {
+    if (filters.filialId || filters.filialName) throw new Error('Filial não corresponde ao escopo autorizado.');
+    return null;
   }
+  const { data: branches, error: branchError } = await supabase.from('filiais').select('id,nome').limit(1000);
+  if (branchError) throw branchError;
+  if (branches?.length === 1000) throw new Error('Não foi possível validar o cadastro completo de filiais.');
+  const branch = branches?.find(b => b.id === scopeId);
+  if (!branch || !filters.filialName || normalizeBranch(branch.nome) !== normalizeBranch(filters.filialName)
+    || branches?.filter(b => normalizeBranch(b.nome) === normalizeBranch(branch.nome)).length !== 1) {
+    throw new Error('Filial da atividade não corresponde unicamente à Filial Ativa autorizada.');
+  }
+  return branch.nome;
+}
+
+/** RLS is the ceiling; validate scope on the server, then narrow by the activity's branch. */
+export async function loadBulkActivities(filters: BulkFilters): Promise<BulkActivity[]> {
+  const branchName = await validatedBranchName(filters);
+  const validatedFilters = { ...filters, filialName: branchName };
   const result: BulkActivity[] = [];
   let after: string | null = null;
   for (;;) {
@@ -62,7 +79,7 @@ export async function loadBulkActivities(filters: BulkFilters): Promise<BulkActi
     const statuses = await classifyChecklistTasks(page.filter(r => r.task_type === 'checklist').map(r => r.id));
     for (const r of page) {
       r.jd_status = statuses.get(r.id);
-      if (matchesBulkFilters(r, filters)) result.push(r);
+      if (matchesBulkFilters(r, validatedFilters)) result.push(r);
     }
     if (page.length < 250) break;
     const next = page[page.length - 1]?.id;
@@ -112,14 +129,13 @@ export async function buildActivityZip(
 
 export async function generateAuthorizedActivityPdf(row: BulkActivity, filters: BulkFilters, filiais: { id: string; nome: string }[]): Promise<Blob> {
   // Read permission and filters again immediately before generating, not from cached list data.
-  const { error: scopeError } = await supabase.rpc('effective_filial_ids', { p_filial_id: filters.filialId });
-  if (scopeError) throw scopeError;
+  const branchName = await validatedBranchName(filters);
   const { data, error } = await supabase.from('tasks').select(columns).eq('id', row.id).limit(1);
   if (error) throw error;
   const current = data?.[0] as BulkActivity | undefined;
   if (!current) throw new Error('Atividade indisponível ou sem permissão.');
   if (current.task_type === 'checklist' && filters.jdStatus !== 'all') current.jd_status = (await classifyChecklistTasks([row.id])).get(row.id);
-  if (!matchesBulkFilters(current, filters)) throw new Error('Atividade não pertence mais aos filtros e à Filial Ativa selecionados.');
+  if (!matchesBulkFilters(current, { ...filters, filialName: branchName })) throw new Error('Atividade não pertence mais aos filtros e à Filial Ativa selecionados.');
   const blob = await generateReportPDF(row.id, { output: 'blob', filialId: filters.filialId, filiais });
   if (!(blob instanceof Blob)) throw new Error('PDF não gerado.');
   return blob;

@@ -61,7 +61,7 @@ export function BulkActivityPdfExport({ filters, ready, filiais }: Props) {
         setZip(result.blob);
         if (!result.blob) setError('Nenhum PDF completo foi gerado. Confira as falhas abaixo.');
       }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao gerar ZIP.'); }
+    } catch (e) { if (currentScope.current === startedScope) setError(e instanceof Error ? e.message : 'Falha ao gerar ZIP.'); }
     finally { setBusy(false); }
   };
   return (

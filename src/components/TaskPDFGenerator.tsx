@@ -758,6 +758,7 @@ export const generateTaskPDF = async (
     sectionTitle(`Registro Fotográfico (${task.photos.length})`);
 
     const maxPhotos = 12;
+    if (returnBlob && task.photos.length > maxPhotos) throw new Error('A atividade excede o limite de fotos do PDF atual; arquivo incompleto não incluído.');
     const photosToProcess = task.photos.slice(0, maxPhotos);
     const loaded = await Promise.all(photosToProcess.map(p => loadImageAsBase64(p)));
 

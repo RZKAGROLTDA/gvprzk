@@ -68,7 +68,8 @@ describe('PDFs em massa — regras', () => {
     mock.classify.mockResolvedValue(new Map());
     const pages = [Array.from({ length: 250 }, (_, i) => row(i + 1)), [row(251), { ...row(252), filial: 'Filial B' }]];
     const cursors: string[] = [];
-    mock.from.mockImplementation(() => {
+    mock.from.mockImplementation((table: string) => {
+      if (table === 'filiais') return { select: () => ({ limit: () => Promise.resolve({ data: [{ id: 'authorized', nome: 'Filial A' }], error: null }) }) };
       const q: Record<string, any> = {};
       for (const method of ['select', 'order', 'limit', 'gte', 'lte', 'eq', 'gt']) q[method] = (...args: unknown[]) => { if (method === 'gt') cursors.push(String(args[1])); return q; };
       q.in = () => Promise.resolve({ data: pages.shift(), error: null });
