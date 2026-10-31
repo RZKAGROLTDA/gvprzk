@@ -1,5 +1,9 @@
 # Roadmap
 
+## PDFs em massa — Relatórios
+- [ ] Reutilizar PDFs atuais em ZIP, seleção de todos os resultados filtrados, lotes pequenos e falhas individuais; sem alterar banco ou dados.
+- [ ] Testar 5, 20 e 50 atividades e verificar acesso e download; publicar somente se os testes essenciais passarem.
+
 ## Base JD — opção oculta (31/10/2026)
 - [x] Diagnóstico: navegação existe; visibilidade dependia de profiles.role legado em vez da autorização admin no servidor.
 - [x] Corrigir somente visibilidade com has_role e permitir quebra da barra de abas em telas menores, sem mudar banco/importação.
