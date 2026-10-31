@@ -212,7 +212,6 @@ const ServiceOpportunitiesTab: React.FC<Props> = ({
                   <SelectItem value="ok">OK — Primeiro registro</SelectItem>
                   <SelectItem value="duplicado">Duplicado</SelectItem>
                   <SelectItem value="sem_chassi">Sem chassi</SelectItem>
-                  <SelectItem value="nao_auditado">Não auditado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
