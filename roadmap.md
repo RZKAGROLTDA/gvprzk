@@ -1,5 +1,9 @@
 # Roadmap
 
+## Falha de carregamento do relatório
+- [ ] Proteger carregamento de páginas, repetir somente falhas transitórias e recuperar via atualização verificada, sem mudar dados ou permissões.
+- [ ] Verificar importação real do relatório e cenário de falha persistente no navegador.
+
 ## PDFs em massa — Relatórios
 - [x] PDFs atuais em ZIP com hidratação estrita, seleção de todos os resultados filtrados, lotes pequenos e falhas individuais; sem alterar banco ou dados.
 - [x] ZIPs de 5, 20 e 50 atividades sintéticas usando geradores reais; validação de filtros/escopo e falhas, download real de cinco PDFs e seleção entre páginas no navegador.

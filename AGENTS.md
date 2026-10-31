@@ -1,5 +1,7 @@
 # Project Architecture Rules
 
+- Route imports retry transport failures only and remain inside an ErrorBoundary; module recovery uses appUpdate's verified reload so unavailable deployments never blank the app or discard offline work.
+
 - Bulk activity PDFs use RLS-scoped keyset task listing and revalidate each activity before strict hydration through generateReportPDF; generators return their existing PDF as a Blob only for ZIP export, leaving individual downloads unchanged.
 
 - Base JD visibility uses useJdAdminAccess with the server has_role check, not the legacy profile role; multi-role administrators must retain access and import authorization stays server-side.

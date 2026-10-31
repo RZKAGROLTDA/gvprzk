@@ -21,6 +21,21 @@ const KEY_FAILED = 'app-update:failed-hash';
 
 export const APP_UPDATE_FAILED_EVENT = 'app-update-failed';
 
+/** Only transport failures are retryable; application exceptions must remain visible. */
+export const isModuleLoadError = (error: unknown): boolean =>
+  error instanceof Error && /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk .* failed|Failed to load module script/i.test(error.message);
+
+export async function retryPageImport<T>(load: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await load();
+    } catch (error) {
+      if (!isModuleLoadError(error) || attempt >= 2 || navigator.onLine === false) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+}
+
 export interface RemoteVersion {
   version?: string;
   buildHash?: string;

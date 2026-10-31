@@ -1,4 +1,7 @@
 import React from 'react';
+import { retryPageImport } from '@/lib/appUpdate';
+
+const lazyPage: typeof React.lazy = (load) => React.lazy(() => retryPageImport(load));
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster as HotToaster } from "react-hot-toast";
@@ -139,6 +142,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
 const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => {
   return (
     <BrowserRouter>
+      <ErrorBoundary title="Não foi possível carregar esta página">
       <React.Suspense fallback={<RouteFallback />}>
       <Routes>
         {/* Public routes - accessible without authentication */}
@@ -152,6 +156,7 @@ const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => 
         <Route path="/*" element={<ProtectedRoutes user={user} profile={profile} />} />
       </Routes>
       </React.Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 };
