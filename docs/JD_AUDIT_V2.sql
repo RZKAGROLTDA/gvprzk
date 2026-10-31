@@ -352,7 +352,6 @@ BEGIN
       public.jd_audit_status_of(t.id) AS jd_status
     FROM tasks t
     JOIN products p ON p.task_id = t.id
-    LEFT JOIN profiles pp ON pp.user_id = t.created_by
     LEFT JOIN profiles pf ON pf.user_id = t.created_by
     -- Filial efetiva = filial registrada na PRÓPRIA atividade (tasks.filial),
     -- vinculada ao cadastro de filiais; não usa a filial do cadastro do usuário.
