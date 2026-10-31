@@ -27,11 +27,11 @@ import { fetchTaskMedia } from '@/lib/taskMedia';
 import { mapSupabaseTaskToTask } from '@/lib/taskMapper';
 import type { Task } from '@/types/task';
 
-export async function fetchTaskForReport(taskId: string): Promise<Task | null> {
+export async function fetchTaskForReport(taskId: string, options?: { strict: boolean; filialId: string | null }): Promise<Task | null> {
   if (!taskId) return null;
 
   const [taskResult, productsResult, remindersResult, media] = await Promise.all([
-    supabase.rpc('get_secure_task_by_id', { p_task_id: taskId, p_filial_id: await currentActiveFilialId() }),
+    supabase.rpc('get_secure_task_by_id', { p_task_id: taskId, p_filial_id: options ? options.filialId : await currentActiveFilialId() }),
     supabase
       .from('products')
       .select('id, task_id, name, category, selected, quantity, price, observations, photos, response_status, response_notes')
@@ -46,6 +46,10 @@ export async function fetchTaskForReport(taskId: string): Promise<Task | null> {
   if (taskResult.error) throw taskResult.error;
   const taskRow = taskResult.data?.[0] ?? null;
   if (!taskRow) return null;
+
+  if (options?.strict && (productsResult.error || remindersResult.error || !media.ok)) {
+    throw new Error('Não foi possível carregar todos os dados e anexos da atividade.');
+  }
 
   if (!media.ok) {
     // Não silenciar: sinaliza para o gerador de relatório que a mídia falhou.

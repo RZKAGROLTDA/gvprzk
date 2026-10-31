@@ -72,7 +72,8 @@ export const generateTaskPDF = async (
   task: Task,
   _calculateTotalValue?: (task: any) => number,
   getTaskTypeLabel: (type: string) => string = defaultGetTaskTypeLabel,
-  filiais: any[] = []
+  filiais: any[] = [],
+  returnBlob = false,
 ) => {
 
 
@@ -757,6 +758,7 @@ export const generateTaskPDF = async (
     sectionTitle(`Registro Fotográfico (${task.photos.length})`);
 
     const maxPhotos = 12;
+    if (returnBlob && task.photos.length > maxPhotos) throw new Error('A atividade excede o limite de fotos do PDF atual; arquivo incompleto não incluído.');
     const photosToProcess = task.photos.slice(0, maxPhotos);
     const loaded = await Promise.all(photosToProcess.map(p => loadImageAsBase64(p)));
 
@@ -780,9 +782,11 @@ export const generateTaskPDF = async (
           pdf.text(`Foto ${i + 1}`, currentX + fw / 2, yPos + fh + 3, { align: 'center' });
           pdf.setTextColor(0, 0, 0);
         } catch {
+          if (returnBlob) throw new Error(`Falha ao incorporar foto ${i + 1}.`);
           pdf.setFontSize(8); pdf.text(`${i + 1}. (erro ao carregar)`, currentX, yPos);
         }
       } else {
+        if (returnBlob) throw new Error(`Falha ao carregar foto ${i + 1}.`);
         pdf.setFontSize(8);
         pdf.text(`${i + 1}. ${photosToProcess[i].substring(0, 40)}…`, currentX, yPos);
       }
@@ -869,5 +873,6 @@ export const generateTaskPDF = async (
 
   const clientName = (task.client || 'cliente').replace(/\s+/g, '-').toLowerCase();
   const filePrefix = 'visita';
+  if (returnBlob) return pdf.output('blob');
   pdf.save(`${filePrefix}-${clientName}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
 };

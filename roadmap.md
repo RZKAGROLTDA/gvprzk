@@ -1,5 +1,15 @@
 # Roadmap
 
+## Falha de carregamento do relatório
+- [x] Todas as páginas protegidas contra falhas de importação, três tentativas apenas para erro de transporte e recuperação via atualização verificada; sem mudar dados ou permissões.
+- [x] Importação real de SalesFunnel passou; falha persistente simulada mostrou recuperação em vez de tela branca e não recarregou com versão indisponível; 13 testes passaram e build OK.
+
+## PDFs em massa — Relatórios
+- [x] PDFs atuais em ZIP com hidratação estrita, seleção de todos os resultados filtrados, lotes pequenos e falhas individuais; sem alterar banco ou dados.
+- [x] ZIPs de 5, 20 e 50 atividades sintéticas usando geradores reais; validação de filtros/escopo e falhas, download real de cinco PDFs e seleção entre páginas no navegador.
+- [ ] Conferência autenticada por perfil e Filial Ativa — bloqueada pela conexão Supabase externa sem sessão disponível; testes sintéticos não substituem essa validação.
+- [x] Publicação solicitada após dez testes passando; conferência autenticada permanece explicitamente não verificada.
+
 ## Base JD — opção oculta (31/10/2026)
 - [x] Diagnóstico: navegação existe; visibilidade dependia de profiles.role legado em vez da autorização admin no servidor.
 - [x] Corrigir somente visibilidade com has_role e permitir quebra da barra de abas em telas menores, sem mudar banco/importação.
