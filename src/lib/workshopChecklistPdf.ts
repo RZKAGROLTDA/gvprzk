@@ -128,6 +128,7 @@ const statusColor = (s: ChecklistStatus): [number, number, number] =>
 export const generateWorkshopChecklistPDF = async (
   task: Task,
   filiais: any[] = [],
+  returnBlob = false,
 ) => {
   const report = buildWorkshopChecklistReport(task);
   // Instrumentação de diagnóstico (somente observabilidade).
@@ -669,7 +670,13 @@ export const generateWorkshopChecklistPDF = async (
   const safeClient = (task.client || 'cliente').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 40);
   const dateStr = task.startDate ? format(new Date(task.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
   // Resumo final de diagnóstico de mídia (uma única vez, ao final).
-  mediaDiag.summary();
+  const summary = mediaDiag.summary();
+  if (returnBlob) {
+    if (summary.Falhas > 0 || report.machineState === 'persistence_error') {
+      throw new Error('Checklist incompleto: falha ao carregar máquina ou fotos.');
+    }
+    return pdf.output('blob');
+  }
   pdf.save(`checklist-oficina_${safeClient}_${dateStr}.pdf`);
 };
 

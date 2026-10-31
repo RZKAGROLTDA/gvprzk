@@ -28,6 +28,8 @@ import { fetchTaskForReport } from '@/lib/fetchTaskForReport';
  */
 
 export interface GenerateReportPDFOptions {
+  /** Bulk export only: return the same PDF without triggering a download. */
+  output?: 'blob';
   filiais?: any[];
   /**
    * Gerador a ser executado quando o dispatcher não tem uma rota especializada
@@ -42,7 +44,7 @@ export interface GenerateReportPDFOptions {
 export async function generateReportPDF(
   taskOrId: Task | string | null | undefined,
   opts: GenerateReportPDFOptions = {}
-): Promise<void> {
+): Promise<void | Blob> {
   if (!taskOrId) return;
 
   // Hidratação obrigatória — o PDF nunca depende do estado atual do componente.
@@ -53,6 +55,7 @@ export async function generateReportPDF(
   try {
     fullTask = await fetchTaskForReport(taskId);
   } catch (e) {
+    if (opts.output === 'blob') throw e;
     console.warn('[generateReportPDF] fetchTaskForReport falhou, usando fallback do caller:', e);
   }
 
@@ -61,27 +64,30 @@ export async function generateReportPDF(
   if (!fullTask && typeof taskOrId !== 'string') {
     fullTask = taskOrId;
   }
-  if (!fullTask) return;
+  if (!fullTask) {
+    if (opts.output === 'blob') throw new Error('Atividade indisponível ou sem permissão na Filial Ativa.');
+    return;
+  }
 
   // Rota 1: Checklist da Oficina — sempre o gerador técnico unificado.
   if (fullTask.taskType === 'checklist') {
     const { generateWorkshopChecklistPDF } = await import('./workshopChecklistPdf');
-    await generateWorkshopChecklistPDF(fullTask, opts.filiais ?? []);
-    return;
+    return await generateWorkshopChecklistPDF(fullTask, opts.filiais ?? [], opts.output === 'blob');
   }
 
   // Rota 2: qualquer outro tipo — usa o fallback da tela, se houver.
-  if (opts.fallback) {
+  if (opts.fallback && opts.output !== 'blob') {
     await opts.fallback(fullTask);
     return;
   }
 
   // Rota 3: sem fallback → gerador geral de tarefa (visitas, ligações, etc.).
   const { generateTaskPDF } = await import('@/components/TaskPDFGenerator');
-  await generateTaskPDF(
+  return await generateTaskPDF(
     fullTask,
     opts.calculateTotalValue,
     opts.getTaskTypeLabel,
-    opts.filiais ?? []
+    opts.filiais ?? [],
+    opts.output === 'blob'
   );
 }
