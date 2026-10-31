@@ -77,3 +77,28 @@ describe('Auditoria JD — prévia do arquivo de importação', () => {
     expect(preview.validos).toBe(0);
   });
 });
+
+import { extractJdChassisFromRows } from './jdChassis';
+
+describe('extractJdChassisFromRows (coluna pelo cabeçalho)', () => {
+  it('usa a coluna Chassi mesmo com nome do cliente na primeira coluna', () => {
+    const rows = [
+      ['Cliente', 'Filial', 'Chassi da Máquina'],
+      ['PAULO HENRIQUE CARLOS DE OLIVEIRA', 'X', '1CQ2122AKG0110160'],
+      ['IVO CANDIOTTO', 'Y', '1cq2122akg 0110160'],
+      ['DIEGO GIONGO', 'Z', '1BZ6155MCPA123456'],
+    ];
+    const r = extractJdChassisFromRows(rows);
+    expect(r.column).toBe('Chassi da Máquina');
+    expect(r.values).toEqual(['1CQ2122AKG0110160', '1cq2122akg 0110160', '1BZ6155MCPA123456']);
+  });
+
+  it('bloqueia arquivo sem cabeçalho de chassi', () => {
+    expect(() => extractJdChassisFromRows([['Cliente'], ['IVO CANDIOTTO']])).toThrow(/não identificada/);
+  });
+
+  it('bloqueia coluna de chassi com nomes de clientes', () => {
+    const rows = [['Chassi'], ['IVO CANDIOTTO'], ['DIEGO GIONGO'], ['1CQ2122AKG0110160']];
+    expect(() => extractJdChassisFromRows(rows)).toThrow(/não parece conter chassis/);
+  });
+});

@@ -39,6 +39,7 @@ const JdChassisTab: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [raw, setRaw] = useState<string[]>([]);
   const [preview, setPreview] = useState<JdFilePreview | null>(null);
+  const [columnInfo, setColumnInfo] = useState<{ column: string; samples: string[] } | null>(null);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -73,6 +74,7 @@ const JdChassisTab: React.FC = () => {
     setFile(null);
     setRaw([]);
     setPreview(null);
+    setColumnInfo(null);
     setProgress(null);
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -81,15 +83,11 @@ const JdChassisTab: React.FC = () => {
     if (!f) return;
     setParsing(true);
     try {
-      const lines = await parseJdChassisFile(f);
-      if (lines.length === 0) {
-        toast.error('Nenhum chassi encontrado na primeira coluna do arquivo.');
-        resetSelection();
-        return;
-      }
+      const parsed = await parseJdChassisFile(f);
       setFile(f);
-      setRaw(lines);
-      setPreview(previewJdFile(lines));
+      setRaw(parsed.values);
+      setColumnInfo({ column: parsed.column, samples: parsed.samples });
+      setPreview(previewJdFile(parsed.values));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao ler o arquivo.');
       resetSelection();
@@ -179,8 +177,14 @@ const JdChassisTab: React.FC = () => {
 
           {preview && (
             <div className="rounded-lg border p-4 space-y-3">
+              {columnInfo && (
+                <div className="text-sm space-y-1">
+                  <p>Coluna utilizada: <span className="font-semibold">{columnInfo.column}</span></p>
+                  <p className="text-muted-foreground break-all">Exemplos: {columnInfo.samples.join(', ')}</p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">{preview.total} linhas</Badge>
+                <Badge variant="secondary">{preview.total} registros</Badge>
                 <Badge variant="success">{preview.validos} válidos únicos</Badge>
                 <Badge variant="warning">{preview.duplicadosArquivo} duplicados no arquivo</Badge>
                 <Badge variant="destructive">{preview.invalidos} inválidos</Badge>
@@ -240,8 +244,8 @@ const JdChassisTab: React.FC = () => {
                         {b.filename}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <Badge variant={b.status === 'concluido' ? 'success' : 'warning'}>
-                          {b.status === 'concluido' ? 'Concluída' : 'Interrompida'}
+                        <Badge variant={b.status === 'concluido' ? 'success' : b.status === 'cancelado' ? 'destructive' : 'warning'}>
+                          {b.status === 'concluido' ? 'Concluída' : b.status === 'cancelado' ? 'Cancelada (importação incorreta)' : 'Interrompida'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{b.total_linhas}</TableCell>

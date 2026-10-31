@@ -57,15 +57,81 @@ export async function classifyChecklistTasks(taskIds: string[]): Promise<Map<str
   return map;
 }
 
-/** Extrai os chassis da primeira coluna de um arquivo Excel/CSV. */
-export async function parseJdChassisFile(file: File): Promise<string[]> {
+const normHeader = (v: unknown): string =>
+  String(v ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/** Pontuação do cabeçalho: quanto maior, mais provável ser a coluna de chassi. */
+const headerScore = (h: string): number => {
+  if (!h) return 0;
+  if (/\bchassi(s)?\b/.test(h) || /\bchassis?\b/.test(h)) return 3;
+  if (/\b(n|num|numero|no)?\s*(de\s*)?serie\b/.test(h) || /\bserial\b/.test(h) || /\bpin\b/.test(h)) return 2;
+  return 0;
+};
+
+/** Chassi plausível: formato válido e contém ao menos um dígito (nomes não passam). */
+export const looksLikeChassis = (value: string): boolean => {
+  const n = normalizeChassis(value);
+  return isValidChassis(n) && /\d/.test(n);
+};
+
+/** Mínimo de valores compatíveis com chassi na coluna escolhida. */
+export const MIN_CHASSIS_RATIO = 0.8;
+
+export interface JdParsedFile {
+  column: string;
+  values: string[];
+  samples: string[];
+}
+
+/**
+ * Localiza a coluna de chassi pelo cabeçalho (qualquer posição, cabeçalho
+ * nas 10 primeiras linhas) e extrai seus valores. Lança erro — bloqueando a
+ * importação — se a coluna não for identificada ou não contiver chassis.
+ */
+export function extractJdChassisFromRows(rows: unknown[][]): JdParsedFile {
+  let best: { row: number; col: number; score: number } | null = null;
+  for (let r = 0; r < Math.min(rows.length, 10); r++) {
+    const row = rows[r] || [];
+    for (let c = 0; c < row.length; c++) {
+      const score = headerScore(normHeader(row[c]));
+      if (score > 0 && (!best || score > best.score)) best = { row: r, col: c, score };
+    }
+    if (best) break;
+  }
+  if (!best) {
+    throw new Error('Coluna de chassi não identificada. O arquivo precisa ter um cabeçalho como "Chassi" ou "Número de Série". Nada foi importado.');
+  }
+  const column = String(rows[best.row][best.col] ?? '').trim();
+  const values = rows
+    .slice(best.row + 1)
+    .map((r) => String((r || [])[best!.col] ?? '').trim())
+    .filter((v) => v !== '');
+  if (values.length === 0) {
+    throw new Error(`A coluna "${column}" está vazia. Nada foi importado.`);
+  }
+  const ok = values.filter(looksLikeChassis).length;
+  if (ok / values.length < MIN_CHASSIS_RATIO) {
+    throw new Error(
+      `A coluna "${column}" não parece conter chassis (${ok} de ${values.length} valores compatíveis). Nada foi importado.`,
+    );
+  }
+  return { column, values, samples: values.slice(0, 5) };
+}
+
+/** Lê o Excel/CSV e extrai a coluna de chassi identificada pelo cabeçalho. */
+export async function parseJdChassisFile(file: File): Promise<JdParsedFile> {
   const XLSX = await import('xlsx');
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: 'array' });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  if (!ws) return [];
+  if (!ws) throw new Error('Arquivo sem planilhas. Nada foi importado.');
   const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false, defval: '' });
-  return rows.map((r) => String((r as unknown[])[0] ?? '').trim()).filter((v) => v !== '');
+  return extractJdChassisFromRows(rows as unknown[][]);
 }
 
 export interface JdFilePreview {
