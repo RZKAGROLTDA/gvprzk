@@ -47,6 +47,11 @@ const useNavigationItems = () => {
         label: 'CRM'
       },
       {
+        path: '/reports',
+        icon: BarChart3,
+        label: 'Relatórios'
+      },
+      {
         path: '/equipamentos',
         icon: Tractor,
         label: 'Parque de Máquinas'
