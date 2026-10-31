@@ -41,6 +41,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { resolveFilialIdForFilter } from '@/lib/filialResolver';
 import { useFilteredConsultants } from '@/hooks/useFilteredConsultants';
 import { useActiveFilialFilter } from '@/hooks/useActiveFilialFilter';
+import { BulkActivityPdfExport } from '@/components/reports/BulkActivityPdfExport';
 
 interface FilialOption {
   id: string;
@@ -320,7 +321,7 @@ const Reports: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Consultor</label>
+                <label className="text-sm font-medium">Responsável</label>
                 <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os consultores" />
@@ -408,6 +409,14 @@ const Reports: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      <BulkActivityPdfExport
+        ready={isScopeReady}
+        filiais={filiais}
+        filters={{ start: startStr, end: endStr, filialId: filialFilter,
+          filialName: selectedFilialName || null, responsibleId: responsibleUserId,
+          filialAtendida: selectedFilialAtendida === 'all' ? null : selectedFilialAtendida }}
+      />
 
       {/* Resumo Geral */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">

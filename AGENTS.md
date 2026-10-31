@@ -1,5 +1,7 @@
 # Project Architecture Rules
 
+- Bulk activity PDFs use RLS-scoped keyset task listing and revalidate each activity before strict hydration through generateReportPDF; generators return their existing PDF as a Blob only for ZIP export, leaving individual downloads unchanged.
+
 - Base JD visibility uses useJdAdminAccess with the server has_role check, not the legacy profile role; multi-role administrators must retain access and import authorization stays server-side.
 
 - Special Conditions loads date-scoped rows through RLS with ascending-ID keyset pages of at most 1,000; only complete results feed the table, indicators and Excel, preventing truncated totals.
