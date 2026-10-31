@@ -133,22 +133,27 @@ BEGIN
     RAISE EXCEPTION 'Envie até 1000 linhas por lote' USING ERRCODE = '22023';
   END IF;
 
-  CREATE TEMP TABLE _in ON COMMIT DROP AS
-  SELECT (e->>'row')::integer AS rn, (e->>'task_id')::uuid AS task_id,
-         coalesce(e->>'chassi','') AS original
-  FROM jsonb_array_elements(p_rows) e;
-
-  SELECT count(*) INTO v_bad FROM _in i LEFT JOIN tasks t ON t.id = i.task_id
-  WHERE i.rn IS NULL OR i.task_id IS NULL OR t.id IS NULL OR t.task_type IS DISTINCT FROM 'checklist'
-     OR public.normalize_chassis(i.original) <> public.normalize_chassis(coalesce(t.checklist_machine->>'chassi_serie',''));
+  -- Sem tabela temporária: tudo em CTE, isolado por chamada.
+  SELECT count(*) INTO v_bad
+  FROM jsonb_array_elements(p_rows) e
+  LEFT JOIN tasks t ON t.id = (e->>'task_id')::uuid
+  WHERE (e->>'row') IS NULL OR (e->>'task_id') IS NULL
+     OR t.id IS NULL OR t.task_type IS DISTINCT FROM 'checklist'
+     OR public.normalize_chassis(coalesce(e->>'chassi',''))
+        <> public.normalize_chassis(coalesce(t.checklist_machine->>'chassi_serie',''));
   IF v_bad > 0 THEN
     RAISE EXCEPTION '% linha(s) com ID inexistente, que não é checklist ou com chassi divergente da ficha; lote rejeitado', v_bad USING ERRCODE = '22023';
   END IF;
 
-  INSERT INTO jd_audit_rows (import_id, row_number, task_id, chassi_original, chassi_normalizado)
-  SELECT p_import_id, rn, task_id, trim(original), public.normalize_chassis(original) FROM _in;
-  -- violação de UNIQUE (linha ou ID repetido) aborta o lote inteiro.
-  GET DIAGNOSTICS v_n = ROW_COUNT;
+  WITH ins AS (
+    INSERT INTO jd_audit_rows (import_id, row_number, task_id, chassi_original, chassi_normalizado)
+    SELECT p_import_id, (e->>'row')::integer, (e->>'task_id')::uuid,
+           trim(coalesce(e->>'chassi','')), public.normalize_chassis(coalesce(e->>'chassi',''))
+    FROM jsonb_array_elements(p_rows) e
+    RETURNING 1
+  )
+  SELECT count(*) INTO v_n FROM ins;
+  -- linha ou ID repetido viola UNIQUE e aborta o lote inteiro.
 
   UPDATE jd_audit_imports SET processadas = processadas + v_n WHERE id = p_import_id;
   RETURN v_n;
@@ -300,7 +305,7 @@ DECLARE
   v_is_admin boolean;
   v_is_manager boolean;
   v_is_supervisor boolean;
-  v_supervisor_filial uuid;
+  v_scope uuid[];
   v_limit integer := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 5000);
   v_offset integer := GREATEST(COALESCE(p_offset, 0), 0);
 BEGIN
@@ -308,7 +313,12 @@ BEGIN
   v_is_admin := has_role(v_user_id, 'admin'::app_role);
   v_is_manager := has_role(v_user_id, 'manager'::app_role);
   v_is_supervisor := has_role(v_user_id, 'supervisor'::app_role);
-  IF v_is_supervisor THEN v_supervisor_filial := get_supervisor_filial_id(v_user_id); END IF;
+  -- Filial Ativa: valida principal + adicionais (42501 se não autorizada).
+  -- Globais sem filial => '{}' (sem filtro). Não-globais: exatamente UMA.
+  v_scope := public.effective_filial_ids(p_filial_id);
+  IF NOT (v_is_admin OR v_is_manager) AND COALESCE(cardinality(v_scope), 0) <> 1 THEN
+    RAISE EXCEPTION 'Acesso negado: selecione uma Filial Ativa autorizada' USING ERRCODE = '42501';
+  END IF;
 
   RETURN QUERY
   WITH primary_role AS (
@@ -351,7 +361,7 @@ BEGIN
       AND map_checklist_item_to_service(p.name) IS NOT NULL
       AND (p_start_date IS NULL OR t.start_date >= p_start_date)
       AND (p_end_date IS NULL OR t.start_date <= p_end_date)
-      AND (p_filial_id IS NULL OR pp.filial_id = p_filial_id)
+      AND (cardinality(v_scope) = 0 OR pp.filial_id = ANY(v_scope))
       AND (p_seller_id IS NULL OR t.created_by = p_seller_id)
       AND (p_seller_role IS NULL OR COALESCE(pr.role, 'consultant') = p_seller_role)
       AND (p_machine_type IS NULL OR LOWER(TRIM(COALESCE(t.checklist_machine->>'tipo',''))) = LOWER(TRIM(p_machine_type)))
@@ -360,7 +370,7 @@ BEGIN
       AND (p_severity IS NULL OR (CASE p.response_status WHEN 'nao_conforme' THEN 'alta' ELSE 'media' END) = LOWER(TRIM(p_severity)))
       AND (
         v_is_admin OR v_is_manager
-        OR (v_is_supervisor AND pp.filial_id = v_supervisor_filial)
+        OR v_is_supervisor
         OR t.created_by = v_user_id
       )
   ),
