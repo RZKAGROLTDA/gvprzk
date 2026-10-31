@@ -376,8 +376,8 @@ BEGIN
       )
   ),
   filtered AS (
-    SELECT * FROM rows_data
-    WHERE p_jd_status IS NULL OR jd_status = LOWER(TRIM(p_jd_status))
+    SELECT rd.* FROM rows_data rd
+    WHERE p_jd_status IS NULL OR rd.jd_status = LOWER(TRIM(p_jd_status))
   )
   SELECT r.task_id, r.checklist_date, r.filial_nome, r.seller_id, r.seller_name, r.seller_role,
     r.client_name, r.client_code, r.machine_type, r.machine_model, r.machine_serial,
