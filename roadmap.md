@@ -1,5 +1,10 @@
 # Roadmap
 
+## PDFs em massa — opção ausente
+- [x] Causa identificada: Reports existia mas não tinha rota nem item de menu; por isso nem era incluído no bundle publicado.
+- [x] Registrar /reports e adicionar Relatórios na navegação existente, sem mudar filtros, dados ou permissões.
+- [ ] Validar importação/menu e publicar; confirmar código e login no site publicado.
+
 ## Falha de carregamento do relatório
 - [x] Todas as páginas protegidas contra falhas de importação, três tentativas apenas para erro de transporte e recuperação via atualização verificada; sem mudar dados ou permissões.
 - [x] Importação real de SalesFunnel passou; falha persistente simulada mostrou recuperação em vez de tela branca e não recarregou com versão indisponível; 13 testes passaram e build OK.

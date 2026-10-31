@@ -35,6 +35,7 @@ const Equipamentos = lazyPage(() => import("./pages/Equipamentos"));
 const Pops = lazyPage(() => import("./pages/Pops"));
 const PerformanceByFilial = lazyPage(() => import("./pages/PerformanceByFilial"));
 const PerformanceBySeller = lazyPage(() => import("./pages/PerformanceBySeller"));
+const Reports = lazyPage(() => import("./pages/Reports"));
 
 const InviteAccept = lazyPage(() => import("./pages/InviteAccept"));
 const UserRegistration = lazyPage(() => import("./pages/UserRegistration"));
@@ -123,6 +124,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/vacations" element={<Layout><ErrorBoundary title="Não foi possível exibir a Agenda de Férias"><Vacations /></ErrorBoundary></Layout>} />
       <Route path="/campaigns" element={<Layout><Campaigns /></Layout>} />
       <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />
+      <Route path="/reports" element={<Layout><Reports /></Layout>} />
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
       <Route path="/users" element={<Layout><Users /></Layout>} />
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />
