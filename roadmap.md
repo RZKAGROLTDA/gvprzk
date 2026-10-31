@@ -142,3 +142,4 @@
 - [ ] JD import: contar todas as linhas (repetidas no lote) e só concluir com processadas = total_linhas
 
 - [ ] Auditoria JD V2: revisão (chassi divergente, status_of interno, vigência) — aguardando aprovação do SQL
+- [ ] Auditoria JD V2: append sem tabela temporária; Supervisor por Filial Ativa (principal/adicional) — aguardando aprovação
