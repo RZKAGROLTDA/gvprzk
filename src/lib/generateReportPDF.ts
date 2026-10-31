@@ -30,6 +30,7 @@ import { fetchTaskForReport } from '@/lib/fetchTaskForReport';
 export interface GenerateReportPDFOptions {
   /** Bulk export only: return the same PDF without triggering a download. */
   output?: 'blob';
+  filialId?: string | null;
   filiais?: any[];
   /**
    * Gerador a ser executado quando o dispatcher não tem uma rota especializada
@@ -53,7 +54,9 @@ export async function generateReportPDF(
 
   let fullTask: Task | null = null;
   try {
-    fullTask = await fetchTaskForReport(taskId);
+    fullTask = await fetchTaskForReport(taskId, opts.output === 'blob'
+      ? { strict: true, filialId: opts.filialId ?? null }
+      : undefined);
   } catch (e) {
     if (opts.output === 'blob') throw e;
     console.warn('[generateReportPDF] fetchTaskForReport falhou, usando fallback do caller:', e);
