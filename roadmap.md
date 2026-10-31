@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Falha de carregamento do relatório
-- [ ] Proteger carregamento de páginas, repetir somente falhas transitórias e recuperar via atualização verificada, sem mudar dados ou permissões.
-- [ ] Verificar importação real do relatório e cenário de falha persistente no navegador.
+- [x] Todas as páginas protegidas contra falhas de importação, três tentativas apenas para erro de transporte e recuperação via atualização verificada; sem mudar dados ou permissões.
+- [x] Importação real de SalesFunnel passou; falha persistente simulada mostrou recuperação em vez de tela branca e não recarregou com versão indisponível; 13 testes passaram e build OK.
 
 ## PDFs em massa — Relatórios
 - [x] PDFs atuais em ZIP com hidratação estrita, seleção de todos os resultados filtrados, lotes pequenos e falhas individuais; sem alterar banco ou dados.
