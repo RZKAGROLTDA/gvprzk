@@ -133,3 +133,4 @@
 - [ ] Publicação bloqueada até autorização explícita.
 - [x] Telas implementadas: aba Base JD (admin) em Campanhas, coluna/filtro Situação JD em Oportunidades de Serviço, coluna no Excel de Checklists e no Excel de Oportunidades. 14 testes passaram; typecheck limpo.
 - [ ] SQL definitivo em docs/JD_CHASSIS_AUDIT.sql aguardando aprovação antes da migração.
+- [ ] JD import: contar todas as linhas (repetidas no lote) e só concluir com processadas = total_linhas

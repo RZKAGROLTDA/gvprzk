@@ -31,6 +31,7 @@ CREATE TABLE public.jd_chassis_import_batches (
   novos integer NOT NULL DEFAULT 0,
   duplicados integer NOT NULL DEFAULT 0,
   invalidos integer NOT NULL DEFAULT 0,
+  processadas integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   concluded_at timestamptz
 );
@@ -96,14 +97,15 @@ SET search_path TO 'public'
 AS $$
 DECLARE
   v_status text;
-  v_valid integer;
+  v_total integer;
   v_invalid integer;
   v_inserted integer;
 BEGIN
   IF NOT has_role(auth.uid(), 'admin'::app_role) THEN
     RAISE EXCEPTION 'Acesso negado: somente administradores podem importar a base JD' USING ERRCODE = '42501';
   END IF;
-  SELECT status INTO v_status FROM jd_chassis_import_batches WHERE id = p_batch_id;
+  -- Trava o lote: evita contagens concorrentes no mesmo lote.
+  SELECT status INTO v_status FROM jd_chassis_import_batches WHERE id = p_batch_id FOR UPDATE;
   IF v_status IS NULL THEN
     RAISE EXCEPTION 'Lote de importação não encontrado';
   END IF;
@@ -111,35 +113,46 @@ BEGIN
     RAISE EXCEPTION 'Lote já finalizado; inicie uma nova importação';
   END IF;
 
-  WITH norm AS (
-    SELECT public.normalize_chassis(c) AS n, min(c) AS original
+  -- Cada linha recebida é contada (sem DISTINCT): 
+  --   inválida  -> invalidos
+  --   1ª ocorrência válida inexistente na base -> novos
+  --   demais válidas (já na base OU repetidas no mesmo arquivo) -> duplicados
+  -- Invariante: novos + duplicados + invalidos = linhas recebidas.
+  WITH rows_in AS (
+    SELECT c AS original, public.normalize_chassis(c) AS n
     FROM unnest(coalesce(p_chassis, ARRAY[]::text[])) AS c
-    GROUP BY 1
   ),
-  classified AS (
-    SELECT n, original, (n <> '' AND n ~ '^[A-Z0-9]{5,30}$') AS valido
-    FROM norm
+  firsts AS (
+    SELECT n, min(original) AS original
+    FROM rows_in
+    WHERE n ~ '^[A-Z0-9]{5,30}$'
+    GROUP BY n
   ),
   ins AS (
     INSERT INTO jd_chassis_base (chassi_normalizado, chassi_original, batch_id)
-    SELECT n, original, p_batch_id FROM classified WHERE valido
+    SELECT n, original, p_batch_id FROM firsts
     ON CONFLICT (chassi_normalizado) DO NOTHING
     RETURNING 1
   )
   SELECT
-    coalesce(sum(CASE WHEN valido THEN 1 ELSE 0 END), 0),
-    coalesce(sum(CASE WHEN valido THEN 0 ELSE 1 END), 0),
+    (SELECT count(*) FROM rows_in),
+    (SELECT count(*) FROM rows_in WHERE NOT (n ~ '^[A-Z0-9]{5,30}$')),
     (SELECT count(*) FROM ins)
-  INTO v_valid, v_invalid, v_inserted
-  FROM classified;
+  INTO v_total, v_invalid, v_inserted;
 
   UPDATE jd_chassis_import_batches
   SET novos = novos + v_inserted,
-      duplicados = duplicados + (v_valid - v_inserted),
-      invalidos = invalidos + v_invalid
+      duplicados = duplicados + (v_total - v_invalid - v_inserted),
+      invalidos = invalidos + v_invalid,
+      processadas = processadas + v_total
   WHERE id = p_batch_id;
 
-  RETURN jsonb_build_object('novos', v_inserted, 'duplicados', v_valid - v_inserted, 'invalidos', v_invalid);
+  RETURN jsonb_build_object(
+    'recebidas', v_total,
+    'novos', v_inserted,
+    'duplicados', v_total - v_invalid - v_inserted,
+    'invalidos', v_invalid
+  );
 END;
 $$;
 
@@ -155,18 +168,26 @@ BEGIN
   IF NOT has_role(auth.uid(), 'admin'::app_role) THEN
     RAISE EXCEPTION 'Acesso negado: somente administradores podem importar a base JD' USING ERRCODE = '42501';
   END IF;
-  UPDATE jd_chassis_import_batches
-  SET status = 'concluido', concluded_at = now()
-  WHERE id = p_batch_id AND status = 'processando'
-  RETURNING * INTO v_row;
-  IF v_row.id IS NULL THEN
+  SELECT * INTO v_row FROM jd_chassis_import_batches WHERE id = p_batch_id FOR UPDATE;
+  IF v_row.id IS NULL OR v_row.status <> 'processando' THEN
     RAISE EXCEPTION 'Lote não encontrado ou já finalizado';
   END IF;
+  -- Só conclui se TODAS as linhas informadas na abertura foram processadas.
+  IF v_row.processadas <> v_row.total_linhas
+     OR v_row.novos + v_row.duplicados + v_row.invalidos <> v_row.total_linhas THEN
+    RAISE EXCEPTION 'Importação incompleta: % de % linhas processadas; o lote permanece em processamento',
+      v_row.processadas, v_row.total_linhas USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE jd_chassis_import_batches
+  SET status = 'concluido', concluded_at = now()
+  WHERE id = p_batch_id
+  RETURNING * INTO v_row;
   RETURN jsonb_build_object(
     'novos', v_row.novos,
     'duplicados', v_row.duplicados,
     'invalidos', v_row.invalidos,
-    'total_linhas', v_row.total_linhas
+    'total_linhas', v_row.total_linhas,
+    'processadas', v_row.processadas
   );
 END;
 $$;
