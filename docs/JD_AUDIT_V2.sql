@@ -354,14 +354,16 @@ BEGIN
     JOIN products p ON p.task_id = t.id
     LEFT JOIN profiles pp ON pp.user_id = t.created_by
     LEFT JOIN profiles pf ON pf.user_id = t.created_by
-    LEFT JOIN filiais f ON f.id = pp.filial_id
+    -- Filial efetiva = filial registrada na PRÓPRIA atividade (tasks.filial),
+    -- vinculada ao cadastro de filiais; não usa a filial do cadastro do usuário.
+    LEFT JOIN filiais f ON LOWER(TRIM(f.nome)) = LOWER(TRIM(t.filial))
     LEFT JOIN primary_role pr ON pr.user_id = t.created_by
     WHERE t.task_type = 'checklist'
       AND p.response_status IN ('atencao','nao_conforme')
       AND map_checklist_item_to_service(p.name) IS NOT NULL
       AND (p_start_date IS NULL OR t.start_date >= p_start_date)
       AND (p_end_date IS NULL OR t.start_date <= p_end_date)
-      AND (cardinality(v_scope) = 0 OR pp.filial_id = ANY(v_scope))
+      AND (cardinality(v_scope) = 0 OR f.id = ANY(v_scope))
       AND (p_seller_id IS NULL OR t.created_by = p_seller_id)
       AND (p_seller_role IS NULL OR COALESCE(pr.role, 'consultant') = p_seller_role)
       AND (p_machine_type IS NULL OR LOWER(TRIM(COALESCE(t.checklist_machine->>'tipo',''))) = LOWER(TRIM(p_machine_type)))
