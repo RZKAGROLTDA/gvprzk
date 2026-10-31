@@ -99,8 +99,8 @@ const JdAuditImportCard: React.FC = () => {
     } finally {
       setBusy(null);
       qc.invalidateQueries({ queryKey: ['jd-audit-imports'] });
-      qc.invalidateQueries({ queryKey: ['jd-classify'] });
-      qc.invalidateQueries({ queryKey: ['service-opportunities'] });
+      qc.invalidateQueries({ queryKey: ['jd-classify-report'] });
+      qc.invalidateQueries({ queryKey: ['service-opportunities-details'] });
     }
   };
 
