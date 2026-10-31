@@ -58,25 +58,37 @@ CREATE POLICY jd_audit_rows_admin_select ON public.jd_audit_rows
   FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
 -- Sem políticas de escrita: gravação só pelas funções abaixo.
 
--- 2. Validação prévia dos IDs (admin; até 1.000 por chamada) ---
--- Retorna só os IDs com problema: 'inexistente' ou 'nao_checklist'.
-CREATE OR REPLACE FUNCTION public.jd_audit_validate_ids(p_task_ids uuid[])
-RETURNS TABLE(task_id uuid, problema text)
+-- 2. Validação prévia (admin; até 1.000 linhas por chamada) ---
+-- p_rows: [{"row":n,"task_id":"uuid","chassi":"texto"}]
+-- Retorna só as linhas com problema:
+--   'inexistente'       ID não existe no GVPS
+--   'nao_checklist'     ID existe mas não é checklist
+--   'chassi_divergente' chassi da planilha ≠ chassi da ficha (após normalização)
+CREATE OR REPLACE FUNCTION public.jd_audit_validate_rows(p_rows jsonb)
+RETURNS TABLE(row_number integer, task_id uuid, problema text, chassi_planilha text, chassi_ficha text)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO 'public'
 AS $$
 BEGIN
   IF NOT has_role(auth.uid(), 'admin'::app_role) THEN
     RAISE EXCEPTION 'Acesso negado' USING ERRCODE = '42501';
   END IF;
-  IF coalesce(array_length(p_task_ids,1),0) > 1000 THEN
-    RAISE EXCEPTION 'Máximo de 1000 IDs por chamada' USING ERRCODE = '22023';
+  IF jsonb_typeof(p_rows) <> 'array' OR jsonb_array_length(p_rows) > 1000 THEN
+    RAISE EXCEPTION 'Envie até 1000 linhas por chamada' USING ERRCODE = '22023';
   END IF;
   RETURN QUERY
-  SELECT i.id,
-         CASE WHEN t.id IS NULL THEN 'inexistente' ELSE 'nao_checklist' END
-  FROM unnest(p_task_ids) AS i(id)
-  LEFT JOIN tasks t ON t.id = i.id
-  WHERE t.id IS NULL OR t.task_type IS DISTINCT FROM 'checklist';
+  WITH i AS (
+    SELECT (e->>'row')::integer AS rn, (e->>'task_id')::uuid AS tid, coalesce(e->>'chassi','') AS ch
+    FROM jsonb_array_elements(p_rows) e
+  )
+  SELECT i.rn, i.tid,
+    CASE WHEN t.id IS NULL THEN 'inexistente'
+         WHEN t.task_type IS DISTINCT FROM 'checklist' THEN 'nao_checklist'
+         ELSE 'chassi_divergente' END,
+    i.ch, coalesce(t.checklist_machine->>'chassi_serie','')
+  FROM i LEFT JOIN tasks t ON t.id = i.tid
+  WHERE t.id IS NULL
+     OR t.task_type IS DISTINCT FROM 'checklist'
+     OR public.normalize_chassis(i.ch) <> public.normalize_chassis(coalesce(t.checklist_machine->>'chassi_serie',''));
 END;
 $$;
 
@@ -127,9 +139,10 @@ BEGIN
   FROM jsonb_array_elements(p_rows) e;
 
   SELECT count(*) INTO v_bad FROM _in i LEFT JOIN tasks t ON t.id = i.task_id
-  WHERE i.rn IS NULL OR i.task_id IS NULL OR t.id IS NULL OR t.task_type IS DISTINCT FROM 'checklist';
+  WHERE i.rn IS NULL OR i.task_id IS NULL OR t.id IS NULL OR t.task_type IS DISTINCT FROM 'checklist'
+     OR public.normalize_chassis(i.original) <> public.normalize_chassis(coalesce(t.checklist_machine->>'chassi_serie',''));
   IF v_bad > 0 THEN
-    RAISE EXCEPTION '% linha(s) com ID inexistente ou que não é checklist; lote rejeitado', v_bad USING ERRCODE = '22023';
+    RAISE EXCEPTION '% linha(s) com ID inexistente, que não é checklist ou com chassi divergente da ficha; lote rejeitado', v_bad USING ERRCODE = '22023';
   END IF;
 
   INSERT INTO jd_audit_rows (import_id, row_number, task_id, chassi_original, chassi_normalizado)
@@ -200,6 +213,12 @@ END;
 $$;
 
 -- 4. Situação de um checklist na auditoria vigente (uso interno) --
+-- Vigente = última importação com status 'concluido'. Importações em
+-- 'processando' ou 'cancelado' nunca entram: a auditoria anterior
+-- continua valendo durante e após uma importação interrompida.
+-- EXECUTE revogado de PUBLIC/anon/authenticated: só é chamada dentro de
+-- jd_classify_checklists e get_service_opportunities_details (SECURITY
+-- DEFINER, dono postgres), que aplicam o controle de acesso por checklist.
 CREATE OR REPLACE FUNCTION public.jd_audit_status_of(p_task_id uuid)
 RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
@@ -207,18 +226,19 @@ AS $$
   SELECT coalesce((
     SELECT r.status FROM jd_audit_rows r
     WHERE r.task_id = p_task_id
-      AND r.import_id = (SELECT id FROM jd_audit_imports WHERE status = 'concluido'
-                         ORDER BY concluded_at DESC LIMIT 1)
+      AND r.import_id = (SELECT id FROM jd_audit_imports
+                         WHERE status = 'concluido' AND concluded_at IS NOT NULL
+                         ORDER BY concluded_at DESC, id DESC LIMIT 1)
   ), 'nao_auditado');
 $$;
 REVOKE ALL ON FUNCTION public.jd_audit_status_of(uuid) FROM PUBLIC, anon, authenticated;
 
-REVOKE ALL ON FUNCTION public.jd_audit_validate_ids(uuid[]) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.jd_audit_validate_rows(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.jd_audit_start(text, text, integer) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.jd_audit_append(uuid, jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.jd_audit_conclude(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.jd_audit_cancel(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.jd_audit_validate_ids(uuid[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.jd_audit_validate_rows(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.jd_audit_start(text, text, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.jd_audit_append(uuid, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.jd_audit_conclude(uuid) TO authenticated;
