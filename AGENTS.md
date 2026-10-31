@@ -10,3 +10,4 @@
 - App update flow lives only in src/lib/appUpdate.ts: HTML is never precached (NetworkFirst navigations) and reloads happen only after the new version is confirmed reachable, so users never stay stuck on an old shell.
 - Validação e Regularização de Máquinas filial selection lives only in src/lib/parkFilialScope.ts and the park/regularization RPCs' p_filial_ids/p_include_sem_filial; the server (equipment_park_scope) is the authority, so the UI never widens scope.
 - The two machine panels initialize local selection through useParkFilialSelection and gate data requests until ready; header changes do not reinitialize selection, and explicit scope requests send no legacy active-filial override.
+- Auditoria JD v2 classifies per checklist ID from the last concluded jd_audit_imports (row order: first chassis = ok, later = duplicado); jd_audit_status_of is internal-only so access stays enforced by the report RPCs, and the legacy jd_chassis_base stays separate.
