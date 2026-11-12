@@ -140,7 +140,7 @@ export default function Projecao() {
         <Kpi title="Projeção sem risco" value={brl(total.semRisco)} sub={`${pct(total.pctSem)} · GAP ${brl(total.gapSem)}`} />
         <Kpi title="Projeção com risco" value={brl(total.comRisco)} sub={`${pct(total.pctCom)} · GAP ${brl(total.gapCom)}`} />
         <Kpi title="Filiais pendentes" value={`${total.pendentes} de ${total.filiais}`} />
-      </div>
+      </div>}
 
       <Tabs defaultValue="painel">
         <TabsList className="flex-wrap h-auto">
