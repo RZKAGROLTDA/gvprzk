@@ -169,7 +169,7 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
-- [ ] Revisar somente SQL final: snapshots anteriores obtidos do histórico da versão correspondente e restrições de integridade das duas tabelas; entregar para aprovação sem executar/publicar.
+- [x] SQL final revisado: estado anterior vem do snapshot histórico da versão correspondente; nomes preservados quando vínculos não mudam; restrições de valor/período/versão/textos/snapshots e versão histórica única. Sintaxe de 25 comandos validada; não executado/publicado.
 - [x] Pacotes e Negociações: base real confirmada (clients_master.id e profiles.user_id UUID); SQL completo e revisão preparados, 25 comandos analisados sintaticamente; não aplicado/publicado.
 - [ ] Aprovação do SQL completo de Pacotes e Negociações pelo usuário antes da execução e testes de permissão/concorrência.
 - [ ] Após aprovação do SQL: aba ao lado do Histórico, pesquisa de cliente, moeda BRL, acompanhamento, edição concorrente protegida e permissões da Projeção.
