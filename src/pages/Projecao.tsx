@@ -14,9 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/use-toast';
 import { Download, Upload, Target } from 'lucide-react';
-import { consolidate, consolidateByDivisional, isPending, normalizeRow, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
+import { Fragment } from 'react';
+import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, sortByDivisional, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
-const rpc = ((fn: string, args?: Record<string, unknown>) => (supabase.rpc as any).call(supabase, fn, args)) as (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+// Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
+const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
 const brl = (v: number | null | undefined) => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const pct = (v: number | null) => v == null ? '—' : `${v.toFixed(1)}%`;
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -37,7 +39,7 @@ export default function Projecao() {
   const qc = useQueryClient();
 
   // Admin escolhe livremente; gerente/supervisor sempre a Filial Ativa (servidor revalida).
-  const scopeFilial = realAdmin ? (adminFilial === 'all' ? null : adminFilial) : activeFilialId;
+  const scopeFilial = realAdmin ? null : activeFilialId;
   const ready = !rolesLoading && !filLoading && canAccess && (realAdmin || !!activeFilialId);
 
   const panel = useQuery({
@@ -72,9 +74,11 @@ export default function Projecao() {
   });
   const refresh = () => { qc.invalidateQueries({ queryKey: ['projection-panel'] }); qc.invalidateQueries({ queryKey: ['projection-history'] }); qc.invalidateQueries({ queryKey: ['projection-filiais'] }); };
 
-  const rows: ProjectionRow[] = useMemo(() => (panel.data ?? []).filter((r) => divFilter === 'all' || (r.divisional ?? 'none') === divFilter), [panel.data, divFilter]);
+  const rows: ProjectionRow[] = useMemo(() => filterRows(sortByDivisional(panel.data ?? []), divFilter, adminFilial), [panel.data, divFilter, adminFilial]);
   const total = useMemo(() => consolidate(rows), [rows]);
-  const byDiv = useMemo(() => consolidateByDivisional(rows), [rows]);
+  const byDiv = useMemo(() => consolidateByDivisional(rows, realAdmin && divFilter === 'all' && adminFilial === 'all'), [rows, realAdmin, divFilter, adminFilial]);
+  const filialOptions = useMemo(() => sortByDivisional(adminFiliais.data ?? []).filter((f) => divFilter === 'all' || (f.divisional ?? 'none') === divFilter), [adminFiliais.data, divFilter]);
+  const onDivChange = (d: string) => { setDivFilter(d); setAdminFilial('all'); };
 
   const exportExcel = async () => {
     const XLSX = await import('xlsx');
@@ -82,9 +86,9 @@ export default function Projecao() {
       const c = consolidate([r]);
       return {
         Divisional: r.divisional ?? '', Filial: r.filial_nome, Meta: r.meta ?? '',
+        'Semana atual': isPending(r) ? 'PENDENTE' : `S${r.ultima_semana}`,
         'S1 Sem risco': r.s1_sem ?? '', 'S1 Com risco': r.s1_com ?? '', 'S2 Sem risco': r.s2_sem ?? '', 'S2 Com risco': r.s2_com ?? '',
         'S3 Sem risco': r.s3_sem ?? '', 'S3 Com risco': r.s3_com ?? '', 'S4 Sem risco': r.s4_sem ?? '', 'S4 Com risco': r.s4_com ?? '',
-        'Última semana': isPending(r) ? 'PENDENTE' : `S${r.ultima_semana}`,
         'Projeção sem risco': isPending(r) ? 'PENDENTE' : r.ultima_sem_risco, 'Projeção com risco': isPending(r) ? 'PENDENTE' : r.ultima_com_risco,
         '% Sem risco': isPending(r) || c.pctSem == null ? '' : Number(c.pctSem.toFixed(1)), '% Com risco': isPending(r) || c.pctCom == null ? '' : Number(c.pctCom.toFixed(1)),
         'GAP sem risco': isPending(r) ? '' : c.gapSem, 'GAP com risco': isPending(r) ? '' : c.gapCom,
@@ -105,7 +109,7 @@ export default function Projecao() {
   if (rolesLoading || filLoading) return <p className="text-muted-foreground p-4">Carregando…</p>;
   if (!canAccess) return <Card><CardContent className="p-6">Você não tem acesso à Projeção.</CardContent></Card>;
 
-  const entryFiliais = realAdmin ? [...(adminFiliais.data ?? [])].sort((a, b) => (['MT','GO','PA'].indexOf(a.divisional ?? '') + 1 || 9) - (['MT','GO','PA'].indexOf(b.divisional ?? '') + 1 || 9) || a.filial_nome.localeCompare(b.filial_nome)).map((f) => ({ id: f.filial_id, nome: `${f.divisional ?? 'Sem divisional'} — ${f.filial_nome}` })) : userFiliais.filter((f) => f.id === activeFilialId);
+  const entryFiliais = realAdmin ? sortByDivisional(adminFiliais.data ?? []).map((f) => ({ id: f.filial_id, nome: `${f.divisional ?? 'Sem divisional'} — ${f.filial_nome}` })) : userFiliais.filter((f) => f.id === activeFilialId);
 
   return (
     <div className="space-y-4">
@@ -120,12 +124,12 @@ export default function Projecao() {
             <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent></Select></div>
         <div><Label>Ano</Label><Input type="number" value={ano} onChange={(e) => setAno(Number(e.target.value) || now.getFullYear())} /></div>
         <div><Label>Divisional</Label>
-          <Select value={divFilter} onValueChange={setDivFilter}><SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="all">Todas</SelectItem><SelectItem value="MT">MT</SelectItem><SelectItem value="GO">GO</SelectItem><SelectItem value="PA">PA</SelectItem><SelectItem value="none">Sem divisional</SelectItem></SelectContent></Select></div>
+          <Select value={divFilter} onValueChange={onDivChange}><SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="all">Todas</SelectItem>{DIVISIONAIS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
         <div><Label>Filial</Label>
           {realAdmin ? (
             <Select value={adminFilial} onValueChange={setAdminFilial}><SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">Todas</SelectItem>{(adminFiliais.data ?? []).map((f) => <SelectItem key={f.filial_id} value={f.filial_id}>{f.filial_nome}</SelectItem>)}</SelectContent></Select>
+              <SelectContent><SelectItem value="all">Todas</SelectItem>{filialOptions.map((f) => <SelectItem key={f.filial_id} value={f.filial_id}>{f.filial_nome}</SelectItem>)}</SelectContent></Select>
           ) : <Input disabled value={userFiliais.find((f) => f.id === activeFilialId)?.nome ?? 'Filial Ativa'} />}
         </div>
       </CardContent></Card>
@@ -161,28 +165,37 @@ export default function Projecao() {
                   <TableCell className="text-right">{d.pendentes}</TableCell></TableRow>))}</TableBody></Table>
           </CardContent></Card>
 
-          <Card><CardHeader><CardTitle className="text-base">Por filial</CardTitle></CardHeader><CardContent className="overflow-x-auto">
+          <Card><CardHeader><CardTitle className="text-base">Detalhamento por filial</CardTitle></CardHeader><CardContent className="overflow-x-auto">
             {panel.isLoading ? <p className="text-muted-foreground">Carregando…</p> : (
             <Table><TableHeader><TableRow>
-              <TableHead>Filial</TableHead><TableHead>Div.</TableHead><TableHead className="text-right">Meta</TableHead>
-              {[1,2,3,4].map((s) => <TableHead key={s} className="text-right whitespace-nowrap">S{s} sem / com</TableHead>)}
-              <TableHead className="text-right">Última</TableHead><TableHead className="text-right">% sem</TableHead><TableHead className="text-right">GAP com</TableHead><TableHead>Atualização</TableHead>
+              <TableHead>Divisional</TableHead><TableHead>Filial</TableHead><TableHead className="text-right">Meta</TableHead><TableHead className="text-right whitespace-nowrap">Semana atual</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Projeção sem risco</TableHead><TableHead className="text-right whitespace-nowrap">% da meta</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Projeção com risco</TableHead><TableHead className="text-right whitespace-nowrap">% da meta</TableHead>
+              <TableHead className="text-right whitespace-nowrap">GAP sem risco</TableHead><TableHead className="text-right whitespace-nowrap">GAP com risco</TableHead><TableHead className="whitespace-nowrap">Última atualização</TableHead>
             </TableRow></TableHeader>
-            <TableBody>{rows.map((r) => { const c = consolidate([r]); const p = isPending(r); return (
-              <TableRow key={r.filial_id}>
-                <TableCell className="whitespace-nowrap font-medium">{r.filial_nome}</TableCell><TableCell>{r.divisional ?? '—'}</TableCell>
-                <TableCell className="text-right whitespace-nowrap">{r.meta == null ? <Badge variant="outline">Sem meta</Badge> : brl(r.meta)}</TableCell>
-                {[1,2,3,4].map((s) => <TableCell key={s} className="text-right whitespace-nowrap text-xs">{brl((r as any)[`s${s}_sem`])} / {brl((r as any)[`s${s}_com`])}</TableCell>)}
-                <TableCell className="text-right">{p ? <Badge variant="destructive">PENDENTE</Badge> : `S${r.ultima_semana}`}</TableCell>
-                <TableCell className="text-right">{p ? '—' : pct(c.pctSem)}</TableCell>
-                <TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(c.gapCom)}</TableCell>
-                <TableCell className="text-xs whitespace-nowrap">{r.ultima_atualizacao ? `${new Date(r.ultima_atualizacao).toLocaleDateString('pt-BR')} · ${r.atualizado_por ?? ''}` : '—'}</TableCell>
-              </TableRow>); })}</TableBody></Table>)}
+            <TableBody>
+              {byDiv.filter((d) => d.filiais > 0).map((d) => (
+                <Fragment key={d.divisional}>
+                  {rows.filter((r) => (r.divisional ?? 'Sem divisional') === d.divisional).map((r) => { const c = consolidate([r]); const p = isPending(r); return (
+                    <TableRow key={r.filial_id}>
+                      <TableCell>{r.divisional ?? '—'}</TableCell><TableCell className="whitespace-nowrap font-medium">{r.filial_nome}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{r.meta == null ? <Badge variant="outline">Sem meta</Badge> : brl(r.meta)}</TableCell>
+                      <TableCell className="text-right">{p ? <Badge variant="destructive">PENDENTE</Badge> : `S${r.ultima_semana}`}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(r.ultima_sem_risco)}</TableCell><TableCell className="text-right">{p ? '—' : pct(c.pctSem)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(r.ultima_com_risco)}</TableCell><TableCell className="text-right">{p ? '—' : pct(c.pctCom)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(c.gapSem)}</TableCell><TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(c.gapCom)}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{r.ultima_atualizacao ? `${new Date(r.ultima_atualizacao).toLocaleDateString('pt-BR')} · ${r.atualizado_por ?? ''}` : '—'}</TableCell>
+                    </TableRow>); })}
+                  <SummaryRow label={`Subtotal ${d.divisional}`} c={d} />
+                </Fragment>))}
+              {rows.length > 0 && <SummaryRow label="TOTAL GERAL" c={total} strong />}
+              {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={11} className="text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
+            </TableBody></Table>)}
           </CardContent></Card>
         </TabsContent>
 
         {canEnter && <TabsContent value="lancar"><EntryForm filiais={entryFiliais} panel={panel.data ?? []} ano={ano} mes={mes} scopeFilial={scopeFilial} onSaved={refresh} /></TabsContent>}
-        {realAdmin && <TabsContent value="metas"><GoalsAdmin filiais={adminFiliais.data ?? []} panel={panel.data ?? []} ano={ano} mes={mes} onSaved={refresh} /></TabsContent>}
+        {realAdmin && <TabsContent value="metas"><GoalsAdmin filiais={sortByDivisional(adminFiliais.data ?? [])} panel={panel.data ?? []} ano={ano} mes={mes} onSaved={refresh} /></TabsContent>}
 
         <TabsContent value="historico"><Card><CardContent className="p-4 overflow-x-auto">
           <Table><TableHeader><TableRow><TableHead>Quando</TableHead><TableHead>Tipo</TableHead><TableHead>Filial</TableHead><TableHead>Detalhe</TableHead><TableHead>Por</TableHead></TableRow></TableHeader>
@@ -195,6 +208,20 @@ export default function Projecao() {
         </CardContent></Card></TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function SummaryRow({ label, c, strong }: { label: string; c: ReturnType<typeof consolidate>; strong?: boolean }) {
+  return (
+    <TableRow className={strong ? 'font-bold bg-muted' : 'font-semibold bg-muted/50'}>
+      <TableCell colSpan={2} className="whitespace-nowrap">{label}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">{brl(c.meta)}</TableCell>
+      <TableCell className="text-right text-xs whitespace-nowrap">{c.pendentes ? `${c.pendentes} pendente(s)` : ''}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">{brl(c.semRisco)}</TableCell><TableCell className="text-right">{pct(c.pctSem)}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">{brl(c.comRisco)}</TableCell><TableCell className="text-right">{pct(c.pctCom)}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">{brl(c.gapSem)}</TableCell><TableCell className="text-right whitespace-nowrap">{brl(c.gapCom)}</TableCell>
+      <TableCell />
+    </TableRow>
   );
 }
 
@@ -296,7 +323,7 @@ function GoalsAdmin({ filiais, panel, ano, mes, onSaved }: { filiais: { filial_i
           <TableBody>{filiais.map((f) => (
             <TableRow key={f.filial_id}><TableCell className="whitespace-nowrap">{f.filial_nome}</TableCell>
               <TableCell><Select value={f.divisional ?? 'none'} onValueChange={(d) => setDiv.mutate({ id: f.filial_id, d })}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="none">—</SelectItem><SelectItem value="MT">MT</SelectItem><SelectItem value="GO">GO</SelectItem><SelectItem value="PA">PA</SelectItem></SelectContent></Select></TableCell>
+                <SelectContent><SelectItem value="none">—</SelectItem>{DIVISIONAIS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></TableCell>
               <TableCell className="text-right whitespace-nowrap">{brl(metaOf(f.filial_id))}</TableCell>
               <TableCell><Input className="w-40" inputMode="decimal" value={edits[f.filial_id] ?? ''} onChange={(e) => setEdits({ ...edits, [f.filial_id]: e.target.value })} /></TableCell></TableRow>))}</TableBody></Table>
         <div className="flex justify-end pt-3"><Button onClick={manual} disabled={saveGoals.isPending}>Salvar metas</Button></div>
