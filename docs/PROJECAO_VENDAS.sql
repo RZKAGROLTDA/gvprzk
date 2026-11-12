@@ -3,7 +3,6 @@
 -- Somente objetos novos. Nenhuma tabela/política/dado existente é alterado.
 -- Escopo de filial: public.effective_filial_ids(p_filial_id) (vazio = global).
 -- =====================================================================
-BEGIN;
 
 -- ---------- Tabelas ----------
 CREATE TABLE public.projection_filial_divisional (
@@ -98,6 +97,11 @@ BEGIN
      AND NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager')) THEN
     RAISE EXCEPTION 'Filial não autorizada' USING ERRCODE = '42501';
   END IF;
+  -- Nunca combinar filiais para não globais: exatamente uma Filial Ativa
+  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager'))
+     AND array_length(v,1) <> 1 THEN
+    RAISE EXCEPTION 'Selecione uma Filial Ativa' USING ERRCODE = '42501';
+  END IF;
   RETURN v;  -- vazio = global (admin/gerente sem filial ativa)
 END $$;
 
@@ -156,7 +160,10 @@ DECLARE r jsonb; v_old numeric; v_id uuid; n int := 0;
 BEGIN
   IF NOT (public.is_active_approved_user() AND public.has_role(auth.uid(),'admin')) THEN
     RAISE EXCEPTION 'Somente administrador' USING ERRCODE='42501'; END IF;
+  IF jsonb_typeof(p_rows) <> 'array' THEN RAISE EXCEPTION 'Formato inválido' USING ERRCODE='22023'; END IF;
   FOR r IN SELECT * FROM jsonb_array_elements(p_rows) LOOP
+    IF (r->>'meta') IS NULL OR (r->>'filial_id') IS NULL THEN
+      RAISE EXCEPTION 'Linha de meta incompleta' USING ERRCODE='22023'; END IF;
     SELECT id, meta INTO v_id, v_old FROM projection_goals
      WHERE filial_id=(r->>'filial_id')::uuid AND ano=(r->>'ano')::int AND mes=(r->>'mes')::int FOR UPDATE;
     IF v_id IS NULL THEN
@@ -189,6 +196,11 @@ BEGIN
   v_scope := public.projection_scope(p_active_filial);
   IF coalesce(array_length(v_scope,1),0) > 0 AND NOT (p_filial = ANY(v_scope)) THEN
     RAISE EXCEPTION 'Filial não autorizada' USING ERRCODE='42501'; END IF;
+  IF p_sem_risco IS NULL OR p_com_risco IS NULL THEN
+    RAISE EXCEPTION 'Informe as duas projeções' USING ERRCODE='22023'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM filiais f LEFT JOIN projection_filial_divisional d ON d.filial_id=f.id
+     WHERE f.id=p_filial AND coalesce(d.incluida, lower(trim(f.nome)) <> 'tele vendas')) THEN
+    RAISE EXCEPTION 'Filial fora da Projeção' USING ERRCODE='42501'; END IF;
   SELECT id INTO v_id FROM projection_entries
    WHERE filial_id=p_filial AND ano=p_ano AND mes=p_mes AND semana=p_semana FOR UPDATE;
   IF v_id IS NULL THEN
@@ -251,4 +263,3 @@ GRANT EXECUTE ON FUNCTION public.projection_set_divisional(uuid,text,boolean),
   public.get_projection_panel(uuid,int,int),
   public.projection_can_see_filial(uuid) TO authenticated;
 
-COMMIT;
