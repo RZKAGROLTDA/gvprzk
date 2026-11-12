@@ -19,6 +19,33 @@ export function normalizeRow(r: any): ProjectionRow {
 }
 export const isPending = (r: ProjectionRow) => r.ultima_semana == null;
 
+/** Indicadores da tabela; variação consolidada compara somente filiais com um par de lançamentos. */
+export function projectionPanelMetrics(rows: ProjectionRow[]) {
+  const total = consolidate(rows);
+  const launched = rows.filter((r) => !isPending(r) && r.ultima_sem_risco != null && Number.isFinite(r.ultima_sem_risco));
+  let previous = 0, current = 0, pairs = 0;
+  for (const r of launched) {
+    for (let week = (r.ultima_semana ?? 1) - 1; week >= 1; week--) {
+      const value = r[`s${week}_sem` as 's1_sem' | 's2_sem' | 's3_sem' | 's4_sem'];
+      if (value == null || !Number.isFinite(value)) continue;
+      previous += value;
+      current += r.ultima_sem_risco ?? 0;
+      pairs++;
+      break;
+    }
+  }
+  return {
+    ...total,
+    pctMeta: launched.length && total.meta > 0 && Number.isFinite(total.meta) ? total.pctSem : null,
+    gap: launched.length && total.meta > 0 && Number.isFinite(total.meta) ? total.gapSem : null,
+    variation: pairs && previous > 0 ? ((current - previous) / previous) * 100 : null,
+    weeks: ([1, 2, 3, 4] as const).map((week) => {
+      const values = rows.map((r) => r[`s${week}_sem`]).filter((v): v is number => v != null && Number.isFinite(v));
+      return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+    }),
+  };
+}
+
 export function consolidate(rows: ProjectionRow[]): Consolidated {
   let meta = 0, semRisco = 0, comRisco = 0, pendentes = 0;
   for (const r of rows) {

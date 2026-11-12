@@ -169,6 +169,7 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
+- [ ] Compactar Por filial: S1–S4 sem risco, última com risco, % Meta, GAP e variação entre lançamentos; testar cálculos e largura, sem publicar.
 - [x] Plano aprovado
 - [ ] SQL revisado (admin global; gerente/supervisor só filiais autorizadas, escopo nunca vazio) — aguardando aprovação
 - [ ] Aplicar migração, telas, testes
