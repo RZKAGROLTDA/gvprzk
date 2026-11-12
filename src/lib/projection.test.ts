@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { consolidate, consolidateByDivisional, filterRows, sortByDivisional, validateGoalImport, ProjectionRow } from './projection';
+import { consolidate, consolidateByDivisional, filterRows, sortByDivisional, validateGoalImport, projectionPanelMetrics, ProjectionRow } from './projection';
 
 const row = (p: Partial<ProjectionRow>): ProjectionRow => ({
   filial_id: 'x', filial_nome: 'X', divisional: 'MT', meta: 0,
@@ -8,6 +8,40 @@ const row = (p: Partial<ProjectionRow>): ProjectionRow => ({
 });
 
 describe('Projeção', () => {
+  it('% Meta usa somente a última projeção sem risco dividida pela meta', () => {
+    expect(projectionPanelMetrics([row({ meta: 1000, s1_sem: 500, s4_sem: 1200, ultima_semana: 4, ultima_sem_risco: 1200 })]).pctMeta).toBe(120);
+  });
+  it('GAP é última sem risco menos meta e preserva o sinal negativo', () => {
+    expect(projectionPanelMetrics([row({ meta: 1000, ultima_semana: 2, ultima_sem_risco: 850 })]).gap).toBe(-150);
+  });
+  it('variação compara com a semana anterior lançada, pulando semanas ausentes', () => {
+    expect(projectionPanelMetrics([row({ meta: 5000, s1_sem: 1000, s4_sem: 1200, ultima_semana: 4, ultima_sem_risco: 1200 })]).variation).toBe(20);
+  });
+  it('variação preserva queda, independentemente da meta', () => {
+    expect(projectionPanelMetrics([row({ meta: 100, s2_sem: 1000, s3_sem: 850, ultima_semana: 3, ultima_sem_risco: 850 })]).variation).toBe(-15);
+  });
+  it('sem semana anterior ou anterior zero, variação fica indisponível', () => {
+    expect(projectionPanelMetrics([row({ s1_sem: 100, ultima_semana: 1, ultima_sem_risco: 100 })]).variation).toBeNull();
+    expect(projectionPanelMetrics([row({ s1_sem: 0, ultima_semana: 2, ultima_sem_risco: 100 })]).variation).toBeNull();
+  });
+  it('sem meta válida ou lançamento, indicadores de meta ficam indisponíveis', () => {
+    for (const meta of [null, 0, -1]) {
+      const c = projectionPanelMetrics([row({ meta, ultima_semana: 1, ultima_sem_risco: 100 })]);
+      expect(c.pctMeta).toBeNull(); expect(c.gap).toBeNull();
+    }
+    expect(projectionPanelMetrics([row({ meta: 1000 })]).pctMeta).toBeNull();
+    expect(projectionPanelMetrics([]).weeks).toEqual([null, null, null, null]);
+  });
+  it('subtotais recalculam razões dos valores consolidados, sem média de percentuais nem soma de semanas', () => {
+    const c = projectionPanelMetrics([
+      row({ meta: 1000, s1_sem: 100, s3_sem: 200, ultima_semana: 3, ultima_sem_risco: 200, ultima_com_risco: 150 }),
+      row({ meta: 3000, s2_sem: 900, s4_sem: 900, ultima_semana: 4, ultima_sem_risco: 900, ultima_com_risco: 800 }),
+      row({ meta: 1000, s1_sem: 400, ultima_semana: 1, ultima_sem_risco: 400, ultima_com_risco: 350 }),
+    ]);
+    expect(c.pctMeta).toBe(30); expect(c.gap).toBe(-3500);
+    expect(c.comRisco).toBe(1300); expect(c.weeks).toEqual([500, 900, 200, 900]);
+    expect(c.variation).toBe(10);
+  });
   it('usa só a última semana, sem somar S1..S4', () => {
     const r = row({ meta: 1000, s1_sem: 500, s1_com: 400, s2_sem: 800, s2_com: 700, ultima_semana: 2, ultima_sem_risco: 800, ultima_com_risco: 700 });
     const c = consolidate([r]);

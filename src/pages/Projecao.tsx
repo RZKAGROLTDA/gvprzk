@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/use-toast';
 import { Download, Upload, Target } from 'lucide-react';
-import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, sortByDivisional, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
+import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
 const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
@@ -171,29 +171,30 @@ export default function Projecao() {
                   <TableCell className="text-right">{d.pendentes}</TableCell></TableRow>))}</TableBody></Table>
           </CardContent></Card>
 
-          <Card><CardHeader className="py-3"><CardTitle className="text-base">Detalhamento por filial</CardTitle></CardHeader><CardContent className="overflow-x-auto px-2 pb-3">
+          <Card><CardHeader className="px-3 py-2"><CardTitle className="text-base">Por filial</CardTitle></CardHeader><CardContent className="px-1 pb-2">
             {panel.isLoading ? <p className="text-muted-foreground">Carregando…</p> : (
-            <Table className="text-[13px]"><TableHeader><TableRow>
-              <TableHead className="px-2 py-1 min-w-[180px]">Filial</TableHead><TableHead className="px-2 py-1">Div.</TableHead><TableHead className="px-2 py-1 text-right">Meta</TableHead>
-              <TableHead className="px-2 py-1 text-right">Semana 1</TableHead><TableHead className="px-2 py-1 text-right">Semana 2</TableHead>
-              <TableHead className="px-2 py-1 text-right">Semana 3</TableHead><TableHead className="px-2 py-1 text-right">Semana 4</TableHead>
-              <TableHead className="px-2 py-1 text-right">Com risco</TableHead>
+            <Table className="table-fixed min-w-[860px] text-xs tabular-nums [&_th]:h-7 [&_th]:px-1 [&_th]:py-1 [&_td]:px-1 [&_td]:py-1"><TableHeader><TableRow>
+              <TableHead className="w-1/5">Filial</TableHead>
+              {['Meta', 'S1', 'S2', 'S3', 'S4', 'Com risco', '% Meta', 'GAP', 'Var. %'].map((label) => <TableHead key={label} className="text-right whitespace-nowrap">{label}</TableHead>)}
             </TableRow></TableHeader>
             <TableBody>
-              {byDiv.filter((d) => d.filiais > 0).map((d) => { const divRows = rows.filter((r) => (r.divisional ?? 'Sem divisional') === d.divisional); return (
+              {byDiv.map((d) => { const divRows = rows.filter((r) => (r.divisional ?? 'Sem divisional') === d.divisional); return (
                 <Fragment key={d.divisional}>
-                  {divRows.map((r) => (
+                  <TableRow className="bg-muted/50"><TableCell colSpan={10} className="font-semibold">{d.divisional}</TableCell></TableRow>
+                  {divRows.map((r) => { const metrics = projectionPanelMetrics([r]); return (
                     <TableRow key={r.filial_id}>
-                      <TableCell className="px-2 py-1 whitespace-nowrap font-medium">{r.filial_nome}</TableCell>
-                      <TableCell className="px-2 py-1">{r.divisional ?? '—'}</TableCell>
-                      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{r.meta == null ? 'Sem meta' : brlCompact(r.meta)}</TableCell>
-                      {[1, 2, 3, 4].map((w) => <TableCell key={w} className="px-2 py-1 text-right whitespace-nowrap">{brlCompact((r as any)[`s${w}_sem`])}</TableCell>)}
-                      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{isPending(r) ? '—' : brlCompact(r.ultima_com_risco)}</TableCell>
-                    </TableRow>))}
+                      <TableCell className="font-medium break-words leading-tight">{r.filial_nome}</TableCell>
+                      <MoneyCell value={r.meta} />
+                      {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} />)}
+                      <MoneyCell value={isPending(r) ? null : r.ultima_com_risco} />
+                      <TableCell className="text-right whitespace-nowrap">{pct(metrics.pctMeta)}</TableCell>
+                      <MoneyCell value={metrics.gap} />
+                      <VariationCell value={metrics.variation} />
+                    </TableRow>); })}
                   <SummaryRow label={`Subtotal ${d.divisional}`} rows={divRows} />
                 </Fragment>); })}
               {rows.length > 0 && <SummaryRow label="TOTAL GERAL" rows={rows} strong />}
-              {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={8} className="px-2 py-1 text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
+              {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={10} className="text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
             </TableBody></Table>)}
           </CardContent></Card>
         </TabsContent>
@@ -216,16 +217,29 @@ export default function Projecao() {
 }
 
 function SummaryRow({ label, rows, strong }: { label: string; rows: ProjectionRow[]; strong?: boolean }) {
-  const meta = rows.reduce((a, r) => a + (r.meta ?? 0), 0);
-  const comRisco = rows.reduce((a, r) => a + (isPending(r) ? 0 : (r.ultima_com_risco ?? 0)), 0);
+  const metrics = projectionPanelMetrics(rows);
   return (
     <TableRow className={strong ? 'font-bold bg-muted' : 'font-semibold bg-muted/50'}>
-      <TableCell colSpan={2} className="px-2 py-1 whitespace-nowrap">{label}</TableCell>
-      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{brlCompact(meta)}</TableCell>
-      {[1, 2, 3, 4].map((w) => <TableCell key={w} className="px-2 py-1 text-right whitespace-nowrap">{brlCompact(rows.reduce((a, r) => a + (((r as any)[`s${w}_sem`] as number | null) ?? 0), 0))}</TableCell>)}
-      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{brlCompact(comRisco)}</TableCell>
+      <TableCell className="leading-tight">{label}</TableCell>
+      <MoneyCell value={metrics.meta} />
+      {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} />)}
+      <MoneyCell value={metrics.filiais === metrics.pendentes ? null : metrics.comRisco} />
+      <TableCell className="text-right whitespace-nowrap">{pct(metrics.pctMeta)}</TableCell>
+      <MoneyCell value={metrics.gap} />
+      <VariationCell value={metrics.variation} />
     </TableRow>
   );
+}
+
+function MoneyCell({ value }: { value: number | null }) {
+  return <TableCell className="text-right whitespace-nowrap" title={value == null ? undefined : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}>{brlCompact(value)}</TableCell>;
+}
+
+function VariationCell({ value }: { value: number | null }) {
+  const direction = value == null ? '' : value > 0 ? 'Crescimento' : value < 0 ? 'Queda' : 'Estável';
+  return <TableCell className={`text-right whitespace-nowrap ${value != null && value > 0 ? 'text-success' : value != null && value < 0 ? 'text-destructive' : 'text-muted-foreground'}`} title={direction}>
+    {value == null ? '—' : <span aria-label={`${direction}: ${pct(value)}`}>{value > 0 ? '↑ +' : value < 0 ? '↓ ' : '= '}{pct(value)}</span>}
+  </TableCell>;
 }
 
 function Kpi({ title, value, sub }: { title: string; value: string; sub?: string }) {
