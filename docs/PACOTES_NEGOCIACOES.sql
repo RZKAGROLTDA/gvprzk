@@ -65,11 +65,11 @@ CREATE TABLE public.projection_negotiation_history (
       AND length(btrim(situacao_anterior))>0 AND responsible_user_id_anterior IS NOT NULL
       AND responsible_name_anterior IS NOT NULL AND length(btrim(responsible_name_anterior))>0 AND dados_anteriores IS NOT NULL)),
   CONSTRAINT projection_negotiation_history_snapshot_valid CHECK (coalesce((
+    -- Código pode ser NULL ou vazio; UUID e nome do cliente continuam obrigatórios nos dois estados.
     jsonb_typeof(dados_novos)='object'
     AND dados_novos ?& ARRAY['client_id','cliente','codigo_cliente','responsible_user_id','responsavel','titulo','valor','situacao','observacoes']
     AND nullif(btrim(dados_novos->>'cliente'),'') IS NOT NULL
     AND nullif(btrim(dados_novos->>'client_id'),'') IS NOT NULL
-    AND nullif(btrim(dados_novos->>'codigo_cliente'),'') IS NOT NULL
     AND nullif(btrim(dados_novos->>'titulo'),'') IS NOT NULL
     AND dados_novos->>'responsavel'=responsible_name_novo
     AND dados_novos->>'responsible_user_id'=responsible_user_id_novo::text
@@ -80,7 +80,6 @@ CREATE TABLE public.projection_negotiation_history (
       AND dados_anteriores ?& ARRAY['client_id','cliente','codigo_cliente','responsible_user_id','responsavel','titulo','valor','situacao','observacoes']
       AND nullif(btrim(dados_anteriores->>'cliente'),'') IS NOT NULL
       AND nullif(btrim(dados_anteriores->>'client_id'),'') IS NOT NULL
-      AND nullif(btrim(dados_anteriores->>'codigo_cliente'),'') IS NOT NULL
       AND nullif(btrim(dados_anteriores->>'titulo'),'') IS NOT NULL
       AND dados_anteriores->>'responsavel'=responsible_name_anterior
       AND dados_anteriores->>'responsible_user_id'=responsible_user_id_anterior::text
