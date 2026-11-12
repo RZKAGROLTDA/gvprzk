@@ -16,7 +16,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Download, Upload, Target } from 'lucide-react';
 import { consolidate, consolidateByDivisional, isPending, normalizeRow, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
-const rpc = supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+const rpc = ((fn: string, args?: Record<string, unknown>) => (supabase.rpc as any).call(supabase, fn, args)) as (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>;
 const brl = (v: number | null | undefined) => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const pct = (v: number | null) => v == null ? '—' : `${v.toFixed(1)}%`;
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -105,7 +105,7 @@ export default function Projecao() {
   if (rolesLoading || filLoading) return <p className="text-muted-foreground p-4">Carregando…</p>;
   if (!canAccess) return <Card><CardContent className="p-6">Você não tem acesso à Projeção.</CardContent></Card>;
 
-  const entryFiliais = realAdmin ? (adminFiliais.data ?? []).map((f) => ({ id: f.filial_id, nome: f.filial_nome })) : userFiliais.filter((f) => f.id === activeFilialId);
+  const entryFiliais = realAdmin ? [...(adminFiliais.data ?? [])].sort((a, b) => (['MT','GO','PA'].indexOf(a.divisional ?? '') + 1 || 9) - (['MT','GO','PA'].indexOf(b.divisional ?? '') + 1 || 9) || a.filial_nome.localeCompare(b.filial_nome)).map((f) => ({ id: f.filial_id, nome: `${f.divisional ?? 'Sem divisional'} — ${f.filial_nome}` })) : userFiliais.filter((f) => f.id === activeFilialId);
 
   return (
     <div className="space-y-4">
