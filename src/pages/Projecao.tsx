@@ -1,4 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
+import { NumericFormat } from 'react-number-format';
+import { parseProjectionMoney } from '@/lib/projectionMoney';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -254,9 +256,9 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
   const existing = panel.find((r) => r.filial_id === current);
   const save = useMutation({
     mutationFn: async () => {
-      const s = parseMoney(sem), c = parseMoney(com);
+      const s = parseProjectionMoney(sem), c = parseProjectionMoney(com);
       if (!current) throw new Error('Selecione a filial');
-      if (!Number.isFinite(s) || !Number.isFinite(c) || s < 0 || c < 0) throw new Error('Informe as duas projeções com valores válidos');
+      if (s == null || c == null) throw new Error('Informe as duas projeções com valores válidos, com até dois centavos decimais');
       const { error } = await rpc('projection_save_entry', { p_active_filial: scopeFilial ?? current, p_filial: current, p_ano: ano, p_mes: mes, p_semana: Number(semana), p_sem_risco: s, p_com_risco: c, p_observacao: obs });
       if (error) throw error;
     },
@@ -272,8 +274,8 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
       <div><Label>Semana</Label>
         <Select value={semana} onValueChange={setSemana}><SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>{[1,2,3,4].map((s) => <SelectItem key={s} value={String(s)}>Semana {s}</SelectItem>)}</SelectContent></Select></div>
-      <div><Label>Projeção sem risco (R$)</Label><Input inputMode="decimal" value={sem} onChange={(e) => setSem(e.target.value)} placeholder={prev[0] != null ? `Atual: ${brl(prev[0])}` : ''} /></div>
-      <div><Label>Projeção com risco (R$)</Label><Input inputMode="decimal" value={com} onChange={(e) => setCom(e.target.value)} placeholder={prev[1] != null ? `Atual: ${brl(prev[1])}` : ''} /></div>
+      <div><Label htmlFor="projection-sem">Projeção sem risco (R$)</Label><NumericFormat id="projection-sem" customInput={Input} inputMode="decimal" value={sem} valueIsNumericString thousandSeparator="." decimalSeparator="," allowedDecimalSeparators={[',']} prefix="R$ " decimalScale={2} allowNegative={false} onValueChange={({ value }) => setSem(value)} placeholder={prev[0] != null ? `Atual: ${Number(prev[0]).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : 'R$'} /></div>
+      <div><Label htmlFor="projection-com">Projeção com risco (R$)</Label><NumericFormat id="projection-com" customInput={Input} inputMode="decimal" value={com} valueIsNumericString thousandSeparator="." decimalSeparator="," allowedDecimalSeparators={[',']} prefix="R$ " decimalScale={2} allowNegative={false} onValueChange={({ value }) => setCom(value)} placeholder={prev[1] != null ? `Atual: ${Number(prev[1]).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}` : 'R$'} /></div>
       <div className="md:col-span-2"><Label>Observação (opcional)</Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} /></div>
       <div className="md:col-span-2 flex justify-between items-center gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">Cada semana é guardada separadamente; o painel usa a última semana lançada.</p>
