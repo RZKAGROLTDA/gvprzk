@@ -169,7 +169,8 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
-- [ ] Pacotes e Negociações: verificar base real de clientes e preparar SQL completo com cliente, valor, responsável, observações, situação e histórico de valor/situação/responsável; apresentar para aprovação, sem executar/publicar.
+- [x] Pacotes e Negociações: base real confirmada (clients_master.id e profiles.user_id UUID); SQL completo e revisão preparados, 25 comandos analisados sintaticamente; não aplicado/publicado.
+- [ ] Aprovação do SQL completo de Pacotes e Negociações pelo usuário antes da execução e testes de permissão/concorrência.
 - [ ] Após aprovação do SQL: aba ao lado do Histórico, pesquisa de cliente, moeda BRL, acompanhamento, edição concorrente protegida e permissões da Projeção.
 - [x] Dois valores de Lançar semana formatados em BRL sem mudança de escala; 17 testes passaram, edição/centavos/cursor/exclusão/conversão verificados no navegador isoladamente, referência atual preservada. Salvamento autenticado indisponível (Supabase externo); sem alteração de banco/painel e sem publicação.
 - [x] Por filial compactada com dez colunas, valores completos ao passar o mouse e indicadores consolidados; 13 testes passaram e build OK. Conferência visual isolada com dados sintéticos: 1280px sem rolagem e 687px com rolagem interna; sessão real indisponível (Supabase externo). Não publicado.
