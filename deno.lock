@@ -37,6 +37,8 @@
       "dependencies": [
         "npm:@eslint/js@^9.9.0",
         "npm:@hookform/resolvers@^3.9.0",
+        "npm:@lovable.dev/vite-plugin-dev-server-bridge@^1.0.2",
+        "npm:@lovable.dev/vite-plugin-hmr-gate@^1.8.0",
         "npm:@radix-ui/react-accordion@^1.2.0",
         "npm:@radix-ui/react-alert-dialog@^1.1.1",
         "npm:@radix-ui/react-aspect-ratio@^1.1.0",
@@ -89,6 +91,7 @@
         "npm:jsdom@26",
         "npm:jspdf-autotable@^5.0.2",
         "npm:jspdf@^3.0.1",
+        "npm:jszip@^3.10.2",
         "npm:lovable-tagger@^1.1.7",
         "npm:lucide-react@0.462",
         "npm:next-themes@0.3",
