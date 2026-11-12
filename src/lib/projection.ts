@@ -34,13 +34,27 @@ export function consolidate(rows: ProjectionRow[]): Consolidated {
     gapSem: semRisco - meta, gapCom: comRisco - meta,
   };
 }
-export function consolidateByDivisional(rows: ProjectionRow[]) {
+export const DIVISIONAIS = ['MT', 'GO', 'PA', 'C&F'] as const;
+const divRank = (d: string | null) => { const i = (DIVISIONAIS as readonly string[]).indexOf(d ?? ''); return i < 0 ? DIVISIONAIS.length : i; };
+/** Ordena filiais MT → GO → PA → C&F → sem divisional, e por nome dentro de cada uma. */
+export function sortByDivisional<T extends { divisional: string | null; filial_nome: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => divRank(a.divisional) - divRank(b.divisional) || a.filial_nome.localeCompare(b.filial_nome, 'pt-BR'));
+}
+/** Consolida por divisional na ordem oficial. includeAll mostra as quatro divisionais mesmo sem filiais. */
+export function consolidateByDivisional(rows: ProjectionRow[], includeAll = false) {
   const groups = new Map<string, ProjectionRow[]>();
+  if (includeAll) for (const d of DIVISIONAIS) groups.set(d, []);
   for (const r of rows) {
     const k = r.divisional ?? 'Sem divisional';
     groups.set(k, [...(groups.get(k) ?? []), r]);
   }
-  return [...groups.entries()].map(([divisional, rs]) => ({ divisional, ...consolidate(rs) }));
+  return [...groups.entries()]
+    .sort(([a], [b]) => divRank(a === 'Sem divisional' ? null : a) - divRank(b === 'Sem divisional' ? null : b))
+    .map(([divisional, rs]) => ({ divisional, ...consolidate(rs) }));
+}
+/** Filtro do painel: divisional ('all' | código | 'none') e filial ('all' | id). */
+export function filterRows(rows: ProjectionRow[], div: string, filial: string) {
+  return rows.filter((r) => (div === 'all' || (r.divisional ?? 'none') === div) && (filial === 'all' || r.filial_id === filial));
 }
 
 export interface GoalImportRow { filial: string; mes: number; ano: number; meta: number }

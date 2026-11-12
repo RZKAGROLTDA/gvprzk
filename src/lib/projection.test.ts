@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { consolidate, consolidateByDivisional, validateGoalImport, ProjectionRow } from './projection';
+import { consolidate, consolidateByDivisional, filterRows, sortByDivisional, validateGoalImport, ProjectionRow } from './projection';
 
 const row = (p: Partial<ProjectionRow>): ProjectionRow => ({
   filial_id: 'x', filial_nome: 'X', divisional: 'MT', meta: 0,
@@ -43,5 +43,17 @@ describe('Projeção', () => {
     ], f);
     expect(r.valid).toEqual([{ filial_id: '1', filial_nome: 'Sinop', ano: 2026, mes: 11, meta: 1500000.5 }]);
     expect(r.errors).toHaveLength(4);
+  });
+  it('ordena MT → GO → PA → C&F e mostra as quatro divisionais', () => {
+    const rs = [row({ filial_id: 'c', filial_nome: 'C&F - Mineiros', divisional: 'C&F' }), row({ filial_id: 'p', filial_nome: 'Marabá', divisional: 'PA' }),
+      row({ filial_id: 'g', filial_nome: 'Mineiros', divisional: 'GO' }), row({ filial_id: 'm', filial_nome: 'Querência', divisional: 'MT' })];
+    expect(sortByDivisional(rs).map((r) => r.divisional)).toEqual(['MT', 'GO', 'PA', 'C&F']);
+    expect(consolidateByDivisional([rs[0]], true).map((d) => d.divisional)).toEqual(['MT', 'GO', 'PA', 'C&F']);
+  });
+  it('filtra por divisional e filial, mantendo filiais de mesmo nome separadas', () => {
+    const rs = [row({ filial_id: 'g', filial_nome: 'Mineiros', divisional: 'GO' }), row({ filial_id: 'c', filial_nome: 'C&F - Mineiros', divisional: 'C&F' })];
+    expect(filterRows(rs, 'C&F', 'all').map((r) => r.filial_id)).toEqual(['c']);
+    expect(filterRows(rs, 'all', 'g').map((r) => r.filial_id)).toEqual(['g']);
+    expect(filterRows(rs, 'GO', 'c')).toHaveLength(0);
   });
 });
