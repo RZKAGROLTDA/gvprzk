@@ -20,6 +20,7 @@ import { clearAllActiveFiliais } from '@/lib/activeFilial';
 const Dashboard = lazyPage(() => import("./pages/Dashboard"));
 const SalesFunnel = lazyPage(() => import("./components/SalesFunnel").then((m) => ({ default: m.SalesFunnel })));
 const MyDay = lazyPage(() => import("./pages/MyDay"));
+const Projecao = lazyPage(() => import("./pages/Projecao"));
 const MyDayLanding = lazyPage(() => import("@/components/myday/MyDayLanding").then((m) => ({ default: m.MyDayLanding })));
 const CreateTask = lazyPage(() => import("./pages/CreateTask"));
 const CreateFieldVisit = lazyPage(() => import("./pages/CreateFieldVisit"));
@@ -125,6 +126,7 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
       <Route path="/campaigns" element={<Layout><Campaigns /></Layout>} />
       <Route path="/reports/filial" element={<Layout><PerformanceByFilial /></Layout>} />
       <Route path="/reports" element={<Layout><Reports /></Layout>} />
+      <Route path="/projecao" element={<Layout><Projecao /></Layout>} />
       <Route path="/reports/seller" element={<Layout><PerformanceBySeller /></Layout>} />
       <Route path="/users" element={<Layout><Users /></Layout>} />
       <Route path="/filiais" element={<Layout><Filiais /></Layout>} />

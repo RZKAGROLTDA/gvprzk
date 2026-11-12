@@ -64,6 +64,11 @@ const useNavigationItems = () => {
     ],
     managementItems: [
       {
+        path: '/projecao',
+        icon: Target,
+        label: 'Projeção'
+      },
+      {
         path: '/management',
         icon: BarChart3,
         label: 'Análise Gerencial'
@@ -128,6 +133,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
   const canSeeVacations = hasAdminRole || isManager || isSupervisor || rawRoles.some(r => isRacEquivalentRole(r as string));
   const vacationItem = { path: '/vacations', icon: PlaneTakeoff, label: 'Agenda de Férias' };
   const canSeeUserVersions = hasAdminRole || isManager;
+  const canSeeProjecao = hasAdminRole || isManager || isSupervisor;
   const versionsItem = { path: '/versoes-usuarios', icon: MonitorSmartphone, label: 'Versões dos Usuários' };
 
   
@@ -194,7 +200,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                   />
                 ))}
 
-                {canSeeManagement && managementItems.map(item => (
+                {canSeeManagement && managementItems.filter(i => i.path !== '/projecao' || canSeeProjecao).map(item => (
                   <NavLink 
                     key={item.path}
                     item={item}
@@ -270,7 +276,7 @@ export const Layout: React.FC<LayoutProps> = memo(({ children }) => {
                   />
                 ))}
                 
-                {canSeeManagement && managementItems.map(item => (
+                {canSeeManagement && managementItems.filter(i => i.path !== '/projecao' || canSeeProjecao).map(item => (
                   <NavLink 
                     key={item.path}
                     item={item}
