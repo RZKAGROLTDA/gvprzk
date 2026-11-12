@@ -18,7 +18,12 @@ CREATE TABLE public.projection_negotiations (
   updated_by uuid NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  version bigint NOT NULL DEFAULT 1
+  version bigint NOT NULL DEFAULT 1,
+  CONSTRAINT projection_negotiations_year_valid CHECK (ano BETWEEN 2020 AND 2100),
+  CONSTRAINT projection_negotiations_month_valid CHECK (mes BETWEEN 1 AND 12),
+  CONSTRAINT projection_negotiations_version_valid CHECK (version > 0),
+  CONSTRAINT projection_negotiations_value_valid CHECK (valor >= 0 AND valor < 10000000000000000 AND valor::text NOT IN ('NaN','Infinity','-Infinity')),
+  CONSTRAINT projection_negotiations_required_text CHECK (length(btrim(titulo)) > 0 AND length(btrim(situacao)) > 0)
 );
 GRANT ALL ON public.projection_negotiations TO service_role;
 ALTER TABLE public.projection_negotiations ENABLE ROW LEVEL SECURITY;
@@ -27,6 +32,9 @@ ALTER TABLE public.projection_negotiations ENABLE ROW LEVEL SECURITY;
 CREATE TABLE public.projection_negotiation_history (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   negotiation_id uuid NOT NULL REFERENCES public.projection_negotiations(id) ON DELETE RESTRICT,
+  ano integer NOT NULL,
+  mes integer NOT NULL,
+  version bigint NOT NULL,
   acao text NOT NULL,
   valor_anterior numeric(18,2),
   valor_novo numeric(18,2) NOT NULL,
@@ -41,7 +49,43 @@ CREATE TABLE public.projection_negotiation_history (
   changed_by uuid NOT NULL,
   changed_by_name text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT projection_negotiation_history_version_unique UNIQUE (negotiation_id,version),
+  CONSTRAINT projection_negotiation_history_period_valid CHECK (ano BETWEEN 2020 AND 2100 AND mes BETWEEN 1 AND 12),
+  CONSTRAINT projection_negotiation_history_version_valid CHECK (version > 0),
+  CONSTRAINT projection_negotiation_history_value_valid CHECK (
+    valor_novo >= 0 AND valor_novo < 10000000000000000 AND valor_novo::text NOT IN ('NaN','Infinity','-Infinity')
+    AND (valor_anterior IS NULL OR (valor_anterior >= 0 AND valor_anterior < 10000000000000000 AND valor_anterior::text NOT IN ('NaN','Infinity','-Infinity')))),
+  CONSTRAINT projection_negotiation_history_required_text CHECK (
+    length(btrim(situacao_nova)) > 0 AND length(btrim(responsible_name_novo)) > 0 AND length(btrim(changed_by_name)) > 0),
+  CONSTRAINT projection_negotiation_history_state_valid CHECK (
+    (acao='criado' AND version=1 AND valor_anterior IS NULL AND situacao_anterior IS NULL
+      AND responsible_user_id_anterior IS NULL AND responsible_name_anterior IS NULL AND dados_anteriores IS NULL)
+    OR (acao='alterado' AND version>1 AND valor_anterior IS NOT NULL AND situacao_anterior IS NOT NULL
+      AND length(btrim(situacao_anterior))>0 AND responsible_user_id_anterior IS NOT NULL
+      AND responsible_name_anterior IS NOT NULL AND length(btrim(responsible_name_anterior))>0 AND dados_anteriores IS NOT NULL)),
+  CONSTRAINT projection_negotiation_history_snapshot_valid CHECK (coalesce((
+    jsonb_typeof(dados_novos)='object'
+    AND dados_novos ?& ARRAY['client_id','cliente','codigo_cliente','responsible_user_id','responsavel','titulo','valor','situacao','observacoes']
+    AND nullif(btrim(dados_novos->>'cliente'),'') IS NOT NULL
+    AND nullif(btrim(dados_novos->>'client_id'),'') IS NOT NULL
+    AND nullif(btrim(dados_novos->>'codigo_cliente'),'') IS NOT NULL
+    AND nullif(btrim(dados_novos->>'titulo'),'') IS NOT NULL
+    AND dados_novos->>'responsavel'=responsible_name_novo
+    AND dados_novos->>'responsible_user_id'=responsible_user_id_novo::text
+    AND dados_novos->>'situacao'=situacao_nova
+    AND dados_novos->'valor'=to_jsonb(valor_novo)
+    AND (dados_anteriores IS NULL OR (
+      jsonb_typeof(dados_anteriores)='object'
+      AND dados_anteriores ?& ARRAY['client_id','cliente','codigo_cliente','responsible_user_id','responsavel','titulo','valor','situacao','observacoes']
+      AND nullif(btrim(dados_anteriores->>'cliente'),'') IS NOT NULL
+      AND nullif(btrim(dados_anteriores->>'client_id'),'') IS NOT NULL
+      AND nullif(btrim(dados_anteriores->>'codigo_cliente'),'') IS NOT NULL
+      AND nullif(btrim(dados_anteriores->>'titulo'),'') IS NOT NULL
+      AND dados_anteriores->>'responsavel'=responsible_name_anterior
+      AND dados_anteriores->>'responsible_user_id'=responsible_user_id_anterior::text
+      AND dados_anteriores->>'situacao'=situacao_anterior
+      AND dados_anteriores->'valor'=to_jsonb(valor_anterior)))),false))
 );
 GRANT ALL ON public.projection_negotiation_history TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE public.projection_negotiation_history_id_seq TO service_role;
@@ -119,6 +163,7 @@ CREATE FUNCTION public.projection_save_negotiation(
 DECLARE
   v_scope uuid[]; v_old public.projection_negotiations; v_new public.projection_negotiations;
   v_old_data jsonb; v_new_data jsonb; v_author text; v_responsible text; v_old_responsible text;
+  v_client_name text; v_client_code text;
 BEGIN
   IF NOT (public.projection_is_admin() OR (public.projection_role_ok() AND public.has_role(auth.uid(),'supervisor'))) THEN
     RAISE EXCEPTION 'Sem permissão para alterar negociações' USING ERRCODE='42501';
@@ -145,6 +190,19 @@ BEGIN
     IF p_expected_version IS DISTINCT FROM v_old.version THEN
       RAISE EXCEPTION 'Outra pessoa atualizou a negociação. Abra novamente antes de salvar.' USING ERRCODE='40001';
     END IF;
+    -- Estado anterior é exatamente o snapshot persistido da versão bloqueada.
+    -- Nunca reconstruir nomes anteriores usando cadastros que podem ter sido renomeados.
+    SELECT h.dados_novos INTO v_old_data FROM public.projection_negotiation_history h
+      WHERE h.negotiation_id=v_old.id AND h.version=v_old.version LIMIT 1;
+    IF v_old_data IS NULL OR v_old_data->>'client_id' IS DISTINCT FROM v_old.client_id::text
+      OR v_old_data->>'responsible_user_id' IS DISTINCT FROM v_old.responsible_user_id::text
+      OR v_old_data->'valor' IS DISTINCT FROM to_jsonb(v_old.valor)
+      OR v_old_data->>'situacao' IS DISTINCT FROM v_old.situacao
+      OR v_old_data->>'titulo' IS DISTINCT FROM v_old.titulo
+      OR v_old_data->>'observacoes' IS DISTINCT FROM v_old.observacoes THEN
+      RAISE EXCEPTION 'Snapshot histórico da versão atual ausente ou inconsistente' USING ERRCODE='23514';
+    END IF;
+    v_old_responsible:=v_old_data->>'responsavel';
   END IF;
   -- Um cliente/responsável desativado já vinculado pode ser mantido; novas escolhas exigem cadastro ativo.
   IF NOT EXISTS(SELECT 1 FROM public.clients_master c WHERE c.id=p_client_id
@@ -156,6 +214,17 @@ BEGIN
       AND coalesce(p_filial=ANY(public.get_user_filial_ids_internal(p.user_id)),false))
       OR (v_old.id IS NOT NULL AND v_old.responsible_user_id=p_responsible_user_id));
   IF v_responsible IS NULL THEN RAISE EXCEPTION 'Responsável não autorizado para esta filial' USING ERRCODE='42501'; END IF;
+  -- Mantendo o vínculo, conservar o nome original do snapshot também no novo estado.
+  IF v_old.id IS NOT NULL AND v_old.responsible_user_id=p_responsible_user_id THEN
+    v_responsible:=v_old_responsible;
+  END IF;
+  IF v_old.id IS NOT NULL AND v_old.client_id=p_client_id THEN
+    v_client_name:=v_old_data->>'cliente';
+    v_client_code:=v_old_data->>'codigo_cliente';
+  ELSE
+    SELECT c.client_name,c.client_code INTO v_client_name,v_client_code
+      FROM public.clients_master c WHERE c.id=p_client_id LIMIT 1;
+  END IF;
   SELECT p.name INTO v_author FROM public.profiles p WHERE p.user_id=auth.uid() LIMIT 1;
   IF v_old.id IS NULL THEN
     INSERT INTO public.projection_negotiations(filial_id,client_id,responsible_user_id,ano,mes,titulo,valor,situacao,observacoes,created_by,updated_by)
@@ -164,24 +233,18 @@ BEGIN
   ELSE
     IF ROW(v_old.client_id,v_old.responsible_user_id,v_old.titulo,v_old.valor,v_old.situacao,v_old.observacoes)
       IS NOT DISTINCT FROM ROW(p_client_id,p_responsible_user_id,btrim(p_titulo),p_valor,btrim(p_situacao),nullif(btrim(p_observacoes),'')) THEN RETURN v_old.id; END IF;
-    SELECT p.name INTO v_old_responsible FROM public.profiles p WHERE p.user_id=v_old.responsible_user_id LIMIT 1;
-    SELECT jsonb_build_object('client_id',c.id,'cliente',c.client_name,'codigo_cliente',c.client_code,
-      'responsible_user_id',v_old.responsible_user_id,'responsavel',v_old_responsible,
-      'titulo',v_old.titulo,'valor',v_old.valor,'situacao',v_old.situacao,'observacoes',v_old.observacoes)
-      INTO v_old_data FROM public.clients_master c WHERE c.id=v_old.client_id;
     UPDATE public.projection_negotiations SET client_id=p_client_id,responsible_user_id=p_responsible_user_id,
       titulo=btrim(p_titulo),valor=p_valor,situacao=btrim(p_situacao),observacoes=nullif(btrim(p_observacoes),''),updated_by=auth.uid()
       WHERE id=v_old.id
       RETURNING id,filial_id,client_id,responsible_user_id,ano,mes,titulo,valor,situacao,observacoes,created_by,updated_by,created_at,updated_at,version INTO v_new;
   END IF;
-  SELECT jsonb_build_object('client_id',c.id,'cliente',c.client_name,'codigo_cliente',c.client_code,
+  v_new_data:=jsonb_build_object('client_id',v_new.client_id,'cliente',v_client_name,'codigo_cliente',v_client_code,
     'responsible_user_id',v_new.responsible_user_id,'responsavel',v_responsible,
-    'titulo',v_new.titulo,'valor',v_new.valor,'situacao',v_new.situacao,'observacoes',v_new.observacoes)
-    INTO v_new_data FROM public.clients_master c WHERE c.id=v_new.client_id;
-  INSERT INTO public.projection_negotiation_history(negotiation_id,acao,valor_anterior,valor_novo,situacao_anterior,situacao_nova,
+    'titulo',v_new.titulo,'valor',v_new.valor,'situacao',v_new.situacao,'observacoes',v_new.observacoes);
+  INSERT INTO public.projection_negotiation_history(negotiation_id,ano,mes,version,acao,valor_anterior,valor_novo,situacao_anterior,situacao_nova,
     responsible_user_id_anterior,responsible_user_id_novo,responsible_name_anterior,responsible_name_novo,
     dados_anteriores,dados_novos,changed_by,changed_by_name)
-  VALUES(v_new.id,CASE WHEN v_old.id IS NULL THEN 'criado' ELSE 'alterado' END,v_old.valor,v_new.valor,v_old.situacao,v_new.situacao,
+  VALUES(v_new.id,v_new.ano,v_new.mes,v_new.version,CASE WHEN v_old.id IS NULL THEN 'criado' ELSE 'alterado' END,v_old.valor,v_new.valor,v_old.situacao,v_new.situacao,
     v_old.responsible_user_id,v_new.responsible_user_id,v_old_responsible,v_responsible,
     v_old_data,v_new_data,auth.uid(),coalesce(v_author,auth.uid()::text));
   RETURN v_new.id;
