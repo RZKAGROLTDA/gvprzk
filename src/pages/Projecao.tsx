@@ -130,7 +130,9 @@ export default function Projecao() {
         </div>
       </CardContent></Card>
 
-      {panel.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar: {errMsg(panel.error)}</CardContent></Card>}
+      {panel.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar o painel: {errMsg(panel.error)}</CardContent></Card>}
+      {history.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar o histórico: {errMsg(history.error)}</CardContent></Card>}
+      {adminFiliais.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar as filiais: {errMsg(adminFiliais.error)}</CardContent></Card>}
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Kpi title="Meta" value={brl(total.meta)} />
