@@ -134,7 +134,8 @@ export default function Projecao() {
       {history.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar o histórico: {errMsg(history.error)}</CardContent></Card>}
       {adminFiliais.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar as filiais: {errMsg(adminFiliais.error)}</CardContent></Card>}
 
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      {panel.isLoading && <p className="text-muted-foreground">Carregando painel…</p>}
+      {panel.isSuccess && <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Kpi title="Meta" value={brl(total.meta)} />
         <Kpi title="Projeção sem risco" value={brl(total.semRisco)} sub={`${pct(total.pctSem)} · GAP ${brl(total.gapSem)}`} />
         <Kpi title="Projeção com risco" value={brl(total.comRisco)} sub={`${pct(total.pctCom)} · GAP ${brl(total.gapCom)}`} />
