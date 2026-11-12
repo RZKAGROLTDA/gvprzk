@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,6 +18,14 @@ import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPendin
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
 const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
 const brl = (v: number | null | undefined) => v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+// Formato compacto para a tabela por filial: R$ 1,2 mi / R$ 850 mil.
+const brlCompact = (v: number | null | undefined) => {
+  if (v == null) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`;
+  if (abs >= 1_000) return `R$ ${(v / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} mil`;
+  return brl(v);
+};
 const pct = (v: number | null) => v == null ? '—' : `${v.toFixed(1)}%`;
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const parseMoney = (s: string) => { const t = s.replace(/[R$\s.]/g, '').replace(',', '.'); return t === '' ? NaN : Number(t); };
@@ -164,31 +171,29 @@ export default function Projecao() {
                   <TableCell className="text-right">{d.pendentes}</TableCell></TableRow>))}</TableBody></Table>
           </CardContent></Card>
 
-          <Card><CardHeader><CardTitle className="text-base">Detalhamento por filial</CardTitle></CardHeader><CardContent className="overflow-x-auto">
+          <Card><CardHeader className="py-3"><CardTitle className="text-base">Detalhamento por filial</CardTitle></CardHeader><CardContent className="overflow-x-auto px-2 pb-3">
             {panel.isLoading ? <p className="text-muted-foreground">Carregando…</p> : (
-            <Table><TableHeader><TableRow>
-              <TableHead>Divisional</TableHead><TableHead>Filial</TableHead><TableHead className="text-right">Meta</TableHead><TableHead className="text-right whitespace-nowrap">Semana atual</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Projeção sem risco</TableHead><TableHead className="text-right whitespace-nowrap">% da meta</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Projeção com risco</TableHead><TableHead className="text-right whitespace-nowrap">% da meta</TableHead>
-              <TableHead className="text-right whitespace-nowrap">GAP sem risco</TableHead><TableHead className="text-right whitespace-nowrap">GAP com risco</TableHead><TableHead className="whitespace-nowrap">Última atualização</TableHead>
+            <Table className="text-[13px]"><TableHeader><TableRow>
+              <TableHead className="px-2 py-1 min-w-[180px]">Filial</TableHead><TableHead className="px-2 py-1">Div.</TableHead><TableHead className="px-2 py-1 text-right">Meta</TableHead>
+              <TableHead className="px-2 py-1 text-right">Semana 1</TableHead><TableHead className="px-2 py-1 text-right">Semana 2</TableHead>
+              <TableHead className="px-2 py-1 text-right">Semana 3</TableHead><TableHead className="px-2 py-1 text-right">Semana 4</TableHead>
+              <TableHead className="px-2 py-1 text-right">Com risco</TableHead>
             </TableRow></TableHeader>
             <TableBody>
-              {byDiv.filter((d) => d.filiais > 0).map((d) => (
+              {byDiv.filter((d) => d.filiais > 0).map((d) => { const divRows = rows.filter((r) => (r.divisional ?? 'Sem divisional') === d.divisional); return (
                 <Fragment key={d.divisional}>
-                  {rows.filter((r) => (r.divisional ?? 'Sem divisional') === d.divisional).map((r) => { const c = consolidate([r]); const p = isPending(r); return (
+                  {divRows.map((r) => (
                     <TableRow key={r.filial_id}>
-                      <TableCell>{r.divisional ?? '—'}</TableCell><TableCell className="whitespace-nowrap font-medium">{r.filial_nome}</TableCell>
-                      <TableCell className="text-right whitespace-nowrap">{r.meta == null ? <Badge variant="outline">Sem meta</Badge> : brl(r.meta)}</TableCell>
-                      <TableCell className="text-right">{p ? <Badge variant="destructive">PENDENTE</Badge> : `S${r.ultima_semana}`}</TableCell>
-                      <TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(r.ultima_sem_risco)}</TableCell><TableCell className="text-right">{p ? '—' : pct(c.pctSem)}</TableCell>
-                      <TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(r.ultima_com_risco)}</TableCell><TableCell className="text-right">{p ? '—' : pct(c.pctCom)}</TableCell>
-                      <TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(c.gapSem)}</TableCell><TableCell className="text-right whitespace-nowrap">{p ? '—' : brl(c.gapCom)}</TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">{r.ultima_atualizacao ? `${new Date(r.ultima_atualizacao).toLocaleDateString('pt-BR')} · ${r.atualizado_por ?? ''}` : '—'}</TableCell>
-                    </TableRow>); })}
-                  <SummaryRow label={`Subtotal ${d.divisional}`} c={d} />
-                </Fragment>))}
-              {rows.length > 0 && <SummaryRow label="TOTAL GERAL" c={total} strong />}
-              {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={11} className="text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
+                      <TableCell className="px-2 py-1 whitespace-nowrap font-medium">{r.filial_nome}</TableCell>
+                      <TableCell className="px-2 py-1">{r.divisional ?? '—'}</TableCell>
+                      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{r.meta == null ? 'Sem meta' : brlCompact(r.meta)}</TableCell>
+                      {[1, 2, 3, 4].map((w) => <TableCell key={w} className="px-2 py-1 text-right whitespace-nowrap">{brlCompact((r as any)[`s${w}_sem`])}</TableCell>)}
+                      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{isPending(r) ? '—' : brlCompact(r.ultima_com_risco)}</TableCell>
+                    </TableRow>))}
+                  <SummaryRow label={`Subtotal ${d.divisional}`} rows={divRows} />
+                </Fragment>); })}
+              {rows.length > 0 && <SummaryRow label="TOTAL GERAL" rows={rows} strong />}
+              {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={8} className="px-2 py-1 text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
             </TableBody></Table>)}
           </CardContent></Card>
         </TabsContent>
@@ -210,16 +215,15 @@ export default function Projecao() {
   );
 }
 
-function SummaryRow({ label, c, strong }: { label: string; c: ReturnType<typeof consolidate>; strong?: boolean }) {
+function SummaryRow({ label, rows, strong }: { label: string; rows: ProjectionRow[]; strong?: boolean }) {
+  const meta = rows.reduce((a, r) => a + (r.meta ?? 0), 0);
+  const comRisco = rows.reduce((a, r) => a + (isPending(r) ? 0 : (r.ultima_com_risco ?? 0)), 0);
   return (
     <TableRow className={strong ? 'font-bold bg-muted' : 'font-semibold bg-muted/50'}>
-      <TableCell colSpan={2} className="whitespace-nowrap">{label}</TableCell>
-      <TableCell className="text-right whitespace-nowrap">{brl(c.meta)}</TableCell>
-      <TableCell className="text-right text-xs whitespace-nowrap">{c.pendentes ? `${c.pendentes} pendente(s)` : ''}</TableCell>
-      <TableCell className="text-right whitespace-nowrap">{brl(c.semRisco)}</TableCell><TableCell className="text-right">{pct(c.pctSem)}</TableCell>
-      <TableCell className="text-right whitespace-nowrap">{brl(c.comRisco)}</TableCell><TableCell className="text-right">{pct(c.pctCom)}</TableCell>
-      <TableCell className="text-right whitespace-nowrap">{brl(c.gapSem)}</TableCell><TableCell className="text-right whitespace-nowrap">{brl(c.gapCom)}</TableCell>
-      <TableCell />
+      <TableCell colSpan={2} className="px-2 py-1 whitespace-nowrap">{label}</TableCell>
+      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{brlCompact(meta)}</TableCell>
+      {[1, 2, 3, 4].map((w) => <TableCell key={w} className="px-2 py-1 text-right whitespace-nowrap">{brlCompact(rows.reduce((a, r) => a + (((r as any)[`s${w}_sem`] as number | null) ?? 0), 0))}</TableCell>)}
+      <TableCell className="px-2 py-1 text-right whitespace-nowrap">{brlCompact(comRisco)}</TableCell>
     </TableRow>
   );
 }
