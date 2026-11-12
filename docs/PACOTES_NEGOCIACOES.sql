@@ -64,10 +64,13 @@ CREATE TABLE public.projection_negotiation_history (
     OR (acao='alterado' AND version>1 AND valor_anterior IS NOT NULL AND situacao_anterior IS NOT NULL
       AND length(btrim(situacao_anterior))>0 AND responsible_user_id_anterior IS NOT NULL
       AND responsible_name_anterior IS NOT NULL AND length(btrim(responsible_name_anterior))>0 AND dados_anteriores IS NOT NULL)),
-  CONSTRAINT projection_negotiation_history_snapshot_valid CHECK (
+  CONSTRAINT projection_negotiation_history_snapshot_valid CHECK (coalesce((
     jsonb_typeof(dados_novos)='object'
     AND dados_novos ?& ARRAY['client_id','cliente','codigo_cliente','responsible_user_id','responsavel','titulo','valor','situacao','observacoes']
     AND nullif(btrim(dados_novos->>'cliente'),'') IS NOT NULL
+    AND nullif(btrim(dados_novos->>'client_id'),'') IS NOT NULL
+    AND nullif(btrim(dados_novos->>'codigo_cliente'),'') IS NOT NULL
+    AND nullif(btrim(dados_novos->>'titulo'),'') IS NOT NULL
     AND dados_novos->>'responsavel'=responsible_name_novo
     AND dados_novos->>'responsible_user_id'=responsible_user_id_novo::text
     AND dados_novos->>'situacao'=situacao_nova
@@ -76,10 +79,13 @@ CREATE TABLE public.projection_negotiation_history (
       jsonb_typeof(dados_anteriores)='object'
       AND dados_anteriores ?& ARRAY['client_id','cliente','codigo_cliente','responsible_user_id','responsavel','titulo','valor','situacao','observacoes']
       AND nullif(btrim(dados_anteriores->>'cliente'),'') IS NOT NULL
+      AND nullif(btrim(dados_anteriores->>'client_id'),'') IS NOT NULL
+      AND nullif(btrim(dados_anteriores->>'codigo_cliente'),'') IS NOT NULL
+      AND nullif(btrim(dados_anteriores->>'titulo'),'') IS NOT NULL
       AND dados_anteriores->>'responsavel'=responsible_name_anterior
       AND dados_anteriores->>'responsible_user_id'=responsible_user_id_anterior::text
       AND dados_anteriores->>'situacao'=situacao_anterior
-      AND dados_anteriores->'valor'=to_jsonb(valor_anterior))))
+      AND dados_anteriores->'valor'=to_jsonb(valor_anterior)))),false))
 );
 GRANT ALL ON public.projection_negotiation_history TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE public.projection_negotiation_history_id_seq TO service_role;
