@@ -1924,6 +1924,238 @@ export type Database = {
           },
         ]
       }
+      projection_entries: {
+        Row: {
+          ano: number
+          com_risco: number
+          created_at: string
+          created_by: string | null
+          filial_id: string
+          id: string
+          mes: number
+          observacao: string | null
+          sem_risco: number
+          semana: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ano: number
+          com_risco: number
+          created_at?: string
+          created_by?: string | null
+          filial_id: string
+          id?: string
+          mes: number
+          observacao?: string | null
+          sem_risco: number
+          semana: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ano?: number
+          com_risco?: number
+          created_at?: string
+          created_by?: string | null
+          filial_id?: string
+          id?: string
+          mes?: number
+          observacao?: string | null
+          sem_risco?: number
+          semana?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_entries_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projection_entry_history: {
+        Row: {
+          acao: string
+          ano: number
+          changed_at: string
+          changed_by: string | null
+          com_risco: number
+          entry_id: string
+          filial_id: string
+          id: string
+          mes: number
+          observacao: string | null
+          sem_risco: number
+          semana: number
+        }
+        Insert: {
+          acao: string
+          ano: number
+          changed_at?: string
+          changed_by?: string | null
+          com_risco: number
+          entry_id: string
+          filial_id: string
+          id?: string
+          mes: number
+          observacao?: string | null
+          sem_risco: number
+          semana: number
+        }
+        Update: {
+          acao?: string
+          ano?: number
+          changed_at?: string
+          changed_by?: string | null
+          com_risco?: number
+          entry_id?: string
+          filial_id?: string
+          id?: string
+          mes?: number
+          observacao?: string | null
+          sem_risco?: number
+          semana?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_entry_history_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "projection_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projection_filial_divisional: {
+        Row: {
+          created_at: string
+          divisional: string | null
+          filial_id: string
+          incluida: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          divisional?: string | null
+          filial_id: string
+          incluida?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          divisional?: string | null
+          filial_id?: string
+          incluida?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_filial_divisional_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: true
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projection_goal_history: {
+        Row: {
+          ano: number
+          changed_at: string
+          changed_by: string | null
+          filial_id: string
+          goal_id: string
+          id: string
+          mes: number
+          meta_anterior: number | null
+          meta_nova: number
+          origem: string
+        }
+        Insert: {
+          ano: number
+          changed_at?: string
+          changed_by?: string | null
+          filial_id: string
+          goal_id: string
+          id?: string
+          mes: number
+          meta_anterior?: number | null
+          meta_nova: number
+          origem?: string
+        }
+        Update: {
+          ano?: number
+          changed_at?: string
+          changed_by?: string | null
+          filial_id?: string
+          goal_id?: string
+          id?: string
+          mes?: number
+          meta_anterior?: number | null
+          meta_nova?: number
+          origem?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_goal_history_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "projection_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projection_goals: {
+        Row: {
+          ano: number
+          created_at: string
+          created_by: string | null
+          filial_id: string
+          id: string
+          mes: number
+          meta: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          created_by?: string | null
+          filial_id: string
+          id?: string
+          mes: number
+          meta: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          created_by?: string | null
+          filial_id?: string
+          id?: string
+          mes?: number
+          meta?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projection_goals_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           completed: boolean | null
@@ -4275,6 +4507,52 @@ export type Database = {
           visitas: number
         }[]
       }
+      get_projection_filiais: {
+        Args: never
+        Returns: {
+          divisional: string
+          filial_id: string
+          filial_nome: string
+        }[]
+      }
+      get_projection_history: {
+        Args: { p_active_filial: string; p_ano: number; p_mes: number }
+        Returns: {
+          acao: string
+          autor: string
+          changed_at: string
+          com_risco: number
+          filial_id: string
+          filial_nome: string
+          observacao: string
+          sem_risco: number
+          semana: number
+          tipo: string
+          valor_anterior: number
+        }[]
+      }
+      get_projection_panel: {
+        Args: { p_active_filial: string; p_ano: number; p_mes: number }
+        Returns: {
+          atualizado_por: string
+          divisional: string
+          filial_id: string
+          filial_nome: string
+          meta: number
+          s1_com: number
+          s1_sem: number
+          s2_com: number
+          s2_sem: number
+          s3_com: number
+          s3_sem: number
+          s4_com: number
+          s4_sem: number
+          ultima_atualizacao: string
+          ultima_com_risco: number
+          ultima_sem_risco: number
+          ultima_semana: number
+        }[]
+      }
       get_prospects_aggregate: {
         Args: {
           p_created_by?: string
@@ -5373,6 +5651,31 @@ export type Database = {
       }
       pops_scope: { Args: never; Returns: Json }
       pops_user_enabled: { Args: never; Returns: boolean }
+      projection_filial_in: { Args: { p_filial: string }; Returns: boolean }
+      projection_is_admin: { Args: never; Returns: boolean }
+      projection_role_ok: { Args: never; Returns: boolean }
+      projection_save_entry: {
+        Args: {
+          p_active_filial: string
+          p_ano: number
+          p_com_risco: number
+          p_filial: string
+          p_mes: number
+          p_observacao: string
+          p_sem_risco: number
+          p_semana: number
+        }
+        Returns: string
+      }
+      projection_scope: { Args: { p_filial_id: string }; Returns: string[] }
+      projection_set_divisional: {
+        Args: { p_divisional: string; p_filial: string; p_incluida: boolean }
+        Returns: undefined
+      }
+      projection_upsert_goals: {
+        Args: { p_origem?: string; p_rows: Json }
+        Returns: number
+      }
       resolve_client_name_conflict: {
         Args: { p_id: string; p_new_name: string; p_resolution_type?: string }
         Returns: {
