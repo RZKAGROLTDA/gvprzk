@@ -258,7 +258,7 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
     mutationFn: async () => {
       const s = parseProjectionMoney(sem), c = parseProjectionMoney(com);
       if (!current) throw new Error('Selecione a filial');
-      if (s == null || c == null) throw new Error('Informe as duas projeções com valores válidos, com até dois centavos decimais');
+      if (s == null || c == null) throw new Error('Informe as duas projeções com valores válidos e até duas casas decimais');
       const { error } = await rpc('projection_save_entry', { p_active_filial: scopeFilial ?? current, p_filial: current, p_ano: ano, p_mes: mes, p_semana: Number(semana), p_sem_risco: s, p_com_risco: c, p_observacao: obs });
       if (error) throw error;
     },

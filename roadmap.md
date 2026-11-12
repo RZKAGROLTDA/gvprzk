@@ -169,7 +169,7 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
-- [ ] Formatar os dois valores de Lançar semana em reais durante a edição; validar conversão, centavos e cursor sem publicar.
+- [x] Dois valores de Lançar semana formatados em BRL sem mudança de escala; 17 testes passaram, edição/centavos/cursor/exclusão/conversão verificados no navegador isoladamente, referência atual preservada. Salvamento autenticado indisponível (Supabase externo); sem alteração de banco/painel e sem publicação.
 - [x] Por filial compactada com dez colunas, valores completos ao passar o mouse e indicadores consolidados; 13 testes passaram e build OK. Conferência visual isolada com dados sintéticos: 1280px sem rolagem e 687px com rolagem interna; sessão real indisponível (Supabase externo). Não publicado.
 - [x] Plano aprovado
 - [ ] SQL revisado (admin global; gerente/supervisor só filiais autorizadas, escopo nunca vazio) — aguardando aprovação
