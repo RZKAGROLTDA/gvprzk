@@ -17,3 +17,4 @@
 - Situação JD (v3) is computed live inside jd_audit_status_of from all checklists (first by start_date,id per normalized chassis = ok, later = duplicado); it stays internal so report RPCs enforce visibility, and legacy JD base/import tables are kept untouched.
 - Projeção reads and writes only through SECURITY DEFINER RPCs (tables have no client grants); its consolidation and Excel-import rules live in src/lib/projection.ts so totals always use the latest week only.
 - Projection table metrics use the shared projection helper; consolidated week-over-week variation compares matched branches with prior entries to avoid treating first entries as growth.
+- Weekly projection money inputs use NumericFormat for caret-aware BRL formatting and keep ungrouped decimal strings until strict conversion at save, avoiding cents-shifting masks.
