@@ -169,7 +169,7 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
-- [ ] Compactar Por filial: S1–S4 sem risco, última com risco, % Meta, GAP e variação entre lançamentos; testar cálculos e largura, sem publicar.
+- [x] Por filial compactada com dez colunas, valores completos ao passar o mouse e indicadores consolidados; 13 testes passaram e build OK. Conferência visual isolada com dados sintéticos: 1280px sem rolagem e 687px com rolagem interna; sessão real indisponível (Supabase externo). Não publicado.
 - [x] Plano aprovado
 - [ ] SQL revisado (admin global; gerente/supervisor só filiais autorizadas, escopo nunca vazio) — aguardando aprovação
 - [ ] Aplicar migração, telas, testes
