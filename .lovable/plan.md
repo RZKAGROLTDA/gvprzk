@@ -1,57 +1,39 @@
-# Auditoria de Duplicidade de Chassis — Campanha JD
+# Aba PROJEÇÃO — Metas e Projeções de Vendas
 
-## Objetivo
-Cruzar a base de chassis já enviados à John Deere com **todos** os checklists do GVPS (2.587 checklists, 2.582 com chassi na ficha), classificando cada um como "Já enviado à JD", "Disponível" ou "Sem chassi" — na tela e no Excel — sem alterar checklists, vínculos ou regras de acesso.
+## Decisões já tomadas
+- Todas as filiais cadastradas entram, exceto **Tele Vendas**.
+- O cadastro atual não tem divisional. O administrador define a divisional (MT, GO, PA) de cada filial na própria aba Projeção, uma única vez. As filiais e os cadastros existentes não são alterados.
+- Metas: cadastro manual na tela + importação de planilha Excel (colunas Filial, Mês, Ano, Meta), com prévia antes de gravar.
 
-## Banco de dados (migração apresentada para aprovação antes de aplicar)
+## O que o usuário verá
+- Novo item **Projeção** no menu principal, visível só para Administrador, Gerente e Supervisor.
+- **Painel**: filtros por mês, ano, divisional e filial. Cartões com o consolidado geral e por divisional. Tabela com todas as filiais: meta, última projeção sem risco e com risco, % de atingimento, % acima/abaixo da meta, GAP em R$, semana da última atualização e a evolução S1–S4. Filiais sem lançamento aparecem como **PENDENTE**, nunca como zero. Botão Exportar Excel.
+- **Lançamento (Supervisor)**: escolhe a semana (1 a 4) e informa a projeção sem risco, a projeção com risco e uma observação opcional. Cada semana fica guardada separadamente. A semana 3 não apaga a semana 2, e as semanas nunca são somadas.
+- **Metas (Administrador)**: edição na tela ou importação; cada alteração guarda o histórico.
 
-**1. Tabela `public.jd_chassis_import_batches`** (histórico de importações)
-- Campos: nome do arquivo, quem importou, data, total de linhas, chassis novos, duplicados ignorados.
-- Nunca apaga registros: cada atualização da base gera um novo lote, preservando o histórico.
+## Cálculos
+- Última projeção = a semana mais recente lançada no mês.
+- Atingimento = projeção ÷ meta. Crescimento/queda = (projeção ÷ meta − 1). GAP = projeção − meta.
+- Consolidados: somam metas e últimas projeções apenas das filiais que já lançaram. Mostram também quantas filiais estão pendentes.
 
-**2. Tabela `public.jd_chassis_base`** (base consolidada de chassis enviados à JD)
-- Campos: chassi normalizado (único), chassi original, lote de origem, data.
-- Normalização no servidor: maiúsculas + remoção de espaços, ignorando diferenças de caixa/espaços.
-- `ON CONFLICT DO NOTHING`: duplicidades dentro do arquivo ou já existentes na base são ignoradas e contadas.
-- GRANTs: leitura para usuários autenticados; escrita apenas via função de importação.
-- RLS: leitura autenticada; nenhuma escrita direta por usuários.
+## Permissões (aplicadas no banco)
+- Administrador: tudo. É o único que cadastra metas e divisionais.
+- Gerente: visualiza as filiais autorizadas, conforme o acesso de gestão atual.
+- Supervisor: vê e lança apenas na sua Filial Ativa autorizada (`effective_filial_ids`). Uma filial não autorizada é negada com o código 42501.
+- Consultores, RAC, CPA, CSA e demais vendedores: sem acesso.
 
-**3. Função `import_jd_chassis(chassis text[], filename text)`** (SECURITY DEFINER)
-- Valida `has_role(auth.uid(), 'admin')` — somente administradores importam/atualizam.
-- Normaliza, deduplica, insere novos, registra o lote e retorna o resumo (novos/duplicados).
+## Detalhes técnicos
+Somente tabelas novas, sem tocar nas existentes:
+- `projection_filial_divisional` (filial_id, divisional MT/GO/PA, incluída sim/não)
+- `projection_goals` (filial_id, ano, mês, valor da meta, quem cadastrou e quando; uma meta por filial/mês)
+- `projection_goal_history` (valor anterior e novo, quem alterou e quando; gravado automaticamente)
+- `projection_entries` (filial_id, ano, mês, semana 1–4, sem risco, com risco, observação, quem lançou/alterou e quando; um registro por semana)
+- `projection_entry_history` (cada edição de uma semana, imutável)
+- Acesso por RLS com `has_role` + `effective_filial_ids`; gravações por funções seguras que validam papel, filial e semana. Validação de valores por trigger.
+- Painel servido por uma função que já respeita o escopo do usuário. A exportação Excel usa o mesmo conjunto de dados.
+- Testes dos cálculos (atingimento, GAP, última semana, PENDENTE, consolidado) e simulação de permissões com BEGIN/ROLLBACK.
 
-**4. Classificação dinâmica (sem campo novo em `tasks`)**
-- A situação JD é calculada por cruzamento no banco (join com o chassi normalizado de `tasks.checklist_machine->>'chassi_serie'`).
-- Por ser calculada, vale automaticamente para registros históricos e para novos checklists — nenhuma atualização em massa, nenhum checklist é alterado.
-
-## Como é garantida a auditoria de 100% dos checklists
-- O cruzamento acontece **no banco de dados**, não na tela: não depende de paginação, período, filial ou vendedor.
-- As RPCs existentes (`get_service_opportunities_details` e `get_management_activity_export`) passam a incluir a coluna `jd_status` calculada por join.
-- A auditoria abrange todos os checklists, mas cada usuário continua recebendo **somente os registros que seu perfil e filial já permitem** — os filtros atuais das RPCs permanecem intactos.
-- Sem chassi na ficha → "Sem chassi" (não depende de vínculo com o Parque de Máquinas).
-
-## Interface
-
-**Importação (somente administradores)**
-- Nova opção administrativa (em Configurações/Administração): upload de Excel/CSV, pré-visualização com resumo (total, novos, duplicados, inválidos) e confirmação antes de gravar.
-
-**Relatório de Oportunidades (Análise Gerencial → Oportunidades de Serviço)**
-- Nova coluna "Situação JD" apenas nos registros do tipo Checklist:
-  - Vermelho: "Já enviado à JD"
-  - Verde: "Disponível"
-  - Amarelo: "Sem chassi"
-- Novo filtro por Situação JD.
-- Demais tipos de oportunidade sem classificação JD.
-
-**Exportação Excel de Checklists (Análise Gerencial → Relatório)**
-- Nova coluna "Situação JD" na aba principal, com a mesma classificação da tela.
-
-## Validações previstas (somente leitura)
-- Testes unitários: normalização (caixa/espaços), deduplicação, classificação nos três estados.
-- Simulação com base de teste em transação reversível: cruzamento cobre 100% dos 2.587 checklists.
-- Excel gerado e reaberto conferindo a coluna.
-- Verificação de que usuário não-admin não consegue importar (erro de permissão).
-
-## Fora de escopo
-- Nenhuma alteração em checklists, vínculos de máquinas, RLS existente, fluxo de aprovação ou outras funcionalidades.
-- Nenhuma publicação sem autorização final.
+## Fluxo de aprovação
+1. Você aprova o plano. Apresento o SQL completo para aprovação, sem executar.
+2. Após a aprovação do SQL, aplico, implemento as telas e testo.
+3. Apresento os resultados. Não publico sem a sua autorização final.
