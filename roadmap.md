@@ -167,3 +167,9 @@
 - [x] JD V2: migração + telas + testes
 - [ ] JD V2: publicar (aguarda autorização do usuário)
 - [x] JD V3 automática (chassi pelos checklists)
+
+## Projeção de Vendas
+- [x] Plano aprovado
+- [ ] SQL revisado (admin global; gerente/supervisor só filiais autorizadas, escopo nunca vazio) — aguardando aprovação
+- [ ] Aplicar migração, telas, testes
+- [ ] Publicar (aguarda autorização)

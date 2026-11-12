@@ -66,43 +66,53 @@ GRANT ALL ON public.projection_filial_divisional, public.projection_goals,
   public.projection_goal_history, public.projection_entries,
   public.projection_entry_history TO service_role;
 
--- ---------- Helpers ----------
+-- ---------- Helpers (revisão 2) ----------
+-- Admin: todas as filiais. Gerente/Supervisor: SOMENTE filiais autorizadas
+-- (get_user_filial_ids_internal: principal + user_filiais ativas). Sem global automático.
+CREATE OR REPLACE FUNCTION public.projection_is_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT public.is_active_approved_user() AND public.has_role(auth.uid(),'admin')
+$$;
+
 CREATE OR REPLACE FUNCTION public.projection_role_ok()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT public.is_active_approved_user() AND (
+  SELECT auth.uid() IS NOT NULL AND public.is_active_approved_user() AND (
     public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager')
     OR public.has_role(auth.uid(),'supervisor'))
 $$;
 
--- Teto de RLS: admin/gerente global; supervisor só filiais que effective_filial_ids autoriza.
+-- Teto de RLS: admin todas; demais apenas filiais autorizadas. Lista vazia = nenhuma.
 CREATE OR REPLACE FUNCTION public.projection_can_see_filial(p_filial uuid)
-RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  IF NOT public.projection_role_ok() THEN RETURN false; END IF;
-  IF public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager') THEN RETURN true; END IF;
-  RETURN p_filial = ANY(public.effective_filial_ids(p_filial));
-EXCEPTION WHEN OTHERS THEN RETURN false;
-END $$;
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT CASE
+    WHEN NOT public.projection_role_ok() OR p_filial IS NULL THEN false
+    WHEN public.projection_is_admin() THEN true
+    ELSE p_filial = ANY(public.get_user_filial_ids_internal(auth.uid()))
+  END
+$$;
 
--- Escopo efetivo da sessão (Filial Ativa). Lança 42501 se não autorizado.
+-- Escopo da sessão. NUNCA retorna vazio.
+-- Admin: filial escolhida ou todas (lista explícita). Gerente/Supervisor: exatamente
+-- uma Filial Ativa autorizada (a informada ou a principal). Senão 42501.
 CREATE OR REPLACE FUNCTION public.projection_scope(p_filial_id uuid)
 RETURNS uuid[] LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
-DECLARE v uuid[];
+DECLARE v_allowed uuid[]; v_sel uuid;
 BEGIN
   IF NOT public.projection_role_ok() THEN
-    RAISE EXCEPTION 'Sem acesso à Projeção' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'Sem acesso à Projeção' USING ERRCODE='42501'; END IF;
+  IF p_filial_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM filiais WHERE id=p_filial_id) THEN
+    RAISE EXCEPTION 'Filial inexistente' USING ERRCODE='42501'; END IF;
+  IF public.projection_is_admin() THEN
+    IF p_filial_id IS NOT NULL THEN RETURN ARRAY[p_filial_id]; END IF;
+    RETURN (SELECT coalesce(array_agg(id), '{}'::uuid[]) FROM filiais);
   END IF;
-  v := public.effective_filial_ids(p_filial_id);
-  IF coalesce(array_length(v,1),0) = 0
-     AND NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager')) THEN
-    RAISE EXCEPTION 'Filial não autorizada' USING ERRCODE = '42501';
-  END IF;
-  -- Nunca combinar filiais para não globais: exatamente uma Filial Ativa
-  IF NOT (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager'))
-     AND array_length(v,1) <> 1 THEN
-    RAISE EXCEPTION 'Selecione uma Filial Ativa' USING ERRCODE = '42501';
-  END IF;
-  RETURN v;  -- vazio = global (admin/gerente sem filial ativa)
+  v_allowed := public.get_user_filial_ids_internal(auth.uid());
+  v_sel := coalesce(p_filial_id,
+    (SELECT filial_id FROM profiles WHERE user_id=auth.uid()
+      AND approval_status='approved' AND employment_status='active'));
+  IF v_sel IS NULL OR NOT (v_sel = ANY(coalesce(v_allowed,'{}'::uuid[]))) THEN
+    RAISE EXCEPTION 'Filial não autorizada' USING ERRCODE='42501'; END IF;
+  RETURN ARRAY[v_sel];
 END $$;
 
 -- ---------- Validação por trigger ----------
@@ -145,7 +155,7 @@ CREATE POLICY "proj_entryh_select" ON public.projection_entry_history FOR SELECT
 CREATE OR REPLACE FUNCTION public.projection_set_divisional(p_filial uuid, p_divisional text, p_incluida boolean)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  IF NOT (public.is_active_approved_user() AND public.has_role(auth.uid(),'admin')) THEN
+  IF NOT public.projection_is_admin() THEN
     RAISE EXCEPTION 'Somente administrador' USING ERRCODE='42501'; END IF;
   INSERT INTO projection_filial_divisional(filial_id, divisional, incluida, updated_by)
   VALUES (p_filial, nullif(p_divisional,''), coalesce(p_incluida,true), auth.uid())
@@ -158,7 +168,7 @@ CREATE OR REPLACE FUNCTION public.projection_upsert_goals(p_rows jsonb, p_origem
 RETURNS int LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE r jsonb; v_old numeric; v_id uuid; n int := 0;
 BEGIN
-  IF NOT (public.is_active_approved_user() AND public.has_role(auth.uid(),'admin')) THEN
+  IF NOT public.projection_is_admin() THEN
     RAISE EXCEPTION 'Somente administrador' USING ERRCODE='42501'; END IF;
   IF jsonb_typeof(p_rows) <> 'array' THEN RAISE EXCEPTION 'Formato inválido' USING ERRCODE='22023'; END IF;
   FOR r IN SELECT * FROM jsonb_array_elements(p_rows) LOOP
@@ -191,10 +201,11 @@ CREATE OR REPLACE FUNCTION public.projection_save_entry(
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_scope uuid[]; v_id uuid; v_acao text := 'criado';
 BEGIN
-  IF NOT (public.has_role(auth.uid(),'supervisor') OR public.has_role(auth.uid(),'admin')) THEN
+  -- Lançam: administrador (qualquer filial) e supervisor (só Filial Ativa). Gerente apenas visualiza.
+  IF NOT (public.projection_is_admin() OR (public.projection_role_ok() AND public.has_role(auth.uid(),'supervisor'))) THEN
     RAISE EXCEPTION 'Sem permissão de lançamento' USING ERRCODE='42501'; END IF;
   v_scope := public.projection_scope(p_active_filial);
-  IF coalesce(array_length(v_scope,1),0) > 0 AND NOT (p_filial = ANY(v_scope)) THEN
+  IF p_filial IS NULL OR NOT (p_filial = ANY(v_scope)) THEN
     RAISE EXCEPTION 'Filial não autorizada' USING ERRCODE='42501'; END IF;
   IF p_sem_risco IS NULL OR p_com_risco IS NULL THEN
     RAISE EXCEPTION 'Informe as duas projeções' USING ERRCODE='22023'; END IF;
@@ -245,7 +256,7 @@ BEGIN
     WHERE x.filial_id=f.id AND x.ano=p_ano AND x.mes=p_mes
     ORDER BY x.semana DESC LIMIT 1) l ON true
   WHERE coalesce(d.incluida, lower(trim(f.nome)) <> 'tele vendas')
-    AND (coalesce(array_length(v_scope,1),0)=0 OR f.id = ANY(v_scope))
+    AND f.id = ANY(v_scope)   -- escopo nunca vazio; sem atalho global
   GROUP BY f.id, f.nome, d.divisional, g.meta, l.semana, l.sem_risco, l.com_risco, l.updated_at, l.autor
   ORDER BY d.divisional NULLS LAST, f.nome;
 END $$;
@@ -255,7 +266,7 @@ REVOKE ALL ON FUNCTION public.projection_set_divisional(uuid,text,boolean),
   public.projection_upsert_goals(jsonb,text),
   public.projection_save_entry(uuid,uuid,int,int,int,numeric,numeric,text),
   public.get_projection_panel(uuid,int,int),
-  public.projection_scope(uuid), public.projection_role_ok(),
+  public.projection_scope(uuid), public.projection_role_ok(), public.projection_is_admin(),
   public.projection_can_see_filial(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.projection_set_divisional(uuid,text,boolean),
   public.projection_upsert_goals(jsonb,text),
