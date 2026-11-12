@@ -1,7 +1,7 @@
 -- =====================================================================
 -- PROJEÇÃO DE VENDAS — SQL PROPOSTO (NÃO EXECUTADO)
 -- Somente objetos novos. Nenhuma tabela/política/dado existente é alterado.
--- Escopo de filial: public.effective_filial_ids(p_filial_id) (vazio = global).
+-- Escopo: admin todas; gerente/supervisor somente filiais autorizadas (nunca global).
 -- =====================================================================
 
 -- ---------- Tabelas ----------
@@ -274,3 +274,28 @@ GRANT EXECUTE ON FUNCTION public.projection_set_divisional(uuid,text,boolean),
   public.get_projection_panel(uuid,int,int),
   public.projection_can_see_filial(uuid) TO authenticated;
 
+
+-- ---------- Histórico com autor (mesmo escopo do painel) ----------
+CREATE OR REPLACE FUNCTION public.get_projection_history(p_active_filial uuid, p_ano int, p_mes int)
+RETURNS TABLE(tipo text, filial_id uuid, filial_nome text, semana int, valor_anterior numeric,
+  sem_risco numeric, com_risco numeric, observacao text, acao text, autor text, changed_at timestamptz)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_scope uuid[] := public.projection_scope(p_active_filial);
+BEGIN
+  RETURN QUERY
+  SELECT 'lancamento'::text, h.filial_id, f.nome::text, h.semana, NULL::numeric, h.sem_risco, h.com_risco,
+         h.observacao, h.acao, pr.name::text, h.changed_at
+    FROM projection_entry_history h JOIN filiais f ON f.id=h.filial_id
+    LEFT JOIN profiles pr ON pr.user_id=h.changed_by
+   WHERE h.filial_id = ANY(v_scope) AND h.ano=p_ano AND h.mes=p_mes
+  UNION ALL
+  SELECT 'meta'::text, h.filial_id, f.nome::text, NULL::int, h.meta_anterior, h.meta_nova, NULL::numeric,
+         NULL::text, h.origem, pr.name::text, h.changed_at
+    FROM projection_goal_history h JOIN filiais f ON f.id=h.filial_id
+    LEFT JOIN profiles pr ON pr.user_id=h.changed_by
+   WHERE h.filial_id = ANY(v_scope) AND h.ano=p_ano AND h.mes=p_mes
+  ORDER BY 11 DESC
+  LIMIT 500;
+END $$;
+REVOKE ALL ON FUNCTION public.get_projection_history(uuid,int,int) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_projection_history(uuid,int,int) TO authenticated;
