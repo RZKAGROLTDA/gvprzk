@@ -40,9 +40,9 @@ const errMsg = (e: any) => e?.message ?? 'Erro inesperado';
 export default function Projecao() {
   const { isAdmin, isManager, isSupervisor, isLoading: rolesLoading } = useUserRole();
   const { activeFilialId, filiais: userFiliais, isLoading: filLoading } = useUserFiliais();
-  const realAdmin = isAdmin;
+  const realAdmin = hasProjectionFullAccess({ isAdmin, isManager });
   const canAccess = realAdmin || isManager || isSupervisor;
-  const canEnter = realAdmin || isSupervisor;
+  const canEnter = canAccess;
   const now = new Date();
   const [ano, setAno] = useState(now.getFullYear());
   const [mes, setMes] = useState(now.getMonth() + 1);
@@ -52,9 +52,8 @@ export default function Projecao() {
   const changePeriod = (a: number, m: number) => { setAno(a); setMes(m); setWeek(defaultProjectionWeek(new Date(), a, m)); };
   const qc = useQueryClient();
 
-  // Admin escolhe livremente; gerente/supervisor sempre a Filial Ativa (servidor revalida).
-  // Gerente com uma única filial elegível usa-a automaticamente, só nesta tela.
-  const scopeFilial = resolveProjectionScopeFilial({ isAdmin: realAdmin, isManager, activeFilialId, filiais: userFiliais });
+  // Admin e gerente: todas as filiais; supervisor: só a Filial Ativa (servidor revalida).
+  const scopeFilial = resolveProjectionScopeFilial({ isAdmin, isManager, activeFilialId });
   const ready = !rolesLoading && !filLoading && canAccess && (realAdmin || !!scopeFilial);
 
   const panel = useQuery({

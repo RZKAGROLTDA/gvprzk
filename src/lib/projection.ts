@@ -147,18 +147,16 @@ export function rowsForWeek(rows: ProjectionRow[], week: ProjectionWeek): Projec
 export const isTeleVendasName = (nome: string | null | undefined) =>
   (nome ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '').includes('televendas');
 
+/** Acesso completo na Projeção por função: administrador e gerente (o servidor aplica a mesma regra). */
+export const hasProjectionFullAccess = (p: { isAdmin: boolean; isManager: boolean }) => p.isAdmin || p.isManager;
+
 /**
  * Filial de contexto da Projeção (somente local; não altera a Filial Ativa global).
- * Admin: null (escopo global). Supervisor: só a Filial Ativa. Gerente: Filial Ativa,
- * ou automaticamente a única filial autorizada elegível (sem Tele Vendas).
+ * Admin/gerente: null (escopo global). Supervisor: só a Filial Ativa.
  */
 export function resolveProjectionScopeFilial(p: {
   isAdmin: boolean; isManager: boolean; activeFilialId: string | null | undefined;
-  filiais: { id: string; nome: string }[];
 }): string | null {
-  if (p.isAdmin) return null;
-  if (p.activeFilialId) return p.activeFilialId;
-  if (!p.isManager) return null;
-  const elegiveis = p.filiais.filter((f) => !isTeleVendasName(f.nome));
-  return elegiveis.length === 1 ? elegiveis[0].id : null;
+  if (hasProjectionFullAccess(p)) return null;
+  return p.activeFilialId || null;
 }
