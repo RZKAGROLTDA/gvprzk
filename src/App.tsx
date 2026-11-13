@@ -7,7 +7,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster as HotToaster } from "react-hot-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useQueryClient } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { applyUpdateOnNavigation } from "@/lib/appUpdate";
 import { Layout } from "@/components/Layout";
 import { AuthProvider } from '@/components/AuthProvider';
 import { ProfileAutoCreator } from '@/components/ProfileAutoCreator';
@@ -142,10 +143,22 @@ const ProtectedRoutes: React.FC<ProtectedRoutesProps> = ({ user, profile }) => {
   );
 };
 
+/** Aplica uma versão nova já detectada quando o usuário troca de página. */
+const UpdateOnNavigation: React.FC = () => {
+  const { pathname } = useLocation();
+  const first = React.useRef(true);
+  React.useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    void applyUpdateOnNavigation();
+  }, [pathname]);
+  return null;
+};
+
 // Simplified routing component without auth dependencies
 const AppRoutes: React.FC<{ user: any; profile: any }> = ({ user, profile }) => {
   return (
     <BrowserRouter>
+      <UpdateOnNavigation />
       <ErrorBoundary title="Não foi possível carregar esta página">
       <React.Suspense fallback={<RouteFallback />}>
       <Routes>
