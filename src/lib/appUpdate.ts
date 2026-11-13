@@ -370,7 +370,8 @@ export const applyUpdateOnNavigation = async (): Promise<boolean> => {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
   const remoteHash = remote.buildHash || remote.version || 'unknown';
   const rec = parseAttempt(read(KEY_ATTEMPTED));
-  if (decideAttempt(rec, remoteHash, Date.now()) === 'exhausted') return false;
+  // Respeita o intervalo entre tentativas: evita ciclo de recargas se a troca não aplicar.
+  if (decideAttempt(rec, remoteHash, Date.now()) !== 'attempt') return false;
   startAttempt(rec, remoteHash);
   console.log('[app-update] aplicando nova versão na troca de página', { remote: remoteHash });
   const r = await reloadForUpdate();
