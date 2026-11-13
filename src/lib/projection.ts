@@ -142,3 +142,23 @@ export function rowsForWeek(rows: ProjectionRow[], week: ProjectionWeek): Projec
     };
   });
 }
+
+/** Tele Vendas nunca participa da Projeção (o servidor também exclui). */
+export const isTeleVendasName = (nome: string | null | undefined) =>
+  (nome ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '').includes('televendas');
+
+/**
+ * Filial de contexto da Projeção (somente local; não altera a Filial Ativa global).
+ * Admin: null (escopo global). Supervisor: só a Filial Ativa. Gerente: Filial Ativa,
+ * ou automaticamente a única filial autorizada elegível (sem Tele Vendas).
+ */
+export function resolveProjectionScopeFilial(p: {
+  isAdmin: boolean; isManager: boolean; activeFilialId: string | null | undefined;
+  filiais: { id: string; nome: string }[];
+}): string | null {
+  if (p.isAdmin) return null;
+  if (p.activeFilialId) return p.activeFilialId;
+  if (!p.isManager) return null;
+  const elegiveis = p.filiais.filter((f) => !isTeleVendasName(f.nome));
+  return elegiveis.length === 1 ? elegiveis[0].id : null;
+}

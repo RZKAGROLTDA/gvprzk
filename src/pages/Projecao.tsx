@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
+import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, resolveProjectionScopeFilial, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
 const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
@@ -53,8 +53,9 @@ export default function Projecao() {
   const qc = useQueryClient();
 
   // Admin escolhe livremente; gerente/supervisor sempre a Filial Ativa (servidor revalida).
-  const scopeFilial = realAdmin ? null : activeFilialId;
-  const ready = !rolesLoading && !filLoading && canAccess && (realAdmin || !!activeFilialId);
+  // Gerente com uma única filial elegível usa-a automaticamente, só nesta tela.
+  const scopeFilial = resolveProjectionScopeFilial({ isAdmin: realAdmin, isManager, activeFilialId, filiais: userFiliais });
+  const ready = !rolesLoading && !filLoading && canAccess && (realAdmin || !!scopeFilial);
 
   const panel = useQuery({
     queryKey: ['projection-panel', scopeFilial, ano, mes],
@@ -122,9 +123,9 @@ export default function Projecao() {
 
   if (rolesLoading || filLoading) return <p className="text-muted-foreground p-4">Carregando…</p>;
   if (!canAccess) return <Card><CardContent className="p-6">Você não tem acesso à Projeção.</CardContent></Card>;
-  if (!realAdmin && !activeFilialId) return <Card><CardContent className="p-6">Selecione a Filial Ativa no topo para visualizar a Projeção.</CardContent></Card>;
+  if (!realAdmin && !scopeFilial) return <Card><CardContent className="p-6">Selecione a Filial Ativa no topo para visualizar a Projeção.</CardContent></Card>;
 
-  const entryFiliais = realAdmin ? sortByDivisional(adminFiliais.data ?? []).map((f) => ({ id: f.filial_id, nome: `${f.divisional ?? 'Sem divisional'} — ${f.filial_nome}` })) : userFiliais.filter((f) => f.id === activeFilialId);
+  const entryFiliais = realAdmin ? sortByDivisional(adminFiliais.data ?? []).map((f) => ({ id: f.filial_id, nome: `${f.divisional ?? 'Sem divisional'} — ${f.filial_nome}` })) : userFiliais.filter((f) => f.id === scopeFilial);
 
   return (
     <div className="space-y-4">
@@ -145,7 +146,7 @@ export default function Projecao() {
           {realAdmin ? (
             <Select value={adminFilial} onValueChange={setAdminFilial}><SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="all">Todas</SelectItem>{filialOptions.map((f) => <SelectItem key={f.filial_id} value={f.filial_id}>{f.filial_nome}</SelectItem>)}</SelectContent></Select>
-          ) : <Input disabled value={userFiliais.find((f) => f.id === activeFilialId)?.nome ?? 'Filial Ativa'} />}
+          ) : <Input disabled value={userFiliais.find((f) => f.id === scopeFilial)?.nome ?? 'Filial Ativa'} />}
         </div>
       </CardContent></Card>
 
