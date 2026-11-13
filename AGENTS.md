@@ -11,7 +11,7 @@
 - Special Conditions Excel row mapping lives in src/lib/specialConditionExcel.ts and is shared by the screen export and file-readability validation, keeping validation faithful to the shipped mapping.
 
 - The Regularização PDF uses the official RZK Agro A4 letterhead extracted from the supplied DOCX as a full-page background on every page, preserving visual fidelity and safe content margins.
-- App update flow lives only in src/lib/appUpdate.ts: HTML is never precached (NetworkFirst navigations) and reloads happen only after the new version is confirmed reachable, so users never stay stuck on an old shell.
+- App update flow lives only in src/lib/appUpdate.ts: HTML is never precached (NetworkFirst navigations), reloads happen only after the new version is confirmed reachable, retries are spaced and capped per build, and route changes apply a detected update only when no work is pending, so users never stay stuck on an old shell nor loop.
 - Validação e Regularização de Máquinas filial selection lives only in src/lib/parkFilialScope.ts and the park/regularization RPCs' p_filial_ids/p_include_sem_filial; the server (equipment_park_scope) is the authority, so the UI never widens scope.
 - The two machine panels initialize local selection through useParkFilialSelection and gate data requests until ready; header changes do not reinitialize selection, and explicit scope requests send no legacy active-filial override.
 - Situação JD (v3) is computed live inside jd_audit_status_of from all checklists (first by start_date,id per normalized chassis = ok, later = duplicado); it stays internal so report RPCs enforce visibility, and legacy JD base/import tables are kept untouched.
