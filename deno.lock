@@ -101,6 +101,7 @@
         "npm:react-helmet-async@^2.0.5",
         "npm:react-hook-form@^7.53.0",
         "npm:react-hot-toast@^2.6.0",
+        "npm:react-number-format@5.4.4",
         "npm:react-resizable-panels@^2.1.3",
         "npm:react-router-dom@^6.26.2",
         "npm:react@^18.3.1",

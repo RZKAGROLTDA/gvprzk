@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/use-toast';
-import { Download, Upload, Target } from 'lucide-react';
+import { Download, Upload, Target, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
@@ -80,7 +81,7 @@ export default function Projecao() {
       return (data ?? []) as { filial_id: string; filial_nome: string; divisional: string | null }[];
     },
   });
-  const refresh = () => { qc.invalidateQueries({ queryKey: ['projection-panel'] }); qc.invalidateQueries({ queryKey: ['projection-history'] }); qc.invalidateQueries({ queryKey: ['projection-filiais'] }); };
+  const refresh = () => { qc.invalidateQueries({ queryKey: ['projection-panel'] }); qc.invalidateQueries({ queryKey: ['projection-history'] }); qc.invalidateQueries({ queryKey: ['projection-filiais'] }); qc.invalidateQueries({ queryKey: ['projection-entries'] }); };
 
   const rows: ProjectionRow[] = useMemo(() => filterRows(sortByDivisional(panel.data ?? []), divFilter, adminFilial), [panel.data, divFilter, adminFilial]);
   const total = useMemo(() => consolidate(rows), [rows]);
@@ -208,7 +209,7 @@ export default function Projecao() {
           <Table><TableHeader><TableRow><TableHead>Quando</TableHead><TableHead>Tipo</TableHead><TableHead>Filial</TableHead><TableHead>Detalhe</TableHead><TableHead>Por</TableHead></TableRow></TableHeader>
             <TableBody>{(history.data ?? []).map((h, i) => (
               <TableRow key={i}><TableCell className="whitespace-nowrap text-xs">{new Date(h.changed_at).toLocaleString('pt-BR')}</TableCell>
-                <TableCell>{h.tipo === 'meta' ? `Meta (${h.acao})` : `S${h.semana} ${h.acao}`}</TableCell><TableCell>{h.filial_nome}</TableCell>
+                <TableCell>{h.tipo === 'meta' ? `Meta (${h.acao})` : h.acao === 'excluido' ? <span className="font-semibold text-destructive">S{h.semana} Excluído</span> : `S${h.semana} ${h.acao}`}</TableCell><TableCell>{h.filial_nome}</TableCell>
                 <TableCell className="text-xs">{h.tipo === 'meta' ? `${brl(h.valor_anterior == null ? null : Number(h.valor_anterior))} → ${brl(Number(h.sem_risco))}` : `Sem risco ${brl(Number(h.sem_risco))} · Com risco ${brl(Number(h.com_risco))}${h.observacao ? ` · ${h.observacao}` : ''}`}</TableCell>
                 <TableCell>{h.autor ?? '—'}</TableCell></TableRow>))}
               {!history.data?.length && <TableRow><TableCell colSpan={5} className="text-muted-foreground">Sem alterações neste mês.</TableCell></TableRow>}</TableBody></Table>
@@ -262,7 +263,7 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
     queryFn: async () => {
       const { data, error } = await rpc('get_projection_entries', { p_active_filial: scopeFilial ?? current, p_ano: ano, p_mes: mes });
       if (error) throw error;
-      return (data ?? []) as { entry_id: string; filial_id: string; semana: number; version: number }[];
+      return (data ?? []) as { entry_id: string; filial_id: string; filial_nome: string; semana: number; sem_risco: number; com_risco: number; version: number }[];
     },
   });
   const loadedEntry = entries.data?.find((e) => e.filial_id === current && e.semana === Number(semana)) ?? null;
@@ -281,6 +282,22 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
       toast({ title: 'Não foi salvo', description: e?.code === '40001' ? 'Este lançamento foi alterado ou excluído por outro usuário. Os dados foram atualizados; confira e salve novamente.' : errMsg(e), variant: 'destructive' });
     },
   });
+  const [toDelete, setToDelete] = useState<{ entry_id: string; filial_nome: string; semana: number; version: number } | null>(null);
+  const [reason, setReason] = useState('');
+  const del = useMutation({
+    mutationFn: async () => {
+      if (!toDelete) return;
+      if (!reason.trim()) throw new Error('Informe o motivo da exclusão');
+      const { error } = await rpc('projection_delete_entry', { p_active_filial: scopeFilial ?? current, p_entry_id: toDelete.entry_id, p_expected_version: toDelete.version, p_reason: reason.trim() });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: `Semana ${toDelete?.semana} excluída` }); setToDelete(null); setReason(''); entries.refetch(); onSaved(); },
+    onError: (e: any) => {
+      if (e?.code === '40001') { entries.refetch(); setToDelete(null); }
+      toast({ title: 'Não foi excluído', description: e?.code === '40001' ? 'Este lançamento foi alterado ou já excluído por outro usuário. A lista foi atualizada.' : errMsg(e), variant: 'destructive' });
+    },
+  });
+  const filialEntries = (entries.data ?? []).filter((e) => e.filial_id === current);
   const prev = existing ? [(existing as any)[`s${semana}_sem`], (existing as any)[`s${semana}_com`]] : [null, null];
   return (
     <Card><CardContent className="p-4 grid gap-3 md:grid-cols-2">
@@ -296,6 +313,21 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
       <div className="md:col-span-2 flex justify-between items-center gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">Cada semana é guardada separadamente; o painel usa a última semana lançada.</p>
         <Button onClick={() => save.mutate()} disabled={save.isPending || entries.isLoading}>{save.isPending ? 'Salvando…' : 'Salvar semana'}</Button></div>
+      <div className="md:col-span-2">
+        <Label>Lançamentos registrados — {MESES[mes - 1]}/{ano}</Label>
+        {entries.error && <p className="text-sm text-destructive">Não foi possível carregar os lançamentos: {errMsg(entries.error)}</p>}
+        {entries.isSuccess && !filialEntries.length && <p className="text-sm text-muted-foreground">Nenhum lançamento ativo para esta filial.</p>}
+        {filialEntries.length > 0 && <Table className="text-[13px]"><TableHeader><TableRow><TableHead className="h-8 px-2">Semana</TableHead><TableHead className="h-8 px-2 text-right">Sem risco</TableHead><TableHead className="h-8 px-2 text-right">Com risco</TableHead><TableHead className="h-8 px-2 w-24" /></TableRow></TableHeader>
+          <TableBody>{filialEntries.map((e) => <TableRow key={e.entry_id}><TableCell className="py-1 px-2">Semana {e.semana}</TableCell><TableCell className="py-1 px-2 text-right">{brl(Number(e.sem_risco))}</TableCell><TableCell className="py-1 px-2 text-right">{brl(Number(e.com_risco))}</TableCell>
+            <TableCell className="py-1 px-2 text-right"><Button size="sm" variant="ghost" className="text-destructive h-7" aria-label={`Excluir semana ${e.semana}`} onClick={() => { setReason(''); setToDelete(e); }}><Trash2 className="h-4 w-4 mr-1" />Excluir</Button></TableCell></TableRow>)}</TableBody></Table>}
+      </div>
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => { if (!o && !del.isPending) setToDelete(null); }}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+          <AlertDialogDescription>Filial: <b>{toDelete?.filial_nome}</b> · Mês: <b>{MESES[mes - 1]}</b> · Ano: <b>{ano}</b> · Semana: <b>{toDelete?.semana}</b>. O lançamento deixa de contar nos resultados e fica registrado no Histórico como "Excluído".</AlertDialogDescription></AlertDialogHeader>
+          <div><Label htmlFor="delete-reason">Motivo da exclusão (obrigatório)</Label><Textarea id="delete-reason" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} /></div>
+          <AlertDialogFooter><AlertDialogCancel disabled={del.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={!reason.trim() || del.isPending} onClick={(ev) => { ev.preventDefault(); del.mutate(); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{del.isPending ? 'Excluindo…' : 'Excluir'}</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent></AlertDialog>
     </CardContent></Card>
   );
 }
