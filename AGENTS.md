@@ -18,3 +18,4 @@
 - Projeção reads and writes only through SECURITY DEFINER RPCs (tables have no client grants); its consolidation and Excel-import rules live in src/lib/projection.ts and the panel totals only the selected week (rowsForWeek), never summing weeks or borrowing another week.
 - Projection table metrics use the shared projection helper; consolidated week-over-week variation compares matched branches with prior entries to avoid treating first entries as growth.
 - Weekly projection money inputs use NumericFormat for caret-aware BRL formatting and keep ungrouped decimal strings until strict conversion at save, avoiding cents-shifting masks.
+- Projeção full access is decided only by projection_is_admin() on the server, mirrored by hasProjectionFullAccess in src/lib/projection.ts, so UI and database grant by role identically.
