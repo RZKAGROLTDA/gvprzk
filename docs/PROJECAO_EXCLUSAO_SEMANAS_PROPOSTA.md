@@ -26,7 +26,9 @@ Status: proposta para aprovação. Não executar nem publicar.
 - Histórico identifica **Excluído**, permite consultar os dados originais e motivo, e nunca alimenta cálculos.
 
 ## Validações antes da implantação
-Analisar sintaxe do SQL, compatibilidade das assinaturas, cobertura dos leitores e preservação dos controles de acesso. Testes de comportamento serão feitos em banco isolado; nenhum SQL desta proposta será aplicado ao GVPS sem aprovação.
+SQL completo analisado: 23 comandos com sintaxe válida. Aplicação da proposta passou em PostgreSQL 17.11 local descartável, com estrutura e funções atuais reproduzidas. **25 verificações passaram**, incluindo motivo obrigatório, permissões simuladas de administrador/gerente/supervisor, retorno S4→S3→S1, filial pendente, dados/datas preservados, snapshot monetário com centavos, histórico imutável, nome preservado após renomeação, novo UUID no relançamento, versão desatualizada recusada, Tele Vendas excluída e tabelas fechadas. Dados de teste revertidos ao final.
+
+Limitação: auxiliares de identidade/cargos/vínculos usam fixtures locais, não sessões reais. Concorrência entre duas conexões, interface autenticada e regressão completa de metas/importação serão verificadas depois da aprovação; não foram considerados testes concluídos. Nenhum SQL desta proposta foi executado no GVPS.
 
 ## Testes previstos após aprovação
 1. Administrador exclui filial incluída; gerente recebe 42501; supervisor exclui somente Filial Ativa autorizada.
