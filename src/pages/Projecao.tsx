@@ -254,16 +254,32 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
   const [sem, setSem] = useState(''); const [com, setCom] = useState(''); const [obs, setObs] = useState('');
   const current = filial || filiais[0]?.id || '';
   const existing = panel.find((r) => r.filial_id === current);
+  // Versão carregada na tela: enviada nas edições para recusar sobrescrita de alterações simultâneas.
+  const entries = useQuery({
+    queryKey: ['projection-entries', scopeFilial ?? current, ano, mes],
+    enabled: !!current,
+    staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await rpc('get_projection_entries', { p_active_filial: scopeFilial ?? current, p_ano: ano, p_mes: mes });
+      if (error) throw error;
+      return (data ?? []) as { entry_id: string; filial_id: string; semana: number; version: number }[];
+    },
+  });
+  const loadedEntry = entries.data?.find((e) => e.filial_id === current && e.semana === Number(semana)) ?? null;
   const save = useMutation({
     mutationFn: async () => {
       const s = parseProjectionMoney(sem), c = parseProjectionMoney(com);
       if (!current) throw new Error('Selecione a filial');
       if (s == null || c == null) throw new Error('Informe as duas projeções com valores válidos e até duas casas decimais');
-      const { error } = await rpc('projection_save_entry', { p_active_filial: scopeFilial ?? current, p_filial: current, p_ano: ano, p_mes: mes, p_semana: Number(semana), p_sem_risco: s, p_com_risco: c, p_observacao: obs });
+      if (!entries.isSuccess) throw new Error('Não foi possível carregar os lançamentos atuais. Atualize a tela e tente novamente.');
+      const { error } = await rpc('projection_save_entry', { p_active_filial: scopeFilial ?? current, p_filial: current, p_ano: ano, p_mes: mes, p_semana: Number(semana), p_sem_risco: s, p_com_risco: c, p_observacao: obs, p_expected_version: loadedEntry ? loadedEntry.version : null });
       if (error) throw error;
     },
-    onSuccess: () => { toast({ title: `Semana ${semana} salva` }); setSem(''); setCom(''); setObs(''); onSaved(); },
-    onError: (e) => toast({ title: 'Não foi salvo', description: errMsg(e), variant: 'destructive' }),
+    onSuccess: () => { toast({ title: `Semana ${semana} salva` }); setSem(''); setCom(''); setObs(''); entries.refetch(); onSaved(); },
+    onError: (e: any) => {
+      if (e?.code === '40001') entries.refetch();
+      toast({ title: 'Não foi salvo', description: e?.code === '40001' ? 'Este lançamento foi alterado ou excluído por outro usuário. Os dados foram atualizados; confira e salve novamente.' : errMsg(e), variant: 'destructive' });
+    },
   });
   const prev = existing ? [(existing as any)[`s${semana}_sem`], (existing as any)[`s${semana}_com`]] : [null, null];
   return (
@@ -279,7 +295,7 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
       <div className="md:col-span-2"><Label>Observação (opcional)</Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} /></div>
       <div className="md:col-span-2 flex justify-between items-center gap-2 flex-wrap">
         <p className="text-xs text-muted-foreground">Cada semana é guardada separadamente; o painel usa a última semana lançada.</p>
-        <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar semana'}</Button></div>
+        <Button onClick={() => save.mutate()} disabled={save.isPending || entries.isLoading}>{save.isPending ? 'Salvando…' : 'Salvar semana'}</Button></div>
     </CardContent></Card>
   );
 }
