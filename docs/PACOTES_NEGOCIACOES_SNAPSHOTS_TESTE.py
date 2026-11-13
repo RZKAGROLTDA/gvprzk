@@ -86,6 +86,9 @@ commands.append(f"SELECT '{len(cases)} casos passaram' AS resultado; ROLLBACK;")
 result = subprocess.run(
     ['psql', '-h', sys.argv[1], '-p', sys.argv[2], '-U', 'lovable', '-d', 'postgres',
      '-v', 'ON_ERROR_STOP=1', '-X', '-q'],
-    input='\n'.join(commands), text=True, capture_output=True, check=True,
+    input='\n'.join(commands), text=True, capture_output=True,
 )
+if result.returncode:
+    print(result.stderr, file=sys.stderr)
+    sys.exit(result.returncode)
 print(result.stdout.strip())
