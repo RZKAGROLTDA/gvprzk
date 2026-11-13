@@ -1,4 +1,6 @@
--- PROPOSTA PARA APROVAÇÃO — NÃO EXECUTADA.
+-- PROPOSTA v2 PARA APROVAÇÃO — NÃO EXECUTADA.
+-- Verificado no banco real: restrição projection_entries_filial_id_ano_mes_semana_key (UNIQUE filial_id,ano,mes,semana);
+-- única dependência é o próprio índice; nenhuma FK, função ou ON CONFLICT a referencia.
 -- Escopo: somente lançamentos semanais da Projeção e seu histórico.
 BEGIN;
 
@@ -26,7 +28,7 @@ ALTER TABLE public.projection_entry_history
 
 -- Troca apenas a regra de unicidade; nenhum registro é removido.
 ALTER TABLE public.projection_entries
-  DROP CONSTRAINT projection_entries_filial_id_ano_mes_semana_key;
+  DROP CONSTRAINT IF EXISTS projection_entries_filial_id_ano_mes_semana_key RESTRICT;
 CREATE UNIQUE INDEX projection_entries_active_week_key
   ON public.projection_entries(filial_id, ano, mes, semana)
   WHERE deleted_at IS NULL;
@@ -39,6 +41,8 @@ CREATE OR REPLACE FUNCTION public.projection_entry_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
+    -- Preserva o ON DELETE CASCADE existente (remoção de filial); bloqueia exclusão física direta.
+    IF pg_trigger_depth() > 1 THEN RETURN OLD; END IF;
     RAISE EXCEPTION 'Exclusão física de lançamento não permitida' USING ERRCODE='55000';
   END IF;
   IF TG_OP = 'INSERT' THEN
@@ -73,6 +77,9 @@ CREATE OR REPLACE FUNCTION public.projection_entry_history_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE v_entry public.projection_entries%ROWTYPE;
 BEGIN
+  IF TG_OP = 'DELETE' AND pg_trigger_depth() > 1 THEN
+    RETURN OLD; -- somente cascata existente de filial/lançamento
+  END IF;
   IF TG_OP <> 'INSERT' THEN
     RAISE EXCEPTION 'Histórico de lançamentos é imutável' USING ERRCODE='55000';
   END IF;
@@ -100,13 +107,15 @@ CREATE TRIGGER projection_entry_history_immutable BEFORE INSERT OR UPDATE OR DEL
 CREATE UNIQUE INDEX projection_entry_history_one_deletion
   ON public.projection_entry_history(entry_id) WHERE acao='excluido';
 
-CREATE OR REPLACE FUNCTION public.projection_save_entry(p_active_filial uuid, p_filial uuid, p_ano integer, p_mes integer, p_semana integer, p_sem_risco numeric, p_com_risco numeric, p_observacao text)
+-- Substitui a assinatura antiga (sem sobrecarga); acrescenta controle de versão na edição.
+DROP FUNCTION public.projection_save_entry(uuid,uuid,integer,integer,integer,numeric,numeric,text);
+CREATE FUNCTION public.projection_save_entry(p_active_filial uuid, p_filial uuid, p_ano integer, p_mes integer, p_semana integer, p_sem_risco numeric, p_com_risco numeric, p_observacao text, p_expected_version bigint DEFAULT NULL)
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-DECLARE v_scope uuid[]; v_id uuid; v_acao text := 'criado';
+DECLARE v_scope uuid[]; v_id uuid; v_version bigint; v_acao text := 'criado';
 BEGIN
   IF NOT (public.projection_is_admin() OR (public.projection_role_ok() AND public.has_role(auth.uid(),'supervisor'))) THEN
     RAISE EXCEPTION 'Sem permissão de lançamento' USING ERRCODE='42501'; END IF;
@@ -120,16 +129,24 @@ BEGIN
   IF NOT public.projection_is_admin() AND
       (p_active_filial IS NULL OR p_filial IS DISTINCT FROM p_active_filial) THEN
     RAISE EXCEPTION 'Utilize a Filial Ativa autorizada' USING ERRCODE='42501'; END IF;
+  IF p_expected_version IS NOT NULL AND p_expected_version < 1 THEN
+    RAISE EXCEPTION 'Versão do lançamento inválida' USING ERRCODE='22023'; END IF;
   -- Serializa gravações e exclusões da mesma filial/período/semana, mesmo sem linha ativa.
   PERFORM pg_advisory_xact_lock(hashtextextended(
     'projection-entry:' || p_filial::text || ':' || p_ano::text || ':' || p_mes::text || ':' || p_semana::text,0));
-  SELECT id INTO v_id FROM projection_entries
+  SELECT id, version INTO v_id, v_version FROM projection_entries
    WHERE filial_id=p_filial AND ano=p_ano AND mes=p_mes AND semana=p_semana AND deleted_at IS NULL FOR UPDATE;
   IF v_id IS NULL THEN
+    -- Quem editava uma versão que foi excluída nesse intervalo não recria silenciosamente.
+    IF p_expected_version IS NOT NULL THEN
+      RAISE EXCEPTION 'O lançamento foi excluído por outro usuário. Atualize a tela.' USING ERRCODE='40001'; END IF;
     INSERT INTO projection_entries(filial_id, ano, mes, semana, sem_risco, com_risco, observacao, created_by, updated_by)
     VALUES (p_filial,p_ano,p_mes,p_semana,p_sem_risco,p_com_risco,nullif(trim(p_observacao),''),auth.uid(),auth.uid())
     RETURNING id INTO v_id;
   ELSE
+    -- Edição exige a versão carregada na tela; versão diferente = alteração simultânea.
+    IF p_expected_version IS NULL OR p_expected_version <> v_version THEN
+      RAISE EXCEPTION 'Este lançamento foi alterado por outro usuário. Atualize a tela antes de salvar.' USING ERRCODE='40001'; END IF;
     v_acao := 'alterado';
     UPDATE projection_entries SET sem_risco=p_sem_risco, com_risco=p_com_risco,
       observacao=nullif(trim(p_observacao),''), updated_by=auth.uid() WHERE id=v_id;
@@ -138,6 +155,8 @@ BEGIN
   VALUES (v_id,p_filial,p_ano,p_mes,p_semana,p_sem_risco,p_com_risco,nullif(trim(p_observacao),''),v_acao,auth.uid());
   RETURN v_id;
 END $function$;
+REVOKE ALL ON FUNCTION public.projection_save_entry(uuid,uuid,integer,integer,integer,numeric,numeric,text,bigint) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.projection_save_entry(uuid,uuid,integer,integer,integer,numeric,numeric,text,bigint) TO authenticated,service_role;
 
 CREATE OR REPLACE FUNCTION public.projection_delete_entry(
   p_active_filial uuid, p_entry_id uuid, p_expected_version bigint, p_reason text
