@@ -3,7 +3,8 @@
  *
  * Regras:
  * - Detecta nova versão via /version.json (no-store), comparando buildHash/buildTime/version.
- * - Máximo de 1 tentativa automática de reload por buildHash.
+ * - Tentativas automáticas repetidas a cada AUTO_RETRY_INTERVAL_MS (máx. AUTO_MAX_ATTEMPTS por build).
+ * - Ao trocar de página sem trabalho pendente, aplica a versão nova imediatamente.
  * - Após o reload, revalida: se o bundle carregado bate com o version.json, marca como aplicada.
  *   Se continuar diferente, registra a falha e expõe apenas a opção manual.
  * - Nunca limpa localStorage/IndexedDB operacional (sessão, rascunhos, fila offline preservados).
@@ -20,6 +21,33 @@ const KEY_APPLIED = 'app-update:applied-hash';
 const KEY_FAILED = 'app-update:failed-hash';
 
 export const APP_UPDATE_FAILED_EVENT = 'app-update-failed';
+
+/** Intervalo entre tentativas automáticas para o mesmo build. */
+export const AUTO_RETRY_INTERVAL_MS = 5 * 60 * 1000;
+/** Depois disso só resta o botão manual (evita ciclo de recargas). */
+export const AUTO_MAX_ATTEMPTS = 6;
+
+export interface AttemptRecord { hash: string; count: number; at: number }
+
+/** Lê o registro de tentativa; aceita o formato antigo (só o hash). */
+export const parseAttempt = (raw: string | null): AttemptRecord | null => {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw);
+    if (v && typeof v.hash === 'string') return { hash: v.hash, count: Number(v.count) || 1, at: Number(v.at) || 0 };
+  } catch { /* formato antigo */ }
+  return { hash: raw, count: 1, at: 0 };
+};
+
+export type AttemptDecision = 'attempt' | 'wait' | 'exhausted';
+
+/** Decide se pode tentar novamente agora para o build remoto. */
+export const decideAttempt = (rec: AttemptRecord | null, remoteHash: string, now: number): AttemptDecision => {
+  if (!rec || rec.hash !== remoteHash) return 'attempt';
+  if (rec.count >= AUTO_MAX_ATTEMPTS) return 'exhausted';
+  if (now - rec.at < AUTO_RETRY_INTERVAL_MS) return 'wait';
+  return 'attempt';
+};
 
 /** Only transport failures are retryable; application exceptions must remain visible. */
 export const isModuleLoadError = (error: unknown): boolean =>
