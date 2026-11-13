@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, resolveProjectionScopeFilial, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
+import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, resolveProjectionScopeFilial, hasProjectionFullAccess, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
 const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
@@ -40,9 +40,9 @@ const errMsg = (e: any) => e?.message ?? 'Erro inesperado';
 export default function Projecao() {
   const { isAdmin, isManager, isSupervisor, isLoading: rolesLoading } = useUserRole();
   const { activeFilialId, filiais: userFiliais, isLoading: filLoading } = useUserFiliais();
-  const realAdmin = isAdmin;
+  const realAdmin = hasProjectionFullAccess({ isAdmin, isManager });
   const canAccess = realAdmin || isManager || isSupervisor;
-  const canEnter = realAdmin || isSupervisor;
+  const canEnter = canAccess;
   const now = new Date();
   const [ano, setAno] = useState(now.getFullYear());
   const [mes, setMes] = useState(now.getMonth() + 1);
@@ -52,9 +52,8 @@ export default function Projecao() {
   const changePeriod = (a: number, m: number) => { setAno(a); setMes(m); setWeek(defaultProjectionWeek(new Date(), a, m)); };
   const qc = useQueryClient();
 
-  // Admin escolhe livremente; gerente/supervisor sempre a Filial Ativa (servidor revalida).
-  // Gerente com uma única filial elegível usa-a automaticamente, só nesta tela.
-  const scopeFilial = resolveProjectionScopeFilial({ isAdmin: realAdmin, isManager, activeFilialId, filiais: userFiliais });
+  // Admin e gerente: todas as filiais; supervisor: só a Filial Ativa (servidor revalida).
+  const scopeFilial = resolveProjectionScopeFilial({ isAdmin, isManager, activeFilialId });
   const ready = !rolesLoading && !filLoading && canAccess && (realAdmin || !!scopeFilial);
 
   const panel = useQuery({
