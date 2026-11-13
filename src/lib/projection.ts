@@ -113,3 +113,32 @@ export function validateGoalImport(raw: Record<string, unknown>[], filiais: { fi
   });
   return { valid, errors };
 }
+
+export type ProjectionWeek = 1 | 2 | 3 | 4;
+/** Semana padrão do painel: dias 1–7 = S1, 8–14 = S2, 15–21 = S3, 22+ = S4; mês passado = S4, futuro = S1. */
+export function defaultProjectionWeek(today: Date, ano: number, mes: number): ProjectionWeek {
+  const cur = today.getFullYear() * 12 + today.getMonth(), sel = ano * 12 + (mes - 1);
+  if (sel < cur) return 4;
+  if (sel > cur) return 1;
+  return Math.min(4, Math.floor((today.getDate() - 1) / 7) + 1) as ProjectionWeek;
+}
+/**
+ * Visão da semana selecionada: cada filial passa a valer somente o lançamento ativo daquela semana
+ * (uma vez por filial). Sem lançamento na semana = PENDENTE, sem recorrer a outra semana. Meta inalterada.
+ */
+export function rowsForWeek(rows: ProjectionRow[], week: ProjectionWeek): ProjectionRow[] {
+  return rows.map((r) => {
+    const sem = r[`s${week}_sem` as 's1_sem'];
+    const com = r[`s${week}_com` as 's1_com'];
+    const has = sem != null && Number.isFinite(sem);
+    const sameAsLatest = has && r.ultima_semana === week;
+    return {
+      ...r,
+      ultima_semana: has ? week : null,
+      ultima_sem_risco: has ? sem : null,
+      ultima_com_risco: has ? (com ?? null) : null,
+      ultima_atualizacao: sameAsLatest ? r.ultima_atualizacao : null,
+      atualizado_por: sameAsLatest ? r.atualizado_por : null,
+    };
+  });
+}
