@@ -39,5 +39,11 @@ T "histórico ações" "select string_agg(acao,',' order by changed_at) from pro
 T "painel usa só ativos (S1)" "select s1_sem from get_projection_panel('$F',2026,11)"
 T "delete direto" "delete from projection_entries"
 T "alterar histórico" "update projection_entry_history set observacao='x'"
-T "remover filial (cascata existente)" "delete from filiais; select count(*) from projection_entries"
+$P -c "create table atk(x int); create function atk_f() returns trigger language plpgsql as \$\$begin delete from projection_entries; return new; end\$\$; create trigger atk_t after insert on atk for each row execute function atk_f(); create table atk2(x int); create function atk2_f() returns trigger language plpgsql as \$\$begin delete from projection_entry_history; return new; end\$\$; create trigger atk2_t after insert on atk2 for each row execute function atk2_f();" >/dev/null
+T "ataque: apagar lançamentos via trigger aninhada" "insert into atk values(1)"
+T "ataque: apagar histórico via trigger aninhada" "insert into atk2 values(1)"
+T "ataque: apagar histórico via função" "do \$\$begin delete from projection_entry_history; end\$\$"
+T "lançamentos intactos após ataques" "select count(*) from projection_entries"
+T "histórico intacto após ataques" "select count(*) from projection_entry_history"
+T "remover filial (cascata existente)" "delete from filiais; select count(*) from projection_entries; select count(*) from projection_entry_history"
 pg_ctl -D $D stop >/dev/null
