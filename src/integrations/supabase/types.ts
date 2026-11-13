@@ -1930,6 +1930,9 @@ export type Database = {
           com_risco: number
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           filial_id: string
           id: string
           mes: number
@@ -1938,12 +1941,16 @@ export type Database = {
           semana: number
           updated_at: string
           updated_by: string | null
+          version: number
         }
         Insert: {
           ano: number
           com_risco: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           filial_id: string
           id?: string
           mes: number
@@ -1952,12 +1959,16 @@ export type Database = {
           semana: number
           updated_at?: string
           updated_by?: string | null
+          version?: number
         }
         Update: {
           ano?: number
           com_risco?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           filial_id?: string
           id?: string
           mes?: number
@@ -1966,6 +1977,7 @@ export type Database = {
           semana?: number
           updated_at?: string
           updated_by?: string | null
+          version?: number
         }
         Relationships: [
           {
@@ -1984,7 +1996,9 @@ export type Database = {
           changed_at: string
           changed_by: string | null
           com_risco: number
+          deletion_reason: string | null
           entry_id: string
+          entry_snapshot: Json | null
           filial_id: string
           id: string
           mes: number
@@ -1998,7 +2012,9 @@ export type Database = {
           changed_at?: string
           changed_by?: string | null
           com_risco: number
+          deletion_reason?: string | null
           entry_id: string
+          entry_snapshot?: Json | null
           filial_id: string
           id?: string
           mes: number
@@ -2012,7 +2028,9 @@ export type Database = {
           changed_at?: string
           changed_by?: string | null
           com_risco?: number
+          deletion_reason?: string | null
           entry_id?: string
+          entry_snapshot?: Json | null
           filial_id?: string
           id?: string
           mes?: number
@@ -4507,6 +4525,40 @@ export type Database = {
           visitas: number
         }[]
       }
+      get_projection_deleted_entry: {
+        Args: { p_active_filial: string; p_entry_id: string }
+        Returns: {
+          entry_id: string
+          snapshot: Json
+        }[]
+      }
+      get_projection_deletions: {
+        Args: { p_active_filial: string; p_ano: number; p_mes: number }
+        Returns: {
+          changed_at: string
+          entry_id: string
+          filial_id: string
+          semana: number
+          snapshot: Json
+        }[]
+      }
+      get_projection_entries: {
+        Args: { p_active_filial: string; p_ano: number; p_mes: number }
+        Returns: {
+          com_risco: number
+          created_at: string
+          created_by: string
+          entry_id: string
+          filial_id: string
+          filial_nome: string
+          observacao: string
+          sem_risco: number
+          semana: number
+          updated_at: string
+          updated_by: string
+          version: number
+        }[]
+      }
       get_projection_filiais: {
         Args: never
         Returns: {
@@ -5651,6 +5703,15 @@ export type Database = {
       }
       pops_scope: { Args: never; Returns: Json }
       pops_user_enabled: { Args: never; Returns: boolean }
+      projection_delete_entry: {
+        Args: {
+          p_active_filial: string
+          p_entry_id: string
+          p_expected_version: number
+          p_reason: string
+        }
+        Returns: string
+      }
       projection_filial_in: { Args: { p_filial: string }; Returns: boolean }
       projection_is_admin: { Args: never; Returns: boolean }
       projection_role_ok: { Args: never; Returns: boolean }
@@ -5659,6 +5720,7 @@ export type Database = {
           p_active_filial: string
           p_ano: number
           p_com_risco: number
+          p_expected_version?: number
           p_filial: string
           p_mes: number
           p_observacao: string
