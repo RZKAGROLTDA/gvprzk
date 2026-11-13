@@ -122,6 +122,7 @@ export default function Projecao() {
 
   if (rolesLoading || filLoading) return <p className="text-muted-foreground p-4">Carregando…</p>;
   if (!canAccess) return <Card><CardContent className="p-6">Você não tem acesso à Projeção.</CardContent></Card>;
+  if (!realAdmin && !activeFilialId) return <Card><CardContent className="p-6">Selecione a Filial Ativa no topo para visualizar a Projeção.</CardContent></Card>;
 
   const entryFiliais = realAdmin ? sortByDivisional(adminFiliais.data ?? []).map((f) => ({ id: f.filial_id, nome: `${f.divisional ?? 'Sem divisional'} — ${f.filial_nome}` })) : userFiliais.filter((f) => f.id === activeFilialId);
 
