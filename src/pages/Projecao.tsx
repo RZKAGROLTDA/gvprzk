@@ -14,7 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/components/ui/use-toast';
-import { Download, Upload, Target, Trash2 } from 'lucide-react';
+import { Download, Upload, Target, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
@@ -257,6 +260,37 @@ function Kpi({ title, value, sub }: { title: string; value: string; sub?: string
   return <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">{title}</p><p className="text-lg font-bold">{value}</p>{sub && <p className="text-xs text-muted-foreground">{sub}</p>}</CardContent></Card>;
 }
 
+const normalizeSearch = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+function FilialCombobox({ options, value, onChange }: { options: { id: string; nome: string }[]; value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} aria-label="Filial" className="w-full justify-between font-normal">
+          <span className="truncate">{selected?.nome ?? 'Selecione a filial'}</span><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command filter={(itemValue, search) => (normalizeSearch(itemValue).includes(normalizeSearch(search.trim())) ? 1 : 0)}>
+          <CommandInput placeholder="Pesquisar filial..." />
+          <CommandList>
+            <CommandEmpty>Nenhuma filial encontrada.</CommandEmpty>
+            <CommandGroup>
+              {options.map((o) => (
+                <CommandItem key={o.id} value={`${o.nome} ${o.id}`} onSelect={() => { onChange(o.id); setOpen(false); }}>
+                  <Check className={cn('mr-2 h-4 w-4', o.id === value ? 'opacity-100' : 'opacity-0')} />{o.nome}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais: { id: string; nome: string }[]; panel: ProjectionRow[]; ano: number; mes: number; scopeFilial: string | null; onSaved: () => void }) {
   const [filial, setFilial] = useState(filiais[0]?.id ?? '');
   const [semana, setSemana] = useState('1');
@@ -310,8 +344,7 @@ function EntryForm({ filiais, panel, ano, mes, scopeFilial, onSaved }: { filiais
   return (
     <Card><CardContent className="p-4 grid gap-3 md:grid-cols-2">
       <div><Label>Filial</Label>
-        <Select value={current} onValueChange={setFilial}><SelectTrigger><SelectValue placeholder="Filial" /></SelectTrigger>
-          <SelectContent>{filiais.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent></Select></div>
+        <FilialCombobox options={filiais.map((f) => { const d = panel.find((r) => r.filial_id === f.id)?.divisional; return { id: f.id, nome: !f.nome.includes(' — ') && d ? `${d} — ${f.nome}` : f.nome }; })} value={current} onChange={setFilial} /></div>
       <div><Label>Semana</Label>
         <Select value={semana} onValueChange={setSemana}><SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>{[1,2,3,4].map((s) => <SelectItem key={s} value={String(s)}>Semana {s}</SelectItem>)}</SelectContent></Select></div>
