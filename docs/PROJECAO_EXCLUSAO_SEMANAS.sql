@@ -42,7 +42,11 @@ RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
     -- Preserva o ON DELETE CASCADE existente (remoção de filial); bloqueia exclusão física direta.
-    IF pg_trigger_depth() > 1 THEN RETURN OLD; END IF;
+    -- Só aceita a cascata da FK: a filial-mãe já precisa ter sido removida nesta operação.
+    IF pg_trigger_depth() > 1
+       AND NOT EXISTS (SELECT 1 FROM public.filiais f WHERE f.id = OLD.filial_id) THEN
+      RETURN OLD;
+    END IF;
     RAISE EXCEPTION 'Exclusão física de lançamento não permitida' USING ERRCODE='55000';
   END IF;
   IF TG_OP = 'INSERT' THEN
@@ -77,8 +81,11 @@ CREATE OR REPLACE FUNCTION public.projection_entry_history_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE v_entry public.projection_entries%ROWTYPE;
 BEGIN
-  IF TG_OP = 'DELETE' AND pg_trigger_depth() > 1 THEN
-    RETURN OLD; -- somente cascata existente de filial/lançamento
+  -- Só aceita a cascata da FK: o lançamento-pai já precisa ter sido removido (que por sua vez
+  -- só ocorre na remoção da filial).
+  IF TG_OP = 'DELETE' AND pg_trigger_depth() > 1
+     AND NOT EXISTS (SELECT 1 FROM public.projection_entries e WHERE e.id = OLD.entry_id) THEN
+    RETURN OLD;
   END IF;
   IF TG_OP <> 'INSERT' THEN
     RAISE EXCEPTION 'Histórico de lançamentos é imutável' USING ERRCODE='55000';
