@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, resolveProjectionScopeFilial, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
+import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, resolveProjectionScopeFilial, hasProjectionFullAccess, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
 const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
