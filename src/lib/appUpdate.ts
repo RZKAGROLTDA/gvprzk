@@ -331,14 +331,13 @@ export const checkForUpdate = async (): Promise<CheckOutcome> => {
   availableRemote = remote;
   window.dispatchEvent(new CustomEvent(UPDATE_AVAILABLE_EVENT, { detail: remote }));
 
-  // Já tentamos automaticamente para este buildHash e continua divergente → falha.
-  if (attempted === remoteHash) {
+  const rec = parseAttempt(attempted);
+  const decision = decideAttempt(rec, remoteHash, Date.now());
+  if (decision !== 'attempt') {
+    // Tentativa anterior não aplicou: mantém o aviso e aguarda a próxima janela.
     if (read(KEY_FAILED) !== remoteHash) {
       write(KEY_FAILED, remoteHash);
-      console.warn('[app-update] reload automático não aplicou a nova versão', {
-        current: CURRENT_BUILD_HASH,
-        remote: remoteHash,
-      });
+      console.warn('[app-update] reload automático não aplicou a nova versão', { current: CURRENT_BUILD_HASH, remote: remoteHash, decision });
     }
     window.dispatchEvent(new CustomEvent(APP_UPDATE_FAILED_EVENT, { detail: remote }));
     return { status: 'failed', remote };
@@ -348,13 +347,34 @@ export const checkForUpdate = async (): Promise<CheckOutcome> => {
     return { status: 'deferred', remote };
   }
 
-  write(KEY_ATTEMPTED, remoteHash);
-  console.log('[app-update] nova versão detectada, recarregando', {
-    current: CURRENT_BUILD_HASH,
-    remote: remoteHash,
-  });
+  startAttempt(rec, remoteHash);
+  console.log('[app-update] nova versão detectada, recarregando', { current: CURRENT_BUILD_HASH, remote: remoteHash });
   void reloadForUpdate();
   return { status: 'reloading', remote };
+};
+
+const startAttempt = (rec: AttemptRecord | null, remoteHash: string) => {
+  const count = rec && rec.hash === remoteHash ? rec.count + 1 : 1;
+  write(KEY_ATTEMPTED, JSON.stringify({ hash: remoteHash, count, at: Date.now() }));
+};
+
+/**
+ * Troca de página: momento seguro para aplicar a versão nova, pois a tela
+ * anterior já foi deixada. Não aplica com salvamento/envio em andamento,
+ * janela aberta, campo marcado como não salvo ou sem internet.
+ */
+export const applyUpdateOnNavigation = async (): Promise<boolean> => {
+  const remote = availableRemote;
+  if (!remote || !isDifferentVersion(remote)) return false;
+  if (hasUnsavedWork()) return false;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  const remoteHash = remote.buildHash || remote.version || 'unknown';
+  const rec = parseAttempt(read(KEY_ATTEMPTED));
+  if (decideAttempt(rec, remoteHash, Date.now()) === 'exhausted') return false;
+  startAttempt(rec, remoteHash);
+  console.log('[app-update] aplicando nova versão na troca de página', { remote: remoteHash });
+  const r = await reloadForUpdate();
+  return r.ok;
 };
 
 export const hasUpdateFailure = (): boolean => !!read(KEY_FAILED);
@@ -448,10 +468,10 @@ export const checkMandatoryUpdate = async (): Promise<MandatoryOutcome> => {
   if (result.status === 'ok') return { status: 'ok' };
 
   const remoteHash = remote.buildHash || remote.version || 'unknown';
-  const attempted = read(KEY_ATTEMPTED);
+  const rec = parseAttempt(read(KEY_ATTEMPTED));
 
-  // Já tentamos automaticamente para este build remoto e continuamos abaixo do mínimo.
-  if (attempted === remoteHash || read(KEY_FAILED) === remoteHash) {
+  // Tentativas automáticas esgotadas e continuamos abaixo do mínimo.
+  if (decideAttempt(rec, remoteHash, Date.now()) !== 'attempt') {
     write(KEY_FAILED, remoteHash);
     console.warn('[app-update] build abaixo do mínimo obrigatório após tentativa automática', {
       current: CURRENT_BUILD_HASH,
@@ -462,7 +482,7 @@ export const checkMandatoryUpdate = async (): Promise<MandatoryOutcome> => {
 
   if (isAppBusy()) return { status: 'deferred' };
 
-  write(KEY_ATTEMPTED, remoteHash);
+  startAttempt(rec, remoteHash);
   console.log('[app-update] build abaixo do mínimo obrigatório, atualizando', {
     current: CURRENT_BUILD_HASH,
     minBuildTime: result.minBuildTime,
