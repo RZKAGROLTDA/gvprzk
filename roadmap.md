@@ -169,6 +169,7 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
+- [ ] Exclusão lógica de semanas: conferir estrutura real, entregar proposta e SQL com motivo/histórico, filtros ativos e permissões; aguardar aprovação antes de aplicar e implementar; não publicar.
 - [x] Revisão pontual dos snapshots: código de cliente nulo/vazio aceito com chave presente; 28 casos passaram em PostgreSQL 17 isolado (novo/anterior, UUID/nome obrigatórios, escala monetária, centavos, limite máximo e divergências). Sem aplicar/publicar; versão antiga entregue ainda tinha obrigatoriedade, proposta atual não tem.
 - [x] SQL final revisado: estado anterior vem do snapshot histórico da versão correspondente; nomes preservados quando vínculos não mudam; restrições de valor/período/versão/textos/snapshots e versão histórica única. Sintaxe de 25 comandos validada; não executado/publicado.
 - [x] Pacotes e Negociações: base real confirmada (clients_master.id e profiles.user_id UUID); SQL completo e revisão preparados, 25 comandos analisados sintaticamente; não aplicado/publicado.
