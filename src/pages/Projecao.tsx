@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/use-toast';
 import { Download, Upload, Target, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
+import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
 const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
@@ -45,6 +45,8 @@ export default function Projecao() {
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [adminFilial, setAdminFilial] = useState<string>('all');
   const [divFilter, setDivFilter] = useState<string>('all');
+  const [week, setWeek] = useState<ProjectionWeek>(() => defaultProjectionWeek(now, now.getFullYear(), now.getMonth() + 1));
+  const changePeriod = (a: number, m: number) => { setAno(a); setMes(m); setWeek(defaultProjectionWeek(new Date(), a, m)); };
   const qc = useQueryClient();
 
   // Admin escolhe livremente; gerente/supervisor sempre a Filial Ativa (servidor revalida).
@@ -83,7 +85,7 @@ export default function Projecao() {
   });
   const refresh = () => { qc.invalidateQueries({ queryKey: ['projection-panel'] }); qc.invalidateQueries({ queryKey: ['projection-history'] }); qc.invalidateQueries({ queryKey: ['projection-filiais'] }); qc.invalidateQueries({ queryKey: ['projection-entries'] }); };
 
-  const rows: ProjectionRow[] = useMemo(() => filterRows(sortByDivisional(panel.data ?? []), divFilter, adminFilial), [panel.data, divFilter, adminFilial]);
+  const rows: ProjectionRow[] = useMemo(() => rowsForWeek(filterRows(sortByDivisional(panel.data ?? []), divFilter, adminFilial), week), [panel.data, divFilter, adminFilial, week]);
   const total = useMemo(() => consolidate(rows), [rows]);
   const byDiv = useMemo(() => consolidateByDivisional(rows, realAdmin && divFilter === 'all' && adminFilial === 'all'), [rows, realAdmin, divFilter, adminFilial]);
   const filialOptions = useMemo(() => sortByDivisional(adminFiliais.data ?? []).filter((f) => divFilter === 'all' || (f.divisional ?? 'none') === divFilter), [adminFiliais.data, divFilter]);
@@ -95,24 +97,24 @@ export default function Projecao() {
       const c = consolidate([r]);
       return {
         Divisional: r.divisional ?? '', Filial: r.filial_nome, Meta: r.meta ?? '',
-        'Semana atual': isPending(r) ? 'PENDENTE' : `S${r.ultima_semana}`,
+        Semana: `S${week}`, Situação: isPending(r) ? 'PENDENTE' : 'Lançada',
         'S1 Sem risco': r.s1_sem ?? '', 'S1 Com risco': r.s1_com ?? '', 'S2 Sem risco': r.s2_sem ?? '', 'S2 Com risco': r.s2_com ?? '',
         'S3 Sem risco': r.s3_sem ?? '', 'S3 Com risco': r.s3_com ?? '', 'S4 Sem risco': r.s4_sem ?? '', 'S4 Com risco': r.s4_com ?? '',
-        'Projeção sem risco': isPending(r) ? 'PENDENTE' : r.ultima_sem_risco, 'Projeção com risco': isPending(r) ? 'PENDENTE' : r.ultima_com_risco,
+        [`Projeção sem risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_sem_risco, [`Projeção com risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_com_risco,
         '% Sem risco': isPending(r) || c.pctSem == null ? '' : Number(c.pctSem.toFixed(1)), '% Com risco': isPending(r) || c.pctCom == null ? '' : Number(c.pctCom.toFixed(1)),
         'GAP sem risco': isPending(r) ? '' : c.gapSem, 'GAP com risco': isPending(r) ? '' : c.gapCom,
         'Atualizado por': r.atualizado_por ?? '', 'Atualizado em': r.ultima_atualizacao ? new Date(r.ultima_atualizacao).toLocaleString('pt-BR') : '',
       };
     });
     const resumo = [...byDiv.map((d) => ({ Grupo: d.divisional, ...d })), { Grupo: 'TOTAL GERAL', ...total }].map((d: any) => ({
-      Grupo: d.Grupo, Meta: d.meta, 'Projeção sem risco': d.semRisco, 'Projeção com risco': d.comRisco,
+      Grupo: d.Grupo, Semana: `S${week}`, Meta: d.meta, 'Projeção sem risco': d.semRisco, 'Projeção com risco': d.comRisco,
       '% Sem risco': d.pctSem == null ? '' : Number(d.pctSem.toFixed(1)), '% Com risco': d.pctCom == null ? '' : Number(d.pctCom.toFixed(1)),
       'GAP sem risco': d.gapSem, 'GAP com risco': d.gapCom, 'Filiais pendentes': d.pendentes,
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Filiais');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), 'Consolidado');
-    XLSX.writeFile(wb, `projecao_${ano}-${String(mes).padStart(2, '0')}.xlsx`);
+    XLSX.writeFile(wb, `projecao_${ano}-${String(mes).padStart(2, '0')}_S${week}.xlsx`);
   };
 
   if (rolesLoading || filLoading) return <p className="text-muted-foreground p-4">Carregando…</p>;
@@ -129,9 +131,9 @@ export default function Projecao() {
 
       <Card><CardContent className="p-4 grid gap-3 grid-cols-2 md:grid-cols-4">
         <div><Label>Mês</Label>
-          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}><SelectTrigger><SelectValue /></SelectTrigger>
+          <Select value={String(mes)} onValueChange={(v) => changePeriod(ano, Number(v))}><SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent></Select></div>
-        <div><Label>Ano</Label><Input type="number" value={ano} onChange={(e) => setAno(Number(e.target.value) || now.getFullYear())} /></div>
+        <div><Label>Ano</Label><Input type="number" value={ano} onChange={(e) => changePeriod(Number(e.target.value) || now.getFullYear(), mes)} /></div>
         <div><Label>Divisional</Label>
           <Select value={divFilter} onValueChange={onDivChange}><SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="all">Todas</SelectItem>{DIVISIONAIS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select></div>
@@ -146,6 +148,12 @@ export default function Projecao() {
       {panel.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar o painel: {errMsg(panel.error)}</CardContent></Card>}
       {history.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar o histórico: {errMsg(history.error)}</CardContent></Card>}
       {adminFiliais.error && <Card><CardContent className="p-4 text-destructive">Não foi possível carregar as filiais: {errMsg(adminFiliais.error)}</CardContent></Card>}
+
+      <div role="radiogroup" aria-label="Semana do painel" className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">Semana:</span>
+        {([1, 2, 3, 4] as const).map((w) => <Button key={w} size="sm" role="radio" aria-checked={week === w} variant={week === w ? 'default' : 'outline'} onClick={() => setWeek(w)}>Semana {w}</Button>)}
+        <span className="text-xs text-muted-foreground">Indicadores usam só os lançamentos ativos da Semana {week}; sem lançamento = pendente.</span>
+      </div>
 
       {panel.isLoading && <p className="text-muted-foreground">Carregando painel…</p>}
       {panel.isSuccess && <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
@@ -178,7 +186,7 @@ export default function Projecao() {
             {panel.isLoading ? <p className="text-muted-foreground">Carregando…</p> : (
             <Table className="table-fixed min-w-[860px] text-xs tabular-nums [&_th]:h-7 [&_th]:px-1 [&_th]:py-1 [&_td]:px-1 [&_td]:py-1"><TableHeader><TableRow>
               <TableHead className="w-1/5">Filial</TableHead>
-              {['Meta', 'S1', 'S2', 'S3', 'S4', 'Com risco', '% Meta', 'GAP', 'Var. %'].map((label) => <TableHead key={label} className="text-right whitespace-nowrap">{label}</TableHead>)}
+              {['Meta', 'S1', 'S2', 'S3', 'S4', `Com risco S${week}`, '% Meta', 'GAP', 'Var. %'].map((label) => <TableHead key={label} className={`text-right whitespace-nowrap ${label === `S${week}` ? 'bg-primary/10 text-foreground font-bold' : ''}`}>{label}</TableHead>)}
             </TableRow></TableHeader>
             <TableBody>
               {byDiv.map((d) => { const divRows = rows.filter((r) => (r.divisional ?? 'Sem divisional') === d.divisional); return (
@@ -186,17 +194,17 @@ export default function Projecao() {
                   <TableRow className="bg-muted/50"><TableCell colSpan={10} className="font-semibold">{d.divisional}</TableCell></TableRow>
                   {divRows.map((r) => { const metrics = projectionPanelMetrics([r]); return (
                     <TableRow key={r.filial_id}>
-                      <TableCell className="font-medium break-words leading-tight">{r.filial_nome}</TableCell>
+                      <TableCell className="font-medium break-words leading-tight">{r.filial_nome}{isPending(r) && <span className="ml-1 text-[10px] font-semibold text-destructive">PENDENTE</span>}</TableCell>
                       <MoneyCell value={r.meta} />
-                      {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} />)}
+                      {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} highlight={i + 1 === week} />)}
                       <MoneyCell value={isPending(r) ? null : r.ultima_com_risco} />
                       <TableCell className="text-right whitespace-nowrap">{pct(metrics.pctMeta)}</TableCell>
                       <MoneyCell value={metrics.gap} />
                       <VariationCell value={metrics.variation} />
                     </TableRow>); })}
-                  <SummaryRow label={`Subtotal ${d.divisional}`} rows={divRows} />
+                  <SummaryRow label={`Subtotal ${d.divisional}`} rows={divRows} week={week} />
                 </Fragment>); })}
-              {rows.length > 0 && <SummaryRow label="TOTAL GERAL" rows={rows} strong />}
+              {rows.length > 0 && <SummaryRow label="TOTAL GERAL" rows={rows} week={week} strong />}
               {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={10} className="text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
             </TableBody></Table>)}
           </CardContent></Card>
@@ -219,13 +227,13 @@ export default function Projecao() {
   );
 }
 
-function SummaryRow({ label, rows, strong }: { label: string; rows: ProjectionRow[]; strong?: boolean }) {
+function SummaryRow({ label, rows, strong, week }: { label: string; rows: ProjectionRow[]; strong?: boolean; week: number }) {
   const metrics = projectionPanelMetrics(rows);
   return (
     <TableRow className={strong ? 'font-bold bg-muted' : 'font-semibold bg-muted/50'}>
       <TableCell className="leading-tight">{label}</TableCell>
       <MoneyCell value={metrics.meta} />
-      {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} />)}
+      {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} highlight={i + 1 === week} />)}
       <MoneyCell value={metrics.filiais === metrics.pendentes ? null : metrics.comRisco} />
       <TableCell className="text-right whitespace-nowrap">{pct(metrics.pctMeta)}</TableCell>
       <MoneyCell value={metrics.gap} />
@@ -234,8 +242,8 @@ function SummaryRow({ label, rows, strong }: { label: string; rows: ProjectionRo
   );
 }
 
-function MoneyCell({ value }: { value: number | null }) {
-  return <TableCell className="text-right whitespace-nowrap" title={value == null ? undefined : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}>{brlCompact(value)}</TableCell>;
+function MoneyCell({ value, highlight }: { value: number | null; highlight?: boolean }) {
+  return <TableCell className={`text-right whitespace-nowrap ${highlight ? 'bg-primary/10 font-semibold' : ''}`} title={value == null ? undefined : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}>{brlCompact(value)}</TableCell>;
 }
 
 function VariationCell({ value }: { value: number | null }) {
