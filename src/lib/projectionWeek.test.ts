@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { consolidate, consolidateByDivisional, defaultProjectionWeek, projectionPanelMetrics, rowsForWeek, ProjectionRow } from './projection';
+import { consolidate, consolidateByDivisional, defaultProjectionWeek, latestProjectionWeek, filterRows, projectionPanelMetrics, rowsForWeek, ProjectionRow } from './projection';
 
 const row = (p: Partial<ProjectionRow>): ProjectionRow => ({
   filial_id: 'x', filial_nome: 'X', divisional: 'MT', meta: 0,
@@ -15,6 +15,27 @@ const base = [
 ];
 
 describe('Painel por semana selecionada', () => {
+  it('semana inicial é a última com lançamento ativo em todo o escopo autorizado', () => {
+    expect(latestProjectionWeek(base)).toBe(2);
+    expect(latestProjectionWeek([...base, row({ filial_id: 'E', s4_sem: 100 })])).toBe(4);
+  });
+  it('S4 em outra divisional mantém a filial filtrada pendente em S4', () => {
+    const authorized = [...base, row({ filial_id: 'E', divisional: 'C&F', s4_sem: 100 })];
+    const week = latestProjectionWeek(authorized);
+    expect(week).toBe(4);
+    if (week == null) throw new Error('Semana não encontrada');
+    const selected = rowsForWeek(filterRows(authorized, 'MT', 'A'), week);
+    expect(selected[0].ultima_semana).toBeNull();
+    expect(consolidate(selected).pendentes).toBe(1);
+  });
+  it('lançamento zero conta; semana sem valor ativo e resultado vazio não contam', () => {
+    expect(latestProjectionWeek([row({ s4_sem: 0 })])).toBe(4);
+    expect(latestProjectionWeek([row({ ultima_semana: 4 })])).toBeNull();
+    expect(latestProjectionWeek([])).toBeNull();
+  });
+  it('não inclui semanas de filiais ausentes do resultado autorizado', () => {
+    expect(latestProjectionWeek([base[1]])).toBe(1);
+  });
   it('Semana 1 soma só S1, uma vez por filial', () => {
     const t = consolidate(rowsForWeek(base, 1));
     expect([t.meta, t.semRisco, t.comRisco, t.pendentes]).toEqual([3800, 1200, 1000, 2]);
