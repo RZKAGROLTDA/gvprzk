@@ -1,10 +1,10 @@
 # Roadmap
 
 ## CRM — edição de visitas e abertura de atividades (14/11/2026)
-- [ ] Diagnosticar o erro de RLS ao gestor editar visita de outro usuário, sem gravar dados.
-- [ ] Diagnosticar o clique sem resposta nas atividades do acompanhamento individual, incluindo o caso Filipe/TECOHA de 27/08/2026.
-- [ ] Apresentar causas, perfis/filiais afetados, relação entre os problemas, solução e eventual migração antes de implementar.
-- [ ] Após aprovação: corrigir banco/interface com testes por função e Filial Ativa, sem ampliar exclusões nem publicar sem autorização.
+- [x] Causa 1 confirmada com rollback: o formulário usa UPSERT; a política INSERT exige created_by = usuário logado. Gestor editando visita alheia falha no UPSERT (42501), enquanto UPDATE direto é permitido.
+- [x] Causa 2 confirmada: UserDayDialog passa onSelect/onSeeAll vazios; o cartão e a seta não executam ação. A próxima ação real de Filipe/TECOHA em 27/08/2026 existe e está pendente.
+- [x] Divergência adicional: políticas de visit_schedules consideram todas as filiais autorizadas do supervisor, não especificamente a Filial Ativa; a Filial Ativa hoje é estado da sessão, sem função ativa no banco.
+- [ ] Após aprovação: separar INSERT de UPDATE, preservar criador/vendedor, criar detalhes somente leitura autorizados e testar funções/Filial Ativa; não ampliar exclusões nem publicar sem autorização.
 
 ## PDFs em massa — opção ausente
 - [x] Causa identificada: Reports existia mas não tinha rota nem item de menu; por isso nem era incluído no bundle publicado.
