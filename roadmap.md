@@ -169,6 +169,7 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
+- [x] GAP do cartão Risco e Excel = Sem risco + Risco − Meta; 51 testes passaram, cartão e Excel baixado conferidos com dados fictícios: meta 10000, sem risco 6600, risco 1520, percentual 81,2%, GAP −1880. Sem alterar registros/semanas/migrar/publicar.
 - [x] Risco adicional e % (Sem risco + Risco)/Meta padronizados nos indicadores, divisionais, Por Filial e Excel; 46 testes passaram e tela isolada conferida em 1280px/687px sem erros. Sem dados reais/migração/publicação; validação autenticada indisponível no Supabase externo.
 - [x] SQL integral disponibilizado para revisão externa: 303 linhas, cópia idêntica ao arquivo proposto; nenhuma migração ou publicação.
 - [x] Exclusão lógica de semanas: estrutura real conferida, proposta e SQL preparados; 23 comandos sintaticamente válidos e 25 verificações passaram em PostgreSQL isolado com acesso simulado; nenhuma alteração no GVPS.
