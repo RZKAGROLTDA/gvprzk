@@ -169,6 +169,7 @@
 - [x] JD V3 automática (chassi pelos checklists)
 
 ## Projeção de Vendas
+- [ ] Padronizar Risco adicional e % (Sem risco + Risco)/Meta nos indicadores, divisionais, Por Filial e Excel; testar sem alterar dados/migrar/publicar.
 - [x] SQL integral disponibilizado para revisão externa: 303 linhas, cópia idêntica ao arquivo proposto; nenhuma migração ou publicação.
 - [x] Exclusão lógica de semanas: estrutura real conferida, proposta e SQL preparados; 23 comandos sintaticamente válidos e 25 verificações passaram em PostgreSQL isolado com acesso simulado; nenhuma alteração no GVPS.
 - [ ] Exclusão lógica: aguardar aprovação da proposta/SQL antes de migração e interface; depois testar concorrência real, metas/importação e fluxo autenticado. Não publicar.

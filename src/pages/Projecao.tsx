@@ -101,17 +101,17 @@ export default function Projecao() {
       return {
         Divisional: r.divisional ?? '', Filial: r.filial_nome, Meta: r.meta ?? '',
         Semana: `S${week}`, Situação: isPending(r) ? 'PENDENTE' : 'Lançada',
-        'S1 Sem risco': r.s1_sem ?? '', 'S1 Com risco': r.s1_com ?? '', 'S2 Sem risco': r.s2_sem ?? '', 'S2 Com risco': r.s2_com ?? '',
-        'S3 Sem risco': r.s3_sem ?? '', 'S3 Com risco': r.s3_com ?? '', 'S4 Sem risco': r.s4_sem ?? '', 'S4 Com risco': r.s4_com ?? '',
-        [`Projeção sem risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_sem_risco, [`Projeção com risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_com_risco,
-        '% Sem risco': isPending(r) || c.pctSem == null ? '' : Number(c.pctSem.toFixed(1)), '% Com risco': isPending(r) || c.pctCom == null ? '' : Number(c.pctCom.toFixed(1)),
+        'S1 Sem risco': r.s1_sem ?? '', 'S1 Risco': r.s1_com ?? '', 'S2 Sem risco': r.s2_sem ?? '', 'S2 Risco': r.s2_com ?? '',
+        'S3 Sem risco': r.s3_sem ?? '', 'S3 Risco': r.s3_com ?? '', 'S4 Sem risco': r.s4_sem ?? '', 'S4 Risco': r.s4_com ?? '',
+        [`Projeção sem risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_sem_risco, [`Risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_com_risco,
+        '% Sem risco': isPending(r) || c.pctSem == null ? '' : Number(c.pctSem.toFixed(1)), '% Risco': isPending(r) || c.pctCom == null ? '' : Number(c.pctCom.toFixed(1)),
         'GAP sem risco': isPending(r) ? '' : c.gapSem, 'GAP com risco': isPending(r) ? '' : c.gapCom,
         'Atualizado por': r.atualizado_por ?? '', 'Atualizado em': r.ultima_atualizacao ? new Date(r.ultima_atualizacao).toLocaleString('pt-BR') : '',
       };
     });
     const resumo = [...byDiv.map((d) => ({ Grupo: d.divisional, ...d })), { Grupo: 'TOTAL GERAL', ...total }].map((d: any) => ({
-      Grupo: d.Grupo, Semana: `S${week}`, Meta: d.meta, 'Projeção sem risco': d.semRisco, 'Projeção com risco': d.comRisco,
-      '% Sem risco': d.pctSem == null ? '' : Number(d.pctSem.toFixed(1)), '% Com risco': d.pctCom == null ? '' : Number(d.pctCom.toFixed(1)),
+      Grupo: d.Grupo, Semana: `S${week}`, Meta: d.meta, 'Projeção sem risco': d.semRisco, Risco: d.comRisco,
+      '% Sem risco': d.pctSem == null ? '' : Number(d.pctSem.toFixed(1)), '% Risco': d.pctCom == null ? '' : Number(d.pctCom.toFixed(1)),
       'GAP sem risco': d.gapSem, 'GAP com risco': d.gapCom, 'Filiais pendentes': d.pendentes,
     }));
     const wb = XLSX.utils.book_new();
@@ -163,7 +163,7 @@ export default function Projecao() {
       {panel.isSuccess && <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Kpi title="Meta" value={brl(total.meta)} />
         <Kpi title="Projeção sem risco" value={brl(total.semRisco)} sub={`${pct(total.pctSem)} · GAP ${brl(total.gapSem)}`} />
-        <Kpi title="Projeção com risco" value={brl(total.comRisco)} sub={`${pct(total.pctCom)} · GAP ${brl(total.gapCom)}`} />
+        <Kpi title="Risco" value={brl(total.comRisco)} sub={pct(total.pctCom)} />
         <Kpi title="Filiais pendentes" value={`${total.pendentes} de ${total.filiais}`} />
       </div>}
 
@@ -177,7 +177,7 @@ export default function Projecao() {
 
         <TabsContent value="painel" className="space-y-4">
           <Card><CardHeader><CardTitle className="text-base">Consolidado por divisional</CardTitle></CardHeader><CardContent className="overflow-x-auto">
-            <Table><TableHeader><TableRow><TableHead>Divisional</TableHead><TableHead className="text-right">Meta</TableHead><TableHead className="text-right">Sem risco</TableHead><TableHead className="text-right">%</TableHead><TableHead className="text-right">Com risco</TableHead><TableHead className="text-right">%</TableHead><TableHead className="text-right">Pendentes</TableHead></TableRow></TableHeader>
+            <Table><TableHeader><TableRow><TableHead>Divisional</TableHead><TableHead className="text-right">Meta</TableHead><TableHead className="text-right">Sem risco</TableHead><TableHead className="text-right">% Sem risco</TableHead><TableHead className="text-right">Risco</TableHead><TableHead className="text-right">% Risco</TableHead><TableHead className="text-right">Pendentes</TableHead></TableRow></TableHeader>
               <TableBody>{[...byDiv, { divisional: 'TOTAL GERAL', ...total }].map((d) => (
                 <TableRow key={d.divisional} className={d.divisional === 'TOTAL GERAL' ? 'font-semibold' : ''}>
                   <TableCell>{d.divisional}</TableCell><TableCell className="text-right whitespace-nowrap">{brl(d.meta)}</TableCell>
@@ -190,12 +190,12 @@ export default function Projecao() {
             {panel.isLoading ? <p className="text-muted-foreground">Carregando…</p> : (
             <Table className="table-fixed min-w-[860px] text-xs tabular-nums [&_th]:h-7 [&_th]:px-1 [&_th]:py-1 [&_td]:px-1 [&_td]:py-1"><TableHeader><TableRow>
               <TableHead className="w-1/5">Filial</TableHead>
-              {['Meta', 'S1', 'S2', 'S3', 'S4', `Com risco S${week}`, '% Meta', 'GAP', 'Var. %'].map((label) => <TableHead key={label} className={`text-right whitespace-nowrap ${label === `S${week}` ? 'bg-primary/10 text-foreground font-bold' : ''}`}>{label}</TableHead>)}
+              {['Meta', 'S1', 'S2', 'S3', 'S4', `Risco S${week}`, '% Sem risco', '% Risco', 'GAP', 'Var. %'].map((label) => <TableHead key={label} className={`text-right whitespace-nowrap ${label === `S${week}` ? 'bg-primary/10 text-foreground font-bold' : ''}`}>{label}</TableHead>)}
             </TableRow></TableHeader>
             <TableBody>
               {byDiv.map((d) => { const divRows = rows.filter((r) => (r.divisional ?? 'Sem divisional') === d.divisional); return (
                 <Fragment key={d.divisional}>
-                  <TableRow className="bg-muted/50"><TableCell colSpan={10} className="font-semibold">{d.divisional}</TableCell></TableRow>
+                  <TableRow className="bg-muted/50"><TableCell colSpan={11} className="font-semibold">{d.divisional}</TableCell></TableRow>
                   {divRows.map((r) => { const metrics = projectionPanelMetrics([r]); return (
                     <TableRow key={r.filial_id}>
                       <TableCell className="font-medium break-words leading-tight">{r.filial_nome}{isPending(r) && <span className="ml-1 text-[10px] font-semibold text-destructive">PENDENTE</span>}</TableCell>
@@ -203,13 +203,14 @@ export default function Projecao() {
                       {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} highlight={i + 1 === week} />)}
                       <MoneyCell value={isPending(r) ? null : r.ultima_com_risco} />
                       <TableCell className="text-right whitespace-nowrap">{pct(metrics.pctMeta)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{pct(isPending(r) ? null : metrics.pctCom)}</TableCell>
                       <MoneyCell value={metrics.gap} />
                       <VariationCell value={metrics.variation} />
                     </TableRow>); })}
                   <SummaryRow label={`Subtotal ${d.divisional}`} rows={divRows} week={week} />
                 </Fragment>); })}
               {rows.length > 0 && <SummaryRow label="TOTAL GERAL" rows={rows} week={week} strong />}
-              {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={10} className="text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
+              {!rows.length && panel.isSuccess && <TableRow><TableCell colSpan={11} className="text-muted-foreground">Nenhuma filial neste filtro.</TableCell></TableRow>}
             </TableBody></Table>)}
           </CardContent></Card>
         </TabsContent>
@@ -240,6 +241,7 @@ function SummaryRow({ label, rows, strong, week }: { label: string; rows: Projec
       {metrics.weeks.map((value, i) => <MoneyCell key={i} value={value} highlight={i + 1 === week} />)}
       <MoneyCell value={metrics.filiais === metrics.pendentes ? null : metrics.comRisco} />
       <TableCell className="text-right whitespace-nowrap">{pct(metrics.pctMeta)}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">{pct(metrics.filiais === metrics.pendentes ? null : metrics.pctCom)}</TableCell>
       <MoneyCell value={metrics.gap} />
       <VariationCell value={metrics.variation} />
     </TableRow>
