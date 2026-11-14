@@ -115,6 +115,16 @@ export function validateGoalImport(raw: Record<string, unknown>[], filiais: { fi
 }
 
 export type ProjectionWeek = 1 | 2 | 3 | 4;
+/** Recebe todo o resultado autorizado do mês, antes de qualquer filtro visual. Zero também é lançamento. */
+export function latestProjectionWeek(rows: ProjectionRow[]): ProjectionWeek | null {
+  for (const week of [4, 3, 2, 1] as const) {
+    if (rows.some((r) => {
+      const value = r[`s${week}_sem`];
+      return value != null && Number.isFinite(value);
+    })) return week;
+  }
+  return null;
+}
 /** Semana padrão do painel: dias 1–7 = S1, 8–14 = S2, 15–21 = S3, 22+ = S4; mês passado = S4, futuro = S1. */
 export function defaultProjectionWeek(today: Date, ano: number, mes: number): ProjectionWeek {
   const cur = today.getFullYear() * 12 + today.getMonth(), sel = ano * 12 + (mes - 1);

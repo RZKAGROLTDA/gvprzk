@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { NumericFormat } from 'react-number-format';
 import { parseProjectionMoney } from '@/lib/projectionMoney';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, resolveProjectionScopeFilial, hasProjectionFullAccess, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
+import { consolidate, consolidateByDivisional, DIVISIONAIS, filterRows, isPending, normalizeRow, projectionPanelMetrics, sortByDivisional, rowsForWeek, defaultProjectionWeek, latestProjectionWeek, resolveProjectionScopeFilial, hasProjectionFullAccess, type ProjectionWeek, validateGoalImport, type ProjectionRow, type GoalImportResult } from '@/lib/projection';
 
 // Chamada direta como método do cliente: mantém o vínculo interno do Supabase (causa do erro "reading 'rest'").
 const rpc = (fn: string, args?: Record<string, unknown>): Promise<{ data: any; error: any }> => (supabase as any).rpc(fn, args ?? {});
@@ -48,8 +48,8 @@ export default function Projecao() {
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [adminFilial, setAdminFilial] = useState<string>('all');
   const [divFilter, setDivFilter] = useState<string>('all');
-  const [week, setWeek] = useState<ProjectionWeek>(() => defaultProjectionWeek(now, now.getFullYear(), now.getMonth() + 1));
-  const changePeriod = (a: number, m: number) => { setAno(a); setMes(m); setWeek(defaultProjectionWeek(new Date(), a, m)); };
+  const [weekChoice, setWeekChoice] = useState<{ context: string; week: ProjectionWeek } | null>(null);
+  const changePeriod = (a: number, m: number) => { setAno(a); setMes(m); };
   const qc = useQueryClient();
 
   // Admin e gerente: todas as filiais; supervisor: só a Filial Ativa (servidor revalida).
@@ -66,6 +66,14 @@ export default function Projecao() {
       return ((data ?? []) as any[]).map(normalizeRow);
     },
   });
+  const weekContext = `${scopeFilial ?? 'all'}:${ano}:${mes}`;
+  const initialWeek = latestProjectionWeek(panel.data ?? []) ?? defaultProjectionWeek(now, ano, mes);
+  const week = weekChoice?.context === weekContext ? weekChoice.week : initialWeek;
+  const setWeek = (selected: ProjectionWeek) => setWeekChoice({ context: weekContext, week: selected });
+  useEffect(() => {
+    if (!panel.isSuccess) return;
+    setWeekChoice((current) => current?.context === weekContext ? current : { context: weekContext, week: initialWeek });
+  }, [panel.isSuccess, weekContext, initialWeek]);
   const history = useQuery({
     queryKey: ['projection-history', scopeFilial, ano, mes],
     enabled: ready,
