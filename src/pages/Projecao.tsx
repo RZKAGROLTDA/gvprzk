@@ -105,14 +105,14 @@ export default function Projecao() {
         'S3 Sem risco': r.s3_sem ?? '', 'S3 Risco': r.s3_com ?? '', 'S4 Sem risco': r.s4_sem ?? '', 'S4 Risco': r.s4_com ?? '',
         [`Projeção sem risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_sem_risco, [`Risco S${week}`]: isPending(r) ? 'PENDENTE' : r.ultima_com_risco,
         '% Sem risco': isPending(r) || c.pctSem == null ? '' : Number(c.pctSem.toFixed(1)), '% Risco': isPending(r) || c.pctCom == null ? '' : Number(c.pctCom.toFixed(1)),
-        'GAP sem risco': isPending(r) ? '' : c.gapSem, 'GAP com risco': isPending(r) ? '' : c.gapCom,
+        'GAP sem risco': isPending(r) ? '' : c.gapSem, 'GAP Risco': isPending(r) ? '' : c.gapCom,
         'Atualizado por': r.atualizado_por ?? '', 'Atualizado em': r.ultima_atualizacao ? new Date(r.ultima_atualizacao).toLocaleString('pt-BR') : '',
       };
     });
     const resumo = [...byDiv.map((d) => ({ Grupo: d.divisional, ...d })), { Grupo: 'TOTAL GERAL', ...total }].map((d: any) => ({
       Grupo: d.Grupo, Semana: `S${week}`, Meta: d.meta, 'Projeção sem risco': d.semRisco, Risco: d.comRisco,
       '% Sem risco': d.pctSem == null ? '' : Number(d.pctSem.toFixed(1)), '% Risco': d.pctCom == null ? '' : Number(d.pctCom.toFixed(1)),
-      'GAP sem risco': d.gapSem, 'GAP com risco': d.gapCom, 'Filiais pendentes': d.pendentes,
+      'GAP sem risco': d.gapSem, 'GAP Risco': d.gapCom, 'Filiais pendentes': d.pendentes,
     }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Filiais');
@@ -163,7 +163,7 @@ export default function Projecao() {
       {panel.isSuccess && <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
         <Kpi title="Meta" value={brl(total.meta)} />
         <Kpi title="Projeção sem risco" value={brl(total.semRisco)} sub={`${pct(total.pctSem)} · GAP ${brl(total.gapSem)}`} />
-        <Kpi title="Risco" value={brl(total.comRisco)} sub={pct(total.pctCom)} />
+        <Kpi title="Risco" value={brl(total.comRisco)} sub={`${pct(total.pctCom)} · GAP ${brl(total.gapCom)}`} />
         <Kpi title="Filiais pendentes" value={`${total.pendentes} de ${total.filiais}`} />
       </div>}
 
