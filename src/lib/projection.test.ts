@@ -48,7 +48,7 @@ describe('Projeção', () => {
     expect(c.semRisco).toBe(800);
     expect(c.comRisco).toBe(700);
     expect(c.pctSem).toBe(80);
-    expect(c.gapCom).toBe(-300);
+    expect(c.gapCom).toBe(500);
   });
   it('filial sem lançamento é pendente, não zero somado', () => {
     const c = consolidate([row({ meta: 500 }), row({ meta: 500, ultima_semana: 1, ultima_sem_risco: 600, ultima_com_risco: 300 })]);

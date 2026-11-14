@@ -58,7 +58,7 @@ export function consolidate(rows: ProjectionRow[]): Consolidated {
     meta, semRisco, comRisco, pendentes, filiais: rows.length,
     pctSem: meta > 0 ? (semRisco / meta) * 100 : null,
     pctCom: meta > 0 ? ((semRisco + comRisco) / meta) * 100 : null,
-    gapSem: semRisco - meta, gapCom: comRisco - meta,
+    gapSem: semRisco - meta, gapCom: semRisco + comRisco - meta,
   };
 }
 export const DIVISIONAIS = ['MT', 'GO', 'PA', 'C&F'] as const;

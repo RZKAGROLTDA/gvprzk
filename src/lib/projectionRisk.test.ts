@@ -21,6 +21,19 @@ describe('Risco adicional e percentuais da Projeção', () => {
   it('% Risco = (Sem risco + Risco) / Meta × 100', () => {
     expect(consolidate([source[0]]).pctCom).toBe(90);
   });
+  it('GAP Risco = Sem risco + Risco - Meta, enquanto GAP Sem risco permanece separado', () => {
+    const t = consolidate([source[0]]);
+    expect(t.gapCom).toBe(-100); expect(t.gapSem).toBe(-200);
+    const total = consolidate(rowsForWeek(source, 2));
+    expect(total.gapCom).toBe(-2000); expect(total.gapSem).toBe(-3500);
+    expect(projectionPanelMetrics(rowsForWeek(source, 2)).gapCom).toBe(-2000);
+  });
+  it.each([1, 2, 3, 4] as const)('GAPs seguem somente a Semana %s e o filtro, preservando a meta', (week) => {
+    const t = consolidate(rowsForWeek(filterRows(source, 'MT', 'A'), week));
+    const expected = week === 1 ? [8000, 16000] : week === 2 ? [-200, -100] : [-1000, -1000];
+    expect([t.gapSem, t.gapCom]).toEqual(expected);
+    expect(t.meta).toBe(1000);
+  });
   it.each([
     ['MT', 4000, 2000, 600, 50, 65], ['GO', 2000, 1500, 300, 75, 90],
     ['PA', 1000, 900, 200, 90, 110], ['C&F', 3000, 2100, 400, 70, 2500 / 3000 * 100],
