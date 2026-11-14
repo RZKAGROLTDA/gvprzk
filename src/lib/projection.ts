@@ -57,7 +57,7 @@ export function consolidate(rows: ProjectionRow[]): Consolidated {
   return {
     meta, semRisco, comRisco, pendentes, filiais: rows.length,
     pctSem: meta > 0 ? (semRisco / meta) * 100 : null,
-    pctCom: meta > 0 ? (comRisco / meta) * 100 : null,
+    pctCom: meta > 0 ? ((semRisco + comRisco) / meta) * 100 : null,
     gapSem: semRisco - meta, gapCom: comRisco - meta,
   };
 }
