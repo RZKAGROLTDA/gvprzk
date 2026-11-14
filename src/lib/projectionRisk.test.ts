@@ -29,10 +29,10 @@ describe('Risco adicional e percentuais da Projeção', () => {
     expect(d?.meta).toBe(meta); expect(d?.semRisco).toBe(sem); expect(d?.comRisco).toBe(risco);
     expect(d?.pctSem).toBeCloseTo(Number(pctSem)); expect(d?.pctCom).toBeCloseTo(Number(pctCom));
   });
-  it('TOTAL GERAL usa totais: 6500/11000 e (6500+1500)/11000', () => {
+  it('TOTAL GERAL usa totais: 6500/10000 e (6500+1500)/10000', () => {
     const t = consolidate(rowsForWeek(source, 2));
-    expect([t.meta, t.semRisco, t.comRisco]).toEqual([11000, 6500, 1500]);
-    expect(t.pctSem).toBeCloseTo(59.090909); expect(t.pctCom).toBeCloseTo(72.727273);
+    expect([t.meta, t.semRisco, t.comRisco]).toEqual([10000, 6500, 1500]);
+    expect(t.pctSem).toBe(65); expect(t.pctCom).toBe(80);
   });
   it.each([0, null])('meta %s não gera divisão por zero em nenhuma visualização', (meta) => {
     const r = row('Z', 'PA', meta, 800, 100);
