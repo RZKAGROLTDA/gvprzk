@@ -4421,6 +4421,15 @@ export type Database = {
         }[]
       }
       get_media_migration_report: { Args: never; Returns: Json }
+      get_my_day_activity_detail: {
+        Args: {
+          p_block: string
+          p_filial_id?: string
+          p_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       get_my_day_details: {
         Args: {
           p_block: string
