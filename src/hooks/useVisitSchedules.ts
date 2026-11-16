@@ -81,12 +81,18 @@ export const useUpsertVisitSchedule = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: UpsertVisitSchedule) => {
-      const { data, error } = await supabase
-        .from('visit_schedules' as any)
-        .upsert(payload as any, { onConflict: 'id' })
-        .select(COLS)
-        .single();
+      const { id, ...fields } = payload;
+      // Edição: UPDATE pelo ID, preservando criador e vendedor originais.
+      // Nova visita: INSERT. Nunca usar upsert (a política de INSERT barra edições de terceiros).
+      const query = id
+        ? (() => {
+            const { created_by: _c, seller_id: _s, seller_name: _n, ...editable } = fields as any;
+            return supabase.from('visit_schedules' as any).update(editable).eq('id', id);
+          })()
+        : supabase.from('visit_schedules' as any).insert(fields as any);
+      const { data, error } = await query.select(COLS).maybeSingle();
       if (error) throw error;
+      if (!data) throw new Error('Visita não encontrada ou sem permissão para alterá-la.');
       return data as unknown as VisitSchedule;
     },
     onSuccess: () => {

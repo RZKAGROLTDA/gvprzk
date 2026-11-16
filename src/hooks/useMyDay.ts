@@ -140,3 +140,30 @@ export const useMyDayUserDetails = (
     refetchOnWindowFocus: false,
   });
 };
+
+/** Detalhe somente leitura de uma atividade do colaborador (sem fotos/documentos). */
+export const useMyDayActivityDetail = (
+  userId: string | null,
+  block: MyDayBlock | null,
+  id: string | null,
+  filialId: string | null,
+) => {
+  return useQuery({
+    queryKey: ['my-day-activity-detail', userId, block, id, filialId],
+    queryFn: async (): Promise<Record<string, any>> => {
+      const { data, error } = await supabase.rpc('get_my_day_activity_detail' as never, {
+        p_user_id: userId,
+        p_block: block,
+        p_id: id,
+        p_filial_id: filialId,
+      } as never);
+      if (error) throw error;
+      return data as unknown as Record<string, any>;
+    },
+    enabled: !!block && !!id,
+    retry: false,
+    staleTime: STALE_TIME,
+    gcTime: GC_TIME,
+    refetchOnWindowFocus: false,
+  });
+};

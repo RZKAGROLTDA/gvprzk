@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMyDayDetails } from '@/hooks/useMyDay';
+import { useMyDayDetails, useMyDayUserDetails } from '@/hooks/useMyDay';
 import {
   BLOCK_LABELS,
   BUCKET_LABELS,
@@ -22,6 +22,9 @@ interface SeeAllDialogProps {
   bucket: MyDayBucket | null;
   onOpenChange: (open: boolean) => void;
   onSelect: (item: MyDayItem) => void;
+  /** Quando informado, lista as atividades desse colaborador (escopo validado no banco). */
+  userId?: string | null;
+  filialId?: string | null;
 }
 
 export const SeeAllDialog: React.FC<SeeAllDialogProps> = ({
@@ -30,6 +33,8 @@ export const SeeAllDialog: React.FC<SeeAllDialogProps> = ({
   bucket,
   onOpenChange,
   onSelect,
+  userId = null,
+  filialId = null,
 }) => {
   const [page, setPage] = React.useState(0);
 
@@ -38,13 +43,9 @@ export const SeeAllDialog: React.FC<SeeAllDialogProps> = ({
   }, [open, block, bucket]);
 
   // A consulta só roda com o modal aberto (paginação server-side).
-  const { data, isLoading, isFetching, isError, refetch } = useMyDayDetails(
-    block,
-    bucket,
-    page,
-    PAGE_SIZE,
-    open,
-  );
+  const own = useMyDayDetails(block, bucket, page, PAGE_SIZE, open && !userId);
+  const other = useMyDayUserDetails(userId, block, bucket, page, PAGE_SIZE, filialId, open && !!userId);
+  const { data, isLoading, isFetching, isError, refetch } = userId ? other : own;
 
   const items = React.useMemo(
     () => (block && data?.items ? data.items.map((raw) => normalizeItem(block, raw)) : []),
