@@ -5,7 +5,7 @@
 - [x] Causa 2 confirmada: UserDayDialog passa onSelect/onSeeAll vazios; o cartão e a seta não executam ação. A próxima ação real de Filipe/TECOHA em 27/08/2026 existe e está pendente.
 - [x] Divergência adicional: políticas de visit_schedules consideram todas as filiais autorizadas do supervisor, não especificamente a Filial Ativa; a Filial Ativa hoje é estado da sessão, sem função ativa no banco.
 - [x] Tela: INSERT para nova visita, UPDATE pelo ID na edição sem tocar criador/vendedor; "Ver todos" do colaborador usa a consulta já existente; clique abre detalhe somente leitura.
-- [ ] Executar docs/MEU_DIA_DETALHE_ATIVIDADE.sql e testar por perfil — aguarda aprovação do SQL.
+- [x] get_my_day_activity_detail (v3) aplicada; 25 testes reais por perfil passaram, tudo desfeito.
 - [ ] docs/VISITAS_FILIAL_ATIVA_RESTRICAO.sql — aguarda aprovação específica (exige gravar a Filial Ativa no servidor).
 - [ ] Publicação — aguarda autorização.
 
