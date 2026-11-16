@@ -1,5 +1,5 @@
 -- Meu Dia — detalhes somente leitura de uma atividade do colaborador.
--- NÃO EXECUTADO (v2: valida também a filial da própria atividade). Cria apenas uma função nova; nenhuma tabela ou política é alterada.
+-- v3: escopo vazio só para admin/gerente; open_tasks exige nome de filial inequívoco. Cria apenas uma função nova; nenhuma tabela ou política é alterada.
 -- Autorização: my_day_assert_target (mesma regra já usada em get_my_day_user_summary/details):
 --   próprio usuário; admin/gerente/supervisor só para colaborador aprovado, ativo e
 --   dentro das filiais efetivas (Filial Ativa quando informada). Consultor/RAC: só ele mesmo.
@@ -18,7 +18,14 @@ BEGIN
   SELECT * INTO t FROM public.my_day_assert_target(p_user_id, p_filial_id);
   -- Escopo de filial do solicitante (mesma regra já usada por Meu Dia):
   -- admin/gerente sem filial = '{}' (global); supervisor = Filial Ativa ou filial principal.
-  IF NOT t.is_self THEN v_eff := public.effective_filial_ids(p_filial_id); END IF;
+  IF NOT t.is_self THEN
+    v_eff := public.effective_filial_ids(p_filial_id);
+    -- Escopo vazio = global SOMENTE para admin/gerente aprovado e ativo; qualquer outro perfil é negado.
+    IF coalesce(array_length(v_eff,1),0) = 0 AND NOT (public.is_active_approved_user()
+       AND (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'manager'))) THEN
+      RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501';
+    END IF;
+  END IF;
 
   IF p_block = 'visit_schedules' THEN
     SELECT jsonb_build_object('id',vs.id,'planned_date',vs.planned_date,'client_code',vs.client_code,
@@ -58,7 +65,11 @@ BEGIN
   -- Sem filial identificável em escopo restrito = negado. Mesma mensagem para não revelar existência.
   IF NOT t.is_self AND coalesce(array_length(v_eff,1),0) > 0 THEN
     IF p_block = 'open_tasks' THEN
-      IF NOT EXISTS (SELECT 1 FROM public.filiais fi WHERE fi.id = ANY(v_eff)
+      -- tasks não possui filial_id: o nome precisa corresponder a exatamente UMA filial
+      -- do cadastro (sem ambiguidade) e essa filial precisa estar no escopo.
+      IF (SELECT count(*) FROM public.filiais fi
+            WHERE LOWER(TRIM(fi.nome)) = LOWER(TRIM(v_act_filial_txt))) <> 1
+         OR NOT EXISTS (SELECT 1 FROM public.filiais fi WHERE fi.id = ANY(v_eff)
                       AND LOWER(TRIM(fi.nome)) = LOWER(TRIM(v_act_filial_txt))) THEN
         RAISE EXCEPTION 'Atividade não encontrada' USING ERRCODE='P0002';
       END IF;
