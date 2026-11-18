@@ -1,4 +1,4 @@
--- CARGOS_SINCRONIZACAO v5 — NÃO EXECUTADO. Aguarda autorização.
+-- CARGOS_SINCRONIZACAO v5 — EXECUTADO em 18/11/2026 (migração autorizada).
 -- v5 = v4 + 2 ajustes encontrados nos testes com desfazimento (18/11/2026):
 --  (1) gvps_is_internal_process tolera claims vazias (nullif) — antes gerava erro de JSON.
 --  (2) update_user_role_secure: 'admin' grava profiles.role='manager' (profiles_role_unified_check
