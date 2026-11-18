@@ -38,7 +38,7 @@
         "npm:@eslint/js@^9.9.0",
         "npm:@hookform/resolvers@^3.9.0",
         "npm:@lovable.dev/vite-plugin-dev-server-bridge@^1.0.2",
-        "npm:@lovable.dev/vite-plugin-hmr-gate@^1.8.0",
+        "npm:@lovable.dev/vite-plugin-hmr-gate@^1.8.3",
         "npm:@radix-ui/react-accordion@^1.2.0",
         "npm:@radix-ui/react-alert-dialog@^1.1.1",
         "npm:@radix-ui/react-aspect-ratio@^1.1.0",
