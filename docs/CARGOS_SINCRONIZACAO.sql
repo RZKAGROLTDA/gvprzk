@@ -1,4 +1,8 @@
--- CARGOS_SINCRONIZACAO v4 — NÃO EXECUTADO. Aguarda autorização.
+-- CARGOS_SINCRONIZACAO v5 — NÃO EXECUTADO. Aguarda autorização.
+-- v5 = v4 + 2 ajustes encontrados nos testes com desfazimento (18/11/2026):
+--  (1) gvps_is_internal_process tolera claims vazias (nullif) — antes gerava erro de JSON.
+--  (2) update_user_role_secure: 'admin' grava profiles.role='manager' (profiles_role_unified_check
+--      não aceita 'admin') e user_roles {admin, manager}, padrão dos administradores atuais.
 -- Mudanças sobre a v3:
 --  (a) Troca direta de profiles.role para/desde Gerente/Admin sem concessão
 --      administrativa válida: a operação INTEIRA é bloqueada (BEFORE UPDATE).
@@ -27,8 +31,8 @@ REVOKE ALL ON gvps_private.role_change_grants FROM PUBLIC, anon, authenticated;
 -- 0) Origem e nível do solicitante
 CREATE OR REPLACE FUNCTION public.gvps_is_internal_process()
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
-  SELECT coalesce(current_setting('request.jwt.claims', true)::jsonb->>'role','') = 'service_role'
-      OR (coalesce(current_setting('request.jwt.claims', true),'') IN ('','{}')
+  SELECT coalesce(nullif(current_setting('request.jwt.claims', true),'')::jsonb->>'role','') = 'service_role'
+      OR (coalesce(nullif(current_setting('request.jwt.claims', true),''),'{}') = '{}'
           AND session_user IN ('postgres','supabase_admin'));
 $$;
 
@@ -79,6 +83,7 @@ END; $$;
 DROP TRIGGER IF EXISTS trg_guard_profile_insert ON public.profiles;
 CREATE TRIGGER trg_guard_profile_insert BEFORE INSERT ON public.profiles
 FOR EACH ROW EXECUTE FUNCTION public.guard_profile_insert_privileges();
+REVOKE ALL ON FUNCTION public.guard_profile_insert_privileges() FROM PUBLIC, anon, authenticated;
 
 -- 2) Guarda de troca de cargo (BEFORE UPDATE — bloqueia a operação inteira)
 CREATE OR REPLACE FUNCTION public.guard_profile_role_change()
@@ -184,6 +189,7 @@ DECLARE
   v_level text := public.gvps_actor_level();
   v_ops text[] := ARRAY['supervisor','rac','cpa','csa','consultant','sales_consultant','technical_consultant'];
   v_target_admin boolean;
+  v_profile_role text;
 BEGIN
   IF v_level IS NULL THEN
     RAISE EXCEPTION 'GVPS: apenas Gerente ou Administrador aprovado e ativo pode alterar cargos';
@@ -208,13 +214,20 @@ BEGIN
     RAISE EXCEPTION 'GVPS: somente Administrador pode alterar o cargo de um Administrador';
   END IF;
 
-  INSERT INTO gvps_private.role_change_grants (txid, target, new_role, granted_by)
-  VALUES (txid_current(), target_user_id, new_role, auth.uid());
+  -- profiles.role não aceita 'admin': Administrador = perfil 'manager' + user_roles {admin, manager}
+  v_profile_role := CASE WHEN new_role = 'admin' THEN 'manager' ELSE new_role END;
 
-  UPDATE public.profiles SET role = new_role, updated_at = now() WHERE user_id = target_user_id;
+  INSERT INTO gvps_private.role_change_grants (txid, target, new_role, granted_by)
+  VALUES (txid_current(), target_user_id, v_profile_role, auth.uid());
+
+  UPDATE public.profiles SET role = v_profile_role, updated_at = now() WHERE user_id = target_user_id;
   DELETE FROM public.user_roles WHERE user_id = target_user_id;
   INSERT INTO public.user_roles (user_id, role, created_by)
   VALUES (target_user_id, new_role::public.app_role, auth.uid());
+  IF new_role = 'admin' THEN
+    INSERT INTO public.user_roles (user_id, role, created_by)
+    VALUES (target_user_id, 'manager'::public.app_role, auth.uid());
+  END IF;
 
   DELETE FROM gvps_private.role_change_grants
    WHERE txid = txid_current() AND target = target_user_id;
