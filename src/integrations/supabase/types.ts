@@ -5329,6 +5329,12 @@ export type Database = {
           visitas: number
         }[]
       }
+      gvps_actor_level: { Args: never; Returns: string }
+      gvps_has_role_change_grant: {
+        Args: { p_role: string; p_target: string }
+        Returns: boolean
+      }
+      gvps_is_internal_process: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
