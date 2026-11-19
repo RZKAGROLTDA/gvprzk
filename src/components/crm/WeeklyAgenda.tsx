@@ -2,9 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as ChartTooltip, CartesianGrid, Legend,
-} from 'recharts';
-import {
   CalendarIcon, ChevronLeft, ChevronRight, MapPin, Phone, Users as UsersIcon, X, Activity,
   ArrowLeft, Clock, CheckCircle2, AlertCircle, CalendarClock, ExternalLink,
 } from 'lucide-react';
@@ -278,7 +275,7 @@ export const WeeklyAgenda: React.FC = () => {
               {Array.from({ length: 7 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-lg bg-muted/50" />)}
             </div>
           ) : rangeDays > 7 ? (
-            <EvolutionChart days={days} onSelectDay={openDay} />
+            <ProductivityCalendar days={days} onSelectDay={openDay} />
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
               {days.map((d) => <DayCell key={d.day} d={d} max={maxActivities} selected={d.day === selectedDayISO} onClick={() => openDay(d.day)} />)}
@@ -373,29 +370,68 @@ const DayCell: React.FC<{ d: WeeklyAgendaDay; max: number; selected?: boolean; o
   );
 };
 
-const EvolutionChart: React.FC<{ days: WeeklyAgendaDay[]; onSelectDay: (iso: string) => void }> = ({ days, onSelectDay }) => {
-  const data = days.map((d) => ({ ...d, label: fmt(parseISO(d.day)) }));
+const CAL_WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const HEAT_LEVELS = [0.12, 0.28, 0.48, 0.7, 0.95];
+const heatLevel = (n: number, max: number) => (n <= 0 || max <= 0 ? -1 : Math.min(4, Math.floor(((n - 1) / max) * 5)));
+
+const ProductivityCalendar: React.FC<{ days: WeeklyAgendaDay[]; onSelectDay: (iso: string) => void }> = ({ days, onSelectDay }) => {
+  const max = days.reduce((m, d) => Math.max(m, d.total_activities), 0);
+  const months = useMemo(() => {
+    const map = new Map<string, WeeklyAgendaDay[]>();
+    days.forEach((d) => { const k = d.day.slice(0, 7); if (!map.has(k)) map.set(k, []); map.get(k)!.push(d); });
+    return [...map.entries()].map(([key, list]) => {
+      const first = parseISO(list[0].day);
+      const lead = (first.getDay() + 6) % 7;
+      const cells: (WeeklyAgendaDay | null)[] = [...Array(lead).fill(null), ...list];
+      while (cells.length % 7) cells.push(null);
+      const label = first.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      return { key, label: label.charAt(0).toUpperCase() + label.slice(1), cells };
+    });
+  }, [days]);
+  const todayISO = toISO(new Date());
   return (
     <Card>
-      <CardHeader className="p-3 pb-0">
-        <CardTitle className="text-sm font-medium">Evolução diária <span className="font-normal text-muted-foreground">— clique em um dia para ver o detalhamento</span></CardTitle>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 p-3 pb-1 space-y-0">
+        <CardTitle className="text-sm font-medium">Calendário de produtividade <span className="font-normal text-muted-foreground">— clique em um dia para ver o detalhamento</span></CardTitle>
+        <div className="flex items-center gap-1 text-[11px] text-muted-foreground" aria-label="Legenda">
+          <span>Menos</span>
+          <span className="h-3 w-3 rounded-sm border bg-muted" />
+          {HEAT_LEVELS.map((o) => <span key={o} className="h-3 w-3 rounded-sm" style={{ background: `hsl(var(--metric-activities) / ${o})` }} />)}
+          <span>Mais</span>
+        </div>
       </CardHeader>
-      <CardContent className="h-72 p-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} onClick={(e: any) => { const p = e?.activePayload?.[0]?.payload; if (p?.day) onSelectDay(p.day); }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} interval="preserveStartEnd" />
-            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={32} />
-            <ChartTooltip
-              cursor={{ fill: 'hsl(var(--muted))' }}
-              contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-            />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="total_activities" name="Atividades" fill="hsl(var(--metric-activities))" radius={[3, 3, 0, 0]} className="cursor-pointer" />
-            <Bar dataKey="visitas" name="Visitas" fill="hsl(var(--metric-visits) / 0.75)" radius={[3, 3, 0, 0]} className="cursor-pointer" />
-            <Bar dataKey="ligacoes" name="Ligações" fill="hsl(var(--metric-calls) / 0.7)" radius={[3, 3, 0, 0]} className="cursor-pointer" />
-          </BarChart>
-        </ResponsiveContainer>
+      <CardContent className="grid gap-4 p-3 sm:grid-cols-2 xl:grid-cols-3">
+        {months.map((m) => (
+          <div key={m.key} className="min-w-0">
+            <div className="mb-1.5 text-xs font-semibold text-foreground">{m.label}</div>
+            <div className="grid grid-cols-7 gap-1">
+              {CAL_WEEKDAYS.map((w) => <div key={w} className="text-center text-[10px] uppercase text-muted-foreground">{w}</div>)}
+              {m.cells.map((d, i) => {
+                if (!d) return <div key={`e${i}`} className="aspect-square" />;
+                const lvl = heatLevel(d.total_activities, max);
+                const dark = lvl >= 3;
+                return (
+                  <button
+                    key={d.day}
+                    type="button"
+                    onClick={() => onSelectDay(d.day)}
+                    title={`${parseISO(d.day).toLocaleDateString('pt-BR')}: ${d.total_activities} atividade(s)`}
+                    className={cn(
+                      'flex aspect-square flex-col items-center justify-center rounded-md border text-[11px] leading-tight transition hover:ring-2 hover:ring-[hsl(var(--metric-activities)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      lvl < 0 && 'bg-muted/60 text-muted-foreground border-transparent',
+                      lvl >= 0 && 'border-transparent',
+                      d.day === todayISO && 'border-[hsl(var(--metric-activities))]',
+                    )}
+                    style={lvl >= 0 ? { background: `hsl(var(--metric-activities) / ${HEAT_LEVELS[lvl]})`, color: dark ? 'white' : 'hsl(var(--foreground))' } : undefined}
+                  >
+                    <span className="opacity-80">{parseISO(d.day).getDate()}</span>
+                    <span className="font-semibold">{d.total_activities}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
