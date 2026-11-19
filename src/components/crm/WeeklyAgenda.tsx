@@ -172,11 +172,11 @@ export const WeeklyAgenda: React.FC = () => {
     },
   });
 
-  // Resumo por filial (períodos > 7 dias): mesmas atividades e filtros, paginadas por id sob RLS
+  // Resumo por filial: mesmas atividades e filtros, paginadas por id sob RLS
   type RangeAct = SummaryActivity & { task_id: string | null; activity_date: string };
   const { data: rangeActs = [], isLoading: loadingRange } = useQuery({
     queryKey: ['agenda-range-acts', user?.id, startStr, endStr, responsible, filialIds, client ?? null],
-    enabled: rangeDays > 7 && !selectedDayISO && !!user?.id && isScopeReady && (filialIds === null || filialIds.length > 0),
+    enabled: !selectedDayISO && !!user?.id && isScopeReady && (filialIds === null || filialIds.length > 0),
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<RangeAct[]> => {
       const startUtc = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
@@ -308,9 +308,8 @@ export const WeeklyAgenda: React.FC = () => {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
               {Array.from({ length: 7 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-lg bg-muted/50" />)}
             </div>
-          ) : rangeDays > 7 ? (
+          ) : (
             <>
-              <ProductivityCalendar days={days} onSelectDay={openDay} />
               <FilialSummary
                 activities={rangeActs}
                 loading={loadingRange}
@@ -319,11 +318,13 @@ export const WeeklyAgenda: React.FC = () => {
                 onOpenTask={setSelectedTaskId}
                 onOpenDay={openDay}
               />
+              <div>
+                <h3 className="mb-2 text-sm font-medium">Movimentação dia a dia <span className="font-normal text-muted-foreground">— clique em um dia para ver o detalhamento</span></h3>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                  {days.map((d) => <DayCell key={d.day} d={d} max={maxActivities} selected={d.day === selectedDayISO} onClick={() => openDay(d.day)} />)}
+                </div>
+              </div>
             </>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-              {days.map((d) => <DayCell key={d.day} d={d} max={maxActivities} selected={d.day === selectedDayISO} onClick={() => openDay(d.day)} />)}
-            </div>
           )}
         </>
       )}
@@ -411,73 +412,6 @@ const DayCell: React.FC<{ d: WeeklyAgendaDay; max: number; selected?: boolean; o
         <span className={cn('flex items-center gap-1', d.unique_clients > 0 ? 'text-metric-clients' : 'text-muted-foreground')}><UsersIcon className="h-3 w-3" />{d.unique_clients}</span>
       </div>
     </button>
-  );
-};
-
-const CAL_WEEKDAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-const HEAT_LEVELS = [0.12, 0.28, 0.48, 0.7, 0.95];
-const heatLevel = (n: number, max: number) => (n <= 0 || max <= 0 ? -1 : Math.min(4, Math.floor(((n - 1) / max) * 5)));
-
-const ProductivityCalendar: React.FC<{ days: WeeklyAgendaDay[]; onSelectDay: (iso: string) => void }> = ({ days, onSelectDay }) => {
-  const max = days.reduce((m, d) => Math.max(m, d.total_activities), 0);
-  const months = useMemo(() => {
-    const map = new Map<string, WeeklyAgendaDay[]>();
-    days.forEach((d) => { const k = d.day.slice(0, 7); if (!map.has(k)) map.set(k, []); map.get(k)!.push(d); });
-    return [...map.entries()].map(([key, list]) => {
-      const first = parseISO(list[0].day);
-      const lead = (first.getDay() + 6) % 7;
-      const cells: (WeeklyAgendaDay | null)[] = [...Array(lead).fill(null), ...list];
-      while (cells.length % 7) cells.push(null);
-      const label = first.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-      return { key, label: label.charAt(0).toUpperCase() + label.slice(1), cells };
-    });
-  }, [days]);
-  const todayISO = toISO(new Date());
-  return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 p-3 pb-1 space-y-0">
-        <CardTitle className="text-sm font-medium">Calendário de produtividade <span className="font-normal text-muted-foreground">— clique em um dia para ver o detalhamento</span></CardTitle>
-        <div className="flex items-center gap-1 text-[11px] text-muted-foreground" aria-label="Legenda">
-          <span>Menos</span>
-          <span className="h-3 w-3 rounded-sm border bg-muted" />
-          {HEAT_LEVELS.map((o) => <span key={o} className="h-3 w-3 rounded-sm" style={{ background: `hsl(var(--metric-activities) / ${o})` }} />)}
-          <span>Mais</span>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-4 p-3 sm:grid-cols-2 xl:grid-cols-3">
-        {months.map((m) => (
-          <div key={m.key} className="min-w-0">
-            <div className="mb-1.5 text-xs font-semibold text-foreground">{m.label}</div>
-            <div className="grid grid-cols-7 gap-1">
-              {CAL_WEEKDAYS.map((w) => <div key={w} className="text-center text-[10px] uppercase text-muted-foreground">{w}</div>)}
-              {m.cells.map((d, i) => {
-                if (!d) return <div key={`e${i}`} className="aspect-square" />;
-                const lvl = heatLevel(d.total_activities, max);
-                const dark = lvl >= 3;
-                return (
-                  <button
-                    key={d.day}
-                    type="button"
-                    onClick={() => onSelectDay(d.day)}
-                    title={`${parseISO(d.day).toLocaleDateString('pt-BR')}: ${d.total_activities} atividade(s)`}
-                    className={cn(
-                      'flex aspect-square flex-col items-center justify-center rounded-md border text-[11px] leading-tight transition hover:ring-2 hover:ring-[hsl(var(--metric-activities)/0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      lvl < 0 && 'bg-muted/60 text-muted-foreground border-transparent',
-                      lvl >= 0 && 'border-transparent',
-                      d.day === todayISO && 'border-[hsl(var(--metric-activities))]',
-                    )}
-                    style={lvl >= 0 ? { background: `hsl(var(--metric-activities) / ${HEAT_LEVELS[lvl]})`, color: dark ? 'white' : 'hsl(var(--foreground))' } : undefined}
-                  >
-                    <span className="opacity-80">{parseISO(d.day).getDate()}</span>
-                    <span className="font-semibold">{d.total_activities}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
   );
 };
 
