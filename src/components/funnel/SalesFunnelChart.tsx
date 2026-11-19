@@ -40,13 +40,13 @@ const Trapezoid: React.FC<{
       style={{ maxWidth: `${widthPct}%` }}
     >
       <div
-        className={cn('relative border border-border px-6 py-4 text-center transition-all', t.soft,
+        className={cn('relative border border-border px-[12%] py-5 text-center transition-all', t.soft,
           selected ? 'ring-2 ring-offset-2 ring-offset-background ' + t.ring : 'group-hover:brightness-[0.97]')}
         style={{ clipPath: 'polygon(0 0, 100% 0, 92% 100%, 8% 100%)' }}
       >
-        <div className={cn('text-xs font-semibold uppercase tracking-wide', t.text)}>{STAGE_LABEL[stage]}</div>
-        <div className={cn('text-3xl font-bold tabular-nums leading-tight', t.text)}>{count.toLocaleString('pt-BR')}</div>
-        {value !== undefined && <div className="text-sm font-medium text-foreground/80">{formatSalesValue(value)}</div>}
+        <div className={cn('text-xs font-semibold uppercase tracking-wide break-words', t.text)}>{STAGE_LABEL[stage]}</div>
+        <div className={cn('text-3xl font-bold tabular-nums leading-tight sm:text-4xl', t.text)}>{count.toLocaleString('pt-BR')}</div>
+        {value !== undefined && <div className="text-base font-semibold tabular-nums text-foreground/90">{formatSalesValue(value)}</div>}
         {extra}
       </div>
     </button>
@@ -74,19 +74,19 @@ const Branch: React.FC<{ stage: FunnelStage; selected: boolean; onClick: () => v
 };
 
 export const SalesFunnelChart: React.FC<{ funnel: Funnel; selected: FunnelStage; onSelect: (s: FunnelStage) => void }> = ({ funnel, selected, onSelect }) => (
-  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_200px] lg:items-center">
+  <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
     <div className="space-y-2">
       <Trapezoid stage="contacts" widthPct={100} selected={selected === 'contacts'} onClick={() => onSelect('contacts')}
         count={funnel.totalContatos}
         extra={<div className="mt-1 text-xs text-muted-foreground">
           {funnel.visitas.count} visitas · {funnel.ligacoes.count} ligações · {funnel.checklists.count} checklists
         </div>} />
-      <Trapezoid stage="prospects" widthPct={84} selected={selected === 'prospects'} onClick={() => onSelect('prospects')}
+      <Trapezoid stage="prospects" widthPct={88} selected={selected === 'prospects'} onClick={() => onSelect('prospects')}
         count={funnel.prospeccoesAbertas.count} value={funnel.prospeccoesAbertas.value}
-        extra={<div className="mt-1 text-xs text-muted-foreground">
+        extra={<div className="mt-1 text-xs leading-snug text-muted-foreground">
           Abertas · Fechadas {funnel.prospeccoesFechadas.count} ({formatSalesValue(funnel.prospeccoesFechadas.value)}) · Perdidas {funnel.prospeccoesPerdidas.count}
         </div>} />
-      <Trapezoid stage="sales" widthPct={68} selected={selected === 'sales'} onClick={() => onSelect('sales')}
+      <Trapezoid stage="sales" widthPct={76} selected={selected === 'sales'} onClick={() => onSelect('sales')}
         count={funnel.vendasTotal.count} value={funnel.vendasTotal.value}
         extra={<div className="mt-1 text-xs text-muted-foreground">Vendas totais · {funnel.totalVendas} com parciais</div>} />
     </div>
@@ -98,6 +98,9 @@ export const SalesFunnelChart: React.FC<{ funnel: Funnel; selected: FunnelStage;
         <span className="block text-xs font-medium text-muted-foreground">Taxa de conversão (atual)</span>
         <span className="block text-lg font-bold tabular-nums text-foreground">{funnel.taxaConversao.toFixed(1)}%</span>
         <span className="block text-xs text-muted-foreground">{funnel.totalVendas} vendas de {funnel.totalContatos} contatos</span>
+        <span className="mt-1 block border-t border-border pt-1 text-[11px] leading-snug text-muted-foreground">
+          Base: vendas totais + parciais ÷ total de contatos (visitas, ligações e checklists) no período e filtros.
+        </span>
       </div>
     </div>
   </div>

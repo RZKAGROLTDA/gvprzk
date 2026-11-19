@@ -1,3 +1,4 @@
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -79,6 +80,37 @@ interface ClientDetails {
   status: string;
 }
 
+type SortState = { key: string; dir: 'asc' | 'desc' } | null;
+
+function sortRows<T>(rows: T[], get: (r: T) => string | number, dir: 'asc' | 'desc'): T[] {
+  const m = dir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const x = get(a), y = get(b);
+    if (typeof x === 'number' && typeof y === 'number') return (x - y) * m;
+    return String(x).localeCompare(String(y), 'pt-BR', { sensitivity: 'base' }) * m;
+  });
+}
+
+const SortHead: React.FC<{ label: string; k: string; sort: SortState; onSort: (s: SortState) => void; align?: 'right' }> = ({ label, k, sort, onSort, align }) => {
+  const active = sort?.key === k;
+  const Icon = !active ? ArrowUpDown : sort!.dir === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className={`whitespace-nowrap ${align === 'right' ? 'text-right' : ''}`} aria-sort={active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className={`inline-flex items-center gap-1 hover:text-foreground ${active ? 'text-foreground' : ''}`}
+        onClick={() => onSort(!active ? { key: k, dir: 'desc' } : sort!.dir === 'desc' ? { key: k, dir: 'asc' } : null)}>
+        {label}<Icon className="h-3.5 w-3.5 opacity-70" />
+      </button>
+    </TableHead>
+  );
+};
+
+const STATUS_TONE: Record<string, string> = {
+  'Venda Total': 'bg-metric-visits-soft text-metric-visits',
+  'Venda Parcial': 'bg-metric-calls-soft text-metric-calls',
+  'Venda Perdida': 'bg-metric-lost-soft text-metric-lost',
+  'Prospect': 'bg-metric-clients-soft text-metric-clients',
+};
+
 export const SalesFunnel: React.FC = () => {
   const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('7');
@@ -91,6 +123,8 @@ export const SalesFunnel: React.FC = () => {
   const [funnelActivity, setFunnelActivity] = useState<ActivityKind | null>(null);
   const [funnelLimit, setFunnelLimit] = useState(50);
   const [jdFilter, setJdFilter] = useState<string>('all');
+  const [reportSort, setReportSort] = useState<SortState>(null);
+  const [detailsSort, setDetailsSort] = useState<SortState>(null);
   const [itemsPerPage, setItemsPerPage] = useState<string>('50');
   const [displayPage, setDisplayPage] = useState<number>(1);
   // Deep-link opcional (?view=details) usado pelo Meu Dia — sem alterar o padrão atual.
@@ -365,18 +399,22 @@ export const SalesFunnel: React.FC = () => {
   // Flatten client details data
   const clientDetailsData = useMemo(() => {
     const rows = clientDetailsPages?.pages.flatMap(page => page.data) || [];
-    return selectedClient ? rows.filter((t: any) => matchesClient(selectedClient, t.clientcode ?? null, t.client)) : rows;
-  }, [clientDetailsPages, selectedClient]);
+    const byClient = selectedClient ? rows.filter((t: any) => matchesClient(selectedClient, t.clientcode ?? null, t.client)) : rows;
+    // Divisional: a consulta paginada não recebe divisional; aplica o mesmo filtro das demais abas (filial do registro).
+    if (selectedDivisional === 'all') return byClient;
+    return byClient.filter((t: any) => divisionalOfFilial(getFilialNameRobust(t.filial, filiais)) === selectedDivisional);
+  }, [clientDetailsPages, selectedClient, selectedDivisional, filiais]);
 
   // Com Cliente selecionado, carrega as páginas restantes para que o filtro fique completo.
   useEffect(() => {
+    if (activeView === 'details' && selectedDivisional !== 'all' && hasNextClientDetailsPage && !isFetchingNextClientDetailsPage) fetchNextClientDetailsPage();
     if (!selectedClient) return;
     if (activeView === 'details' && hasNextClientDetailsPage && !isFetchingNextClientDetailsPage) fetchNextClientDetailsPage();
     if (activeView === 'coverage' && hasNextPage && !isFetchingNextPage) fetchNextPage();
-  }, [selectedClient, activeView, hasNextClientDetailsPage, isFetchingNextClientDetailsPage, fetchNextClientDetailsPage, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [selectedClient, selectedDivisional, activeView, hasNextClientDetailsPage, isFetchingNextClientDetailsPage, fetchNextClientDetailsPage, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Total count for client details
-  const clientDetailsTotalCount = selectedClient ? clientDetailsData.length : (clientDetailsPages?.pages[0]?.totalCount || 0);
+  const clientDetailsTotalCount = (selectedClient || selectedDivisional !== 'all') ? clientDetailsData.length : (clientDetailsPages?.pages[0]?.totalCount || 0);
 
   // Decidir qual fonte de dados usar baseado na view ativa
   const isLoadingData = activeView === 'overview' 
@@ -736,6 +774,22 @@ export const SalesFunnel: React.FC = () => {
     return filteredTasks.filter(t => t.taskType === 'checklist' && jdMap?.get(t.id) === jdFilter);
   }, [filteredTasks, jdFilter, jdMap]);
 
+  const sortedReportTasks = useMemo(() => {
+    if (!reportSort) return reportTasks;
+    const get = (t: Task): string | number => {
+      const opp = opportunityValues.get(t.id) as any;
+      switch (reportSort.key) {
+        case 'client': return t.client || '';
+        case 'responsible': return t.responsible || '';
+        case 'filial': return getFilialNameRobust(t.filial, filiais) || '';
+        case 'opp': return getSalesValueAsNumber(opp?.valor_total_oportunidade) || getSalesValueAsNumber(t.salesValue) || 0;
+        case 'sold': return getSalesValueAsNumber(opp?.valor_venda_fechada) || (t.salesType === 'parcial' ? (t.partialSalesValue || 0) : t.salesConfirmed && t.salesType === 'ganho' ? getSalesValueAsNumber(t.salesValue) || 0 : 0);
+        default: return new Date(t.createdAt as any).getTime() || 0;
+      }
+    };
+    return sortRows(reportTasks, get, reportSort.dir);
+  }, [reportTasks, reportSort, opportunityValues, filiais]);
+
   // totalCount agora vem direto do backend (count real com filtros aplicados)
   // infiniteDataCount já contém o total correto da query paginada com filtros
   const totalCount = useMemo(() => {
@@ -942,6 +996,12 @@ export const SalesFunnel: React.FC = () => {
     })).sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
   }, [activeView, clientDetailsData, filteredTasks, getFilialName]);
 
+  const sortedClientDetails = useMemo(() => {
+    if (!detailsSort) return clientDetails;
+    const get = (c: ClientDetails) => detailsSort.key === 'activities' ? c.totalActivities : detailsSort.key === 'value' ? c.salesValue : c.lastActivity.getTime();
+    return sortRows(clientDetails, get, detailsSort.dir);
+  }, [clientDetails, detailsSort]);
+
   // Get detailed data for tables
   const getDetailedData = useCallback((section: string) => {
     switch (section) {
@@ -1056,7 +1116,7 @@ export const SalesFunnel: React.FC = () => {
   const funnelHasMore = funnelStageRecords.length > funnelLimit || !!hasNextPage;
   const selectFunnelStage = (s: FunnelStage) => { setFunnelStage(s); setFunnelLimit(50); if (s !== 'contacts') setFunnelActivity(null); };
   const renderFunnelView = () => (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div className="space-y-6">
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">Funil de vendas</CardTitle></CardHeader>
         <CardContent>
@@ -1283,14 +1343,14 @@ export const SalesFunnel: React.FC = () => {
       </div>
 
       {/* Overview */}
-      {activeView === 'overview' && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {activeView === 'overview' && <div className="space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Contatos</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full bg-metric-activities" />Contatos</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{overviewMetrics.contacts.count}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold tabular-nums text-metric-activities">{overviewMetrics.contacts.count.toLocaleString('pt-BR')}</div>
+              <p className="text-sm font-semibold tabular-nums text-foreground/85">
                 {formatSalesValue(overviewMetrics.contacts.value)}
               </p>
             </CardContent>
@@ -1298,11 +1358,11 @@ export const SalesFunnel: React.FC = () => {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Prospects</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full bg-metric-clients" />Prospects</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{overviewMetrics.prospects.count}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold tabular-nums text-metric-clients">{overviewMetrics.prospects.count.toLocaleString('pt-BR')}</div>
+              <p className="text-sm font-semibold tabular-nums text-foreground/85">
                 {formatSalesValue(overviewMetrics.prospects.value)}
               </p>
             </CardContent>
@@ -1310,11 +1370,11 @@ export const SalesFunnel: React.FC = () => {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full bg-metric-visits" />Vendas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{overviewMetrics.sales.count}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold tabular-nums text-metric-visits">{overviewMetrics.sales.count.toLocaleString('pt-BR')}</div>
+              <p className="text-sm font-semibold tabular-nums text-foreground/85">
                 {formatSalesValue(overviewMetrics.sales.value)}
               </p>
             </CardContent>
@@ -1322,11 +1382,11 @@ export const SalesFunnel: React.FC = () => {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Parciais</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full bg-metric-calls" />Vendas Parciais</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{overviewMetrics.partialSales.count}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold tabular-nums text-metric-calls">{overviewMetrics.partialSales.count.toLocaleString('pt-BR')}</div>
+              <p className="text-sm font-semibold tabular-nums text-foreground/85">
                 {formatSalesValue(overviewMetrics.partialSales.value)}
               </p>
             </CardContent>
@@ -1334,15 +1394,31 @@ export const SalesFunnel: React.FC = () => {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Perdidas</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full bg-metric-lost" />Vendas Perdidas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{overviewMetrics.lostSales.count}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold tabular-nums text-metric-lost">{overviewMetrics.lostSales.count.toLocaleString('pt-BR')}</div>
+              <p className="text-sm font-semibold tabular-nums text-foreground/85">
                 {formatSalesValue(overviewMetrics.lostSales.value)}
               </p>
             </CardContent>
           </Card>
+        </div>
+        <Card>
+          <CardContent className="grid grid-cols-2 gap-4 p-4 md:grid-cols-4">
+            {[
+              { label: 'Em prospecção', value: overviewMetrics.prospects.value, tone: 'text-metric-clients' },
+              { label: 'Vendido (total)', value: overviewMetrics.sales.value, tone: 'text-metric-visits' },
+              { label: 'Vendido (parcial)', value: overviewMetrics.partialSales.value, tone: 'text-metric-calls' },
+              { label: 'Perdido', value: overviewMetrics.lostSales.value, tone: 'text-metric-lost' },
+            ].map(i => (
+              <div key={i.label} className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground">{i.label}</p>
+                <p className={`truncate text-lg font-bold tabular-nums ${i.tone}`}>{formatSalesValue(i.value)}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
         </div>}
 
       {/* Hierarchical Funnel View */}
@@ -1369,23 +1445,24 @@ export const SalesFunnel: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Vendedor</TableHead>
-                  <TableHead>Filial</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Valor Oportunidade</TableHead>
-                  <TableHead>Valor Venda Fechada</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Data Criação</TableHead>
-                  <TableHead>Situação JD</TableHead>
-                  <TableHead>Ações</TableHead>
+                  <SortHead label="Cliente" k="client" sort={reportSort} onSort={setReportSort} />
+                  <SortHead label="Vendedor" k="responsible" sort={reportSort} onSort={setReportSort} />
+                  <SortHead label="Filial" k="filial" sort={reportSort} onSort={setReportSort} />
+                  <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                  <SortHead label="Valor Oportunidade" k="opp" sort={reportSort} onSort={setReportSort} align="right" />
+                  <SortHead label="Valor Venda Fechada" k="sold" sort={reportSort} onSort={setReportSort} align="right" />
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <SortHead label="Data Criação" k="date" sort={reportSort} onSort={setReportSort} />
+                  <TableHead className="whitespace-nowrap">Situação JD</TableHead>
+                  <TableHead className="whitespace-nowrap">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 'all' ? reportTasks : reportTasks.slice(0, parseInt(itemsPerPage) * displayPage)).map((task) => {
+                {(itemsPerPage === 'all' ? sortedReportTasks : sortedReportTasks.slice(0, parseInt(itemsPerPage) * displayPage)).map((task) => {
                   // Get opportunity values for this task.
                   // FIX: se a opportunity estiver com valor_total_oportunidade = 0 (ex.: Venda Perdida),
                   // usar o valor vindo dos dados da task/listagem (mesmo valor que aparece no modal).
@@ -1413,9 +1490,9 @@ export const SalesFunnel: React.FC = () => {
                   
                   return (
                     <TableRow key={task.id}>
-                      <TableCell className="font-medium">{task.client}</TableCell>
-                      <TableCell>{task.responsible}</TableCell>
-                      <TableCell>{getFilialName(task.filial)}</TableCell>
+                      <TableCell className="font-medium min-w-[180px]">{task.client}</TableCell>
+                      <TableCell className="whitespace-nowrap">{task.responsible}</TableCell>
+                      <TableCell className="whitespace-nowrap">{getFilialName(task.filial)}</TableCell>
                       <TableCell>
                         <Badge variant="outline">
                           {task.taskType === 'prospection' ? 'Visita' : 
@@ -1423,10 +1500,10 @@ export const SalesFunnel: React.FC = () => {
                            task.taskType === 'checklist' ? 'Checklist' : task.taskType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium whitespace-nowrap text-right tabular-nums">
                         {formatSalesValue(oppValues.valor_total_oportunidade)}
                       </TableCell>
-                      <TableCell className="font-medium text-green-600">
+                      <TableCell className="font-semibold whitespace-nowrap text-right tabular-nums text-metric-visits">
                         {formatSalesValue(oppValues.valor_venda_fechada)}
                       </TableCell>
                       <TableCell>
@@ -1434,7 +1511,7 @@ export const SalesFunnel: React.FC = () => {
                           {oppValues.status || (task.salesConfirmed ? 'Fechada' : 'Em andamento')}
                         </Badge>
                       </TableCell>
-                      <TableCell>{formatDateDisplay(task.createdAt)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDateDisplay(task.createdAt)}</TableCell>
                       <TableCell>
                         {task.taskType === 'checklist' ? (() => {
                           const st = jdMap?.get(task.id);
@@ -1483,6 +1560,7 @@ export const SalesFunnel: React.FC = () => {
                 })}
               </TableBody>
             </Table>
+            </div>
             
             <div className="mt-4 text-center space-y-2">
               {(() => {
@@ -1494,7 +1572,7 @@ export const SalesFunnel: React.FC = () => {
                 return (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Mostrando {shown} de {reportTasks.length} oportunidades{hasMoreBackend ? ` (${totalCount} disponíveis)` : ''}.
+                      Mostrando {shown} de {reportTasks.length} oportunidades{hasMoreBackend && selectedDivisional === 'all' ? ` (${totalCount} disponíveis)` : hasMoreBackend ? ' carregadas da divisional' : ''}.
                       {(hasMoreLoaded || hasMoreBackend) && ' Use os filtros para refinar a busca.'}
                     </p>
                     {(hasMoreLoaded || hasMoreBackend) && (
@@ -1540,34 +1618,37 @@ export const SalesFunnel: React.FC = () => {
             </p>
           </CardHeader>
           <CardContent>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Filial</TableHead>
                   <TableHead>Consultor</TableHead>
-                  <TableHead>Atividades</TableHead>
-                  <TableHead>Última Atividade</TableHead>
-                  <TableHead>Valor de Vendas</TableHead>
+                  <SortHead label="Atividades" k="activities" sort={detailsSort} onSort={setDetailsSort} align="right" />
+                  <SortHead label="Última Atividade" k="last" sort={detailsSort} onSort={setDetailsSort} />
+                  <SortHead label="Valor de Vendas" k="value" sort={detailsSort} onSort={setDetailsSort} align="right" />
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(itemsPerPage === 'all' ? clientDetails : clientDetails.slice(0, parseInt(itemsPerPage))).map((client, index) => <TableRow key={index}>
-                    <TableCell className="font-medium">{client.client}</TableCell>
-                    <TableCell>{client.filial}</TableCell>
-                    <TableCell>{client.consultant}</TableCell>
-                    <TableCell>{client.totalActivities}</TableCell>
-                    <TableCell>{client.lastActivity.toLocaleDateString('pt-BR')}</TableCell>
-                    <TableCell>{formatSalesValue(client.salesValue)}</TableCell>
+                {(itemsPerPage === 'all' ? sortedClientDetails : sortedClientDetails.slice(0, parseInt(itemsPerPage))).map((client, index) => <TableRow key={index} className="[&>td]:py-2">
+                    <TableCell className="font-medium leading-tight">{client.client}</TableCell>
+                    <TableCell className="whitespace-nowrap">{client.filial}</TableCell>
+                    <TableCell className="whitespace-nowrap">{client.consultant}</TableCell>
+                    <TableCell className="text-right tabular-nums">{client.totalActivities}</TableCell>
+                    <TableCell className="whitespace-nowrap">{client.lastActivity.toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell className={`whitespace-nowrap text-right tabular-nums font-semibold ${client.salesValue > 0 ? 'text-metric-visits' : 'text-muted-foreground'}`}>{formatSalesValue(client.salesValue)}</TableCell>
                     <TableCell>
-                      <Badge variant={client.status === 'Venda Total' ? 'default' : client.status === 'Venda Parcial' ? 'secondary' : client.status === 'Prospect' ? 'outline' : 'destructive'}>
+                      <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_TONE[client.status] ?? 'bg-muted text-muted-foreground'}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
                         {client.status}
-                      </Badge>
+                      </span>
                     </TableCell>
                   </TableRow>)}
               </TableBody>
             </Table>
+            </div>
             
             <div className="mt-4 text-center space-y-2">
               <p className="text-sm text-muted-foreground">
