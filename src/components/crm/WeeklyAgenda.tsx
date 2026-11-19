@@ -51,12 +51,20 @@ const STATUS_LABEL: Record<string, string> = {
 const clientKey = (f: { client_code?: string | null; client_name?: string | null }) =>
   (f.client_code?.trim().toLowerCase() || f.client_name?.trim().toLowerCase() || '');
 
+type AgendaView = 'day' | 'filial';
+const AGENDA_VIEWS: { key: AgendaView; label: string }[] = [
+  { key: 'day', label: 'Dia a Dia' },
+  { key: 'filial', label: 'Resumo por Filial' },
+];
+
 export const WeeklyAgenda: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [sp, setSp] = useSearchParams();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [client, setClient] = useState<SelectedClient | null>(null);
+  // Alternância entre as duas visualizações: sempre começa em "Dia a Dia" (não vai para a URL).
+  const [view, setView] = useState<AgendaView>('day');
 
   const setParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(sp);
@@ -304,21 +312,38 @@ export const WeeklyAgenda: React.FC = () => {
             ]}
           />
 
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Modo de visualização">
+            {AGENDA_VIEWS.map((v) => (
+              <Button
+                key={v.key}
+                size="sm"
+                variant={view === v.key ? 'default' : 'outline'}
+                aria-pressed={view === v.key}
+                onClick={() => setView(v.key)}
+              >
+                {v.label}
+              </Button>
+            ))}
+          </div>
+
           {isLoading ? (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
               {Array.from({ length: 7 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-lg bg-muted/50" />)}
             </div>
           ) : (
             <>
-              <FilialSummary
-                activities={rangeActs}
-                loading={loadingRange}
-                filiais={summaryFiliais}
-                sellerName={(id) => consultantNameById.get(id) ?? 'Vendedor'}
-                onOpenTask={setSelectedTaskId}
-                onOpenDay={openDay}
-              />
-              <div>
+              {/* As duas visualizações permanecem montadas: alternar não recarrega dados nem perde a expansão das filiais. */}
+              <div className={cn(view !== 'filial' && 'hidden')}>
+                <FilialSummary
+                  activities={rangeActs}
+                  loading={loadingRange}
+                  filiais={summaryFiliais}
+                  sellerName={(id) => consultantNameById.get(id) ?? 'Vendedor'}
+                  onOpenTask={setSelectedTaskId}
+                  onOpenDay={openDay}
+                />
+              </div>
+              <div className={cn(view !== 'day' && 'hidden')}>
                 <h3 className="mb-2 text-sm font-medium">Movimentação dia a dia <span className="font-normal text-muted-foreground">— clique em um dia para ver o detalhamento</span></h3>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
                   {days.map((d) => <DayCell key={d.day} d={d} max={maxActivities} selected={d.day === selectedDayISO} onClick={() => openDay(d.day)} />)}
