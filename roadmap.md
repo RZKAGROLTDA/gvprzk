@@ -195,3 +195,10 @@
 - [ ] SQL revisado (admin global; gerente/supervisor só filiais autorizadas, escopo nunca vazio) — aguardando aprovação
 - [ ] Aplicar migração, telas, testes
 - [ ] Publicar (aguarda autorização)
+
+## Agenda Semanal do CRM — alternância de visualização (19/11/2026)
+- [x] Seletor com duas opções (Dia a Dia / Resumo por Filial) abaixo dos quatro indicadores, sem redesenhar nenhuma das duas visualizações.
+- [x] Dia a Dia sempre padrão na abertura; escolha não vai para a URL, então voltar ao CRM reinicia em Dia a Dia.
+- [x] As duas visualizações permanecem montadas: alternar não recarrega dados e mantém as filiais expandidas.
+- [x] Renderização real da tela com dados de exemplo no navegador: padrão, troca, volta, expansão preservada e recarga conferidos; indicadores idênticos antes e depois; typecheck, testes e build OK.
+- [ ] Conferência autenticada com dados reais — sessão indisponível no Supabase externo; depende de teste do usuário. Não publicado.
