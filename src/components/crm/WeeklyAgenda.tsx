@@ -22,6 +22,8 @@ import { FollowupRow } from '@/hooks/useFollowups';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { CRM_DIVISIONAIS, divisionalOfFilial } from '@/lib/crmDivisional';
+import { summarize, type SummaryActivity, type SummaryRow } from '@/lib/agendaFilialSummary';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown } from 'lucide-react';
 
 const WEEK_DAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const WEEK_DAYS_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -170,6 +172,38 @@ export const WeeklyAgenda: React.FC = () => {
     },
   });
 
+  // Resumo por filial (períodos > 7 dias): mesmas atividades e filtros, paginadas por id sob RLS
+  type RangeAct = SummaryActivity & { task_id: string | null; activity_date: string };
+  const { data: rangeActs = [], isLoading: loadingRange } = useQuery({
+    queryKey: ['agenda-range-acts', user?.id, startStr, endStr, responsible, filialIds, client ?? null],
+    enabled: rangeDays > 7 && !selectedDayISO && !!user?.id && isScopeReady && (filialIds === null || filialIds.length > 0),
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<RangeAct[]> => {
+      const startUtc = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()));
+      const endUtc = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() + 1));
+      const out: RangeAct[] = [];
+      let last: string | null = null;
+      for (let i = 0; i < 100; i++) {
+        let q = supabase.from('task_followups')
+          .select('id, task_id, filial_id, responsible_user_id, activity_type, activity_date, client_code, client_name')
+          .gte('activity_date', startUtc.toISOString()).lt('activity_date', endUtc.toISOString())
+          .order('id', { ascending: true }).limit(1000);
+        if (last) q = q.gt('id', last);
+        if (responsible) q = q.eq('responsible_user_id', responsible);
+        if (filialIds) q = q.in('filial_id', filialIds);
+        const { data, error } = await q;
+        if (error) throw error;
+        const page = (data ?? []) as RangeAct[];
+        out.push(...page.filter((f) => matchesClient(client, f.client_code, f.client_name)));
+        if (page.length < 1000) break;
+        last = page[page.length - 1].id;
+      }
+      return out;
+    },
+  });
+  const summaryFiliais = (scopedFilialId ? filialOptions.filter((f) => f.id === scopedFilialId) : filialOptions)
+    .map((f) => ({ key: f.id, label: f.nome }));
+
   // Ações de filtro
   const goWeek = (d: Date) => setParams({ periodo: null, semana: toISO(startOfWeekMon(d)), de: null, ate: null, dia: null });
   const openDay = (iso: string) => setParams({ dia: iso });
@@ -275,7 +309,17 @@ export const WeeklyAgenda: React.FC = () => {
               {Array.from({ length: 7 }).map((_, i) => <div key={i} className="h-32 animate-pulse rounded-lg bg-muted/50" />)}
             </div>
           ) : rangeDays > 7 ? (
-            <ProductivityCalendar days={days} onSelectDay={openDay} />
+            <>
+              <ProductivityCalendar days={days} onSelectDay={openDay} />
+              <FilialSummary
+                activities={rangeActs}
+                loading={loadingRange}
+                filiais={summaryFiliais}
+                sellerName={(id) => consultantNameById.get(id) ?? 'Vendedor'}
+                onOpenTask={setSelectedTaskId}
+                onOpenDay={openDay}
+              />
+            </>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
               {days.map((d) => <DayCell key={d.day} d={d} max={maxActivities} selected={d.day === selectedDayISO} onClick={() => openDay(d.day)} />)}
@@ -432,6 +476,139 @@ const ProductivityCalendar: React.FC<{ days: WeeklyAgendaDay[]; onSelectDay: (is
             </div>
           </div>
         ))}
+      </CardContent>
+    </Card>
+  );
+};
+
+type SortDir = 'desc' | 'asc';
+const SummaryNums: React.FC<{ r: SummaryRow; muted?: boolean }> = ({ r, muted }) => (
+  <>
+    <td className={cn('px-2 py-1.5 text-right font-semibold tabular-nums', !muted && 'text-metric-activities')}>{r.total}</td>
+    <td className="px-2 py-1.5 text-right tabular-nums">{r.visitas}</td>
+    <td className="px-2 py-1.5 text-right tabular-nums">{r.ligacoes}</td>
+    <td className="px-2 py-1.5 text-right tabular-nums">{r.checklists}</td>
+    <td className="px-2 py-1.5 text-right tabular-nums">{r.clientes}</td>
+  </>
+);
+
+const FilialSummary: React.FC<{
+  activities: (SummaryActivity & { task_id: string | null; activity_date: string })[];
+  loading: boolean;
+  filiais: { key: string; label: string }[];
+  sellerName: (id: string) => string;
+  onOpenTask: (id: string) => void;
+  onOpenDay: (iso: string) => void;
+}> = ({ activities, loading, filiais, sellerName, onOpenTask, onOpenDay }) => {
+  const [dir, setDir] = useState<SortDir>('desc');
+  const [openFilial, setOpenFilial] = useState<string | null>(null);
+  const [openSeller, setOpenSeller] = useState<string | null>(null);
+  const NONE = '__sem_filial';
+  const rows = useMemo(() => {
+    const r = summarize(activities, (a) => a.filial_id ?? NONE, filiais, (k) => (k === NONE ? 'Sem filial' : 'Outra filial'));
+    return r.sort((a, b) => (dir === 'desc' ? b.total - a.total : a.total - b.total) || a.label.localeCompare(b.label, 'pt-BR'));
+  }, [activities, filiais, dir]);
+  const sellers = useMemo(() => {
+    if (!openFilial) return [];
+    const list = activities.filter((a) => (a.filial_id ?? NONE) === openFilial);
+    return summarize(list, (a) => a.responsible_user_id ?? '__sem', [], (k) => (k === '__sem' ? 'Sem responsável' : sellerName(k)))
+      .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, 'pt-BR'));
+  }, [activities, openFilial, sellerName]);
+  const sellerActs = useMemo(() => activities
+    .filter((a) => (a.filial_id ?? NONE) === openFilial && (a.responsible_user_id ?? '__sem') === openSeller)
+    .sort((a, b) => b.activity_date.localeCompare(a.activity_date)), [activities, openFilial, openSeller]);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-3 pb-1">
+        <CardTitle className="text-sm font-medium">Resumo por Filial <span className="font-normal text-muted-foreground">— clique em uma filial para ver os vendedores</span></CardTitle>
+        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={() => setDir(dir === 'desc' ? 'asc' : 'desc')}>
+          {dir === 'desc' ? <ArrowDownWideNarrow className="h-3.5 w-3.5" /> : <ArrowUpNarrowWide className="h-3.5 w-3.5" />}
+          {dir === 'desc' ? 'Maior movimentação' : 'Menor movimentação'}
+        </Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        {loading ? (
+          <div className="m-3 h-24 animate-pulse rounded-md bg-muted/50" />
+        ) : rows.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">Nenhuma filial no filtro atual.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Filial</th>
+                  <th className="px-2 py-2 text-right font-medium">Atividades</th>
+                  <th className="px-2 py-2 text-right font-medium">Visitas</th>
+                  <th className="px-2 py-2 text-right font-medium">Ligações</th>
+                  <th className="px-2 py-2 text-right font-medium">Checklists</th>
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-medium">Clientes únicos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const empty = r.total === 0;
+                  const open = openFilial === r.key;
+                  return (
+                    <React.Fragment key={r.key}>
+                      <tr
+                        className={cn('border-b last:border-0', empty ? 'bg-muted/40 text-muted-foreground' : 'cursor-pointer hover:bg-muted/50', open && 'bg-day-selected')}
+                        onClick={() => { if (!empty) { setOpenFilial(open ? null : r.key); setOpenSeller(null); } }}
+                      >
+                        <td className="whitespace-nowrap px-3 py-1.5">
+                          <span className="inline-flex items-center gap-1">
+                            {!empty && (open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />)}
+                            {r.label}
+                            {empty && <span className="ml-1 text-[11px] italic">sem atividades</span>}
+                          </span>
+                        </td>
+                        <SummaryNums r={r} muted={empty} />
+                      </tr>
+                      {open && sellers.map((s) => {
+                        const sOpen = openSeller === s.key;
+                        return (
+                          <React.Fragment key={s.key}>
+                            <tr className="cursor-pointer border-b bg-muted/20 text-xs hover:bg-muted/50" onClick={() => setOpenSeller(sOpen ? null : s.key)}>
+                              <td className="whitespace-nowrap py-1.5 pl-8 pr-3">
+                                <span className="inline-flex items-center gap-1">
+                                  {sOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}{s.label}
+                                </span>
+                              </td>
+                              <SummaryNums r={s} />
+                            </tr>
+                            {sOpen && (
+                              <tr className="border-b bg-muted/10">
+                                <td colSpan={6} className="py-1.5 pl-12 pr-3">
+                                  <ul className="max-h-64 divide-y overflow-y-auto text-xs">
+                                    {sellerActs.map((a) => {
+                                      const iso = a.activity_date.slice(0, 10);
+                                      return (
+                                        <li key={a.id} className="flex flex-wrap items-center gap-2 py-1">
+                                          <button type="button" className="font-medium text-metric-activities hover:underline" onClick={() => onOpenDay(iso)}>
+                                            {parseISO(iso).toLocaleDateString('pt-BR')}
+                                          </button>
+                                          <Badge variant="outline" className="px-1.5 py-0 text-[10px]">{TYPE_LABEL[a.activity_type ?? ''] ?? a.activity_type ?? 'Atividade'}</Badge>
+                                          <span className="min-w-0 flex-1 truncate">{a.client_name || a.client_code || '—'}</span>
+                                          {a.task_id && (
+                                            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => onOpenTask(a.task_id!)}>Ver</Button>
+                                          )}
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
