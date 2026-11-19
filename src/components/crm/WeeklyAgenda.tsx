@@ -266,10 +266,10 @@ export const WeeklyAgenda: React.FC = () => {
           <KpiRow
             loading={isLoading}
             items={[
-              { label: 'Atividades', value: totals.total, icon: Activity },
-              { label: 'Visitas', value: totals.visitas, icon: MapPin },
-              { label: 'Ligações', value: totals.ligacoes, icon: Phone },
-              { label: 'Clientes únicos', value: totals.clientes, icon: UsersIcon, hint: 'Soma dos clientes únicos de cada dia' },
+              { label: 'Atividades', value: totals.total, icon: Activity, tone: 'activities' as const },
+              { label: 'Visitas', value: totals.visitas, icon: MapPin, tone: 'visits' as const },
+              { label: 'Ligações', value: totals.ligacoes, icon: Phone, tone: 'calls' as const },
+              { label: 'Clientes únicos', value: totals.clientes, icon: UsersIcon, tone: 'clients' as const, hint: 'Soma dos clientes únicos de cada dia' },
             ]}
           />
 
@@ -281,7 +281,7 @@ export const WeeklyAgenda: React.FC = () => {
             <EvolutionChart days={days} onSelectDay={openDay} />
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-              {days.map((d) => <DayCell key={d.day} d={d} max={maxActivities} onClick={() => openDay(d.day)} />)}
+              {days.map((d) => <DayCell key={d.day} d={d} max={maxActivities} selected={d.day === selectedDayISO} onClick={() => openDay(d.day)} />)}
             </div>
           )}
         </>
@@ -302,55 +302,72 @@ export const WeeklyAgenda: React.FC = () => {
   );
 };
 
-type Kpi = { label: string; value: number; icon: React.ComponentType<{ className?: string }>; hint?: string; tone?: 'default' | 'success' | 'warning' };
+type KpiTone = 'activities' | 'visits' | 'calls' | 'clients' | 'success' | 'warning' | 'neutral';
+type Kpi = { label: string; value: number; icon: React.ComponentType<{ className?: string }>; hint?: string; tone?: KpiTone };
+
+/** Cores suaves por indicador: a cor aparece no ícone e no número, o cartão permanece neutro. */
+const KPI_TONES: Record<KpiTone, { chip: string; number: string }> = {
+  activities: { chip: 'bg-metric-activities-soft text-metric-activities', number: 'text-metric-activities' },
+  visits: { chip: 'bg-metric-visits-soft text-metric-visits', number: 'text-metric-visits' },
+  calls: { chip: 'bg-metric-calls-soft text-metric-calls', number: 'text-metric-calls' },
+  clients: { chip: 'bg-metric-clients-soft text-metric-clients', number: 'text-metric-clients' },
+  success: { chip: 'bg-success-soft text-success', number: 'text-success' },
+  warning: { chip: 'bg-warning-soft text-warning', number: 'text-warning' },
+  neutral: { chip: 'bg-muted text-muted-foreground', number: 'text-foreground' },
+};
 
 const KpiRow: React.FC<{ items: Kpi[]; loading?: boolean }> = ({ items, loading }) => (
   <div className={cn('grid gap-2', items.length > 4 ? 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7' : 'grid-cols-2 lg:grid-cols-4')}>
-    {items.map(({ label, value, icon: Icon, hint, tone }) => (
-      <Card key={label} title={hint}>
-        <CardContent className="flex items-center gap-3 p-3">
-          <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md',
-            tone === 'success' ? 'bg-primary/10 text-primary' : tone === 'warning' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-foreground')}>
-            <Icon className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-xs text-muted-foreground">{label}</div>
-            <div className="text-xl font-semibold leading-tight tabular-nums">{loading ? '—' : value.toLocaleString('pt-BR')}</div>
-          </div>
-        </CardContent>
-      </Card>
-    ))}
+    {items.map(({ label, value, icon: Icon, hint, tone = 'neutral' }) => {
+      const palette = KPI_TONES[tone];
+      return (
+        <Card key={label} title={hint}>
+          <CardContent className="flex items-center gap-3 p-3">
+            <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md', palette.chip)}>
+              <Icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs leading-snug text-muted-foreground">{label}</div>
+              <div className={cn('text-xl font-semibold leading-tight tabular-nums', palette.number)}>{loading ? '—' : value.toLocaleString('pt-BR')}</div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    })}
   </div>
 );
 
-const DayCell: React.FC<{ d: WeeklyAgendaDay; max: number; onClick: () => void }> = ({ d, max, onClick }) => {
+const DayCell: React.FC<{ d: WeeklyAgendaDay; max: number; selected?: boolean; onClick: () => void }> = ({ d, max, selected, onClick }) => {
   const date = parseISO(d.day);
   const isToday = d.day === toISO(new Date());
   const empty = d.total_activities === 0;
   const pct = max > 0 ? (d.total_activities / max) * 100 : 0;
+  const highlighted = selected || isToday;
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'group flex flex-col rounded-lg border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        isToday && 'border-primary ring-1 ring-primary/30',
-        empty && 'opacity-70',
+        'group flex flex-col rounded-lg border bg-card p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        highlighted
+          ? 'border-day-selected-border bg-day-selected ring-1 ring-day-selected-border/25'
+          : 'hover:border-primary/50',
+        empty && !highlighted && 'border-muted-foreground/15 bg-muted/25',
       )}
     >
       <div className="flex items-center justify-between text-xs">
-        <span className={cn('font-semibold uppercase', isToday ? 'text-primary' : 'text-muted-foreground')}>{WEEK_DAYS_SHORT[date.getDay()]}</span>
-        <span className="text-muted-foreground">{fmt(date)}</span>
+        <span className={cn('font-semibold uppercase', highlighted ? 'text-metric-activities' : 'text-muted-foreground')}>{WEEK_DAYS_SHORT[date.getDay()]}</span>
+        <span className={cn('tabular-nums', highlighted ? 'text-metric-activities/75' : 'text-muted-foreground')}>{fmt(date)}</span>
       </div>
-      <div className="mt-2 text-3xl font-bold leading-none tabular-nums">{d.total_activities}</div>
+      <div className={cn('mt-2 text-3xl font-bold leading-none tabular-nums', empty ? 'text-muted-foreground' : 'text-metric-activities')}>{d.total_activities}</div>
       <div className="text-[11px] text-muted-foreground">atividades</div>
-      <div className="mt-2 h-1 w-full overflow-hidden rounded bg-muted">
-        <div className="h-full bg-primary" style={{ width: `${empty ? 0 : Math.max(pct, 6)}%` }} />
+      <div className="mt-2 h-1 w-full overflow-hidden rounded bg-progress-track">
+        <div className="h-full rounded bg-progress-fill" style={{ width: `${empty ? 0 : Math.max(pct, 6)}%` }} />
       </div>
-      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{d.visitas}</span>
-        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{d.ligacoes}</span>
-        <span className="flex items-center gap-1"><UsersIcon className="h-3 w-3" />{d.unique_clients}</span>
+      <div className="mt-2 flex items-center justify-between text-xs tabular-nums">
+        <span className={cn('flex items-center gap-1', d.visitas > 0 ? 'text-metric-visits' : 'text-muted-foreground')}><MapPin className="h-3 w-3" />{d.visitas}</span>
+        <span className={cn('flex items-center gap-1', d.ligacoes > 0 ? 'text-metric-calls' : 'text-muted-foreground')}><Phone className="h-3 w-3" />{d.ligacoes}</span>
+        <span className={cn('flex items-center gap-1', d.unique_clients > 0 ? 'text-metric-clients' : 'text-muted-foreground')}><UsersIcon className="h-3 w-3" />{d.unique_clients}</span>
       </div>
     </button>
   );
@@ -374,9 +391,9 @@ const EvolutionChart: React.FC<{ days: WeeklyAgendaDay[]; onSelectDay: (iso: str
               contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="total_activities" name="Atividades" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} className="cursor-pointer" />
-            <Bar dataKey="visitas" name="Visitas" fill="hsl(var(--primary) / 0.55)" radius={[3, 3, 0, 0]} className="cursor-pointer" />
-            <Bar dataKey="ligacoes" name="Ligações" fill="hsl(var(--muted-foreground) / 0.5)" radius={[3, 3, 0, 0]} className="cursor-pointer" />
+            <Bar dataKey="total_activities" name="Atividades" fill="hsl(var(--metric-activities))" radius={[3, 3, 0, 0]} className="cursor-pointer" />
+            <Bar dataKey="visitas" name="Visitas" fill="hsl(var(--metric-visits) / 0.75)" radius={[3, 3, 0, 0]} className="cursor-pointer" />
+            <Bar dataKey="ligacoes" name="Ligações" fill="hsl(var(--metric-calls) / 0.7)" radius={[3, 3, 0, 0]} className="cursor-pointer" />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -457,13 +474,13 @@ const DayView: React.FC<{
       <KpiRow
         loading={loading}
         items={[
-          { label: 'Atividades', value: stats.total, icon: Activity },
-          { label: 'Visitas', value: stats.visitas, icon: MapPin },
-          { label: 'Ligações', value: stats.ligacoes, icon: Phone },
-          { label: 'Clientes atendidos', value: stats.clientes, icon: UsersIcon },
-          { label: 'Programadas', value: stats.byBucket.programadas, icon: CalendarClock },
-          { label: 'Pendentes', value: stats.byBucket.pendentes, icon: AlertCircle, tone: 'warning' },
-          { label: 'Realizadas', value: stats.byBucket.realizadas, icon: CheckCircle2, tone: 'success' },
+          { label: 'Atividades', value: stats.total, icon: Activity, tone: 'activities' as const },
+          { label: 'Visitas', value: stats.visitas, icon: MapPin, tone: 'visits' as const },
+          { label: 'Ligações', value: stats.ligacoes, icon: Phone, tone: 'calls' as const },
+          { label: 'Clientes atendidos', value: stats.clientes, icon: UsersIcon, tone: 'clients' as const },
+          { label: 'Programadas', value: stats.byBucket.programadas, icon: CalendarClock, tone: 'neutral' as const },
+          { label: 'Pendentes', value: stats.byBucket.pendentes, icon: AlertCircle, tone: 'warning' as const },
+          { label: 'Realizadas', value: stats.byBucket.realizadas, icon: CheckCircle2, tone: 'success' as const },
         ]}
       />
 

@@ -41,6 +41,28 @@
     --input: 214 32% 91%;
     --ring: 210 100% 50%;
 
+    /* Cores funcionais dos indicadores (CRM) — usadas em ícones, números e detalhes */
+    --metric-activities: 217 78% 48%;
+    --metric-activities-soft: 214 100% 96%;
+    --metric-visits: 158 74% 27%;
+    --metric-visits-soft: 152 62% 94%;
+    --metric-calls: 262 60% 50%;
+    --metric-calls-soft: 258 82% 96%;
+    --metric-clients: 22 92% 38%;
+    --metric-clients-soft: 30 100% 95%;
+
+    /* Dia em destaque na agenda */
+    --day-selected: 213 100% 97%;
+    --day-selected-border: 214 90% 58%;
+
+    /* Barras de progresso diárias */
+    --progress-track: 214 32% 93%;
+    --progress-fill: 214 85% 60%;
+
+    /* Realces suaves para métricas de apoio */
+    --success-soft: 152 62% 94%;
+    --warning-soft: 40 96% 94%;
+
     --radius: 0.75rem;
 
     /* Gradientes personalizados */
@@ -104,6 +126,24 @@
     --border: 217 32% 17%;
     --input: 217 32% 17%;
     --ring: 210 100% 60%;
+
+    --metric-activities: 213 90% 72%;
+    --metric-activities-soft: 217 45% 24%;
+    --metric-visits: 158 62% 55%;
+    --metric-visits-soft: 158 35% 18%;
+    --metric-calls: 262 78% 76%;
+    --metric-calls-soft: 262 38% 25%;
+    --metric-clients: 28 92% 66%;
+    --metric-clients-soft: 28 45% 22%;
+
+    --day-selected: 217 42% 22%;
+    --day-selected-border: 213 85% 65%;
+
+    --progress-track: 217 30% 27%;
+    --progress-fill: 213 75% 62%;
+
+    --success-soft: 158 35% 18%;
+    --warning-soft: 38 45% 20%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

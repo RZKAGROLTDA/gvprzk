@@ -20,3 +20,4 @@
 - Projection table metrics use the shared projection helper: risk money stays additive while its percentage uses (without-risk + risk)/goal on consolidated totals; consolidated week-over-week variation compares matched branches with prior entries to avoid treating first entries as growth.
 - Weekly projection money inputs use NumericFormat for caret-aware BRL formatting and keep ungrouped decimal strings until strict conversion at save, avoiding cents-shifting masks.
 - Projeção full access is decided only by projection_is_admin() on the server, mirrored by hasProjectionFullAccess in src/lib/projection.ts, so UI and database grant by role identically.
+- CRM indicator colours are semantic tokens (--metric-activities/visits/calls/clients, --day-selected*, --progress-*) defined for light and dark in src/index.css and used on icons, numbers and small details only; components must not hardcode colour utilities so contrast stays correct in both themes.

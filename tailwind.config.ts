@@ -61,6 +61,26 @@ export default {
 					DEFAULT: 'hsl(var(--warning))',
 					foreground: 'hsl(var(--warning-foreground))'
 				},
+				'success-soft': 'hsl(var(--success-soft))',
+				'warning-soft': 'hsl(var(--warning-soft))',
+				metric: {
+					activities: 'hsl(var(--metric-activities))',
+					'activities-soft': 'hsl(var(--metric-activities-soft))',
+					visits: 'hsl(var(--metric-visits))',
+					'visits-soft': 'hsl(var(--metric-visits-soft))',
+					calls: 'hsl(var(--metric-calls))',
+					'calls-soft': 'hsl(var(--metric-calls-soft))',
+					clients: 'hsl(var(--metric-clients))',
+					'clients-soft': 'hsl(var(--metric-clients-soft))',
+				},
+				day: {
+					selected: 'hsl(var(--day-selected))',
+					'selected-border': 'hsl(var(--day-selected-border))',
+				},
+				progress: {
+					track: 'hsl(var(--progress-track))',
+					fill: 'hsl(var(--progress-fill))',
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
