@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { Task } from '@/types/task';
 
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useInfiniteQuery, useQueries } from '@tanstack/react-query';
 import { OpportunityDetailsModal } from '@/components/OpportunityDetailsModal';
 import { TaskFormVisualization } from '@/components/TaskFormVisualization';
 import { OpportunityReport } from '@/components/OpportunityReport';
@@ -22,7 +22,10 @@ import { formatSalesValue, getSalesValueAsNumber } from '@/lib/securityUtils';
 import { getFilialNameRobust, loadFiliaisCache } from '@/lib/taskStandardization';
 import { useInfiniteSalesData } from '@/hooks/useInfiniteSalesData';
 import { ClientFilter, matchesClient, type SelectedClient } from '@/components/ClientFilter';
-import { useConsolidatedSalesMetrics } from '@/hooks/useConsolidatedSalesMetrics';
+import { useConsolidatedSalesMetrics, fetchConsolidatedMetrics } from '@/hooks/useConsolidatedSalesMetrics';
+import { CRM_DIVISIONAIS, divisionalOfFilial, type CrmDivisional } from '@/lib/crmDivisional';
+import { recordsForStage, sumConsolidatedMetrics, type ActivityKind, type FunnelStage } from '@/lib/salesFunnelView';
+import { SalesFunnelChart, ActivityBreakdown, FunnelRecords, STAGE_LABEL, type FunnelRow } from '@/components/funnel/SalesFunnelChart';
 import { DataMigrationPanel } from '@/components/DataMigrationPanel';
 import { parseLocalDate, formatDateDisplay } from '@/lib/utils';
 import { classifyChecklistTasks, jdLabel, jdVariant } from '@/lib/jdChassis';
@@ -83,6 +86,10 @@ export const SalesFunnel: React.FC = () => {
   const [selectedFilial, setSelectedFilial] = useState<string>('all');
   const [selectedFilialAtendida, setSelectedFilialAtendida] = useState<string>('all');
   const [selectedActivity, setSelectedActivity] = useState<string>('all');
+  const [selectedDivisional, setSelectedDivisional] = useState<'all' | CrmDivisional>('all');
+  const [funnelStage, setFunnelStage] = useState<FunnelStage>('contacts');
+  const [funnelActivity, setFunnelActivity] = useState<ActivityKind | null>(null);
+  const [funnelLimit, setFunnelLimit] = useState(50);
   const [jdFilter, setJdFilter] = useState<string>('all');
   const [itemsPerPage, setItemsPerPage] = useState<string>('50');
   const [displayPage, setDisplayPage] = useState<number>(1);
@@ -142,6 +149,7 @@ export const SalesFunnel: React.FC = () => {
     setSelectedPeriod('7');
     setSelectedConsultant('all');
     setSelectedFilial('all');
+    setSelectedDivisional('all');
     setSelectedFilialAtendida('all');
     setSelectedActivity('all');
     setSelectedClient(null);
@@ -197,15 +205,40 @@ export const SalesFunnel: React.FC = () => {
 
   // Hook CONSOLIDADO para métricas (substitui useAllSalesData + useSalesFunnelMetrics)
   const {
-    metrics: consolidatedMetrics,
-    isLoading: isLoadingMetrics,
+    metrics: consolidatedMetricsRaw,
+    isLoading: isLoadingMetricsRaw,
     error: metricsError,
     refetch: refetchMetrics
   } = useConsolidatedSalesMetrics(filters);
+  let consolidatedMetrics = consolidatedMetricsRaw;
+
+  // Divisional: agrupa apenas filiais que o usuário já enxerga; quando nenhuma
+  // filial específica é escolhida, soma as métricas oficiais de cada filial.
+  const divisionalFiliais = useMemo(
+    () => selectedDivisional === 'all' ? [] : filiais.filter(f => divisionalOfFilial(f.nome) === selectedDivisional),
+    [filiais, selectedDivisional],
+  );
+  const useDivisionalSum = selectedDivisional !== 'all' && selectedFilial === 'all';
+  const divisionalQueries = useQueries({
+    queries: (useDivisionalSum ? divisionalFiliais : []).map(f => ({
+      queryKey: ['consolidated-sales-metrics-v2', 'divisional', f.nome, filters],
+      queryFn: () => fetchConsolidatedMetrics({ ...filters, filial: f.nome }),
+      staleTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    })),
+  });
+  const divisionalMetrics = useMemo(() => {
+    if (!useDivisionalSum) return null;
+    if (divisionalQueries.some(q => !q.data)) return undefined;
+    return sumConsolidatedMetrics(divisionalQueries.map(q => q.data!)) ?? sumConsolidatedMetrics([consolidatedMetrics]);
+  }, [useDivisionalSum, divisionalQueries, consolidatedMetrics]);
+  if (divisionalMetrics) consolidatedMetrics = divisionalMetrics;
+  const isLoadingDivisional = useDivisionalSum && divisionalMetrics === undefined;
 
   // Extrair métricas para compatibilidade
   const overviewMetrics = consolidatedMetrics.overview;
   const funnelMetrics = consolidatedMetrics.funnel;
+  const isLoadingMetrics = isLoadingMetricsRaw || isLoadingDivisional;
   const isLoadingOverview = isLoadingMetrics;
   const isLoadingFunnel = isLoadingMetrics;
 
@@ -471,7 +504,7 @@ export const SalesFunnel: React.FC = () => {
       });
       return { data: data || [] };
     },
-    enabled: activeView === 'coverage',
+    enabled: activeView === 'coverage' || activeView === 'funnel',
     staleTime: 10 * 60 * 1000, // 10 minutos - OTIMIZAÇÃO: slow queries
     gcTime: 30 * 60 * 1000, // 30 minutos no cache
     refetchOnMount: false, // OTIMIZAÇÃO: usar cache
@@ -681,9 +714,10 @@ export const SalesFunnel: React.FC = () => {
         } as Task;
       });
 
-    console.log('🔧 filteredTasks: Tasks:', tasksFromSales.length, 'Standalone opportunities:', standaloneOpportunities.length);
-    return [...tasksFromSales, ...standaloneOpportunities];
-  }, [filteredSalesData, opportunitiesData, selectedActivity, selectedClient]);
+    const all = [...tasksFromSales, ...standaloneOpportunities];
+    if (selectedDivisional === 'all') return all;
+    return all.filter(t => divisionalOfFilial(getFilialNameRobust(t.filial, filiais)) === selectedDivisional);
+  }, [filteredSalesData, opportunitiesData, selectedActivity, selectedClient, selectedDivisional, filiais]);
 
   // Auditoria JD: classificação no servidor (respeita o acesso do usuário)
   const checklistIds = useMemo(
@@ -999,6 +1033,67 @@ export const SalesFunnel: React.FC = () => {
     }
   };
 
+  const funnelStageRecords = recordsForStage(filteredTasks, funnelStage, funnelStage === 'contacts' ? funnelActivity : null);
+  const funnelRows: FunnelRow[] = funnelStageRecords.slice(0, funnelLimit).map((task, i) => {
+    const opp = opportunityValues.get(task.id);
+    const sold = opp?.valor_venda_fechada
+      ?? (task.salesType === 'parcial' ? task.partialSalesValue || 0 : task.salesConfirmed && task.salesType === 'ganho' ? calculateTaskSalesValue(task) : 0);
+    const status = opp?.status || (task.salesType === 'ganho' ? 'Venda Total' : task.salesType === 'parcial' ? 'Venda Parcial'
+      : task.salesType === 'perdido' ? 'Venda Perdida' : task.isProspect ? 'Prospect' : 'Sem oportunidade');
+    return {
+      key: `${task.id}-${(task as any).opportunityId ?? ''}-${i}`,
+      client: task.client,
+      seller: task.responsible || '-',
+      filial: getFilialName(task.filial),
+      type: task.taskType === 'prospection' ? 'Visita' : task.taskType === 'ligacao' ? 'Ligação' : task.taskType === 'checklist' ? 'Checklist' : task.taskType,
+      opportunityValue: opp?.valor_total_oportunidade ?? calculateTaskSalesValue(task),
+      soldValue: sold,
+      status,
+      date: formatDateDisplay(task.createdAt),
+      onView: () => { setSelectedTask(task); setIsTaskVisualizationOpen(true); },
+    };
+  });
+  const funnelHasMore = funnelStageRecords.length > funnelLimit || !!hasNextPage;
+  const selectFunnelStage = (s: FunnelStage) => { setFunnelStage(s); setFunnelLimit(50); if (s !== 'contacts') setFunnelActivity(null); };
+  const renderFunnelView = () => (
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base">Funil de vendas</CardTitle></CardHeader>
+        <CardContent>
+          <SalesFunnelChart funnel={funnelMetrics} selected={funnelStage} onSelect={selectFunnelStage} />
+          <p className="mt-3 text-xs text-muted-foreground">Clique em uma etapa para ver os registros correspondentes.</p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">
+            {STAGE_LABEL[funnelStage]}
+            {funnelStage === 'contacts' && funnelActivity && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                · {funnelActivity === 'prospection' ? 'Visitas' : funnelActivity === 'ligacao' ? 'Ligações' : 'Checklists'}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {funnelStage === 'contacts' && (
+            <ActivityBreakdown funnel={funnelMetrics} selected={funnelActivity} onSelect={(k) => { setFunnelActivity(k); setFunnelLimit(50); }} />
+          )}
+          <FunnelRecords
+            rows={funnelRows}
+            totalAvailable={totalCount}
+            hasMore={funnelHasMore}
+            loadingMore={isFetchingNextPage}
+            onLoadMore={() => {
+              if (funnelStageRecords.length > funnelLimit) setFunnelLimit(l => l + 50);
+              else { fetchNextPage(); setFunnelLimit(l => l + 50); }
+            }}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   if (isLoadingData) {
     return <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1030,7 +1125,7 @@ export const SalesFunnel: React.FC = () => {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
         <div>
           <label className="text-sm font-medium mb-2 block">Período</label>
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -1063,6 +1158,25 @@ export const SalesFunnel: React.FC = () => {
         </div>
 
         <div>
+          <label className="text-sm font-medium mb-2 block">Divisional</label>
+          <Select value={selectedDivisional} onValueChange={(v) => {
+            const d = v as 'all' | CrmDivisional;
+            setSelectedDivisional(d);
+            if (d !== 'all' && selectedFilial !== 'all' && divisionalOfFilial(selectedFilial) !== d) setSelectedFilial('all');
+          }}>
+            <SelectTrigger className={selectedDivisional !== 'all' ? 'border-primary' : ''}>
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as divisionais</SelectItem>
+              {CRM_DIVISIONAIS.filter(d => filiais.some(f => divisionalOfFilial(f.nome) === d)).map(d => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
           <label className="text-sm font-medium mb-2 block">Filial</label>
           <Select value={selectedFilial} onValueChange={setSelectedFilial}>
             <SelectTrigger>
@@ -1070,7 +1184,7 @@ export const SalesFunnel: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as filiais</SelectItem>
-              {filiais.map(filial => <SelectItem key={filial.id} value={filial.nome}>
+              {(selectedDivisional === 'all' ? filiais : divisionalFiliais).map(filial => <SelectItem key={filial.id} value={filial.nome}>
                   {filial.nome}
                 </SelectItem>)}
             </SelectContent>
@@ -1232,142 +1346,7 @@ export const SalesFunnel: React.FC = () => {
         </div>}
 
       {/* Hierarchical Funnel View */}
-      {activeView === 'funnel' && <div className="space-y-8">
-          {/* CONTATOS COM CLIENTES */}
-          <div>
-            <h2 className="text-2xl font-bold text-center mb-6 text-primary">
-              CONTATOS COM CLIENTES ({funnelMetrics.totalContatos})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.visitas.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Visitas</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.visitas.value)}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.checklists.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Checklists</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.checklists.value)}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.ligacoes.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Ligações</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.ligacoes.value)}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* PROSPECÇÃO */}
-          <div>
-            <h2 className="text-2xl font-bold text-center mb-6 text-primary">
-              PROSPECÇÃO ({funnelMetrics.totalProspeccoes})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.prospeccoesAbertas.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Abertas</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.prospeccoesAbertas.value)}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.prospeccoesFechadas.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Fechadas</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.prospeccoesFechadas.value)}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.prospeccoesPerdidas.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Perdidas</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.prospeccoesPerdidas.value)}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* VENDAS */}
-          <div>
-            <h2 className="text-2xl font-bold text-center mb-6 text-primary">
-              VENDAS ({funnelMetrics.totalVendas})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.vendasTotal.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Total</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.vendasTotal.value)}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                    {funnelMetrics.vendasParcial.count}
-                  </div>
-                  <p className="text-lg font-semibold mb-2">Parcial</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatSalesValue(funnelMetrics.vendasParcial.value)}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* TAXA DE CONVERSÃO */}
-          <div className="flex justify-center">
-            <Card className="bg-gradient-to-br from-purple-500 to-purple-700 text-white border-0 max-w-md w-full">
-              <CardContent className="p-8 text-center">
-                <div className="text-5xl font-bold mb-2">
-                  {funnelMetrics.taxaConversao.toFixed(1)}%
-                </div>
-                <p className="text-xl font-semibold mb-1">Taxa de Conversão</p>
-                <p className="text-sm opacity-90">
-                  {funnelMetrics.totalVendas} vendas de {funnelMetrics.totalContatos} contatos
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>}
+      {activeView === 'funnel' && renderFunnelView()}
 
       {/* Relatório View */}
       {activeView === 'coverage' && <Card>

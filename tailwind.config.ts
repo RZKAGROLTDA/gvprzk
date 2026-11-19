@@ -72,6 +72,8 @@ export default {
 					'calls-soft': 'hsl(var(--metric-calls-soft))',
 					clients: 'hsl(var(--metric-clients))',
 					'clients-soft': 'hsl(var(--metric-clients-soft))',
+					lost: 'hsl(var(--metric-lost))',
+					'lost-soft': 'hsl(var(--metric-lost-soft))',
 				},
 				day: {
 					selected: 'hsl(var(--day-selected))',

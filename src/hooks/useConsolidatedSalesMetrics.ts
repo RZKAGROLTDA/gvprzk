@@ -50,26 +50,16 @@ const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
  *
  * Sem filtro hardcoded de 90 dias. Sem uso de created_at para análise operacional.
  */
-export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
-  const { user } = useAuth();
-  const { profile } = useProfile();
-  const { role, isSupervisor } = useUserRole();
 
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.log('[useConsolidatedSalesMetrics] hook render', {
-      userId: user?.id ?? null,
-      role,
-      isSupervisor,
-      profileFilialId: profile?.filial_id ?? null,
-      filters,
-    });
-  }
-
-  const { data: metrics, isLoading, error, refetch } = useQuery({
-    queryKey: ['consolidated-sales-metrics-v2', user?.id ?? null, filters],
-    enabled: !!user?.id,
-    queryFn: async () => {
+/** Chama get_activity_metrics_v2 (mesma regra de sempre) e devolve as métricas no formato da tela. */
+export async function fetchConsolidatedMetrics(
+  filters: SalesFilters | undefined,
+  ctx: { userId?: string; role?: unknown; isSupervisor?: boolean; profileFilialId?: string | null } = {},
+): Promise<ConsolidatedMetrics> {
+  const user = { id: ctx.userId };
+  const role = ctx.role;
+  const isSupervisor = ctx.isSupervisor;
+  const profile = { filial_id: ctx.profileFilialId ?? null };
       // Janela de datas: somente quando o usuário escolher um período explícito.
       // 'all' / undefined → sem corte (V2 aceita NULL).
       let p_start_date: string | null = null;
@@ -202,7 +192,28 @@ export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
       }
 
       return result;
-    },
+}
+
+export const useConsolidatedSalesMetrics = (filters?: SalesFilters) => {
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const { role, isSupervisor } = useUserRole();
+
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[useConsolidatedSalesMetrics] hook render', {
+      userId: user?.id ?? null,
+      role,
+      isSupervisor,
+      profileFilialId: profile?.filial_id ?? null,
+      filters,
+    });
+  }
+
+  const { data: metrics, isLoading, error, refetch } = useQuery({
+    queryKey: ['consolidated-sales-metrics-v2', user?.id ?? null, filters],
+    enabled: !!user?.id,
+    queryFn: () => fetchConsolidatedMetrics(filters, { userId: user?.id, role, isSupervisor, profileFilialId: profile?.filial_id }),
     staleTime: 0,
     gcTime: 30 * 60 * 1000,
     refetchOnMount: 'always',

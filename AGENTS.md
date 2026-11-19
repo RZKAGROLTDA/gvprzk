@@ -21,3 +21,4 @@
 - Weekly projection money inputs use NumericFormat for caret-aware BRL formatting and keep ungrouped decimal strings until strict conversion at save, avoiding cents-shifting masks.
 - Projeção full access is decided only by projection_is_admin() on the server, mirrored by hasProjectionFullAccess in src/lib/projection.ts, so UI and database grant by role identically.
 - CRM indicator colours are semantic tokens (--metric-activities/visits/calls/clients, --day-selected*, --progress-*) defined for light and dark in src/index.css and used on icons, numbers and small details only; components must not hardcode colour utilities so contrast stays correct in both themes.
+- Análise Gerencial funnel stage/record rules and Divisional metric summing live in src/lib/salesFunnelView.ts; Divisional without a filial sums get_activity_metrics_v2 per visible filial (fetchConsolidatedMetrics), so the server stays the only source of counts and permissions.

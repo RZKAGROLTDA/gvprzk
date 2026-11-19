@@ -50,6 +50,8 @@
     --metric-calls-soft: 258 82% 96%;
     --metric-clients: 22 92% 38%;
     --metric-clients-soft: 30 100% 95%;
+    --metric-lost: 0 72% 42%;
+    --metric-lost-soft: 0 86% 96%;
 
     /* Dia em destaque na agenda */
     --day-selected: 213 100% 97%;
@@ -135,6 +137,8 @@
     --metric-calls-soft: 262 38% 25%;
     --metric-clients: 28 92% 66%;
     --metric-clients-soft: 28 45% 22%;
+    --metric-lost: 0 85% 72%;
+    --metric-lost-soft: 0 40% 22%;
 
     --day-selected: 217 42% 22%;
     --day-selected-border: 213 85% 65%;
