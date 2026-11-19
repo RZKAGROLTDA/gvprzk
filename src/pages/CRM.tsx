@@ -34,15 +34,12 @@ const CRM: React.FC = () => {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle>CRM do Vendedor</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Agenda, carteira e retornos baseados em follow-ups (independente do módulo de tarefas).
-          </p>
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-lg">CRM do Vendedor</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className={`grid w-full ${canManage ? 'grid-cols-6 max-w-4xl' : 'grid-cols-5 max-w-3xl'}`}>
+            <TabsList className="flex h-auto w-full justify-start overflow-x-auto">
               <TabsTrigger value="agenda" className="gap-2">
                 <CalendarDays className="h-4 w-4" /> Agenda Semanal
               </TabsTrigger>
@@ -64,7 +61,7 @@ const CRM: React.FC = () => {
                 </TabsTrigger>
               )}
             </TabsList>
-            <TabsContent value="agenda" className="mt-4">
+            <TabsContent value="agenda" className="mt-3">
               <WeeklyAgenda />
             </TabsContent>
             <TabsContent value="programacao" className="mt-4">
